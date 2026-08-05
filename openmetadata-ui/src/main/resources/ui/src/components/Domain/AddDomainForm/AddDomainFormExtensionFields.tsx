@@ -826,6 +826,7 @@ const ReferenceExtensionField = ({
 
     return () => {
       isMounted.current = false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       requestId.current++;
       debouncedSearch.cancel();
     };

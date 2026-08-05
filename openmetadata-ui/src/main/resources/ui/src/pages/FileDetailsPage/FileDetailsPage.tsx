@@ -246,6 +246,7 @@ function FileDetailsPage() {
 
   useEffect(() => {
     fetchResourcePermission(fileFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fileFQN]);
 
   useEffect(() => {
@@ -257,6 +258,7 @@ function FileDetailsPage() {
     ) {
       fetchFileDetails(fileFQN);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [filePermissions, fileFQN]);
 
   if (isLoading) {

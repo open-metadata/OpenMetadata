@@ -203,6 +203,7 @@ function FileDetails({
       };
       await onFileUpdate(updatedFileDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -264,6 +265,7 @@ function FileDetails({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -312,6 +314,7 @@ function FileDetails({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [filePermissions, decodedFileFQN]);
 
   const tabs = useMemo(() => {
@@ -358,6 +361,7 @@ function FileDetails({
       customizedPage?.tabs,
       EntityTabs.CHILDREN
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeTab,
     feedCount.totalCount,
@@ -403,6 +407,7 @@ function FileDetails({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.File),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   if (isLoading) {

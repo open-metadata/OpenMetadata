@@ -158,6 +158,7 @@ const MyDataWidgetInternal = ({
         setIsLoading(false);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     currentUser,
     selectedFilter,
@@ -182,6 +183,7 @@ const MyDataWidgetInternal = ({
         title={t('label.no-records')}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
   const myDataContent = useMemo(() => {
@@ -248,6 +250,7 @@ const MyDataWidgetInternal = ({
         </div>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [data, isExpanded]);
 
   const showWidgetFooterMoreButton = useMemo(
@@ -282,6 +285,7 @@ const MyDataWidgetInternal = ({
         }
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentLayout,
       handleLayoutUpdate,

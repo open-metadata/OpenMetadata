@@ -92,6 +92,7 @@ const EditKPIPage = () => {
         activeTitle: true,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [kpiData]
   );
 
@@ -208,11 +209,13 @@ const EditKPIPage = () => {
         placeHolder: t('message.write-your-description'),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [kpiData?.description]
   );
 
   useEffect(() => {
     fetchKPI();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [kpiName]);
 
   if (isLoading) {

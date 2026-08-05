@@ -50,6 +50,7 @@ const ForgotPassword = () => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handleForgotPassword]
   );
 

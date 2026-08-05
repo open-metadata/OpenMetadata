@@ -136,6 +136,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
         }
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isProfilingEnabled]);
   const columnCustomMetrics = useMemo(
     () => calculateCustomMetrics(columnProfilerData, customMetrics),
@@ -206,6 +207,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
 
   useEffect(() => {
     createMetricsChartData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [columnProfilerData]);
 
   useEffect(() => {

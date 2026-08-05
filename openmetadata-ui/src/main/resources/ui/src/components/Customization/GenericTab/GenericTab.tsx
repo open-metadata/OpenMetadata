@@ -67,6 +67,7 @@ export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
         </div>
       );
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [layout, type]);
 
   // For default tabs we have rigid layout where we are not applying any bg to container

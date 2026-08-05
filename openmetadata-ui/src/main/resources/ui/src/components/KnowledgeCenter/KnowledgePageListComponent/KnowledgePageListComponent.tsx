@@ -341,6 +341,7 @@ const KnowledgePageListComponent = forwardRef<
       } else {
         setIsLoading(false);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [hasViewPermission, searchQuery, isPermissionsLoading]);
 
     useEffect(() => {
@@ -364,6 +365,7 @@ const KnowledgePageListComponent = forwardRef<
         setPageOffset(nextOffset);
         fetchKnowledgePages(nextOffset);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [
       isInView,
       paging.total,
@@ -424,6 +426,7 @@ const KnowledgePageListComponent = forwardRef<
             }}
           />
         ),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [showAddLinkModal]
     );
 
@@ -433,6 +436,7 @@ const KnowledgePageListComponent = forwardRef<
         rightPanel: getRightPanelElement(),
         data: undefined,
       });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [getRightPanelElement]);
 
     useImperativeHandle(ref, () => ({

@@ -177,6 +177,7 @@ MockProps) => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const revokeTokenHandler = async () => {
     try {
       const response = await revokeAccessToken('removeAll=true');
@@ -192,12 +193,14 @@ MockProps) => {
     if (!isBot) {
       fetchAuthMechanismForUser();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (botUserData && botUserData.id && !disabled) {
       fetchAuthMechanismForBot();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [botUserData, disabled]);
 
   const authenticationMechanismData = useMemo(() => {
@@ -206,6 +209,7 @@ MockProps) => {
 
   const onSave = useMemo(() => {
     return isBot ? handleAuthMechanismUpdateForBot : handleAuthMechanismUpdate;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isBot, handleAuthMechanismUpdateForBot, handleAuthMechanismUpdateForBot]);
 
   const tokenRevoke = useCallback(() => {
@@ -216,6 +220,7 @@ MockProps) => {
     return isBot
       ? t('message.are-you-sure-to-revoke-access')
       : t('message.are-you-sure-to-revoke-access-personal-access');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isBot]);
 
   const handleTokenRevoke = async () => {

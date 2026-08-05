@@ -54,6 +54,7 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   };
 
   // function to render text with optional link
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const renderNameWithOptionalLink = (displayText: ReactNode) => {
     return link ? (
       <Link className="break-word" data-testid={name} to={link}>

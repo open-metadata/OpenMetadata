@@ -159,6 +159,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       isSoftDelete ? handleToggleDelete() : onDelete?.(knowledgePage?.id);
       onRefreshTagsCategory?.(true);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [knowledgePage, onDelete, handleToggleDelete, onRefreshTagsCategory]
   );
 
@@ -212,6 +213,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
     if (knowledgeItem.pageType === PageType.QUICK_LINK) {
       fetchPermission(knowledgeItem.fullyQualifiedName);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [knowledgeItem]);
 
   return (

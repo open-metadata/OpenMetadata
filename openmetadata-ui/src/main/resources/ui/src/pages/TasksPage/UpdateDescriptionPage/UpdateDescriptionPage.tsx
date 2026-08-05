@@ -206,6 +206,7 @@ const UpdateDescription = () => {
       assignees: defaultAssignee,
       description: getDescription(),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityData]);
 
   useEffect(() => {
@@ -215,6 +216,7 @@ const UpdateDescription = () => {
       currentDescription: description,
       newDescription: description,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityData, columnObject]);
 
   useEffect(() => {

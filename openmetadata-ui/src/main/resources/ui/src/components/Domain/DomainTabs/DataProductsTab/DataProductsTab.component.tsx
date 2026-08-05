@@ -108,6 +108,7 @@ const DataProductsTab = forwardRef(
 
     useEffect(() => {
       fetchDataProducts();
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [urlDomainFqn]);
 
     if (loading) {

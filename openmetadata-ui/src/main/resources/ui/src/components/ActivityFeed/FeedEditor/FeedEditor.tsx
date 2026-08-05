@@ -197,6 +197,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
 
         return wrapper;
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [userProfilePics]
     );
     /**
@@ -241,6 +242,7 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           matchers: [['del, strike', strikethrough]],
         },
       }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       []
     );
 

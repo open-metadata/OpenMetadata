@@ -172,6 +172,7 @@ const EntityVersionPage: FunctionComponent = () => {
 
   const backHandler = useCallback(
     () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, decodedEntityFQN]
   );
 
@@ -183,6 +184,7 @@ const EntityVersionPage: FunctionComponent = () => {
         navigate(getVersionPath(entityType, decodedEntityFQN, newVersion));
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, decodedEntityFQN, tab]
   );
 
@@ -411,6 +413,7 @@ const EntityVersionPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType, decodedEntityFQN, viewVersionPermission]);
 
   const fetchCurrentVersion = useCallback(
@@ -1036,18 +1039,21 @@ const EntityVersionPage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchEntityPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchEntityVersions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedEntityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (entityId) {
       fetchCurrentVersion(entityId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version, entityId]);
 
   return (

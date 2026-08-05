@@ -94,9 +94,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, queryFilter]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceOnSearch = useCallback(debounce(getSearchResults, 300), [
     getSearchResults,
   ]);
@@ -143,6 +145,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         </Button>
       ),
     }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [data, getSuggestionLabelHeading]);
 
   const handleChange = useCallback(
@@ -155,6 +158,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 
   useEffect(() => {
     getSearchResults(searchValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const entityIcon = useMemo(

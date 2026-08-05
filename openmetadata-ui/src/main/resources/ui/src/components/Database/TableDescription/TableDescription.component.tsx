@@ -57,6 +57,7 @@ const TableDescription = ({
             EntityLink.getTableColumnNameFromColumnFqn(columnData.fqn, false)
           )
         : getEntityFeedLink(entityType, columnData.fqn),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, entityFqn]
   );
 
@@ -93,6 +94,7 @@ const TableDescription = ({
         </span>
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [columnData, suggestionData]);
 
   return (

@@ -137,12 +137,14 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
 
   useEffect(() => {
     fetchKnowledgeCenterTags();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (refreshTagsCategory) {
       handleRefreshTagsCategory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [refreshTagsCategory, knowledgeCenterTags]);
 
   if (isLoading) {

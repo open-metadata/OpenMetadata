@@ -81,6 +81,7 @@ function DestinationSelectItemV2({
   const { t } = useTranslation();
   const { control, setValue } = useFormContext();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const destinationItem =
     useWatch({ name: `destinations.${id}`, control }) ?? {};
 

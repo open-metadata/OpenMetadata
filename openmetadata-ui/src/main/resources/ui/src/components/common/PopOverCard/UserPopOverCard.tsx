@@ -146,6 +146,7 @@ export const PopoverContent = React.memo(
       } finally {
         setLoading(false);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [userName]);
 
     useEffect(() => {
@@ -154,6 +155,7 @@ export const PopoverContent = React.memo(
       } else {
         setLoading(false);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [teamDetails, isTeam]);
 
     return (

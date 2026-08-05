@@ -133,6 +133,7 @@ TaskFeedCardFromTaskProps) => {
     return null;
   }, [entityFQN, entityType, fieldPath, t]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleTaskLinkClick = () => {
     navigate(getTaskDetailPathFromTask(task));
     setActiveTask(task);

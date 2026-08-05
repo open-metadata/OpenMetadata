@@ -24,6 +24,7 @@ describe('InlineEdit component', () => {
   it('Component should render', async () => {
     render(
       <InlineEdit {...mockProps}>
+        {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test children */}
         <input data-testid="children" />
       </InlineEdit>
     );
@@ -39,6 +40,7 @@ describe('InlineEdit component', () => {
   it('onCancel function should be called when cancel button is clicked', async () => {
     render(
       <InlineEdit {...mockProps}>
+        {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test children */}
         <input data-testid="children" />
       </InlineEdit>
     );
@@ -55,6 +57,7 @@ describe('InlineEdit component', () => {
   it('onSave function should be called when Save button is clicked', async () => {
     render(
       <InlineEdit {...mockProps}>
+        {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test children */}
         <input data-testid="children" />
       </InlineEdit>
     );
@@ -71,6 +74,7 @@ describe('InlineEdit component', () => {
   it('should show the loading when isLoading is true', async () => {
     render(
       <InlineEdit {...mockProps} isLoading>
+        {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test children */}
         <input data-testid="children" />
       </InlineEdit>
     );

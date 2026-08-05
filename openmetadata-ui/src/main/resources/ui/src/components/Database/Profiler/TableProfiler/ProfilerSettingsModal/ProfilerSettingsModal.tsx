@@ -143,6 +143,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     ];
 
     return { columnOptions, columnWithAllOption };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [columns]);
   const metricsOptions = useMemo(() => {
     const metricsOptions = [
@@ -159,6 +160,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     ];
 
     return metricsOptions;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [columns]);
 
   const partitionIntervalType = Form.useWatch(['partitionIntervalType'], form);
@@ -374,6 +376,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [state, getIncludesColumns]
   );
 
@@ -381,6 +384,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     const { data } = state;
     data && updateInitialConfig(data);
     onVisibilityChange(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [state]);
 
   const handleProfileSampleType = useCallback(
@@ -388,6 +392,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       handleStateChange({
         selectedProfileSampleType,
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -396,6 +401,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       handleStateChange({
         profileSample: Number(value),
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -403,6 +409,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     handleStateChange({
       sqlQuery: value,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleIncludeColumnsProfiler = useCallback(
@@ -438,6 +445,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         ),
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -458,6 +466,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     } else {
       setIsDataLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableId]);
 
   const drawerFooter = (

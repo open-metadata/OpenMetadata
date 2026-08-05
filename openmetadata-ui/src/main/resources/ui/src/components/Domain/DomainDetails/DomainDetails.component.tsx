@@ -324,8 +324,10 @@ DomainDetailsProps) => {
         );
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isVersionsView, encodedFqn]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleTabChange = (activeKey: string) => {
     if (activeKey === EntityTabs.ASSETS) {
       // refresh domain count when assets tab is selected
@@ -722,6 +724,7 @@ DomainDetailsProps) => {
         closeSubDomainDrawer();
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [domain, fetchSubDomainsCount]
   );
 
@@ -929,6 +932,7 @@ DomainDetailsProps) => {
       customizedPage?.tabs,
       EntityTabs.DOCUMENTATION
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     domain,
     domainPermission,
@@ -953,6 +957,7 @@ DomainDetailsProps) => {
     fetchTaskCounts();
     fetchActivityCount();
     fetchActiveAnnouncement();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [domain.fullyQualifiedName]);
 
   useEffect(() => {
@@ -966,6 +971,7 @@ DomainDetailsProps) => {
         {...getEntityAvatarProps({ ...domain, entityType: 'domain' })}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [domain, isSubDomain, isTreeView]);
 
   const toggleTabExpanded = () => {
@@ -974,6 +980,7 @@ DomainDetailsProps) => {
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Domain),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   if (isLoading) {

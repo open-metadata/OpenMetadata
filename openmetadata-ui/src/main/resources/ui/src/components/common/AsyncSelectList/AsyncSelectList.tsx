@@ -115,6 +115,7 @@ const AsyncSelectList: FC<
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fetchOptions]
   );
 
@@ -296,6 +297,7 @@ const AsyncSelectList: FC<
 
   useEffect(() => {
     loadOptions('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

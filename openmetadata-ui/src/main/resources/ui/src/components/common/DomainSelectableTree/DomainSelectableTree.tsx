@@ -399,9 +399,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         setLoadingState(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [domains, isMultiple, initialDomains, restrictedDomains]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
       if (selectedKeys.length === 0 && !isClearable) {
@@ -421,6 +423,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onCheck = (
     checked: Key[] | { checked: Key[]; halfChecked: Key[] }
   ): void => {
@@ -443,6 +446,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onSearch = useCallback(
     debounce(async (value: string) => {
       setSearchTerm(value);
@@ -525,6 +529,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         fetchAPI(true);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [hasMore, isLoadingMore, isLoading, searchTerm, fetchAPI, domains.length]
   );
 
@@ -609,6 +614,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       setSearchTerm('');
       fetchAPI();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [visible]);
 
   useEffect(() => {
@@ -633,6 +639,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     };
 
     loadSelectedDomainChildren();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [value, visible, domainMapper]);
 
   const handleAllDomainKeyPress = (e: React.KeyboardEvent<HTMLDivElement>) => {

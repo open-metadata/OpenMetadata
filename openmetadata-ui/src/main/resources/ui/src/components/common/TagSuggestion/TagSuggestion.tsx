@@ -157,6 +157,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     } else {
       fetchOptions('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleSearchChange = useCallback(
@@ -168,6 +169,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         searchDebounced(searchText);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchDebounced]
   );
 
@@ -202,6 +204,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         containerRef.current?.querySelector('input')
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [value, onChange, searchDebounced, tagType]
   );
 

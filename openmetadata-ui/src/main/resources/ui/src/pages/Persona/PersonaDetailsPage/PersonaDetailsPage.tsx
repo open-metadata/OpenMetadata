@@ -118,12 +118,14 @@ export const PersonaDetailsPage = () => {
     }
 
     return breadcrumbList;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [personaDetails, activeCategory, fqn, hasNonDefaultMode]);
 
   useEffect(() => {
     getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
       setEntityPermission
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const fetchPersonaDetails = async () => {
@@ -142,6 +144,7 @@ export const PersonaDetailsPage = () => {
     if (fqn) {
       fetchPersonaDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   //   Add #customize-ui to URL if # doesn't exist
@@ -160,6 +163,7 @@ export const PersonaDetailsPage = () => {
         { replace: true }
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const fetchCurrentUser = useCallback(async () => {
@@ -307,6 +311,7 @@ export const PersonaDetailsPage = () => {
         ),
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityPermission.EditAll, personaDetails, t]);
 
   const activeTabContent = useMemo(
@@ -337,6 +342,7 @@ export const PersonaDetailsPage = () => {
         onClick: handleDefaultActionClick,
       },
     ] as ItemType[];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [personaDetails?.default, handleDefaultActionClick]);
 
   if (isLoading) {

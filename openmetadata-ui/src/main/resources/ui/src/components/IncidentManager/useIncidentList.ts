@@ -115,6 +115,7 @@ export const useIncidentList = ({
         setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       pageSize,
       setTestCaseListData,
@@ -156,6 +157,7 @@ export const useIncidentList = ({
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     commonTestCasePermission,
     pageSize,

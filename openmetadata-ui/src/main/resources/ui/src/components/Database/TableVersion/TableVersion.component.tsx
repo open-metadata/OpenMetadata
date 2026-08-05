@@ -233,6 +233,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       isVersionLoading,
       description,

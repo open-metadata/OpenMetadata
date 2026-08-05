@@ -548,6 +548,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
 
     return title;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isAirflowAvailable]);
 
   const connectionCardTitle = useMemo(() => {

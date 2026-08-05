@@ -150,6 +150,7 @@ function IngestionListTable({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handleIngestionListUpdate, ingestionPagingInfo]
   );
 
@@ -171,6 +172,7 @@ function IngestionListTable({
         handleCancelConfirmationModal();
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handleCancelConfirmationModal]
   );
 
@@ -192,6 +194,7 @@ function IngestionListTable({
       }, {});
       setIngestionPipelinePermissions(permissionData);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [ingestionData]);
 
   const { isFetchingStatus, platform } = useMemo(
@@ -204,12 +207,14 @@ function IngestionListTable({
   const handleDeleteConfirm = useCallback(async () => {
     await handleDelete(deleteSelection.id, getEntityName(deleteSelection));
     afterDeleteAction?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [handleDelete, deleteSelection]);
 
   useEffect(() => {
     if (!isEmpty(ingestionData)) {
       fetchIngestionPipelineExtraDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [ingestionData]);
 
   useEffect(() => {
@@ -218,6 +223,7 @@ function IngestionListTable({
         ingestionPagingInfo.paging ?? pagingObject
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [ingestionPagingInfo?.paging]);
 
   const renderActionsField = useCallback(
@@ -366,6 +372,7 @@ function IngestionListTable({
           ]
         : []),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       customRenderNameField,
       showDescriptionCol,

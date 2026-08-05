@@ -98,6 +98,7 @@ const AnnouncementThreadBody = ({
 
   useEffect(() => {
     getThreads();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [threadLink, refetchThread]);
 
   if (isEmpty(announcements) && !isThreadLoading) {

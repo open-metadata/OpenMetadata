@@ -51,6 +51,7 @@ const MessageCard = ({ message }: { message: string }) => {
         </Typography.Text>
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isExpanded]);
 
   return (

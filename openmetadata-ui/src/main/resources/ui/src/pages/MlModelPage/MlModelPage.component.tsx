@@ -399,6 +399,7 @@ const MlModelPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [mlModelFqn]);
 
   if (permissionsLoading || mlModelLoading) {

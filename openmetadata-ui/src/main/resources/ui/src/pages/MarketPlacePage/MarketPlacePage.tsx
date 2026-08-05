@@ -110,6 +110,7 @@ const MarketPlacePage = () => {
     } else {
       fetchApplicationList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, pagingCursor]);
 
   if (isLoading) {

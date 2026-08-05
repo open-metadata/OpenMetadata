@@ -243,6 +243,7 @@ const TableV2 = <T extends object>(
     return {
       ...(scroll.x ? { overflowX: 'auto' } : {}),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [scroll?.x]);
 
   // ─── Column customization (identical to Table.tsx) ───────────────────────
@@ -270,6 +271,7 @@ const TableV2 = <T extends object>(
 
       setColumnDropdownSelections(updatedSelections);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [columnDropdownSelections, selectedEntityTableColumns, entityKey]
   );
 
@@ -292,6 +294,7 @@ const TableV2 = <T extends object>(
         },
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     dropdownColumnList,
     columnDropdownSelections,
@@ -427,6 +430,7 @@ const TableV2 = <T extends object>(
         } as TableCurrentDataSource<T>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       rest.onChange,
       propsColumns,

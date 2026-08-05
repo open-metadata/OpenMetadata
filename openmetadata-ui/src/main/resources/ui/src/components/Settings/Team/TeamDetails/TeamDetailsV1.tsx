@@ -205,6 +205,7 @@ const TeamDetailsV1 = ({
         GlobalSettingsMenuCategory.MEMBERS,
         t(LABEL_TEAM_PLURAL)
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -274,6 +275,7 @@ const TeamDetailsV1 = ({
         {children}
       </ErrorPlaceHolder>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -487,6 +489,7 @@ const TeamDetailsV1 = ({
       ];
       setSlashedTeamName(breadcrumb);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
@@ -514,6 +517,7 @@ const TeamDetailsV1 = ({
         exportTypes: [ExportTypes.CSV],
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentTeam]);
   const handleImportClick = useCallback(async () => {
     navigate({
@@ -525,6 +529,7 @@ const TeamDetailsV1 = ({
       ),
       search: Qs.stringify({ type: ImportType.TEAMS }),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const IMPORT_EXPORT_MENU_ITEM = useMemo(() => {
@@ -564,6 +569,7 @@ const TeamDetailsV1 = ({
     }
 
     return options;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [handleImportClick, handleTeamExportClick, entityPermissions]);
 
   const extraDropdownContent: ItemType[] = useMemo(
@@ -618,6 +624,7 @@ const TeamDetailsV1 = ({
             },
           ]),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityPermissions,
       currentTeam,
@@ -710,6 +717,7 @@ const TeamDetailsV1 = ({
         onTeamExpand={onTeamExpand}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     searchTerm,
     isTeamDeleted,
@@ -735,6 +743,7 @@ const TeamDetailsV1 = ({
         onRemoveUser={removeUserFromTeam}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentTeam,
       isTeamMemberLoading,
@@ -767,6 +776,7 @@ const TeamDetailsV1 = ({
         onAssetClick={setPreviewAsset}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityPermissions,
       assetsCount,
@@ -846,6 +856,7 @@ const TeamDetailsV1 = ({
           </Col>
         </Row>
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentTeam, entityPermissions, addRole, isTeamDeleted]
   );
 
@@ -923,6 +934,7 @@ const TeamDetailsV1 = ({
           </Col>
         </Row>
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentTeam, entityPermissions, addPolicy, isTeamDeleted]
   );
 
@@ -952,6 +964,7 @@ const TeamDetailsV1 = ({
         )
       )),
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentUser,
       isAlreadyJoinedTeam,
@@ -1057,6 +1070,7 @@ const TeamDetailsV1 = ({
         </div>
       </>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       isTeamDeleted,
       isGroupType,
@@ -1141,6 +1155,7 @@ const TeamDetailsV1 = ({
         ),
         children: tabsChildrenRender(tab.key),
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentTeam,
       searchTerm,

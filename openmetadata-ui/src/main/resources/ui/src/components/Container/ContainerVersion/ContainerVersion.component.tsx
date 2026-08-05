@@ -74,6 +74,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
   const entityFqn = useMemo(
     () => currentVersionData.fullyQualifiedName ?? '',
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
@@ -229,6 +230,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       description,
       entityFqn,

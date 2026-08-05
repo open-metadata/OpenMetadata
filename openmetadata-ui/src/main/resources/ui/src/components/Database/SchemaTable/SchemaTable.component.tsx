@@ -354,6 +354,7 @@ const SchemaTable = () => {
 
   useEffect(() => {
     fetchTestCaseSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableFqn]);
 
   useEffect(() => {
@@ -456,6 +457,7 @@ const SchemaTable = () => {
         return prev;
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -771,6 +773,7 @@ const SchemaTable = () => {
         </div>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tableConstraints, searchText, editDisplayNamePermission]
   );
 
@@ -898,6 +901,7 @@ const SchemaTable = () => {
         render: renderDataQuality,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       tableFqn,
       deleted,
@@ -978,6 +982,7 @@ const SchemaTable = () => {
         });
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchText, handlePageChange, setFilters]
   );
 

@@ -208,6 +208,7 @@ const UserListPageV1 = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       isAdminPage,
       paging,
@@ -250,6 +251,7 @@ const UserListPageV1 = () => {
     if (searchValue) {
       getSearchedUsers(searchValue, currentPage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchValue, currentPage, isDeleted]);
 
   useEffect(() => {
@@ -270,6 +272,7 @@ const UserListPageV1 = () => {
         include: isDeleted ? Include.Deleted : Include.NonDeleted,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, isAdminPage, searchValue, isDeleted, pagingCursor]);
 
   const handleAddNewUser = () => {
@@ -376,6 +379,7 @@ const UserListPageV1 = () => {
         ),
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [showRestore]);
 
   const errorPlaceHolder = useMemo(
@@ -391,6 +395,7 @@ const UserListPageV1 = () => {
         onClick={handleAddNewUser}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isAdminUser]
   );
 
@@ -468,6 +473,7 @@ const UserListPageV1 = () => {
       typingInterval: 350,
       onSearch: handleSearch,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchValue, handleSearch]
   );
 

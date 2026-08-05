@@ -83,6 +83,7 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
         />
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentValue, suggestedValue]);
 
   const suggestedTagsDiff = useMemo(() => {
@@ -104,6 +105,7 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
         />
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [suggestedValue, currentValue]);
 
   return (

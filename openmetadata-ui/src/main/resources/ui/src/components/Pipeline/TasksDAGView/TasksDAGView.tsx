@@ -123,6 +123,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
     );
     setNodesData(nodeValue);
     setEdgesData(edgeValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tasks, selectedExec]);
 
   return nodesData.length ? (

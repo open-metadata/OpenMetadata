@@ -113,6 +113,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         }}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [ingestionData, showDeployButton]);
 
   const initialFormData = useMemo(() => {
@@ -250,6 +251,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       }
       setIsLoading(false);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       ingestionFQN,
       onUpdateIngestionPipeline,

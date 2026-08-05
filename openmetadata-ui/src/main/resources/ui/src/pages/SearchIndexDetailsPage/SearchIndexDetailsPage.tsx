@@ -195,6 +195,7 @@ function SearchIndexDetailsPage() {
       searchIndexTags: EntityTags[];
       entityName: string;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchIndexDetails, searchIndexDetails?.tags]);
 
   const {
@@ -243,6 +244,7 @@ function SearchIndexDetailsPage() {
         Operation.ViewCustomFields
       ),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       searchIndexPermissions,
       deleted,
@@ -319,6 +321,7 @@ function SearchIndexDetailsPage() {
     [searchIndexDetails, searchIndexId]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onSearchIndexUpdate = async (
     updatedSearchIndex: SearchIndex,
     key?: keyof SearchIndex
@@ -353,6 +356,7 @@ function SearchIndexDetailsPage() {
       };
       await onSearchIndexUpdate(updatedSearchIndexDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners, searchIndexDetails]
   );
 
@@ -391,6 +395,7 @@ function SearchIndexDetailsPage() {
           'extension'
         ));
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [saveUpdatedSearchIndexData, searchIndexDetails]
   );
 
@@ -418,6 +423,7 @@ function SearchIndexDetailsPage() {
       customizedPage?.tabs,
       EntityTabs.FIELDS
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeTab,
     searchIndexDetails,
@@ -589,10 +595,12 @@ function SearchIndexDetailsPage() {
           version + ''
         )
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version]);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -612,6 +620,7 @@ function SearchIndexDetailsPage() {
     if (decodedSearchIndexFQN) {
       fetchResourcePermission(decodedSearchIndexFQN);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedSearchIndexFQN]);
 
   useEffect(() => {
@@ -619,6 +628,7 @@ function SearchIndexDetailsPage() {
       fetchTaskCounts();
       fetchActivityCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedSearchIndexFQN, viewPermission]);
 
   const toggleTabExpanded = () => {
@@ -643,6 +653,7 @@ function SearchIndexDetailsPage() {
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.SearchIndex),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   if (isLoading || permissionsLoading || searchIndexLoading) {

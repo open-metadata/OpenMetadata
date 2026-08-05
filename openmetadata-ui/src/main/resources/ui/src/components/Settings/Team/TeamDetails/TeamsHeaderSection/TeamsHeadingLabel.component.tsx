@@ -59,6 +59,7 @@ const TeamsHeadingLabel = ({
       hasAccess: isAdminUser,
     }),
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityPermissions]
   );
 
@@ -183,6 +184,7 @@ const TeamsHeadingLabel = ({
           )}
         </>
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       heading,
       isHeadingEditing,

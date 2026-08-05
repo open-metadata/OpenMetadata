@@ -80,6 +80,7 @@ const ActivityFeedActions = ({
     }
 
     return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [post, feed, currentUser]);
 
   const deleteCheck = useMemo(() => {
@@ -90,6 +91,7 @@ const ActivityFeedActions = ({
     }
 
     return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [post, feed, isAuthor, currentUser]);
 
   return (

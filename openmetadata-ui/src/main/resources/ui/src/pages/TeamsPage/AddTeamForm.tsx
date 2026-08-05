@@ -140,6 +140,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         onTextChange: (value: string) => setDescription(value),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -147,6 +148,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     if (visible) {
       fetchAllTeams();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [visible]);
 
   return (

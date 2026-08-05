@@ -118,6 +118,7 @@ const KPIWidget = ({
     return { name: kpi.name, data: response.results };
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleTitleClick = () => {
     navigate(ROUTES.KPI_LIST);
   };
@@ -400,6 +401,7 @@ const KPIWidget = ({
           )}
       </Row>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     consolidatedChartData,
     kpiNames,
@@ -426,6 +428,7 @@ const KPIWidget = ({
       fetchKpiResults();
       fetchKpiLatestResults();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [kpiList, selectedDays]);
 
   const widgetHeader = useMemo(

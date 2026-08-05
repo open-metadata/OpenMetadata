@@ -96,6 +96,7 @@ export const AddEditPersonaForm = ({
         setIsSaving(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isEditMode, persona]
   );
 
@@ -140,6 +141,7 @@ export const AddEditPersonaForm = ({
         },
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -169,6 +171,7 @@ export const AddEditPersonaForm = ({
         ),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

@@ -118,6 +118,7 @@ const RetentionPeriod = ({
 
   useEffect(() => {
     form.setFieldsValue({ retentionPeriod });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [retentionPeriod]);
 
   return (

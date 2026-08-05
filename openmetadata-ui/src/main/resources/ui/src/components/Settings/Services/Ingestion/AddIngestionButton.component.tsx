@@ -50,6 +50,7 @@ function AddIngestionButton({
     (type: PipelineType) => {
       navigate(getAddIngestionPath(serviceCategory, serviceName, type));
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [serviceCategory, serviceName]
   );
 

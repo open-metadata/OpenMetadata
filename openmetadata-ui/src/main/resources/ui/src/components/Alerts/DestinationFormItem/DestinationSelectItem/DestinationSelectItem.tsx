@@ -76,6 +76,7 @@ function DestinationSelectItem({
   const [destinationOptions, setDestinationOptions] = useState(
     DESTINATION_SOURCE_ITEMS.internal
   );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const destinationItem =
     Form.useWatch<Destination>(['destinations', id], form) ?? [];
 
@@ -146,6 +147,7 @@ function DestinationSelectItem({
         ),
         children,
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -241,6 +243,7 @@ function DestinationSelectItem({
         );
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

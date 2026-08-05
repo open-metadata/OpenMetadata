@@ -98,6 +98,7 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
 
   const filters = useMemo(
     () => parseFiltersFromUrl(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [location.search, initialFilters]
   );
 

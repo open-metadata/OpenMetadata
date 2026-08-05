@@ -114,6 +114,7 @@ const SearchPreview = ({
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentPage,
       pageSize,
@@ -185,6 +186,7 @@ const SearchPreview = ({
           fetchAssets({ searchTerm });
         }
       }, 1000),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fetchAssets]
   );
 
@@ -203,6 +205,7 @@ const SearchPreview = ({
     if (searchConfig && Object.keys(searchConfig).length > 0) {
       fetchAssets({ searchTerm: searchValue, page: currentPage });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchConfig, currentPage, showRankingDetails]);
 
   return (

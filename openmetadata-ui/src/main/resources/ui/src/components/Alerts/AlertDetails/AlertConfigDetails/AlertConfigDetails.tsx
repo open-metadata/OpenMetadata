@@ -99,6 +99,7 @@ function AlertConfigDetails({
     } finally {
       setLoadingState((prev) => ({ ...prev, functions: false }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isNotificationAlert]);
 
   const extraFormWidgets = useMemo(
@@ -130,16 +131,19 @@ function AlertConfigDetails({
     } finally {
       setLoadingState((state) => ({ ...state, templates: false }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (!isEmpty(extraFormWidgets)) {
       fetchTemplates();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [extraFormWidgets]);
 
   useEffect(() => {
     fetchFunctions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [Fqn]);
 
   const isLoading = useMemo(

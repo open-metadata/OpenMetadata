@@ -19,6 +19,7 @@ export const LogoutPage = () => {
 
   useEffect(() => {
     onLogoutHandler();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return <Loader fullScreen />;

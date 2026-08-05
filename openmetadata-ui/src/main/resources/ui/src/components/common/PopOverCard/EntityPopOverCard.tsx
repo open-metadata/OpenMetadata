@@ -71,6 +71,7 @@ export const PopoverContent: React.FC<{
             serviceType: (data as Table)?.serviceType,
           }
         : data;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [cachedEntityData, entityFQN]);
 
   const getData = useCallback(async () => {
@@ -105,6 +106,7 @@ export const PopoverContent: React.FC<{
     } else {
       getData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityFQN]);
 
   if (loading) {

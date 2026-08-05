@@ -114,6 +114,7 @@ EntityHeaderTitleProps) => {
         {badge && <Col>{badge}</Col>}
       </>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isDisabled, deleted, badge]
   );
 

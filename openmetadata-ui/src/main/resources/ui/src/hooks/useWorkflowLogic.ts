@@ -168,6 +168,7 @@ export const useWorkflowLogic = ({
     };
 
     fetchWorkflowDefinition();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   const isNodeDragEnabled = useCallback(
@@ -310,6 +311,7 @@ export const useWorkflowLogic = ({
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       screenToFlowPosition,
       setBothNodes,

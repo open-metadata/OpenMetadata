@@ -70,6 +70,7 @@ const AddMetricPage = () => {
       ],
       title,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const formFields: FieldProp[] = useMemo(() => {
@@ -190,6 +191,7 @@ const AddMetricPage = () => {
         },
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {

@@ -68,6 +68,7 @@ const EntityImportRouter = () => {
     } else {
       navigate(ROUTES.NOT_FOUND);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn, entityType, fetchResourcePermission]);
 
   if (isLoading) {

@@ -110,6 +110,7 @@ export const UserProfileIcon = () => {
     return false;
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleSelectedPersonaChange = async (persona: EntityReference) => {
     setSelectedPersona(persona);
   };
@@ -151,6 +152,7 @@ export const UserProfileIcon = () => {
         return Array.from(uniquePersonasMap.values());
       })(),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentUser, currentUser?.personas, currentUser?.inheritedPersonas]);
 
   const personaLabelRenderer = useCallback(
@@ -388,6 +390,7 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentUser,
       userName,

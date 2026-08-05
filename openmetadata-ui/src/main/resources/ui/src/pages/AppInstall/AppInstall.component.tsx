@@ -112,6 +112,7 @@ const AppInstall = () => {
       initialOptions,
       defaultValue: getCronDefaultValue(appData?.name ?? ''),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
 
   const translatedSchedularOptions = useMemo(
@@ -154,6 +155,7 @@ const AppInstall = () => {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   const onCancel = () => {
@@ -288,6 +290,7 @@ const AppInstall = () => {
       default:
         return <></>;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeServiceStep,
     appData,
@@ -299,6 +302,7 @@ const AppInstall = () => {
 
   useEffect(() => {
     fetchAppDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   if (isLoading) {

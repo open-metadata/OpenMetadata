@@ -184,6 +184,7 @@ const EmbeddedAddServicePage = () => {
         config: {},
       },
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [resetNameValidation]);
 
   const slashedBreadcrumb = useMemo(
@@ -219,6 +220,7 @@ const EmbeddedAddServicePage = () => {
               id: ADD_SERVICE,
             },
           ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       handleConnectorChangeClick,
       serviceCategory,
@@ -358,6 +360,7 @@ const EmbeddedAddServicePage = () => {
 
   useEffect(() => {
     resetActiveField(activeServiceStep === 2 ? 'serviceName' : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [activeServiceStep]);
 
   const hideSecondPanel = useMemo(
@@ -386,6 +389,7 @@ const EmbeddedAddServicePage = () => {
         navigate(`/connections`);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       backPath,
       handleConnectorChangeClick,

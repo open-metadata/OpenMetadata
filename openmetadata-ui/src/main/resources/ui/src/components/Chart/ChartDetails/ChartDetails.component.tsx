@@ -93,6 +93,7 @@ const ChartDetails = ({
 
   const { followers = [], deleted } = useMemo(() => {
     return chartDetails;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartDetails.owners, chartDetails.followers, chartDetails.deleted]);
 
   const { isFollowing } = useMemo(() => {
@@ -117,12 +118,14 @@ const ChartDetails = ({
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartDetails.id, getEntityPermission, setChartPermissions]);
 
   useEffect(() => {
     if (chartDetails.id) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartDetails.id]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -151,6 +154,7 @@ const ChartDetails = ({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedChartFQN]);
 
   const handleTabChange = (activeKey: string) => {
@@ -266,6 +270,7 @@ const ChartDetails = ({
       customizedPage?.tabs,
       EntityTabs.DETAILS
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     customizedPage,
     feedCount.totalCount,
@@ -300,6 +305,7 @@ const ChartDetails = ({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, 'Chart' as PageType),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 

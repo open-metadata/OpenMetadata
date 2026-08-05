@@ -371,6 +371,7 @@ const BotListV1 = ({
     await getResourceLimit('bot', true, true);
     await reloadBotMap();
     fetchBots(showDeleted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedUser, reloadBotMap]);
 
   const handleSearch = async (text: string) => {
@@ -420,6 +421,7 @@ const BotListV1 = ({
     } else {
       fetchBots(showDeleted);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, showDeleted, pagingCursor]);
 
   // Build bot-user → bot map once for search resolution.

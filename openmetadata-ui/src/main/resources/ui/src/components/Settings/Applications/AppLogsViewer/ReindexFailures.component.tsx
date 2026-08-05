@@ -68,6 +68,7 @@ const ReindexFailures = ({ visible, onClose }: ReindexFailuresProps) => {
       setEntityTypeFilter(undefined);
       fetchFailures(1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [visible]);
 
   const handlePageChange = useCallback(

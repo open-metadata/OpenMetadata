@@ -95,6 +95,7 @@ export const QualityTab = () => {
         permissions &&
         getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permissions, getPrioritizedEditPermission]);
 
   const navigate = useNavigate();
@@ -169,6 +170,7 @@ export const QualityTab = () => {
         icon: AbortedTestIcon,
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCaseSummary]);
 
   const fetchIngestionPipelineCount = async () => {
@@ -189,8 +191,10 @@ export const QualityTab = () => {
     if (testSuite?.fullyQualifiedName) {
       fetchIngestionPipelineCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testSuite?.fullyQualifiedName]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
     currentPage,
   }) => {
@@ -314,6 +318,7 @@ export const QualityTab = () => {
         key: EntityTabs.PIPELINE,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       isTestsLoading,
       allTestCases,

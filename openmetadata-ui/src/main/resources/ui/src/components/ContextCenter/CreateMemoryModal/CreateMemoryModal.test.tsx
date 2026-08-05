@@ -142,6 +142,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     return <>{children(controller)}</>;
   },
   FormItemLabel: jest.fn(({ label }: { label: React.ReactNode }) => (
+    // eslint-disable-next-line jsx-a11y/label-has-for -- test label mock
     <label>{label}</label>
   )),
   getField: (fieldProp: {

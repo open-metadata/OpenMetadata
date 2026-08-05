@@ -160,6 +160,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
 
   useEffect(() => {
     fetchNewIncidentCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

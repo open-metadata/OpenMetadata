@@ -94,6 +94,7 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
   useEffect(() => {
     fetchPermissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [username, isLoggedInUser]);
 
   const renderRule = (rule: RuleInfo) => (

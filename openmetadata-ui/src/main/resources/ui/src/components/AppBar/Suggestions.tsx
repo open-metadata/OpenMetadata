@@ -243,6 +243,7 @@ const Suggestions = ({
     return isString(parsedSearch.quickFilter)
       ? JSON.parse(parsedSearch.quickFilter)
       : {};
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [location.search]);
 
   const getSuggestionsForIndex = (
@@ -390,6 +391,7 @@ const Suggestions = ({
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isNLPActive, quickFilter, searchText, searchCriteria]);
 
   useEffect(() => {

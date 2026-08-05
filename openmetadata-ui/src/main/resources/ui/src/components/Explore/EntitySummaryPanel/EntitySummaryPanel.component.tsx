@@ -428,6 +428,7 @@ export default function EntitySummaryPanel({
     } finally {
       setIsEntityDataLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
 
   const fetchEntityTypeDetail = useCallback(async () => {
@@ -592,6 +593,7 @@ export default function EntitySummaryPanel({
         throw error;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       onEntityUpdate,
       entityData,
@@ -678,6 +680,7 @@ export default function EntitySummaryPanel({
         throw error;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       onEntityUpdate,
       entityData,
@@ -702,6 +705,7 @@ export default function EntitySummaryPanel({
     (updatedDisplayName: string) => {
       updateEntityData({ displayName: updatedDisplayName });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityData, updateEntityData]
   );
 
@@ -779,6 +783,7 @@ export default function EntitySummaryPanel({
     if (id) {
       fetchResourcePermission(id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [id]);
 
   // Reset activeTab to OVERVIEW when entity changes
@@ -869,6 +874,7 @@ export default function EntitySummaryPanel({
         onTierUpdate={handleTierUpdate}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     tab,
     entityDetails,
@@ -886,6 +892,7 @@ export default function EntitySummaryPanel({
   ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityDetails, getEntityLinkFromType]
   );
 

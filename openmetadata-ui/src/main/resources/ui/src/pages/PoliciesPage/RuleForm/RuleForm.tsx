@@ -218,6 +218,7 @@ const RuleForm: FC<RuleFormProps> = ({
           setRuleData((prev: Rule) => ({ ...prev, description: value })),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [description, setRuleData]
   );
 

@@ -120,12 +120,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [mlModelDetail.id, getEntityPermission, setMlModelPermissions]);
 
   useEffect(() => {
     if (mlModelDetail.id) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [mlModelDetail.id]);
 
   const { isFollowing, deleted } = useMemo(() => {
@@ -138,6 +140,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         ({ id }: { id: string }) => id === currentUser?.id
       ),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [mlModelDetail, mlModelName]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -168,6 +171,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       fetchTaskCounts();
       fetchActivityCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [mlModelPermissions, decodedMlModelFqn]);
 
   const handleTabChange = (activeKey: string) => {
@@ -195,6 +199,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       };
       await settingsUpdateHandler(updatedMlModelDetails);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [mlModelDetail, mlModelDetail.owners]
   );
 
@@ -248,6 +253,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: 'value',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -280,6 +286,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     ];
 
     return column;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const getMlHyperParameters = useMemo(() => {
@@ -302,6 +309,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         )}
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [mlModelDetail, getMlHyperParametersColumn]);
 
   const getMlModelStore = useMemo(() => {
@@ -323,10 +331,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         )}
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -388,6 +398,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       customizedPage?.tabs,
       EntityTabs.FEATURES
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     feedCount.totalCount,
     activeTab,
@@ -428,6 +439,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.MlModel),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   if (isLoading) {

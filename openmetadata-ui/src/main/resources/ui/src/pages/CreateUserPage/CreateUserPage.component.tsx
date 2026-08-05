@@ -169,6 +169,7 @@ const CreateUserPage = () => {
         url: getUsersPagePath(),
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [bot, isAdminPage]);
 
   const slashedBreadcrumbList = useMemo(
@@ -183,6 +184,7 @@ const CreateUserPage = () => {
         activeTitle: true,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [BREADCRUMB_DETAILS]
   );
 

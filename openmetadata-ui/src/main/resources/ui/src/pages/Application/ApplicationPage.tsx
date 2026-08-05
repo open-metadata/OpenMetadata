@@ -132,6 +132,7 @@ const ApplicationPage = () => {
         </ErrorPlaceHolder>
       </Col>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [showDisabled]);
 
   const onShowDisabledAppsChange = (value: boolean) => {
@@ -147,6 +148,7 @@ const ApplicationPage = () => {
     } else {
       fetchApplicationList(showDisabled);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, pagingCursor, showDisabled]);
 
   return (

@@ -258,6 +258,7 @@ const ColumnProfileTable = () => {
         setIsColumnsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tableFqn, pageSize, searchText]
   );
 
@@ -265,6 +266,7 @@ const ColumnProfileTable = () => {
     ({ currentPage }: PagingHandlerParams) => {
       handlePageChange(currentPage);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging, fetchTableColumnWithProfiler, searchText]
   );
 
@@ -272,6 +274,7 @@ const ColumnProfileTable = () => {
     if (tableFqn) {
       fetchTableColumnWithProfiler(currentPage, searchText);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableFqn, currentPage, searchText, pageSize]);
 
   const renderRow = (

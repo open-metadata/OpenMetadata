@@ -175,6 +175,7 @@ function ServiceVersionPage() {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [viewVersionPermission, serviceCategory, decodedServiceFQN]);
 
   const fetchDatabases = useCallback(
@@ -382,6 +383,7 @@ function ServiceVersionPage() {
         setIsOtherDataLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       serviceCategory,
       fetchDatabases,
@@ -411,6 +413,7 @@ function ServiceVersionPage() {
         setIsVersionDataLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       viewVersionPermission,
       serviceCategory,
@@ -430,11 +433,13 @@ function ServiceVersionPage() {
         )
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [serviceCategory, decodedServiceFQN]
   );
 
   const backHandler = useCallback(() => {
     navigate(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedServiceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(
@@ -453,6 +458,7 @@ function ServiceVersionPage() {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging, getOtherDetails, handlePageChange]
   );
 
@@ -486,6 +492,7 @@ function ServiceVersionPage() {
       key: tab.key,
       children: tab.children,
     }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     currentVersionData,
     serviceCategory,
@@ -566,18 +573,21 @@ function ServiceVersionPage() {
     if (!isEmpty(decodedServiceFQN)) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedServiceFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchVersionsList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedServiceFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (serviceId) {
       fetchCurrentVersionData(serviceId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version, serviceId]);
 
   useEffect(() => {
@@ -592,6 +602,7 @@ function ServiceVersionPage() {
         getOtherDetails();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentVersionData, pagingCursor]);
 
   return (

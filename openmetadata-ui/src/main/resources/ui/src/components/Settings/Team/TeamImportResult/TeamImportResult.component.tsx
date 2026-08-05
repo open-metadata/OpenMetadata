@@ -187,6 +187,7 @@ export const TeamImportResult = ({
     ];
 
     return data;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [parsedRecords, t]);
 
   const parseCsvFile = () => {
@@ -214,6 +215,7 @@ export const TeamImportResult = ({
   useEffect(() => {
     setIsLoading(true);
     parseCsvFile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [csvImportResult.importResultsCsv]);
 
   return (

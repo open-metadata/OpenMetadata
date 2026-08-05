@@ -128,6 +128,7 @@ export const AdvanceSearchProvider = ({
         QbUtils.loadTree(getEmptyJsonTree()),
         config
       ).fixedTree,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -157,6 +158,7 @@ export const AdvanceSearchProvider = ({
     }
 
     return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [parsedSearch]);
 
   const [showModal, setShowModal] = useState(false);
@@ -181,6 +183,7 @@ export const AdvanceSearchProvider = ({
         isExplorePage,
       })
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchIndex, isExplorePage]);
 
   const handleChange = useCallback(
@@ -201,6 +204,7 @@ export const AdvanceSearchProvider = ({
     [navigate, parsedSearch, location.pathname]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const toggleModal = (show: boolean) => {
     setShowModal(show);
   };
@@ -305,10 +309,12 @@ export const AdvanceSearchProvider = ({
 
   useEffect(() => {
     setSearchIndex(getSearchIndexFromTabInfo(tabsInfo, tab));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tab]);
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchOutputType, searchIndex]);
 
   useEffect(() => {
@@ -322,6 +328,7 @@ export const AdvanceSearchProvider = ({
     }
 
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [jsonTree, initialised]);
 
   const handleSubmit = useCallback(() => {

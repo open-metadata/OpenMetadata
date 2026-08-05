@@ -41,6 +41,7 @@ const TableTypePropertyEditTable = ({
         />
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [columns, dataSource, handleCopy, handlePaste, handleOnRowsChange]);
 };
 

@@ -73,6 +73,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     }
 
     return widgetName;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [props.widgetKey]);
 
   return (

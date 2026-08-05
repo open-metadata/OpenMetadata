@@ -46,6 +46,7 @@ const SuggestionsSlider = () => {
       default:
         return t('label.suggested-description-tag-plural');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataSuggestionType]);
 
   return (

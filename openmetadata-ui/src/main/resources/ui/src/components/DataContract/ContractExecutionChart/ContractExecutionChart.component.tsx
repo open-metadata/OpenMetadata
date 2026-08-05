@@ -123,6 +123,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
 
   useEffect(() => {
     fetchAllContractResults(dateRangeObject);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dateRangeObject]);
 
   return (

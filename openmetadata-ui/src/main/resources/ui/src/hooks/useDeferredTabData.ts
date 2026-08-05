@@ -71,6 +71,7 @@ export function useDeferredTabData(
     // `activeTab` and `tabKey` are read above but the intent is to fire only on resetDeps
     // changes — including them in deps would cause every tab switch to also reset, which
     // is the opposite of what we want.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, resetDeps);
 
   useEffect(() => {

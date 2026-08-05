@@ -76,6 +76,7 @@ const DataAssetsWidget = ({
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -174,6 +175,7 @@ const DataAssetsWidget = ({
         onTitleClick={handleTitleClick}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentLayout,
       handleLayoutUpdate,
@@ -202,6 +204,7 @@ const DataAssetsWidget = ({
         </div>
       </div>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [emptyState, dataAssetsContent, showWidgetFooterMoreButton, t]
   );
 

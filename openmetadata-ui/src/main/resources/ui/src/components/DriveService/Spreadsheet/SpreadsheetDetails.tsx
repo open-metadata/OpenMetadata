@@ -207,6 +207,7 @@ function SpreadsheetDetails({
       };
       await onSpreadsheetUpdate(updatedSpreadsheetDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -272,6 +273,7 @@ function SpreadsheetDetails({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -324,6 +326,7 @@ function SpreadsheetDetails({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [spreadsheetPermissions, decodedSpreadsheetFQN]);
 
   const tabs = useMemo(() => {
@@ -370,6 +373,7 @@ function SpreadsheetDetails({
       customizedPage?.tabs,
       EntityTabs.CHILDREN
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeTab,
     feedCount.totalCount,
@@ -415,6 +419,7 @@ function SpreadsheetDetails({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Spreadsheet),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   if (isLoading) {

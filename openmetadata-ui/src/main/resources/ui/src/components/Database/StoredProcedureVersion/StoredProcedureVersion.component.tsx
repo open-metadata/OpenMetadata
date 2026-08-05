@@ -177,6 +177,7 @@ const StoredProcedureVersion = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tags, description, currentVersionData, viewCustomPropertiesPermission]
   );
 

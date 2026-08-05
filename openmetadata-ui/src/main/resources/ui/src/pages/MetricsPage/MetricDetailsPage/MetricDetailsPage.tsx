@@ -344,6 +344,7 @@ const MetricDetailsPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(metricFqn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [metricFqn]);
 
   if (permissionsLoading || metricLoading) {

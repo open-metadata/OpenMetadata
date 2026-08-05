@@ -212,6 +212,7 @@ const UpdateTag = () => {
       title: taskMessage.trimEnd(),
       assignees: defaultAssignee,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityData, columnObject]);
 
   useEffect(() => {
@@ -222,6 +223,7 @@ const UpdateTag = () => {
       tagsToRemove: [],
       operation: 'Replace',
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityData, columnObject]);
 
   useEffect(() => {

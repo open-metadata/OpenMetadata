@@ -251,6 +251,7 @@ ActivityFeedTabProps) => {
       setCountData((prev) => ({ ...prev, data }));
       onUpdateFeedCount?.(data);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [setCountData]
   );
 
@@ -424,6 +425,7 @@ ActivityFeedTabProps) => {
     } else {
       fetchFeedsCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [feedCount, activeDomain]);
 
   useEffect(() => {
@@ -480,6 +482,7 @@ ActivityFeedTabProps) => {
     if (fqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityPaging, loading, isInView, fqn]);
 
   const loader = useMemo(
@@ -582,6 +585,7 @@ ActivityFeedTabProps) => {
         },
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [taskFilter, handleUpdateTaskFilter, setActiveTask, countData]
   );
 
@@ -613,6 +617,7 @@ ActivityFeedTabProps) => {
         onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [t, handleTabChange]);
 
   const handlePanelResize = (isFullWidth: boolean) => {
@@ -716,6 +721,7 @@ ActivityFeedTabProps) => {
         </Typography.Text>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [activeTab, selectedThread]);
 
   const hasRightPanelSelection =

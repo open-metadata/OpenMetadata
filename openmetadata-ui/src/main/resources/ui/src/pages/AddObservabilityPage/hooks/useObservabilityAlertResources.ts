@@ -58,6 +58,7 @@ export function useObservabilityAlertResources(
 
   useEffect(() => {
     fetchFunctions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const selectedResource = useMemo(

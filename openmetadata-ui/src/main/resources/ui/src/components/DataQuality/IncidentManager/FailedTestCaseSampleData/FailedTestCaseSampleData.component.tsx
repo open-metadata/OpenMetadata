@@ -226,6 +226,7 @@ const FailedTestCaseSampleData = ({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
 
   if (!hasViewSampleDataPermission) {

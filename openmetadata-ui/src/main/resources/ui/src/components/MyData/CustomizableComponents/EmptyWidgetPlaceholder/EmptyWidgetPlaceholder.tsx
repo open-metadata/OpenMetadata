@@ -34,11 +34,13 @@ function EmptyWidgetPlaceholder({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleAddClick = useCallback(() => {
     handlePlaceholderWidgetKey(widgetKey);
     handleOpenAddWidgetModal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

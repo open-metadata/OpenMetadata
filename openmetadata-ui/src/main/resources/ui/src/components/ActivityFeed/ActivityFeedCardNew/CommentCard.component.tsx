@@ -86,6 +86,7 @@ const CommentCard = ({
     setIsEditPost(!isEditPost);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onUpdate = async (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
@@ -124,6 +125,7 @@ const CommentCard = ({
         markdown={getFrontEndFormat(post.message)}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEditPost, postMessage, handleSave]);
 
   return (

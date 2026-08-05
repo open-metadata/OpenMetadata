@@ -126,6 +126,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
 
   useEffect(() => {
     fetchPipelineStatus(startTime, endTime);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
   const handleSearch = (value: string) => {

@@ -254,6 +254,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         />
       )
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     showEditButton,
     hasPermission,

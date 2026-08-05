@@ -464,11 +464,13 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     ]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleContentSave = useCallback(
     debounce(updatedPageContent, updateDelay),
     [updatedPageContent, updateDelay, permissions]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const saveDraftContent = useCallback(
     debounce(
       (id: string, fqn: string, description: string, version?: number) => {
@@ -614,6 +616,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       knowledgePage,
       setKnowledgePage,
@@ -623,11 +626,13 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     ]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleDisplayNameSave = useCallback(
     debounce(handleDisplayNameUpdate, updateDelay),
     [handleDisplayNameUpdate, updateDelay, permissions]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const saveDraftDisplayName = useCallback(
     debounce(
       (id: string, fqn: string, displayName: string, version?: number) => {
@@ -816,6 +821,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     ];
 
     return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [knowledgePage, feedCount, activeTab, permissions, displayName, fqn]);
 
   const hasViewPermission = useMemo(
@@ -834,6 +840,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   useEffect(() => {
     fetchPermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -850,6 +857,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     if (hasViewPermission) {
       fetchKnowledgePage(fqn);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn, hasViewPermission]);
 
   useEffect(() => {
@@ -857,6 +865,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       fetchTaskCounts();
       fetchActivityCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [knowledgePage?.fullyQualifiedName]);
 
   useEffect(() => {
@@ -884,6 +893,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handleBeforeNavigate);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isContentUnsaved, location.pathname]);
 
   const activeTabContent = useMemo(
@@ -950,6 +960,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       tabs,
       title: getKnowledgePageName(knowledgePage, t),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     knowledgePage,
     isRightPanelOpen,

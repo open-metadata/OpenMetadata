@@ -49,6 +49,7 @@ const GlossaryTermModal: FC<Props> = ({
     return editMode
       ? t('label.edit-entity', { entity: t('label.glossary-term') })
       : t('label.add-entity', { entity: t('label.glossary-term') });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [editMode]);
 
   const fetchCurrentEntity = useCallback(async () => {
@@ -114,6 +115,7 @@ const GlossaryTermModal: FC<Props> = ({
     if (!visible) {
       form.resetFields();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [visible]);
 
   return (

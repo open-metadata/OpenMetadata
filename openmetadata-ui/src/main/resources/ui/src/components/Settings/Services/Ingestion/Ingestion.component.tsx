@@ -68,6 +68,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       ...getDefaultAgentsTabWidgets(),
       ...serviceUtilClassBase.getAgentsTabWidgets(),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [serviceCategory]
   );
 

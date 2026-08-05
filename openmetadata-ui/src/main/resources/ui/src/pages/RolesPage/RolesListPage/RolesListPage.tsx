@@ -109,6 +109,7 @@ const RolesListPage = () => {
         GlobalSettingsMenuCategory.ACCESS,
         t(LABEL_ROLE_PLURAL).toString()
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -219,8 +220,10 @@ const RolesListPage = () => {
         },
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const fetchRoles = async (paging?: Partial<Paging>) => {
     setIsLoading(true);
     try {
@@ -285,6 +288,7 @@ const RolesListPage = () => {
     } else {
       fetchRoles();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, pagingCursor]);
 
   return (

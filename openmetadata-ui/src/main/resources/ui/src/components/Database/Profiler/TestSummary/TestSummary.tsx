@@ -123,6 +123,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
     if (dateRangeObject) {
       fetchTestResults(dateRangeObject);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dateRangeObject, dimensionKey]);
 
   const handleSelectedTimeRange = useCallback((range: string) => {

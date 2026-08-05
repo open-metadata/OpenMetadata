@@ -92,6 +92,7 @@ const Users = ({
 
   const isLoggedInUser = useMemo(
     () => decodedUsername === currentUser?.name,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedUsername]
   );
 
@@ -126,11 +127,13 @@ const Users = ({
         search: location.search,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [activeTab, decodedUsername, isLoggedInUser]);
 
   useEffect(() => {
     handleTabRedirection();
     initLimits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const tabDataRender = useCallback(
@@ -166,6 +169,7 @@ const Users = ({
         )}
       </Row>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [previewAsset, handleAssetClick, setPreviewAsset, currentTab]
   );
   useEffect(() => {
@@ -294,6 +298,7 @@ const Users = ({
           ]
         : []),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       currentTab,
       userData.id,
@@ -377,6 +382,7 @@ const Users = ({
         t('server.entity-updating-error', { entity: t('label.user') })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [userData.id]);
 
   return (

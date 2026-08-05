@@ -188,6 +188,7 @@ const CustomControls: FC<{
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [impactLevel]);
 
   const queryParams = useMemo(() => {
@@ -271,6 +272,7 @@ const CustomControls: FC<{
         { replace: true }
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [location.search]
   );
 

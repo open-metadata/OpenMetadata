@@ -148,6 +148,7 @@ const SignInPage = () => {
         onClick={handleSignIn}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [authConfig?.provider, handleSignIn]);
 
   useEffect(() => {
@@ -156,6 +157,7 @@ const SignInPage = () => {
     if (isAuthenticated) {
       navigate(ROUTES.HOME);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isAuthenticated]);
 
   if (!authConfig) {

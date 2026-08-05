@@ -52,6 +52,7 @@ function EmailConfigSettingsPage() {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.email')
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -74,6 +75,7 @@ function EmailConfigSettingsPage() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [setEmailConfigValues]);
 
   const handleEditClick = () => {
@@ -146,10 +148,12 @@ function EmailConfigSettingsPage() {
         )}
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [loading, emailConfigValues, configValues]);
 
   useEffect(() => {
     fetchEmailConfigValues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

@@ -66,6 +66,7 @@ const WorkflowHistory = memo(
       const status = glossaryTerm?.entityStatus ?? EntityStatus.Approved;
 
       return status === EntityStatus.Approved && !propGlossaryTerm;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [glossaryTerm?.entityStatus]);
 
     const [isCollapsed, setIsCollapsed] = useState(initialCollapseState);
@@ -265,6 +266,7 @@ const WorkflowHistory = memo(
           )}
         </div>
       );
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [
       isLoading,
       workflowHistory,

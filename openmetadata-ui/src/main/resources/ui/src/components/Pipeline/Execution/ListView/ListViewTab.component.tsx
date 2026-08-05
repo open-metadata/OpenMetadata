@@ -55,6 +55,7 @@ const ListView = ({
       typingInterval: 500,
       onSearch: handleSearch,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchString, handleSearch]
   );
 
@@ -98,6 +99,7 @@ const ListView = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

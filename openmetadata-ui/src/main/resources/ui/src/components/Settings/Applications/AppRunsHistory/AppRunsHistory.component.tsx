@@ -188,6 +188,7 @@ const AppRunsHistory = forwardRef(
       }
 
       return false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, []);
 
     const showAppRunConfig = (record: AppRunRecordWithId) => {
@@ -246,6 +247,7 @@ const AppRunsHistory = forwardRef(
           </>
         );
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [showLogAction, appData, isExternalApp, handleRowExpandable]
     );
 
@@ -327,6 +329,7 @@ const AppRunsHistory = forwardRef(
           render: (_, record) => getActionButton(record),
         },
       ],
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [
         appData,
         formatDateTime,
@@ -381,6 +384,7 @@ const AppRunsHistory = forwardRef(
           setIsLoading(false);
         }
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [fqn, pageSize, maxRecords, appData]
     );
 
@@ -420,6 +424,7 @@ const AppRunsHistory = forwardRef(
 
     useEffect(() => {
       fetchAppHistory();
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [fqn, pageSize]);
 
     useEffect(() => {

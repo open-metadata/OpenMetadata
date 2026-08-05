@@ -658,6 +658,7 @@ UseDataQualityDashboardFiltersProps): UseDataQualityDashboardFiltersReturn => {
     if (showDataProductsFilter) {
       fetchDefaultDataProductOptions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [hideFilterBar, hiddenFiltersKey]);
 
   const tags = useMemo<DqSearchFilterProps>(
@@ -669,6 +670,7 @@ UseDataQualityDashboardFiltersProps): UseDataQualityDashboardFiltersReturn => {
       onSearch: handleTagSearch,
       isSuggestionsLoading: isTagLoading,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isTagLoading, tagOptions, selectedTagFilter]
   );
 
@@ -681,6 +683,7 @@ UseDataQualityDashboardFiltersProps): UseDataQualityDashboardFiltersReturn => {
       onSearch: handleGlossaryTermSearch,
       isSuggestionsLoading: isGlossaryTermLoading,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isGlossaryTermLoading, glossaryTermOptions, selectedGlossaryTermFilter]
   );
 
@@ -693,6 +696,7 @@ UseDataQualityDashboardFiltersProps): UseDataQualityDashboardFiltersReturn => {
       onSearch: handleTierSearch,
       isSuggestionsLoading: isTierLoading,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isTierLoading, tierOptions, selectedTierFilter]
   );
 
@@ -705,6 +709,7 @@ UseDataQualityDashboardFiltersProps): UseDataQualityDashboardFiltersReturn => {
       onSearch: handleCertificationSearch,
       isSuggestionsLoading: isCertificationLoading,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isCertificationLoading, certificationOptions, selectedCertificationFilter]
   );
 
@@ -717,6 +722,7 @@ UseDataQualityDashboardFiltersProps): UseDataQualityDashboardFiltersReturn => {
       onSearch: handleDataProductSearch,
       isSuggestionsLoading: isDataProductLoading,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isDataProductLoading, dataProductOptions, selectedDataProductFilter]
   );
 

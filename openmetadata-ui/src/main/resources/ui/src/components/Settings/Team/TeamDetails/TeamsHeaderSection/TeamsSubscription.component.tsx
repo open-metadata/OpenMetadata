@@ -73,6 +73,7 @@ const TeamsSubscription = ({
         {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
       </Typography.Link>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -102,6 +103,7 @@ const TeamsSubscription = ({
     }
 
     return cellItem(webhook[0], webhook[1]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [subscription, hasEditPermission]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
@@ -121,6 +123,7 @@ const TeamsSubscription = ({
     if (isWebhookEmpty) {
       form.setFieldValue('endpoint', '');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isWebhookEmpty]);
 
   useEffect(() => {
@@ -131,6 +134,7 @@ const TeamsSubscription = ({
         endpoint: data[1].endpoint,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [subscription, editSubscription]);
 
   const subscriptionWebhookTranslated = useMemo(

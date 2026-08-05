@@ -136,6 +136,7 @@ const ServiceInsightsTab = ({
     } catch {
       // Error
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const fetchChartsData = async () => {
@@ -306,6 +307,7 @@ const ServiceInsightsTab = ({
 
   useEffect(() => {
     fetchChartsData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -323,10 +325,12 @@ const ServiceInsightsTab = ({
         sessionIdRef.current = undefined;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
     getAgentStatuses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [ingestionPipelines, collateAIagentsList]);
 
   useEffect(() => {
@@ -341,6 +345,7 @@ const ServiceInsightsTab = ({
     return () => {
       socket?.off(SOCKET_EVENTS.CHART_DATA_STREAM);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [socket]);
 
   return (

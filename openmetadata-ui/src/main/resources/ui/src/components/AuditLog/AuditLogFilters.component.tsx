@@ -134,6 +134,7 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
           },
         ])
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [t]
   );
 

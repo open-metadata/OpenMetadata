@@ -70,12 +70,14 @@ export const IngestionRecentRuns = <
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
 
   useEffect(() => {
     if (fetchStatus) {
       fetchPipelineStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [ingestion, ingestion?.fullyQualifiedName]);
 
   useEffect(() => {
@@ -95,6 +97,7 @@ export const IngestionRecentRuns = <
       fetchPipelineStatus();
       handlePipelineIdToFetchStatus?.(); // Clear the id after fetching status
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pipelineIdToFetchStatus]);
 
   const handleRunStatusClick = (status: T) => {

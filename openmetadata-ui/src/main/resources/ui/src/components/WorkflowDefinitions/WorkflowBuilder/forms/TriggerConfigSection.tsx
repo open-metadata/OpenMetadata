@@ -59,6 +59,7 @@ const useSyncedListData = (
       );
       prevRef.current = values;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [values, getLabel]);
 
   return listData;

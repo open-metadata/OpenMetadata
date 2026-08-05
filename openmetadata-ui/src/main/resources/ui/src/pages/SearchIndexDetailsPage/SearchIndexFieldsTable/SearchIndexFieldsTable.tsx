@@ -258,6 +258,7 @@ const SearchIndexFieldsTable = ({
         </div>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isReadOnly]
   );
 
@@ -279,6 +280,7 @@ const SearchIndexFieldsTable = ({
         onClick={() => handleUpdate(record, index)}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityFqn, hasDescriptionEditAccess, isReadOnly, handleUpdate]
   );
 
@@ -377,6 +379,7 @@ const SearchIndexFieldsTable = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityFqn,
       isReadOnly,
@@ -425,12 +428,14 @@ const SearchIndexFieldsTable = ({
       setSearchedFields(sortByOrdinalPosition);
       setExpandedRowKeys([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchText]);
 
   useEffect(() => {
     if (!searchText) {
       setSearchedFields(sortByOrdinalPosition);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchIndexFields, sortByOrdinalPosition]);
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation

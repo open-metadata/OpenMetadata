@@ -237,6 +237,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       setTimeout(() => {
         setEditorContent(editor, htmlContent);
       });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [content, editor]);
 
     // this effect to handle the editable state

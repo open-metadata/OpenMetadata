@@ -122,29 +122,34 @@ function ClassificationVersionPage() {
         getClassificationVersionsPath(classificationName, toString(newVersion))
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [classificationName]
   );
 
   const backHandler = useCallback(() => {
     navigate(getClassificationDetailsPath(classificationName));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (!isEmpty(classificationName)) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [classificationName]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchVersionsList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [classificationName, viewVersionPermission]);
 
   useEffect(() => {
     if (classificationId) {
       fetchCurrentVersionData(classificationId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version, classificationId]);
 
   const versionComponent = () => {

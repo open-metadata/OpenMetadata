@@ -86,6 +86,7 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
       excludeIds: [],
       testCases: initialTestCases,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [initialTestCaseSignature]);
 
   const enableScheduler = useWatch({

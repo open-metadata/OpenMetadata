@@ -33,6 +33,7 @@ export const useEntityRules = (entityType: EntityType) => {
   // Get UI Component Hints/ EntityRules for current entity
   const entityRules = useMemo(
     () => getEntityRuleValidation(entityType),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [allEntityRules, entityType]
   );
 

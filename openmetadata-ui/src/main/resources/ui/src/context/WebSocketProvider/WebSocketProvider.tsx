@@ -62,6 +62,7 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
     if (currentUser && currentUser.id) {
       initWebSocket();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentUser]);
 
   const contextValue = useMemo(() => ({ socket }), [socket]);

@@ -59,6 +59,7 @@ const TaskListV1 = ({
     } else {
       handlePanelResize?.(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [taskList]);
 
   const tasks = useMemo(

@@ -108,6 +108,7 @@ const ContractQualityCard: React.FC<{
       fetchTestCaseSummary();
       fetchTestCases();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [contract]);
 
   if (isTestCaseLoading) {

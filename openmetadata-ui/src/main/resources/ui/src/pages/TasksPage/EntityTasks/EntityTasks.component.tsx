@@ -54,6 +54,7 @@ const EntityTasks = ({
     return columnName.includes(FQN_SEPARATOR_CHAR)
       ? `"${columnName}"`
       : columnName;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [data.fqn]);
 
   const handleTask = (hasData: boolean) => {
@@ -98,6 +99,7 @@ const EntityTasks = ({
         />
       </Tooltip>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [data.field]);
 
   return (

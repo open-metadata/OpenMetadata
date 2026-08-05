@@ -64,6 +64,7 @@ const NodeChildren = ({
     return Boolean(
       isDQEnabled && entityType === EntityType.TABLE && node.testSuite
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isDQEnabled, entityType]);
 
   const supportsColumns = useMemo(() => {
@@ -71,6 +72,7 @@ const NodeChildren = ({
       node &&
       LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [node.entityType]);
 
   const { children: entityChildren, childrenHeading } = useMemo(
@@ -163,6 +165,7 @@ const NodeChildren = ({
     } else {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [node, showDataObservabilitySummary, summary]);
 
   const pageSize = useMemo(() => {

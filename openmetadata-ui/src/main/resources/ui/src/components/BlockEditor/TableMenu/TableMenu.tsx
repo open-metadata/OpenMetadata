@@ -142,6 +142,7 @@ const TableMenu = (props: TableMenuProps) => {
       tableMenuPopup.current?.destroy();
       tableMenuPopup.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEditable]);
 
   useEffect(() => {

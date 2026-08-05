@@ -79,6 +79,7 @@ const StoredProcedureTab = () => {
     );
 
     return searchData.schema as string | undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [location.search]);
 
   const searchStoredProcedure = useCallback(
@@ -108,6 +109,7 @@ const StoredProcedureTab = () => {
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedDatabaseSchemaFQN, showDeletedStoredProcedures, handlePagingChange]
   );
 
@@ -151,6 +153,7 @@ const StoredProcedureTab = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging, handlePageChange, searchValue]
   );
 
@@ -187,6 +190,7 @@ const StoredProcedureTab = () => {
       },
       ...descriptionTableObject(),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchValue]
   );
 
@@ -205,6 +209,7 @@ const StoredProcedureTab = () => {
     if (searchValue) {
       searchStoredProcedure(searchValue, currentPage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchValue, currentPage, showDeletedStoredProcedures]);
 
   useEffect(() => {
@@ -218,6 +223,7 @@ const StoredProcedureTab = () => {
     } else {
       fetchStoreProcedureDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [showDeletedStoredProcedures, pageSize, pagingCursor, searchValue]);
 
   const paginationProps = useMemo(
@@ -252,6 +258,7 @@ const StoredProcedureTab = () => {
       searchValue: searchValue,
       onSearch: onStoredProcedureSearch,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [onStoredProcedureSearch]
   );
 

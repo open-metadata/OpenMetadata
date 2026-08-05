@@ -109,6 +109,7 @@ TagsContainerV2Props) => {
         ? activeTagDropdownKey === dropdownKey
         : internalIsEditTags,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     tagType,
     entityFqn,
@@ -130,6 +131,7 @@ TagsContainerV2Props) => {
         setInternalIsEditTags(isOpen);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [useGenericControls, dropdownKey]
   );
 
@@ -151,6 +153,7 @@ TagsContainerV2Props) => {
       })) as SelectOption[],
       isHoriZontalLayout: layoutType === LayoutType.HORIZONTAL,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tagType, permission, tags?.[tagType], tags, layoutType]
   );
 
@@ -167,6 +170,7 @@ TagsContainerV2Props) => {
 
   const showNoDataPlaceholder = useMemo(
     () => !showAddTagButton && isEmpty(tags?.[tagType]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [showAddTagButton, tags?.[tagType]]
   );
 
@@ -250,6 +254,7 @@ TagsContainerV2Props) => {
           />
         </Col>
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       displayType,
       showNoDataPlaceholder,
@@ -272,6 +277,7 @@ TagsContainerV2Props) => {
         onSubmit={handleSave}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     multiSelect,
     isGlossaryType,
@@ -306,6 +312,7 @@ TagsContainerV2Props) => {
         onClick={() => handleTagsTask(hasTags)}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tags?.[tagType], handleTagsTask]);
 
   const conversationThreadElement = useMemo(
@@ -320,6 +327,7 @@ TagsContainerV2Props) => {
         }
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, entityFqn, onThreadLinkSelect]
   );
 
@@ -350,6 +358,7 @@ TagsContainerV2Props) => {
         )}
       </Space>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     tags,
     tagType,
@@ -377,6 +386,7 @@ TagsContainerV2Props) => {
           onClick={handleAddClick}
         />
       ) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [permission, tags, tagType, handleAddClick, newLook]
   );
 
@@ -407,6 +417,7 @@ TagsContainerV2Props) => {
         {showInlineEditButton ? editTagButton : null}
       </Space>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     showAddTagButton,
     displayType,
@@ -449,6 +460,7 @@ TagsContainerV2Props) => {
         {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
       </Row>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isEditTags,
     tagsSelectContainer,
@@ -484,6 +496,7 @@ TagsContainerV2Props) => {
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permission, entityType, isGlossaryType, selectedUserSuggestions]);
 
   useEffect(() => {

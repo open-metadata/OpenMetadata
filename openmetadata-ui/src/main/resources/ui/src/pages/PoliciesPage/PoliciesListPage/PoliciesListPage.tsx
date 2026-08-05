@@ -106,6 +106,7 @@ const PoliciesListPage = () => {
         GlobalSettingsMenuCategory.ACCESS,
         t('label.policy-plural')
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -220,8 +221,10 @@ const PoliciesListPage = () => {
         },
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const fetchPolicies = async (paging?: Partial<Paging>) => {
     setIsLoading(true);
     try {
@@ -285,6 +288,7 @@ const PoliciesListPage = () => {
     } else {
       fetchPolicies();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, pagingCursor]);
 
   return (

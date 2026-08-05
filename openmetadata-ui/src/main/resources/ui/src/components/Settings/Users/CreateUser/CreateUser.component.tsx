@@ -302,17 +302,20 @@ CreateUserProps) => {
         initialValue: '',
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
   useEffect(() => {
     generateRandomPassword();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (!forceBot && !isAdminPage) {
       fetchRoleOptions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [forceBot, isAdminPage]);
 
   const debouncedFetchRoleOptions = useMemo(

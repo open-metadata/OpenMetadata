@@ -48,6 +48,7 @@ export const FrequentlyJoinedTables = ({
     if (isEmpty(joinedTables)) {
       filterWidgets?.([DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [joinedTables]);
 
   const hasMoreElement = useMemo(

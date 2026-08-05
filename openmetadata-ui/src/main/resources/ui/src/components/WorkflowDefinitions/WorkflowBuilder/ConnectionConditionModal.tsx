@@ -130,6 +130,7 @@ export const ConnectionConditionModal: React.FC<
         ]);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isOpen, initialConditions, defaultValue]);
 
   const handleSave = () => {

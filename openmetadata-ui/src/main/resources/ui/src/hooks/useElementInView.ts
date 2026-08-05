@@ -34,6 +34,7 @@ export const useElementInView = (
 
     return () => {
       if (elementRef.current) {
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
         observer.unobserve(elementRef.current);
       }
     };

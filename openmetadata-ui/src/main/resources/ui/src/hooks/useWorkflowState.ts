@@ -291,6 +291,7 @@ export const useWorkflowState = ({
         isStartNodeConfigured: isConfigured,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [state.nodes, state.hasStartNode, state.isStartNodeConfigured]);
 
   return {

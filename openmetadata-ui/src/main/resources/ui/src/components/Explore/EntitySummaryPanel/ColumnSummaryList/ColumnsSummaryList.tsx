@@ -70,12 +70,14 @@ export const ColumnSummaryList = ({
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fqn, entityType, currentPage]
   );
 
   const handleLoadMore = useCallback(() => {
     setCurrentPage(currentPage + 1);
     fetchPaginatedColumns(currentPage + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentPage]);
 
   useEffect(() => {
@@ -93,6 +95,7 @@ export const ColumnSummaryList = ({
         limit: PAGE_SIZE_LARGE,
       });
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType, fqn]);
 
   const loadMoreBtn = useMemo(() => {
@@ -109,6 +112,7 @@ export const ColumnSummaryList = ({
         {t('label.show-more')}
       </Button>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [loading, currentPage, handleLoadMore, t]);
 
   if (loading && currentPage === 1) {

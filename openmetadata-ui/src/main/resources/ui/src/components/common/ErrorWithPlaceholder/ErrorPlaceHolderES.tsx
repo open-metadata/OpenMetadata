@@ -164,6 +164,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
         </ErrorPlaceHolder>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isQuery, tab, activeDomain]);
 
   const elasticSearchError = useMemo(() => {
@@ -217,6 +218,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
         </Row>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [errorMessage]);
 
   return (

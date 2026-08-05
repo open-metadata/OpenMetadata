@@ -85,6 +85,7 @@ const RelatedMetrics: FC = () => {
         {isShowMore ? t('label.show-less') : t('label.show-more')}
       </Typography.Text>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isShowMore, hiddenRelatedMetrics]);
 
   const getRelatedMetricListing = useCallback(
@@ -145,6 +146,7 @@ const RelatedMetrics: FC = () => {
         setIsEdit(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [onMetricUpdate, relatedMetrics]
   );
 

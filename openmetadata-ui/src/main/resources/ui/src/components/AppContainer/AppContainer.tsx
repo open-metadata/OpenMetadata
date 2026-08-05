@@ -78,12 +78,14 @@ const AppContainer = () => {
       // eslint-disable-next-line no-console
       console.error('Error fetching app configurations:', error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (currentUser?.id) {
       fetchAppConfigurations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentUser?.id]);
 
   useEffect(() => {
@@ -92,6 +94,7 @@ const AppContainer = () => {
     if (pathname !== '/' && !isNil(analytics)) {
       analytics.page();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [location.pathname, analytics]);
 
   return (

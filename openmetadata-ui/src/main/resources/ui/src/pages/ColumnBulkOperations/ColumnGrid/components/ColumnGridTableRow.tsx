@@ -98,6 +98,7 @@ export const ColumnGridTableRow: React.FC<ColumnGridTableRowProps> = ({
       ),
       cellClassName: classNames(bgClass),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isRecentlyUpdated,
     showParentChildColors,

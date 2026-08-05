@@ -120,6 +120,7 @@ function APIEndpointsTab({
         setAPIEndpointsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedAPICollectionFQN, filters.showDeletedEndpoints, handlePagingChange]
   );
 
@@ -152,6 +153,7 @@ function APIEndpointsTab({
         setAPIEndpointsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedAPICollectionFQN, filters.showDeletedEndpoints, apiCollection]
   );
 
@@ -236,6 +238,7 @@ function APIEndpointsTab({
     if (searchValue) {
       searchAPIEndpoints(searchValue, currentPage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchValue, currentPage, filters.showDeletedEndpoints]);
 
   useEffect(() => {
@@ -251,6 +254,7 @@ function APIEndpointsTab({
     } else {
       getAPICollectionEndpoints({ paging: { limit: pageSize } });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     apiCollection,
     pageSize,

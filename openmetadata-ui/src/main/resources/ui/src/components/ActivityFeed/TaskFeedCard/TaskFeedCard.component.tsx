@@ -100,6 +100,7 @@ TaskFeedCardProps) => {
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [feed]);
 
   const showReplies = () => {
@@ -140,6 +141,7 @@ TaskFeedCardProps) => {
           </Button>
         </EntityPopOverCard>
       ) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isEntityDetailsAvailable, entityFQN, entityType, taskDetails]
   );
 
@@ -227,6 +229,7 @@ TaskFeedCardProps) => {
                       tabIndex={0}
                       onClick={!hidePopover ? showReplies : noop}
                       onKeyDown={(e) => {
+                        // eslint-disable-next-line sonarjs/no-collapsible-if -- separate guards
                         if (e.key === 'Enter' || e.key === ' ') {
                           if (!hidePopover) {
                             showReplies();

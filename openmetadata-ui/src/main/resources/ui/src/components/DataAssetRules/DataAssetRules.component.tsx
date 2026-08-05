@@ -77,10 +77,12 @@ export const useSemanticsRulesState = () => {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [setSemanticsRules]);
 
   useEffect(() => {
     fetchSemanticsRules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const updateSemanticsRules = useCallback(
@@ -114,6 +116,7 @@ export const useSemanticsRulesState = () => {
         setIsSaveLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -133,6 +136,7 @@ export const SemanticsRuleForm: React.FC<{
 }> = ({ semanticsRule, otherSemanticsRules, form }) => {
   useEffect(() => {
     form.setFieldsValue(semanticsRule);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [semanticsRule]);
 
   const queryBuilderFields = useMemo(() => {
@@ -378,6 +382,7 @@ export const useSemanticsRuleList = ({
         </Col>
       </Row>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [semanticsRules, isLoading, isSaveLoading, columns]);
 
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (

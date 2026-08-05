@@ -82,9 +82,11 @@ const AdminPermissionDebugger: React.FC = () => {
         GlobalSettingsMenuCategory.ACCESS,
         t('label.permission-debugger')
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const searchUsers = useCallback(
     debounce(async (searchText: string) => {
       if (!searchText) {

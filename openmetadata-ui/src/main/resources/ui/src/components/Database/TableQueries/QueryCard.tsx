@@ -116,6 +116,7 @@ QueryCardProp) => {
 
     // Format the duration as a string using the chosen format string
     return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [query]);
 
   const updateSqlQuery = async () => {

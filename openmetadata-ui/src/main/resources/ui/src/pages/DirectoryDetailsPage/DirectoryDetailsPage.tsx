@@ -269,6 +269,7 @@ const DirectoryDetailsPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(directoryFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [directoryFQN]);
 
   useEffect(() => {
@@ -280,6 +281,7 @@ const DirectoryDetailsPage = () => {
     ) {
       fetchDirectoryDetails(directoryFQN);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [directoryPermissions, directoryFQN]);
 
   if (isLoading) {

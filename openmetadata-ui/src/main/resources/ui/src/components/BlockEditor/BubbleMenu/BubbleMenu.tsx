@@ -97,6 +97,7 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
     ];
 
     return { menuList };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [editor]);
 
   const handleShouldShow: CoreBubbleMenuProps['shouldShow'] = ({

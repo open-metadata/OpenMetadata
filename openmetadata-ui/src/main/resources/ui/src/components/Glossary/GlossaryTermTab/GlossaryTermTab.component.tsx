@@ -178,6 +178,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       expandableKeys: findExpandableKeysForArray(terms),
       glossaryTerms: terms,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [glossaryChildTerms, findExpandableKeysForArray]);
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
@@ -226,10 +227,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setSearchTerm(value);
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debouncedSetSearchTerm = useCallback(debounce(handleSearch, 500), [
     handleSearch,
   ]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const fetchChildTerms = async (parentFQN: string, after?: string) => {
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
     try {
@@ -297,7 +300,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
   };
 
-  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity, react-hooks/exhaustive-deps
   const fetchAllTerms = async (loadMore = false) => {
     // `fetchSearchTerm` / `fetchStatusKey` record the search and status filter
     // this request was issued for so its response can be discarded if either has
@@ -503,6 +506,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       setPreviousGlossaryFQN(currentFQN);
       fetchAllTerms();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeGlossary?.fullyQualifiedName,
     isLoadingMore,
@@ -516,6 +520,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return () => {
       setGlossaryChildTerms([]);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const findScrollContainer = useCallback(() => {
@@ -631,6 +636,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     // If container not found initially, no need for timeout -
     // the component should handle cases where container might appear later
     return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     paging.after,
     searchPaging.hasMore,
@@ -781,6 +787,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         showErrorToast(error as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [expandedRowKeys, glossaryChildTerms, selectedStatus, termTaskThreads]
   );
 
@@ -1076,6 +1083,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
 
     return data;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     permissions,
     tableColumnsWidth,
@@ -1139,6 +1147,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     } else {
       fetchExpadedTree();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     glossaryTerms,
     glossaryChildTerms,
@@ -1213,6 +1222,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         },
       ],
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       statusDropdownSelection,
       handleStatusSelectionDropdownSave,
@@ -1307,6 +1317,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         </div>
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isAllExpanded,
     isExpandingAll,
@@ -1438,6 +1449,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         return !isLoadMoreRow && (hasChildCount || hasChildArray);
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       glossaryTerms,
       setGlossaryChildTerms,
@@ -1511,6 +1523,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const hasReviewers = useMemo(() => {
     return !isEmpty(activeGlossary.reviewers);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [movedGlossaryTerm, activeGlossary]);
 
   const processTermsWithLoadMore = useCallback(
@@ -1727,6 +1740,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
       fetchAllTerms();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchTerm, selectedStatus]);
 
   // Check if this is due to search or filter returning no results

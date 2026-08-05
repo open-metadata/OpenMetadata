@@ -53,6 +53,7 @@ const getPipelineExtraInfo = (
               i18nKey="message.data-insight-pipeline-description"
               renderElement={
                 <a
+                  // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated i18n key
                   aria-label={t('label.documentation')}
                   href={DATA_INSIGHTS_PIPELINE_DOCS}
                   rel="noreferrer"

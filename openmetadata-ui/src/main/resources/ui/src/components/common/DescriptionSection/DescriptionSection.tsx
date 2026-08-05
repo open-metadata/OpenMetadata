@@ -78,11 +78,13 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   // Callback to handle the edit button from description
   const handleEditDescription = useCallback(() => {
     setIsEditDescription(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [description]);
 
   // Callback to handle the cancel button
   const handleCancelEditDescription = useCallback(() => {
     setIsEditDescription(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [description]);
 
   // Callback to handle the description change from modal

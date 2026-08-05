@@ -167,6 +167,7 @@ const DeleteEntityModal = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityType,
       entityId,

@@ -200,6 +200,7 @@ const GlossaryPage = () => {
       setIsLoading(false);
       setInitialised(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [paging.after, glossaryFqn]);
 
   const fetchNextGlossaryItems = async (after?: string) => {
@@ -236,12 +237,14 @@ const GlossaryPage = () => {
     if (!initialised) {
       fetchGlossaryList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [initialised]);
 
   useEffect(() => {
     if (paging?.after && isInView && !isMoreGlossaryLoading) {
       fetchNextGlossaryItems(paging.after);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [paging, isInView, isMoreGlossaryLoading, pageSize]);
 
   const glossaryTermCacheKey = useMemo(
@@ -312,6 +315,7 @@ const GlossaryPage = () => {
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isGlossaryActive, glossaryFqn, glossaries]);
 
   const isRightPanelLoading = useMemo(() => {
@@ -407,6 +411,7 @@ const GlossaryPage = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [glossaries, activeGlossary, fetchGlossaryList]
   );
 
@@ -442,6 +447,7 @@ const GlossaryPage = () => {
         showErrorToast(error as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [activeGlossary, setGlossaryTermDetails, refetchActiveGlossaryTerm]
   );
 
@@ -476,6 +482,7 @@ const GlossaryPage = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [glossaryFqn, activeGlossary, fetchGlossaryList]
   );
 

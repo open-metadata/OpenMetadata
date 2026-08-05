@@ -337,6 +337,7 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType, fqn, searchText]);
 
   const handleToggleExpand = useCallback((key: string) => {
@@ -432,6 +433,7 @@ const TopicFieldCardsV1: React.FC<{
   searchText?: string;
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const schemaFields = entityInfo.messageSchema?.schemaFields || [];
 
   const filteredFields = useMemo(
@@ -537,6 +539,7 @@ const ContainerFieldCardsV1: React.FC<{
     };
   }, [containerFqn, inlineColumns]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const columns = inlineColumns ?? fetchedColumns ?? [];
 
   const filteredColumns = useMemo(
@@ -592,6 +595,7 @@ const PipelineTasksV1: React.FC<{
   loading?: boolean;
   searchText?: string;
 }> = ({ entityInfo, highlights, loading, searchText }) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const tasks = entityInfo.tasks || [];
 
   const filteredTasks = useMemo(
@@ -701,6 +705,7 @@ const APICollectionEndpointsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   const filteredEndpoints = useMemo(
@@ -800,6 +805,7 @@ const DatabaseSchemaTablesV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   const filteredTables = useMemo(
@@ -869,6 +875,7 @@ const DashboardChartsV1: React.FC<{
   loading?: boolean;
   searchText?: string;
 }> = ({ entityInfo, highlights, loading, searchText }) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const charts = entityInfo.charts || [];
 
   const filteredCharts = useMemo(
@@ -927,7 +934,9 @@ const APIEndpointSchemaV1: React.FC<{
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const requestSchemaFields = entityInfo.requestSchema?.schemaFields || [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const responseSchemaFields = entityInfo.responseSchema?.schemaFields || [];
 
   const viewTypeOptions = [
@@ -1135,6 +1144,7 @@ const DatabaseSchemasV1: React.FC<{
   loading?: boolean;
   searchText?: string;
 }> = ({ entityInfo, loading, searchText }) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const databaseSchemas = entityInfo.databaseSchemas || [];
 
   const filteredSchemas = useMemo(
@@ -1186,6 +1196,7 @@ const SearchIndexFieldCardsV1: React.FC<{
   searchText?: string;
 }> = ({ entityInfo, highlights, loading, searchText }) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const fields = entityInfo.fields || [];
 
   const filteredFields = useMemo(

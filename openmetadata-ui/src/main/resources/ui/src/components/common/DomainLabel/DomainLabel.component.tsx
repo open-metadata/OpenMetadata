@@ -60,6 +60,7 @@ export const DomainLabel = ({
     return showDashPlaceholder
       ? NO_DATA_PLACEHOLDER
       : t('label.no-entity', { entity: t(LABEL_DOMAIN_PLURAL) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [showDashPlaceholder]);
 
   const handleDomainSave = useCallback(
@@ -99,6 +100,7 @@ export const DomainLabel = ({
         showErrorToast(err as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, entityId, entityFqn, afterDomainUpdateAction, onUpdate]
   );
 
@@ -206,6 +208,7 @@ export const DomainLabel = ({
         {defaultDomainText}
       </Typography.Text>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeDomain,
     domainDisplayName,
@@ -278,6 +281,7 @@ export const DomainLabel = ({
         </div>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [activeDomain, hasPermission, selectableList]);
 
   return label;

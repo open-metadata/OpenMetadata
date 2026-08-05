@@ -123,6 +123,7 @@ export const ContractSecurityFormTab: React.FC<{
         },
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [policiesFormData]
   );
 
@@ -158,6 +159,7 @@ export const ContractSecurityFormTab: React.FC<{
         setEditingKey(0);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [initialValues?.security]);
 
   return (

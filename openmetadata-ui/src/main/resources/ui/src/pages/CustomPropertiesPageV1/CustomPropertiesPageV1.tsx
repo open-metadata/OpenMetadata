@@ -98,6 +98,7 @@ const CustomEntityDetailV1 = () => {
 
   const editPermission = useMemo(
     () => propertyPermission.EditAll,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [propertyPermission, tab]
   );
 
@@ -208,12 +209,14 @@ const CustomEntityDetailV1 = () => {
       setIsError(false);
       fetchTypeDetail(tabAttributePath);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tabAttributePath]);
 
   useEffect(() => {
     if (selectedEntityTypeDetail?.id) {
       fetchPermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedEntityTypeDetail]);
 
   const tabs = useMemo(() => {
@@ -254,6 +257,7 @@ const CustomEntityDetailV1 = () => {
         ),
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     selectedEntityTypeDetail.schema,
     editPermission,

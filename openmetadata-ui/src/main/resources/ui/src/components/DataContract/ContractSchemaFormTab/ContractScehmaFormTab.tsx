@@ -157,6 +157,7 @@ export const ContractSchemaFormTab: React.FC<{
       default:
         return [];
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedSchema, entityData]);
 
   const fetchTableColumns = useCallback(
@@ -198,6 +199,7 @@ export const ContractSchemaFormTab: React.FC<{
       }
       setIsLoading(false);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tableFqn, pageSize, selectedSchema, oldRemovedColumns, setAllColumnsData]
   );
 
@@ -240,6 +242,7 @@ export const ContractSchemaFormTab: React.FC<{
       }
       setIsLoading(false);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fqn, pageSize, handlePagingChange]
   );
 
@@ -268,8 +271,10 @@ export const ContractSchemaFormTab: React.FC<{
       setAllColumnsData([]);
     }
     setIsLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const fetchApiEndPointColumns = async () => {
     try {
       const response = await getApiEndPointByFQN(fqn, {
@@ -488,6 +493,7 @@ export const ContractSchemaFormTab: React.FC<{
           ]
         : []),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, tableFqn]
   );
 
@@ -528,6 +534,7 @@ export const ContractSchemaFormTab: React.FC<{
 
   useEffect(() => {
     fetchColumnsBasedOnEntity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

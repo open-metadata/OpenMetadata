@@ -62,6 +62,7 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
 
   const { childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [node.id]
   );
 
@@ -197,6 +198,7 @@ const EntityFooter = ({
   const { isEditMode } = useLineageStore();
   const { childrenHeading, childrenCount } = useMemo(
     () => getEntityChildrenAndLabel(node),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [node.id]
   );
 

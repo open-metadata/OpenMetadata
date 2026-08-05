@@ -120,6 +120,7 @@ const TierCard = ({
     if (popoverProps?.open && tierCardData.length === 0) {
       getTierData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [popoverProps?.open]);
 
   return (

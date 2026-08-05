@@ -74,6 +74,7 @@ function AlertFormSourceItem({
         <div className="p-t-xss">{menuNode}</div>
       </Card>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const dropdownMenuItems: MenuProps['items'] = useMemo(
@@ -90,6 +91,7 @@ function AlertFormSourceItem({
       form.setFieldValue(['resources'], [info.key]);
       setIsEditMode(true);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

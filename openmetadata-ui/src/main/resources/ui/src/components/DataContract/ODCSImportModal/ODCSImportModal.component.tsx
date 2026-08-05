@@ -449,6 +449,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     yamlContent,
     isODCSFormat,
@@ -971,6 +972,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
         </div>
       </Box>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [parseError, isValidating, serverValidationError, serverValidation, t]);
 
   const renderImportOptions = useCallback(() => {

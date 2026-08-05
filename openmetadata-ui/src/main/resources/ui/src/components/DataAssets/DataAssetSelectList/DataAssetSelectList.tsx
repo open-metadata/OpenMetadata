@@ -115,6 +115,7 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
       setSelected(next);
       onChange?.(next);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [visibleOptions, selectedFqns, selected, onChange]
   );
 

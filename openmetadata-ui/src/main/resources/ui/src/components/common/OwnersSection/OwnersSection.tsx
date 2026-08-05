@@ -149,6 +149,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         </div>
       </UserTeamSelectableList>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       hasPermission,
       editingOwners,

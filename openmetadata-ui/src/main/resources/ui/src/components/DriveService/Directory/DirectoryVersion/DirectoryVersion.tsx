@@ -82,6 +82,7 @@ const DirectoryVersion = ({
 
   const entityFqn = useMemo(
     () => currentVersionData.fullyQualifiedName ?? '',
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
@@ -153,6 +154,7 @@ const DirectoryVersion = ({
       },
       ...descriptionTableObject(),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -236,6 +238,7 @@ const DirectoryVersion = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       description,
       entityFqn,
@@ -273,6 +276,7 @@ const DirectoryVersion = ({
 
   useEffect(() => {
     fetchDirectoryDetails(directoryFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {

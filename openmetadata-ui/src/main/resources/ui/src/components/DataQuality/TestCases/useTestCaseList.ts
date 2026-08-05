@@ -176,6 +176,7 @@ export const useTestCaseList = ({
     } else {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tab, testCasePermission, pageSize, params, currentPage]);
 
   const pagingData = useMemo(

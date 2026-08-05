@@ -62,6 +62,7 @@ const UnitOfMeasurementInfoItem: FC<UnitOfMeasurementInfoItemProps> = ({
 
   useEffect(() => {
     fetchCustomUnits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const currentValue = useMemo(() => {

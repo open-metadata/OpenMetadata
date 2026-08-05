@@ -39,10 +39,12 @@ export function useMultiContainerFocusTrap({
       ...options,
     });
     trapRef.current.activate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [options, ...containers]);
 
   const deactivateTrap = useCallback(() => {
     trapRef.current?.deactivate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [trapRef.current]);
 
   useEffect(() => {

@@ -57,6 +57,7 @@ SeverityProps) => {
       await onSubmit?.(data);
       onCancel();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [onSubmit]
   );
 

@@ -229,6 +229,7 @@ function DirectoryDetails({
       };
       await onDirectoryUpdate(updatedDirectoryDetails, 'owners');
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -290,6 +291,7 @@ function DirectoryDetails({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -342,6 +344,7 @@ function DirectoryDetails({
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [directoryPermissions, decodedDirectoryFQN]);
 
   const tabs = useMemo(() => {
@@ -388,6 +391,7 @@ function DirectoryDetails({
       customizedPage?.tabs,
       EntityTabs.CHILDREN
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeTab,
     feedCount.totalCount,
@@ -434,6 +438,7 @@ function DirectoryDetails({
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Directory),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
   if (isLoading) {

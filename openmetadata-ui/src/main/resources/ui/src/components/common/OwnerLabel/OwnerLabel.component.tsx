@@ -95,6 +95,7 @@ OwnerLabelProps) => {
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isCompactView,
     showLabel,

@@ -72,6 +72,7 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   useEffect(() => {
     fetchTagAssetsDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityDetails]);
 
   return (

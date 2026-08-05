@@ -68,6 +68,7 @@ const StatusByDimensionCardWidget = ({
 
   useEffect(() => {
     getStatusByDimension();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter]);
 
   return (

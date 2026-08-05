@@ -76,6 +76,7 @@ const IncidentTypeAreaChartWidget = ({
 
   useEffect(() => {
     getCountOfIncidentStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter, incidentStatusType]);
 
   if (isChartLoading) {

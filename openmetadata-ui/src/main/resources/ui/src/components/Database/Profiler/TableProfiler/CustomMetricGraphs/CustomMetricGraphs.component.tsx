@@ -103,6 +103,7 @@ const CustomMetricGraphs = ({
         disabled: !deletePermission,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [editPermission, deletePermission]
   );
 

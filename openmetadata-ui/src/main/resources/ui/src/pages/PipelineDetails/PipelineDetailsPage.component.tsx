@@ -416,6 +416,7 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(decodedPipelineFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedPipelineFQN]);
 
   if (permissionsLoading || pipelineLoading) {

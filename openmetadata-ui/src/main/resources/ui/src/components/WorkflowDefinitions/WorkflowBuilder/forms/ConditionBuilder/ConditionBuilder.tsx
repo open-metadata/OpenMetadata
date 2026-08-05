@@ -144,6 +144,7 @@ function ConditionBuilderValueControl(
       });
       prevValuesRef.current = values;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [values, asyncOptions, staticOptions]);
 
   if (isBoolean) {

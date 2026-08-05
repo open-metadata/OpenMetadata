@@ -181,6 +181,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [description, currentVersionData, viewCustomPropertiesPermission, tags]
   );
 

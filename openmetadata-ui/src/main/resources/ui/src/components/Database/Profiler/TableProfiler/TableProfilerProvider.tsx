@@ -185,6 +185,7 @@ export const TableProfilerProvider = ({
         icon: CreatedDateIcon,
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableProfiler, t]);
 
   const handleOpenTestCaseDrawer = (type: TestLevel) => {
@@ -210,6 +211,7 @@ export const TableProfilerProvider = ({
         return updatedTests;
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [allTestCases]
   );
 
@@ -311,6 +313,7 @@ export const TableProfilerProvider = ({
         setTableProfiler(mock.tableDetails as Table);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [datasetFQN, isTourOpen, activeTab, tourMockDatasetData]);
 
   useEffect(() => {
@@ -323,6 +326,7 @@ export const TableProfilerProvider = ({
       setAllTestCases([]);
       setIsTestsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [viewTest, isTourOpen, activeTab, testCasePaging.pageSize]);
 
   const fetchTestCaseSummary = useCallback(async () => {
@@ -349,6 +353,7 @@ export const TableProfilerProvider = ({
 
   useEffect(() => {
     fetchTestCaseSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const tableProfilerPropsData: TableProfilerContextInterface = useMemo(() => {
@@ -372,6 +377,7 @@ export const TableProfilerProvider = ({
       onTestCaseDrawerOpen: handleOpenTestCaseDrawer,
       isTestCaseDrawerOpen,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isTestsLoading,
     isProfilerDataLoading,

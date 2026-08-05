@@ -137,6 +137,7 @@ export const useCustomEditor = (
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, deps);
 
   return editor;

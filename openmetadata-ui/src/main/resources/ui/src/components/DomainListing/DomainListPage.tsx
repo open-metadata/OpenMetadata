@@ -160,6 +160,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     if (isTreeView && !isEmpty(domainListing.urlState.filters)) {
       domainListing.handleFilterChange([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isTreeView]);
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
@@ -269,6 +270,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         />
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isTreeView,
     domainListing.loading,

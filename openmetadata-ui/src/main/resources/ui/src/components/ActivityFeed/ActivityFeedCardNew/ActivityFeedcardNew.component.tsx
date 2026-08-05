@@ -152,6 +152,7 @@ ActivityFeedCardNewProps) => {
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityFQN, entityType, feed?.cardStyle]);
   const entityRef = feed?.entityRef ?? activity?.entity;
 
@@ -209,6 +210,7 @@ ActivityFeedCardNewProps) => {
         </EntityPopOverCard>
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     feed?.cardStyle,
     entityType,
@@ -249,6 +251,7 @@ ActivityFeedCardNewProps) => {
     </Tooltip>
   ) : null;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
   };

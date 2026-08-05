@@ -64,6 +64,7 @@ const OnlineUsersPage = () => {
         GlobalSettingsMenuCategory.MEMBERS,
         t('label.online-user-plural')
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -111,6 +112,7 @@ const OnlineUsersPage = () => {
         setIsDataLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [pageSize, handlePagingChange, timeWindow]
   );
 
@@ -156,6 +158,7 @@ const OnlineUsersPage = () => {
         setIsDataLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentPage, pageSize, handlePagingChange]
   );
 
@@ -178,6 +181,7 @@ const OnlineUsersPage = () => {
     }
     handlePageChange(INITIAL_PAGING_VALUE);
     fetchUsersList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, isAdminUser, timeWindow]);
 
   const columns: ColumnsType<User> = useMemo(() => {

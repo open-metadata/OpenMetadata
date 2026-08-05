@@ -248,6 +248,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           URL.revokeObjectURL(url);
         },
       }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
 

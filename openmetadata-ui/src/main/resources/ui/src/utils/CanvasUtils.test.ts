@@ -843,6 +843,7 @@ describe('CanvasUtils', () => {
       source: string,
       target: string,
       isColumnLineage = false
+      // eslint-disable-next-line sonarjs/no-identical-functions -- test edge factory
     ): Edge => ({
       id,
       source,

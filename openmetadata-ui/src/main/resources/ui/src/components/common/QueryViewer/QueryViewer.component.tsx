@@ -51,6 +51,7 @@ const QueryViewer = ({
       }`,
       lineCount,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [sqlQuery, hasQuery]);
 
   const { onCopyToClipBoard } = useClipboard(hasQuery ? sqlQuery : '');

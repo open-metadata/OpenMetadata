@@ -100,6 +100,7 @@ const ActivityFeedListV1New = ({
         onFeedClick(entityThread[0]);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityThread, selectedThread, onFeedClick, isActivityMode]);
 
   useEffect(() => {
@@ -109,6 +110,7 @@ const ActivityFeedListV1New = ({
     } else {
       handlePanelResize?.(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [feedList, activityList, isActivityMode]);
 
   const feeds = useMemo(() => {
@@ -149,6 +151,7 @@ const ActivityFeedListV1New = ({
         onUpdateEntityDetails={onUpdateEntityDetails}
       />
     ));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     entityThread,
     activityList,

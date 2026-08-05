@@ -338,6 +338,7 @@ export const useTestCaseIncidentHeader = ({
               Operation.EditOwners
             ),
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
 
   const taskLinkInfo = useMemo(

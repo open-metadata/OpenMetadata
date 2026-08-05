@@ -139,6 +139,7 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
         : uniqueValues;
       props.onChange(convertedValue);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [onPasteFromClipBoard, props.onChange, value, isUrlField, isScopeField]);
 
   const handleInputSplit = useCallback(
@@ -169,6 +170,7 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
         props.onChange(convertedValue);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [value, props.onChange, isUrlField, isScopeField]
   );
 
@@ -188,12 +190,14 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
         props.formContext.clearFieldError(props.idSchema.$id);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isScopeField, props.onChange, props.formContext, props.idSchema.$id]
   );
 
   const handleBlur = useCallback(() => {
     const convertedValue = isScopeField ? value.join(' ') : value;
     props.onBlur(id, convertedValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isScopeField, value, props.onBlur, id]);
 
   return (

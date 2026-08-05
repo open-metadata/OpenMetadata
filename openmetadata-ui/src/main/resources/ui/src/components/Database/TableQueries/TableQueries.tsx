@@ -176,6 +176,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     if (selectedQuery?.id) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedQuery]);
 
   const handleQueryUpdate = async (updatedQuery: Query) => {
@@ -485,6 +486,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       setIsLoading((pre) => ({ ...pre, page: false, query: false }));
       setIsError(QUERY_PAGE_ERROR_STATE);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tableId, pageSize]);
 
   const handleAddQueryClick = () => {

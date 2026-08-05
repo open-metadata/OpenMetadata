@@ -66,6 +66,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
       e.stopPropagation();
       await onCopyToClipBoard();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [value, onCopyToClipBoard]
   );
 
@@ -93,6 +94,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
       const uniqueValues = Array.from(new Set([...value, ...processedValues]));
       props.onChange(uniqueValues);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [onPasteFromClipBoard, props.onChange, value]);
 
   const handleInputSplit = useCallback(
@@ -106,6 +108,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
       const uniqueValues = Array.from(new Set([...value, ...processedValues]));
       props.onChange(uniqueValues);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [value, props.onChange]
   );
 

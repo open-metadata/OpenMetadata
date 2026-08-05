@@ -61,6 +61,7 @@ const IconColorModal: FC<StyleModalProps> = ({
     if (open) {
       form.reset({ iconURL: style?.iconURL, color: style?.color });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [open]);
 
   const selectedColor = useWatch({ control: form.control, name: 'color' });

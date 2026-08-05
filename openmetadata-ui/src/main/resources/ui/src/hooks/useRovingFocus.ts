@@ -82,6 +82,7 @@ export function useRovingFocus({
           break;
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [focusedIndex, totalItems, vertical, onSelect]
   );
 
@@ -119,6 +120,7 @@ export function useRovingFocus({
     } else if (focusedIndex < 0 && totalItems > 0) {
       setFocusedIndex(0);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [totalItems]);
 
   const getItemProps = (index: number) => ({

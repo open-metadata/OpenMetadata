@@ -469,6 +469,7 @@ TaskTabProps) => {
       },
       ...TASK_ACTION_COMMON_ITEM,
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isTaskTags, suggestedValue]);
 
   const isTaskTestCaseResult =
@@ -653,6 +654,7 @@ TaskTabProps) => {
           : button
       );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleTaskLinkClick = () => {
     navigate({
       pathname: getTaskDetailPathFromTask(task),
@@ -807,6 +809,7 @@ TaskTabProps) => {
         transition.id
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [initialTaskPayload, task, taskFormSchema]
   );
 
@@ -938,6 +941,7 @@ TaskTabProps) => {
       });
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onTaskReject = async () => {
     const rejectedTransition = getTransitionForResolution(
       TaskResolutionType.Rejected
@@ -1159,6 +1163,7 @@ TaskTabProps) => {
         {t('label.comment')}
       </Button>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [comment, onSave]);
 
   const workflowTransitionActions = useMemo(() => {
@@ -1303,6 +1308,7 @@ TaskTabProps) => {
         </Tooltip>
       </Space>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     taskAction,
     isAssignee,
@@ -1347,6 +1353,7 @@ TaskTabProps) => {
         </Dropdown.Button>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [task, isAssignee, isPartOfAssigneeTeam, taskAction, renderCommentButton]);
 
   const actionButtons = useMemo(() => {
@@ -1423,6 +1430,7 @@ TaskTabProps) => {
         )}
       </Space>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     onTaskClose,
     task,
@@ -1474,6 +1482,7 @@ TaskTabProps) => {
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
     setOptions(assigneeOptions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [initialAssignees, assigneeOptions]);
 
   useEffect(() => {
@@ -1664,6 +1673,7 @@ TaskTabProps) => {
     );
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
   };

@@ -477,6 +477,7 @@ const KnowledgePagesHierarchy = forwardRef<
           navigate(homeRoute ?? contextCenterClassBase.getArticlesListPath());
         }
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [
         knowledgePageHierarchy,
         onPageDelete,
@@ -791,6 +792,7 @@ const KnowledgePagesHierarchy = forwardRef<
       } else if (fqn !== lastFetchedFqnRef.current) {
         lastFetchedFqnRef.current = fqn;
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [hash, fqn]);
 
     useEffect(() => {
