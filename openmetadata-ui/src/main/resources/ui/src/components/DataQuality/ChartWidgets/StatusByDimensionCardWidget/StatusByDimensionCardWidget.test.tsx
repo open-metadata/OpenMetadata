@@ -25,7 +25,7 @@ jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
   fetchTestCaseSummaryByNoDimension: jest.fn(),
 }));
 
-jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
   getDimensionIcon: jest.fn((dimension) => `icon-${dimension}`),
   transformToTestCaseStatusByDimension: jest.fn(() =>
     [
@@ -191,5 +191,27 @@ describe('StatusByDimensionCardWidget', () => {
     expect(
       await screen.findAllByText('StatusByDimensionWidget.component')
     ).toHaveLength(8);
+  });
+
+  it('bounds card widths at responsive breakpoints', async () => {
+    (fetchTestCaseSummaryByDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+    (fetchTestCaseSummaryByNoDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+
+    const { container } = render(
+      <StatusByDimensionCardWidget chartFilter={chartFilter} />
+    );
+
+    await waitFor(() =>
+      expect(fetchTestCaseSummaryByDimension).toHaveBeenCalledWith(chartFilter)
+    );
+
+    expect(container.firstElementChild).toHaveClass(
+      'tw:md:grid-cols-[repeat(2,minmax(0,20rem))]',
+      'tw:lg:grid-cols-[repeat(4,minmax(0,20rem))]'
+    );
   });
 });

@@ -71,7 +71,7 @@ const StatusByDimensionCardWidget = ({
   }, [chartFilter]);
 
   return (
-    <div className="tw:grid tw:grid-cols-1 tw:gap-x-6 tw:gap-y-10 tw:md:grid-cols-2 tw:lg:grid-cols-4">
+    <div className="tw:grid tw:grid-cols-1 tw:justify-start tw:gap-x-6 tw:gap-y-10 tw:md:grid-cols-[repeat(2,minmax(0,20rem))] tw:lg:grid-cols-[repeat(4,minmax(0,20rem))]">
       {dqDimensions.map((dimension) => (
         <StatusByDimensionWidget
           icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
