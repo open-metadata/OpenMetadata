@@ -8,11 +8,12 @@ from ClickZetta into OpenMetadata.
 Create a ClickZetta user with read access to the workspace, virtual cluster,
 schemas, and tables that OpenMetadata should catalog. Metadata extraction is
 supported directly. Usage and query-lineage extraction additionally require a
-read-only query-history table or view configured below. Profiling, sampling,
-data diff, and native test execution are not enabled until their ClickZetta SQL
-and bounded-read contracts are validated. DBT artifacts are ingested by the
-separate DBT source (for example, from S3); this database connector does not
-run DBT models or read DBT artifacts itself.
+read-only query-history table or view configured below. Connector-specific
+profiling, bounded sampling, native tests, and data diff adapters are
+implemented in the contribution branch, but remain disabled in the service spec
+until a bounded seller-center smoke test is approved. DBT artifacts are ingested
+by the separate DBT source (for example, from S3); this database connector does
+not run DBT models or read DBT artifacts itself.
 
 ## Connection Details
 
@@ -94,4 +95,10 @@ $$section
 ### Connection Arguments $(id="connectionArguments")
 
 Add optional keyword arguments passed to the SQLAlchemy engine.
+
+The capability adapters also recognize `allowFullTableScan=true` in connection
+options or arguments as an explicit opt-in for row-count profiling or data-diff
+data queries. Do not set this option on the current production connection; it
+is reserved for a controlled non-production smoke test after the connector's
+live gates are approved.
 $$

@@ -85,3 +85,28 @@ class ClickzettaConnection(BaseConnection[ClickzettaConnectionConfig, Engine]):
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )
+
+    def get_connection_dict(self) -> dict:
+        """Return a data-diff connection dictionary without changing the engine."""
+
+        url = self.client.url
+        connection_dict = {
+            "driver": "clickzetta",
+            "host": url.host,
+            "port": url.port,
+            "user": url.username,
+            "password": url.password,
+            "workspace": url.database,
+            "virtualcluster": url.query.get("virtualcluster"),
+            "schema": url.query.get("schema"),
+        }
+        connection_dict.update(
+            {key: value for key, value in url.query.items() if key not in {"virtualcluster", "schema"}}
+        )
+        service_connection = getattr(self, "service_connection", None)
+        arguments = getattr(service_connection, "connectionArguments", None)
+        argument_values = arguments if isinstance(arguments, dict) else getattr(arguments, "root", None) or {}
+        for key, value in argument_values.items():
+            if key not in connection_dict and value is not None:
+                connection_dict[key] = value
+        return {key: value for key, value in connection_dict.items() if value is not None}

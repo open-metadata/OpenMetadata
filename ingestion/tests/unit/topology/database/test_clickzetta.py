@@ -203,6 +203,38 @@ def test_clickzetta_connection_defaults_to_https_when_protocol_is_absent():
     assert "protocol" not in dict(url.query)
 
 
+def test_clickzetta_connection_exposes_a_data_diff_connection_dict():
+    connection = object.__new__(ClickzettaConnection)
+    connection._client = SimpleNamespace(
+        url=build_clickzetta_url(
+            host_port="instance.example.clickzetta.test:8443",
+            username="catalog_reader",
+            password="secret",
+            workspace="quick_start",
+            virtual_cluster="DEFAULT",
+            database_schema="seller_center",
+            protocol="https",
+            connection_options={"warehouse": "metadata"},
+        )
+    )
+    connection.service_connection = SimpleNamespace(connectionArguments=SimpleNamespace(root={"timeout": "5"}))
+
+    connection_dict = ClickzettaConnection.get_connection_dict(connection)
+
+    assert connection_dict == {
+        "driver": "clickzetta",
+        "host": "instance.example.clickzetta.test",
+        "port": 8443,
+        "user": "catalog_reader",
+        "password": "secret",
+        "workspace": "quick_start",
+        "virtualcluster": "DEFAULT",
+        "schema": "seller_center",
+        "warehouse": "metadata",
+        "timeout": "5",
+    }
+
+
 def test_build_clickzetta_url_preserves_workspace_and_virtual_cluster():
     url = build_clickzetta_url(
         host_port="instance.example.clickzetta.test",

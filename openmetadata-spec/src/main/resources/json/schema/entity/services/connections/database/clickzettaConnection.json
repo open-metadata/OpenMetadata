@@ -119,6 +119,18 @@
     "supportsLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "description": "ClickZetta profiling remains disabled until its bounded live gate is approved.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler",
+      "default": false
+    },
+    "supportsDataDiff": {
+      "title": "Supports Data Diff",
+      "description": "ClickZetta data diff remains disabled until its bounded live gate is approved.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff",
+      "default": false
+    },
     "supportsDBTExtraction": {
       "description": "Attached dbt metadata ingestion remains disabled until the Dagster/dbt workflow is live and validated.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction",
