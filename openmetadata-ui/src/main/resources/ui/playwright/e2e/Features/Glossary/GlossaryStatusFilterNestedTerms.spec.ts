@@ -146,30 +146,18 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       .catch(() => {});
   };
 
-  // Helper to expand a specific term in the table
-  const expandTerm = async (page: Page, termName: string) => {
-    const termRow = page.locator(`[data-row-key*="${termName}"]`).first();
+  // Helper to expand a specific term in the table. Takes the term's
+  // fullyQualifiedName (the table's rowKey) rather than its bare name:
+  // matching by bare name via a substring selector is ambiguous whenever one
+  // term's name is a prefix of another's, or a child's FQN embeds the
+  // parent's name (e.g. "MultiChild" vs "MultiChild1"/"MultiParent.MultiChild").
+  const expandTerm = async (page: Page, termFqn: string) => {
+    const termRow = page.locator(`[data-row-key="${termFqn}"]`);
     await expect(termRow).toBeVisible();
 
-    const expandTrigger = termRow
-      .locator('[data-testid="expand-icon"]')
-      .first();
+    const expandTrigger = termRow.getByTestId('expand-icon');
     await expandTrigger.click();
-    await page
-      .locator('tr[data-row-key]')
-      .first()
-      .waitFor({ state: 'visible' });
-  };
-
-  // Helper to collapse a specific term in the table
-  const collapseTerm = async (page: Page, termName: string) => {
-    const termRow = page.locator(`[data-row-key*="${termName}"]`).first();
-    const collapseIcon = termRow.locator('[data-testid="expand-icon"]');
-
-    if (await collapseIcon.isVisible()) {
-      await collapseIcon.click();
-      await collapseIcon.waitFor({ state: 'detached' }).catch(() => {});
-    }
+    await expect(page.locator('tr[data-row-key]')).not.toHaveCount(0);
   };
 
   // Helper to verify term is visible in table
@@ -195,10 +183,8 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       )
       .waitFor({ state: 'detached', timeout: 30000 })
       .catch(() => {});
-    await page
-      .locator('tbody > tr:not([aria-hidden="true"])')
-      .first()
-      .waitFor({ state: 'visible' })
+    await expect(page.locator('tbody > tr:not([aria-hidden="true"])'))
+      .not.toHaveCount(0)
       .catch(() => {});
   };
 
@@ -213,10 +199,8 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       )
       .waitFor({ state: 'detached', timeout: 30000 })
       .catch(() => {});
-    await page
-      .locator('tbody > tr:not([aria-hidden="true"])')
-      .first()
-      .waitFor({ state: 'visible' })
+    await expect(page.locator('tbody > tr:not([aria-hidden="true"])'))
+      .not.toHaveCount(0)
       .catch(() => {});
   };
 
@@ -332,7 +316,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await verifyTermVisible(page, basicParent.data.displayName);
 
       // Expand parent to reveal child
-      await expandTerm(page, basicParent.responseData.name);
+      await expandTerm(page, basicParent.responseData.fullyQualifiedName);
 
       // Child should be visible (all children shown when expanded, regardless of status)
       await verifyTermVisible(page, basicChild.data.displayName);
@@ -347,7 +331,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await verifyTermVisible(page, basicParent.data.displayName);
 
       // Expand parent
-      await expandTerm(page, basicParent.responseData.name);
+      await expandTerm(page, basicParent.responseData.fullyQualifiedName);
 
       // Child should be visible even though it's Draft (children loaded without filter)
       await verifyTermVisible(page, basicChild.data.displayName);
@@ -387,7 +371,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await applyStatusFilter(page, ['Approved']);
 
       // Expand grandparent
-      await expandTerm(page, multiGrandparent.responseData.name);
+      await expandTerm(page, multiGrandparent.responseData.fullyQualifiedName);
 
       // Parent should be visible even though it's Draft (children loaded without filter)
       await verifyTermVisible(page, multiParent.data.displayName);
@@ -466,7 +450,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       await applyStatusFilter(page, ['Approved']);
       await verifyTermVisible(page, basicParent.data.displayName);
 
-      await expandTerm(page, basicParent.responseData.name);
+      await expandTerm(page, basicParent.responseData.fullyQualifiedName);
 
       // Child should be visible
       await verifyTermVisible(page, basicChild.data.displayName);
@@ -476,7 +460,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       page,
     }) => {
       // Expand parent first with All filter
-      await expandTerm(page, basicParent.responseData.name);
+      await expandTerm(page, basicParent.responseData.fullyQualifiedName);
       await verifyTermVisible(page, basicChild.data.displayName);
 
       // Change filter to Draft only
