@@ -409,28 +409,10 @@ test('KPI Widget', { tag: '@data-insight' }, async ({ page }) => {
 
     await expect(kpiWidgetContent).toBeVisible();
 
-    // Check if there's either a chart or empty state
-    const hasChart = await widget
-      .locator('.recharts-responsive-container')
-      .isVisible()
-      .catch(() => false);
-
-    const hasEmptyState = await widget
-      .locator('[data-testid="widget-empty-state"]')
-      .isVisible()
-      .catch(() => false);
-
-    expect(hasChart || hasEmptyState).toBeTruthy();
-
-    if (hasChart) {
-      // If chart exists, verify it's rendered properly
-      await expect(
-        widget.locator('.recharts-responsive-container')
-      ).toBeVisible();
-
-      // Verify chart elements are present
-      await expect(widget.locator('.recharts-area')).toBeVisible();
-    }
+    await expect(
+      widget.locator('.recharts-responsive-container')
+    ).toBeVisible();
+    await expect(widget.locator('.recharts-area')).toBeVisible();
   });
 
   await test.step('Test widget customization', async () => {
