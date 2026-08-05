@@ -2,7 +2,7 @@
 
 from typing import Optional, cast
 
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 
 from metadata.data_quality.validations.models import TableParameter
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
@@ -49,5 +49,13 @@ class SnowflakeTableParameter(BaseTableParameter):
                     "Using the private key.",
                     service.name.root,
                 )
-                table_param.serviceUrl = url.set(password="").render_as_string(hide_password=False)
+                # URL.set(password=None) leaves the password untouched, so rebuild the url without it
+                table_param.serviceUrl = URL.create(
+                    drivername=url.drivername,
+                    username=url.username,
+                    host=url.host,
+                    port=url.port,
+                    database=url.database,
+                    query=url.query,
+                ).render_as_string(hide_password=False)
         return table_param

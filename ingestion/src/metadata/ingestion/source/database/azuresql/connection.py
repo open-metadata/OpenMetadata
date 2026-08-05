@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     Authentication,
     AuthenticationMode,
+    AzureSQLScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection as AzureSQLConnectionConfig,
@@ -102,9 +103,10 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
         # keeps them inside an opaque `odbc_connect` query parameter - hence the explicit dict.
         connection = self.service_connection
         host, _, port = connection.hostPort.partition(":")
+        scheme = connection.scheme or AzureSQLScheme.mssql_pyodbc
 
         connection_dict = {
-            "driver": connection.scheme.value,
+            "driver": scheme.value,
             "host": host,
             "port": int(port) if port else DEFAULT_SQL_SERVER_PORT,
             "user": connection.username,

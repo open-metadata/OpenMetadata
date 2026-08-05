@@ -15,6 +15,8 @@ import uuid
 from unittest.mock import patch
 
 import data_diff
+import dsnparse
+from data_diff.databases._connect import CustomParseResult
 from sqlalchemy.engine import make_url
 
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
@@ -315,9 +317,15 @@ def test_snowflake_private_key_drops_the_password_from_the_service_url():
     )
 
     url = make_url(table_param.serviceUrl)
-    assert not url.password
+    assert url.password is None
     assert url.username == "my_user"
     assert url.host == "my_account"
     assert url.database == "my_db/my_schema"
     assert table_param.privateKey is not None
     assert table_param.passPhrase is not None
+
+    # data_diff reads the password off its own parse of the url, and passes on anything not None
+    dsn = dsnparse.parse(table_param.serviceUrl, parse_class=CustomParseResult)
+    assert dsn.password is None
+    assert dsn.user == "my_user"
+    assert dsn.host == "my_account"
