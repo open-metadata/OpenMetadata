@@ -48,16 +48,13 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * clauses so the engine default {@code minimum_should_match = 1} applies (the {@link OMQueryBuilder}
  * abstraction exposes no way to set it explicitly).
  *
- * <p><b>Two renderings of this rule exist.</b> This class produces {@link OMQueryBuilder} clauses for
- * the search managers and for Collate's lexical path. {@link
- * org.openmetadata.service.search.vector.VectorSearchQueryBuilder} renders the same predicates as raw
- * JSON, because it serves both engines from a {@code StringBuilder} and so cannot consume an
- * engine-specific {@code OMQueryBuilder}. They share the field constants, {@link
- * #sharedPrincipalIds} and {@link #isVisibilityEnforced}, and {@code
+ * <p><b>A new predicate needs three edits.</b> This class renders the rule as {@link OMQueryBuilder}
+ * clauses; {@link org.openmetadata.service.search.vector.VectorSearchQueryBuilder} renders it as raw
+ * JSON (it serves both engines from a {@code StringBuilder}); {@link
+ * org.openmetadata.service.resources.context.ContextMemoryVisibility#isVisibleToUser} decides it
+ * in-memory for the REST read paths. {@code
  * ContextMemorySearchVisibilityTest#rawJsonVectorClauseKeysOffTheSameFieldsAsThisRule} compares the
- * two renderings directly, so it fails if one gains a predicate the other lacks. It compares the set
- * of fields keyed on, not the clause structure, so a change to how an existing field is matched still
- * needs both sides updated by hand. Change one, change both.
+ * first two, and only by the set of fields keyed on.
  */
 public class ContextMemorySearchVisibility {
 

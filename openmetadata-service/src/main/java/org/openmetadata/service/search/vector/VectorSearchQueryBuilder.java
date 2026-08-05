@@ -212,19 +212,14 @@ public class VectorSearchQueryBuilder {
     sb.append("]}}]");
   }
 
-  /**
-   * Mirrors {@code ContextMemorySearchVisibility#buildVisibleToUserClause}, plus a time-boxed
-   * allowance for chunk documents written before {@code visibility} was stamped on them.
-   */
+  /** Mirrors {@code ContextMemorySearchVisibility#buildVisibleToUserClause}. */
   private static void appendVisibleMemoryClause(StringBuilder sb, SubjectContext subjectContext) {
+    // A document lacking `visibility` satisfies no branch, so a memory chunk written before it was
+    // stamped is excluded until a Search Reindex restamps it — it may be a Private one.
     sb.append("{\"bool\":{\"should\":[")
         .append(
             termClause(
                 ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
-    // Documents written before `visibility` was stamped stay excluded rather than grandfathered:
-    // an unstamped memory chunk may be a Private one, so admitting it would leak exactly what this
-    // filter hides. A Search Reindex restamps them.
-
     if (subjectContext != null) {
       User user = subjectContext.user();
       // ignore_unmapped mirrors QueryBuilderFactory#nestedQuery, and is not optional: a KNN query

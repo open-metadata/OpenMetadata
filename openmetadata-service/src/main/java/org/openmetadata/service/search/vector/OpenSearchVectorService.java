@@ -398,12 +398,23 @@ public class OpenSearchVectorService implements VectorIndexService {
    * representative — the mechanism that lets a get_asset_context bundle carry only excerpts.
    */
   public List<String> searchChunksByParent(String parentId, String query, int k) {
+    return searchChunksByParent(parentId, query, k, null);
+  }
+
+  /**
+   * As above, resolving context memory visibility for {@code subjectContext}. Parent-scoped
+   * retrieval needs it too: a parent may be a restricted memory, which yields no passages without a
+   * subject.
+   */
+  public List<String> searchChunksByParent(
+      String parentId, String query, int k, SubjectContext subjectContext) {
     List<String> passages = new ArrayList<>();
     try {
       ensureChunkIndex();
       float[] vector = embeddingClient.embedQuery(query);
       Map<String, List<String>> filters = Map.of("parentId", List.of(parentId));
-      String queryJson = VectorSearchQueryBuilder.build(vector, k, 0, k, filters, 0.0);
+      String queryJson =
+          VectorSearchQueryBuilder.build(vector, k, 0, k, filters, 0.0, subjectContext);
       String response =
           executeGenericRequest("POST", "/" + getChunkIndexName() + "/_search", queryJson);
       JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");

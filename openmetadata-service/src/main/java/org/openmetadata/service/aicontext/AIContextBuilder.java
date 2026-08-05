@@ -77,8 +77,10 @@ import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Assembles the {@link AIContext} (Context Profile) for a data asset: the common knowledge envelope
@@ -264,6 +266,18 @@ public class AIContextBuilder {
   }
 
   /** Top chunk of the item's body by relevance to the query (issue #4789), or null when absent. */
+  /**
+   * The caller for memory visibility, null when this builder was given no security context. A
+   * knowledge item may be a context memory, whose excerpt is only retrievable with a subject.
+   */
+  private SubjectContext subjectContextOrNull() {
+    SubjectContext subject = null;
+    if (securityContext != null) {
+      subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    }
+    return subject;
+  }
+
   private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
     String result = null;
     try {
@@ -275,7 +289,8 @@ public class AIContextBuilder {
             Entity.getEntityReferenceByName(
                 item.getType().value(), item.getFullyQualifiedName(), Include.NON_DELETED);
         List<String> passages =
-            vectorService.searchChunksByParent(reference.getId().toString(), query, 1);
+            vectorService.searchChunksByParent(
+                reference.getId().toString(), query, 1, subjectContextOrNull());
         if (!nullOrEmpty(passages)) {
           result = excerpt(passages.getFirst(), limit);
         }
