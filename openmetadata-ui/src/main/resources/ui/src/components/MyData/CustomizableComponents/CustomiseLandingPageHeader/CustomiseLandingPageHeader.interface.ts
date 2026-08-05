@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Document } from '../../../../generated/entity/docStore/document';
+import { Thread } from '../../../../generated/entity/feed/thread';
 
 export interface CustomiseLandingPageHeaderProps {
   addedWidgetsList?: string[];
@@ -27,4 +28,6 @@ export interface CustomiseLandingPageHeaderProps {
   onHomePage?: boolean;
   overlappedContainer?: boolean;
   placeholderWidgetKey?: string;
+  announcements?: Thread[];
+  isAnnouncementLoading?: boolean;
 }
