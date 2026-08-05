@@ -41,6 +41,10 @@ export interface ClickzettaConnection {
      */
     protocol?: Protocol;
     /**
+     * Optional ClickZetta table or view used for usage and query-lineage extraction. When configured, it must expose query_text, query_type, user_name, database_name, schema_name, start_time, end_time, duration, aborted, and cost columns. Configure a seller_center-scoped view when validating this connector.
+     */
+    queryHistoryTable?: string;
+    /**
      * Regex to only include or exclude matching schemas.
      */
     schemaFilterPattern?: FilterPattern;
@@ -52,8 +56,10 @@ export interface ClickzettaConnection {
      * Attached dbt metadata ingestion remains disabled until the Dagster/dbt workflow is live
      * and validated.
      */
-    supportsDBTExtraction?:      boolean;
-    supportsMetadataExtraction?: boolean;
+    supportsDBTExtraction?:        boolean;
+    supportsLineageExtraction?:    boolean;
+    supportsMetadataExtraction?:   boolean;
+    supportsUsageExtraction?:      boolean;
     /**
      * Regex to only include or exclude matching tables.
      */

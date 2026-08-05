@@ -71,6 +71,11 @@
       "description": "Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.",
       "type": "string"
     },
+    "queryHistoryTable": {
+      "title": "Query History Table",
+      "description": "Optional ClickZetta table or view used for usage and query-lineage extraction. When configured, it must expose query_text, query_type, user_name, database_name, schema_name, start_time, end_time, duration, aborted, and cost columns. Configure a seller_center-scoped view when validating this connector.",
+      "type": "string"
+    },
     "protocol": {
       "title": "Protocol",
       "description": "Protocol used to connect to ClickZetta.",
@@ -107,6 +112,12 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     },
     "supportsDBTExtraction": {
       "description": "Attached dbt metadata ingestion remains disabled until the Dagster/dbt workflow is live and validated.",

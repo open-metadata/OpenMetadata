@@ -6,9 +6,10 @@ from ClickZetta into OpenMetadata.
 ## Requirements
 
 Create a ClickZetta user with read access to the workspace, virtual cluster,
-schemas, and tables that OpenMetadata should catalog. The current connector is
-metadata-only: usage, query lineage, profiling, and native dbt extraction remain
-disabled until those workflows are implemented and validated.
+schemas, and tables that OpenMetadata should catalog. Metadata extraction is
+supported directly. Usage and query-lineage extraction additionally require a
+read-only query-history table or view configured below; profiling, sampling, and
+native dbt extraction are still not provided by this connector.
 
 ## Connection Details
 
@@ -50,6 +51,21 @@ $$section
 
 Optionally restrict ingestion to one schema. Leave this blank to let the
 connector discover all schemas visible to the configured user.
+$$
+
+$$section
+### Query History Table $(id="queryHistoryTable")
+
+Optional table or view used by the usage and query-lineage workflows. The
+configured object must expose these canonical columns:
+
+`query_text`, `query_type`, `user_name`, `database_name`, `schema_name`,
+`start_time`, `end_time`, `duration`, `aborted`, and `cost`.
+
+Leave this blank when running metadata-only ingestion. For a first validation,
+use a read-only view restricted to the `seller_center` schema and set a small
+query-log result limit. The connector applies a time window and result limit;
+it does not profile or sample table data.
 $$
 
 $$section
