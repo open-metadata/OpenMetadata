@@ -63,19 +63,17 @@ export class DataQualityPageObject extends RightPanelBase {
       '.test-case-cards-section, [data-testid="test-case-cards-section"]'
     );
     this.testCaseCards = this.testCaseCardsSection.locator('.test-case-card');
-    this.nameLink = this.testCaseCards
-      .locator('.test-case-name, [class*="name"], a')
-      .first();
+    this.nameLink = this.testCaseCards.locator(
+      '.test-case-name, [class*="name"], a'
+    );
     this.testCaseStatusBadge = this.testCaseCards.locator(
       '.test-case-status-section .status-badge-label'
     );
     this.searchBar = this.container.getByTestId('searchbar');
     this.incidentsTabContent = this.container.locator('.incidents-tab-content');
-    this.noDataPlaceholder = this.container
-      .locator(
-        '[data-testid="no-data-placeholder"], .no-data-placeholder, .ant-empty'
-      )
-      .first();
+    this.noDataPlaceholder = this.container.locator(
+      '[data-testid="no-data-placeholder"], .no-data-placeholder, .ant-empty'
+    );
   }
 
   /**
@@ -157,9 +155,9 @@ export class DataQualityPageObject extends RightPanelBase {
   async clickTestCaseLink(
     testCaseName: string
   ): Promise<DataQualityPageObject> {
-    const testCaseLink = this.container
-      .locator(`.test-case-name[data-testid="test-case-${testCaseName}"]`)
-      .first();
+    const testCaseLink = this.container.locator(
+      `.test-case-name[data-testid="test-case-${testCaseName}"]`
+    );
     await testCaseLink.waitFor({ state: 'visible' });
     await testCaseLink.click();
     return this;
@@ -252,8 +250,9 @@ export class DataQualityPageObject extends RightPanelBase {
     testCaseName: string,
     expectedStatus: string
   ): Promise<void> {
-    const cards = this.testCaseCards;
-    const card = cards.filter({ hasText: testCaseName }).first();
+    const card = this.testCaseCardsSection.locator(
+      `.test-case-card:has([data-testid="test-case-${testCaseName}"])`
+    );
     await card.waitFor({ state: 'visible' });
 
     const statusBadge = card.locator('.status-badge-label');
@@ -270,7 +269,9 @@ export class DataQualityPageObject extends RightPanelBase {
     testCaseName: string,
     details: { columnName?: string; entityLink?: string }
   ): Promise<void> {
-    const card = this.testCaseCards.filter({ hasText: testCaseName }).first();
+    const card = this.testCaseCardsSection.locator(
+      `.test-case-card:has([data-testid="test-case-${testCaseName}"])`
+    );
     await card.waitFor({ state: 'visible' });
 
     if (details.columnName) {
@@ -301,9 +302,7 @@ export class DataQualityPageObject extends RightPanelBase {
   }): Promise<void> {
     await this.incidentsTabContent.waitFor({ state: 'visible' });
 
-    const incidentCard = this.incidentsTabContent
-      .locator('.test-case-card')
-      .first();
+    const incidentCard = this.incidentsTabContent.locator('.test-case-card');
     await expect(incidentCard).toBeVisible();
 
     if (incidentData.status) {
@@ -357,8 +356,10 @@ export class DataQualityPageObject extends RightPanelBase {
   ): Promise<void> {
     // Use semantic selectors - find card by index and check name
     const cards = this.testCaseCards;
+    // eslint-disable-next-line om-playwright/no-positional-locator -- cardIndex is a public API parameter of this method; callers assert the card count beforehand, so the index selects a known, specific card by design, not by incidental DOM order
     const card = cards.nth(cardIndex);
     await card.waitFor({ state: 'visible' });
+    // eslint-disable-next-line om-playwright/no-positional-locator -- same cardIndex contract as above
     const nameElement = this.nameLink.nth(cardIndex);
     await nameElement.waitFor({ state: 'visible' });
     await expect(nameElement).toContainText(testCaseName);
@@ -373,6 +374,7 @@ export class DataQualityPageObject extends RightPanelBase {
     status: 'success' | 'failed' | 'aborted',
     cardIndex: number = 0
   ): Promise<void> {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- cardIndex is a public API parameter of this method; callers assert the card count beforehand, so the index selects a known, specific card by design, not by incidental DOM order
     const card = this.testCaseCards.nth(cardIndex);
     await card.waitFor({ state: 'visible' });
     const expectedStatusText: Record<'success' | 'failed' | 'aborted', string> =
@@ -387,6 +389,7 @@ export class DataQualityPageObject extends RightPanelBase {
         failed: 'failure',
         aborted: 'aborted',
       };
+    // eslint-disable-next-line om-playwright/no-positional-locator -- same cardIndex contract as the card locator above
     const statusBadge = this.testCaseStatusBadge.nth(cardIndex);
     await statusBadge.waitFor({ state: 'visible' });
     await expect(statusBadge).toHaveText(expectedStatusText[status]);
@@ -406,6 +409,7 @@ export class DataQualityPageObject extends RightPanelBase {
   ): Promise<void> {
     // Use semantic selectors - find card and look for column name in details
     const cards = this.testCaseCards;
+    // eslint-disable-next-line om-playwright/no-positional-locator -- cardIndex is a public API parameter of this method; callers assert the card count beforehand, so the index selects a known, specific card by design, not by incidental DOM order
     const card = cards.nth(cardIndex);
     await card.waitFor({ state: 'visible' });
     const columnDetail = card
@@ -422,9 +426,12 @@ export class DataQualityPageObject extends RightPanelBase {
   async shouldShowTestCaseCardWithLink(cardIndex: number = 0): Promise<void> {
     // Use semantic selectors - find card and check for link
     const cards = this.testCaseCards;
+    // eslint-disable-next-line om-playwright/no-positional-locator -- cardIndex is a public API parameter of this method; callers assert the card count beforehand, so the index selects a known, specific card by design, not by incidental DOM order
     const card = cards.nth(cardIndex);
     await card.waitFor({ state: 'visible' });
+    // eslint-disable-next-line om-playwright/no-positional-locator -- same cardIndex contract as above
     await this.nameLink.nth(cardIndex).waitFor({ state: 'visible' });
+    // eslint-disable-next-line om-playwright/no-positional-locator -- same cardIndex contract as above
     await expect(this.nameLink.nth(cardIndex)).toHaveAttribute('href', /.+/);
   }
 

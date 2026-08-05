@@ -72,9 +72,9 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const docPanel = page.getByTestId('service-requirements');
 
       // Mysql.md has $$note blocks — should render as .admonition.admonition-note
-      const admonition = docPanel.locator('.admonition-note').first();
+      const admonitions = docPanel.locator('.admonition-note');
 
-      await expect(admonition).toBeVisible();
+      await expect(admonitions).not.toHaveCount(0);
       // Should contain actual note content, not raw "$$note" syntax
       await expect(docPanel).not.toContainText('$$note');
     });
@@ -87,7 +87,7 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       const docPanel = page.getByTestId('service-requirements');
 
-      await expect(docPanel.locator('pre code').first()).toBeVisible();
+      await expect(docPanel.locator('pre code')).not.toHaveCount(0);
       // Raw fence markers should not appear
       await expect(docPanel).not.toContainText('```');
     });
@@ -96,10 +96,9 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-links');
 
       const docPanel = page.getByTestId('service-requirements');
-      const externalLink = docPanel.locator('a[target="_blank"]').first();
+      const externalLinks = docPanel.locator('a[target="_blank"][href^="http"]');
 
-      await expect(externalLink).toBeVisible();
-      await expect(externalLink).toHaveAttribute('href', /^https?:\/\//);
+      await expect(externalLinks).not.toHaveCount(0);
     });
 
     test('should render image in Mssql doc panel', async ({ page }) => {
@@ -112,7 +111,7 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await advanceToServiceConnectionStep(page);
 
       const docPanel = page.getByTestId('service-requirements');
-      const image = docPanel.locator('img').first();
+      const image = docPanel.locator('img');
 
       await expect(image).toBeVisible();
       // Verify the image loaded successfully (no broken image)
@@ -238,7 +237,6 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .locator(
           '[data-testid="select-widget-root/credentials/gcpConfig__oneof_select"] button'
         )
-        .first()
         .focus();
 
       await expect(
@@ -339,8 +337,11 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator('#service-name').blur();
 
       const docPanel = page.getByTestId('service-requirements');
+      // Mysql.md renders 3 identical code blocks; the copy behavior is uniform
+      // and no owned identifier distinguishes them, so any one exercises it.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
       const codeBlock = docPanel.locator('pre').first();
-      const copyButton = docPanel.getByTestId('code-block-copy-icon').first();
+      const copyButton = codeBlock.getByTestId('code-block-copy-icon');
 
       // Hover code block to reveal the button
       await codeBlock.hover();

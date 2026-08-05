@@ -75,8 +75,7 @@ async function openTaskNodeSidebar(page: Page) {
     .filter({ hasNotText: /^Start$/ })
     .filter({ hasNotText: /^End$/ })
     .filter({ hasNotText: /^Approved$/ })
-    .filter({ hasNotText: /^Rejected$/ })
-    .first();
+    .filter({ hasNotText: /^Rejected$/ });
 
   await expect(taskNode).toBeVisible();
   await taskNode.click();
@@ -98,8 +97,7 @@ async function openStartNodeSidebar(page: Page) {
 
   const startNode = page
     .locator('.react-flow__node')
-    .filter({ hasText: /^Start$/ })
-    .first();
+    .filter({ hasText: /^Start$/ });
 
   await expect(startNode).toBeVisible();
   await startNode.click();
@@ -241,8 +239,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
           .filter({ hasNotText: /^Start$/ })
           .filter({ hasNotText: /^End$/ })
           .filter({ hasNotText: /^Approved$/ })
-          .filter({ hasNotText: /^Rejected$/ })
-          .first();
+          .filter({ hasNotText: /^Rejected$/ });
 
         await expect(taskNode).toBeVisible();
         await taskNode.click();
@@ -284,7 +281,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         await fitViewButton.click();
         await enterEditMode(page);
 
-        await expect(page.locator('.react-flow__node').first()).toBeVisible();
+        await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
       });
     });
 
@@ -471,7 +468,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         const sidebar = await openStartNodeSidebar(page);
 
         await expect(
-          sidebar.getByTestId('trigger-type-select').locator('button').first()
+          sidebar.getByTestId('trigger-type-select').locator('button')
         ).toBeDisabled();
       });
 
@@ -629,7 +626,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         const sidebar = await openStartNodeSidebar(page);
 
         await expect(
-          sidebar.getByTestId('schedule-type-select').locator('button').first()
+          sidebar.getByTestId('schedule-type-select').locator('button')
         ).toBeDisabled();
       });
 

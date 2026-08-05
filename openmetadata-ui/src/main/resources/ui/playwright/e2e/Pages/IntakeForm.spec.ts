@@ -174,11 +174,9 @@ const createIntakeForm = async (
 };
 
 const extensionInput = (page: Page, testId: string) =>
-  page
-    .locator(
-      `[data-testid="${testId}"] input, input[data-testid="${testId}"], textarea[data-testid="${testId}"]`
-    )
-    .first();
+  page.locator(
+    `[data-testid="${testId}"] input, input[data-testid="${testId}"], textarea[data-testid="${testId}"]`
+  );
 
 const selectExtensionReference = async ({
   page,
@@ -203,11 +201,9 @@ const selectExtensionReference = async ({
       response.status() === 200
     );
   });
-  const input = page
-    .locator(
-      `[data-testid="${testId}"] input[role="combobox"], [data-testid="${testId}"][role="combobox"]`
-    )
-    .first();
+  const input = page.locator(
+    `[data-testid="${testId}"] input[role="combobox"], [data-testid="${testId}"][role="combobox"]`
+  );
 
   await expect(input).toBeVisible({ timeout: 15000 });
   await input.click();
@@ -216,7 +212,7 @@ const selectExtensionReference = async ({
 
   const option = optionTestId
     ? page.getByTestId(optionTestId)
-    : page.getByRole('option').filter({ hasText: optionText }).first();
+    : page.getByRole('option', { name: optionText, exact: true });
   await expect(option).toBeVisible({ timeout: 15000 });
   await option.click();
 };
@@ -382,7 +378,9 @@ test.describe(
         });
 
         await test.step('New row renders in the list', async () => {
-          await expect(page.getByText(scenario.label).first()).toBeVisible();
+          const row = page.getByTestId(`row-${scenario.entityType}`);
+          await expect(row).toBeVisible();
+          await expect(row).toContainText(scenario.label);
           for (const propertyName of scenario.customPropertyNames) {
             await expect(
               page.getByText(`extension.${propertyName}`)
@@ -595,6 +593,11 @@ test.describe(
         // label (the Select itself doesn't carry aria-required). Scope to
         // the field group wrapping the Type select so the asterisk we assert
         // on belongs to this field and not another required one.
+        // filter({ has }) matches every ancestor div containing both the
+        // Type select and a form-item-label descendant, so .last() picks
+        // the innermost (most specific) matching div rather than an
+        // arbitrary ranked one.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
         const typeFieldGroup = page
           .locator('div')
           .filter({ has: typeSelect })
@@ -612,7 +615,6 @@ test.describe(
           .fill(`intake-dp-${uuid()}`);
         await page
           .locator('.om-block-editor[contenteditable="true"]')
-          .first()
           .fill('Playwright product without a Type — client-side should block');
 
         // Save should not fire a POST because Antd form validation fails on
@@ -1039,26 +1041,31 @@ test.describe(
         await page.getByTestId('name').locator('input').fill(dpName);
         await page
           .locator('.om-block-editor[contenteditable="true"]')
-          .first()
           .fill('Playwright test product with entity reference steward');
 
         // The user/team select doesn't forward `data-testid` to its TextField,
         // so find the Autocomplete by the visible field label "Steward".
+        // Exactly one of these two role queries matches — the field renders
+        // as either a combobox or a textbox depending on state, never both.
         const stewardInput = page
           .getByRole('combobox', { name: 'Steward' })
-          .or(page.getByRole('textbox', { name: 'Steward' }))
-          .first();
+          .or(page.getByRole('textbox', { name: 'Steward' }));
         await expect(stewardInput).toBeVisible({ timeout: 15000 });
         await stewardInput.click();
         await stewardInput.fill('admin');
 
         const listbox = page.getByRole('listbox');
         await expect(listbox).toBeVisible({ timeout: 30000 });
+        // The listbox is already filtered to options matching "admin"; pick
+        // the seeded system admin user, which is the first (and typically
+        // only) match in a fresh test environment.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
         const adminOption = listbox
           .getByRole('option')
-          .filter({ hasText: /admin/i });
-        await expect(adminOption.first()).toBeVisible({ timeout: 15000 });
-        await adminOption.first().click();
+          .filter({ hasText: /admin/i })
+          .first();
+        await expect(adminOption).toBeVisible({ timeout: 15000 });
+        await adminOption.click();
 
         // Selecting the option collapses the Steward picker's input into a
         // read-only chip, so `stewardInput` no longer resolves. Press Escape on
@@ -1318,7 +1325,6 @@ test.describe(
       await page.getByTestId('name').locator('input').fill(dataProductName);
       await page
         .locator(descriptionBox)
-        .first()
         .fill('Data Product custom-property serialization regression');
 
       await selectExtensionReference({
@@ -1373,12 +1379,18 @@ test.describe(
         `extension-${dataProductProperties.dateTime}`
       );
       await expect(dateTimeField).toBeVisible();
+      // The date/time field renders a calendar-trigger button first,
+      // followed by any clear/other action buttons.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
       await dateTimeField.getByRole('button').first().click();
       await page.getByRole('button', { name: 'Today', exact: true }).click();
       await page.getByRole('button', { name: 'Apply', exact: true }).click();
       await expect(
         page.getByRole('button', { name: 'Apply', exact: true })
       ).toBeHidden();
+      // Multi-segment time input (hour/minute/AM-PM spinbuttons); typing
+      // starts in the first segment and auto-advances through the rest.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
       await dateTimeField.getByRole('spinbutton').first().click();
       await page.keyboard.type('0930AM');
 
@@ -1386,6 +1398,7 @@ test.describe(
         `extension-${dataProductProperties.time}`
       );
       await expect(timeField).toBeVisible();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- same multi-segment time input as above
       await timeField.getByRole('spinbutton').first().click();
       await page.keyboard.type('0845AM');
 

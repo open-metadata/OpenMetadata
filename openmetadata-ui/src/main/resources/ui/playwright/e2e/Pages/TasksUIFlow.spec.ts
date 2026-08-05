@@ -123,7 +123,7 @@ const createTagTaskViaUI = async (
 
 const resolveTaskWithApproval = async (page: Page) => {
   // Click on the first task card to open it
-  const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+  const taskCard = page.locator('[data-testid="task-feed-card"]');
   if (await taskCard.isVisible()) {
     await taskCard.click();
     await waitForPageLoaded(page);
@@ -134,7 +134,7 @@ const resolveTaskWithApproval = async (page: Page) => {
 
 const resolveTaskWithRejection = async (page: Page, comment: string) => {
   // Click on the first task card to open it
-  const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+  const taskCard = page.locator('[data-testid="task-feed-card"]');
   if (await taskCard.isVisible({ timeout: 5000 }).catch(() => false)) {
     await taskCard.click();
     await waitForPageLoaded(page);
@@ -216,7 +216,7 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
         await waitForPageLoaded(page);
         await navigateToActivityFeedTasks(page);
 
-        const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+        const taskCard = page.locator('[data-testid="task-feed-card"]');
         await expect(taskCard).toBeVisible();
         await expect(taskCard).toContainText('description');
       });
@@ -253,7 +253,7 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
         await waitForPageLoaded(page);
         await navigateToActivityFeedTasks(page);
 
-        const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+        const taskCard = page.locator('[data-testid="task-feed-card"]');
         await expect(taskCard).toBeVisible();
         await expect(taskCard).toContainText('tags');
       });
@@ -465,9 +465,9 @@ test.describe('Task Activity Feed Integration', () => {
       if (await closedTab.isVisible()) {
         await closedTab.click();
 
-        const closedTaskCard = page
-          .locator('[data-testid="task-feed-card"]')
-          .first();
+        const closedTaskCard = page.locator(
+          '[data-testid="task-feed-card"]'
+        );
         await expect(closedTaskCard).toBeVisible();
       }
     });
@@ -495,7 +495,7 @@ test.describe('Task Activity Feed Integration', () => {
       await waitForPageLoaded(page);
       await navigateToActivityFeedTasks(page);
 
-      const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+      const taskCard = page.locator('[data-testid="task-feed-card"]');
       await expect(taskCard).toBeVisible();
 
       await expect(taskCard).toContainText('description');

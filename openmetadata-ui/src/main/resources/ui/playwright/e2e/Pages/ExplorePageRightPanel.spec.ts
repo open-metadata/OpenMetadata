@@ -427,17 +427,18 @@ test.describe('Right Panel Test Suite', () => {
               );
               if ((await fieldCards.count()) === 0) {
                 // Wait for fields to render
-                await fieldCards
-                  .first()
-                  .waitFor({ state: 'visible', timeout: 5000 })
+                await expect(fieldCards)
+                  .not.toHaveCount(0, { timeout: 5000 })
                   .catch(() => null);
               }
               const count = await fieldCards.count();
 
               if (count >= 2) {
+                // eslint-disable-next-line om-playwright/no-positional-locator -- fields are extracted dynamically per entity type; the test deliberately compares the 1st and 2nd rendered cards to build a two-field search scenario, not a specific named field
                 const firstCardId = await fieldCards
                   .nth(0)
                   .getAttribute('data-testid');
+                // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
                 const secondCardId = await fieldCards
                   .nth(1)
                   .getAttribute('data-testid');
@@ -632,9 +633,9 @@ test.describe('Right Panel Test Suite', () => {
             );
 
             // Default view is downstream — verify downstream entity card
-            const downstreamCard = lineageContainer
-              .locator('.lineage-item-card')
-              .first();
+            const downstreamCard = lineageContainer.locator(
+              '.lineage-item-card'
+            );
             await expect(downstreamCard).toBeVisible();
             await expect(downstreamCard).toContainText(
               downstreamTable.entityResponseData?.displayName ??
@@ -643,9 +644,9 @@ test.describe('Right Panel Test Suite', () => {
 
             // Switch to upstream view and verify upstream entity card
             await localLineage.clickUpstreamButton();
-            const upstreamCard = lineageContainer
-              .locator('.lineage-item-card')
-              .first();
+            const upstreamCard = lineageContainer.locator(
+              '.lineage-item-card'
+            );
             await expect(upstreamCard).toBeVisible();
             await expect(upstreamCard).toContainText(
               upstreamTable.entityResponseData?.displayName ??
@@ -828,9 +829,9 @@ test.describe('Right Panel Test Suite', () => {
             await localDQ.shouldShowTestCaseCardWithStatus('failed');
 
             // Verify the test case link navigates to the correct detail page
-            const testCaseLink = tabContent
-              .locator(`[data-testid="test-case-${failedCase.name}"]`)
-              .first();
+            const testCaseLink = tabContent.locator(
+              `[data-testid="test-case-${failedCase.name}"]`
+            );
             await testCaseLink.waitFor({ state: 'visible' });
             const href = await testCaseLink.getAttribute('href');
             expect(href).toContain(failedCase.fullyQualifiedName);
