@@ -50,13 +50,12 @@ class _PrefectContainer(DockerContainer):
         while time.monotonic() < deadline:
             try:
                 httpx.get(f"{self.api_url}/health", timeout=2).raise_for_status()
-                return
             except (httpx.TransportError, httpx.HTTPStatusError) as e:
                 last_error = e
                 time.sleep(1)
-        raise TimeoutError(
-            f"Prefect server not healthy after {_HEALTHCHECK_TIMEOUT}s"
-        ) from last_error
+            else:
+                return
+        raise TimeoutError(f"Prefect server not healthy after {_HEALTHCHECK_TIMEOUT}s") from last_error
 
     @property
     def api_url(self) -> str:
