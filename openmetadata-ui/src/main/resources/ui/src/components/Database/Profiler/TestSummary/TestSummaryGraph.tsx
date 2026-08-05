@@ -344,6 +344,8 @@ function TestSummaryGraph({
           }
           cursor={false}
           isAnimationActive={false}
+          // Recharts otherwise flips the tooltip after measuring its content,
+          // moving the incident link away from a pointer already over it.
           // ComposedChart replaces Tooltip.coordinate with the live pointer;
           // position keeps interactive content anchored to its triggering dot.
           position={activeTooltip?.position}
