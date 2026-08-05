@@ -410,3 +410,13 @@ Run `git status`, inspect the diff, and verify no `.env.local` or secret materia
 - [ ] **Step 4: Commit each independently reviewable capability**
 
 - [ ] **Step 5: Open/update the upstream PR only after the corresponding capability has passed all gates**
+
+## Execution log
+
+- Task 1 contract/matrix phase: complete in commits `b4424d92c2` and `bc49650097`.
+- Existing native job-history mapping phase: local and container tests complete in commit `a8600d9346`; the live gate is pending read access to `sys.information_schema.job_history`.
+- Focused local validation: `27 passed, 7 warnings` for the capability, usage, and ClickZetta connection tests.
+- OpenMetadata 1.13.0 container validation: `27 passed, 6 warnings` for the same focused suite.
+- Ruff check and format validation: passed for the new capability test.
+- ClickZetta schema JSON parse: passed.
+- No EC2 deployment, production data scan, or ClickZetta permission change was performed.
