@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +21,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
@@ -617,5 +621,71 @@ class OpenSearchVectorServiceTest {
     assertFalse(
         issuedBulk,
         "must not issue a chunk-delete bulk while the embedding provider is unavailable");
+  }
+
+  private static ContextMemory memoryWithVisibility(MemoryVisibility visibility) {
+    return new ContextMemory()
+        .withId(UUID.randomUUID())
+        .withName("memory")
+        .withTitle("SQL keyword casing preference")
+        .withDescription("keep SQL keywords upper case")
+        .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
+  }
+
+  /**
+   * A visibility flip leaves the body untouched, so the content fingerprint and docVersion both stay
+   * current — without the share-config fingerprint the write is skipped and the chunks keep stale
+   * privacy stamps, readable by the wrong callers. Asserting the chunk write is issued is what pins
+   * that staleness is detected at all.
+   *
+   * <p>That the restamp costs no embedding call is covered a layer down, by {@code
+   * VectorDocBuilderChunkTest#fromEntity_reuseOverloadDoesNotCallEmbeddingClient}: the reuse branch
+   * taken here is the same one the docVersion migration uses. It cannot be asserted from this test
+   * because the reuse path reads stored vectors through the typed {@code client.mget}, which this
+   * harness does not stub, so it falls back to a full re-embed.
+   */
+  @Test
+  void updateEntityEmbeddingChunks_writesChunksWhenOnlyVisibilityChanged() throws IOException {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    ContextMemory memory = memoryWithVisibility(MemoryVisibility.SHARED);
+    // Header agrees on content and docVersion, but carries a share-config fingerprint from a
+    // different visibility — exactly the state a Private -> Shared flip leaves behind.
+    mockOpenSearchResponse(
+        "{\"found\": true, \"_source\": {\"fingerprint\": \""
+            + VectorDocBuilder.computeFingerprintForEntity(memory)
+            + "\", \"chunkCount\": 1, \"docVersion\": "
+            + VectorDocBuilder.CHUNK_DOC_VERSION
+            + ", \"shareConfigFingerprint\": \"STALE_ACL_FP\"}}");
+
+    vectorService.updateEntityEmbeddingChunks(memory, "chunkIndex");
+
+    assertTrue(issuedBulkWrite(), "a stale share config must restamp the chunk docs");
+  }
+
+  private boolean issuedBulkWrite() throws IOException {
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    return captor.getAllValues().stream()
+        .anyMatch(r -> r.getEndpoint() != null && r.getEndpoint().contains("_bulk"));
+  }
+
+  @Test
+  void updateEntityEmbeddingChunks_skipsEntirelyWhenShareConfigIsCurrent() throws IOException {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    ContextMemory memory = memoryWithVisibility(MemoryVisibility.SHARED);
+    mockOpenSearchResponse(
+        "{\"found\": true, \"_source\": {\"fingerprint\": \""
+            + VectorDocBuilder.computeFingerprintForEntity(memory)
+            + "\", \"chunkCount\": 1, \"docVersion\": "
+            + VectorDocBuilder.CHUNK_DOC_VERSION
+            + ", \"shareConfigFingerprint\": \""
+            + VectorDocBuilder.computeShareConfigFingerprint(memory)
+            + "\"}}");
+
+    vectorService.updateEntityEmbeddingChunks(memory, "chunkIndex");
+
+    assertFalse(issuedBulkWrite(), "nothing is stale, so no chunk write may be issued");
+    verify(mockEmbeddingClient, never()).embed(any(String.class));
   }
 }

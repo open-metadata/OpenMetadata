@@ -19,6 +19,7 @@ import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Database;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
@@ -51,7 +53,7 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 2;
+  public static final int CHUNK_DOC_VERSION = 3;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -377,6 +379,12 @@ public class VectorDocBuilder {
     if (entity instanceof Metric metric) {
       addMetricFields(fields, metric);
     }
+    if (entity instanceof ContextMemory memory) {
+      // Reuses the entity-doc definition so both documents stamp identical values; see
+      // ContextMemoryIndex#shareConfigFields.
+      fields.putAll(ContextMemoryIndex.shareConfigFields(memory));
+      fields.put("shareConfigFingerprint", computeShareConfigFingerprint(memory));
+    }
     return fields;
   }
 
@@ -453,13 +461,23 @@ public class VectorDocBuilder {
     return result;
   }
 
+  /**
+   * Owners as {@code {name, id}}. The id is required because the context memory visibility filter
+   * matches an owner on nested {@code owners.id}, the same field the entity indices carry; name
+   * alone would make an owner unable to find their own restricted memory.
+   */
   private static List<Map<String, Object>> ownerNameObjects(EntityInterface entity) {
     List<Map<String, Object>> owners = new ArrayList<>();
     List<EntityReference> ownerRefs =
         entity.getOwners() != null ? entity.getOwners() : Collections.emptyList();
     for (EntityReference owner : ownerRefs) {
-      if (owner.getName() != null) {
-        owners.add(Map.of("name", owner.getName()));
+      Map<String, Object> ownerFields = new HashMap<>();
+      putIfPresent(ownerFields, "name", owner.getName());
+      if (owner.getId() != null) {
+        ownerFields.put("id", owner.getId().toString());
+      }
+      if (!ownerFields.isEmpty()) {
+        owners.add(ownerFields);
       }
     }
     return owners;
@@ -584,6 +602,35 @@ public class VectorDocBuilder {
     String metaLight = buildMetaLightText(entity, entityType);
     String body = buildBodyText(entity, entityType);
     return TextChunkManager.computeFingerprint(metaLight + "|" + body);
+  }
+
+  /**
+   * Fingerprint of the share-config fields the search-time privacy filter matches on. The content
+   * fingerprint covers text only, so flipping a memory's visibility without editing it would skip the
+   * chunk rewrite and leave stale visibility stamps on the chunk docs — reachable by the wrong
+   * callers. Sorted, so reordering {@code sharedWith} is not mistaken for a change and does not
+   * trigger a pointless rewrite.
+   *
+   * <p>Returns {@code null} for entity types that carry no share config; callers must treat null as
+   * "this type has no share config to go stale", never as "unchanged".
+   */
+  public static String computeShareConfigFingerprint(EntityInterface entity) {
+    String fingerprint = null;
+    if (entity instanceof ContextMemory memory) {
+      Map<String, Object> shareConfig = ContextMemoryIndex.shareConfigFields(memory);
+      List<String> sharedWithIds =
+          new ArrayList<>(castToStringList(shareConfig.get("sharedWithIds")));
+      Collections.sort(sharedWithIds);
+      fingerprint =
+          TextChunkManager.computeFingerprint(
+              shareConfig.get("visibility") + "|" + String.join(",", sharedWithIds));
+    }
+    return fingerprint;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<String> castToStringList(Object value) {
+    return value == null ? Collections.emptyList() : (List<String>) value;
   }
 
   static String buildMetaLightText(EntityInterface entity, String entityType) {

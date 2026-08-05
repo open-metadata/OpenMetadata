@@ -292,11 +292,14 @@ public class OpenSearchVectorService implements VectorIndexService {
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       boolean fingerprintChanged =
           header == null || !currentFingerprint.equals(header.fingerprint());
-      boolean chunksStale = fingerprintChanged || docVersionStale(header);
+      boolean chunksStale =
+          fingerprintChanged
+              || docVersionStale(header)
+              || shareConfigStale(header, VectorDocBuilder.computeShareConfigFingerprint(entity));
       if (entityDocStale || chunksStale) {
         // Reuse cached vectors only when nothing content-related changed and the chunks are stale
-        // purely by docVersion; any content change (entity doc or chunks) re-embeds for
-        // correctness.
+        // purely by docVersion or by a share-config flip; any content change (entity doc or chunks)
+        // re-embeds for correctness.
         List<Map<String, Object>> chunkDocs =
             (chunksStale && !fingerprintChanged && !entityDocStale)
                 ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
@@ -906,6 +909,9 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("embedding", embedding);
     // The three metric enums are mapped as real keywords, not source-only: they are cheap to index
     // and are the natural facets to filter a metric search on (granularity DAY vs MONTH).
+    // visibility/sharedWithIds/shareConfigFingerprint carry context memory privacy onto the chunk
+    // docs: the memory visibility filter is applied to every vector query, so a chunk that does not
+    // index these is either unfilterable or invisible to its own owner.
     for (String keyword :
         List.of(
             "parentId",
@@ -916,7 +922,10 @@ public class OpenSearchVectorService implements VectorIndexService {
             "metricType",
             "granularity",
             "unitOfMeasurement",
-            "customUnitOfMeasurement")) {
+            "customUnitOfMeasurement",
+            "visibility",
+            "sharedWithIds",
+            "shareConfigFingerprint")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -939,8 +948,9 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("domains", objectKeyword("name"));
     properties.set("tier", objectKeyword("tagFQN"));
     properties.set("certification", certificationMapping());
-    // owners is a `nested` type: NLQ owner filters run a nested query over owners.name.
-    properties.set("owners", nestedNameKeyword());
+    // owners is a `nested` type: NLQ owner filters run a nested query over owners.name, and the
+    // context memory visibility filter runs one over owners.id.
+    properties.set("owners", nestedOwnersMapping());
     properties.set("service", nameDisplayNameObject());
     properties.set("database", nameDisplayNameObject());
     // Map name+displayName like service/database: buildDenormalizedFields copies both onto the
@@ -981,16 +991,12 @@ public class OpenSearchVectorService implements VectorIndexService {
                     .set(field, MAPPER.createObjectNode().put("type", "keyword")));
   }
 
-  private ObjectNode nestedNameKeyword() {
+  private ObjectNode nestedOwnersMapping() {
+    var properties = MAPPER.createObjectNode();
+    properties.set("name", MAPPER.createObjectNode().put("type", "keyword"));
+    properties.set("id", MAPPER.createObjectNode().put("type", "keyword"));
     return (ObjectNode)
-        MAPPER
-            .createObjectNode()
-            .put("type", "nested")
-            .set(
-                "properties",
-                MAPPER
-                    .createObjectNode()
-                    .set("name", MAPPER.createObjectNode().put("type", "keyword")));
+        MAPPER.createObjectNode().put("type", "nested").set("properties", properties);
   }
 
   private ObjectNode nameDisplayNameObject() {
@@ -1030,15 +1036,19 @@ public class OpenSearchVectorService implements VectorIndexService {
       boolean fingerprintChanged =
           header == null || !currentFingerprint.equals(header.fingerprint());
       boolean docVersionStale = docVersionStale(header);
-      if (!fingerprintChanged && !docVersionStale) {
-        LOG.debug("Skipping chunk embedding for {} - fingerprint and docVersion current", parentId);
+      boolean stampsStale =
+          shareConfigStale(header, VectorDocBuilder.computeShareConfigFingerprint(entity));
+      if (!fingerprintChanged && !docVersionStale && !stampsStale) {
+        LOG.debug(
+            "Skipping chunk embedding for {} - fingerprint, docVersion and shareConfig current",
+            parentId);
         return;
       }
-      // docVersion-only staleness (content unchanged) reuses the stored vectors so a mapping
-      // upgrade
-      // backfills with zero embedding-provider cost; a content change re-embeds as before.
+      // Staleness with unchanged content — a docVersion bump or a visibility flip — reuses the
+      // stored vectors, so a mapping upgrade or a privacy change backfills with zero
+      // embedding-provider cost; a content change re-embeds as before.
       List<Map<String, Object>> chunkDocs =
-          (docVersionStale && !fingerprintChanged)
+          ((docVersionStale || stampsStale) && !fingerprintChanged)
               ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
               : VectorDocBuilder.fromEntity(entity, embeddingClient);
       replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
@@ -1134,7 +1144,8 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /** Header of an entity's chunk set, read from chunk 0. */
-  private record ChunkHeader(String fingerprint, int chunkCount, int docVersion) {}
+  private record ChunkHeader(
+      String fingerprint, int chunkCount, int docVersion, String shareConfigFingerprint) {}
 
   private static boolean docVersionStale(ChunkHeader header) {
     return header != null && header.docVersion() < VectorDocBuilder.CHUNK_DOC_VERSION;
@@ -1142,6 +1153,20 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private static int previousCount(ChunkHeader header) {
     return header == null ? 0 : header.chunkCount();
+  }
+
+  /**
+   * Whether the chunk docs' privacy stamps are out of date. The content fingerprint covers text
+   * only, so a visibility change with unchanged text is invisible to it — without this check the
+   * chunks keep stale {@code visibility}/{@code sharedWithIds} and become readable by the wrong
+   * callers. A null current fingerprint means the entity type carries no share config, so there is
+   * nothing to go stale.
+   */
+  private static boolean shareConfigStale(
+      ChunkHeader header, String currentShareConfigFingerprint) {
+    return currentShareConfigFingerprint != null
+        && (header == null
+            || !currentShareConfigFingerprint.equals(header.shareConfigFingerprint()));
   }
 
   /**
@@ -1160,7 +1185,7 @@ public class OpenSearchVectorService implements VectorIndexService {
                       + indexName
                       + "/_doc/"
                       + parentId
-                      + "_0?_source_includes=fingerprint,chunkCount,docVersion")
+                      + "_0?_source_includes=fingerprint,chunkCount,docVersion,shareConfigFingerprint")
               .method("GET")
               .build();
       try (var response = genericClient.execute(request)) {
@@ -1184,7 +1209,8 @@ public class OpenSearchVectorService implements VectorIndexService {
                 new ChunkHeader(
                     source.path("fingerprint").asText(null),
                     source.path("chunkCount").asInt(0),
-                    source.path("docVersion").asInt(0));
+                    source.path("docVersion").asInt(0),
+                    source.path("shareConfigFingerprint").asText(null));
           }
         }
       }

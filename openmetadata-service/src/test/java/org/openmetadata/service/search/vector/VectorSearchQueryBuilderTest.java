@@ -3,17 +3,60 @@ package org.openmetadata.service.search.vector;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class VectorSearchQueryBuilderTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  private static final UUID USER_ID = UUID.randomUUID();
+  private static final UUID TEAM_ID = UUID.randomUUID();
+
+  private static SubjectContext nonAdminSubject() {
+    User user =
+        new User()
+            .withId(USER_ID)
+            .withName("alice")
+            .withIsAdmin(false)
+            .withTeams(
+                List.of(
+                    new EntityReference()
+                        .withId(TEAM_ID)
+                        .withType(Entity.TEAM)
+                        .withName("analytics")));
+    return new SubjectContext(user, null);
+  }
+
+  private static SubjectContext adminSubject() {
+    return new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+  }
+
+  /**
+   * The memory visibility clause, or null when none was emitted. It lives in the KNN filter bool's
+   * sibling {@code filter} array rather than in {@code must}, because a security constraint must not
+   * contribute to the relevance score.
+   */
+  private static JsonNode memoryVisibilityClause(JsonNode query) {
+    JsonNode bool = query.path("knn").path("embedding").path("filter").path("bool");
+    if (bool.isMissingNode()) {
+      bool = query.path("knn").path("filter").path("bool");
+    }
+    JsonNode filter = bool.path("filter");
+    return filter.isArray() && !filter.isEmpty() ? filter.get(0) : null;
+  }
 
   @Test
   void testBuildsValidQueryWithNoFilters() throws Exception {
@@ -1019,5 +1062,57 @@ class VectorSearchQueryBuilderTest {
     assertEquals(1, osMust.size(), "Null filters should yield only the deleted=false clause");
     assertEquals(1, esMust.size(), "Null filters should yield only the deleted=false clause");
     assertEquals("{\"term\":{\"deleted\":false}}", osMust.get(0).toString());
+  }
+
+  /**
+   * The single most important test here: no integration test ever issues a vector query without a
+   * subject (every IT caller is authenticated), so this is the only guard that an anonymous or
+   * internal caller cannot reach a restricted memory.
+   */
+  @Test
+  void testAppliesFailClosedMemoryClauseWhenNoSubject() throws Exception {
+    String query = VectorSearchQueryBuilder.buildQuery(new float[] {0.1f, 0.2f}, 10, Map.of(), 0.0);
+
+    JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
+    assertNotNull(clause, "every vector query must carry a memory visibility clause");
+    String rendered = clause.toString();
+    assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()), "org-wide memories still match");
+    assertFalse(rendered.contains("owners.id"), "no subject means no owner branch");
+    assertFalse(rendered.contains("sharedWithIds"), "no subject means no shared branch");
+    assertFalse(
+        rendered.contains(MemoryVisibility.PRIVATE.value()),
+        "a Private memory must never be admitted by the fail-closed clause");
+  }
+
+  @Test
+  void testWidensMemoryClauseForResolvableSubject() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(
+            new float[] {0.1f}, 10, Map.of(), 0.0, nonAdminSubject());
+
+    String rendered = memoryVisibilityClause(MAPPER.readTree(query)).toString();
+    assertTrue(rendered.contains(USER_ID.toString()), "the owner branch must name the subject");
+    assertTrue(rendered.contains(TEAM_ID.toString()), "the shared branch must include their team");
+    assertTrue(rendered.contains(MemoryVisibility.SHARED.value()));
+    assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
+  }
+
+  @Test
+  void testOmitsMemoryClauseForAdminSubject() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(new float[] {0.1f}, 10, Map.of(), 0.0, adminSubject());
+
+    assertNull(memoryVisibilityClause(MAPPER.readTree(query)), "admins bypass memory visibility");
+  }
+
+  /** Elasticsearch is a separate public method; a miss here leaks on every ES deployment. */
+  @Test
+  void testNativeESQueryAlsoCarriesTheMemoryClause() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildNativeESQuery(new float[] {0.1f}, 5, 0, 5, Map.of());
+
+    JsonNode clause = memoryVisibilityClause(MAPPER.readTree(query));
+    assertNotNull(clause, "the ES query path must enforce memory visibility too");
+    assertTrue(clause.toString().contains(MemoryVisibility.ENTITY.value()));
   }
 }
