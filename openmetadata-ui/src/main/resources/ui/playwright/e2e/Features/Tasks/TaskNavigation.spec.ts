@@ -91,12 +91,14 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
     const feedWidget = page.getByTestId('KnowledgePanel.ActivityFeed');
 
     if (await feedWidget.isVisible()) {
-      // Look for task items in the feed
+      // Look for the feed item for the task's own entity, rather than
+      // relying on it being newest/first in a feed that may contain
+      // unrelated activity.
       const taskItem = feedWidget
         .locator(
           '[data-testid="task-feed-card"], [data-testid="message-container"]'
         )
-        .first();
+        .filter({ hasText: table.entity.name });
 
       if (await taskItem.isVisible()) {
         // Click on the task link
@@ -142,7 +144,7 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       const taskLink = taskCard.getByTestId('redirect-task-button-link');
@@ -263,6 +265,9 @@ test.describe('Task Navigation - Entity Page', () => {
       await waitForPageLoaded(page);
     }
 
+    // This describe seeds 3 tasks for the entity; any one of them
+    // exercises the "does clicking a task card open the drawer" behavior.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- any of the 3 seeded task cards works; which one opens is not the thing under test
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
     if (await taskCard.isVisible()) {
@@ -277,12 +282,6 @@ test.describe('Task Navigation - Entity Page', () => {
 
         // Should have task ID
         await expect(drawer.getByText(/TASK-/)).toBeVisible();
-
-        // Should have comments section
-        const commentsSection = drawer.locator(
-          '[data-testid="comments-section"], [data-testid="task-comments"]'
-        );
-        // Comments section might exist
       }
     }
   });
@@ -290,17 +289,9 @@ test.describe('Task Navigation - Entity Page', () => {
   test('task count badge should match actual task count', async ({ page }) => {
     await table.visitEntityPage(page);
 
-    // Get count from tab badge
     const activityFeedTab = page.getByRole('tab', {
       name: /activity feeds & tasks/i,
     });
-    const countBadge = activityFeedTab.getByTestId('count');
-
-    let displayedCount = 0;
-    if (await countBadge.isVisible()) {
-      const countText = await countBadge.textContent();
-      displayedCount = parseInt(countText || '0', 10);
-    }
 
     // Click on tab and go to tasks
     await activityFeedTab.click();
@@ -417,9 +408,9 @@ test.describe('Task Navigation - Notification Box', () => {
         await tasksTab.click();
         await waitForPageLoaded(page);
 
-        const taskLink = notificationBox
-          .locator('[data-testid^="notification-link-"]')
-          .first();
+        const taskLink = notificationBox.locator(
+          '[data-testid^="notification-link-"]'
+        );
 
         if (await taskLink.isVisible()) {
           await taskLink.click();
@@ -504,7 +495,7 @@ test.describe('Task Navigation - URL Validation', () => {
           assignees: [adminUser.responseData.name],
         },
       });
-      const task = await taskResponse.json();
+      await taskResponse.json();
 
       const page = await browser.newPage();
       await adminUser.login(page);
@@ -639,6 +630,11 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       const notificationBox = page.locator('.notification-box');
       await expect(notificationBox).toBeVisible();
 
+      // The notification dropdown is newest-first, and the test verifies
+      // that clicking the most recently created task's notification
+      // refreshes the task list - the "first" item is deliberately the
+      // subject under test, not an arbitrary pick.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- notification dropdown is newest-first; the latest (first) item is the one just created and is what the test asserts on
       const latestNotification = notificationBox
         .locator('li.ant-list-item.notification-dropdown-list-btn')
         .first();
@@ -740,6 +736,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         const notificationBox = userPage.locator('.notification-box');
         await expect(notificationBox).toBeVisible();
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- notification dropdown is newest-first; the latest (first) item is the one just created and is what the test asserts on
         const latestNotification = notificationBox
           .locator('li.ant-list-item.notification-dropdown-list-btn')
           .first();

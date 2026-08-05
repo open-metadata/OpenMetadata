@@ -347,7 +347,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -374,7 +374,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -399,7 +399,7 @@ test.describe('Task Permissions - UI Button Visibility', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -499,7 +499,7 @@ test.describe('Task Permissions - Team Assignment', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -522,7 +522,7 @@ test.describe('Task Permissions - Team Assignment', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -615,7 +615,7 @@ test.describe('Task Permissions - Task Creator', () => {
         assignees: [assigneeUser.responseData.name],
       },
     });
-    const task = await taskResponse.json();
+    await taskResponse.json();
     await afterAction();
 
     // Try to close as creator user (who did NOT create this task)
@@ -633,6 +633,11 @@ test.describe('Task Permissions - Task Creator', () => {
       await waitForPageLoaded(page);
     }
 
+    // The prior test in this describe may have left its own (now-closed)
+    // task on this entity; whichever card is open belongs to a non-creator
+    // assignee scenario either way, so the permission outcome checked below
+    // does not depend on which card this resolves to.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- outcome is identical regardless of which task card on this entity is picked; see comment above
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
     if (await taskCard.isVisible()) {

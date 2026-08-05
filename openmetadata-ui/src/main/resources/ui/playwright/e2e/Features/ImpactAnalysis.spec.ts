@@ -802,12 +802,12 @@ test.describe('Impact Analysis', () => {
     const lineageCardTable = page.getByTestId('lineage-card-table');
     await expect(lineageCardTable).toBeVisible();
 
-    // Find the first asset link in the table
+    // Find the topic asset's link in the table - any connected asset works
+    // for this hover test, so we target one by its known, unique test name
+    // instead of table position.
     const firstAssetLink = lineageCardTable
       .locator('tbody tr')
-      .first()
-      .locator('td')
-      .first()
+      .filter({ hasText: topic.entity.name })
       .getByRole('link');
 
     await expect(firstAssetLink).toBeVisible();
@@ -971,7 +971,7 @@ test.describe('Impact Analysis', () => {
     const rowsWithColumn = page.locator(
       `[data-row-key*="${columnName}"], tbody tr:has-text("${columnName}")`
     );
-    await expect(rowsWithColumn.first()).toBeVisible();
+    await expect(rowsWithColumn).not.toHaveCount(0);
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
@@ -1026,11 +1026,13 @@ test.describe('Impact Analysis', () => {
     });
     await waitForAllLoadersToDisappear(page);
 
-    const nodeDepthCells = page.locator('tbody tr td:nth-child(2)');
-    const firstDepthCell = nodeDepthCells.first();
+    const assetRow = page
+      .locator('tbody tr')
+      .filter({ hasText: table2.entity.name });
+    const depthCell = assetRow.locator('td:nth-child(2)');
 
-    await expect(firstDepthCell).toBeVisible();
-    const depthText = await firstDepthCell.textContent();
+    await expect(depthCell).toBeVisible();
+    const depthText = await depthCell.textContent();
     expect(depthText).toMatch(/^\d+$/);
   });
 
@@ -1051,7 +1053,7 @@ test.describe('Impact Analysis', () => {
       .getByTestId('drop-down-menu')
       .getByRole('menuitem');
     await expect(glossaryOptions).toHaveCount(1);
-    await glossaryOptions.first().click();
+    await glossaryOptions.click();
 
     const filterResponse = page.waitForResponse((response) => {
       if (!response.url().includes('/api/v1/lineage/getLineage/Downstream')) {
@@ -1083,10 +1085,12 @@ test.describe('Impact Analysis', () => {
       await expect(columnHeader).toBeVisible();
     }
 
-    const firstRow = page.locator('tbody tr').first();
-    await expect(firstRow).toBeVisible();
+    const assetRow = page
+      .locator('tbody tr')
+      .filter({ hasText: table2.entity.name });
+    await expect(assetRow).toBeVisible();
 
-    const nameCell = firstRow.locator('td').first();
+    const nameCell = assetRow.locator('td:nth-child(1)');
     await expect(nameCell.getByRole('link')).toBeVisible();
   });
 

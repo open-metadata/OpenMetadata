@@ -432,9 +432,9 @@ test.describe.serial('Task Custom Form Workflow', () => {
       await page.getByRole('menuitem', { name: /tasks/i }).click();
       await waitForAllLoadersToDisappear(page);
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
+        page.locator('[data-testid="task-feed-card"]')
       ).toBeVisible();
-      await page.locator('[data-testid="task-feed-card"]').first().click();
+      await page.locator('[data-testid="task-feed-card"]').click();
       await expect(page.getByTestId('task-tab')).toBeVisible();
       await expect(page.getByTestId('task-payload-details')).toContainText(
         proposedDescription
@@ -446,30 +446,33 @@ test.describe.serial('Task Custom Form Workflow', () => {
       const editAcceptDropdown = page.getByTestId('edit-accept-task-dropdown');
 
       if (await editAcceptDropdown.isVisible().catch(() => false)) {
+        // Ant Design's Dropdown.Button always renders exactly two buttons:
+        // the primary action, then the dropdown-trigger caret. .last() is
+        // the caret that opens the menu, not an arbitrary pick.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- Dropdown.Button's second (caret) button has no distinct testid; it is a fixed 2-button structure, not a list
         await editAcceptDropdown.locator('button').last().click();
         await page.getByTestId('task-action-menu-item-edit').click();
       } else {
-        const workflowActionButton = page
-          .locator(
-            '[data-testid="workflow-task-action-primary"], [data-testid="workflow-task-action-dropdown"]'
-          )
-          .first();
+        // The primary and dropdown variants are rendered by a mutually
+        // exclusive if/else in TaskTabNew.component.tsx - only one is ever
+        // present, so this OR-selector resolves to a single element.
+        const workflowActionButton = page.locator(
+          '[data-testid="workflow-task-action-primary"], [data-testid="workflow-task-action-dropdown"]'
+        );
         await expect(workflowActionButton).toBeVisible();
         await workflowActionButton.click();
       }
 
-      const visibleModal = page.getByRole('dialog').first();
+      const visibleModal = page.getByRole('dialog');
       await expect(visibleModal).toBeVisible();
       const proposedTextField = visibleModal
         .locator('.ant-form-item')
         .filter({ hasText: 'Proposed Text' })
-        .getByRole('textbox')
-        .first();
+        .getByRole('textbox');
       const reviewNotesField = visibleModal
         .locator('.ant-form-item')
         .filter({ hasText: 'Review Notes' })
-        .getByRole('textbox')
-        .first();
+        .getByRole('textbox');
 
       await proposedTextField.fill(updatedDescription);
       await reviewNotesField.fill(updatedReviewNotes);

@@ -105,8 +105,8 @@ test.describe('Task Creation - Request Description', () => {
     await taskResponse;
 
     // Verify task appears in activity feed
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    await expect(taskCard).toBeVisible({ timeout: 10000 });
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
+    await expect(taskCard).not.toHaveCount(0, { timeout: 10000 });
   });
 
   test('should create request description task for column', async ({
@@ -120,11 +120,12 @@ test.describe('Task Creation - Request Description', () => {
       await columnsTab.click();
     }
 
-    // Find column row and click request description within that row
+    // Find a specific, known column row (any column exercises this flow,
+    // so target it by name instead of table position) and click request
+    // description within that row
     const columnRow = page
       .locator('tr')
-      .filter({ has: page.locator('[data-testid="column-name"]') })
-      .first();
+      .filter({ hasText: tableWithOwner.entity.columns[0].name });
     await columnRow.hover();
 
     // Find the request description button within this specific column row
@@ -150,8 +151,8 @@ test.describe('Task Creation - Request Description', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]')
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -192,8 +193,8 @@ test.describe('Task Creation - Request Description', () => {
     await taskResponse;
 
     await expect(
-      page.locator('[data-testid="task-feed-card"]').first()
-    ).toBeVisible({
+      page.locator('[data-testid="task-feed-card"]')
+    ).not.toHaveCount(0, {
       timeout: 10000,
     });
   });
@@ -280,8 +281,8 @@ test.describe('Task Creation - Request Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]')
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }
@@ -357,8 +358,8 @@ test.describe('Task Creation - Suggest Description', () => {
       await taskResponse;
 
       // Verify task appears in activity feed
-      const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-      await expect(taskCard).toBeVisible({ timeout: 10000 });
+      const taskCard = page.locator('[data-testid="task-feed-card"]');
+      await expect(taskCard).not.toHaveCount(0, { timeout: 10000 });
     }
   });
 });
@@ -427,7 +428,7 @@ test.describe('Task Creation - Suggest Tags', () => {
         await tagsInput.pressSequentially('PII');
 
         // Select from dropdown
-        const tagOption = page.getByTestId('tag-PII.Sensitive').first();
+        const tagOption = page.getByTestId('tag-PII.Sensitive');
         await expect(tagOption).toBeVisible();
         await tagOption.click();
 
@@ -442,8 +443,8 @@ test.describe('Task Creation - Suggest Tags', () => {
       await taskResponse;
 
       await expect(
-        page.locator('[data-testid="task-feed-card"]').first()
-      ).toBeVisible({
+        page.locator('[data-testid="task-feed-card"]')
+      ).not.toHaveCount(0, {
         timeout: 10000,
       });
     }

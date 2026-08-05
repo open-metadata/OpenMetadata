@@ -121,47 +121,14 @@
       "count": 1
     }
   },
-  "playwright/e2e/Features/EntityRenameConsolidation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts": {
     "playwright/no-skipped-test": {
       "count": 1
     }
   },
-  "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    }
-  },
   "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 12
-    },
     "playwright/no-wait-for-selector": {
       "count": 11
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 9
-    }
-  },
-  "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/ImpactAnalysis.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
     }
   },
   "playwright/e2e/Features/IncidentManager.spec.ts": {
@@ -212,11 +179,6 @@
       "count": 3
     }
   },
-  "playwright/e2e/Features/Pagination.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
   "playwright/e2e/Features/PersonaAIContext.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 1
@@ -225,16 +187,6 @@
   "playwright/e2e/Features/SSOConfiguration.spec.ts": {
     "om-playwright/no-positional-locator": {
       "count": 31
-    }
-  },
-  "playwright/e2e/Features/SettingsNavigationPage.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 8
-    }
-  },
-  "playwright/e2e/Features/Table.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 10
     }
   },
   "playwright/e2e/Features/TagsSuggestion.spec.ts": {
@@ -252,29 +204,9 @@
       "count": 24
     }
   },
-  "playwright/e2e/Features/Tasks/TaskCreation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 8
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 7
-    }
-  },
   "playwright/e2e/Features/Tasks/TaskDashboardEntity.spec.ts": {
     "playwright/no-wait-for-selector": {
       "count": 1
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
-    }
-  },
-  "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 6
     }
   },
   "playwright/e2e/Features/TeamsHierarchy.spec.ts": {
