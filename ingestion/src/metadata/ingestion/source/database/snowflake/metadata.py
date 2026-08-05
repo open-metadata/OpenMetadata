@@ -1226,13 +1226,16 @@ class SnowflakeSource(
             reference = EntityReference(id=entity.id.root, type="table")  # pyright: ignore[reportCallIssue]
         return reference
 
-    def yield_semantic_view_metrics(self, table_name_and_type) -> Iterable[Either[CreateMetricRequest]]:
+    def yield_semantic_view_metrics(
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+    ) -> Iterable[Either[CreateMetricRequest]]:
         """Yield one Metric entity per Snowflake metric on a semantic view."""
-        if table_name_and_type.type_ == TableType.SemanticView:
+        view, table_type = table_name_and_type
+        if table_type == TableType.SemanticView:
             service = self.context.get().database_service  # pyright: ignore[reportAttributeAccessIssue]
             database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
             schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
-            view = table_name_and_type.name
             try:
                 dimension_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS, schema, view)
                 fact_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS, schema, view)

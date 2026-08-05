@@ -10,13 +10,14 @@
 #  limitations under the License.
 """Unit tests for the Snowflake semantic-view metric builders."""
 
+import inspect
 from unittest.mock import MagicMock
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Language, MetricType
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.common_db_source import TableNameAndType
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     build_metric_name,
     build_metric_request,
@@ -129,9 +130,7 @@ def test_yield_semantic_view_metrics_yields_one_per_metric():
     source = _make_source()
     source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
 
-    results = list(
-        source.yield_semantic_view_metrics(TableNameAndType(name="sales_analysis", type_=TableType.SemanticView))
-    )
+    results = list(source.yield_semantic_view_metrics(("sales_analysis", TableType.SemanticView)))
     requests = [r.right for r in results if r.right is not None]
     assert len(requests) == 2
     names = {r.displayName for r in requests}
@@ -144,7 +143,7 @@ def test_yield_semantic_view_metrics_yields_one_per_metric():
 
 def test_yield_semantic_view_metrics_skips_non_semantic_tables():
     source = _make_source()
-    results = list(source.yield_semantic_view_metrics(TableNameAndType(name="regular_table", type_=TableType.Regular)))
+    results = list(source.yield_semantic_view_metrics(("regular_table", TableType.Regular)))
     assert results == []
     source.connection.execute.assert_not_called()
 
@@ -152,10 +151,28 @@ def test_yield_semantic_view_metrics_skips_non_semantic_tables():
 def test_yield_semantic_view_metrics_warns_and_continues_on_error():
     source = _make_source()
     source.connection.execute.side_effect = Exception("boom")
-    results = list(
-        source.yield_semantic_view_metrics(TableNameAndType(name="sales_analysis", type_=TableType.SemanticView))
-    )
+    results = list(source.yield_semantic_view_metrics(("sales_analysis", TableType.SemanticView)))
     assert results == []
+
+
+def test_metric_stage_consumes_the_producer_tuple_contract():
+    """The ``table`` node's producer (``get_tables_name_and_type``) yields plain
+    ``(table_name, table_type)`` tuples -- not ``TableNameAndType`` objects. The
+    metric stage must unpack that shape, exactly like the sibling ``yield_table``
+    stage does, or every table errors with "'tuple' object has no attribute 'type_'".
+    """
+    source_line = inspect.getsource(CommonDbSourceService.get_tables_name_and_type)
+    assert "yield table_name, table_and_type.type_" in source_line
+
+    source = _make_source()
+    source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
+
+    produced_entity = ("sales_analysis", TableType.SemanticView)
+    results = list(source.yield_semantic_view_metrics(produced_entity))
+    assert [r.right.displayName for r in results if r.right is not None] == [
+        "total_revenue",
+        "order_count",
+    ]
 
 
 def test_snowflake_topology_does_not_leak_into_base_topology():
