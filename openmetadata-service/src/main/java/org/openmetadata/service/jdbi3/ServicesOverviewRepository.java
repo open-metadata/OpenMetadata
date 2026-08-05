@@ -70,10 +70,14 @@ public class ServicesOverviewRepository {
     Map<String, Integer> counts = sumInner(byConnector);
     assertHealthFilterIsSatisfiable(counts, r);
     boolean universeResolvable = isUniverseResolvable(counts, r);
-    Map<UUID, ServiceHealth> universeHealth =
-        universeHealth(securityContext, r, universeResolvable);
-    Map<String, Map<String, Integer>> byHealth =
-        countsByHealth(securityContext, r, universeHealth, universeResolvable);
+    // Scanned once and threaded through: both the health tally and the per-service health map are
+    // derived from the same universe-wide key scan, and that scan is one index read per service
+    // entity type. Deriving them independently ran it twice on every request that asks for health
+    // — which the Connections page does on every load.
+    Map<String, List<TypedKey>> universeKeys =
+        r.includeHealth() && universeResolvable ? universeKeys(securityContext, r) : Map.of();
+    Map<UUID, ServiceHealth> universeHealth = universeHealth(universeKeys);
+    Map<String, Map<String, Integer>> byHealth = countsByHealth(universeKeys, universeHealth);
     List<TypedKey> keys = listKeys(securityContext, r);
     List<TypedKey> page = slice(keys, r.offset(), r.limit());
     List<ServiceSummary> data = hydrate(page, pageHealth(r, page, universeHealth), r);
@@ -119,15 +123,10 @@ public class ServicesOverviewRepository {
    * these numbers drive filter controls where a silently wrong count is worse than an absent one.
    */
   private Map<String, Map<String, Integer>> countsByHealth(
-      SecurityContext securityContext,
-      ServicesOverviewRequest r,
-      Map<UUID, ServiceHealth> health,
-      boolean universeResolvable) {
+      Map<String, List<TypedKey>> universeKeys, Map<UUID, ServiceHealth> health) {
     Map<String, Map<String, Integer>> result = new LinkedHashMap<>();
-    if (r.includeHealth() && universeResolvable) {
-      for (Map.Entry<String, List<TypedKey>> entry : universeKeys(securityContext, r).entrySet()) {
-        result.put(entry.getKey(), tallyHealth(entry.getValue(), health));
-      }
+    for (Map.Entry<String, List<TypedKey>> entry : universeKeys.entrySet()) {
+      result.put(entry.getKey(), tallyHealth(entry.getValue(), health));
     }
     return result;
   }
@@ -189,15 +188,11 @@ public class ServicesOverviewRepository {
   }
 
   /** Health for every service in the universe — needed only by the tally and the health filter. */
-  private Map<UUID, ServiceHealth> universeHealth(
-      SecurityContext securityContext, ServicesOverviewRequest r, boolean universeResolvable) {
+  private Map<UUID, ServiceHealth> universeHealth(Map<String, List<TypedKey>> universeKeys) {
     Map<UUID, ServiceHealth> health = Map.of();
-    if (r.includeHealth() && universeResolvable) {
+    if (!universeKeys.isEmpty()) {
       List<UUID> ids =
-          universeKeys(securityContext, r).values().stream()
-              .flatMap(List::stream)
-              .map(TypedKey::id)
-              .toList();
+          universeKeys.values().stream().flatMap(List::stream).map(TypedKey::id).toList();
       health = healthProvider.healthByServiceId(ids);
     }
     return health;

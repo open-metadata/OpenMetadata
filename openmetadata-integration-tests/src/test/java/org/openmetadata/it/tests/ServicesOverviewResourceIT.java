@@ -63,7 +63,10 @@ public class ServicesOverviewResourceIT {
   private static final String DASHBOARD_SERVICE = "dashboardService";
 
   private JsonNode overview(String query) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
+    return overviewAs(SdkClients.adminClient(), query);
+  }
+
+  private JsonNode overviewAs(OpenMetadataClient client, String query) throws Exception {
     String json =
         client
             .getHttpClient()
@@ -471,6 +474,30 @@ public class ServicesOverviewResourceIT {
     // unmatched domain predicate would answer "show me this domain" with the entire estate.
     assertThrows(
         Exception.class, () -> overview("limit=1000&domain=" + ns.prefix("no-such-domain")));
+  }
+
+  /**
+   * The endpoint evaluates VIEW_BASIC per service entity type and drops the ones the caller cannot
+   * see, so a non-admin has to still get a coherent answer rather than an empty one or a 403. The
+   * per-type loop is the piece that regressed once already, by consulting the policy evaluator
+   * directly instead of the injected authorizer.
+   */
+  @Test
+  void aNonAdminSeesTheServiceTypesTheyArePermitted(TestNamespace ns) throws Exception {
+    postgres(ns, "authz-postgres");
+
+    JsonNode asConsumer =
+        overviewAs(SdkClients.dataConsumerClient(), "limit=500&excludeProvider=system");
+
+    JsonNode counts = asConsumer.get("counts");
+    assertTrue(counts.has(DATABASE_SERVICE), "a data consumer should still see database services");
+    assertTrue(
+        counts.get(DATABASE_SERVICE).asInt() > 0,
+        "the service just created should be counted for a permitted caller");
+    assertEquals(
+        sumOf(counts),
+        asConsumer.get("total").asInt(),
+        "total must stay consistent with the authorized counts");
   }
 
   @Test
