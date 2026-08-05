@@ -37,7 +37,8 @@ from metadata.utils import fqn
 
 # Column layout of INFORMATION_SCHEMA.SEMANTIC_{DIMENSIONS,FACTS,METRICS}:
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
-SEMANTIC_LOGICAL_TABLE_IDX = 0
+# TABLE_NAME (index 0) is unused: the owning logical table is already named by the
+# expression (e.g. `customers.c_region`), so repeating it in the description is noise.
 SEMANTIC_NAME_IDX = 1
 SEMANTIC_DATA_TYPE_IDX = 2
 SEMANTIC_EXPRESSION_IDX = 3
@@ -110,14 +111,11 @@ def infer_metric_type(expression: Optional[str]) -> MetricType:  # noqa: UP045
 
 
 def _semantic_description(row) -> Optional[str]:  # noqa: UP045
-    """Description for a dimension/measure: the Snowflake ``COMMENT`` plus the
-    semantic detail that is deliberately kept off the view's columns — the owning
-    logical table and any synonyms."""
+    """Description for a dimension/measure: the Snowflake ``COMMENT``, plus any
+    synonyms, which have nowhere else to land."""
     parts = []
     if row[SEMANTIC_COMMENT_IDX]:
         parts.append(str(row[SEMANTIC_COMMENT_IDX]))
-    if row[SEMANTIC_LOGICAL_TABLE_IDX]:
-        parts.append(f"Logical table: {row[SEMANTIC_LOGICAL_TABLE_IDX]}.")
     if row[SEMANTIC_SYNONYMS_IDX]:
         parts.append(f"Synonyms: {row[SEMANTIC_SYNONYMS_IDX]}.")
     return " ".join(parts) or None
