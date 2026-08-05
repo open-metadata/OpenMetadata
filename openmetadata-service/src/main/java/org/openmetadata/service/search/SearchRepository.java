@@ -477,6 +477,27 @@ public class SearchRepository {
   private static final List<String> DIRECTORY_DESCENDANT_TYPES =
       List.of(Entity.DIRECTORY, Entity.FILE, Entity.SPREADSHEET, Entity.WORKSHEET);
 
+  /**
+   * Indices that exist in the mapping but that no reindex source repopulates.
+   *
+   * <p>{@code pipelineStatus} holds two kinds of document: {@code pipelineStatus} records, and the
+   * {@code pipelineExecution} documents {@code PipelineRepository.indexPipelineExecutionInES} writes
+   * under a composite doc id to back the Metrics, Runtime Trend and Execution Trend APIs. Neither
+   * entity type is in {@code SearchIndexEntityTypes.TIME_SERIES_ENTITIES}, so a reindex has nothing
+   * to rebuild them from — only re-ingestion restores them.
+   *
+   * <p>This is why it matters here and not in the application path: {@link #createIndexes()}
+   * recreates every index in the mapping, so it empties this one, while the application recreates
+   * only the entity types it is about to rebuild. Naming the loss is all this does — deciding whether
+   * pipeline execution analytics <i>should</i> be reindexable (which needs a source that walks
+   * pipelines against their status history) is a product call, not something to infer here.
+   *
+   * <p>The mapping key is spelled out rather than taken from a constant on purpose: {@code
+   * pipelineStatus} is an index key, not a registered entity type, so no {@code Entity} constant
+   * describes it ({@code Entity.FIELD_PIPELINE_STATUS} is the entity <i>field</i> of the same name).
+   */
+  private static final List<String> INDICES_WITHOUT_REINDEX_SOURCE = List.of("pipelineStatus");
+
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   /**
@@ -625,12 +646,17 @@ public class SearchRepository {
    * serving traffic while this runs keeps writing through the canonical alias into the index that
    * promotion then deletes, and those edits are lost. Reindex from the application when the
    * deployment is live.
+   *
+   * <p>It also recreates <i>every</i> index in the mapping, including ones no reindex source
+   * repopulates — the application path recreates only the entity types it is about to rebuild. Those
+   * indices come back empty. See {@link #INDICES_WITHOUT_REINDEX_SOURCE}.
    */
   public void createIndexes() {
     LOG.warn(
         "CLI reindex: staged indices are not published to other processes. Entity changes written "
             + "by a running server during this reindex will be discarded at promotion. Use the "
             + "SearchIndexingApplication to reindex a live deployment.");
+    warnAboutIndicesWithNoReindexSource();
     RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
     ReindexContext context = recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
     if (context != null) {
@@ -3527,6 +3553,19 @@ public class SearchRepository {
   public void deleteEntityByFQNPrefix(EntityInterface entity) {
     if (entity != null) {
       deleteDescendantsByFQNPrefix(entity, List.of(entity.getEntityReference().getType()));
+    }
+  }
+
+  /** Names the indices this run will empty without being able to refill them. */
+  private void warnAboutIndicesWithNoReindexSource() {
+    List<String> affected =
+        INDICES_WITHOUT_REINDEX_SOURCE.stream().filter(entityIndexMap::containsKey).toList();
+    if (!affected.isEmpty()) {
+      LOG.warn(
+          "CLI reindex: {} will be recreated empty — no reindex source repopulates them, so the "
+              + "documents they hold (including the pipelineExecution records behind the pipeline "
+              + "Metrics / Runtime Trend / Execution Trend APIs) are lost until re-ingestion.",
+          affected);
     }
   }
 

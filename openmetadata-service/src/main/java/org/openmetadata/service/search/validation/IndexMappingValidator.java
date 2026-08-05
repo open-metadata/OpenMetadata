@@ -62,7 +62,12 @@ public final class IndexMappingValidator {
           "directory->worksheet",
           "SearchRepository.deleteOrUpdateChildren sweeps the whole drive subtree by FQN prefix; a"
               + " worksheet document carries only 'spreadsheet', so no id-keyed query rooted at a"
-              + " directory could reach it at any depth");
+              + " directory could reach it at any depth",
+          "mcpService->mcpExecution",
+          "McpExecutionRepository does not set descendantsCoveredByAncestorCascade, so the"
+              + " per-entity delete still runs for each execution and nothing is orphaned. Revisit"
+              + " if that flag is ever set there: an mcpExecution document carries 'server' /"
+              + " 'serverId' and never 'mcpService', so the ancestor cascade could not take over");
 
   private IndexMappingValidator() {}
 

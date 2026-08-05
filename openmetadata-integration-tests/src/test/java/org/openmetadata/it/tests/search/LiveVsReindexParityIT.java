@@ -116,12 +116,15 @@ class LiveVsReindexParityIT {
                   + "a computed date that a live build has no way to reproduce"),
           Map.entry(
               "*:votes",
-              "reindex writes {upVotes:0,downVotes:0}, live omits the field. NEEDS A DECISION, not "
-                  + "a patch: PopulateCommonFieldsTest.testVotes_nullVotes explicitly asserts the "
-                  + "live behaviour (no votes key when votes is null), so converging on the reindex "
-                  + "side contradicts a deliberate contract; converging on the live side means a "
-                  + "live update can no longer clear a vote count back to zero. Surfaces only on an "
-                  + "entity never updated after creation — the update path does hydrate votes"));
+              "HYDRATION, not doc semantics: SearchIndex.populateCommonFields already omits votes "
+                  + "when entity.getVotes() is null, and both paths run it. The paths disagree "
+                  + "because reindex hydrates from the explicit getReindexFieldsFor() set (votes "
+                  + "present, defaulting to {0,0}) while live builds from whatever the request "
+                  + "happened to fetch (votes null on a create). Surfaces only on an entity never "
+                  + "updated after creation. Do not patch the projector — defaulting votes there "
+                  + "would contradict PopulateCommonFieldsTest.testVotes_nullVotes, and forcing the "
+                  + "live side to hydrate everything is what ProjectionSpec.alwaysProjected is for. "
+                  + "This entry should be deleted by the phase 3 projector work, not before"));
 
   // tableWithLineage:lineageSqlQueries and tableWithLineage:upstreamLineage used to live here
   // (catalogued divergence #8). They were removed when LineageIndex.applyLineageFields was fixed to

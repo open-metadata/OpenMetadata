@@ -127,6 +127,41 @@ Each row is a place where live and reindex provably disagree. **Each is also a r
 
 ---
 
+## 2a. Catalogue status (updated 2026-08-04)
+
+Worked through on `mohit/unified-indexing-architecture-279acd`. This section is the record of what
+actually happened to each finding, because several turned out to differ from the audit's framing.
+
+| # | Status | Note |
+|---|---|---|
+| 1 | fixed | `StagedIndexRouting` publishes staged indices cluster-wide via `search_index_job`. The CLI path still cannot, and now warns. |
+| 2 | fixed | `STALE_GUARDED_UPDATE_SCRIPT`; the retry worker writes through it. |
+| 3 | fixed | The upsert preserves the claim while a row is `IN_PROGRESS`. One narrow window remains, marked in the javadoc. |
+| 4, 6 | fixed | Parent-table tags and tier reach column documents on rebuild. |
+| 5 | not reachable | A pure table rename records no `columns.*` change, but no table rename/move endpoint exists. Documented at `hasColumnsChanged`; handle column identity when one is added. |
+| 7 | fixed | `reindexNestedTerms` rebuilds descendant term documents on an FQN move. |
+| 8 | fixed | Lineage SQL dedup survives a rebuild; its `KNOWN_DIVERGENCES` entries are gone, which is the regression test. |
+| 9 | **left open, deliberately** | Not a divergence but a missing source: neither `pipelineStatus` nor the `pipelineExecution` documents sharing that index are in `TIME_SERIES_ENTITIES`. The application path only recreates what it rebuilds, so the exposure is the CLI path, which recreates every index and empties this one. `createIndexes()` now names the loss. Building a source that walks pipelines against their status history is a feature, and whether these analytics *should* be reindexable rather than re-ingested is a product call. |
+| 10 | fixed (directory), acknowledged (mcp) | `directory` → `worksheet` is swept by FQN prefix — adding the alias would have been a no-op, since worksheet documents carry only `spreadsheet`. `mcpService` → `mcpExecution` leaks nothing today because `McpExecutionRepository` does not set `descendantsCoveredByAncestorCascade`. |
+| 11, 12 | fixed | Descendant column soft-delete cascade; synthetic `EntityIndexCapability` for `tableColumn`. |
+| 13 | deleted | 225 lines across six files, not the single stray method the audit implied. No caller in Collate either. |
+| 14 | fixed | CSV import queues the batch for retry instead of clearing it after a log that promised a retry it never performed. |
+
+**On `votes`.** The audit and the tolerated-divergence note both read this as a semantic disagreement
+needing a product decision. It is not: `SearchIndex.populateCommonFields` already omits `votes` when
+`entity.getVotes()` is null, and **both paths run it**. They differ because reindex hydrates from the
+explicit `getReindexFieldsFor()` set while live builds from whatever the request fetched — the
+hydration row of the §1 table. It is therefore resolved by `ProjectionSpec.alwaysProjected` in phase
+3, and patching the projector now would contradict `PopulateCommonFieldsTest.testVotes_nullVotes`.
+`descriptionSources` and `usageSummary` remain tolerated on the same reasoning.
+
+**On the validator.** Its transitive check flagged five gaps, four of them covered by a dedicated
+cascade. All five are now acknowledged with the covering mechanism named, so the real mapping warns
+zero times and a genuinely new gap is visible again. Suppression without a named mechanism is how a
+check like this becomes noise nobody reads.
+
+---
+
 ## 3. Goals
 
 1. One definition of a search document; a field is derived in exactly one place.

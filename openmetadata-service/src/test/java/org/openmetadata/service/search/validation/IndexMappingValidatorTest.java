@@ -74,25 +74,28 @@ class IndexMappingValidatorTest {
   }
 
   /**
-   * The real shape of the gap in {@code indexMapping.json}: {@code mcpService} lists {@code
-   * mcpServer} but not {@code mcpExecution}, so a cascade over {@code mcpService}'s childAliases
-   * never reaches the execution documents under its servers.
+   * A grandparent that lists its child but not its grandchild, so a cascade resolved from the
+   * grandparent's {@code childAliases} never reaches the grandchild's documents.
+   *
+   * <p>Deliberately a synthetic hierarchy rather than a real pair from {@code indexMapping.json}:
+   * every real gap is a candidate for {@code ACKNOWLEDGED_TRANSITIVE_GAPS}, and a test keyed on one
+   * flips from testing the mechanism to testing the allowlist the moment that pair is acknowledged.
    */
   @Test
   void flagsChildAliasesThatAreNotTransitivelyClosed() {
-    registerEntities("mcpService", "mcpServer", "mcpExecution");
+    registerEntities("grandparentType", "childType", "grandchildType");
 
     Map<String, IndexMapping> mappings =
         Map.of(
-            "mcpService", mappingWithChildren("mcpService", List.of("mcpServer")),
-            "mcpServer", mappingWithChildren("mcpServer", List.of("mcpExecution")),
-            "mcpExecution", mappingWithChildren("mcpExecution", List.of()));
+            "grandparentType", mappingWithChildren("grandparentType", List.of("childType")),
+            "childType", mappingWithChildren("childType", List.of("grandchildType")),
+            "grandchildType", mappingWithChildren("grandchildType", List.of()));
 
     List<String> warnings = IndexMappingValidator.validate(mappings);
 
     assertEquals(1, warnings.size());
     assertTrue(
-        warnings.get(0).contains("mcpService") && warnings.get(0).contains("mcpExecution"),
+        warnings.get(0).contains("grandparentType") && warnings.get(0).contains("grandchildType"),
         () -> "warning should name the parent and the unreachable descendant; got: " + warnings);
   }
 
