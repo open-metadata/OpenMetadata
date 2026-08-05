@@ -267,7 +267,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await percentageOfDataAssetWithDescriptionResponse;
 
     const kpiResponse = page.waitForResponse(
-      'api/v1/kpi?fields=dataInsightChart'
+      (response) =>
+        response.url().includes('/api/v1/kpi') &&
+        response.url().includes('fields=dataInsightChart')
     );
 
     // Pass false to skip waiting for network idle, allowing us to catch the KPI API response
