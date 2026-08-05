@@ -13,7 +13,7 @@
 
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { CORE_NS, initCoreI18n, loadCoreLocale } from '../src/locale';
+import { CORE_NS, initCoreI18n } from '../src/locale';
 
 void i18n.use(initReactI18next).init({
   fallbackLng: 'en-US',
@@ -23,10 +23,8 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+// `initCoreI18n` eagerly registers every supported language, so no
+// `languageChanged` lazy-load handler is needed here.
 initCoreI18n(i18n);
-
-i18n.on('languageChanged', (lng) => {
-  void loadCoreLocale(i18n, lng);
-});
 
 export default i18n;

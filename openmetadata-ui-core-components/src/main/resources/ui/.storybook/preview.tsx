@@ -29,6 +29,39 @@ type ThemeMode = 'light' | 'dark' | 'both';
 
 const RTL_LOCALES = new Set(['ar-SA', 'he-HE', 'pr-PR']);
 
+// Wrap the useEffect + JSX in a real component so the hook lives inside a
+// standard React render, not directly in the decorator function body.
+// Storybook decorators are plain functions that may be called outside React's
+// render path, so calling `useEffect` directly there risks "Invalid hook call".
+const StoryWithLocale = ({
+  Story,
+  theme,
+  dir,
+  locale,
+}: {
+  Story: StoryFn;
+  theme: ThemeMode;
+  dir: 'ltr' | 'rtl';
+  locale: string;
+}) => {
+  useEffect(() => {
+    if (i18n.language !== locale) {
+      void i18n.changeLanguage(locale);
+    }
+  }, [locale]);
+
+  if (theme === 'both') {
+    return (
+      <div className="tw:grid tw:grid-cols-1 tw:gap-4">
+        {renderInTheme(Story, 'light', dir)}
+        {renderInTheme(Story, 'dark', dir)}
+      </div>
+    );
+  }
+
+  return renderInTheme(Story, theme, dir);
+};
+
 const renderInTheme = (
   Story: StoryFn,
   mode: 'light' | 'dark',
@@ -92,22 +125,14 @@ const preview: Preview = {
       const locale = ctx.globals.locale as string;
       const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
 
-      useEffect(() => {
-        if (i18n.language !== locale) {
-          void i18n.changeLanguage(locale);
-        }
-      }, [locale]);
-
       return (
         <I18nextProvider i18n={i18n}>
-          {theme === 'both' ? (
-            <div className="tw:grid tw:grid-cols-1 tw:gap-4">
-              {renderInTheme(Story, 'light', dir)}
-              {renderInTheme(Story, 'dark', dir)}
-            </div>
-          ) : (
-            renderInTheme(Story, theme, dir)
-          )}
+          <StoryWithLocale
+            Story={Story}
+            dir={dir}
+            locale={locale}
+            theme={theme}
+          />
         </I18nextProvider>
       );
     },

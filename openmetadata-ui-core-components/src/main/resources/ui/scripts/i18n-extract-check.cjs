@@ -42,24 +42,26 @@ function* walk(dir) {
 
 // -- Extract t('...') keys via regex. Dynamic keys (variables) are ignored;
 //    add an ESLint rule later if we want to ban them.
-//    Matches: t('literal'), t("literal"), t(`literal`)  — accepts single arg or arg + trailing comma
-const T_CALL = /\bt\s*\(\s*(['"`])((?:core:)?[a-zA-Z0-9_.\-]+)\1/g;
+//    Matches: t('literal'), t("literal"), t(`literal`) — with the opening
+//    paren, quote, and key possibly split across lines (Prettier's default
+//    for long calls). `\s` covers all whitespace including newlines. `s`
+//    (dotall) flag lets us tolerate anything between `t(` and the string.
+const T_CALL = /\bt\s*\(\s*(['"`])((?:core:)?[a-zA-Z0-9_.\-]+)\1/gs;
 
 const usedKeys = new Map();  // key -> [file:line]
 
 for (const file of walk(SRC)) {
   const rel = path.relative(ROOT, file);
   const text = fs.readFileSync(file, 'utf8');
-  const lines = text.split('\n');
-  lines.forEach((line, idx) => {
-    let m;
-    T_CALL.lastIndex = 0;
-    while ((m = T_CALL.exec(line)) !== null) {
-      const key = m[2].startsWith('core:') ? m[2].slice(5) : m[2];
-      if (!usedKeys.has(key)) usedKeys.set(key, []);
-      usedKeys.get(key).push(`${rel}:${idx + 1}`);
-    }
-  });
+  let m;
+  T_CALL.lastIndex = 0;
+  while ((m = T_CALL.exec(text)) !== null) {
+    const key = m[2].startsWith('core:') ? m[2].slice(5) : m[2];
+    // Convert byte offset to 1-indexed line number.
+    const line = text.slice(0, m.index).split('\n').length;
+    if (!usedKeys.has(key)) usedKeys.set(key, []);
+    usedKeys.get(key).push(`${rel}:${line}`);
+  }
 }
 
 // -- Load en-us.json and flatten to a Set of dotted keys
