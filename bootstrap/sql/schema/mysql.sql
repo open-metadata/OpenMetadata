@@ -312,7 +312,7 @@ DROP TABLE IF EXISTS `entity_extension`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `entity_extension` (
   `id` varchar(36) NOT NULL,
-  `extension` varchar(256) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `extension` varchar(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `jsonSchema` varchar(256) NOT NULL,
   `json` json NOT NULL,
   PRIMARY KEY (`id`,`extension`)
