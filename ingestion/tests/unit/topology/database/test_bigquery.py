@@ -63,6 +63,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
+from metadata.utils.lru_cache import LRUCache
 
 mock_bq_config = {
     "source": {
@@ -988,6 +989,17 @@ class TestBigqueryRegionAwareQueries:
         assert "creation_time as created_at" in query
 
 
+class _EvictedOnReadCache(LRUCache):
+    """An LRUCache whose entries vanish between the lookup and the read.
+
+    Stands in for another ingestion thread evicting the key in that window, which is not
+    reproducible deterministically with real threads.
+    """
+
+    def get(self, key):
+        raise KeyError(key)
+
+
 class TestBigqueryPerSchemaCaching:
     """
     The dataset/table object caches must be keyed per schema.
@@ -1110,3 +1122,27 @@ class TestBigqueryPerSchemaCaching:
         descriptions = {schema: self.bq_source.get_schema_description(schema) for schema in schemas}
 
         assert descriptions == {schema: self.DATASETS[schema][0] for schema in schemas}
+
+    def test_dataset_obj_survives_entry_evicted_before_read(self):
+        """
+        LRUCache locks each operation separately, so a concurrent put that triggers
+        eviction can drop the key after we looked it up but before we read it. Reading
+        must fall back to a fetch rather than raising KeyError at the caller.
+        """
+        self.bq_source._dataset_obj_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._dataset_obj_cache.put(f"{MOCK_DB_NAME}.clean_mac", object())
+
+        dataset_obj = self.bq_source.get_dataset_obj("clean_mac")
+
+        assert dataset_obj.description == "Clean MAC data"
+
+    def test_table_obj_survives_entry_evicted_before_read(self):
+        """Same eviction window as the dataset cache, for the table object cache."""
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source.client.get_table.return_value = SimpleNamespace(labels={}, description="events")
+        self.bq_source._table_obj_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._table_obj_cache.put(f"{MOCK_DB_NAME}.clean_mac.events", object())
+
+        table_obj = self.bq_source.get_table_obj(table_name="events")
+
+        assert table_obj.description == "events"

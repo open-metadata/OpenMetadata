@@ -428,8 +428,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """
         database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         dataset_ref = f"{database}.{schema_name}"
-        if dataset_ref in self._dataset_obj_cache:
+        try:
+            # Read in one locked operation: a check-then-get would let a concurrent
+            # eviction drop the key in between and raise on the read.
             return self._dataset_obj_cache.get(dataset_ref)
+        except KeyError:
+            pass
 
         dataset_obj = self.client.get_dataset(dataset_ref)  # pyright: ignore[reportOptionalMemberAccess]
         self._dataset_obj_cache.put(dataset_ref, dataset_obj)
@@ -758,8 +762,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         schema_name = self.context.get().database_schema
         database = self.context.get().database
         cache_key = f"{database}.{schema_name}.{table_name}"
-        if cache_key in self._table_obj_cache:
+        try:
             return self._table_obj_cache.get(cache_key)
+        except KeyError:
+            pass
 
         logger.debug(f"Fetching table object for {cache_key} using BigQuery API")
         bq_table_fqn = fqn._build(database, schema_name, table_name)
