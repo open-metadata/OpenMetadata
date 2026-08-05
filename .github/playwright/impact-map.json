@@ -372,6 +372,50 @@
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AddServicePage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/EditConnectionFormPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/SettingsRouter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/rest/serviceAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtils.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtilClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityDataBreadcrumbUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityServiceBreadcrumbUtils.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServicesOverview*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServiceHealthProvider.java"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/ServiceEntity.spec.ts",
+        "playwright/e2e/Pages/ServiceListing.spec.ts",
+        "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
+        "playwright/e2e/Flow/ServiceForm.spec.ts",
+        "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
+        "playwright/e2e/Flow/ApiServiceRest.spec.ts",
+        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
+        "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Tag/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/InteractiveTargetUtils.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/Tag.spec.ts",
+        "playwright/e2e/Pages/Tags.spec.ts",
+        "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
+        "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts",
+        "playwright/e2e/Features/TagsSuggestion.spec.ts",
+        "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
+        "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts"
+      ]
     }
   ]
 }
