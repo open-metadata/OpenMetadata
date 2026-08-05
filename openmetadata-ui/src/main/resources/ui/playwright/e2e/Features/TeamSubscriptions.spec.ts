@@ -353,6 +353,7 @@ test.describe(
     test('team owner can manage subscriptions', async ({ browser }) => {
       test.slow();
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const ownerPage = await browser.newPage();
 
       try {
@@ -436,6 +437,7 @@ test.describe(
         await afterAction();
 
         await test.step('Verify member cannot edit subscriptions', async () => {
+          // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
           const memberPage = await browser.newPage();
           await memberUser.login(memberPage);
           await redirectToHomePage(memberPage);
@@ -487,6 +489,7 @@ test.describe(
     test('data consumer cannot edit team subscriptions', async ({
       browser,
     }) => {
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const page = await browser.newPage();
 
       await test.step('Login as data consumer and visit team page', async () => {
@@ -536,6 +539,7 @@ test.describe(
     });
 
     test('data steward cannot edit team subscriptions', async ({ browser }) => {
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const page = await browser.newPage();
 
       await test.step('Login as data steward and visit team page', async () => {

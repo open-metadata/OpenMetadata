@@ -694,6 +694,7 @@ test.describe('Activity Feed - Real-time Updates', () => {
 
       expect(patchResponse.ok()).toBe(true);
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const page = await browser.newPage();
       await adminUser.login(page);
       await table.visitEntityPage(page);

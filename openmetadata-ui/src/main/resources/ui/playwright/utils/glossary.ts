@@ -1970,6 +1970,7 @@ export const openGlossaryTagSelector = async (page: Page) => {
   await page.click(
     '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
   );
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('[role="presentation"]', { state: 'visible' });
 };
 

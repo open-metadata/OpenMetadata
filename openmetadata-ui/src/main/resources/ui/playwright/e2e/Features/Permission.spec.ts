@@ -78,6 +78,7 @@ const test = base.extend<{
     await afterAction();
   },
   userPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await user.login(page);
     await use(page);

@@ -54,24 +54,28 @@ const test = base.extend<{
   limitedAccessPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     await adminUser.login(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataConsumerUser.login(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataStewardUser.login(page);
     await use(page);
     await page.close();
   },
   limitedAccessPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await limitedAccessUser.login(page);
     await use(page);

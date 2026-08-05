@@ -897,6 +897,7 @@ test.describe('Context Center - Documents Page', () => {
     const clipboardText = await copyAndGetClipboardText(page, copyBtn);
     expect(clipboardText).toContain(`document=${doc.id}`);
 
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const newTab = await browser.newPage();
     await newTab.goto(clipboardText);
     await newTab

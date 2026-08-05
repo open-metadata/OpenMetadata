@@ -27,6 +27,7 @@ type EntityTypes = InstanceType<
 >;
 
 export const getNestedColumnDetails = (type: string, data: EntityTypes) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- response shape varies across entity types
   const entityData = data.entityResponseData as any;
   const fqn = entityData.fullyQualifiedName;
 
@@ -996,6 +997,7 @@ export const createWorksheetEntity = async (apiContext: APIRequestContext) => {
     entity,
     service,
     deleteService: () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- coercing empty object to delete-response contract
       worksheetClass.delete(apiContext).then(() => ({} as any)),
     visitPage: async (page: Page) => {
       await worksheetClass.visitEntityPage(page);
@@ -1064,7 +1066,9 @@ export const createFileEntity = async (apiContext: APIRequestContext) => {
   return {
     entity,
     service,
-    deleteService: () => fileClass.delete(apiContext).then(() => ({} as any)),
+    deleteService: () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- coercing empty object to delete-response contract
+      fileClass.delete(apiContext).then(() => ({} as any)),
     visitPage: async (page: Page) => {
       await fileClass.visitEntityPage(page);
       await page.getByTestId('schema').click();

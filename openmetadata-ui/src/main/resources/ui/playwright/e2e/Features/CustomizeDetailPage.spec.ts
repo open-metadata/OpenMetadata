@@ -60,12 +60,14 @@ const test = base.extend<{
   userPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     await adminUser.login(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await user.login(page);
     await use(page);

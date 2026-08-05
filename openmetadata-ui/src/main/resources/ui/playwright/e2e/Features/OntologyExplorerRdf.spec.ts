@@ -83,6 +83,7 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
   test('Turtle (.ttl) option appears in the export menu when RDF is enabled', async ({
     browser,
   }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 
@@ -104,6 +105,7 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
   test('RDF/XML (.rdf) option appears in the export menu when RDF is enabled', async ({
     browser,
   }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 
@@ -122,6 +124,7 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
   });
 
   test('Turtle export triggers a .ttl file download', async ({ browser }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 
@@ -154,6 +157,7 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
   });
 
   test('RDF/XML export triggers a .rdf file download', async ({ browser }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 
@@ -187,6 +191,7 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
   test('Turtle and RDF/XML options are NOT shown when RDF is disabled', async ({
     browser,
   }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 
@@ -216,6 +221,7 @@ test.describe('Ontology Explorer — RDF graph data loading @ontology-rdf', () =
   test('term Relations Graph requests /rdf/glossary/graph scoped to the selected term (glossaryTermId) when RDF is enabled', async ({
     browser,
   }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 
@@ -271,6 +277,7 @@ test.describe('Ontology Explorer — RDF graph data loading @ontology-rdf', () =
   test('glossary Relations Graph calls /rdf/glossary/graph when RDF is enabled and renders nodes from the response', async ({
     browser,
   }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 
@@ -308,6 +315,7 @@ test.describe('Ontology Explorer — RDF graph data loading @ontology-rdf', () =
   test('renders without crashing when /rdf/glossary/graph returns duplicate nodes and dangling edges', async ({
     browser,
   }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 
@@ -371,6 +379,7 @@ test.describe('Ontology Explorer — RDF graph data loading @ontology-rdf', () =
     browser,
   }) => {
     test.slow();
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await adminUser.login(page);
 

@@ -72,6 +72,7 @@ const createDescriptionTaskViaUI = async (
 ) => {
   await page.getByTestId('request-description').click();
 
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('#title', { state: 'visible' });
 
   expect(await page.locator('#title').inputValue()).toContain(
@@ -100,6 +101,7 @@ const createTagTaskViaUI = async (
 ) => {
   await page.getByTestId('request-entity-tags').click();
 
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('#title', { state: 'visible' });
 
   expect(await page.locator('#title').inputValue()).toContain(
@@ -321,6 +323,7 @@ test.describe('Task Workflow - Table Column Tasks', () => {
     });
 
     await test.step('Fill task form and submit', async () => {
+      // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
       await page.waitForSelector('#title', { state: 'visible' });
 
       expect(await page.locator('#title').inputValue()).toContain('columns');
@@ -370,6 +373,7 @@ test.describe('Task Workflow - Table Column Tasks', () => {
     });
 
     await test.step('Fill tag task form and submit', async () => {
+      // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
       await page.waitForSelector('#title', { state: 'visible' });
 
       expect(await page.locator('#title').inputValue()).toContain('columns');

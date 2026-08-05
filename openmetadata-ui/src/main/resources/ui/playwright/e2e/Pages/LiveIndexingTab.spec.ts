@@ -50,6 +50,7 @@ test.describe(
   () => {
     test.beforeAll('Seed retry queue records', async ({ browser }) => {
       const { apiContext, afterAction } = await getApiContext(
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         await browser.newPage()
       );
 
@@ -68,6 +69,7 @@ test.describe(
 
     test.afterAll('Clean up retry queue records', async ({ browser }) => {
       const { apiContext, afterAction } = await getApiContext(
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         await browser.newPage()
       );
 

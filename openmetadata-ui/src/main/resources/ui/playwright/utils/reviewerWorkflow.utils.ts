@@ -215,6 +215,7 @@ export const addReviewerToEntity = async (
     await page.getByTestId('Add').click();
   }
 
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector(
     '[data-testid="select-owner-tabs"] [data-testid="loader"]',
     { state: 'detached' }
@@ -228,6 +229,7 @@ export const addReviewerToEntity = async (
   );
   await page.fill('[data-testid="owner-select-users-search-bar"]', name);
   await searchOwner;
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector(
     '[data-testid="select-owner-tabs"] [data-testid="loader"]',
     { state: 'detached' }

@@ -610,6 +610,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCasePageUrl = `/test-case/${encodeURIComponent(
         testCase.fullyQualifiedName
       )}/test-case-results`;
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       actorPage = await browser.newPage();
       await user1.login(actorPage);
       const testCaseResponse = actorPage.waitForResponse(
@@ -739,6 +740,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      */
     await test.step('Resolve incident', async () => {
       const currentUrl = actorPage.url();
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       actorPage = await browser.newPage();
       await user3.login(actorPage);
       const testCaseResponse = actorPage.waitForResponse(

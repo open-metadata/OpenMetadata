@@ -139,7 +139,8 @@ export const ContextRuleEditor = ({
   rule,
   onClose,
   onSubmit,
-}: ContextRuleEditorProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+ContextRuleEditorProps) => {
   const { t } = useTranslation();
   const form = useForm<ContextRule>({
     defaultValues: getDefaultRule(rule),

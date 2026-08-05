@@ -1354,6 +1354,7 @@ test.describe(
     test('Custom metric editor role can import export and bulk edit metrics', async ({
       browser,
     }) => {
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const metricEditorPage = await browser.newPage();
       await metricEditorUser.login(metricEditorPage);
 
@@ -1393,6 +1394,7 @@ test.describe(
       viewOnlyPage,
     }) => {
       test.slow();
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const customViewOnlyPage = await browser.newPage();
       await viewOnlyUser.login(customViewOnlyPage);
 

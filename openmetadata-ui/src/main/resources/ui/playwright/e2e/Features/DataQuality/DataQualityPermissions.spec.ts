@@ -78,72 +78,84 @@ const test = base.extend<{
     await afterAction();
   },
   createPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await createUser.login(page);
     await use(page);
     await page.close();
   },
   deletePage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await deleteUser.login(page);
     await use(page);
     await page.close();
   },
   suitePage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await suiteUser.login(page);
     await use(page);
     await page.close();
   },
   viewBasicPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await viewBasicUser.login(page);
     await use(page);
     await page.close();
   },
   consumerPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataConsumerUser.login(page);
     await use(page);
     await page.close();
   },
   stewardPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataStewardUser.login(page);
     await use(page);
     await page.close();
   },
   tableCreateTestsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await tableCreateTestsUser.login(page);
     await use(page);
     await page.close();
   },
   editPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await editTestCaseUser.login(page);
     await use(page);
     await page.close();
   },
   tableEditPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await tableEditTestsUser.login(page);
     await use(page);
     await page.close();
   },
   editTestsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await editTestsOnTcUser.login(page);
     await use(page);
     await page.close();
   },
   viewAllPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await viewAllTcUser.login(page);
     await use(page);
     await page.close();
   },
   suiteEditOnlyPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await suiteEditOnlyUser.login(page);
     await use(page);

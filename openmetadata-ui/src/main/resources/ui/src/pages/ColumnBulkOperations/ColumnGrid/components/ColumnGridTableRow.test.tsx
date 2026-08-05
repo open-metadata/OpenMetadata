@@ -86,6 +86,7 @@ describe('ColumnGridTableRow', () => {
       />
     );
 
+    // eslint-disable-next-line sonarjs/no-duplicate-string -- repeated test id
     expect(screen.getByTestId('column-row-test_col')).toBeInTheDocument();
     expect(screen.getByTestId('column-name-cell')).toBeInTheDocument();
     expect(screen.getByTestId('column-description-cell')).toBeInTheDocument();

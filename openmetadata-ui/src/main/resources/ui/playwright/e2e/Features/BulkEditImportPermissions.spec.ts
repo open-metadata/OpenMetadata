@@ -61,6 +61,7 @@ const table = new TableClass();
 
 const test = base.extend<{ bulkEditorPage: Page }>({
   bulkEditorPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await editorUser.login(page);
     await use(page);

@@ -1109,6 +1109,7 @@ export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
     .some((child) => hasUnfinishedRule(child, config, syntax));
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 export function elasticSearchFormatForJSONLogic(
   tree,
   config,

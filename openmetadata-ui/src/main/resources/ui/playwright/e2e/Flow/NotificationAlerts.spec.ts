@@ -70,18 +70,21 @@ const test = base.extend<{
   userWithoutPermissionsPage: Page;
 }>({
   page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await admin.login(page);
     await use(page);
     await page.close();
   },
   userWithPermissionsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await user1.login(page);
     await use(page);
     await page.close();
   },
   userWithoutPermissionsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await user2.login(page);
     await use(page);

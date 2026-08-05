@@ -607,6 +607,7 @@ export const verifyWidgetEntityNavigation = async (
 
       return false;
     }),
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
     page.waitForTimeout(10000),
   ]);
 
