@@ -180,14 +180,15 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
-            echo "🔹 Running DataAssetRules-only tests on shard 1"
+            echo "🔹 Running dedicated project tests on shard 1"
 
-            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
+            # Run projects excluded from the common chromium shards.
             npx playwright test \
               --project=setup \
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
               --project=Basic \
+              --project="Data Insight" \
               --project=SearchRBAC \
 
           else
