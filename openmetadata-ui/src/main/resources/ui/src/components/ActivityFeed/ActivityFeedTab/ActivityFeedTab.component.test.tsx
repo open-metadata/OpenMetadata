@@ -29,6 +29,7 @@ const mockFetchEntityActivity = jest.fn();
 const mockFetchUserActivity = jest.fn();
 let mockActivityEvents: { id: string; timestamp: number }[] = [];
 let mockConversationCount = 0;
+let mockActivityCount = 0;
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -102,7 +103,7 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
       conversationCount: mockConversationCount,
-      activityCount: 0,
+      activityCount: mockActivityCount,
       mentionCount: 0,
       totalCount: mockConversationCount,
       totalTasksCount: 0,
@@ -172,6 +173,7 @@ describe('ActivityFeedTab', () => {
     jest.clearAllMocks();
     mockActivityEvents = [];
     mockConversationCount = 0;
+    mockActivityCount = 0;
     mockGetTaskCounts.mockResolvedValue({
       open: 0,
       inProgress: 0,
@@ -203,12 +205,12 @@ describe('ActivityFeedTab', () => {
   });
 
   describe('All count = conversations + activity events', () => {
-    it('sums conversationCount and activityEvents.length (not just activity)', async () => {
+    it('sums the server conversationCount and activityCount (not client-loaded length)', async () => {
       mockConversationCount = 3;
-      mockActivityEvents = [
-        { id: 'a1', timestamp: 1 },
-        { id: 'a2', timestamp: 2 },
-      ];
+      mockActivityCount = 2;
+      // Client-loaded list has fewer items than the server activity total; the
+      // badge must reflect the SERVER total, so it stays correct under pagination.
+      mockActivityEvents = [{ id: 'a1', timestamp: 1 }];
 
       renderComponent(ActivityFeedTabs.ALL);
 
@@ -217,8 +219,8 @@ describe('ActivityFeedTab', () => {
           .getAllByTestId('filter-count')
           .map((el) => el.textContent);
 
-        // All badge must be 3 (conversations) + 2 (activity) = 5,
-        // not the clobbered activityEvents.length of 2.
+        // All badge must be 3 (conversations) + 2 (activity server total) = 5,
+        // NOT 3 + activityEvents.length (1).
         expect(counts).toContain('5');
       });
     });

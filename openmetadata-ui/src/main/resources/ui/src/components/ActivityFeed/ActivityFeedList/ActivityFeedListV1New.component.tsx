@@ -44,10 +44,6 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: ReactNode;
-  componentsVisibility?: {
-    showThreadIcon?: boolean;
-    showRepliesContainer?: boolean;
-  };
   selectedThread?: Thread;
   selectedActivity?: ActivityEvent;
   onAfterClose?: () => void;
@@ -63,10 +59,6 @@ const ActivityFeedListV1New = ({
   activityList,
   isLoading,
   showThread = true,
-  componentsVisibility = {
-    showThreadIcon: true,
-    showRepliesContainer: true,
-  },
   onFeedClick,
   onActivityClick,
   activeFeedId,
@@ -193,7 +185,6 @@ const ActivityFeedListV1New = ({
   }, [
     mergedList,
     activeFeedId,
-    componentsVisibility,
     hidePopover,
     isForFeedTab,
     showThread,

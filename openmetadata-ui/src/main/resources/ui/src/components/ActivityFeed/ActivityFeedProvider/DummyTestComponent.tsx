@@ -201,6 +201,7 @@ export const DummyActivityReactionComponent = () => {
 };
 
 export const DummyActivityReactionSyncComponent = () => {
+  const { t } = useTranslation();
   const {
     activityEvents,
     selectedActivity,
@@ -218,7 +219,7 @@ export const DummyActivityReactionSyncComponent = () => {
       <button
         data-testid="select-activity"
         onClick={() => setActiveActivity(activityEvents[0])}>
-        select
+        {t('label.set-active')}
       </button>
       <button
         data-testid="react"
@@ -229,7 +230,7 @@ export const DummyActivityReactionSyncComponent = () => {
             ReactionOperation.ADD
           )
         }>
-        react
+        {t('label.add-reaction')}
       </button>
       <span data-testid="selected-activity-reactions">
         {selectedActivity?.reactions?.length ?? -1}

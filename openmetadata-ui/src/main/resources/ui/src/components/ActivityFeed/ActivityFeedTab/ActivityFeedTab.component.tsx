@@ -92,11 +92,6 @@ const TaskTabNew = withSuspenseFallback(
   )
 );
 
-const componentsVisibility = {
-  showThreadIcon: false,
-  showRepliesContainer: true,
-};
-
 export const ActivityFeedTab = ({
   owners = [],
   columns,
@@ -753,7 +748,7 @@ export const ActivityFeedTab = ({
                     {!isUserEntity &&
                       getCountBadge(
                         (countData?.data?.conversationCount ?? 0) +
-                          (activityEvents?.length ?? 0),
+                          (countData?.data?.activityCount ?? 0),
                         '',
                         activeTab === ActivityFeedTabs.ALL
                       )}
@@ -855,7 +850,6 @@ export const ActivityFeedTab = ({
             hidePopover
             activeFeedId={selectedThread?.id ?? selectedActivity?.id}
             activityList={activityEvents}
-            componentsVisibility={componentsVisibility}
             emptyPlaceholderText={placeholderText}
             feedList={entityThread}
             handlePanelResize={handlePanelResize}
