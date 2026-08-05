@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
+    MAX_METRIC_NAME_LENGTH,
     build_metric_name,
     build_metric_request,
     infer_metric_type,
@@ -33,12 +34,45 @@ FACT_LINE_AMOUNT = ("orders", "line_amount", "NUMBER", "orders.o_totalprice", "L
 
 def test_build_metric_name_is_qualified():
     name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "total_revenue")
-    assert "snowflake_svc" in name
-    assert "sales_analysis" in name
-    assert name.endswith("total_revenue")
-    # distinct views must produce distinct names
-    other = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "other_view", "total_revenue")
-    assert name != other
+
+    assert name == "snowflake_svc-TEST_DB-SALES-sales_analysis-total_revenue"
+
+
+def test_build_metric_name_is_a_single_fqn_segment():
+    """A Metric's FQN *is* its name, and the server appends dimension/measure names
+    to it. Any dot would turn those into multi-segment FQNs that positional FQN
+    parsers misread as service.database.schema.table.column."""
+    name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "total_revenue")
+
+    assert "." not in name
+
+
+def test_build_metric_name_strips_separators_from_identifiers():
+    """Quoted Snowflake identifiers may themselves contain dots, which would
+    reintroduce FQN segments, and `::` is rejected by the entityName pattern."""
+    name = build_metric_name("svc", '"my.db"', "S", '"v.1"', "a::b")
+
+    assert name == "svc-my_db-S-v_1-a__b"
+    assert "." not in name
+    assert "::" not in name
+
+
+def test_build_metric_name_is_unique_per_path_element():
+    base = ("svc", "DB", "SCH", "view", "metric")
+    variants = [build_metric_name(*(base[:index] + ("other",) + base[index + 1 :])) for index in range(len(base))]
+
+    assert len(set(variants)) == len(base)
+    assert build_metric_name(*base) not in variants
+
+
+def test_build_metric_name_respects_the_entity_name_limit():
+    long_name = build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "m" * 80)
+
+    assert len(long_name) == MAX_METRIC_NAME_LENGTH
+    # deterministic: the lineage workflow re-derives the name through this function
+    assert long_name == build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "m" * 80)
+    # the digest keeps truncated names distinct
+    assert long_name != build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "x" * 80)
 
 
 def test_infer_metric_type_by_prefix():
