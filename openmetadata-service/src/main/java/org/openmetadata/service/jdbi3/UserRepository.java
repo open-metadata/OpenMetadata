@@ -448,6 +448,7 @@ public class UserRepository extends EntityRepository<User> {
     user.setDefaultPersona(fields.contains("defaultPersona") ? user.getDefaultPersona() : null);
     user.setInheritedPersonas(fields.contains("personas") ? user.getInheritedPersonas() : null);
     user.setDomains(fields.contains("domains") ? user.getDomains() : null);
+    user.setPreferences(fields.contains("preferences") ? user.getPreferences() : null);
   }
 
   @Override
