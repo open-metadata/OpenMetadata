@@ -1,0 +1,62 @@
+"""ClickZetta capability registration contract tests."""
+
+import importlib
+import json
+import sys
+from pathlib import Path
+from types import ModuleType
+
+import metadata.ingestion.source.database as database_source_package
+
+database_source_package.__path__.append(
+    str(Path(__file__).resolve().parents[4] / "src/metadata/ingestion/source/database")
+)
+
+_CLICKZETTA_CONFIG_MODULE = "metadata.generated.schema.entity.services.connections.database.clickzettaConnection"
+try:
+    importlib.import_module(_CLICKZETTA_CONFIG_MODULE)
+except ModuleNotFoundError:
+    generated_module = ModuleType(_CLICKZETTA_CONFIG_MODULE)
+
+    class ClickzettaConnection:
+        pass
+
+    generated_module.ClickzettaConnection = ClickzettaConnection
+    sys.modules[_CLICKZETTA_CONFIG_MODULE] = generated_module
+
+from metadata.generated.schema.entity.services.connections.database.clickzettaConnection import (  # noqa: E402
+    ClickzettaConnection,
+)
+from metadata.ingestion.source.database.clickzetta.service_spec import ServiceSpec  # noqa: E402
+
+
+def test_clickzetta_keeps_unvalidated_data_capabilities_disabled():
+    """Generic SQLAlchemy data-reading implementations must not be inherited accidentally."""
+    assert ServiceSpec.profiler_class is None
+    assert ServiceSpec.sampler_class is None
+    assert ServiceSpec.test_suite_class is None
+    assert ServiceSpec.data_diff is None
+
+
+def test_clickzetta_dbt_flag_defaults_to_disabled():
+    """DBT artifacts use the separate DBT source until attached UI support is validated."""
+    if not hasattr(ClickzettaConnection, "model_validate"):
+        schema_path = (
+            Path(__file__).resolve().parents[5]
+            / "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/clickzettaConnection.json"
+        )
+        schema = json.loads(schema_path.read_text())
+        assert schema["properties"]["supportsDBTExtraction"]["default"] is False
+        return
+
+    config = ClickzettaConnection.model_validate(
+        {
+            "hostPort": "instance.example.clickzetta.test",
+            "username": "catalog_reader",
+            "authType": {"password": "not-used-in-this-test"},
+            "databaseName": "quick_start",
+            "virtualCluster": "DEFAULT_AP",
+        }
+    )
+
+    assert config.supportsDBTExtraction is False
