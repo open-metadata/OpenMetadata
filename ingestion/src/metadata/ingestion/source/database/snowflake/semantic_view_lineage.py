@@ -171,30 +171,46 @@ class SnowflakeSemanticViewLineage:
         database_filter_pattern,
         resolve_table_by_fqn: Callable[[str], Optional[Table]],  # noqa: UP045
         resolve_metric_by_name: Callable[[str], Optional[Metric]],  # noqa: UP045
+        configured_database: Optional[str] = None,  # noqa: UP045
     ):
         self.service_name = service_name
         self.engine = engine
         self.database_filter_pattern = database_filter_pattern
         self.resolve_table_by_fqn = resolve_table_by_fqn
         self.resolve_metric_by_name = resolve_metric_by_name
+        self.configured_database = configured_database
+        self._connection = None
 
     def iter_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """Yield semantic view lineage across every allowed database."""
-        for database in self._get_databases():
-            try:
-                yield from self._iter_database_lineage(database)
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.warning(f"Failed to extract semantic view lineage for database [{database}]: {exc}")
-                logger.debug(traceback.format_exc())
+        try:
+            for database in self._get_databases():
+                try:
+                    yield from self._iter_database_lineage(database)
+                except Exception as exc:  # pylint: disable=broad-except
+                    logger.warning(f"Failed to extract semantic view lineage for database [{database}]: {exc}")
+                    logger.debug(traceback.format_exc())
+        finally:
+            self._close()
 
     def _get_databases(self) -> List[str]:  # noqa: UP006
-        """List databases allowed by the database filter pattern."""
+        """Databases to scan for semantic views.
+
+        Mirrors ``_compute_filtered_database_names`` in the metadata source: when the
+        service connection pins a database, that is the only one in scope, so the
+        account-wide ``SHOW DATABASES`` sweep is skipped entirely. Without that
+        short-circuit we issue the four semantic catalog queries against every
+        database in the account, including ones this service never ingested.
+        """
+        if self.configured_database:
+            return [self.configured_database]
         databases = []
         try:
             for row in self._run(SNOWFLAKE_GET_DATABASES):
                 database = row[1]
                 if not filter_by_database(self.database_filter_pattern, database):
                     databases.append(database)
+            logger.info(f"Semantic view lineage will scan {len(databases)} database(s)")
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning(f"Failed to list databases for semantic view lineage: {exc}")
             logger.debug(traceback.format_exc())
@@ -368,9 +384,25 @@ class SnowflakeSemanticViewLineage:
         ]
 
     def _run(self, query: str) -> List[tuple]:  # noqa: UP006
-        """Execute a query against the Snowflake engine and return all rows."""
+        """Execute a query on the shared connection and return all rows.
+
+        Reuses one connection for the whole extraction. Opening a fresh
+        ``engine.connect()`` per query costs a full auth handshake each time
+        (key-pair auth re-signs a JWT), and we issue four catalog queries per
+        database, so per-query connections dominated the runtime.
+        """
         rows = []
         if self.engine is not None:
-            with self.engine.connect() as conn:
-                rows = list(conn.execute(text(query)))
+            if self._connection is None:
+                self._connection = self.engine.connect()
+            rows = list(self._connection.execute(text(query)))
         return rows
+
+    def _close(self) -> None:
+        """Release the shared connection once the extraction is done."""
+        if self._connection is not None:
+            try:
+                self._connection.close()
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(f"Failed to close semantic view lineage connection: {exc}")
+            self._connection = None
