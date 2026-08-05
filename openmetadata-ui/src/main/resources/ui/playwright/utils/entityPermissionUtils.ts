@@ -202,21 +202,29 @@ export const testCommonOperations = async (
   await entity.visitEntityPage(testUserPage);
 
   // Define test configurations with special handling
-  const testIdsConfigs = [
-    { testId: 'edit-description', type: 'direct' },
-    {
-      testId: 'add-tag',
-      type: 'multiple-containers',
-      containers: ['tags-container', 'glossary-container'],
-    },
-    { testId: 'edit-tier', type: 'direct' },
-    { testId: 'edit-owner', type: 'direct' },
-    { testId: 'rename-button', type: 'with-manage-button' },
-    { testId: 'delete-button', type: 'with-manage-button' },
-  ];
+  const isMetric = entity instanceof MetricClass;
+  const testIdsConfigs = isMetric
+    ? [
+        { testId: 'edit-metric-metadata', type: 'direct' },
+        { testId: 'delete-button', type: 'with-manage-button' },
+      ]
+    : [
+        { testId: 'edit-description', type: 'direct' },
+        {
+          testId: 'add-tag',
+          type: 'multiple-containers',
+          containers: ['tags-container', 'glossary-container'],
+        },
+        { testId: 'edit-tier', type: 'direct' },
+        { testId: 'edit-owner', type: 'direct' },
+        { testId: 'rename-button', type: 'with-manage-button' },
+        { testId: 'delete-button', type: 'with-manage-button' },
+      ];
 
   await expect(
-    testUserPage.locator('[data-testid="entity-header-title"]')
+    isMetric
+      ? testUserPage.getByTestId('metric-details-page')
+      : testUserPage.locator('[data-testid="entity-header-title"]')
   ).toBeVisible();
 
   for (const config of testIdsConfigs) {

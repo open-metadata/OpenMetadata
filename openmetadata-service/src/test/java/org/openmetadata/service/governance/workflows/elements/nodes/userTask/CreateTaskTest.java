@@ -40,6 +40,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolution;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
@@ -770,6 +772,7 @@ class CreateTaskTest {
     Task prior =
         new Task()
             .withId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Open)
             .withWorkflowDefinitionId(workflowDefinitionId)
             .withWorkflowInstanceId(UUID.randomUUID());
 
@@ -868,6 +871,21 @@ class CreateTaskTest {
             .withStatus(TaskEntityStatus.Approved);
 
     assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorTaskHasApprovedResolution() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Approved)
+            .withResolution(new TaskResolution().withType(TaskResolutionType.Approved));
+
+    assertFalse(
         CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
   }
 

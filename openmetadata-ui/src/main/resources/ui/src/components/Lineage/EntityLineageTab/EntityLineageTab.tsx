@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC, useMemo } from 'react';
+import type { FC } from 'react';
+import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import LineageTable from '../../LineageTable/LineageTable';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
+import type { SourceType } from '../../SearchedData/SearchedData.interface';
 import Lineage from '../Lineage.component';
 
 interface EntityLineageTabProps {

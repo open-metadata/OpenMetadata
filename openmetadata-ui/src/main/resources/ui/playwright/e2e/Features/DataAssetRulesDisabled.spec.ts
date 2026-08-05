@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, type APIRequestContext, type Page } from '@playwright/test';
 import { SERVICE_TYPE } from '../../constant/service';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -68,6 +68,13 @@ import {
   fillRowDetails,
   validateImportStatus,
 } from '../../utils/importUtils';
+import {
+  expectMetricMetadataSelections,
+  getPersistedMetricMetadata,
+  openMetricMetadataEditor,
+  saveMetricMetadata,
+  selectMetricMetadataReference,
+} from '../../utils/metricMetadata';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { test } from '../fixtures/pages';
 
@@ -115,6 +122,163 @@ const createdDataProducts: DataProduct[] = [];
 const glossary = new Glossary();
 const glossaryTerm = new GlossaryTerm(glossary);
 const glossaryTerm2 = new GlossaryTerm(glossary);
+
+const requireFixtureValue = (
+  value: string | undefined,
+  fixtureName: string
+) => {
+  if (!value) {
+    throw new Error(`${fixtureName} was not created`);
+  }
+
+  return value;
+};
+
+const verifyDisabledMetricMetadataRules = async (
+  page: Page,
+  apiContext: APIRequestContext,
+  metric: MetricClass
+) => {
+  const metricId = requireFixtureValue(metric.entityResponseData.id, 'Metric');
+  const firstUserName = user.getUserDisplayName();
+  const secondUserName = user2.getUserDisplayName();
+  const teamName = requireFixtureValue(team.responseData.displayName, 'Team');
+  const firstDomainName = requireFixtureValue(
+    domain.responseData.displayName,
+    'First domain'
+  );
+  const secondDomainName = requireFixtureValue(
+    domain2.responseData.displayName,
+    'Second domain'
+  );
+  const firstDataProductName = requireFixtureValue(
+    createdDataProducts[0]?.responseData.displayName,
+    'First data product'
+  );
+  const secondDataProductName = requireFixtureValue(
+    createdDataProducts[1]?.responseData.displayName,
+    'Second data product'
+  );
+  const firstGlossaryTermName = requireFixtureValue(
+    glossaryTerm.responseData.displayName,
+    'First glossary term'
+  );
+  const secondGlossaryTermName = requireFixtureValue(
+    glossaryTerm2.responseData.displayName,
+    'Second glossary term'
+  );
+  const dialog = await openMetricMetadataEditor(page);
+
+  await selectMetricMetadataReference(dialog, 'Owners', firstUserName);
+  await selectMetricMetadataReference(dialog, 'Owners', secondUserName);
+  const ownersGroup = await selectMetricMetadataReference(
+    dialog,
+    'Owners',
+    teamName
+  );
+  await expectMetricMetadataSelections(ownersGroup, [
+    firstUserName,
+    secondUserName,
+    teamName,
+  ]);
+
+  await selectMetricMetadataReference(dialog, 'Domains', firstDomainName);
+  const domainsGroup = await selectMetricMetadataReference(
+    dialog,
+    'Domains',
+    secondDomainName
+  );
+  await expectMetricMetadataSelections(domainsGroup, [
+    firstDomainName,
+    secondDomainName,
+  ]);
+
+  await selectMetricMetadataReference(
+    dialog,
+    'Data Products',
+    firstDataProductName
+  );
+  const dataProductsGroup = await selectMetricMetadataReference(
+    dialog,
+    'Data Products',
+    secondDataProductName
+  );
+  await expectMetricMetadataSelections(dataProductsGroup, [
+    firstDataProductName,
+    secondDataProductName,
+  ]);
+
+  await selectMetricMetadataReference(
+    dialog,
+    'Glossary Terms',
+    firstGlossaryTermName
+  );
+  const glossaryTermsGroup = await selectMetricMetadataReference(
+    dialog,
+    'Glossary Terms',
+    secondGlossaryTermName
+  );
+  await expectMetricMetadataSelections(glossaryTermsGroup, [
+    firstGlossaryTermName,
+    secondGlossaryTermName,
+  ]);
+
+  await saveMetricMetadata(page, dialog, metricId);
+
+  const persisted = await getPersistedMetricMetadata(apiContext, metricId);
+  expect(persisted.owners?.map(({ id }) => id).sort()).toEqual(
+    [
+      requireFixtureValue(user.responseData.id, 'First user'),
+      requireFixtureValue(user2.responseData.id, 'Second user'),
+      requireFixtureValue(team.responseData.id, 'Team'),
+    ].sort()
+  );
+  expect(persisted.domains?.map(({ id }) => id).sort()).toEqual(
+    [
+      requireFixtureValue(domain.responseData.id, 'First domain'),
+      requireFixtureValue(domain2.responseData.id, 'Second domain'),
+    ].sort()
+  );
+  expect(persisted.dataProducts?.map(({ id }) => id).sort()).toEqual(
+    [
+      requireFixtureValue(
+        createdDataProducts[0]?.responseData.id,
+        'First data product'
+      ),
+      requireFixtureValue(
+        createdDataProducts[1]?.responseData.id,
+        'Second data product'
+      ),
+    ].sort()
+  );
+  expect(persisted.tags?.map(({ tagFQN }) => tagFQN)).toEqual(
+    expect.arrayContaining([
+      requireFixtureValue(
+        glossaryTerm.responseData.fullyQualifiedName,
+        'First glossary term'
+      ),
+      requireFixtureValue(
+        glossaryTerm2.responseData.fullyQualifiedName,
+        'Second glossary term'
+      ),
+    ])
+  );
+
+  const metadataRail = page.getByTestId('metric-metadata-rail');
+  for (const referenceName of [
+    firstUserName,
+    secondUserName,
+    teamName,
+    firstDomainName,
+    secondDomainName,
+    firstDataProductName,
+    secondDataProductName,
+    firstGlossaryTermName,
+    secondGlossaryTermName,
+  ]) {
+    await expect(metadataRail).toContainText(referenceName);
+  }
+};
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
@@ -173,6 +337,19 @@ test.describe(
 
         const { apiContext, afterAction } = await performAdminLogin(browser);
         await entity.create(apiContext);
+
+        if (entity instanceof MetricClass) {
+          try {
+            await redirectToHomePage(page);
+            await entity.visitEntityPage(page);
+            await verifyDisabledMetricMetadataRules(page, apiContext, entity);
+          } finally {
+            await afterAction();
+          }
+
+          return;
+        }
+
         await afterAction();
 
         await redirectToHomePage(page);

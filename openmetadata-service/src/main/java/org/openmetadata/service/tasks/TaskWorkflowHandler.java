@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -79,9 +80,21 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Slf4j
 public class TaskWorkflowHandler {
 
-  private static TaskWorkflowHandler instance;
+  private static final int DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS = 100;
+  private static final long DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS = 100L;
 
-  private TaskWorkflowHandler() {}
+  private static TaskWorkflowHandler instance;
+  private final int runtimeTaskReadinessAttempts;
+  private final long runtimeTaskReadinessDelayMillis;
+
+  private TaskWorkflowHandler() {
+    this(DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS, DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS);
+  }
+
+  TaskWorkflowHandler(int runtimeTaskReadinessAttempts, long runtimeTaskReadinessDelayMillis) {
+    this.runtimeTaskReadinessAttempts = Math.max(1, runtimeTaskReadinessAttempts);
+    this.runtimeTaskReadinessDelayMillis = Math.max(0L, runtimeTaskReadinessDelayMillis);
+  }
 
   public static synchronized TaskWorkflowHandler getInstance() {
     if (instance == null) {
@@ -123,6 +136,7 @@ public class TaskWorkflowHandler {
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
     TaskResolutionType effectiveResolutionType =
         resolveResolutionType(task, requestedResolutionType, selectedTransition);
+    validateMetricRejectionComment(task, effectiveResolutionType, comment);
     LOG.info(
         "[TaskWorkflowHandler] Resolving task: id='{}', transitionId='{}', resolutionType='{}', user='{}'",
         taskId,
@@ -156,6 +170,24 @@ public class TaskWorkflowHandler {
     }
   }
 
+  static void validateMetricRejectionComment(
+      Task task, TaskResolutionType resolutionType, String comment) {
+    if (isMetricApprovalRejection(task, resolutionType) && (comment == null || comment.isBlank())) {
+      throw new IllegalArgumentException("A rejection comment is required");
+    }
+  }
+
+  private static boolean isMetricApprovalRejection(Task task, TaskResolutionType resolutionType) {
+    return isMetricApprovalTask(task) && resolutionType == TaskResolutionType.Rejected;
+  }
+
+  private static boolean isMetricApprovalTask(Task task) {
+    return task != null
+        && task.getType() == TaskEntityType.RequestApproval
+        && task.getAbout() != null
+        && Entity.METRIC.equals(task.getAbout().getType());
+  }
+
   /**
    * Resolve a task that is managed by a Flowable workflow.
    */
@@ -172,6 +204,18 @@ public class TaskWorkflowHandler {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
+    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task);
+
+    if (requiresRuntimeTaskReadiness && TaskRepository.isTerminalStatus(task.getStatus())) {
+      throw new IllegalStateException(
+          String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
+    }
+    if (requiresRuntimeTaskReadiness && !awaitActiveRuntimeTask(workflowHandler, taskId)) {
+      throw new IllegalStateException(
+          String.format(
+              "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
+              taskId));
+    }
 
     if (payloadAssignees != null && !payloadAssignees.isEmpty()) {
       task = persistWorkflowAssignees(taskRepository, task, payloadAssignees, user);
@@ -212,6 +256,13 @@ public class TaskWorkflowHandler {
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
+        if (requiresRuntimeTaskReadiness) {
+          throw new IllegalStateException(
+              String.format(
+                  "Flowable runtime task for workflow-managed Metric task '%s' disappeared while resolving transition '%s'; the task was not finalized",
+                  taskId,
+                  transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
+        }
         if (resolutionType == null) {
           throw new IllegalStateException(
               String.format(
@@ -258,6 +309,29 @@ public class TaskWorkflowHandler {
     // Task threshold met, apply resolution
     return applyTaskResolution(
         task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
+  }
+
+  private boolean awaitActiveRuntimeTask(WorkflowHandler workflowHandler, UUID taskId) {
+    boolean isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+    int attempt = 1;
+    while (!isActive && attempt < runtimeTaskReadinessAttempts && waitForRuntimeTaskRetry(taskId)) {
+      isActive = workflowHandler.hasActiveRuntimeTask(taskId);
+      attempt++;
+    }
+    return isActive;
+  }
+
+  private boolean waitForRuntimeTaskRetry(UUID taskId) {
+    boolean completed = true;
+    try {
+      TimeUnit.MILLISECONDS.sleep(runtimeTaskReadinessDelayMillis);
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      completed = false;
+      LOG.warn(
+          "[TaskWorkflowHandler] Interrupted while waiting for Flowable runtime task '{}'", taskId);
+    }
+    return completed;
   }
 
   private Task persistWorkflowAssignees(

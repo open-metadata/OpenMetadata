@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
   DATA_PRODUCTS_WIDGET,
@@ -22,12 +22,13 @@ import {
   TAGS_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
 import { METRIC_DUMMY_DATA } from '../../constants/Metric.constants';
+import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import { Metric } from '../../generated/entity/data/metric';
-import { Tab } from '../../generated/system/ui/uiCustomization';
-import { FeedCounts } from '../../interface/feed.interface';
-import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import type { Metric } from '../../generated/entity/data/metric';
+import type { Tab } from '../../generated/system/ui/uiCustomization';
+import type { FeedCounts } from '../../interface/feed.interface';
+import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import i18n from '../i18next/LocalUtil';
 import {
@@ -47,6 +48,8 @@ export interface MetricDetailPageTabProps {
   metricDetails: Metric;
   handleFeedCount: (data: FeedCounts) => void;
   labelMap: Record<EntityTabs, string>;
+  /** Permissions the Assets tab needs to decide whether assets can be linked or unlinked. */
+  metricPermissions?: OperationPermission;
 }
 
 type MetricWidgetKeys =
@@ -55,6 +58,8 @@ type MetricWidgetKeys =
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.RELATED_METRICS
+  | DetailPageWidgetKeys.METRIC_HIERARCHY
+  | DetailPageWidgetKeys.METRIC_DEFINITION
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
@@ -68,6 +73,8 @@ class MetricDetailsClassBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.RELATED_METRICS]: 1.5,
+      [DetailPageWidgetKeys.METRIC_HIERARCHY]: 3,
+      [DetailPageWidgetKeys.METRIC_DEFINITION]: 4,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
@@ -82,14 +89,18 @@ class MetricDetailsClassBase {
   public getMetricDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.OVERVIEW,
-      EntityTabs.EXPRESSION,
-      EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
-      EntityTabs.CUSTOM_PROPERTIES,
+      EntityTabs.ASSETS,
+      EntityTabs.DATA_OBSERVABILITY,
+      EntityTabs.ACTIVITY_FEED,
+      EntityTabs.APPROVAL,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
-      displayName: getTabLabelFromId(tab),
+      displayName:
+        tab === EntityTabs.ACTIVITY_FEED
+          ? i18n.t('label.activity-and-task-plural')
+          : getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
       editable: tab === EntityTabs.OVERVIEW,
     }));
@@ -102,18 +113,38 @@ class MetricDetailsClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] + 0.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_HIERARCHY] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DEFINITION] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
         children: [
           {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_HIERARCHY],
+            i: DetailPageWidgetKeys.METRIC_HIERARCHY,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
             h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
             i: DetailPageWidgetKeys.DESCRIPTION,
             w: 1,
             x: 0,
-            y: 0,
+            y: 1,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DEFINITION],
+            i: DetailPageWidgetKeys.METRIC_DEFINITION,
+            w: 1,
+            x: 0,
+            y: 2,
             static: false,
           },
         ],
@@ -180,6 +211,20 @@ class MetricDetailsClassBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       {
+        fullyQualifiedName: DetailPageWidgetKeys.METRIC_HIERARCHY,
+        name: i18n.t('label.metric-hierarchy'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.METRIC_DEFINITION,
+        name: i18n.t('label.definition'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      {
         fullyQualifiedName: DetailPageWidgetKeys.RELATED_METRICS,
         name: i18n.t('label.related-metric-plural'),
         data: {
@@ -207,6 +252,10 @@ class MetricDetailsClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.RELATED_METRICS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.RELATED_METRICS];
+      case DetailPageWidgetKeys.METRIC_HIERARCHY:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_HIERARCHY];
+      case DetailPageWidgetKeys.METRIC_DEFINITION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DEFINITION];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
