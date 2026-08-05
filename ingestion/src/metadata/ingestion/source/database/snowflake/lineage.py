@@ -268,6 +268,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             database_filter_pattern=self.source_config.databaseFilterPattern,
             resolve_table_by_fqn=self._get_table_by_fqn,
             resolve_metric_by_name=self._get_metric_by_name,
+            configured_database=getattr(self.service_connection, "database", None),
         )
         yield from extractor.iter_lineage()
 

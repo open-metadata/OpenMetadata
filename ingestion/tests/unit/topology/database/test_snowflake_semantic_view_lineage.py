@@ -270,3 +270,78 @@ def test_view_to_metric_edge_emitted():
     assert str(edges[0].edge.fromEntity.id.root) == str(view_entity.id.root)
     assert str(edges[0].edge.toEntity.id.root) == str(metric_entity.id.root)
     assert edges[0].edge.toEntity.type == "metric"
+
+
+class _RecordingEngine:
+    """Engine stub recording how many connections are opened and every query run."""
+
+    def __init__(self, show_databases_rows=()):
+        self.connect_calls = 0
+        self.close_calls = 0
+        self.queries = []
+        self._show_databases_rows = list(show_databases_rows)
+
+    def connect(self):
+        self.connect_calls += 1
+
+        return self
+
+    def execute(self, clause):
+        query = str(clause)
+        self.queries.append(query)
+
+        return list(self._show_databases_rows) if "SHOW DATABASES" in query else []
+
+    def close(self):
+        self.close_calls += 1
+
+
+def _recording_extractor(engine, configured_database=None):
+    return SnowflakeSemanticViewLineage(
+        service_name="snow",
+        engine=engine,
+        database_filter_pattern=None,
+        resolve_table_by_fqn=lambda _f: None,
+        resolve_metric_by_name=lambda _n: None,
+        configured_database=configured_database,
+    )
+
+
+def test_configured_database_skips_account_wide_show_databases():
+    engine = _RecordingEngine(show_databases_rows=[("ts", "TEST_DB"), ("ts", "OTHER_DB")])
+    extractor = _recording_extractor(engine, configured_database="TEST_DB")
+
+    assert extractor._get_databases() == ["TEST_DB"]
+    assert engine.queries == []
+
+
+def test_no_configured_database_enumerates_the_account():
+    engine = _RecordingEngine(show_databases_rows=[("ts", "DB1"), ("ts", "DB2")])
+    extractor = _recording_extractor(engine)
+
+    assert extractor._get_databases() == ["DB1", "DB2"]
+    assert len(engine.queries) == 1
+
+
+def test_catalog_queries_share_a_single_connection():
+    engine = _RecordingEngine()
+    extractor = _recording_extractor(engine, configured_database="TEST_DB")
+
+    list(extractor.iter_lineage())
+
+    # semantic_tables + semantic_dimensions + semantic_facts + semantic_metrics
+    assert len(engine.queries) == 4
+    assert engine.connect_calls == 1
+    assert engine.close_calls == 1
+
+
+def test_connection_is_not_reopened_per_database():
+    engine = _RecordingEngine(show_databases_rows=[("ts", "DB1"), ("ts", "DB2")])
+    extractor = _recording_extractor(engine)
+
+    list(extractor.iter_lineage())
+
+    # 1 SHOW DATABASES + 4 catalog queries per database, all on one connection
+    assert len(engine.queries) == 1 + 2 * 4
+    assert engine.connect_calls == 1
+    assert engine.close_calls == 1
