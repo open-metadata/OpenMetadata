@@ -330,7 +330,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         fields,
         relationIncludes,
         operationContext,
-        getResourceContextById(id, relationIncludes, fields));
+        getResourceContextById(id, relationIncludes));
   }
 
   public T getInternal(
@@ -452,7 +452,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         fields,
         relationIncludes,
         operationContext,
-        getResourceContextByName(name, relationIncludes, fields));
+        getResourceContextByName(name, relationIncludes));
   }
 
   public T getByNameInternal(
@@ -1200,10 +1200,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return new ResourceContext<>(entityType, id, null, include);
   }
 
-  protected ResourceContext<T> getResourceContextById(
-      UUID id, RelationIncludes relationIncludes, Fields fields) {
+  protected ResourceContext<T> getResourceContextById(UUID id, RelationIncludes relationIncludes) {
     Include include = relationIncludes == null ? Include.ALL : relationIncludes.getDefaultInclude();
-    return new ResourceContext<>(entityType, id, null, include, fields, relationIncludes);
+    return new ResourceContext<>(entityType, id, null, include, relationIncludes);
   }
 
   protected ResourceContext<T> getResourceContextByName(String name) {
@@ -1220,9 +1219,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected ResourceContext<T> getResourceContextByName(
-      String name, RelationIncludes relationIncludes, Fields fields) {
+      String name, RelationIncludes relationIncludes) {
     Include include = relationIncludes == null ? Include.ALL : relationIncludes.getDefaultInclude();
-    return new ResourceContext<>(entityType, null, name, include, fields, relationIncludes);
+    return new ResourceContext<>(entityType, null, name, include, relationIncludes);
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};

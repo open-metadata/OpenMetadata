@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -314,6 +316,126 @@ public class QueryVisibilityPolicyIT {
               } finally {
                 adminClient.tables().delete(tableNoCert.getId());
               }
+            } finally {
+              adminClient
+                  .databaseServices()
+                  .delete(
+                      dbService.getId().toString(),
+                      Map.of("recursive", "true", "hardDelete", "true"));
+            }
+          } finally {
+            adminClient.users().delete(testUser.getId());
+          }
+        } finally {
+          adminClient.teams().delete(team.getId());
+        }
+      } finally {
+        adminClient.roles().delete(role.getId());
+      }
+    } finally {
+      adminClient.policies().delete(policy.getId());
+    }
+  }
+
+  /**
+   * A tag-based DENY rule must be enforced regardless of the {@code fields} query parameter. The
+   * authorization entity load previously reused the caller-supplied projection, so omitting {@code
+   * fields=tags} left the policy engine with no tags and matchAnyTag evaluated to false, silently
+   * allowing the request.
+   */
+  @Test
+  void test_tagDenyPolicy_enforcedWhenFieldsParamOmitted(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    String p = ns.shortPrefix();
+
+    Rule denyTaggedRule =
+        new Rule()
+            .withName("DenyPiiSensitive")
+            .withResources(List.of("All"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("matchAnyTag('" + PII_SENSITIVE_TAG + "')");
+
+    CreatePolicy createPolicy = new CreatePolicy();
+    createPolicy.setName(p + "_denyTagPol");
+    createPolicy.setRules(List.of(denyTaggedRule));
+
+    Policy policy = adminClient.policies().create(createPolicy);
+    try {
+      CreateRole createRole = new CreateRole();
+      createRole.setName(p + "_denyTagRole");
+      createRole.setPolicies(List.of(policy.getFullyQualifiedName()));
+      Role role = adminClient.roles().create(createRole);
+      try {
+        CreateTeam createTeam = new CreateTeam();
+        createTeam.setName(p + "_denyTagTeam");
+        createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+        createTeam.setDefaultRoles(List.of(role.getId()));
+        Team team = adminClient.teams().create(createTeam);
+        try {
+          String userEmail = p + "_denytaguser@test.openmetadata.org";
+          CreateUser createUser = new CreateUser();
+          createUser.setName(p + "_denytaguser");
+          createUser.setEmail(userEmail);
+          createUser.setTeams(List.of(team.getId()));
+          User testUser = adminClient.users().create(createUser);
+          try {
+            DatabaseService dbService = DatabaseServiceTestFactory.createPostgres(ns);
+            try {
+              DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, dbService);
+              Column column = new Column().withName("id").withDataType(ColumnDataType.INT);
+
+              TagLabel piiTag = new TagLabel();
+              piiTag.setTagFQN(PII_SENSITIVE_TAG);
+              piiTag.setSource(TagLabel.TagSource.CLASSIFICATION);
+              piiTag.setLabelType(TagLabel.LabelType.MANUAL);
+              piiTag.setState(TagLabel.State.CONFIRMED);
+
+              Table taggedTable =
+                  Tables.create()
+                      .name(p + "_tagged")
+                      .inSchema(schema.getFullyQualifiedName())
+                      .withColumns(List.of(column))
+                      .withTags(List.of(piiTag))
+                      .execute();
+              Table untaggedTable =
+                  Tables.create()
+                      .name(p + "_untagged")
+                      .inSchema(schema.getFullyQualifiedName())
+                      .withColumns(List.of(column))
+                      .execute();
+
+              OpenMetadataClient testUserClient =
+                  SdkClients.createClient(userEmail, userEmail, new String[] {});
+              String taggedId = taggedTable.getId().toString();
+              String taggedFqn = taggedTable.getFullyQualifiedName();
+
+              assertThrows(
+                  ForbiddenException.class,
+                  () -> testUserClient.tables().get(taggedId),
+                  "GET by id without fields must be denied for a tag matched by a DENY rule");
+
+              assertThrows(
+                  ForbiddenException.class,
+                  () -> testUserClient.tables().getByName(taggedFqn),
+                  "GET by name without fields must be denied for a tag matched by a DENY rule");
+
+              assertThrows(
+                  ForbiddenException.class,
+                  () -> testUserClient.tables().get(taggedId, "tags"),
+                  "GET with fields=tags must remain denied");
+
+              assertThrows(
+                  ForbiddenException.class,
+                  () -> testUserClient.tables().get(taggedId, "owners"),
+                  "A projection without tags must not bypass the DENY rule");
+
+              Table visible = testUserClient.tables().get(untaggedTable.getId().toString());
+              assertNotNull(visible, "An untagged table must remain viewable");
+              assertEquals(
+                  untaggedTable.getId(),
+                  visible.getId(),
+                  "The DENY rule must not over-block entities without the tag");
             } finally {
               adminClient
                   .databaseServices()

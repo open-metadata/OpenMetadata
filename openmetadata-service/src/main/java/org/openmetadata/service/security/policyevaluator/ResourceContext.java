@@ -39,7 +39,6 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private T entity; // Will be lazily initialized
   private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
   private Include include;
-  private Fields requestedFields;
   private RelationIncludes relationIncludes;
 
   public ResourceContext(@NonNull String resource) {
@@ -69,13 +68,11 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       UUID id,
       String name,
       Include include,
-      Fields requestedFields,
       RelationIncludes relationIncludes) {
     this.resource = resource;
     this.id = id;
     this.name = name;
     this.include = include;
-    this.requestedFields = requestedFields;
     this.relationIncludes = relationIncludes;
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
   }
@@ -195,9 +192,10 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         fieldList = entityRepository.getPatchFields();
       } else if (operation == ResourceContextInterface.Operation.PUT) {
         fieldList = entityRepository.getPutFields();
-      } else if (requestedFields != null) {
-        fieldList = requestedFields;
       } else {
+        // Authorization must never depend on the caller-supplied `fields` projection: a policy
+        // attribute that is not loaded reads as absent, so a conditional Deny rule silently fails
+        // open (e.g. matchAnyTag returns false when tags were not requested).
         if (entityRepository.isSupportsOwners()) {
           fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
         }
@@ -245,9 +243,6 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   private boolean useRepositoryCache() {
-    if (requestedFields != null) {
-      return false;
-    }
     return operation != ResourceContextInterface.Operation.PATCH
         && operation != ResourceContextInterface.Operation.PUT;
   }
