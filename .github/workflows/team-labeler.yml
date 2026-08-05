@@ -12,6 +12,29 @@ jobs:
     runs-on: ubuntu-latest
     name: Team Label
     steps:
+      # Keep fork approval scoped to the current head SHA. This must run in
+      # the same job as the trusted-author labeler so synchronize events first
+      # invalidate an earlier approval and then revalidate allowlisted authors.
+      - name: Invalidate safe-to-test on fork sync
+        if: |
+          github.event.action == 'synchronize' &&
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          contains(github.event.pull_request.labels.*.name, 'safe to test')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if ! response=$(gh api --silent -X DELETE \
+            "/repos/${REPO}/issues/${PR_NUMBER}/labels/safe%20to%20test" 2>&1); then
+            if [[ "$response" != *"HTTP 404"* ]]; then
+              echo "$response" >&2
+              exit 1
+            fi
+            echo "safe to test label already absent"
+          fi
+
       - uses: JulienKode/team-labeler-action@v3.0.0
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"

@@ -569,6 +569,102 @@
                     "resolutions": {}
                 }
             ]
+        },
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.dim_customer.testSuite",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.dim_customer",
+            "testSuiteDescription": "Data quality tests for the customer dimension table",
+            "scheduleInterval": "0 4 * * *",
+            "testCases": [
+                {
+                    "name": "table_row_count_to_be_between",
+                    "description": "customer dimension should have between 1000 and 10000 rows",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer>",
+                    "testDefinitionName": "tableRowCountToBeBetween",
+                    "owners": ["amber_green0"],
+                    "parameterValues": [
+                        { "name": "minValue", "value": "1000" },
+                        { "name": "maxValue", "value": "10000" }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity2" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity2", "assignee": "amber_green0" }
+                        ]
+                    }
+                },
+                {
+                    "name": "column_values_to_match_regex",
+                    "description": "customer email must be a valid email address",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_customer::columns::email>",
+                    "testDefinitionName": "columnValuesToMatchRegex",
+                    "owners": ["amber_green0", "adam_rodriguez9"],
+                    "parameterValues": [
+                        { "name": "regex", "value": "^[\\w.+-]+@[\\w-]+\\.[\\w.]+$" }
+                    ],
+                    "resolutions": {}
+                }
+            ]
+        },
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.fact_order.testSuite",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.fact_order",
+            "testSuiteDescription": "Data quality tests for the order fact table",
+            "scheduleInterval": "0 3 * * *",
+            "testCases": [
+                {
+                    "name": "column_values_to_be_unique",
+                    "description": "order_id must be unique across all orders",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.fact_order::columns::order_id>",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "owners": ["alexander_jackson5"],
+                    "parameterValues": [],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity1" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity1", "assignee": "alexander_jackson5" },
+                            { "testCaseResolutionStatusType": "Resolved", "severity": "Severity1", "resolver": "alexander_jackson5" }
+                        ]
+                    }
+                },
+                {
+                    "name": "column_value_max_to_be_between",
+                    "description": "total_price should stay within the expected bounds",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.fact_order::columns::total_price>",
+                    "testDefinitionName": "columnValueMaxToBeBetween",
+                    "owners": ["alexander_jackson5", "amy_stephens4"],
+                    "parameterValues": [
+                        { "name": "minValueForMaxInCol", "value": "100" },
+                        { "name": "maxValueForMaxInCol", "value": "5000" }
+                    ],
+                    "resolutions": {}
+                }
+            ]
+        },
+        {
+            "testSuiteName": "sample_data.ecommerce_db.shopify.fact_sale.testSuite",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.fact_sale",
+            "testSuiteDescription": "Data quality tests for the sale fact table",
+            "scheduleInterval": "30 3 * * *",
+            "testCases": [
+                {
+                    "name": "column_values_to_be_between",
+                    "description": "net_sales should be within the expected range",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.fact_sale::columns::net_sales>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "owners": ["ana_mckay7"],
+                    "parameterValues": [
+                        { "name": "minValue", "value": "0" },
+                        { "name": "maxValue", "value": "10000" }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            { "testCaseResolutionStatusType": "Ack", "severity": "Severity3" },
+                            { "testCaseResolutionStatusType": "Assigned", "severity": "Severity3", "assignee": "ana_mckay7" }
+                        ]
+                    }
+                }
+            ]
         }
     ]
 }

@@ -36,16 +36,34 @@
   > .ant-card-body {
     flex: 1 1 auto;
     min-height: 0;
-    padding: 16px;
+    padding: var(--om-space-16);
     // Only the antd table body scrolls (via scroll.y); the card body itself does
     // not, so there is no double scrollbar and the pagination row stays visible
     // below the scrolling tag rows. (Do NOT flex the antd table Row here — that
     // collapses the table's internal layout.)
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    > [data-testid='description-container'] {
+      flex: 0 0 auto;
+    }
 
     .table-container {
       position: relative;
-      z-index: 0;
+      z-index: var(--om-z-0);
+      flex: 1 1 auto;
+      min-height: 0;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      > .ant-col {
+        flex: 0 0 auto;
+        max-width: 100%;
+      }
+
+      > .ant-col:has(.ant-table-wrapper) {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
     }
   }
 }

@@ -16,14 +16,7 @@ import { Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
-import { ElementType, Fragment, type CSSProperties } from 'react';
-import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
-import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
-import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
-import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
-import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
-import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
+import { Fragment } from 'react';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -59,36 +52,16 @@ import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/forei
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
-import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
-import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
 import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
-import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
 import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
-import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
-import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
-import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
-import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
-import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
-import {
-  ENTITY_ICON_MAPPER,
-  NON_SERVICE_TYPE_ASSETS,
-} from '../constants/Assets.constants';
-import { DE_ACTIVE_COLOR } from '../constants/constants';
-import { EntityType } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
 import {
   ConstraintType,
@@ -97,8 +70,17 @@ import {
 } from '../generated/entity/data/table';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { t } from './i18next/LocalUtil';
-import searchClassBase from './SearchClassBase';
-import serviceUtilClassBase from './ServiceUtilClassBase';
+
+// These moved to EntityIconUtils/EntityServiceIconUtils so that importing TableUtils no longer
+// drags the entity-icon graph into every consumer. Re-exported because downstream repos (Collate)
+// still import them from here; they tree-shake away for callers that do not use them.
+export {
+  EntityIconSize,
+  ENTITY_ICON_SIZE_CLASS_MAP,
+  getEntityIcon,
+  getEntityTypeIcon,
+} from './EntityIconUtils';
+export { getServiceIcon } from './EntityServiceIconUtils';
 
 export const getConstraintIcon = ({
   constraint = '',
@@ -256,178 +238,6 @@ export const getColumnDataTypeIcon = ({
   const icon = dataTypeIcons[dataType as keyof typeof dataTypeIcons] || null;
 
   return <Icon alt={dataType} component={icon} style={{ fontSize: width }} />;
-};
-
-// Data-asset and data/infra-service entity types use the new branded SVGs
-// from ENTITY_ICON_MAPPER (the explore redesign's design system); governance
-// and admin entities without an ENTITY_ICON_MAPPER entry keep their existing
-// branded SVGs. All entries are rendered as <Icon className={} style={} />,
-// which accepts the broader React.ElementType shape ENTITY_ICON_MAPPER uses.
-const entityIconMapping: Record<string, ElementType> = {
-  [SearchIndex.DATABASE]: ENTITY_ICON_MAPPER[EntityType.DATABASE].icon,
-  [SearchIndex.DATABASE_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.DATABASE_SERVICE].icon,
-  [SearchIndex.DATABASE_SCHEMA]:
-    ENTITY_ICON_MAPPER[EntityType.DATABASE_SCHEMA].icon,
-  [SearchIndex.TOPIC]: ENTITY_ICON_MAPPER[EntityType.TOPIC].icon,
-  [EntityType.MESSAGING_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.MESSAGING_SERVICE].icon,
-  [SearchIndex.DASHBOARD]: ENTITY_ICON_MAPPER[EntityType.DASHBOARD].icon,
-  [EntityType.DASHBOARD_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.DASHBOARD_SERVICE].icon,
-  [SearchIndex.MLMODEL]: ENTITY_ICON_MAPPER[EntityType.MLMODEL].icon,
-  [EntityType.MLMODEL_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.MLMODEL_SERVICE].icon,
-  [SearchIndex.PIPELINE]: ENTITY_ICON_MAPPER[EntityType.PIPELINE].icon,
-  [EntityType.PIPELINE_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.PIPELINE_SERVICE].icon,
-  [SearchIndex.CONTAINER]: ENTITY_ICON_MAPPER[EntityType.CONTAINER].icon,
-  [EntityType.STORAGE_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.STORAGE_SERVICE].icon,
-  [SearchIndex.DASHBOARD_DATA_MODEL]:
-    ENTITY_ICON_MAPPER[EntityType.DASHBOARD_DATA_MODEL].icon,
-  [SearchIndex.STORED_PROCEDURE]:
-    ENTITY_ICON_MAPPER[EntityType.STORED_PROCEDURE].icon,
-  [EntityType.CLASSIFICATION]:
-    ENTITY_ICON_MAPPER[EntityType.CLASSIFICATION].icon,
-  [SearchIndex.TAG]: ENTITY_ICON_MAPPER[EntityType.TAG].icon,
-  [SearchIndex.GLOSSARY]: ENTITY_ICON_MAPPER[EntityType.GLOSSARY].icon,
-  [SearchIndex.GLOSSARY_TERM]:
-    ENTITY_ICON_MAPPER[EntityType.GLOSSARY_TERM].icon,
-  [SearchIndex.DOMAIN]: ENTITY_ICON_MAPPER[EntityType.DOMAIN].icon,
-  [SearchIndex.CHART]: ENTITY_ICON_MAPPER[EntityType.CHART].icon,
-  [SearchIndex.TABLE]: ENTITY_ICON_MAPPER[EntityType.TABLE].icon,
-  [SearchIndex.COLUMN]: ENTITY_ICON_MAPPER[EntityType.TABLE_COLUMN].icon,
-  [SearchIndex.ML_MODEL_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.MLMODEL_SERVICE].icon,
-  [EntityType.METADATA_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.METADATA_SERVICE].icon,
-  [SearchIndex.DATA_PRODUCT]: ENTITY_ICON_MAPPER[EntityType.DATA_PRODUCT].icon,
-  [EntityType.TEST_CASE]: ENTITY_ICON_MAPPER[EntityType.TEST_CASE].icon,
-  [EntityType.TEST_SUITE]: ENTITY_ICON_MAPPER[EntityType.TEST_SUITE].icon,
-  [EntityType.DATA_CONTRACT]: ENTITY_ICON_MAPPER[EntityType.DATA_CONTRACT].icon,
-  [EntityType.BOT]: BotIcon,
-  [EntityType.TEAM]: TeamIcon,
-  [EntityType.APPLICATION]: ApplicationIcon,
-  [EntityType.PERSONA]: PersonaIcon,
-  [EntityType.ROLE]: RoleIcon,
-  [EntityType.POLICY]: PolicyIcon,
-  [EntityType.EVENT_SUBSCRIPTION]: AlertIcon,
-  [EntityType.USER]: UserIcon,
-  [EntityType.INGESTION_PIPELINE]: PipelineIcon,
-  [EntityType.ALERT]: AlertIcon,
-  [EntityType.KPI]: KPIIcon,
-  ['tagCategory']: ClassificationIcon,
-  ['announcement']: AnnouncementIcon,
-  ['conversation']: ConversationIcon,
-  ['task']: TaskIcon,
-  ['dataQuality']: DataQualityIcon,
-  ['services']: ServicesIcon,
-  ['automator']: AutomatorBotIcon,
-  ['notification']: NotificationIcon,
-  [EntityType.API_ENDPOINT]: ENTITY_ICON_MAPPER[EntityType.API_ENDPOINT].icon,
-  [EntityType.METRIC]: ENTITY_ICON_MAPPER[EntityType.METRIC].icon,
-  [EntityType.API_SERVICE]: ENTITY_ICON_MAPPER[EntityType.API_SERVICE].icon,
-  [EntityType.API_COLLECTION]:
-    ENTITY_ICON_MAPPER[EntityType.API_COLLECTION].icon,
-  ['location']: LocationIcon,
-  [EntityType.QUERY]: ENTITY_ICON_MAPPER[EntityType.QUERY].icon,
-  [EntityType.DIRECTORY]: ENTITY_ICON_MAPPER[EntityType.DIRECTORY].icon,
-  [EntityType.FILE]: ENTITY_ICON_MAPPER[EntityType.FILE].icon,
-  [EntityType.SPREADSHEET]: ENTITY_ICON_MAPPER[EntityType.SPREADSHEET].icon,
-  [EntityType.WORKSHEET]: ENTITY_ICON_MAPPER[EntityType.WORKSHEET].icon,
-  [EntityType.DRIVE_SERVICE]: ENTITY_ICON_MAPPER[EntityType.DRIVE_SERVICE].icon,
-  [EntityType.KNOWLEDGE_PAGE]:
-    ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_PAGE].icon,
-  [EntityType.KNOWLEDGE_CENTER]:
-    ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon,
-  [EntityType.knowledgePanels]:
-    ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon,
-  [EntityType.SEARCH_INDEX]: ENTITY_ICON_MAPPER[EntityType.SEARCH_INDEX].icon,
-  [EntityType.SEARCH_SERVICE]:
-    ENTITY_ICON_MAPPER[EntityType.SEARCH_SERVICE].icon,
-  Governance: GovernanceIcon,
-  contextFile: ENTITY_ICON_MAPPER['contextFile'].icon,
-  contextMemory: ENTITY_ICON_MAPPER['contextMemory'].icon,
-  aiAutomation: ENTITY_ICON_MAPPER['aiAutomation'].icon,
-  folder: ENTITY_ICON_MAPPER['folder'].icon,
-  contextPlugin: ENTITY_ICON_MAPPER['contextPlugin'].icon,
-  marketplace: ENTITY_ICON_MAPPER['marketplace'].icon,
-  dynamicAgent: ENTITY_ICON_MAPPER['dynamicAgent'].icon,
-  dataObservability: ENTITY_ICON_MAPPER['dataObservability'].icon,
-  report: ENTITY_ICON_MAPPER['report'].icon,
-  testDefinition: ENTITY_ICON_MAPPER['testDefinition'].icon,
-};
-
-export enum EntityIconSize {
-  Size14 = 14,
-  Size16 = 16,
-  Size18 = 18,
-  Size20 = 20,
-  Size24 = 24,
-  Size32 = 32,
-}
-
-export const ENTITY_ICON_SIZE_CLASS_MAP: Record<EntityIconSize, string> = {
-  [EntityIconSize.Size14]: 'tw:w-3.5 tw:h-3.5',
-  [EntityIconSize.Size16]: 'tw:w-4 tw:h-4',
-  [EntityIconSize.Size18]: 'tw:w-4.5 tw:h-4.5',
-  [EntityIconSize.Size20]: 'tw:w-5 tw:h-5',
-  [EntityIconSize.Size24]: 'tw:w-6 tw:h-6',
-  [EntityIconSize.Size32]: 'tw:w-8 tw:h-8',
-};
-
-export const getEntityIcon = (
-  indexType: string,
-  iconClass = '',
-  iconStyle = {},
-  size?: EntityIconSize
-) => {
-  const className = classNames(
-    iconClass,
-    size && ENTITY_ICON_SIZE_CLASS_MAP[size]
-  );
-  const style: CSSProperties = iconStyle;
-
-  const Icon = entityIconMapping[indexType];
-
-  // If icon is not found, return null
-  return Icon ? <Icon className={className} style={style} /> : null;
-};
-
-export const getEntityTypeIcon = (entityType?: string) => {
-  return searchClassBase.getEntityIcon(entityType ?? '');
-};
-
-export const getServiceIcon = (source: {
-  entityType?: EntityType | string;
-}) => {
-  const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
-    source.entityType as EntityType
-  );
-
-  if (isDataAsset) {
-    const iconEntityType =
-      source.entityType === EntityType.TAG
-        ? EntityType.CLASSIFICATION
-        : source.entityType;
-
-    return searchClassBase.getEntityIcon(
-      iconEntityType ?? '',
-      'service-icon w-7 h-7',
-      {
-        color: DE_ACTIVE_COLOR,
-      }
-    );
-  } else {
-    return (
-      <img
-        alt="service-icon"
-        className="inline service-icon h-7"
-        src={serviceUtilClassBase.getServiceTypeLogo(source)}
-      />
-    );
-  }
 };
 
 export function getTableExpandableConfig<T>(

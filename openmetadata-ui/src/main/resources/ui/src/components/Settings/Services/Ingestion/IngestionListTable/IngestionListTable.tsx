@@ -426,7 +426,8 @@ function IngestionListTable({
                 ingestionData.length,
                 isPlatFormDisabled,
                 theme,
-                pipelineType
+                pipelineType,
+                'tw:relative tw:py-8'
               ),
           }}
           pagination={false}

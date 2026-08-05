@@ -341,6 +341,23 @@ export const selectServiceConnector = async (
   }
 };
 
+/**
+ * The Configure Ingestion step loads its RJSF templates lazily, and the wizard
+ * footer lives outside that Suspense boundary. Clicking Next before the form
+ * mounts submits a null form ref and silently keeps the wizard on step 1, so
+ * every step-1 advance has to wait for the form here first.
+ */
+export const waitForIngestionWorkflowForm = async (page: Page) => {
+  await page.getByTestId('add-ingestion-container').waitFor();
+
+  await page
+    .getByTestId('ingestion-workflow-form-loader')
+    .waitFor({ state: 'detached' })
+    .catch(() => null);
+
+  await expect(page.getByTestId('next-button')).toBeEnabled();
+};
+
 export const waitForServiceConnectionForm = async (page: Page) => {
   await page
     .getByTestId('connection-schema-loader')

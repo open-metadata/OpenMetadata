@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.2.1-python3.10
+FROM apache/airflow:3.2.2-python3.10
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -104,8 +104,15 @@ ARG RI_VERSION="2.0.0.0.dev0"
 RUN pip install --upgrade pip "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.1/constraints-3.10.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+
+# Patch CVE-vulnerable jars bundled inside PySpark and strip the spaCy scanner fixture.
+# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale. Runs after the
+# final pip install; fails the build on a broken pyspark install rather than shipping
+# unpatched jars.
+COPY --chown=airflow:0 ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
+RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \

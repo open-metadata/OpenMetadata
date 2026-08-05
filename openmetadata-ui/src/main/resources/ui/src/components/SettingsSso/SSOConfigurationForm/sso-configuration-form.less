@@ -23,10 +23,10 @@
   .card-title {
     line-height: @size-lg;
     color: @grey-700;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
   }
   .card-description {
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
     color: @grey-700;
     margin-top: 0;
     line-height: @size-mlg;
@@ -111,7 +111,7 @@
     margin-bottom: @size-sm;
 
     .ant-typography {
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
       color: @grey-900;
     }
   }
@@ -119,10 +119,10 @@
   .form-actions-bottom {
     position: sticky;
     bottom: 0;
-    z-index: 10;
+    z-index: var(--om-z-10);
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--om-space-12);
     margin-top: @size-lg;
     padding: @size-md @size-lg;
     border-top: 1px solid @grey-200;
@@ -160,10 +160,10 @@
     width: calc(100% + @size-2xl);
     margin-left: -@size-lg;
     margin-right: -@size-lg;
-    z-index: 10;
+    z-index: var(--om-z-10);
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--om-space-12);
     margin-top: @size-lg;
     margin-bottom: 0;
     padding: @size-md @size-lg;
@@ -198,7 +198,7 @@
   }
 
   .ant-card-body {
-    padding: 0px;
+    padding: 0;
   }
 
   // Apply same styling as non-configured for ALL form controls including array fields
@@ -251,7 +251,7 @@
   // Form label styling for configured SSO
   .rjsf .control-label {
     color: @grey-700;
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
     font-size: @font-size-base;
 
     .required {
@@ -285,7 +285,7 @@
         width: @size-mlg;
         height: @size-mlg;
         border: 1px solid @grey-300;
-        border-radius: 6px;
+        border-radius: var(--om-radius-md);
         background-color: @background-color;
         cursor: pointer;
         position: relative;
@@ -321,7 +321,7 @@
 
       span {
         color: @grey-700;
-        font-weight: 500;
+        font-weight: var(--om-font-weight-medium);
         font-size: @font-size-base;
         line-height: 1.4;
 
@@ -398,10 +398,10 @@
       width: 100%;
       margin-left: 0;
       margin-right: 0;
-      z-index: 10;
+      z-index: var(--om-z-10);
       display: flex;
       justify-content: flex-end;
-      gap: 12px;
+      gap: var(--om-space-12);
       margin-top: @size-lg;
       margin-bottom: 0;
       padding: @size-md @size-lg 0 @size-lg;
@@ -443,7 +443,7 @@
 
 .sso-configuration-form-card .rjsf .ant-radio-wrapper {
   color: @grey-700 !important;
-  font-weight: 500 !important;
+  font-weight: var(--om-font-weight-medium) !important;
   font-size: @font-size-base !important;
   display: flex;
   align-items: center;
@@ -493,13 +493,13 @@
 
   .control-label {
     color: @grey-700;
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
     font-size: @font-size-base;
     margin-bottom: @size-xs;
 
     .required {
       color: @red-23;
-      margin-left: 2px;
+      margin-left: var(--om-space-2);
     }
   }
 }
@@ -577,7 +577,7 @@
 
 .sso-configuration-form-card .rjsf .array-item-label,
 .sso-configuration-form-card .rjsf .field-array .control-label {
-  font-weight: 500;
+  font-weight: var(--om-font-weight-medium);
   font-size: @font-size-base;
   color: @grey-900;
   margin-bottom: @padding-xs;
@@ -605,7 +605,7 @@
       width: @size-mlg;
       height: @size-mlg;
       border: 1px solid @grey-300;
-      border-radius: 6px;
+      border-radius: var(--om-radius-md);
       background-color: @background-color;
       cursor: pointer;
       position: relative;
@@ -641,7 +641,7 @@
 
     span {
       color: @grey-700;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
       font-size: @font-size-base;
       line-height: 1.4;
 
@@ -658,13 +658,13 @@
   align-items: center;
   gap: @size-xs;
   color: @grey-700;
-  font-weight: 500;
+  font-weight: var(--om-font-weight-medium);
   font-size: @font-size-base;
 }
 
 .sso-configuration-form-card .rjsf .radio-inline label span span {
   color: @grey-700 !important;
-  font-weight: 500 !important;
+  font-weight: var(--om-font-weight-medium) !important;
   font-size: @font-size-base !important;
   margin-bottom: @size-xs;
 }
@@ -881,5 +881,5 @@
   position: sticky;
   top: 0;
   left: 0;
-  z-index: 9;
+  z-index: var(--om-z-9);
 }

@@ -53,11 +53,11 @@ import {
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
 } from '../../../../utils/CuratedAssetsPureUtils';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import { EntityIconSize } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
 import {

@@ -13,6 +13,9 @@ public class LLMModelMapper implements EntityMapper<LLMModel, CreateLLMModel> {
     return copy(new LLMModel(), create, user)
         .withService(getEntityReference(Entity.LLM_SERVICE, create.getService()))
         .withBaseModel(create.getBaseModel())
+        .withModelType(create.getModelType())
+        .withProviderModelId(create.getProviderModelId())
+        .withCapabilities(create.getCapabilities())
         .withModelVersion(create.getModelVersion())
         .withModelProvider(create.getModelProvider())
         .withModelSpecifications(create.getModelSpecifications())
@@ -20,6 +23,11 @@ public class LLMModelMapper implements EntityMapper<LLMModel, CreateLLMModel> {
         .withModelEvaluation(create.getModelEvaluation())
         .withCostMetrics(create.getCostMetrics())
         .withDeploymentInfo(create.getDeploymentInfo())
+        .withDetection(create.getDetection())
+        .withEvidence(create.getEvidence())
+        .withRemediationActions(create.getRemediationActions())
+        .withCertifications(create.getCertifications())
+        .withRegulatoryCompliance(create.getRegulatoryCompliance())
         .withGovernanceStatus(
             create.getGovernanceStatus() != null
                 ? LLMModel.GovernanceStatus.valueOf(create.getGovernanceStatus().name())

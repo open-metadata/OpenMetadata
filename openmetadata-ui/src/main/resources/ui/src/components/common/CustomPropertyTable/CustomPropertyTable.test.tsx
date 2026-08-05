@@ -50,6 +50,10 @@ jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
+jest.mock('../EmptyPlaceholder/CreatePlaceholder', () => {
+  return jest.fn().mockReturnValue(<div>CreatePlaceholder.component</div>);
+});
+
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
@@ -177,7 +181,7 @@ describe('Test CustomProperty Table Component', () => {
       );
     });
     const noDataPlaceHolder = await screen.findByText(
-      'ErrorPlaceHolder.component'
+      'CreatePlaceholder.component'
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();
@@ -208,7 +212,7 @@ describe('Test CustomProperty Table Component', () => {
     await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
 
     const noDataPlaceHolder = await screen.findByText(
-      'ErrorPlaceHolder.component'
+      'CreatePlaceholder.component'
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();

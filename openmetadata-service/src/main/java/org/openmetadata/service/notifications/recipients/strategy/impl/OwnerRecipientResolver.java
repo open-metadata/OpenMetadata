@@ -131,7 +131,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
             Entity.getEntityByName(
                 Entity.USER, thread.getCreatedBy(), "id,profile,email", Include.NON_DELETED);
         if (creator != null) {
-          recipients.add(Recipient.fromUser(creator, destination.getType()));
+          addIfResolved(recipients, Recipient.fromUser(creator, destination.getType()));
         }
       } catch (Exception e) {
         LOG.debug("Thread creator user not found: {}", thread.getCreatedBy(), e);
