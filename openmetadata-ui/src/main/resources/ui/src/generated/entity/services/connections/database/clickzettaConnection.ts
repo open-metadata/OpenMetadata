@@ -41,7 +41,7 @@ export interface ClickzettaConnection {
      */
     protocol?: Protocol;
     /**
-     * Optional ClickZetta table or view used for usage and query-lineage extraction. When configured, it must expose query_text, query_type, user_name, database_name, schema_name, start_time, end_time, duration, aborted, and cost columns. Configure a seller_center-scoped view when validating this connector.
+     * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this to sys.information_schema.job_history to use ClickZetta's native job history; the connector maps its native columns and scopes it to the configured workspace and schema. Custom tables or views must expose query_text, query_type, user_name, database_name, schema_name, start_time, end_time, duration, aborted, and cost columns.
      */
     queryHistoryTable?: string;
     /**

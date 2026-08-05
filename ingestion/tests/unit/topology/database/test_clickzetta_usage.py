@@ -96,6 +96,30 @@ def test_query_history_sql_rejects_an_unbounded_result_limit():
         )
 
 
+def test_native_job_history_sql_maps_columns_and_scopes_seller_center():
+    sql = build_clickzetta_query_history_sql(
+        query_history_table="sys.information_schema.job_history",
+        start_time=datetime(2026, 8, 5, tzinfo=timezone.utc),
+        end_time=datetime(2026, 8, 6, tzinfo=timezone.utc),
+        database_name="quick_start",
+        database_schema="seller_center",
+        filters="",
+        result_limit=1,
+    )
+
+    assert "FROM sys.information_schema.job_history" in sql
+    assert "job_text AS query_text" in sql
+    assert "job_type AS query_type" in sql
+    assert "job_creator AS user_name" in sql
+    assert "workspace_name AS database_name" in sql
+    assert "GET_JSON_OBJECT(input_tables, '$.table[0].namespace[1]') AS schema_name" in sql
+    assert "execution_time AS duration" in sql
+    assert "status" in sql
+    assert "database_name = 'quick_start'" in sql
+    assert "schema_name = 'seller_center'" in sql
+    assert "LIMIT 1" in sql
+
+
 def test_normalize_clickzetta_query_row_maps_usage_fields():
     started = datetime(2026, 8, 5, 1, 2, 3, tzinfo=timezone.utc)
     ended = datetime(2026, 8, 5, 1, 2, 4, tzinfo=timezone.utc)
