@@ -335,7 +335,7 @@ test('My Data Widget', async ({ page }) => {
   });
 });
 
-test('KPI Widget', async ({ page }) => {
+test('KPI Widget', { tag: '@data-insight' }, async ({ page }) => {
   test.slow(true);
 
   await test.step('Add KPI', async () => {

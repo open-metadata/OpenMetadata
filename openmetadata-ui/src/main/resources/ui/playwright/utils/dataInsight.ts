@@ -28,26 +28,21 @@ export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
 
 export const addKpi = async (page: Page, data: KPIData) => {
   const currentDate = new Date();
-  const month =
-    currentDate.getMonth() + 1 < 10
-      ? `0${currentDate.getMonth() + 1}`
-      : currentDate.getMonth() + 1;
-  const date =
-    currentDate.getDate() < 10
-      ? `0${currentDate.getDate()}`
-      : currentDate.getDate();
-
-  const startDate = `${currentDate.getFullYear()}-${month}-${date}`;
-  currentDate.setDate(currentDate.getDate() + 1);
-  const nextMonth =
-    currentDate.getMonth() + 1 < 10
-      ? `0${currentDate.getMonth() + 1}`
-      : currentDate.getMonth() + 1;
-  const nextDate =
-    currentDate.getDate() < 10
-      ? `0${currentDate.getDate()}`
-      : currentDate.getDate();
-  const endDate = `${currentDate.getFullYear()}-${nextMonth}-${nextDate}`;
+  const previousMonthDate = new Date(
+    currentDate.getFullYear(),
+    currentDate.getMonth() - 1,
+    Math.min(
+      currentDate.getDate(),
+      new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate()
+    )
+  );
+  const formatDate = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+      2,
+      '0'
+    )}-${String(date.getDate()).padStart(2, '0')}`;
+  const startDate = formatDate(previousMonthDate);
+  const endDate = formatDate(currentDate);
 
   await page.click('#chartType');
   await page.click(`.ant-select-dropdown [title="${data.dataInsightChart}"]`);
