@@ -143,12 +143,15 @@ jest.mock('recharts', () => ({
         content,
         coordinate,
         isAnimationActive,
+        offset,
       }) => (
         <div
           data-active={String(Boolean(active))}
           data-animation-active={String(isAnimationActive)}
           data-horizontal-overflow-allowed={String(allowEscapeViewBox?.x)}
+          data-offset={offset}
           data-testid="recharts-tooltip"
+          data-vertical-overflow-allowed={String(allowEscapeViewBox?.y)}
           data-x={coordinate?.x}
           data-y={coordinate?.y}>
           {active ? content : null}
@@ -461,6 +464,11 @@ describe('TestSummaryGraph', () => {
       'data-horizontal-overflow-allowed',
       ACTIVE_VALUE
     );
+    expect(tooltip).toHaveAttribute(
+      'data-vertical-overflow-allowed',
+      ACTIVE_VALUE
+    );
+    expect(tooltip).toHaveAttribute('data-offset', '4');
 
     fireEvent.mouseEnter(point);
     fireEvent.mouseLeave(point);

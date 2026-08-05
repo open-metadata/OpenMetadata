@@ -334,7 +334,7 @@ function TestSummaryGraph({
           active={Boolean(activeTooltip)}
           // Recharts otherwise flips the tooltip after measuring its content,
           // moving the incident link away from a pointer already over it.
-          allowEscapeViewBox={{ x: true, y: false }}
+          allowEscapeViewBox={{ x: true, y: true }}
           content={
             <TestSummaryTooltipContent
               activeTooltip={activeTooltip}
