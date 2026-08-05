@@ -426,11 +426,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         its table child node runs, so a cache that is not keyed hands one schema's
         description and labels to the next one.
         """
-        dataset_ref = f"{self.context.get().database}.{schema_name}"
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        dataset_ref = f"{database}.{schema_name}"
         if dataset_ref in self._dataset_obj_cache:
             return self._dataset_obj_cache.get(dataset_ref)
 
-        dataset_obj = self.client.get_dataset(dataset_ref)
+        dataset_obj = self.client.get_dataset(dataset_ref)  # pyright: ignore[reportOptionalMemberAccess]
         self._dataset_obj_cache.put(dataset_ref, dataset_obj)
         return dataset_obj
 
