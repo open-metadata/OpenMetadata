@@ -57,7 +57,7 @@ export const visitClassificationPage = async (
   const fetchTags = page.waitForResponse(
     (url) =>
       url.url().includes('/api/v1/tags') &&
-      url.url().includes(`parent=${classificationName}`)
+      url.url().includes(`parent=${encodeURIComponent(classificationName)}`)
   );
   await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
