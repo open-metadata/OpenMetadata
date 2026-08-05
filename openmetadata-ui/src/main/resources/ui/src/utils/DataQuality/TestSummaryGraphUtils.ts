@@ -17,6 +17,7 @@ import { TestCaseChartDataType } from '../../components/Database/Profiler/Profil
 import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
 import { Thread } from '../../generated/entity/feed/thread';
+import { Task } from '../../generated/entity/tasks/task';
 import {
   TestCaseParameterValue,
   TestCaseResult,
@@ -25,6 +26,11 @@ import {
 import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightPureUtils';
 import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
+import {
+  getTaskDetailPath,
+  getTaskDetailPathFromTask,
+  getTaskDisplayId,
+} from '../TaskNavigationUtils';
 
 const EXCLUDED_CHART_FIELDS = new Set(['schemaTable1', 'schemaTable2']);
 
@@ -32,14 +38,42 @@ export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
   testCaseResults: TestCaseResult[];
   entityThread: Thread[];
-  testCaseFqn?: string;
+  tasks?: Task[];
+};
+
+function isThread(value: unknown): value is Thread {
+  return typeof value === 'object' && value !== null && 'task' in value;
+}
+
+/**
+ * Converts current tasks and legacy threads into the fields used by the
+ * tooltip, keeping the display component independent of the incident API.
+ */
+export const getIncidentDetails = (task?: Task | Thread) => {
+  if (!task) {
+    return {};
+  }
+
+  if (isThread(task)) {
+    return {
+      incidentDisplayId: task.task?.id,
+      incidentPath: getTaskDetailPath(task),
+      incidentAssignees: task.task?.assignees,
+    };
+  }
+
+  return {
+    incidentDisplayId: getTaskDisplayId(task.taskId),
+    incidentPath: getTaskDetailPathFromTask(task),
+    incidentAssignees: task.assignees,
+  };
 };
 
 export const prepareChartData = ({
   testCaseParameterValue,
   testCaseResults,
   entityThread,
-  testCaseFqn,
+  tasks = [],
 }: PrepareChartDataType) => {
   // Bond will only be shown if params length is 2 and both values are present
   const params =
@@ -91,9 +125,11 @@ export const prepareChartData = ({
       ...omitBy(metric, isUndefined),
       boundArea,
       incidentId: result.incidentId,
-      task: entityThread.find(
-        (task) => task.task?.testCaseResolutionStatusId === result.incidentId
-      ),
+      task:
+        tasks.find((task) => task.id === result.incidentId) ??
+        entityThread.find(
+          (task) => task.task?.testCaseResolutionStatusId === result.incidentId
+        ),
     });
   });
 
@@ -115,7 +151,6 @@ export const prepareChartData = ({
     })),
     data: dataPoints,
     showAILearningBanner,
-    testCaseFqn,
   };
 };
 

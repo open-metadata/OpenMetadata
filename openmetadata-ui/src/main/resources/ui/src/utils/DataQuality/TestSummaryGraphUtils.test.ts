@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
+import { Task } from '../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   formatTestSummaryYAxis,
@@ -46,6 +47,29 @@ jest.mock('../ChartUtils', () => ({
 }));
 
 describe('prepareChartData', () => {
+  it('should resolve task-first incident metadata before legacy threads', () => {
+    const incidentId = '3093dbee-196b-4284-9f97-7103063d0dd7';
+    const task = {
+      id: incidentId,
+      taskId: 'TASK-00244',
+    } as Task;
+
+    const result = prepareChartData({
+      entityThread: [],
+      tasks: [task],
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          incidentId,
+          testCaseStatus: TestCaseStatus.Failed,
+          timestamp: 1720525804736,
+        },
+      ],
+    });
+
+    expect(result.data[0].task).toEqual(task);
+  });
+
   it('should prepare chart data correctly', () => {
     const testObj = {
       testCaseParameterValue: [
