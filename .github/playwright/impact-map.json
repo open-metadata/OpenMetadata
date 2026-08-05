@@ -394,11 +394,32 @@
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
         "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
-        "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
-        "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
         "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Same service sources as above, but these two specs carry PLAYWRIGHT_INGESTION_TAG_OBJ, so they only run in the Ingestion project. Listing them under chromium/Basic selects them but the shard planner drops them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AddServicePage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/EditConnectionFormPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/SettingsRouter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/rest/serviceAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtils.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtilClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityDataBreadcrumbUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityServiceBreadcrumbUtils.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServicesOverview*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServiceHealthProvider.java"
+      ],
+      "projects": ["Ingestion"],
+      "specs": [
+        "playwright/e2e/Flow/ServiceForm.spec.ts",
+        "playwright/e2e/Flow/ApiServiceRest.spec.ts"
       ]
     },
     {
