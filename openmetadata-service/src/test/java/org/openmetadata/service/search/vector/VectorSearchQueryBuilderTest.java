@@ -1097,6 +1097,46 @@ class VectorSearchQueryBuilderTest {
     assertTrue(rendered.contains(MemoryVisibility.ENTITY.value()));
   }
 
+  /**
+   * A KNN query spans an alias of many indices and OpenSearch 400s the whole request if any of them
+   * does not map {@code owners} as nested, so the owner branch must set ignore_unmapped exactly as
+   * {@code QueryBuilderFactory#nestedQuery} does. Regressing this breaks search outright for every
+   * non-admin caller, which the field-set drift guard cannot see because the field names are
+   * unchanged.
+   */
+  @Test
+  void testOwnerBranchIgnoresUnmappedNestedPath() throws Exception {
+    String query =
+        VectorSearchQueryBuilder.buildQuery(
+            new float[] {0.1f}, 10, Map.of(), 0.0, nonAdminSubject());
+
+    JsonNode nested = findNested(memoryVisibilityClause(MAPPER.readTree(query)));
+    assertNotNull(nested, "the widened clause must carry a nested owners query");
+    assertTrue(
+        nested.path("ignore_unmapped").asBoolean(false),
+        "nested owners query must set ignore_unmapped, or one unmapped index 400s the search");
+  }
+
+  private static JsonNode findNested(JsonNode node) {
+    JsonNode found = null;
+    if (node != null && node.isObject()) {
+      if (node.has("nested")) {
+        found = node.get("nested");
+      } else {
+        for (JsonNode child : node) {
+          found = findNested(child);
+          if (found != null) break;
+        }
+      }
+    } else if (node != null && node.isArray()) {
+      for (JsonNode child : node) {
+        found = findNested(child);
+        if (found != null) break;
+      }
+    }
+    return found;
+  }
+
   @Test
   void testOmitsMemoryClauseForAdminSubject() throws Exception {
     String query =

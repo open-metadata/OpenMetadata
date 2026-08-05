@@ -227,9 +227,13 @@ public class VectorSearchQueryBuilder {
 
     if (subjectContext != null) {
       User user = subjectContext.user();
+      // ignore_unmapped mirrors QueryBuilderFactory#nestedQuery, and is not optional: a KNN query
+      // spans an alias of many indices, and OpenSearch fails the whole request with a 400 if any of
+      // them does not map `owners` as nested. Without it a single such index breaks search outright
+      // for every non-admin caller.
       sb.append(",{\"nested\":{\"path\":\"")
           .append(ContextMemorySearchVisibility.FIELD_OWNERS)
-          .append("\",\"query\":")
+          .append("\",\"ignore_unmapped\":true,\"query\":")
           .append(
               termClause(ContextMemorySearchVisibility.FIELD_OWNERS_ID, user.getId().toString()))
           .append("}}");
