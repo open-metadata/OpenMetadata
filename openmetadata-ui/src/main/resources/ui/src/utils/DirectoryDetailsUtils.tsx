@@ -12,16 +12,33 @@
  */
 
 import { get } from 'lodash';
+import { lazy } from 'react';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
-import DirectoryChildrenTable from '../components/DriveService/Directory/DirectoryChildrenTable/DirectoryChildrenTable';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+
+const DirectoryChildrenTable = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/DriveService/Directory/DirectoryChildrenTable/DirectoryChildrenTable'
+      )
+  )
+);
 
 export interface DirectoryDetailPageTabProps {
   childrenCount: number;
