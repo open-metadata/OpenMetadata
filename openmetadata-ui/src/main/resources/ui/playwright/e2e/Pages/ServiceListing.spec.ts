@@ -184,7 +184,7 @@ test.describe('Service Listing', () => {
     const searchRequest = await searchResponse;
     expect(searchRequest.status()).toBe(200);
     await expect(
-      page.getByRole('cell', { name: serviceDisplayName }).first()
+      page.getByRole('cell', { name: serviceDisplayName })
     ).toBeVisible();
   });
 

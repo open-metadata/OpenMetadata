@@ -258,7 +258,7 @@ test.describe(
           await page.locator('[type="file"]').waitFor({ state: 'attached' });
           await page.setInputFiles('[type="file"]', csvFilePath);
           await startCsvPreview(page);
-          await expect(page.getByText(/INVALID_HEADER/i).first()).toBeVisible({
+          await expect(page.getByText(/INVALID_HEADER/i)).not.toHaveCount(0, {
             timeout: 30000,
           });
         });

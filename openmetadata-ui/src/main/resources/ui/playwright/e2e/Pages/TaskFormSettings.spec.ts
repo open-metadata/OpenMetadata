@@ -38,7 +38,6 @@ const selectAntOption = async (page: Page, testId: string, option: string) => {
   await page
     .locator('.ant-select-dropdown .ant-select-item-option-content')
     .filter({ hasText: option })
-    .first()
     .click();
 };
 

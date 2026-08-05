@@ -215,8 +215,8 @@ test.describe(
         await expect(resultContainer).toBeVisible();
 
         const resultChart = viewResultsPage.getByTestId('chart-container');
-        if (await resultChart.first().isVisible()) {
-          await expect(resultChart.first()).toBeVisible();
+        if ((await resultChart.count()) > 0) {
+          await expect(resultChart).not.toHaveCount(0);
         }
       });
 

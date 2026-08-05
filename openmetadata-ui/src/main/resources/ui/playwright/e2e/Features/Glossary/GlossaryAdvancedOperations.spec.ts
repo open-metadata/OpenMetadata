@@ -572,6 +572,7 @@ test.describe('Glossary Advanced Operations', () => {
       const count = await removeButtons.count();
 
       for (let i = count - 1; i >= 0; i--) {
+        // eslint-disable-next-line om-playwright/no-positional-locator -- iterating a shrinking list from the end; the loop index is the only way to address each remaining item
         await removeButtons.nth(i).click();
       }
 
@@ -771,6 +772,7 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click the delete button for the second reference (index 1)
+      // eslint-disable-next-line om-playwright/no-positional-locator -- delete-ref-btn is not per-name; deliberately targets the 2nd reference by the deterministic creation order [KeepRef, RemoveRef]
       await page.getByTestId('delete-ref-btn').nth(1).click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
@@ -845,7 +847,7 @@ test.describe('Glossary Advanced Operations', () => {
 
       await waitForAllLoadersToDisappear(page);
 
-      await page.locator('[data-testid^="remove-row-"]').first().click();
+      await page.locator('[data-testid^="remove-row-"]').click();
 
       const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();

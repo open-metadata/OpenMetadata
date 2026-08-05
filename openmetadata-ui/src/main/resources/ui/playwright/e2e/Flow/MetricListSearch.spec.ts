@@ -100,7 +100,7 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     const searchInput = page.getByTestId('metric-search').getByRole('textbox');
     await expect(searchInput).toBeVisible();
 
-    await expect(page.getByTestId('metric-name').first()).toBeVisible();
+    await expect(page.getByTestId('metric-name')).not.toHaveCount(0);
     const initialCount = await page.getByTestId('metric-name').count();
 
     await test.step('search fires a scoped metric query and narrows the results', async () => {

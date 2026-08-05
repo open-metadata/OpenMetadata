@@ -39,7 +39,7 @@ const openMetadataAgentEditForm = async (page: Page) => {
     await metadataSubTab.click();
   }
 
-  await page.getByTestId('more-actions').first().click();
+  await page.getByTestId('more-actions').click();
   await page.getByTestId('edit-button').click();
 
   // The add/edit ingestion form renders here. On the buggy build this throws

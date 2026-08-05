@@ -82,7 +82,7 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('expand icon is not visible for an empty folder', async () => {
       const folderRow = await revealFolderRow(page, folderName);
-      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
+      const expandBtn = folderRow.locator('button[slot="chevron"]');
       await expect(expandBtn).toHaveClass(/tw:invisible/);
     });
 
@@ -102,7 +102,7 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('expand icon is visible after uploading a file to the folder', async () => {
       const folderRow = await revealFolderRow(page, folderName);
-      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
+      const expandBtn = folderRow.locator('button[slot="chevron"]');
       await expect(expandBtn).not.toHaveClass(/tw:invisible/);
     });
 
@@ -120,14 +120,11 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('expanding folder in sidebar shows the uploaded file', async () => {
       const folderRow = await revealFolderRow(page, folderName);
-      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
+      const expandBtn = folderRow.locator('button[slot="chevron"]');
       await expandBtn.click();
 
       await expect(
-        page
-          .getByRole('treegrid')
-          .getByRole('row', { name: documentFileName })
-          .first()
+        page.getByRole('treegrid').getByRole('row', { name: documentFileName })
       ).toBeVisible();
     });
 
@@ -141,7 +138,7 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('expand icon is not visible after deleting the only file', async () => {
       const folderRow = await revealFolderRow(page, folderName);
-      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
+      const expandBtn = folderRow.locator('button[slot="chevron"]');
       await expect(expandBtn).toHaveClass(/tw:invisible/);
     });
 

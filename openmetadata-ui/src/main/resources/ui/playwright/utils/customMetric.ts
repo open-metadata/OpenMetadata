@@ -81,15 +81,13 @@ export const createCustomMetric = async ({
   // validate redirection and cancel button
   await expect(page.locator('[data-testid="heading"]')).toBeVisible();
   await expect(
-    page
-      .locator(
-        `[data-testid="${
-          isColumnMetric
-            ? 'profiler-tab-container'
-            : 'table-profiler-chart-container'
-        }"]`
-      )
-      .first()
+    page.locator(
+      `[data-testid="${
+        isColumnMetric
+          ? 'profiler-tab-container'
+          : 'table-profiler-chart-container'
+      }"]`
+    )
   ).toBeVisible();
 
   await page.locator('[data-testid="cancel-button"]').click();

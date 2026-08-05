@@ -55,7 +55,6 @@ test.describe(
       await page
         .getByRole('option')
         .filter({ hasText: table.entityResponseData.fullyQualifiedName })
-        .first()
         .click();
 
       await page.locator('[data-id="selected-entity"]').waitFor({
@@ -69,8 +68,7 @@ test.describe(
       await page.click('[id="root\\/column"]');
       const columnOption = page
         .getByRole('option')
-        .filter({ hasText: columnName })
-        .first();
+        .filter({ hasText: columnName });
       await columnOption.waitFor({
         state: 'visible',
       });
@@ -124,11 +122,7 @@ test.describe(
 
       await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await page
-        .getByRole('option')
-        .filter({ hasText: testType })
-        .first()
-        .click();
+      await page.getByRole('option').filter({ hasText: testType }).click();
 
       await page.locator(`[data-id="${testTypeId}"]`).waitFor({
         state: 'visible',
@@ -413,7 +407,7 @@ test.describe(
       await page.getByTestId('pipeline').click();
       await ingestionPipelinesListResponse;
 
-      await page.getByTestId('more-actions').first().click();
+      await page.getByTestId('more-actions').click();
       await page.getByTestId('actions-dropdown').waitFor({
         state: 'visible',
       });

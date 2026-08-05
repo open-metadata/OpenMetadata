@@ -29,6 +29,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 async function openEntitySummaryPanel(page: Page, entityType: EntityType) {
   await selectDataAssetFilter(page, entityType);
 
+  // eslint-disable-next-line om-playwright/no-positional-locator -- opens whichever search result is first; the test only needs "an" entity's summary panel, not a specific one, and there is no test-owned card to scope by
   const firstEntityCard = page
     .locator('[data-testid="table-data-card"]')
     .first();
@@ -47,9 +48,7 @@ async function verifyEntitySummaryPanelStructure(page: Page) {
 
 async function verifyEntityDetailsInPanel(page: Page) {
   const summaryPanel = page.locator('.entity-summary-panel-container');
-  const entityLink = summaryPanel
-    .locator('[data-testid="entity-link"]')
-    .first();
+  const entityLink = summaryPanel.locator('[data-testid="entity-link"]');
 
   await expect(entityLink).toBeVisible();
 }
@@ -76,7 +75,11 @@ async function verifyTabNavigation(page: Page) {
 test.describe('Entity Summary Panel', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+    const dataAssetCount = page.waitForResponse(
+      '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
+    );
     await sidebarClick(page, SidebarItem.EXPLORE);
+    await dataAssetCount;
   });
 
   ENTITY_TYPES.forEach((entityType) => {
@@ -99,9 +102,7 @@ test.describe('Entity Summary Panel', () => {
     if (hasSummaryPanel) {
       await expect(summaryPanel.locator('.title-section')).toBeVisible();
 
-      const entityLink = summaryPanel
-        .locator('[data-testid="entity-link"]')
-        .first();
+      const entityLink = summaryPanel.locator('[data-testid="entity-link"]');
       if (await entityLink.isVisible()) {
         await expect(entityLink).toHaveAttribute('href', /.+/);
       }
@@ -205,7 +206,7 @@ test.describe('Entity Title Section - Edit Display Name', () => {
 
     await editDisplayNameFromPanel(page, newDisplayName);
 
-    const entityLink = summaryPanel.getByTestId('entity-link').first();
+    const entityLink = summaryPanel.getByTestId('entity-link');
     await expect(entityLink).toContainText(newDisplayName);
   });
 

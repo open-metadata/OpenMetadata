@@ -225,6 +225,7 @@ test.describe('Context Center - Dashboard', () => {
       const mostCitedCard = page.getByTestId('most-cited-memories-card');
       await expect(mostCitedCard).toBeVisible();
 
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts this memory ranks first in the "most cited" ordering, so position is the intended semantic
       const firstItem = mostCitedCard.getByTestId('most-cited-count').first();
       await expect(firstItem).toContainText('Cited 999999 times');
     });
@@ -312,7 +313,7 @@ test.describe('Context Center - Dashboard', () => {
         mimeType: 'text/plain',
         buffer: Buffer.from('dashboard upload modal fixture'),
       });
-      await expect(modal.getByText(fileName).first()).toBeVisible();
+      await expect(modal.getByText(fileName)).toBeVisible();
 
       const uploadResPromise = page.waitForResponse(
         '/api/v1/contextCenter/drive/files/upload'

@@ -124,7 +124,7 @@ export const runSlashCommandsAndBasicBlocksTest = async (
     const blockquoteWithText = blockquote.filter({
       hasText: 'This is a quote',
     });
-    await expect(blockquoteWithText.first()).toBeVisible();
+    await expect(blockquoteWithText).toBeVisible();
 
     // Also verify it's NOT in a list
     const textInList = editor

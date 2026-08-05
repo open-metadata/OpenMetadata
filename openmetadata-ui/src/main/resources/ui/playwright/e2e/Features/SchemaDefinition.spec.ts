@@ -39,7 +39,7 @@ test.describe('Schema definition (views)', () => {
     await page.click('[data-testid="schema_definition"]');
 
     await expect(
-      page.locator('.CodeMirror-line > [role="presentation"]').first()
+      page.locator('.CodeMirror-line > [role="presentation"]')
     ).toBeVisible();
 
     await expect(

@@ -563,6 +563,7 @@ test.describe('Workflow History', () => {
     await expect(termRow).toBeVisible();
 
     // Look for status indicator - could be badge, tag, or status column
+    // eslint-disable-next-line om-playwright/no-positional-locator -- the three selectors are alternates for different possible status-indicator implementations, and this whole check is best-effort/optional (guarded by isVisible().catch)
     const statusIndicator = termRow
       .locator('[data-testid="status"], .status-badge, .ant-tag')
       .first();
@@ -639,9 +640,9 @@ test('should delete parent term and cascade delete children', async ({
 
     await performExpandAll(page);
 
-    const parentRow = page
-      .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-      .first();
+    const parentRow = page.locator(
+      `tbody > tr[data-row-key*="${parentTerm.responseData.name}"]:visible`
+    );
 
     await expect(parentRow).toBeVisible();
 

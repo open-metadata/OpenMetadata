@@ -133,6 +133,7 @@ test.describe('Glossary Term Details Operations', () => {
 
       // Remove first reference using the delete button in the row
       // The delete button is the only button with IconDelete in the modal rows
+      // eslint-disable-next-line om-playwright/no-positional-locator -- deliberately removing the first of the two references (reference1); the assertions below verify reference1 is gone and reference2 remains
       await page
         .getByTestId('glossary-term-references-modal')
         .locator('.reference-edit-form button[type="button"]')
@@ -188,7 +189,7 @@ test.describe('Glossary Term Details Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid^="remove-row-"]').first().click();
+      await page.locator('[data-testid^="remove-row-"]').click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();
@@ -305,7 +306,7 @@ test.describe('Glossary Term Details Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid^="remove-row-"]').first().click();
+      await page.locator('[data-testid^="remove-row-"]').click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();

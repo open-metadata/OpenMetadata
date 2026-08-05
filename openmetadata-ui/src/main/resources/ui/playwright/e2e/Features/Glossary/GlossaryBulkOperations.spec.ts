@@ -104,7 +104,10 @@ test.describe('Glossary Bulk Operations', () => {
 
       if (count > 0) {
         // Select multiple terms
-        await termCheckboxes.first().check();
+        const term1Checkbox = page.locator(
+          `[data-row-key*="${term1.responseData.name}"] input[type="checkbox"]`
+        );
+        await term1Checkbox.check();
 
         // Look for bulk action toolbar
         const bulkActionBar = page.locator(
@@ -149,9 +152,9 @@ test.describe('Glossary Bulk Operations', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // Verify parent term is visible
-      const parentRow = page
-        .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-        .first();
+      const parentRow = page.locator(
+        `tbody > tr[data-row-key*="${parentTerm.responseData.name}"]:visible`
+      );
 
       await expect(parentRow).toBeVisible();
 

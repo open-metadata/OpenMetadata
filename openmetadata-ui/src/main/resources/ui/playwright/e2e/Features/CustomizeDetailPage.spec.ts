@@ -503,10 +503,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           userPage.getByRole('tab', { name: 'Custom Tab' })
         ).toBeVisible();
 
-        const customTab = userPage
-          .locator('main [role="tablist"]')
-          .last()
-          .getByRole('tab', { name: 'Custom Tab' });
+        const customTab = userPage.getByRole('tab', { name: 'Custom Tab' });
 
         await customTab.focus();
         await userPage.keyboard.press('Enter');
@@ -520,7 +517,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const visibleDescriptionWidget = userPage.locator(
           '[data-testid^="KnowledgePanel.Description-"]:visible'
         );
-        await expect(visibleDescriptionWidget.first()).toBeVisible();
+        await expect(visibleDescriptionWidget).not.toHaveCount(0);
       });
     });
   });
@@ -658,10 +655,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           userPage.getByRole('tab', { name: 'Custom Tab' })
         ).toBeVisible();
 
-        const customTab = userPage
-          .locator('main [role="tablist"]')
-          .last()
-          .getByRole('tab', { name: 'Custom Tab' });
+        const customTab = userPage.getByRole('tab', { name: 'Custom Tab' });
 
         await customTab.focus();
         await userPage.keyboard.press('Enter');
@@ -675,7 +669,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const visibleDescriptionWidget = userPage.locator(
           '[data-testid^="KnowledgePanel.Description-"]:visible'
         );
-        await expect(visibleDescriptionWidget.first()).toBeVisible();
+        await expect(visibleDescriptionWidget).not.toHaveCount(0);
       });
     });
   });

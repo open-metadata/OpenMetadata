@@ -289,6 +289,7 @@ test.describe(
         await page.keyboard.type(profilerSetting.profileQuery);
 
         await page.locator('[data-testid="include-column-select"]').click();
+        // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design keeps prior closed dropdown portals in the DOM; `.last()` picks the most-recently-opened one, the only reliable way to target it
         await page
           .locator('.ant-select-dropdown')
           .locator(
@@ -308,6 +309,7 @@ test.describe(
         await page
           .locator('#includeColumnsProfiler_partitionColumnName')
           .click();
+        // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design keeps prior closed dropdown portals in the DOM; `.last()` picks the most-recently-opened one, the only reliable way to target it
         await page
           .locator('.ant-select-dropdown')
           .locator(

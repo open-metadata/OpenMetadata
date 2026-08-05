@@ -144,9 +144,12 @@ export class OverviewPageObject extends RightPanelBase {
       '.data-quality-section, .data-quality-content'
     );
     this.selectOwnerTabs = this.page.getByTestId('select-owner-tabs');
-    this.selectOwnerTabsRoleTab = this.page
-      .locator('[data-testid="select-owner-tabs"] [role="tab"]')
-      .first();
+    // Users/Teams tabs render together — used only to detect "is the tab
+    // bar visible", never to target a specific tab, so this is left
+    // unscoped and checked via count() at each call site.
+    this.selectOwnerTabsRoleTab = this.page.locator(
+      '[data-testid="select-owner-tabs"] [role="tab"]'
+    );
     this.selectOwnerTabsLoader = this.page.locator(
       '[data-testid="select-owner-tabs"] .ant-spin-dot'
     );
@@ -391,7 +394,7 @@ export class OverviewPageObject extends RightPanelBase {
     await this.editOwnersIcon.click();
 
     await this.selectOwnerTabs.waitFor({ state: 'visible' });
-    await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
+    await expect(this.selectOwnerTabsRoleTab).not.toHaveCount(0);
 
     if (type === 'Users') {
       await expect
@@ -527,7 +530,9 @@ export class OverviewPageObject extends RightPanelBase {
     await this.editOwnersIcon.click();
 
     await expect(this.selectOwnerTabs).toBeVisible({ timeout: 10_000 });
-    await expect(this.selectOwnerTabsRoleTab).toBeVisible({ timeout: 10_000 });
+    await expect(this.selectOwnerTabsRoleTab).not.toHaveCount(0, {
+      timeout: 10_000,
+    });
   }
 
   /**
@@ -673,7 +678,7 @@ export class OverviewPageObject extends RightPanelBase {
     // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
     await this.editOwnersIcon.click({ force: true });
 
-    await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
+    await expect(this.selectOwnerTabsRoleTab).not.toHaveCount(0);
 
     if (type === 'Users') {
       const isAlreadyActive = await this.selectOwnerUsersTab.getAttribute(

@@ -155,9 +155,7 @@ test.describe(
         await expect(agentCard.getByTestId('pipeline-status')).toContainText(
           'Success'
         );
-        await expect(
-          agentCard.getByTestId('agent-run-dot').first()
-        ).toBeVisible();
+        await expect(agentCard.getByTestId('agent-run-dot')).toBeVisible();
       });
 
       await test.step('Card shows the configured schedule', async () => {

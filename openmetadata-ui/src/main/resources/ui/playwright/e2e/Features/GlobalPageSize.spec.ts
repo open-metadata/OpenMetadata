@@ -49,7 +49,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     await waitForAllLoadersToDisappear(page);
 
     const rowsPerPageDropdown = page.getByTestId('rows-per-page-dropdown');
-    await expect(rowsPerPageDropdown.locator('p').first()).toHaveText('25');
+    await expect(rowsPerPageDropdown.locator('p')).toHaveText('25');
 
     // Change page size to 50
     await rowsPerPageDropdown.click();

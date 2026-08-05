@@ -163,9 +163,13 @@ test.describe('Ingestion Bot ', () => {
         type: domainAsset1[0].serviceCategory,
       });
 
-      // check if service has domain or not
+      // check if service has domain or not — scope to the service's own
+      // header, since the child-asset table below also renders a
+      // domain-link per row (ServiceMainTabContentUtils' domainTableObject).
       await expect(
-        ingestionBotPage.getByTestId('domain-link').first()
+        ingestionBotPage
+          .getByTestId('data-assets-header')
+          .getByTestId('domain-link')
       ).toHaveText(domain1.data.displayName);
     });
 

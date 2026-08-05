@@ -154,7 +154,7 @@ test.describe('Data Product Domain Migration', () => {
         page.locator('[data-testid="entity-header-name"]')
       ).toContainText(dataProduct.responseData.name);
 
-      await expect(page.getByTestId('domain-link').first()).toContainText(
+      await expect(page.getByTestId('domain-link')).toContainText(
         sourceDomain.data.displayName
       );
 
@@ -190,7 +190,7 @@ test.describe('Data Product Domain Migration', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.data);
 
-      await expect(page.getByTestId('domain-link').first()).toContainText(
+      await expect(page.getByTestId('domain-link')).toContainText(
         targetDomain.data.displayName
       );
 
@@ -261,7 +261,7 @@ test.describe('Data Product Domain Migration', () => {
       ).toContainText(noAssetsDataProduct.responseData.name);
 
       // Verify data product is in original domain
-      await expect(page.getByTestId('domain-link').first()).toContainText(
+      await expect(page.getByTestId('domain-link')).toContainText(
         noAssetsDomain.data.displayName
       );
 
@@ -295,7 +295,7 @@ test.describe('Data Product Domain Migration', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify domain changed
-      await expect(page.getByTestId('domain-link').first()).toContainText(
+      await expect(page.getByTestId('domain-link')).toContainText(
         noAssetsDomain2.data.displayName
       );
 
@@ -391,7 +391,7 @@ test.describe('Data Product Domain Migration', () => {
       await expect(page.getByTestId('entity-header-name')).toContainText(
         movedDataProduct.responseData.name
       );
-      await expect(page.getByTestId('domain-link').first()).toContainText(
+      await expect(page.getByTestId('domain-link')).toContainText(
         vehicleDomain.data.displayName
       );
 

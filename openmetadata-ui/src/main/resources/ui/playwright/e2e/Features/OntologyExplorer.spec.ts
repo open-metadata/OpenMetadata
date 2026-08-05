@@ -161,8 +161,8 @@ test.describe('Ontology Explorer', () => {
     }) => {
       await waitForGraphLoaded(page);
       await expect(
-        page.locator('.ontology-g6-container canvas').first()
-      ).toBeVisible();
+        page.locator('.ontology-g6-container canvas')
+      ).not.toHaveCount(0);
     });
   });
 
@@ -563,9 +563,9 @@ test.describe('Ontology Explorer', () => {
       await expect(
         page.getByTestId('ontology-graph-search-empty')
       ).toBeVisible();
-      await expect(
-        page.locator('.ontology-g6-container canvas').first()
-      ).not.toBeAttached();
+      await expect(page.locator('.ontology-g6-container canvas')).toHaveCount(
+        0
+      );
     });
 
     test('should recover from a no-match state when the search is cleared', async ({
