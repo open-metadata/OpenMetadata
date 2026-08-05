@@ -766,9 +766,12 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     const personaCount = await personaLabels.count();
 
     if (personaCount > 1) {
-      // Get the second persona (not the default one)
-      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts on persona list position (default sorts first); position is the subject under test
-      const secondPersona = personaLabels.nth(1);
+      // Select persona2 (the known non-default persona) by its own display
+      // name — which persona this is does not matter here, only that
+      // switching to a specific, identifiable non-default persona works.
+      const secondPersona = personaLabels.filter({
+        hasText: persona2.responseData.displayName,
+      });
 
       // Click on the second persona
       const personaChangeResponse = adminPage.waitForResponse(
@@ -860,9 +863,11 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       await expect(defaultPersonaRadio).toBeChecked();
 
-      // Select the second (non-default) persona
-      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts on persona list position (default sorts first); position is the subject under test
-      const secondPersona = personaLabels.nth(1);
+      // Select persona2 (the known non-default persona) by its own display
+      // name, not by position.
+      const secondPersona = personaLabels.filter({
+        hasText: persona2.responseData.displayName,
+      });
       const personaChangeResponse = adminPage.waitForResponse(
         '/api/v1/docStore/name/persona.*'
       );
@@ -873,9 +878,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await personaChangeResponse;
 
       // Verify the second persona is now selected
-      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts on persona list position (default sorts first); position is the subject under test
       const secondPersonaRadio = personaLabels
-        .nth(1)
+        .filter({ hasText: persona2.responseData.displayName })
         .locator('input[type="radio"]');
 
       await expect(secondPersonaRadio).toBeChecked();

@@ -211,27 +211,22 @@ export const fillSSOAuthorizerConfig = async (
     await page.getByLabel('Enable Secure Socket Connection').uncheck();
   }
 
-  // Add bot principals if provided (array field)
+  // Add bot principals if provided (array field). SsoConfigurationFormArrayFieldTemplate
+  // renders `data-testid="sso-configuration-form-array-field-template-${props.name}"`
+  // (see SsoConfigurationFormArrayFieldTemplate.tsx), and the RJSF field name for this
+  // property is literally `botPrincipals` — the same suffixed-testid convention already
+  // used below for adminPrincipals/publicKeyUrls/jwtPrincipalClaims, so it can be looked
+  // up directly instead of via an ancestor-div text filter.
   if (config.botPrincipals && config.botPrincipals.length > 0) {
-    // Try to find bot principals field by looking for the label first
-    const botPrincipalsSection = page
-      .locator('div')
-      .filter({ hasText: 'Bot Principals' });
-    const botPrincipalsField = botPrincipalsSection.locator(
-      '[data-testid="sso-configuration-form-array-field-template"]'
+    const botPrincipalsField = page.getByTestId(
+      'sso-configuration-form-array-field-template-botPrincipals'
     );
 
-    // botPrincipalsField is built from a `div` filtered by hasText, which
-    // matches every ancestor div containing that text, not just the innermost
-    // one — so multiple matches are expected here, not just defensive.
     if ((await botPrincipalsField.count()) > 0) {
-      // eslint-disable-next-line om-playwright/no-positional-locator -- ancestor `div` + hasText filter matches every containing div, not just the innermost field
-      await botPrincipalsField.first().click();
+      await botPrincipalsField.click();
       for (const principal of config.botPrincipals) {
-        // eslint-disable-next-line om-playwright/no-positional-locator -- ancestor `div` + hasText filter matches every containing div, not just the innermost field
-        await botPrincipalsField.first().locator('input').fill(principal);
-        // eslint-disable-next-line om-playwright/no-positional-locator -- ancestor `div` + hasText filter matches every containing div, not just the innermost field
-        await botPrincipalsField.first().locator('input').press('Enter');
+        await botPrincipalsField.locator('input').fill(principal);
+        await botPrincipalsField.locator('input').press('Enter');
       }
     }
   }

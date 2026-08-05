@@ -974,11 +974,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               '.nested-column-name'
             );
 
-            // Should have at least one nested column link. Nested tables render
-            // multiple links, so a specific one (the first) must be picked to
-            // keep this a strict single-element visibility check.
-            // eslint-disable-next-line om-playwright/no-positional-locator -- multiple nested links can exist; first is picked to keep the visibility check strict-mode safe
-            await expect(nestedColumnLinks.first()).toBeVisible({
+            // Nested tables render multiple links; this is really an
+            // existence check, so assert on count rather than a specific
+            // (positionally-picked) element.
+            await expect(nestedColumnLinks).not.toHaveCount(0, {
               timeout: 5000,
             });
 
@@ -1283,8 +1282,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             if ((await nestedColumnLinks.count()) > 0) {
-              // eslint-disable-next-line om-playwright/no-positional-locator -- multiple nested links can exist; first is picked to keep the visibility check strict-mode safe
-              await expect(nestedColumnLinks.first()).toBeVisible();
+              // Multiple nested links can exist; this is really an existence
+              // check, so assert on count rather than a positionally-picked element.
+              await expect(nestedColumnLinks).not.toHaveCount(0);
 
               const linkCount = await nestedColumnLinks.count();
 

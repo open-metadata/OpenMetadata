@@ -589,6 +589,9 @@ const clickMetricAction = async (page: Page, actionName: string) => {
     .click();
 };
 
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const waitForMetricBulkEditGrid = async (page: Page, metricName?: string) => {
   await expect(page).toHaveURL(/\/bulk\/edit\/metric\/\*/);
   await expect(page.locator('.rdg-header-row')).toBeVisible({
@@ -596,12 +599,14 @@ const waitForMetricBulkEditGrid = async (page: Page, metricName?: string) => {
   });
 
   if (metricName) {
+    // Backend text matching on the search filter can surface rows beyond the
+    // target metric (e.g. `${prefix}_1` also matches `${prefix}_10`..`_17`),
+    // so an exact, anchored match on the rendered name is required to land on
+    // the single target row rather than picking one by position.
     await expect(
-      // eslint-disable-next-line om-playwright/no-positional-locator -- the search-filtered bulk-edit grid can surface more than the target row depending on backend text matching
       page
         .locator('.bulk-edit-name-value')
-        .filter({ hasText: metricName })
-        .first()
+        .filter({ hasText: new RegExp(`^${escapeRegExp(metricName)}$`) })
     ).toBeVisible();
   } else {
     await expect(page.locator('.rdg-row')).not.toHaveCount(0);
@@ -1237,10 +1242,14 @@ test.describe(
 
       await page.getByRole('button', { name: 'Revert Changes' }).click();
       await expect(nextButton).toBeDisabled();
-      await expect(
-        // eslint-disable-next-line om-playwright/no-positional-locator -- the grid is pre-filtered to the single target metric row
-        page.locator('.rdg-row').first().locator('[aria-colindex="3"]')
-      ).toContainText(originalDisplayName);
+      const targetRow = page.locator('.rdg-row').filter({
+        has: page.locator('.bulk-edit-name-value').filter({
+          hasText: new RegExp(`^${escapeRegExp(targetMetricName)}$`),
+        }),
+      });
+      await expect(targetRow.locator('[aria-colindex="3"]')).toContainText(
+        originalDisplayName
+      );
     });
 
     test('Admin bulk edit hydrates filtered metrics across cursor pages', async ({
@@ -1542,9 +1551,11 @@ test.describe(
       await page.getByTestId('bulk-edit-add-metric').click();
 
       await expect(page.locator('.bulk-edit-error-pill')).toBeVisible();
+      // Only the newly-appended, name-less row is in the SKIP operation
+      // state — the pre-existing filtered row is unmodified (NO_CHANGE) — so
+      // the badge is already unique without picking by position.
       await expect(
-        // eslint-disable-next-line om-playwright/no-positional-locator -- the SKIP badge belongs to the newly-appended row, which is always last in the grid
-        page.locator('.bulk-edit-operation-badge-skip').last()
+        page.locator('.bulk-edit-operation-badge-skip')
       ).toBeVisible();
     });
 

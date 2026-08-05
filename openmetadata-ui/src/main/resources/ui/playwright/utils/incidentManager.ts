@@ -162,18 +162,21 @@ export const addAssigneeFromPopoverWidget = async (data: {
     await taskTabEditAssigneesButton.click();
     await waitForAllLoadersToDisappear(page);
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design keeps previously-closed modals mounted (not unmounted), so .last() targets the currently-open one
-    const assigneeModal = page.locator('.ant-modal-content').last();
+    // Ant Design keeps previously-closed modals mounted (not unmounted), so
+    // scope to the currently visible one instead of assuming DOM order.
+    const assigneeModal = page.locator('.ant-modal-content:visible');
     const assigneeSelect = assigneeModal.getByTestId('select-assignee');
     const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-    // eslint-disable-next-line om-playwright/no-positional-locator -- the Select renders a hidden accessibility input plus the visible search input; .last() is the visible one
-    const assigneeInput = assigneeSelect.locator('input').last();
-    // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design's grouped Select renders each option's custom label node twice (dropdown list + internal value cache), so this testid is never a true singleton
-    const assigneeOption = page.getByTestId(user.name).first();
-    // eslint-disable-next-line om-playwright/no-positional-locator -- same Select option-label duplication as assigneeOption above
-    const normalizedAssigneeOption = page
-      .getByTestId(user.name.toLowerCase())
-      .first();
+    // The Select renders a hidden accessibility input plus the visible search
+    // input; select by visibility directly instead of assuming DOM order.
+    const assigneeInput = assigneeSelect.locator('input:visible');
+    // Ant Design's grouped Select renders each option's custom label node
+    // twice (dropdown list + internal value cache), so the raw testid is
+    // never a true singleton — scope to the visible instance instead.
+    const assigneeOption = page.locator(`[data-testid="${user.name}"]:visible`);
+    const normalizedAssigneeOption = page.locator(
+      `[data-testid="${user.name.toLowerCase()}"]:visible`
+    );
 
     await expect(assigneeModal).toBeVisible();
     await expect(assigneeSelector).toBeVisible();

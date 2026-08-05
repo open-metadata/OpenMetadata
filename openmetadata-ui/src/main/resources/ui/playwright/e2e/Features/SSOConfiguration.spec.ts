@@ -707,76 +707,95 @@ test.describe('SSO Configuration Tests', () => {
       const rolesSelects = page.locator('[data-testid^="roles-select-"]');
       const errorMessages = page.locator('[data-testid^="ldap-group-error-"]');
 
-      // Add first mapping — inputs and roles select appear; fill DN value persists
+      // Add first mapping — inputs and roles select appear; fill DN value persists.
+      // Only one row exists at this point, so the base locators are already unique.
       await addMappingButton.click();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await expect(ldapGroupInputs.first()).toBeVisible();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await expect(rolesSelects.first()).toBeVisible();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.first().fill('cn=admins,dc=example,dc=com');
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await expect(ldapGroupInputs.first()).toHaveValue(
+      await expect(ldapGroupInputs).toBeVisible();
+      await expect(rolesSelects).toBeVisible();
+
+      // Capture this row's own data-testid while it is the only row on the
+      // page — a real DOM attribute set once at render time (unlike a
+      // controlled input's `value`, which is not reflected as an attribute).
+      // Every later reference to "this row" addresses it by that identity,
+      // never by position, even once sibling rows exist.
+      const firstInputTestId = await ldapGroupInputs.getAttribute(
+        'data-testid'
+      );
+      if (!firstInputTestId) {
+        throw new Error(
+          'Expected the ldap-group-input row to render a data-testid'
+        );
+      }
+      const firstMappingId = firstInputTestId.replace('ldap-group-input-', '');
+      const firstLdapGroupInput = page.getByTestId(firstInputTestId);
+
+      await firstLdapGroupInput.fill('cn=admins,dc=example,dc=com');
+      await expect(firstLdapGroupInput).toHaveValue(
         'cn=admins,dc=example,dc=com'
       );
 
       // Open the roles dropdown — options are loaded from the API
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await rolesSelects.first().click();
+      await rolesSelects.click();
       const roleOptions = page.locator('.ant-select-item-option');
 
       if ((await roleOptions.count()) > 0) {
-        // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
+        // eslint-disable-next-line om-playwright/no-positional-locator -- arbitrary role option; which one is visible is not under test, only that the loaded list renders
         await expect(roleOptions.first()).toBeVisible();
       }
 
       await page.keyboard.press('Escape');
 
-      // Add a second mapping with a duplicate DN — both rows show an error
+      // Add a second mapping with a duplicate DN — both rows show an error.
+      // Excluding the already-identified first row's testid uniquely
+      // resolves the new row by identity, not by DOM order.
       await addMappingButton.click();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().fill('cn=admins,dc=example,dc=com');
+      const secondLdapGroupInput = page.locator(
+        `[data-testid^="ldap-group-input-"]:not([data-testid="${firstInputTestId}"])`
+      );
+      await secondLdapGroupInput.fill('cn=admins,dc=example,dc=com');
+      const secondInputTestId = await secondLdapGroupInput.getAttribute(
+        'data-testid'
+      );
+      if (!secondInputTestId) {
+        throw new Error(
+          'Expected the second ldap-group-input row to render a data-testid'
+        );
+      }
+      // From here on, address the second row by its own captured testid —
+      // stable regardless of further edits to its value.
+      const secondMappingInput = page.getByTestId(secondInputTestId);
+
       await expect(errorMessages).toHaveCount(2);
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
+      // eslint-disable-next-line om-playwright/no-positional-locator -- both error rows render identical duplicate-DN text; which instance is checked is not under test
       await expect(errorMessages.first()).toContainText(
         /already mapped|duplicate/i
       );
 
       // Fix the duplicate — errors clear; case-insensitive and whitespace variants also trigger errors
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().clear();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().fill('cn=unique,dc=example,dc=com');
+      await secondMappingInput.clear();
+      await secondMappingInput.fill('cn=unique,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(0);
 
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().clear();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().fill('CN=ADMINS,DC=EXAMPLE,DC=COM');
+      await secondMappingInput.clear();
+      await secondMappingInput.fill('CN=ADMINS,DC=EXAMPLE,DC=COM');
       await expect(errorMessages).toHaveCount(2);
 
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().clear();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().fill('  cn=admins,dc=example,dc=com  ');
+      await secondMappingInput.clear();
+      await secondMappingInput.fill('  cn=admins,dc=example,dc=com  ');
       await expect(errorMessages).toHaveCount(2);
 
       // Add a third unique mapping — no errors with three distinct DNs
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().clear();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().fill('cn=users,dc=example,dc=com');
+      await secondMappingInput.clear();
+      await secondMappingInput.fill('cn=users,dc=example,dc=com');
       await addMappingButton.click();
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await ldapGroupInputs.last().fill('cn=guests,dc=example,dc=com');
+      const thirdLdapGroupInput = page.locator(
+        `[data-testid^="ldap-group-input-"]:not([data-testid="${firstInputTestId}"]):not([data-testid="${secondInputTestId}"])`
+      );
+      await thirdLdapGroupInput.fill('cn=guests,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(0);
 
-      // Remove the first mapping — row disappears
-      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
-      await page
-        .locator('[data-testid^="remove-mapping-btn-"]')
-        .first()
-        .click();
+      // Remove the first mapping, identified by its captured testid — row disappears
+      await page.getByTestId(`remove-mapping-btn-${firstMappingId}`).click();
       await expect(ldapGroupInputs).toHaveCount(2);
     });
 

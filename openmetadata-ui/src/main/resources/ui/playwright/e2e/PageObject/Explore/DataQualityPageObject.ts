@@ -359,8 +359,10 @@ export class DataQualityPageObject extends RightPanelBase {
     // eslint-disable-next-line om-playwright/no-positional-locator -- cardIndex is a public API parameter of this method; callers assert the card count beforehand, so the index selects a known, specific card by design, not by incidental DOM order
     const card = cards.nth(cardIndex);
     await card.waitFor({ state: 'visible' });
-    // eslint-disable-next-line om-playwright/no-positional-locator -- same cardIndex contract as above
-    const nameElement = this.nameLink.nth(cardIndex);
+    // The Link's data-testid embeds the test case name the test itself created
+    // (see DataQualityTab.tsx), so it is a stronger, non-positional identifier
+    // than indexing into the flat nameLink locator.
+    const nameElement = this.container.getByTestId(`test-case-${testCaseName}`);
     await nameElement.waitFor({ state: 'visible' });
     await expect(nameElement).toContainText(testCaseName);
   }

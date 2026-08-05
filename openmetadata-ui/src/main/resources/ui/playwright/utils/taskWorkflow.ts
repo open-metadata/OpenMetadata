@@ -66,8 +66,10 @@ const selectTagSuggestion = async ({
   const tagsInput = tagSelector.locator(
     '.ant-select-selection-search-input, input[type="search"], .ant-select-selection-search input'
   );
-  // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design's grouped Select renders each option's custom label node twice (dropdown list + internal value cache), so this testid is never a true singleton
-  const tagOption = page.getByTestId(tagTestId).first();
+  // Ant Design's grouped Select renders each option's custom label node twice
+  // (dropdown list + internal value cache), so the raw testid is never a true
+  // singleton — scope to the currently visible instance instead of position.
+  const tagOption = page.locator(`[data-testid="${tagTestId}"]:visible`);
   const tagSearchResponse = page
     .waitForResponse(
       (response) =>
@@ -120,12 +122,15 @@ const clickDropdownMenuItem = async ({
     .locator('#task-panel')
     .getByRole('button', { name: /down/i })
     .last();
-  // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design keeps previously-closed dropdown menus mounted, so .last() targets the currently-open one
-  const visibleDropdownMenu = page.locator('.task-action-dropdown').last();
-  // eslint-disable-next-line om-playwright/no-positional-locator -- unscoped page-level menuitem lookup can match residual mounted-but-hidden menu instances from Ant Design's dropdown stacking
+  // Ant Design keeps previously-closed dropdown menus mounted (hidden), so
+  // scope to the currently visible one instead of assuming DOM order.
+  const visibleDropdownMenu = page.locator('.task-action-dropdown:visible');
+  // Same rationale: an unscoped page-level menuitem lookup can otherwise
+  // match residual mounted-but-hidden menu instances from Ant Design's
+  // dropdown stacking — restrict to the visible instance instead of position.
   const roleMenuItem = page
     .getByRole('menuitem', { name: menuPattern })
-    .first();
+    .and(page.locator(':visible'));
   // eslint-disable-next-line om-playwright/no-positional-locator -- menuPattern is a broad OR regex (e.g. edit|update|add) that can match more than one distinct menu item
   const cssMenuItem = visibleDropdownMenu
     .locator('.ant-dropdown-menu-item')
@@ -265,8 +270,12 @@ export const selectAssignee = async (page: Page, assigneeName: string) => {
   const assigneeInput = page.locator(
     '[data-testid="select-assignee"] .ant-select-selection-search input'
   );
-  // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design's grouped Select renders each option's custom label node twice (dropdown list + internal value cache), so this testid is never a true singleton
-  const assigneeOption = page.getByTestId(assigneeName).first();
+  // Ant Design's grouped Select renders each option's custom label node twice
+  // (dropdown list + internal value cache), so the raw testid is never a true
+  // singleton — scope to the currently visible instance instead of position.
+  const assigneeOption = page.locator(
+    `[data-testid="${assigneeName}"]:visible`
+  );
   const assigneeSearchResponse = page
     .waitForResponse(
       (response) =>

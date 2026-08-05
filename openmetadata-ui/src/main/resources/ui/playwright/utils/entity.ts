@@ -2328,15 +2328,16 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   // assert on checkbox state
   await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
 
-  // `filter({ hasText })` matches ancestor spans too (the row wrapper as well as
-  // the inner label span), so more than one span legitimately contains this text.
+  // Scope to the row's own `.ant-tree-node-content-wrapper` (the element that
+  // actually carries `ant-tree-node-selected`, per src/styles/tree.less and
+  // the established pattern in playwright/e2e/Features/RTL.spec.ts) instead
+  // of a bare `span` filter, which would also match the nested label span
+  // and the ancestor row for the same tree node.
   await expect(
-    // eslint-disable-next-line om-playwright/no-positional-locator -- hasText filter matches nested ancestor/label spans for the same tree node
     page
       .getByTestId('explore-tree')
-      .locator('span')
+      .locator('.ant-tree-node-content-wrapper')
       .filter({ hasText: serviceType })
-      .first()
   ).toHaveClass(/ant-tree-node-selected/);
 };
 

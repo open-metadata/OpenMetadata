@@ -247,8 +247,10 @@ test.describe('Data Contracts', () => {
           DATA_CONTRACT_SEMANTICS1.description
         );
 
-        // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-        const ruleLocator = page.locator('.group').nth(0);
+        // `.rule_group` (not `.group`) is the query-builder node that owns the top-level field
+        // selector; scoped to the one card carrying `expanded-active-card` it is always singleton,
+        // unlike `.group` which also matches the wrapping ancestor node.
+        const ruleLocator = page.locator('.expanded-active-card .rule_group');
         await selectOption(
           page,
           ruleLocator.locator('.group--field .ant-select'),
@@ -270,8 +272,8 @@ test.describe('Data Contracts', () => {
 
         await expect(page.locator('.group--conjunctions')).toBeVisible();
 
-        // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-        const ruleLocator2 = page.locator('.rule').nth(1);
+        // eslint-disable-next-line om-playwright/no-positional-locator -- targets the row this "Add New Rule" click just appended (rendered last) within the active semantic card; scoped to expanded-active-card to exclude other mounted, already-saved semantics
+        const ruleLocator2 = page.locator('.expanded-active-card .rule').last();
         await selectOption(
           page,
           ruleLocator2.locator('.rule--field .ant-select'),
@@ -310,8 +312,9 @@ test.describe('Data Contracts', () => {
           '#semantics_1_description',
           DATA_CONTRACT_SEMANTICS2.description
         );
-        // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-        const ruleLocator3 = page.locator('.group').nth(2);
+        // `.rule_group` is the query-builder node that owns the top-level field selector for the
+        // semantic currently being edited; scoped to `expanded-active-card` it is always singleton.
+        const ruleLocator3 = page.locator('.expanded-active-card .rule_group');
         await selectOption(
           page,
           ruleLocator3.locator('.group--field .ant-select'),
@@ -1024,8 +1027,10 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_CONTAIN_SEMANTICS.description
     );
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator = page.locator('.group').nth(0);
+    // `.rule_group` (not `.group`) is the query-builder node that owns the top-level field
+    // selector; scoped to the one card carrying `expanded-active-card` it is always singleton,
+    // unlike `.group` which also matches the wrapping ancestor node.
+    const ruleLocator = page.locator('.expanded-active-card .rule_group');
     await selectOption(
       page,
       ruleLocator.locator('.group--field .ant-select'),
@@ -1047,8 +1052,8 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    // eslint-disable-next-line om-playwright/no-positional-locator -- targets the row this "Add New Rule" click just appended (rendered last) within the active semantic card; scoped to expanded-active-card to exclude other mounted, already-saved semantics
+    const ruleLocator2 = page.locator('.expanded-active-card .rule').last();
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
@@ -1074,8 +1079,8 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator3 = page.locator('.rule').nth(2);
+    // eslint-disable-next-line om-playwright/no-positional-locator -- targets the row this second "Add New Rule" click just appended (rendered last) within the active semantic card; scoped to expanded-active-card to exclude other mounted, already-saved semantics
+    const ruleLocator3 = page.locator('.expanded-active-card .rule').last();
     await selectOption(
       page,
       ruleLocator3.locator('.rule--field .ant-select'),
@@ -1220,8 +1225,10 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.description
     );
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator = page.locator('.group').nth(0);
+    // `.rule_group` (not `.group`) is the query-builder node that owns the top-level field
+    // selector; scoped to the one card carrying `expanded-active-card` it is always singleton,
+    // unlike `.group` which also matches the wrapping ancestor node.
+    const ruleLocator = page.locator('.expanded-active-card .rule_group');
     await selectOption(
       page,
       ruleLocator.locator('.group--field .ant-select'),
@@ -1243,8 +1250,8 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    // eslint-disable-next-line om-playwright/no-positional-locator -- targets the row this "Add New Rule" click just appended (rendered last) within the active semantic card; scoped to expanded-active-card to exclude other mounted, already-saved semantics
+    const ruleLocator2 = page.locator('.expanded-active-card .rule').last();
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
@@ -1270,8 +1277,8 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator3 = page.locator('.rule').nth(2);
+    // eslint-disable-next-line om-playwright/no-positional-locator -- targets the row this second "Add New Rule" click just appended (rendered last) within the active semantic card; scoped to expanded-active-card to exclude other mounted, already-saved semantics
+    const ruleLocator3 = page.locator('.expanded-active-card .rule').last();
     await selectOption(
       page,
       ruleLocator3.locator('.rule--field .ant-select'),
@@ -1604,8 +1611,10 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_SEMANTICS1.description
     );
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator = page.locator('.group').nth(0);
+    // `.rule_group` (not `.group`) is the query-builder node that owns the top-level field
+    // selector; scoped to the one card carrying `expanded-active-card` it is always singleton,
+    // unlike `.group` which also matches the wrapping ancestor node.
+    const ruleLocator = page.locator('.expanded-active-card .rule_group');
     await selectOption(
       page,
       ruleLocator.locator('.group--field .ant-select'),
@@ -1627,8 +1636,8 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    // eslint-disable-next-line om-playwright/no-positional-locator -- targets the row this "Add New Rule" click just appended (rendered last) within the active semantic card; scoped to expanded-active-card to exclude other mounted, already-saved semantics
+    const ruleLocator2 = page.locator('.expanded-active-card .rule').last();
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
@@ -1686,8 +1695,10 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_SEMANTICS1.description
     );
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator = page.locator('.group').nth(0);
+    // `.rule_group` (not `.group`) is the query-builder node that owns the top-level field
+    // selector; scoped to the one card carrying `expanded-active-card` it is always singleton,
+    // unlike `.group` which also matches the wrapping ancestor node.
+    const ruleLocator = page.locator('.expanded-active-card .rule_group');
     await selectOption(
       page,
       ruleLocator.locator('.group--field .ant-select'),
@@ -1709,8 +1720,8 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator2 = page.locator('.rule').nth(1);
+    // eslint-disable-next-line om-playwright/no-positional-locator -- targets the row this "Add New Rule" click just appended (rendered last) within the active semantic card; scoped to expanded-active-card to exclude other mounted, already-saved semantics
+    const ruleLocator2 = page.locator('.expanded-active-card .rule').last();
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
@@ -1730,8 +1741,9 @@ test.describe('Data Contracts', () => {
       '#semantics_1_description',
       DATA_CONTRACT_SEMANTICS2.description
     );
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator3 = page.locator('.group').nth(2);
+    // `.rule_group` is the query-builder node that owns the top-level field selector for the
+    // semantic currently being edited; scoped to `expanded-active-card` it is always singleton.
+    const ruleLocator3 = page.locator('.expanded-active-card .rule_group');
     await selectOption(
       page,
       ruleLocator3.locator('.group--field .ant-select'),
@@ -1783,8 +1795,10 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_SEMANTICS1.description
     );
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator = page.locator('.group').nth(0);
+    // `.rule_group` (not `.group`) is the query-builder node that owns the top-level field
+    // selector; scoped to the one card carrying `expanded-active-card` it is always singleton,
+    // unlike `.group` which also matches the wrapping ancestor node.
+    const ruleLocator = page.locator('.expanded-active-card .rule_group');
     await selectOption(
       page,
       ruleLocator.locator('.group--field .ant-select'),
@@ -1844,8 +1858,10 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_SEMANTICS1.description
     );
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator = page.locator('.group').nth(0);
+    // `.rule_group` (not `.group`) is the query-builder node that owns the top-level field
+    // selector; scoped to the one card carrying `expanded-active-card` it is always singleton,
+    // unlike `.group` which also matches the wrapping ancestor node.
+    const ruleLocator = page.locator('.expanded-active-card .rule_group');
     await selectOption(
       page,
       ruleLocator.locator('.group--field .ant-select'),
@@ -1871,8 +1887,9 @@ test.describe('Data Contracts', () => {
       '#semantics_1_description',
       DATA_CONTRACT_SEMANTICS2.description
     );
-    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-    const ruleLocator3 = page.locator('.group').nth(2);
+    // `.rule_group` is the query-builder node that owns the top-level field selector for the
+    // semantic currently being edited; scoped to `expanded-active-card` it is always singleton.
+    const ruleLocator3 = page.locator('.expanded-active-card .rule_group');
     await selectOption(
       page,
       ruleLocator3.locator('.group--field .ant-select'),
@@ -2384,8 +2401,12 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 DATA_CONTRACT_SEMANTICS1.description
               );
 
-              // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
-              const ruleLocator = page.locator('.group').nth(0);
+              // `.rule_group` (not `.group`) is the query-builder node that owns the top-level
+              // field selector; scoped to `expanded-active-card` it is always singleton, unlike
+              // `.group` which also matches the wrapping ancestor node.
+              const ruleLocator = page.locator(
+                '.expanded-active-card .rule_group'
+              );
               await selectOption(
                 page,
                 ruleLocator.locator('.group--field .ant-select'),

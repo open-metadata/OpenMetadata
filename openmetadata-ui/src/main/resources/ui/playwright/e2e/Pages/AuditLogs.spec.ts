@@ -52,10 +52,12 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      // Wait for dropdown to ensure options are visible
-      // Antd dropdowns often render in portal, so we look for text 'Yesterday' globaly or in dropdown
-      // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design dropdowns render in a portal, so this text can match more than one node
-      const yesterdayOption = page.getByText('Yesterday').first();
+      // Wait for dropdown to ensure options are visible. Scoped to the
+      // dropdown menu container (matching the Entity Type filter below) so
+      // it can't match unrelated 'Yesterday' text elsewhere on the page.
+      const yesterdayOption = page
+        .locator('.ant-dropdown-menu')
+        .getByText('Yesterday', { exact: true });
       await expect(yesterdayOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -106,8 +108,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design dropdowns render in a portal, so this text can match more than one node
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page
+        .locator('.ant-dropdown-menu')
+        .getByText('Yesterday', { exact: true });
       await yesterdayOption.click();
 
       // Verify Time filter is active
@@ -181,8 +184,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design dropdowns render in a portal, so this text can match more than one node
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page
+        .locator('.ant-dropdown-menu')
+        .getByText('Yesterday', { exact: true });
       // Wait for API response
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
@@ -220,8 +224,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design dropdowns render in a portal, so this text can match more than one node
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page
+        .locator('.ant-dropdown-menu')
+        .getByText('Yesterday', { exact: true });
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
       );
@@ -240,8 +245,9 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design dropdowns render in a portal, so this text can match more than one node
-      const last7DaysOption = page.getByText('Last 7 Days').first();
+      const last7DaysOption = page
+        .locator('.ant-dropdown-menu')
+        .getByText('Last 7 Days', { exact: true });
       await expect(last7DaysOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>

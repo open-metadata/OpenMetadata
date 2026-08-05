@@ -1198,6 +1198,12 @@ export const addRelatedTermsByRelationType = async (
 ) => {
   await page.getByTestId('related-term-add-button').click();
 
+  // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow).
+  // Capture each row's own testid the moment it's uniquely resolvable
+  // (excluding previously-captured rows) and address it by that identity
+  // from then on, instead of by position.
+  const knownRowTestIds: string[] = [];
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
 
@@ -1205,19 +1211,29 @@ export const addRelatedTermsByRelationType = async (
       await page.getByTestId('add-row-button').click();
     }
 
-    // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow),
-    // so identify rows by position — first when i=0, otherwise last.
     const rowLocator =
-      i === 0
-        ? // eslint-disable-next-line om-playwright/no-positional-locator -- row ids are non-deterministic (Date.now()), position is the only stable identifier
-          page.locator('[data-testid^="relation-row-"]').first()
-        : // eslint-disable-next-line om-playwright/no-positional-locator -- row ids are non-deterministic (Date.now()), position is the only stable identifier
-          page.locator('[data-testid^="relation-row-"]').last();
+      knownRowTestIds.length === 0
+        ? page.locator('[data-testid^="relation-row-"]')
+        : page.locator(
+            `[data-testid^="relation-row-"]${knownRowTestIds
+              .map((testId) => `:not([data-testid="${testId}"])`)
+              .join('')}`
+          );
+
+    const rowTestId = await rowLocator.getAttribute('data-testid');
+    if (!rowTestId) {
+      throw new Error('Expected relation-row to render a data-testid');
+    }
+    knownRowTestIds.push(rowTestId);
+    const rowId = rowTestId.replace('relation-row-', '');
 
     // The relation-type trigger is the only button in the row besides the
-    // testid-bearing remove button, and it renders without its own testid.
-    // eslint-disable-next-line om-playwright/no-positional-locator -- relation-type trigger has no distinguishing testid, DOM order is fixed
-    await rowLocator.getByRole('button').first().click();
+    // testid-bearing remove button and renders without its own testid, so it
+    // is identified by excluding the (known) remove button, not by position.
+    await rowLocator
+      .getByRole('button')
+      .and(page.locator(`:not([data-testid="remove-row-${rowId}"])`))
+      .click();
     const option = page.getByRole('option', {
       exact: true,
       name: row.relationTypeLabel,
@@ -2039,10 +2055,10 @@ export const expandTreeNodeByName = async (
   await nodeText.scrollIntoViewIfNeeded();
 
   const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
-  // The row's selection control is a radio/checkbox input, not a button, so the
-  // expand chevron is the row's only button and carries no distinguishing testid.
-  // eslint-disable-next-line om-playwright/no-positional-locator -- expand chevron is the sole button in this tree row, no distinguishing testid
-  const expandButton = treeItem.locator('button').first();
+  // The row's selection control is a radio/checkbox input, not a button, so
+  // the expand chevron is the row's only button — this locator is already
+  // unique without needing a positional pick.
+  const expandButton = treeItem.locator('button');
   await expect(expandButton).toBeVisible({ timeout: 5000 });
   await expandButton.click();
   await waitForAllLoadersToDisappear(page);
