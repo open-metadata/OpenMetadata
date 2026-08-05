@@ -16,6 +16,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -83,11 +84,21 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
   const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
   const [pageSize, setPageSize] = useState<number>(initialPageSize);
 
+  // Keep processedPageSize in a ref so the URL-sync effect can use the latest
+  // value as a fallback without including it in the dependency array.
+  // Including processedPageSize as a dep would cause the effect to fire when
+  // handlePageSize calls setPreference (Zustand synchronous update), at which
+  // point the URL is still stale — resetting pageSize and currentPage back to
+  // the old values before the deferred navigate commits.
+  const processedPageSizeRef = useRef(processedPageSize);
+  processedPageSizeRef.current = processedPageSize;
+
   // Keep pagination in sync when filters or other controls update paging params directly in the URL.
   useEffect(() => {
     const nextCurrentPage =
       Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
-    const nextPageSize = Number(urlParams.pageSize) || processedPageSize;
+    const nextPageSize =
+      Number(urlParams.pageSize) || processedPageSizeRef.current;
 
     setCurrentPage((currentPage) =>
       currentPage === nextCurrentPage ? currentPage : nextCurrentPage
@@ -95,7 +106,7 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
     setPageSize((pageSize) =>
       pageSize === nextPageSize ? pageSize : nextPageSize
     );
-  }, [processedPageSize, urlParams.currentPage, urlParams.pageSize]);
+  }, [urlParams.currentPage, urlParams.pageSize]);
 
   const pagingCursorUrlParams: PagingUrlParams = useMemo(
     () => ({

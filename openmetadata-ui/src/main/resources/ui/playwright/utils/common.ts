@@ -1114,6 +1114,9 @@ export const testPaginationNavigation = async (
   await expect(page.getByTestId('previous')).toBeEnabled();
   let afterValue: string | null = '';
   if (validateUrl) {
+    await page.waitForURL(
+      (url) => url.searchParams.get('currentPage') === '2'
+    );
     const currentUrl = page.url();
     const urlObj = new URL(currentUrl);
     const searchParams = urlObj.searchParams;
@@ -1147,9 +1150,7 @@ export const testPaginationNavigation = async (
   await expect(page.getByTestId('previous')).toBeEnabled();
   const paginationText = page.locator('[data-testid="page-indicator"]');
   await expect(paginationText).toBeVisible();
-  const paginationTextContent = await paginationText.textContent();
-
-  expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
+  await expect(paginationText).toHaveText(/2\s*of\s*\d+/);
 
   if (validateUrl) {
     const reloadedUrl = page.url();
@@ -1160,9 +1161,11 @@ export const testPaginationNavigation = async (
     expect(reloadedSearchParams.get('cursorType')).toBe('after');
     expect(reloadedSearchParams.get('cursorValue')).toBe(afterValue);
   }
-  await page.waitForLoadState('domcontentloaded');
   const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-  if (await pageSizeDropdown.isVisible()) {
+  const hasDropdown = (await pageSizeDropdown.count()) > 0;
+
+  if (hasDropdown) {
+    await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toHaveText('15 / Page');
 
     // Explicitly using selector, as in some cases table cell contains markdown
@@ -1173,19 +1176,23 @@ export const testPaginationNavigation = async (
     if (validateRowCount) {
       expect(initialRowCount).toBeLessThanOrEqual(15);
     }
+
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
+    await pageSizeDropdown.scrollIntoViewIfNeeded();
     await pageSizeDropdown.hover();
-    const isMenuVisibleAfterHover = await menuItem.isVisible();
-    if (!isMenuVisibleAfterHover) {
+    if (!(await menuItem.isVisible())) {
       await pageSizeDropdown.click();
     }
-    await menuItem.waitFor({ state: 'visible' });
+    await expect(menuItem).toBeVisible();
 
     const pageSizeChangePromise = page.waitForResponse((response) =>
       response.url().includes(apiEndpointPattern)
     );
     await menuItem.click();
     await pageSizeChangePromise;
+    await waitForAllLoadersToDisappear(page);
+
+    await page.waitForURL((url) => url.searchParams.get('pageSize') === '25');
     await waitForAllLoadersToDisappear(page);
 
     await expect(pageSizeDropdown).toHaveText('25 / Page');
@@ -1462,10 +1469,10 @@ export const testCompletePaginationWithSearch = async (
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('previous')).toBeEnabled();
+  await page.waitForURL((url) => url.searchParams.get('currentPage') === '2');
   const paginationPage2 = page.locator('[data-testid="page-indicator"]');
   await expect(paginationPage2).toBeVisible();
-  const page2Content = await paginationPage2.textContent();
-  expect(page2Content).toMatch(/2\s*of\s*\d+/);
+  await expect(paginationPage2).toHaveText(/2\s*of\s*\d+/);
 
   const searchResponsePromise = page.waitForResponse((response) =>
     response.url().includes(searchApiPattern)
@@ -1475,14 +1482,16 @@ export const testCompletePaginationWithSearch = async (
   const searchResponse = await searchResponsePromise;
   expect(searchResponse.status()).toBe(200);
 
+  await page.waitForURL(
+    (url) => url.searchParams.get(searchParamName) === searchTestTerm
+  );
   const urlAfterSearch = new URL(page.url());
   expect(urlAfterSearch.searchParams.get(searchParamName)).toBe(searchTestTerm);
 
   await expect(page.getByTestId('previous')).toBeDisabled();
   const paginationAfterSearch = page.locator('[data-testid="page-indicator"]');
   await expect(paginationAfterSearch).toBeVisible();
-  const searchPage1Content = await paginationAfterSearch.textContent();
-  expect(searchPage1Content).toMatch(/1\s*of\s*\d+/);
+  await expect(paginationAfterSearch).toHaveText(/1\s*of\s*\d+/);
 
   const nextButtonAfterSearch = page.locator('[data-testid="next"]');
 
@@ -1495,10 +1504,10 @@ export const testCompletePaginationWithSearch = async (
   expect(searchPage2Response.status()).toBe(200);
 
   await expect(page.getByTestId('previous')).toBeEnabled();
+  await page.waitForURL((url) => url.searchParams.get('currentPage') === '2');
   const paginationSearchPage2 = page.locator('[data-testid="page-indicator"]');
   await expect(paginationSearchPage2).toBeVisible();
-  const searchPage2Content = await paginationSearchPage2.textContent();
-  expect(searchPage2Content).toMatch(/2\s*of\s*\d+/);
+  await expect(paginationSearchPage2).toHaveText(/2\s*of\s*\d+/);
 
   const reloadPromise = page.waitForResponse((response) =>
     response.url().includes(searchApiPattern)
@@ -1516,8 +1525,7 @@ export const testCompletePaginationWithSearch = async (
   await expect(page.getByTestId('previous')).toBeEnabled();
   const paginationAfterRefresh = page.locator('[data-testid="page-indicator"]');
   await expect(paginationAfterRefresh).toBeVisible();
-  const refreshPage2Content = await paginationAfterRefresh.textContent();
-  expect(refreshPage2Content).toMatch(/2\s*of\s*\d+/);
+  await expect(paginationAfterRefresh).toHaveText(/2\s*of\s*\d+/);
 
   await expect(page.getByTestId('searchbar')).toHaveValue(searchTestTerm || '');
 
@@ -1548,10 +1556,11 @@ export const testCompletePaginationWithSearch = async (
       '[data-testid="page-indicator"]'
     );
     await expect(paginationAfterToggleWithSearch).toBeVisible();
-    const toggleSearchContent =
-      await paginationAfterToggleWithSearch.textContent();
-    expect(toggleSearchContent).toMatch(/1\s*of\s*\d+/);
+    await expect(paginationAfterToggleWithSearch).toHaveText(/1\s*of\s*\d+/);
 
+    await page.waitForURL(
+      (url) => url.searchParams.get(searchParamName) === searchTestTerm
+    );
     const urlAfterToggle = new URL(page.url());
     expect(urlAfterToggle.searchParams.get(searchParamName)).toBe(
       searchTestTerm

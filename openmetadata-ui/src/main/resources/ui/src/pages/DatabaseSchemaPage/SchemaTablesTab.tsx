@@ -302,6 +302,9 @@ function SchemaTablesTab({
   }, [searchValue, currentPage, showDeletedSchemas]);
 
   useEffect(() => {
+    if (pageSize !== pagingCursor.pageSize) {
+      return;
+    }
     if (searchValue) {
       return;
     }
