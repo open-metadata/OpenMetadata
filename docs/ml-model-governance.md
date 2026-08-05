@@ -17,7 +17,7 @@ Key regulatory compliance standards require:
 ## 2. Defining an ML Model Entity
 In OpenMetadata, define an `MlModel` entity to catalog your model service:
 
-- **Name / FQN:** `payment_fraud_classifier`
+- **Name / FQN:** `payment_fraud_classifier` 
 - **Algorithm:** `XGBoost`
 - **Owner:** ML Engineering / Data Science
 - **Description:** Classification model deployed to evaluate real-time payment transaction risk.
