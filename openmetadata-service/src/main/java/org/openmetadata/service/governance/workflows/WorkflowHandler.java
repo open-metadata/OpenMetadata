@@ -1742,11 +1742,8 @@ public class WorkflowHandler {
 
     // Fallback to original behavior for non-periodic trigger types.
     try {
-      // Assign the WorkflowInstance UUID up-front instead of relying on
-      // WorkflowInstanceListener.updateBusinessKey firing later. The CallActivity inside the
-      // trigger BPMN uses inheritBusinessKey=true, so a null businessKey here propagates
-      // into the MainWorkflow and eventually blows up UUID.fromString(null) in every
-      // downstream listener. Setting it at start time closes the race window.
+      // Trigger BPMN's CallActivity has inheritBusinessKey=true; passing a businessKey
+      // here ensures the spawned MainWorkflow inherits a non-null WorkflowInstance UUID.
       runtimeService.startProcessInstanceByKey(baseProcessKey, UUID.randomUUID().toString());
       return true;
     } catch (FlowableObjectNotFoundException ex) {
@@ -1761,8 +1758,6 @@ public class WorkflowHandler {
     for (String processKey : processKeys) {
       try {
         LOG.info("Triggering process with key: {}", processKey);
-        // See baseProcessKey comment above: pass a businessKey at start so CallActivity's
-        // inheritBusinessKey=true propagates a non-null UUID into the MainWorkflow.
         runtimeService.startProcessInstanceByKey(processKey, UUID.randomUUID().toString());
         anyStarted = true;
       } catch (Exception e) {

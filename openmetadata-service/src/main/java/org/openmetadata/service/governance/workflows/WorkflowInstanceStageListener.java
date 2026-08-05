@@ -137,10 +137,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     String processInstanceId = execution.getProcessInstanceId();
     String businessKey = execution.getProcessInstanceBusinessKey();
     if (businessKey == null || businessKey.isEmpty()) {
-      // Flowable-internal process instances (no business key) are not OM-managed.
-      // This is expected — not an operational warning; leave at DEBUG so it does
-      // not pollute production logs alongside the downstream STAGE_UPDATE_NO_ID
-      // caused by the same skipped path.
+      // No businessKey -> not an OM-managed workflow instance, nothing to record.
       LOG.debug(
           "[STAGE_SKIP] ProcessInstance: {} (workflow: {}) - no business key, not an OM-managed process instance",
           processInstanceId,
@@ -201,15 +198,24 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
         (UUID) varHandler.getNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
 
     if (workflowInstanceStateId == null) {
-      // Non-OM-managed process instances (no business key) never had a stage record
-      // created in addNewStage, so this update-stage callback is expected to be a
-      // no-op for them. Downgrade to DEBUG so the [STAGE_UPDATE_NO_ID] noise stops
-      // showing up at ERROR level once per Flowable transition.
-      LOG.debug(
-          "[STAGE_UPDATE_NO_ID] Workflow: {}, ProcessInstance: {}, Stage: {} - Cannot update stage, state ID is null",
-          workflowDefinitionName,
-          processInstanceId,
-          stage);
+      // No stage record exists to update. Two disjoint causes:
+      //   1. Non-OM-managed process (no businessKey) - addNewStage returned early. Expected.
+      //   2. OM-managed process whose stage creation failed or whose executionId variable
+      //      never propagated - this IS a bug and must not be silenced.
+      String businessKey = execution.getProcessInstanceBusinessKey();
+      if (businessKey == null || businessKey.isEmpty()) {
+        LOG.debug(
+            "[STAGE_UPDATE_NO_ID] Workflow: {}, ProcessInstance: {}, Stage: {} - not OM-managed",
+            workflowDefinitionName,
+            processInstanceId,
+            stage);
+      } else {
+        LOG.error(
+            "[STAGE_UPDATE_NO_ID] Workflow: {}, ProcessInstance: {}, Stage: {} - state ID missing on OM-managed instance",
+            workflowDefinitionName,
+            processInstanceId,
+            stage);
+      }
       return;
     }
 
