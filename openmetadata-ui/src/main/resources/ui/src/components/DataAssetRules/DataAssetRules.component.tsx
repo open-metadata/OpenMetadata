@@ -331,33 +331,36 @@ export const useSemanticsRuleList = ({
     setDeleteSemanticsRule(null);
   };
 
-  const columns = [
-    {
-      title: t('label.name'),
-      dataIndex: 'name',
-      className: 'col-name',
-    },
-    {
-      title: t('label.description'),
-      dataIndex: 'description',
-      className: 'col-description',
-      render: (description: string) => (
-        <RichTextEditorPreviewerNew markdown={description} />
-      ),
-    },
-    {
-      title: t('label.enabled'),
-      dataIndex: 'enabled',
-      render: (enabled: boolean, record: SemanticsRule) => (
-        <Switch
-          checked={enabled}
-          onChange={() => {
-            handleSave({ ...record, enabled: !enabled });
-          }}
-        />
-      ),
-    },
-  ];
+  const columns = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: 'name',
+        className: 'col-name',
+      },
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        className: 'col-description',
+        render: (description: string) => (
+          <RichTextEditorPreviewerNew markdown={description} />
+        ),
+      },
+      {
+        title: t('label.enabled'),
+        dataIndex: 'enabled',
+        render: (enabled: boolean, record: SemanticsRule) => (
+          <Switch
+            checked={enabled}
+            onChange={() => {
+              handleSave({ ...record, enabled: !enabled });
+            }}
+          />
+        ),
+      },
+    ],
+    [t, handleSave]
+  );
 
   const dataAssetRuleList = useMemo(() => {
     return (
