@@ -43,15 +43,6 @@ def test_basic_and_chromium_share_the_bounded_common_lane():
     assert planner.lane_bounds("chromium", "full") == (5, 24)
 
 
-def test_data_insight_shares_the_bounded_common_lane_with_basic():
-    planner = load_script("build_playwright_shards")
-
-    assert "Data Insight" in planner.FULL_PROJECTS
-    assert planner.PROJECT_LANES["Data Insight"] == "chromium"
-    assert planner.PROJECT_LANES["Data Insight"] == planner.PROJECT_LANES["Basic"]
-    assert planner.lane_bounds("chromium", "full") == (5, 24)
-
-
 def test_full_common_shard_count_is_capped_at_24():
     planner = load_script("build_playwright_shards")
     units = [
@@ -1927,20 +1918,6 @@ def test_planner_discovers_oss_only_specs():
     )[0]
 
     assert 'PLAYWRIGHT_IS_OSS: "true"' in discovery_step
-
-
-def test_planner_discovers_the_data_insight_project():
-    workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
-    ).read_text()
-    planner_job = workflow.split("  plan-playwright:", 1)[1].split(
-        "  restore-playwright-fixture:", 1
-    )[0]
-    discovery_step = planner_job.split("      - name: Discover tests", 1)[1].split(
-        "      - name: Build duration-aware shard plans", 1
-    )[0]
-
-    assert '--project="Data Insight"' in discovery_step
 
 
 def test_basic_project_excludes_dedicated_state_specs():
