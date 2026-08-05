@@ -21,8 +21,26 @@ from metadata.profiler.metrics.system.snowflake.system import (
     PUBLIC_SCHEMA,
     SnowflakeSystemMetricsComputer,
     SnowflakeTableResovler,
+    _parse_query,
 )
 from metadata.utils.profiler_utils import get_identifiers_from_string
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_identifier"),
+    [
+        ("  INSERT INTO my_db.my_schema.my_table VALUES (1)", "my_db.my_schema.my_table"),
+        ("\n\tUPDATE my_schema.my_table SET id = 1", "my_schema.my_table"),
+        ("-- ignore this query\nDELETE FROM my_table WHERE id = 1", "my_table"),
+        ("/* ignore this query */ MERGE INTO my_table USING source_table", "my_table"),
+        (
+            "  -- first comment\n/* second comment */\nINSERT OVERWRITE INTO my_table SELECT 1",
+            "my_table",
+        ),
+    ],
+)
+def test_parse_query_ignores_leading_whitespace_and_comments(query, expected_identifier):
+    assert _parse_query(query) == expected_identifier
 
 
 @pytest.mark.parametrize(
