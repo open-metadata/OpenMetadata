@@ -257,6 +257,16 @@ FROM information_schema.semantic_metrics
 WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
 """
 
+# Schema-wide variant of the three queries above: one round-trip covers every
+# semantic view in the schema instead of one per view. SEMANTIC_VIEW_NAME leads the
+# projection so rows can be grouped by view; the remaining columns keep the exact
+# per-view layout so downstream row parsing is unchanged.
+SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA = """
+SELECT SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.{catalog_view}
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}'
+"""
+
 # Database-qualified batch queries used by the lineage workflow to resolve
 # semantic view -> base table (and column) lineage across every schema/view in
 # a database in a single round-trip.
