@@ -138,6 +138,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
@@ -153,7 +154,6 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../utils/ExtensionPointTypes';
-import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

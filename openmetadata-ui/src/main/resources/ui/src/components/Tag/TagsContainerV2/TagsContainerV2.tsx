@@ -33,11 +33,11 @@ import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import {
   activateOnEnterOrSpace,
   stopPropagationIfInteractive,
 } from '../../../utils/InteractiveTargetUtils';
-import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';

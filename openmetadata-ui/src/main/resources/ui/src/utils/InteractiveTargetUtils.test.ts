@@ -68,7 +68,9 @@ describe('isInteractiveTarget', () => {
     const guard = card.querySelector('#guard');
 
     expect(isInteractiveTarget(card.querySelector('#label'))).toBe(true);
-    expect(isInteractiveTarget(card.querySelector('#label'), guard)).toBe(false);
+    expect(isInteractiveTarget(card.querySelector('#label'), guard)).toBe(
+      false
+    );
   });
 
   it('still sees a control nested inside the boundary', () => {
@@ -151,19 +153,16 @@ describe('activateOnEnterOrSpace', () => {
     expect(spies.preventDefault).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['Tab', 'a', 'ArrowDown', 'Escape'])(
-    'leaves %s alone',
-    (key) => {
-      const spies = eventFor(key);
+  it.each(['Tab', 'a', 'ArrowDown', 'Escape'])('leaves %s alone', (key) => {
+    const spies = eventFor(key);
 
-      activateOnEnterOrSpace({
-        currentTarget: { click: spies.click },
-        key: spies.key,
-        preventDefault: spies.preventDefault,
-      });
+    activateOnEnterOrSpace({
+      currentTarget: { click: spies.click },
+      key: spies.key,
+      preventDefault: spies.preventDefault,
+    });
 
-      expect(spies.click).not.toHaveBeenCalled();
-      expect(spies.preventDefault).not.toHaveBeenCalled();
-    }
-  );
+    expect(spies.click).not.toHaveBeenCalled();
+    expect(spies.preventDefault).not.toHaveBeenCalled();
+  });
 });

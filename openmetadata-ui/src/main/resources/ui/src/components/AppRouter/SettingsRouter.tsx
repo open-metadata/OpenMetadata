@@ -14,7 +14,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
-import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -24,6 +23,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,

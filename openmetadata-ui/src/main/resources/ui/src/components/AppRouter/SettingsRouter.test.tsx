@@ -12,8 +12,8 @@
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { ROUTES } from '../../constants/constants';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import SettingsRouter from './SettingsRouter';
 
 jest.mock('../../pages/AddNotificationPage/AddNotificationPage', () => ({
