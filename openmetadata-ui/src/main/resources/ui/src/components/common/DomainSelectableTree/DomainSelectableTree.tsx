@@ -617,19 +617,19 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         return;
       }
 
-      for (const fqn of value ?? []) {
+      const fqnsToLoad = (value ?? []).filter((fqn) => {
         const domain = domainMapper[fqn];
         if (!domain) {
-          continue;
+          return false;
         }
 
         const hasLoaded = (domain.children?.length || 0) > 0;
         const hasChildrenCount = (domain.childrenCount ?? 0) > 0;
 
-        if (!hasLoaded && hasChildrenCount && !loadingChildren[fqn]) {
-          await loadChildDomains(fqn);
-        }
-      }
+        return !hasLoaded && hasChildrenCount && !loadingChildren[fqn];
+      });
+
+      await Promise.all(fqnsToLoad.map((fqn) => loadChildDomains(fqn)));
     };
 
     loadSelectedDomainChildren();
