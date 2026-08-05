@@ -239,32 +239,26 @@ SNOWFLAKE_GET_SEMANTIC_VIEWS = """
 SELECT NAME FROM information_schema.semantic_views WHERE SCHEMA = '{schema}'
 """
 
-SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS = """
-SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
-FROM information_schema.semantic_dimensions
-WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
-"""
-
-SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS = """
-SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
-FROM information_schema.semantic_facts
-WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
-"""
-
-SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS = """
-SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
-FROM information_schema.semantic_metrics
-WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
-"""
-
-# Schema-wide variant of the three queries above: one round-trip covers every
-# semantic view in the schema instead of one per view. SEMANTIC_VIEW_NAME leads the
-# projection so rows can be grouped by view; the remaining columns keep the exact
-# per-view layout so downstream row parsing is unchanged.
+# Semantic view objects (dimensions/facts/metrics), read from the matching
+# INFORMATION_SCHEMA.SEMANTIC_* catalog view via `{catalog_view}`.
+#
+# PRIMARY PATH. One round-trip per schema covers every semantic view in it, so the
+# query count scales with schemas rather than views. SEMANTIC_VIEW_NAME leads the
+# projection so rows can be grouped by view; the remaining columns match
+# ..._FOR_VIEW below so downstream row parsing is identical either way.
 SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA = """
 SELECT SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
 FROM information_schema.{catalog_view}
 WHERE SEMANTIC_VIEW_SCHEMA = '{schema}'
+"""
+
+# FALLBACK ONLY. Used when the schema-wide query above fails with errno 90030
+# ("information schema query returned too much data"), which is the case a
+# schema-wide fetch cannot serve. One round-trip per view per catalog view.
+SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW = """
+SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.{catalog_view}
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
 """
 
 # Database-qualified batch queries used by the lineage workflow to resolve

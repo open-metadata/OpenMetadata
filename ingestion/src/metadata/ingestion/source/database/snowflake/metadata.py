@@ -17,7 +17,7 @@ import threading
 import traceback
 from collections import OrderedDict
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 import sqlparse
@@ -109,10 +109,8 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_SCHEMATA,
+    SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW,
     SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA,
-    SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS,
-    SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS,
-    SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS,
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
@@ -233,13 +231,6 @@ SEMANTIC_DIMENSIONS = "semantic_dimensions"
 SEMANTIC_FACTS = "semantic_facts"
 SEMANTIC_METRICS = "semantic_metrics"
 SEMANTIC_CATALOG_VIEWS = (SEMANTIC_DIMENSIONS, SEMANTIC_FACTS, SEMANTIC_METRICS)
-
-# Per-view queries, used only when the schema-wide batch is unavailable (errno 90030).
-SEMANTIC_PER_VIEW_QUERIES = {
-    SEMANTIC_DIMENSIONS: SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS,
-    SEMANTIC_FACTS: SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS,
-    SEMANTIC_METRICS: SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS,
-}
 
 # Which catalog views become columns on the semantic view Table, and the kind label
 # used to deduplicate a name that appears as both a dimension and a fact. Metrics are
@@ -1285,8 +1276,10 @@ class SnowflakeSource(
         catalog = self._semantic_catalog(schema)
         if catalog is not None:
             return catalog.get(catalog_view, {}).get(view, [])
-        query = SEMANTIC_PER_VIEW_QUERIES[catalog_view]
-        return self._execute_semantic_query(query.format(schema=schema, semantic_view=view))
+        query = SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW.format(
+            catalog_view=catalog_view, schema=schema, semantic_view=view
+        )
+        return self._execute_semantic_query(query)
 
     def _semantic_view_reference(self, database: str, schema: str, view: str) -> Optional[EntityReference]:  # noqa: UP045
         view_fqn = fqn._build(self.context.get().database_service, database, schema, view)  # pyright: ignore[reportAttributeAccessIssue]

@@ -59,13 +59,22 @@ def _semantic_source():
     source._semantic_catalog_local = threading.local()
 
     def execute(clause):
-        lowered = str(clause.text).lower()
+        sql = str(clause.text)
+        lowered = sql.lower()
         if "semantic_dimensions" in lowered:
-            return iter(_DIMENSION_ROWS)
-        if "semantic_facts" in lowered:
-            return iter(_FACT_ROWS)
+            rows = _DIMENSION_ROWS
+        elif "semantic_facts" in lowered:
+            rows = _FACT_ROWS
+        else:
+            rows = _METRIC_ROWS
 
-        return iter(_METRIC_ROWS)
+        # The per-view fallback query does NOT select SEMANTIC_VIEW_NAME, so it must
+        # yield 6-column rows. Returning the 7-column schema-wide shape for both
+        # would let a field-shift bug in either path pass unnoticed.
+        if "SELECT SEMANTIC_VIEW_NAME" not in sql:
+            return iter([row[1:] for row in rows])
+
+        return iter(rows)
 
     source.connection.execute.side_effect = execute
 
@@ -125,15 +134,23 @@ def test_semantic_view_columns_exclude_metrics():
     assert SEMANTIC_METRICS in SEMANTIC_CATALOG_VIEWS
 
 
-def test_every_catalog_view_has_a_per_view_fallback_query():
-    """The 90030 fallback indexes SEMANTIC_PER_VIEW_QUERIES by catalog view name; a
-    missing entry would KeyError only on a schema large enough to trigger 90030."""
-    from metadata.ingestion.source.database.snowflake.metadata import (
-        SEMANTIC_CATALOG_VIEWS,
-        SEMANTIC_PER_VIEW_QUERIES,
+def test_batch_and_fallback_queries_return_the_same_column_layout():
+    """Rows from the fallback must parse identically to batch rows with the leading
+    SEMANTIC_VIEW_NAME stripped, or the fallback silently yields shifted fields."""
+    from metadata.ingestion.source.database.snowflake.queries import (
+        SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW,
+        SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA,
     )
 
-    assert set(SEMANTIC_PER_VIEW_QUERIES) == set(SEMANTIC_CATALOG_VIEWS)
+    def projection(query):
+        select = query.strip().split("FROM")[0]
+        return [column.strip() for column in select.replace("SELECT", "").split(",")]
+
+    batch = projection(SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA)
+    per_view = projection(SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW)
+
+    assert batch[0] == "SEMANTIC_VIEW_NAME"
+    assert batch[1:] == per_view
 
 
 def test_semantic_view_table_type_exists():
