@@ -1134,7 +1134,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // pass resolutionType alone stay on the workflow handler's positive/negative default path (used
     // heavily by generic-workflow ITs and the recognizer-feedback flow). H1 still rejects the
     // empty-body exploit below via requireExplicitResolveIntent.
-    String requestedTransitionId = resolveTask.getTransitionId();
+    //
+    // Normalize blank transitionId to null once up-front so requireExplicitResolveIntent (which
+    // rejects blank) and the follow-up "did the caller name a transitionId?" branches (which
+    // used to only null-check) agree — otherwise transitionId="" + a valid resolutionType would
+    // land in a 400 from validateTransition instead of the intended resolutionType-only path.
+    String requestedTransitionId =
+        nullOrEmpty(resolveTask.getTransitionId()) ? null : resolveTask.getTransitionId();
     requireExplicitResolveIntent(task, requestedTransitionId, resolveTask.getResolutionType());
     String transitionId =
         requestedTransitionId != null
@@ -1710,7 +1716,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           TaskEntityStatus.Rejected,
           TaskEntityStatus.Granted,
           TaskEntityStatus.ManualRevoke,
-          TaskEntityStatus.Cancelled);
+          TaskEntityStatus.Cancelled,
+          TaskEntityStatus.Completed,
+          TaskEntityStatus.Failed,
+          TaskEntityStatus.Revoked,
+          TaskEntityStatus.Expired);
 
   /**
    * Reject JSON-Patch operations that would either forge workflow/audit state (H4) or edit
