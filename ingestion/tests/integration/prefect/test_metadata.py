@@ -126,7 +126,6 @@ def test_tables(metadata, test_service):
     return table_source, table_destination
 
 
-@pytest.mark.order(1)
 def test_create_flows_in_prefect(prefect_server):
     """
     Seed Prefect with everything the connector reads from: a flow, a
