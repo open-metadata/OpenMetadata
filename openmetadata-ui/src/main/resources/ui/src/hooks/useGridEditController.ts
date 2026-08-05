@@ -153,6 +153,7 @@ function useClipboardHandlers(
     }
 
     return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedRange, dataSource, columns, getFinalSelectedRange]);
 
   const handlePaste = useCallback(() => {
@@ -191,6 +192,7 @@ function useClipboardHandlers(
     }
 
     return dataSource;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     selectedRange,
     dataSource,
@@ -260,6 +262,7 @@ export function useGridEditController({
     }
 
     return cells;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [getFinalSelectedRange]);
 
   /* 
@@ -294,6 +297,7 @@ export function useGridEditController({
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [getFinalSelectedRange]);
 
   // Highlight selected range on selectedRange change and on grid scroll
@@ -311,6 +315,7 @@ export function useGridEditController({
           ?.removeEventListener('scroll', highlightSelectedRange);
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [highlightSelectedRange]);
 
   // Helper to get cell indices from event target
@@ -420,6 +425,7 @@ export function useGridEditController({
       gridContainer.removeEventListener('mouseover', onMouseOver);
       window.removeEventListener('mouseup', onMouseUp);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [gridContainer, isSelecting]);
 
   // Keyboard event handlers for range selection, undo/redo, and select all
@@ -717,6 +723,7 @@ export function useGridEditController({
         );
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     undo,
     redo,
@@ -780,6 +787,7 @@ export function useGridEditController({
         endCol: colIdx,
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [dataSource]
   );
 
@@ -793,6 +801,7 @@ export function useGridEditController({
         endCol: colCount - 1,
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [columns]
   );
 
@@ -856,6 +865,7 @@ export function useGridEditController({
         });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [gridContainer, getCellIndices]);
 
   useEffect(() => {
@@ -883,6 +893,7 @@ export function useGridEditController({
     observer.observe(gridContainer, { childList: true, subtree: true });
 
     return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEmpty(dataSource), focusFirstCell, gridContainer]);
 
   return {

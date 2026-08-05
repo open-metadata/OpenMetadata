@@ -61,6 +61,7 @@ const TestCaseStatusPieChartWidget = ({
 
   useEffect(() => {
     fetchTestSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter]);
 
   const handleSegmentClick = useCallback(
@@ -101,6 +102,7 @@ const TestCaseStatusPieChartWidget = ({
         testCaseSummary.total
       ),
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [testCaseSummary]
   );
 

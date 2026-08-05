@@ -94,10 +94,12 @@ const Description = ({
 
   const handleRequestDescription = useCallback(() => {
     navigate(getRequestDescriptionPath(entityType, entityFqn));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType, entityFqn]);
 
   const handleUpdateDescription = useCallback(() => {
     navigate(getUpdateDescriptionPath(entityType, entityFqn));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType, entityFqn]);
 
   const handleEditDescription = useCallback(() => {

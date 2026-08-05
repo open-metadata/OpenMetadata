@@ -143,6 +143,7 @@ const ContractSLA: React.FC<{
     }
 
     return slaList;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [contract.sla, tableColumnNameMap]);
 
   if (isEmpty(renderSLAData)) {

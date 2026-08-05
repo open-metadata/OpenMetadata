@@ -65,6 +65,7 @@ export const AdvancedAssetsFilterField = ({
   const { config, treeInternal, onTreeUpdate, onReset, searchIndex } =
     useAdvanceSearch();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const selectedResource: Array<string> =
     Form.useWatch('resources', form) || [];
 
@@ -118,9 +119,11 @@ export const AdvancedAssetsFilterField = ({
         setIsCountLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fetchEntityCount, selectedResource, getExpandedResourceList]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debouncedFetchEntityCount = useCallback(
     debounce(handleEntityCount, 500),
     [handleEntityCount]
@@ -169,6 +172,7 @@ export const AdvancedAssetsFilterField = ({
     } catch (error) {
       return;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   // always Keep this useEffect at the end...
@@ -184,6 +188,7 @@ export const AdvancedAssetsFilterField = ({
       <Row className="advanced-filter-form-field" gutter={[8, 8]}>
         <Col data-testid="advanced-filter-container" span={24}>
           <div className="ant-form-item-label advanced-filter-label">
+            {/* eslint-disable-next-line jsx-a11y/label-has-for -- AntD form-item label */}
             <label>{t('label.advance-filter')}</label>
           </div>
           <Query

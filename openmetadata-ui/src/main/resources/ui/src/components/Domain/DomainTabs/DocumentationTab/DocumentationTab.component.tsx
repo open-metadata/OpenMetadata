@@ -103,6 +103,7 @@ const DocumentationTab = ({
         Operation.ViewCustomFields
       ),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permissions, isVersionsView, resourceType]);
 
   const description = useMemo(

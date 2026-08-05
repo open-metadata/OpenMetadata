@@ -180,6 +180,7 @@ const RequestDescription = () => {
       title: taskMessage.trimEnd(),
       assignees: defaultAssignee,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityData]);
 
   useEffect(() => {
@@ -188,6 +189,7 @@ const RequestDescription = () => {
       currentDescription: '',
       newDescription: '',
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [field, value]);
 
   useEffect(() => {

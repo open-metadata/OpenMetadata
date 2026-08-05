@@ -144,6 +144,7 @@ const NotificationBox = ({
         />
       );
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [notifications]);
 
   const getTaskNotificationData = useCallback(() => {
@@ -224,6 +225,7 @@ const NotificationBox = ({
         }, NOTIFICATION_READ_TIMER);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       onTabChange,
       currentUser,
@@ -236,6 +238,7 @@ const NotificationBox = ({
 
   useEffect(() => {
     getTaskNotificationData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const getTabTitle = (name: string, key: string) => {

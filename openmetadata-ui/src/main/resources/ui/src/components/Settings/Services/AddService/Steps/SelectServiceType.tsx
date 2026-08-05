@@ -81,6 +81,7 @@ const SelectServiceType = ({
         (service) => !excludedService.find((e) => e === service)
       )
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceCategory]);
 
   const filteredConnectors = useMemo(

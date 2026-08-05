@@ -160,6 +160,7 @@ export const DatabaseSchemaTable = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [pageSize, decodedDatabaseFQN, showDeletedSchemas, viewUsagePermission]
   );
 
@@ -190,6 +191,7 @@ export const DatabaseSchemaTable = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedDatabaseFQN, showDeletedSchemas, handlePagingChange]
   );
 
@@ -199,6 +201,7 @@ export const DatabaseSchemaTable = ({
       cursorType: null,
       cursorValue: undefined,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleSchemaPageChange = useCallback(
@@ -302,6 +305,7 @@ export const DatabaseSchemaTable = ({
           ]
         : []),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       handleDisplayNameUpdate,
       allowEditDisplayNamePermission,
@@ -338,6 +342,7 @@ export const DatabaseSchemaTable = ({
     }
 
     fetchDatabaseSchema();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     decodedDatabaseFQN,
     pageSize,

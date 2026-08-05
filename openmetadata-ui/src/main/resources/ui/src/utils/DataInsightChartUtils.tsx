@@ -53,7 +53,7 @@ export const renderLegend = (
           activeKeys.length === 0 || activeKeys.includes(entry.value);
 
         return (
-          <li
+          <li // eslint-disable-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- legend row toggles series
             className="recharts-legend-item custom-data-insight-legend-item"
             key={`item-${entry.value}`}
             onClick={(e) =>

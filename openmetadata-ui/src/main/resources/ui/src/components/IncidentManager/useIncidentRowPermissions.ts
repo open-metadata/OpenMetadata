@@ -79,6 +79,7 @@ export const useIncidentRowPermissions = ({
     if (testCaseListData.data.length > 0) {
       fetchTestCasePermissions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCaseListData.data]);
 
   return {

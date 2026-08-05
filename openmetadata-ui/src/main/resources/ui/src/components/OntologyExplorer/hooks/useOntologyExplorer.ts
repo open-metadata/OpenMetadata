@@ -1025,6 +1025,7 @@ export function useOntologyExplorer({
     return () => {
       graphRef.current = null;
       assetFetchControllers.current.forEach((c) => c.abort());
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       assetFetchControllers.current.clear();
     };
   }, []);

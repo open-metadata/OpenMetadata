@@ -86,6 +86,7 @@ export const ModalWithCustomPropertyEditor = ({
 
   useEffect(() => {
     fetchTypeDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

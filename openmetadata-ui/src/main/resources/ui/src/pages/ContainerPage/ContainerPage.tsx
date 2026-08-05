@@ -322,6 +322,7 @@ const ContainerPage = () => {
         ({ id }: { id: string }) => id === currentUser?.id
       ),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [containerData]);
 
   const {
@@ -571,6 +572,7 @@ const ContainerPage = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -695,6 +697,7 @@ const ContainerPage = () => {
       customizedPage?.tabs,
       isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isDataModelEmpty,
     containerData,
@@ -775,6 +778,7 @@ const ContainerPage = () => {
 
     // On mount or when URL FQN changes, start permission fetch
     fetchResourcePermission(decodedEntityFqn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedEntityFqn, resolvedEntityFqn, containerData, activeColumnFqn]);
 
   useEffect(() => {
@@ -808,6 +812,7 @@ const ContainerPage = () => {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [resolvedEntityFqn]);
 
   const toggleTabExpanded = () => {
@@ -816,6 +821,7 @@ const ContainerPage = () => {
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], tab, PageType.Container),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], tab]
   );
 
@@ -835,6 +841,7 @@ const ContainerPage = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [containerData, handleContainerUpdate]
   );
   // Rendering

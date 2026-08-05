@@ -138,6 +138,7 @@ const TeamsPage = () => {
         setIsTeamBasicDataLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [showDeletedTeam]
   );
 
@@ -291,6 +292,7 @@ const TeamsPage = () => {
         setFetchingAdvancedDetails(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fetchAssets]
   );
 
@@ -521,22 +523,26 @@ const TeamsPage = () => {
     } finally {
       setIsPageLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   useEffect(() => {
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   useEffect(() => {
     if (hasViewPermission && fqn) {
       fetchAllTeamsBasicDetails(fqn);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [showDeletedTeam]);
 
   useEffect(() => {
     if (isFetchAllTeamAdvancedDetails && fqn) {
       fetchAllTeamsAdvancedDetails(false, fqn);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isFetchAllTeamAdvancedDetails, fqn]);
 
   if (isPageLoading) {

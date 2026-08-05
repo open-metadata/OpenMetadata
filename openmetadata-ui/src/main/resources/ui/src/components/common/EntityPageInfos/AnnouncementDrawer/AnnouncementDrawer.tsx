@@ -94,6 +94,7 @@ const AnnouncementDrawer: FC<Props> = ({
   const handleSaveAnnouncement = useCallback(() => {
     handleCloseAnnouncementModal();
     setRefetchThread((prev) => !prev);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

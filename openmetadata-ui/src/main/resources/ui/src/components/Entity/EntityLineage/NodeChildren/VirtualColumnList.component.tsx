@@ -140,6 +140,7 @@ const VirtualColumnList = ({
       );
     },
     // selectedColumn triggers re-render when column selection changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       getColumnSummary,
       isConnectable,

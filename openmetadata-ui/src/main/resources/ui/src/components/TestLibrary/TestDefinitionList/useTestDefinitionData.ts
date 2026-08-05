@@ -97,6 +97,7 @@ export const useTestDefinitionData = ({
     } else {
       fetchTestDefinitions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pageSize, pagingCursor, urlParams.entityType, urlParams.testPlatforms]);
 
   const handleEnableToggle = async (

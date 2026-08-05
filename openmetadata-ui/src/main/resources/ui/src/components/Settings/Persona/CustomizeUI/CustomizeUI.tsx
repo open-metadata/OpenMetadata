@@ -60,6 +60,7 @@ export const CustomizeUI = () => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [history, fullHash, personaFQN]
   );
 

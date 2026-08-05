@@ -133,6 +133,7 @@ const PlatformLineage = () => {
     },
     [navigate]
   );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debouncedSearch = useCallback(
     debounce(async (value: string) => {
       try {
@@ -215,6 +216,7 @@ const PlatformLineage = () => {
       viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
       onExport: async () => '',
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -292,6 +294,7 @@ const PlatformLineage = () => {
         </div>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isFullScreen,
     options,

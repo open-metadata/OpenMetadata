@@ -110,6 +110,7 @@ function SpreadsheetsTable({
         cursorValue: undefined,
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging]
   );
 
@@ -171,6 +172,7 @@ function SpreadsheetsTable({
     if (searchValue) {
       searchSpreadsheets(searchValue, paging.currentPage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchValue, paging?.currentPage, showDeleted]);
 
   return (

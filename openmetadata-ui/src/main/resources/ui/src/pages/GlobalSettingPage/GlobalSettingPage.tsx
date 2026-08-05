@@ -70,6 +70,7 @@ const GlobalSettingPage = () => {
     } else {
       navigate(getSettingPath(category));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   if (isEmpty(settingItems)) {

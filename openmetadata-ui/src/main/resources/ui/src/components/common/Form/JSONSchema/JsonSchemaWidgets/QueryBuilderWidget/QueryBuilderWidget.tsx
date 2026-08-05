@@ -128,6 +128,7 @@ const QueryBuilderWidget: FC<
         setIsCountLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType]
   );
 
@@ -142,6 +143,7 @@ const QueryBuilderWidget: FC<
       !isUndefined(value) &&
       searchResults !== undefined &&
       !isCountLoading,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [outputType, value, isCountLoading]
   );
 
@@ -217,22 +219,26 @@ const QueryBuilderWidget: FC<
       onTreeUpdate(tree, config);
     }
     setInitDone(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [config, value, outputType]);
 
   useEffect(() => {
     onChangeSearchIndex(resolvedSearchIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (isSearchIndexUpdatedInContext && !isUpdating) {
       loadDefaultValueInTree();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isSearchIndexUpdatedInContext, isUpdating]);
 
   useEffect(() => {
     if (props.getQueryActions) {
       props.getQueryActions(queryActions);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [queryActions]);
 
   useEffect(() => {

@@ -55,6 +55,7 @@ const OwnerUserList = ({
           : reverse(visibleOwners),
         remainingOwnersCount,
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [owners, showAllOwners, maxVisibleOwners]);
 
   return (

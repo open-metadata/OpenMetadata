@@ -213,6 +213,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     return () => {
       setNodeFilterState(node.id, false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isColumnLevelLineage]);
 
   const showDqTracing = useMemo(
@@ -276,6 +277,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         )}
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     node.id,
     isNewNode,

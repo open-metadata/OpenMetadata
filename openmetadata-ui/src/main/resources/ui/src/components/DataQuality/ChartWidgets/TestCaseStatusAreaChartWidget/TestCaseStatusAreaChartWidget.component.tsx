@@ -147,6 +147,7 @@ const TestCaseStatusAreaChartWidget = ({
 
   useEffect(() => {
     getTestCaseStatusMetrics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter, testCaseStatus]);
 
   const containerClassName = classNames(

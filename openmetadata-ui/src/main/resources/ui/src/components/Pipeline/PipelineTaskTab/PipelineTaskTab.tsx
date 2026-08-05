@@ -165,6 +165,7 @@ export const PipelineTaskTab = () => {
     if (currentPage > maxPage) {
       handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [filteredData.length, pageSize]);
 
   const tasksInternal = useMemo(() => {
@@ -207,6 +208,7 @@ export const PipelineTaskTab = () => {
           <span>{t('server.no-task-available')}</span>
         </Card>
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [pipelineDetails, selectedExecution]
   );
 
@@ -387,6 +389,7 @@ export const PipelineTaskTab = () => {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       deleted,
       editTask,

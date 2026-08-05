@@ -291,6 +291,7 @@ const TaskFormSettingsPage = () => {
 
   useEffect(() => {
     loadSchemas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleSelectSchema = (schema: TaskFormSchema) => {

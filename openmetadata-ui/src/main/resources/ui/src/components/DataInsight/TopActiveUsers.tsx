@@ -64,6 +64,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
 
   useEffect(() => {
     fetchMostActiveUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter]);
 
   const columns: ColumnsType<MostActiveUsers> = useMemo(
@@ -114,6 +115,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

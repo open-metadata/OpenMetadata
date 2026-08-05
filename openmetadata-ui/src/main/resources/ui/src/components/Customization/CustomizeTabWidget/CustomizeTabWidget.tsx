@@ -126,6 +126,7 @@ export const CustomizeTabWidget = () => {
     return hasEmptyWidgetPlaceholder
       ? layout
       : getLayoutWithEmptyWidgetPlaceholder(layout, 2, 3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [items, activeKey]);
 
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
@@ -247,6 +248,7 @@ export const CustomizeTabWidget = () => {
         } as Page);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabLayouts]
   );
 
@@ -312,6 +314,7 @@ export const CustomizeTabWidget = () => {
   const widgets = useMemo(
     // Re-render upon leftPanelWidget change
     () => getWidgetFromLayout(tabLayouts),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabLayouts, leftPanelWidget]
   );
 
@@ -343,6 +346,7 @@ export const CustomizeTabWidget = () => {
         } as Page);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabLayouts, leftPanelWidget]
   );
 
@@ -368,6 +372,7 @@ export const CustomizeTabWidget = () => {
 
       setIsWidgetModalOpen(false);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabLayouts]
   );
 

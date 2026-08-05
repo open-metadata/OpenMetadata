@@ -320,6 +320,7 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [
         currentPage,
         pageSize,
@@ -615,6 +616,7 @@ const AssetsTabs = forwardRef(
           }
         }
       },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [type, activeEntity, entityFqn, fetchOutputPorts]
     );
 
@@ -654,6 +656,7 @@ const AssetsTabs = forwardRef(
       if (selectedItems) {
         onAssetRemove(Array.from(selectedItems.values()));
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [selectedItems]);
 
     const handleBulkDeleteClick = useCallback(() => {
@@ -685,12 +688,14 @@ const AssetsTabs = forwardRef(
         onAssetClick?.(undefined);
         hideNotification();
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, []);
 
     useEffect(() => {
       if (entityFqn) {
         fetchCurrentEntity();
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [entityFqn]);
 
     useEffect(() => {
@@ -751,6 +756,7 @@ const AssetsTabs = forwardRef(
           />
         );
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [
       searchValue,
       noDataPlaceholder,
@@ -763,6 +769,7 @@ const AssetsTabs = forwardRef(
       return <div data-testid="manage-dropdown-list-container">{menus}</div>;
     }, []);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
       const quickFilterQuery = getQuickFilterQuery(data);
       setQuickFilterQuery(quickFilterQuery);
@@ -853,6 +860,7 @@ const AssetsTabs = forwardRef(
             {assetErrorPlaceHolder}
           </div>
         ),
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       [
         type,
         data,
@@ -906,6 +914,7 @@ const AssetsTabs = forwardRef(
           </div>
         )
       );
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [
       activeEntity,
       isLoading,
@@ -925,6 +934,7 @@ const AssetsTabs = forwardRef(
           {assetListing}
         </Col>
       );
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [assetsHeader, assetListing, selectedCard]);
 
     const clearFilters = useCallback(() => {

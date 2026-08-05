@@ -324,6 +324,7 @@ SSOConfigurationFormProps) => {
     setInternalData(freshFormData);
   }, [selectedProvider]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const scrollToFirstError = useCallback(
     createScrollToErrorHandler({
       scrollContainer: '.ant-card',
@@ -448,6 +449,7 @@ SSOConfigurationFormProps) => {
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [parseValidationErrors]
   );
 
@@ -663,6 +665,7 @@ SSOConfigurationFormProps) => {
     };
 
     return finalSchema;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     currentProvider,
     internalData?.authenticationConfiguration?.clientType,

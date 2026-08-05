@@ -34,6 +34,7 @@ export const useSub = <T = unknown>(
     return () => {
       emitter.off(event, callback);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, dependencies ?? []);
 
   return unsubscribe;

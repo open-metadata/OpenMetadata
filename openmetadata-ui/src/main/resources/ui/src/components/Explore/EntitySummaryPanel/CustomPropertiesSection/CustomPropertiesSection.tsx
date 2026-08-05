@@ -39,6 +39,7 @@ const CustomPropertiesSection = ({
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState<string>('');
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const customProperties = entityTypeDetail?.customProperties || [];
   const extensionData = (entityData?.extension || {}) as ExtensionDataProps;
 
@@ -101,6 +102,7 @@ const CustomPropertiesSection = ({
         </ErrorPlaceHolderNew>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchText, emptyStateMessage]);
 
   if (isEntityDataLoading) {

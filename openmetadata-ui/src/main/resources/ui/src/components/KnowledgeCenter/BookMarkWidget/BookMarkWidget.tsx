@@ -71,12 +71,14 @@ const BookMarkWidget = ({
 
   useEffect(() => {
     fetchBookMarks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentUser]);
 
   useEffect(() => {
     if (refresh) {
       fetchBookMarks();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [refresh]);
 
   if (isLoading) {

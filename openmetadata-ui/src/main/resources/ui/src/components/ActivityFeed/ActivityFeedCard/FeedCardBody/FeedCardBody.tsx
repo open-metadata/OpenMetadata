@@ -100,6 +100,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           markdown={getFrontEndFormat(postMessage)}
         />
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isEditPost, message, postMessage]
   );
 

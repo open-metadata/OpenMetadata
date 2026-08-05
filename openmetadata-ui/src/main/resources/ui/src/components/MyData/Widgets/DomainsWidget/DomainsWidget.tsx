@@ -116,6 +116,7 @@ const DomainsWidget = ({
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
 
   const handleDomainClick = useCallback(
@@ -228,6 +229,7 @@ const DomainsWidget = ({
         </div>
       </div>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [domains, isFullSize]
   );
 

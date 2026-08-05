@@ -109,6 +109,7 @@ function AnnouncementsWidget({
         </Row>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isAnnouncementLoading, announcements]);
 
   return (

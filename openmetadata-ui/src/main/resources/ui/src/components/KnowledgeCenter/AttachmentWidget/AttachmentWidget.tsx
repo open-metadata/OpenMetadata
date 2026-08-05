@@ -146,6 +146,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
         ))}
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [attachments, isLoading]);
 
   return (

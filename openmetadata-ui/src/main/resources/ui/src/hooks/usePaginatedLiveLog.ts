@@ -179,6 +179,7 @@ export const usePaginatedLiveLog = ({
     if (enabled && resetKey) {
       fetchForward(undefined, true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [resetKey, enabled]);
 
   const hasMore = nextCursor !== undefined;

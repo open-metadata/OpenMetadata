@@ -96,6 +96,7 @@ export const ContractSemanticFormTab: React.FC<{
       form.setFieldsValue({ semantics: filteredValue });
       onChange({ semantics: filteredValue });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [semanticsFormData]
   );
 
@@ -155,6 +156,7 @@ export const ContractSemanticFormTab: React.FC<{
       });
     }
     setEditingKey(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [initialValues]);
 
   // Remove extension field from common config
@@ -178,6 +180,7 @@ export const ContractSemanticFormTab: React.FC<{
 
   useEffect(() => {
     onChange({ semantics: semanticsFormData });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [semanticsFormData]);
 
   return (

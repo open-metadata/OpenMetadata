@@ -149,6 +149,7 @@ function DatabaseVersionPage() {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [viewVersionPermission, decodedEntityFQN]);
 
   const fetchCurrentVersionData = useCallback(
@@ -178,6 +179,7 @@ function DatabaseVersionPage() {
         navigate(getEntityDetailsPath(EntityType.DATABASE, decodedEntityFQN));
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedEntityFQN]
   );
 
@@ -267,6 +269,7 @@ function DatabaseVersionPage() {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tags, description]
   );
 
@@ -339,6 +342,7 @@ function DatabaseVersionPage() {
         />
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isLoading,
     viewVersionPermission,
@@ -362,18 +366,21 @@ function DatabaseVersionPage() {
     if (!isEmpty(decodedEntityFQN)) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchVersionsList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedEntityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (databaseId) {
       fetchCurrentVersionData(databaseId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version, databaseId]);
 
   return versionComponent;

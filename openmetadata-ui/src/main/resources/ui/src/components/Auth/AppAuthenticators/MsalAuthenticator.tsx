@@ -138,6 +138,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     // To add redirect callback
     useEffect(() => {
       instance && handleRedirect();
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [instance]);
 
     // Show loader until the interaction is completed

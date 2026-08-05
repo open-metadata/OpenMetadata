@@ -86,6 +86,7 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     [setSuggestionSearch]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
     debouncedOnChange,
   ]);
@@ -125,6 +126,7 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
     if (isTourOpen) {
@@ -182,6 +184,7 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
     if (!isEmpty(currentUser)) {
       initNLP();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentUser]);
 
   return (

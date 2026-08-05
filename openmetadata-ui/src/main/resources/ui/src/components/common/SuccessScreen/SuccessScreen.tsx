@@ -91,6 +91,7 @@ const SuccessScreen = ({
           <Typography>{t('message.pipeline-scheduler-message')}</Typography>
         </Space>
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isAirflowPlatform]
   );
 

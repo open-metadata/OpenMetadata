@@ -162,6 +162,7 @@ const EntitySearchSettings = () => {
         startCase(entityType),
         GlobalSettingOptions.SEARCH_SETTINGS
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -619,6 +620,7 @@ const EntitySearchSettings = () => {
 
   useEffect(() => {
     fetchSearchConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -631,6 +633,7 @@ const EntitySearchSettings = () => {
     if (entityType) {
       fetchCustomProperties();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType]);
 
   useEffect(() => {

@@ -53,6 +53,7 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
       form.resetFields();
       setFactor(0);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedBoost, open]);
 
   const handleFactorChange = (value: number) => {

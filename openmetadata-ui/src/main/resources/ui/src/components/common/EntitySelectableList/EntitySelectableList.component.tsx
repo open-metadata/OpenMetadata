@@ -32,6 +32,7 @@ export const EntitySelectableList = <T,>({
 
   const selectedItemsAsEntityReferences = useMemo(
     () => config.toEntityReference(selectedItems),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [selectedItems, config.toEntityReference]
   );
 

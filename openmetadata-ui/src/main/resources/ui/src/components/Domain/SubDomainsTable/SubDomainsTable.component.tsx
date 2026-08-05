@@ -116,6 +116,7 @@ const SubDomainsTable = ({
     if (subDomainsCount) {
       subdomainListing.refetch();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [subDomainsCount]);
 
   const isSearchOrFilterActive = useCallback(
@@ -188,6 +189,7 @@ const SubDomainsTable = ({
         />
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     subdomainListing.loading,
     subdomainListing.entities,

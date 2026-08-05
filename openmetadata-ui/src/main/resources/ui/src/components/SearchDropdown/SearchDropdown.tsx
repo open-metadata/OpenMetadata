@@ -295,6 +295,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       (item) => item.key === NULL_OPTION_KEY
     );
     setNullOptionSelected(isNullOptionSelected);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isDropDownOpen]);
 
   useEffect(() => {
@@ -333,6 +334,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         </Row>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isSuggestionsLoading, options, selectedOptions, index, searchKey]
   );
 
@@ -440,6 +442,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         </Space>
       </Card>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       label,
       debouncedOnSearch,

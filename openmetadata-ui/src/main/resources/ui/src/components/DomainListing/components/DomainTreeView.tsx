@@ -205,6 +205,7 @@ const DomainTreeView = ({
         loadDomains(firstDomain.fullyQualifiedName as string);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [updateExpansionForFqn, searchQuery]
   );
 
@@ -238,6 +239,7 @@ const DomainTreeView = ({
         setIsHierarchyLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [t, isDomainRestricted, userDomains]
   );
 
@@ -463,6 +465,7 @@ const DomainTreeView = ({
         setLoadingChildren((prev) => ({ ...prev, [parentFqn]: false }));
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handleError, childPaging]
   );
 
@@ -479,6 +482,7 @@ const DomainTreeView = ({
         await loadRootDomains(isLoadMore);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [loadingChildren, rootPaging, applySelection, loadChildDomains]
   );
   useEffect(() => {
@@ -487,6 +491,7 @@ const DomainTreeView = ({
     } else {
       loadDomains();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [refreshToken, searchQuery, hasActiveFilters]);
 
   useEffect(() => {
@@ -590,6 +595,7 @@ const DomainTreeView = ({
         showErrorToast(error as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [refreshAll, selectedDomain]
   );
 
@@ -941,6 +947,7 @@ const DomainTreeView = ({
         )}
       </>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isHierarchyLoading,
     hierarchy,

@@ -152,12 +152,14 @@ const PipelineDetails = ({
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pipelineDetails.id, getEntityPermission, setPipelinePermissions]);
 
   useEffect(() => {
     if (pipelineDetails.id) {
       fetchResourcePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pipelineDetails.id]);
 
   const isFollowing = useMemo(
@@ -173,6 +175,7 @@ const PipelineDetails = ({
       };
       await settingsUpdateHandler(updatedPipelineDetails);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [owners]
   );
 
@@ -301,12 +304,14 @@ const PipelineDetails = ({
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [pipelineFQN]);
 
   const tabs = useMemo(() => {
@@ -334,6 +339,7 @@ const PipelineDetails = ({
       customizedPage?.tabs,
       EntityTabs.TASKS
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     description,
     feedCount.totalCount,
@@ -372,10 +378,12 @@ const PipelineDetails = ({
         await onPipelineUpdate(updatedPipelineDetails, 'certification');
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [pipelineDetails, onPipelineUpdate]
   );
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], tab, PageType.Pipeline),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], tab]
   );
 

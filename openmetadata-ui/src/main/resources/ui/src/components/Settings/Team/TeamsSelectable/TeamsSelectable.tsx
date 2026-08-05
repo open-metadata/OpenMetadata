@@ -75,6 +75,7 @@ const TeamsSelectable = ({
 
   useEffect(() => {
     loadOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const showLeafIcon = false;
@@ -99,6 +100,7 @@ const TeamsSelectable = ({
     return teams.map((team) => {
       return getTreeNodeData(team);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [teams]);
 
   const selectedTeamsInternal = useMemo(() => {

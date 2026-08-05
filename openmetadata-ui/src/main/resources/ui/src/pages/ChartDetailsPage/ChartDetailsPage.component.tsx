@@ -329,6 +329,7 @@ const ChartDetailsPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(chartFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFQN]);
 
   if (permissionsLoading || chartLoading) {

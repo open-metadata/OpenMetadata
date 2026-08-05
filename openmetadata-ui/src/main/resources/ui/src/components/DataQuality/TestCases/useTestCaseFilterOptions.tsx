@@ -197,18 +197,22 @@ export const useTestCaseFilterOptions = () => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceFetchTableData = useCallback(
     debounce(fetchTableData, 1000),
     []
   );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceFetchTagOptions = useCallback(
     debounce(fetchTagOptions, 1000),
     []
   );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceFetchServiceOptions = useCallback(
     debounce(fetchServiceOptions, 1000),
     []
   );
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceFetchDataProductOptions = useCallback(
     debounce(fetchDataProductOptions, 1000),
     []

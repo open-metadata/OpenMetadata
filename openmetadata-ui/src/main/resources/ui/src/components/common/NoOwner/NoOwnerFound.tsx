@@ -50,6 +50,7 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
     }
 
     return defaultPlaceholder;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [placeHolder, showLabel, showDashPlaceholder]);
 
   return (

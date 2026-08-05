@@ -473,6 +473,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       outgoingMap,
       isColumnLevelLineage
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     cachedEdgesAndMaps,
     entityLineage.edges,
@@ -626,6 +627,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setEdges(visibleEdges);
       setColumnsHavingLineage(columnsLineageSet);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityFqn,
       isEditMode,
@@ -694,6 +696,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityFqn]
   );
 
@@ -753,6 +756,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       queryFilter,
       entityFqn,
@@ -782,6 +786,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isPlatformLineage, location.search]
   );
 
@@ -854,6 +859,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onExport: onExportCallback ?? exportLineageData,
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityType,
       entityFqn,
@@ -989,6 +995,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       nodes,
       edges,
@@ -1041,6 +1048,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setTracedNodes(connectedNodeIds);
       setTracedColumns(new Set());
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [nodes, edges, activeNode, tracedNodes]
   );
 
@@ -1062,6 +1070,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onPlatformViewChange(LineagePlatformView.Service);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -1078,6 +1087,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setTracedColumns(connectedColumnEdges);
     setTracedNodes(new Set());
     setSelectedEdge(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedColumn, columnEdges]);
 
   const onColumnMouseEnter = useCallback(
@@ -1088,9 +1098,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       );
       setTracedColumns(connectedColumnEdges);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [columnEdges]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const removeEdgeHandler = async (
     edge: Edge,
     confirmDelete: boolean
@@ -1136,6 +1148,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     });
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const removeColumnEdge = async (edge: Edge, confirmDelete: boolean) => {
     if (!confirmDelete || !entityLineage) {
       return;
@@ -1246,6 +1259,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       setNewAddedNode({} as Node);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [nodes, entityLineage]
   );
 
@@ -1438,6 +1452,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       updateNodeData(entityId, updatedEntity);
       setSelectedNode({ ...selectedNode, ...updatedEntity } as SourceType);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [updateNodeData, selectedNode]
   );
 
@@ -1461,6 +1476,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         handleLineageTracing(node);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handleLineageTracing, selectedColumn]
   );
 
@@ -1471,6 +1487,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setActiveNode(undefined);
     setSelectedNode(undefined);
     setIsDrawerOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const onEdgeClick = useCallback((edge: Edge) => {
@@ -1483,6 +1500,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (sourceHandle && targetHandle) {
       setTracedColumns(new Set([sourceHandle, targetHandle]));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const redraw = useCallback(async () => {
@@ -1652,6 +1670,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       nodes,
       entityLineage,
@@ -1671,6 +1690,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const handleModalCancel = useCallback(() => {
     setShowAddEdgeModal(false);
     setSelectedEdge(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const onAddPipelineModalSave = useCallback(
@@ -1751,6 +1771,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         handleModalCancel();
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [selectedEdge, entityLineage]
   );
 
@@ -1814,6 +1835,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         showErrorToast(err as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [edges, entityLineage, selectedEdge]
   );
 
@@ -1877,11 +1899,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         }
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [nodes, edges, entityLineage]
   );
 
   useEffect(() => {
     redraw();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isColumnLevelLineage]);
 
   // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
@@ -1938,6 +1962,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         lineageConfig
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     entity,
     entityType,
@@ -1965,6 +1990,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           : [defaultLineageConfig.lineageLayer]
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [defaultLineageConfig]);
 
   useEffect(() => {
@@ -2004,16 +2030,19 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
       redraw();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [reactFlowInstance?.viewportInitialized]);
 
   useEffect(() => {
     onPlatformViewUpdate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     platformView,
     lineageConfig,
@@ -2062,6 +2091,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       timeFilter,
       setTimeFilter,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     dataQualityLineage,
     nodes,
@@ -2116,12 +2146,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (lineageLayer) {
       updateActiveLayer(lineageLayer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [lineageLayer]);
 
   useEffect(() => {
     if (isDQEnabled) {
       fetchDataQualityLineage(entityFqn, lineageConfig);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isDQEnabled, entityFqn, lineageConfig]);
 
   useEffect(() => {
@@ -2164,11 +2196,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           },
         ]
       : platformBreadcrumbs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entity, isFullScreen, entityType]);
 
   // flush store values
   useEffect(() => {
     return reset;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

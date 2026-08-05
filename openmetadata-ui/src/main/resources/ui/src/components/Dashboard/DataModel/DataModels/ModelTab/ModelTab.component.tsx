@@ -164,6 +164,7 @@ const ModelTab = () => {
 
       handlePageChange(currentPage);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging, fetchPaginatedColumns, searchText, handlePageChange]
   );
 
@@ -188,6 +189,7 @@ const ModelTab = () => {
       editDisplayNamePermission:
         (permissions.EditDisplayName || permissions.EditAll) && !deleted,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permissions]);
 
   const tagFilter = useMemo(() => {
@@ -210,6 +212,7 @@ const ModelTab = () => {
     setDisplayedColumns(paginatedColumns);
   }, [paginatedColumns, setDisplayedColumns]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const updateColumnDetails = async (
     columnFqn: string,
     column: Partial<Column>,
@@ -440,6 +443,7 @@ const ModelTab = () => {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityFqn,
       isReadOnly,

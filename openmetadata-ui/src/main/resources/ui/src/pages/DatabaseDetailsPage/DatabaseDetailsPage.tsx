@@ -221,6 +221,7 @@ const DatabaseDetails: FunctionComponent = () => {
         database ?? ({} as Database),
         navigate
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedDatabaseFQN, databasePermission, database]
   );
 
@@ -351,6 +352,7 @@ const DatabaseDetails: FunctionComponent = () => {
   useEffect(() => {
     fetchTaskCounts();
     fetchActivityCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedDatabaseFQN]);
 
   useEffect(() => {
@@ -366,6 +368,7 @@ const DatabaseDetails: FunctionComponent = () => {
         { replace: true }
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [withinPageSearch, serviceType, database]);
 
   useEffect(() => {
@@ -376,6 +379,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   useEffect(() => {
     fetchDatabasePermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedDatabaseFQN]);
 
   // always Keep this useEffect at the end...
@@ -396,6 +400,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
       return settingsUpdateHandler(updatedTableDetails as Database);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [settingsUpdateHandler, database, tier]
   );
 
@@ -455,6 +460,7 @@ const DatabaseDetails: FunctionComponent = () => {
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [database?.id]);
 
   const versionHandler = useCallback(() => {
@@ -467,6 +473,7 @@ const DatabaseDetails: FunctionComponent = () => {
           EntityTabs.SCHEMA
         )
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentVersion, decodedDatabaseFQN]);
 
   const {
@@ -491,6 +498,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -529,6 +537,7 @@ const DatabaseDetails: FunctionComponent = () => {
       customizedPage?.tabs,
       EntityTabs.SCHEMAS
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     activeTab,
     database,
@@ -649,6 +658,7 @@ const DatabaseDetails: FunctionComponent = () => {
         activeTab as EntityTabs,
         PageType.Database
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 

@@ -90,6 +90,7 @@ export const ContractQualityFormTab: React.FC<{
   } = usePaging();
   const { t } = useTranslation();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const fetchAllTests = async (params?: ListTestCaseParamsBySearch) => {
     if (!table?.fullyQualifiedName) {
       return;
@@ -163,6 +164,7 @@ export const ContractQualityFormTab: React.FC<{
         },
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -207,6 +209,7 @@ export const ContractQualityFormTab: React.FC<{
 
   useEffect(() => {
     fetchAllTests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testType]);
 
   const filterMenu = useMemo(() => {

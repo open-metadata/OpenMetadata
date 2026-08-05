@@ -44,6 +44,7 @@ export const SelectAssetTypeField = ({
   const { onChangeSearchIndex } = useAdvanceSearch();
   const [isCountLoading, setIsCountLoading] = useState<boolean>(false);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const selectedResource: Array<string> =
     Form.useWatch<Array<string>>('resources', form) || [];
 

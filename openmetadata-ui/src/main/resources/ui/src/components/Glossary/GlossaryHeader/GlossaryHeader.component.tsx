@@ -219,6 +219,7 @@ GlossaryHeaderProps) => {
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? selectedData : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   const handleGlossaryImport = () =>
@@ -299,6 +300,7 @@ GlossaryHeaderProps) => {
         exportTypes: [ExportTypes.CSV],
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedData]);
 
   const manageButtonContent: ItemType[] = [
@@ -497,6 +499,7 @@ GlossaryHeaderProps) => {
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isGlossary,
     permissions,
@@ -539,12 +542,14 @@ GlossaryHeaderProps) => {
   useEffect(() => {
     const { fullyQualifiedName, name } = selectedData;
     handleBreadcrumb(fullyQualifiedName ?? name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedData]);
 
   useEffect(() => {
     if (isVersionView) {
       fetchCurrentGlossaryInfo();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [id]);
 
   return (

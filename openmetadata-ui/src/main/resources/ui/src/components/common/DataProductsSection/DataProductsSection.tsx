@@ -187,6 +187,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         <div className="data-product-selector-trigger" />
       </DataProductsSelectListV1>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       fetchAPI,
       popoverOpen,

@@ -203,6 +203,7 @@ GlossaryV1Props) => {
         append
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fullyQualifiedName, isGlossaryActive, afterCursor]
   );
 
@@ -276,6 +277,7 @@ GlossaryV1Props) => {
         refreshGlossaryList();
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isGlossaryActive, tab, selectedData, refreshGlossaryList]
   );
 
@@ -390,6 +392,7 @@ GlossaryV1Props) => {
     return () => {
       setGlossaryChildTerms([]);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [id, isGlossaryActive, isVersionsView, action]);
 
   useEffect(() => {
@@ -401,6 +404,7 @@ GlossaryV1Props) => {
       refreshGlossaryTerms: () => loadGlossaryTerms(true),
       loadMoreTerms: loadMoreTerms,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [loadGlossaryTerms, handleGlossaryTermModalAction, loadMoreTerms]);
 
   const toggleTabExpanded = () => {
@@ -434,6 +438,7 @@ GlossaryV1Props) => {
         updateVote={updateVote}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     glossaryPermission.ViewAll,
     glossaryPermission.ViewBasic,

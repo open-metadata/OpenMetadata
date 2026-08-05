@@ -93,11 +93,13 @@ const SsoRolesSelectField = (props: FieldProps) => {
         props.formContext.clearFieldError(props.idSchema.$id);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [props.onChange, props.formContext, props.idSchema.$id]
   );
 
   const handleBlur = useCallback(() => {
     props.onBlur(id, value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [value, props.onBlur, id]);
 
   const handleFocus = () => {

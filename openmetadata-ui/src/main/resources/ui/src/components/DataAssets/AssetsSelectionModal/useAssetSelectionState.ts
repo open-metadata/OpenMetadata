@@ -154,6 +154,7 @@ export const useAssetSelectionState = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [setActiveFilter]
   );
 
@@ -219,6 +220,7 @@ export const useAssetSelectionState = ({
         updatedQueryFilter: combinedQueryFilter,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [open, activeFilter, search, type, quickFilterQuery, queryFilter]);
 
   useEffect(() => {
@@ -549,6 +551,7 @@ export const useAssetSelectionState = ({
     return () => {
       socket?.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [socket]);
 
   return {

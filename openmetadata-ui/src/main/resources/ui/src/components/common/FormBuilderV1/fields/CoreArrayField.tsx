@@ -42,6 +42,7 @@ const CoreArrayField = (props: FieldProps) => {
   const id = idSchema.$id;
   const fieldName = id.split('/').pop() ?? '';
   const isFilterPattern = /FilterPattern/.test(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const value: string[] = formData ?? [];
   const [inputValue, setInputValue] = useState('');
 

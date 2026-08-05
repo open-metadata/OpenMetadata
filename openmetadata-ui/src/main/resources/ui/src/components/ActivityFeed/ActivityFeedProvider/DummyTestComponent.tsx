@@ -43,6 +43,7 @@ export const DummyChildrenComponent = () => {
       'admin',
       'open'
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   if (loading) {
@@ -73,6 +74,7 @@ export const DummyChildrenTaskCloseComponent = () => {
       'admin',
       'closed'
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return <p>{t(LABEL_CHILDREN)}</p>;
@@ -91,6 +93,7 @@ export const DummyChildrenEntityComponent = () => {
       'admin',
       'open'
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return <p>{t(LABEL_CHILDREN)}</p>;
@@ -108,6 +111,7 @@ export const DummyChildrenMentionsComponent = () => {
       EntityType.USER,
       'admin'
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return <p>{t(LABEL_CHILDREN)}</p>;
@@ -135,6 +139,7 @@ export const DummyActivityFeedComponent = () => {
 
   useEffect(() => {
     fetchMyActivityFeed({ days: 7, limit: 20 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   if (isActivityLoading) {
@@ -158,6 +163,7 @@ export const DummyEntityActivityFeedComponent = () => {
       days: 7,
       limit: 20,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   if (isActivityLoading) {

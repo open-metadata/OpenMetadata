@@ -278,6 +278,7 @@ const TagPage = () => {
       editTagsPermission: false,
       disabledAwarePermissions: tagPermissions,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tagPermissions, tagItem?.disabled, tagItem?.deleted]);
 
   const editEntitiesTagPermission = useMemo(
@@ -325,6 +326,7 @@ const TagPage = () => {
     }
   }, [tagItem?.id, getEntityPermission]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
       navigate(
@@ -722,6 +724,7 @@ const TagPage = () => {
     );
 
     return tabs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     tagItem,
     activeTab,
@@ -798,6 +801,7 @@ const TagPage = () => {
         {disabledBadge}
       </Space>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tagItem]);
 
   useEffect(() => {

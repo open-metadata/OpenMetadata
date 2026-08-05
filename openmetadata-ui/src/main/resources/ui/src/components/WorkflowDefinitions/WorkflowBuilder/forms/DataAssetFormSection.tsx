@@ -78,6 +78,7 @@ export const DataAssetFormSection: React.FC<DataAssetFormSectionProps> = ({
       next.forEach((v) => selectedItems.append(toItem(v)));
       prevDisplayRef.current = next;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataAssetSelectDisplayValue]);
 
   const allItems: SelectItemType[] = useMemo(

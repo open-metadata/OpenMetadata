@@ -244,6 +244,7 @@ export const useTestCaseDetailPage = ({
       isVersionPage,
       isDimensionalityTabVisible
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     feedCount.openTaskCount,
     testCaseClassBase.showSqlQueryTab,
@@ -340,6 +341,7 @@ export const useTestCaseDetailPage = ({
 
   const getEntityFeedCount = useCallback(() => {
     getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCaseFQN]);
 
   // Only the open-task count is used here (tab badge); skip the
@@ -377,6 +379,7 @@ export const useTestCaseDetailPage = ({
         )
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [testCaseFQN, activeTab]
   );
   const fetchCurrentVersion = async (id: string) => {
@@ -402,6 +405,7 @@ export const useTestCaseDetailPage = ({
     if (testCaseFQN) {
       fetchTestCasePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCaseFQN]);
 
   useEffect(() => {
@@ -413,12 +417,14 @@ export const useTestCaseDetailPage = ({
       reset();
       testCaseClassBase.setShowSqlQueryTab(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCaseFQN, hasViewPermission]);
 
   useEffect(() => {
     if (testCase?.id && isVersionPage) {
       fetchCurrentVersion(testCase.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [version, testCase?.id, isVersionPage]);
 
   const extraDropdownContent = useMemo(() => {

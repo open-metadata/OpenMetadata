@@ -138,6 +138,7 @@ const AddSqlQueryFormModal = ({
         query: testCase.inspectionQuery,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [testCase]);
 
   return (

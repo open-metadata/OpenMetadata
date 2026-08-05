@@ -111,6 +111,7 @@ function MetadataAgentsWidget({
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const triggerIngestion = useCallback(
@@ -137,6 +138,7 @@ function MetadataAgentsWidget({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -164,6 +166,7 @@ function MetadataAgentsWidget({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

@@ -185,6 +185,7 @@ const ClassificationDetails = forwardRef(
           )
         );
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [currentVersion, tagCategoryName]);
 
     const {
@@ -302,6 +303,7 @@ const ClassificationDetails = forwardRef(
       }
 
       return null;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [createPermission, isClassificationDisabled]);
 
     const tableColumn: ColumnsType<Tag> = useMemo(
@@ -379,6 +381,7 @@ const ClassificationDetails = forwardRef(
           fetchClassificationChildren(currentClassification.fullyQualifiedName);
         }
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [currentClassification?.fullyQualifiedName, pageSize, pagingCursor]);
 
     useImperativeHandle(ref, () => ({

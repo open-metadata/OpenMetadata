@@ -117,6 +117,7 @@ const TableConstraintsModal = ({
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debounceFetcher = useCallback(debounce(getSearchResults, 800), []);
 
   const handleSubmit = async () => {
@@ -199,6 +200,7 @@ const TableConstraintsModal = ({
         data: node,
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [relatedColumns]);
 
   useEffect(() => {
@@ -261,6 +263,7 @@ const TableConstraintsModal = ({
       uniqueConstraints: constraintFormData?.unique.columns,
       constraintType: ConstraintType.PrimaryKey,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [constraint]);
 
   const translatedRelationShipTypeOptions = useMemo(
@@ -278,6 +281,7 @@ const TableConstraintsModal = ({
         ...option,
         label: translateWithNestedKeys(option.label, option.labelData),
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [t]
   );
 

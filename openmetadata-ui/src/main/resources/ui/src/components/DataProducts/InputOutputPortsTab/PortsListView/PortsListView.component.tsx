@@ -161,6 +161,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
 
     useEffect(() => {
       fetchPorts(1);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [dataProductFqn, portType]);
 
     if (isLoading) {

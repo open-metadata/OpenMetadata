@@ -118,6 +118,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
     // Re-seed only when the drawer opens or the seed CONTENT (seedSignature)
     // changes; `form`/`computeDefaultValues` are intentionally excluded so a
     // parent re-render does not wipe in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [open, seedSignature]);
 
   const createAndDeployPipeline = useCallback(

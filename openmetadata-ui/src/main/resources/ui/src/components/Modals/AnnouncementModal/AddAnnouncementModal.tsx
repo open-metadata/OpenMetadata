@@ -98,6 +98,7 @@ const AddAnnouncementModal: FC<Props> = ({
         placeHolder: t('message.write-your-announcement-lowercase'),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

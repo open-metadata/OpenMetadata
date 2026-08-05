@@ -699,6 +699,7 @@ export const EntityExportModalProvider = ({
         setSelectedExportType(exportData.exportTypes[0]);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isBulkEdit, isCsvOnly, exportData, runTrayExport]);
 
   useEffect(() => {
@@ -706,11 +707,13 @@ export const EntityExportModalProvider = ({
 
     return () => {
       isMountedRef.current = false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       exportGenerationRef.current++;
       clearCSVExportPollingWatchdog();
       stopCSVExportPolling();
       abortCSVExportResultRequest();
       csvExportJobRef.current = undefined;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
       pendingCSVExportResponsesRef.current.clear();
       exportOnErrorRef.current = undefined;
     };

@@ -118,6 +118,7 @@ export const useTestDefinitionListPage = () => {
       onShowSizeChange: handlePageSizeChange,
       isLoading,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentPage, pageSize, paging, handlePageSizeChange, isLoading]
   );
 

@@ -225,6 +225,7 @@ DataAssetsHeaderProps) => {
       deleted: dataAsset.deleted,
       votes: (dataAsset as DataAssetsWithFollowersField).votes,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [dataAsset, USER_ID]
   );
 
@@ -348,6 +349,7 @@ DataAssetsHeaderProps) => {
     if (entityType === EntityType.CONTAINER && !isCustomizedView) {
       fetchContainerAncestors(dataAsset.fullyQualifiedName ?? '');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataAsset.fullyQualifiedName, isTourPage, isCustomizedView]);
 
   const { extraInfo, breadcrumbs }: DataAssetHeaderInfo = useMemo(
@@ -592,6 +594,7 @@ DataAssetsHeaderProps) => {
     } finally {
       setIsAutoPilotTriggering(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceCategory, afterTriggerAction]);
 
   const triggerAutoPilotApplicationButton = useMemo(() => {
@@ -668,6 +671,7 @@ DataAssetsHeaderProps) => {
     if (dataAsset.id) {
       fetchDataContract(dataAsset.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataAsset?.id]);
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);

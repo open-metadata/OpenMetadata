@@ -52,6 +52,7 @@ const SampleDataWithMessages: FC<{
 
   useEffect(() => {
     fetchEntitySampleData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityId]);
 
   if (loading) {

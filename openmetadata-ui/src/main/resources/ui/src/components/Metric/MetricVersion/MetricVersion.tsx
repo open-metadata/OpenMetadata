@@ -186,6 +186,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [description, currentVersionData, viewCustomPropertiesPermission, tags]
   );
 

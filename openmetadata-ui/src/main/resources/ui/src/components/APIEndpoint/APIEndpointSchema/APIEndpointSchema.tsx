@@ -468,6 +468,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       apiEndpointDetails,
       editFieldDescription,

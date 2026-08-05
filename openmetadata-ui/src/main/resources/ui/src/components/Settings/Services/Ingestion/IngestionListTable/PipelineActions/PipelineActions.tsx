@@ -60,6 +60,7 @@ function PipelineActions({
           ingestionPipelinePermissions?.[Operation.EditAll] ||
           ingestionPipelinePermissions?.[Operation.EditIngestionPipelineStatus],
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [ingestionPipelinePermissions, pipelineName]);
 
   const onPauseUnpauseClick = useCallback(
@@ -134,6 +135,7 @@ function PipelineActions({
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [editStatusPermission, pipeline, currPauseId, pipelineId]);
 
   return (

@@ -51,6 +51,7 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
 
   useEffect(() => {
     form.setFieldsValue({ displayName: userData.displayName });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [userData.displayName]);
 
   return (

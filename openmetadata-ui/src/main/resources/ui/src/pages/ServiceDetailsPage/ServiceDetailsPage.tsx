@@ -372,6 +372,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         fileSearchValue: searchData.file,
         spreadSheetSearchValue: searchData.spreadsheet,
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [location.search]);
 
   const handleTypeFilterChange = useCallback(
@@ -401,6 +402,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
 
     return EntityTabs.INSIGHTS;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tab, serviceCategory, isMetadataService, isSecurityService]);
 
   const handleSearchChange = useCallback(
@@ -427,6 +429,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         serviceDetails,
         navigate
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
     // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
   );
@@ -439,6 +442,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         cursorValue: undefined,
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handlePageChange]
   );
 
@@ -463,12 +467,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceCategory, decodedServiceFQN]);
 
   const goToEditConnection = useCallback(() => {
     navigate(
       getEditConnectionPath(serviceCategory ?? '', decodedServiceFQN ?? '')
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceCategory, decodedServiceFQN]);
 
   const activeTabHandler = useCallback(
@@ -509,6 +515,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       activeTab,
       decodedServiceFQN,
@@ -602,6 +609,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       decodedServiceFQN,
       serviceCategory,
@@ -718,6 +726,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(data);
       handlePagingChange(resPaging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include, permissions.database]
   );
 
@@ -732,6 +741,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(data);
       handlePagingChange(resPaging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include]
   );
 
@@ -752,6 +762,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(data);
       handlePagingChange(resPaging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include, permissions.dashboard]
   );
 
@@ -794,6 +805,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(data);
       handlePagingChange(resPaging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include, permissions.pipeline]
   );
 
@@ -808,6 +820,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(data);
       handlePagingChange(resPaging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include]
   );
 
@@ -824,6 +837,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(response.data);
       handlePagingChange(response.paging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include]
   );
 
@@ -840,6 +854,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(response.data);
       handlePagingChange(response.paging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include]
   );
   const fetchCollections = useCallback(
@@ -854,6 +869,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(response.data);
       handlePagingChange(response.paging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include]
   );
   const fetchDirectories = useCallback(
@@ -869,6 +885,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setData(response.data);
       handlePagingChange(response.paging);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include]
   );
   const fetchFiles = useCallback(
@@ -891,6 +908,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsFilesLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include]
   );
   const fetchSpreadsheets = useCallback(
@@ -916,6 +934,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsSpreadsheetsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedServiceFQN, include]
   );
 
@@ -980,6 +999,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsServiceLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       tab,
       serviceCategory,
@@ -1023,6 +1043,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceCategory, decodedServiceFQN, isMetadataService]);
 
   const followService = useCallback(async () => {
@@ -1045,6 +1066,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [USERId, serviceId]);
   const unFollowService = useCallback(async () => {
     try {
@@ -1070,6 +1092,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [USERId, serviceId]);
   const handleFollowClick = useCallback(async () => {
     isFollowing ? await unFollowService() : await followService();
@@ -1210,6 +1233,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [serviceDetails, serviceCategory]
   );
 
@@ -1323,6 +1347,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           toString(currentVersion)
         )
       );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentVersion, serviceCategory, decodedServiceFQN]);
 
   const entityType = useMemo(
@@ -1380,6 +1405,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     // toggle showDeleted to show the deleted child entities
     handleShowDeleted(!showDeleted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const afterDeleteAction = useCallback(
@@ -1393,6 +1419,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [serviceCategory, serviceDetails.fullyQualifiedName]
   );
 
@@ -1416,6 +1443,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceCategory, serviceDetails, handleToggleDelete]);
 
   const isTestingDisabled = useMemo(
@@ -1423,6 +1451,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       !servicePermission.EditAll ||
       (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
       isUndefined(connectionDetails),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       servicePermission,
       serviceCategory,
@@ -1452,6 +1481,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         disableRunAgentsButton,
         disableRunAgentsButtonMessage,
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [isWorkflowStatusLoading, workflowStatesData?.mainInstanceState.status]);
 
   useEffect(() => {
@@ -1480,6 +1510,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     if (isInitialPaginationLoadRef.current) {
       isInitialPaginationLoadRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     showDeleted,
     deleted,
@@ -1526,6 +1557,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       }
       isInitialLoadRef.current = false;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     serviceCategory,
     spreadsheetsPagingInfo?.pagingCursor,
@@ -1591,12 +1623,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
     if (servicePermission.ViewAll || servicePermission.ViewBasic) {
       fetchServiceDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedServiceFQN, serviceCategory, servicePermission]);
 
   useEffect(() => {
     if (!isOpenMetadataService) {
       fetchServicePermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedServiceFQN, serviceCategory]);
 
   useEffect(() => {
@@ -1608,6 +1642,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           )
         : searchPipelines(searchText, currentIngestionPage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isAirflowAvailable,
     searchText,
@@ -1622,10 +1657,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [collateAgentPageSize]);
 
   useEffect(() => {
     fetchWorkflowInstanceStates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceDetails.fullyQualifiedName]);
 
   const agentCounts = useMemo(() => {
@@ -1649,6 +1686,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       collateAgentPagingCursor,
       collateAgentPageSize,
@@ -1685,6 +1723,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         onPageChange={onPageChange}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       airflowInformation,
       isIngestionPipelineLoading,
@@ -1767,6 +1806,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         />
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     servicePermission.EditAll,
     allowTestConn,
@@ -1949,6 +1989,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         key: tab.key,
         children: tab.children,
       }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     currentUser,
     currentPage,
@@ -1998,11 +2039,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
       ...servicePermission,
       Trigger: permissions[ResourceEntity.APPLICATION]?.Trigger || false,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [servicePermission, permissions[ResourceEntity.APPLICATION]]
   );
 
   const afterAutoPilotAppTrigger = useCallback(() => {
     fetchWorkflowInstanceStates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {

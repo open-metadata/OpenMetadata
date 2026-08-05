@@ -247,6 +247,7 @@ PersonaAIContextProps) => {
   );
 
   const personaName = persona.displayName || persona.name;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const rules = definition.rules ?? [];
   const hasRules = rules.length > 0;
   const settingsDisabled = !canEdit || !hasRules;

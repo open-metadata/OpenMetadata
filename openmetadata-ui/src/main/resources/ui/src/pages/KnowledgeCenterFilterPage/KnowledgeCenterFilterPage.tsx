@@ -132,16 +132,19 @@ const KnowledgeCenterFilterPage = () => {
         activeTitle: false,
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [knowledgePages, entityId]);
 
   useEffect(() => {
     fetchPermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (hasViewPermission) {
       fetchKnowledgePages();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [hasViewPermission]);
 
   /**
@@ -152,6 +155,7 @@ const KnowledgeCenterFilterPage = () => {
     if (isInView && after && !isLoadingMore && hasViewPermission) {
       fetchKnowledgePages(after);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isInView, paging, isLoadingMore, hasViewPermission]);
 
   if (isLoading) {

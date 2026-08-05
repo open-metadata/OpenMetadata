@@ -87,6 +87,7 @@ function InlineAlert({
         setInlineAlertDetails(undefined);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   return (

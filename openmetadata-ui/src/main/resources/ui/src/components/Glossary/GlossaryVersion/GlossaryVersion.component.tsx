@@ -99,10 +99,12 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
 
   useEffect(() => {
     fetchVersionsInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [id]);
 
   useEffect(() => {
     fetchActiveVersion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [id, version]);
 
   return (

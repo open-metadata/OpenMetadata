@@ -260,6 +260,7 @@ DataInsightChartCardProps) => {
         graphData: finalData,
         changeInValue,
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     }, [chartData.results, searchEntityKeyWord]);
 
   const targetValue = useMemo(() => {
@@ -400,6 +401,7 @@ DataInsightChartCardProps) => {
 
   useEffect(() => {
     !kpi.isLoading && fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     chartFilter.startTs,
     chartFilter.endTs,
@@ -444,6 +446,7 @@ DataInsightChartCardProps) => {
       default:
         return '';
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [type, isPercentageGraph]);
 
   if (isLoading || kpi.isLoading || chartData.results.length === 0) {

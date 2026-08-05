@@ -113,6 +113,7 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
         {isShowMore ? t('label.show-less') : t('label.show-more')}
       </Typography>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [isShowMore, hiddenDataAssets]
   );
 
@@ -197,6 +198,7 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
         onClick={() => setIsEdit(true)}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEdit, hasPermission, filteredRelatedDataAssets]);
 
   const content = useMemo(() => {
@@ -220,6 +222,7 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
         {!isEmpty(hiddenDataAssets) && showMoreLessElement}
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isEdit,
     hasPermission,

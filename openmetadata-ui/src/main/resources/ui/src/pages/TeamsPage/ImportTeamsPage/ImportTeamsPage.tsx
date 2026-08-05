@@ -154,12 +154,14 @@ const ImportTeamsPage = () => {
     } else {
       setIsPageLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (permission?.Create || permission?.EditAll) {
       fetchTeamByFqn(fqn);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permission]);
 
   if (isPageLoading) {

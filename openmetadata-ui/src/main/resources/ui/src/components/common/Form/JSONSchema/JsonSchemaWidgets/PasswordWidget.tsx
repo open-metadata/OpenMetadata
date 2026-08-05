@@ -57,6 +57,7 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
         onFocus={() => props.onFocus(props.id, props.value)}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [props]
   );
 

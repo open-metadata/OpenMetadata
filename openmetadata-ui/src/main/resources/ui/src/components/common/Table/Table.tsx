@@ -122,6 +122,7 @@ const Table = <T extends object>(
 
       setColumnDropdownSelections(updatedSelections);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [columnDropdownSelections, selectedEntityTableColumns, entityKey]
   );
 
@@ -144,6 +145,7 @@ const Table = <T extends object>(
         },
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     dropdownColumnList,
     columnDropdownSelections,
@@ -193,6 +195,7 @@ const Table = <T extends object>(
         },
       ],
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       dropdownColumnList,
       columnDropdownSelections,
@@ -240,6 +243,7 @@ const Table = <T extends object>(
     } else {
       setPropsColumns(rest.columns ?? []);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     isCustomizeColumnEnable,
     rest.columns,

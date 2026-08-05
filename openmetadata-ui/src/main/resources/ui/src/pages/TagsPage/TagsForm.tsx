@@ -521,6 +521,7 @@ const TagsForm = ({
       ...field,
       label: t(field.label as string),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [t, initialValues, disableDisabledField]);
 
   const mutuallyExclusiveLabel = useMemo(

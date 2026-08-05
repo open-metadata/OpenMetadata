@@ -120,6 +120,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityId,
       entityType,
@@ -186,6 +187,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         </div>
       </TagSelectableList>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       hasPermission,
       popoverOpen,

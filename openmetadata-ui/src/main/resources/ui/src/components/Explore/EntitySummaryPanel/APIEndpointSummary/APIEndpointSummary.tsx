@@ -83,6 +83,7 @@ const APIEndpointSummary = ({
     if (entityDetails.service?.type === 'apiService') {
       fetchApiEndpointDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityDetails]);
 
   return (

@@ -355,6 +355,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setShowTagForm(false);
     setModalError('');
     setIsEditingVisibility(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [memoryToEdit]);
 
   const handleClose = () => {

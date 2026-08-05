@@ -604,6 +604,7 @@ ColumnDetailPanelProps<T>) => {
     if (hasViewPermission.customProperties) {
       fetchEntityTypeDetail();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [hasViewPermission.customProperties]);
 
   useEffect(() => {
@@ -634,6 +635,7 @@ ColumnDetailPanelProps<T>) => {
     ) {
       fetchTestCases();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isOpen, fetchTestCases, permissions.ViewTests, permissions.ViewAll]);
 
   useEffect(() => {
@@ -648,6 +650,7 @@ ColumnDetailPanelProps<T>) => {
       previousFqnRef.current = undefined;
       fetchedColumnFqnRef.current = undefined;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isOpen, activeColumn?.fullyQualifiedName]);
 
   const handleTabChange = (tab: EntityRightPanelTab) => {

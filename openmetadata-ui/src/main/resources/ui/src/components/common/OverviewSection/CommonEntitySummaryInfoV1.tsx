@@ -54,6 +54,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
       return isVisibleInComponent || isDomain;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityInfo, componentType, isDomainVisible, excludedItems]);
 
   const renderInfoValue = (info: EntityInfoItemV1) => {

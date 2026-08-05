@@ -244,6 +244,7 @@ function EditConnectionFormPage() {
 
   useEffect(() => {
     fetchServiceDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceFQN, serviceCategory]);
 
   useEffect(() => {

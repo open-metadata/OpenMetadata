@@ -199,6 +199,7 @@ function ScheduleIntervalInner<T>(
       setState(newState);
       form.setFieldsValue(newState);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [includePeriodOptions, defaultSchedule, initialData?.cron]
   );
 
@@ -219,6 +220,7 @@ function ScheduleIntervalInner<T>(
         formItemLayout: FormItemLayout.HORIZONTAL,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [debugLog]
   );
 

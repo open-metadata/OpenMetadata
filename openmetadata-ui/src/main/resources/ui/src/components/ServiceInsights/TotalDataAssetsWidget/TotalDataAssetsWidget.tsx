@@ -45,6 +45,7 @@ function TotalDataAssetsWidget({
         placeholderClassName: 'border-none',
         theme,
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

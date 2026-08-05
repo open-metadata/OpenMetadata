@@ -1144,6 +1144,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       !isRenderedInRightPanel;
 
     setIsOverflowing(isOverflowing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [property, extension, contentRef, value]);
 
   const containerStyleFlag = useMemo(() => {

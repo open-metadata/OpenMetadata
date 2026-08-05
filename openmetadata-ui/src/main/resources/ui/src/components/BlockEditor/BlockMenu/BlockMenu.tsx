@@ -94,9 +94,11 @@ export const BlockMenu = (props: BlockMenuProps) => {
 
       popup.current?.show();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [view]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleKeyDown = () => {
     popup.current?.hide();
   };
@@ -153,6 +155,7 @@ export const BlockMenu = (props: BlockMenuProps) => {
       popup.current?.destroy();
       popup.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEditable]);
 
   useEffect(() => {

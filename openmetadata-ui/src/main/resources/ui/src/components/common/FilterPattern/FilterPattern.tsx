@@ -35,6 +35,7 @@ const FilterPattern = ({
     <div data-testid="filter-pattern-container">
       <Row>
         <Col span={8}>
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor targets external control */}
           <label htmlFor={`root/${type}FilterPattern`}>{`${capitalize(
             type
           )} ${t('label.filter-pattern')}`}</label>

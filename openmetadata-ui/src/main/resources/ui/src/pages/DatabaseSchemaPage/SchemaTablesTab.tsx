@@ -123,6 +123,7 @@ function SchemaTablesTab({
     );
 
     return searchData.schema as string | undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [location.search]);
 
   const { viewDatabaseSchemaPermission } = useMemo(
@@ -162,6 +163,7 @@ function SchemaTablesTab({
         setTableDataLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedDatabaseSchemaFQN, showDeletedSchemas, handlePagingChange]
   );
 
@@ -216,6 +218,7 @@ function SchemaTablesTab({
         setTableDataLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [decodedDatabaseSchemaFQN, showDeletedSchemas, pageSize]
   );
 
@@ -245,6 +248,7 @@ function SchemaTablesTab({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [paging, handlePageChange, searchValue]
   );
 
@@ -283,6 +287,7 @@ function SchemaTablesTab({
       ...tierTableObject<Table>(),
       ...certificationTableObject<Table>(),
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
 
@@ -299,6 +304,7 @@ function SchemaTablesTab({
     if (searchValue) {
       searchSchema(searchValue, currentPage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchValue, currentPage, showDeletedSchemas]);
 
   useEffect(() => {
@@ -320,6 +326,7 @@ function SchemaTablesTab({
         getSchemaTables({ limit: pageSize });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     showDeletedSchemas,
     decodedDatabaseSchemaFQN,
@@ -334,6 +341,7 @@ function SchemaTablesTab({
     setFilters({
       showDeletedTables: showDeletedSchemas ?? databaseSchemaDetails.deleted,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [databaseSchemaDetails.deleted, showDeletedSchemas]);
 
   const searchProps = useMemo(
@@ -345,6 +353,7 @@ function SchemaTablesTab({
       typingInterval: 500,
       onSearch: onSchemaSearch,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [t, onSchemaSearch]
   );
 

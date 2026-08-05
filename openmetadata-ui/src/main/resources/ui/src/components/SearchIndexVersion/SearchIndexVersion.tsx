@@ -68,6 +68,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
 
   const entityFqn = useMemo(
     () => currentVersionData.fullyQualifiedName ?? '',
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
@@ -208,6 +209,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       description,
       entityFqn,

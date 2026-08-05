@@ -162,6 +162,7 @@ function ServiceMainTabContent({
     );
 
     return searchData.schema as string | undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [location.search]);
 
   const handleDescriptionUpdate = useCallback(async (updatedHTML: string) => {
@@ -170,6 +171,7 @@ function ServiceMainTabContent({
     } catch {
       // Error
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const handleDisplayNameUpdate = useCallback(
@@ -276,6 +278,7 @@ function ServiceMainTabContent({
         setIsServiceLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       getSearchIndexForService,
       pagingInfo.pageSize,
@@ -293,6 +296,7 @@ function ServiceMainTabContent({
         cursorValue: undefined,
       });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchService, pagingInfo]
   );
 
@@ -308,6 +312,7 @@ function ServiceMainTabContent({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [searchValue, pagingInfo]
   );
 
@@ -320,6 +325,7 @@ function ServiceMainTabContent({
       searchValue: searchValue,
       onSearch: onServiceSearch,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [onServiceSearch, t, serviceCategory]
   );
 
@@ -371,6 +377,7 @@ function ServiceMainTabContent({
     if (searchValue) {
       searchService(searchValue, currentPage);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchValue, currentPage, showDeleted]);
 
   return (

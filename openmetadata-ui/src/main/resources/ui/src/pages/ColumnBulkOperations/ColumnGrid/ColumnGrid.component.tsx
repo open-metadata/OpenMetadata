@@ -958,6 +958,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       return rows;
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -1121,6 +1122,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         </Typography>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -1398,6 +1400,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         </div>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       columnGridListing.expandedRows,
       columnGridListing.expandedStructRows,
@@ -1470,6 +1473,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       columnGridListing.allRows.filter((r: ColumnGridRowData) =>
         columnGridListing.isSelected(r.id)
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [columnGridListing.allRows, columnGridListing.isSelected]
   );
 
@@ -1605,6 +1609,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       setIsUpdating(false);
       setBulkUpdateProgress(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     selectedRowsData,
     columnGridListing.clearEditedValues,
@@ -1729,6 +1734,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         pendingHighlightRowIdsRef.current = new Set();
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       columnGridListing.refetch,
       columnGridListing.setExpandedRows,
@@ -1802,6 +1808,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     }, RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [recentlyUpdatedRowIds, columnGridListing.setExpandedRows]);
 
   // Set up filters
@@ -1924,6 +1931,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         columnGridListing.handleSelect(id, checked)
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [columnGridListing.handleSelect, getAllDescendantIds]
   );
 
@@ -2035,6 +2043,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
       columnGridListing.setSelectedEntities(Array.from(finalSelection));
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       columnGridListing.entities,
       columnGridListing.selectedEntities,
@@ -2147,6 +2156,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         </Table.Body>
       </Table>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       tableItems,
       tableColumns,
@@ -2180,6 +2190,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       pageSizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
       onShowSizeChange: columnGridListing.handlePageSizeChange,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       columnGridListing.totalEntities,
       columnGridListing.handlePageChange,
@@ -2286,6 +2297,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         onTagsUpdate={(rowId, tags) => updateRowField(rowId, 'tags', tags)}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     columnGridListing,
     columnGridListing.allRows,

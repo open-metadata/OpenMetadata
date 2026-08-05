@@ -147,6 +147,7 @@ const AddNotificationPage = () => {
         url: '',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fqn]
   );
 
@@ -192,6 +193,7 @@ const AddNotificationPage = () => {
       return;
     }
     fetchAlert();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
@@ -220,6 +222,7 @@ const AddNotificationPage = () => {
         setIsButtonLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fqn, navigate, initialData, currentUser]
   );
 
@@ -280,12 +283,14 @@ const AddNotificationPage = () => {
     } finally {
       setLoadingState((state) => ({ ...state, templates: false }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (!isEmpty(extraFormWidgets)) {
       fetchTemplates();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [extraFormWidgets]);
 
   const isLoading = useMemo(

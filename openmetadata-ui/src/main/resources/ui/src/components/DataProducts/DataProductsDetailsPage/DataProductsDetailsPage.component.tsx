@@ -398,6 +398,7 @@ DataProductsDetailsPageProps) => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataProduct]);
 
   const fetchPortCounts = useCallback(async () => {
@@ -687,6 +688,7 @@ DataProductsDetailsPageProps) => {
       customizedPage?.tabs,
       EntityTabs.DOCUMENTATION
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     customizedPage?.tabs,
     dataProduct,
@@ -718,6 +720,7 @@ DataProductsDetailsPageProps) => {
     fetchActiveAnnouncement();
     fetchDataProductContract();
     fetchPortCounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataProductFqn, fetchPortCounts]);
 
   const toggleTabExpanded = () => {
@@ -731,6 +734,7 @@ DataProductsDetailsPageProps) => {
         activeTab as EntityTabs,
         PageType.DataProduct
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], activeTab]
   );
 
@@ -764,6 +768,7 @@ DataProductsDetailsPageProps) => {
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataContract]);
 
   const statusBadge = useMemo(() => {

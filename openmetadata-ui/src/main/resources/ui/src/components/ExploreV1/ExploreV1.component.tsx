@@ -150,11 +150,13 @@ const ExploreV1: React.FC<ExploreProps> = ({
           ? location.search.substring(1)
           : location.search
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [location.search]
   );
 
   const searchQueryParam = useMemo(
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [location.search]
   );
   const totalValue = searchResults?.hits.total.value ?? 0;
@@ -266,6 +268,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     } finally {
       setIsCountLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     searchQueryParam,
     showDeleted,
@@ -337,6 +340,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     } finally {
       setIsExporting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     exportScope,
     searchIndex,
@@ -365,6 +369,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       ...field,
       name: t(field.name),
     }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchIndex, t]);
 
   const handleClosePanel = () => {
@@ -660,6 +665,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchResults]);
 
   const exportModalTitle = useMemo(

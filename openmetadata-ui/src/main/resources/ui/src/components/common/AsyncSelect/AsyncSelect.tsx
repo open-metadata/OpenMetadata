@@ -52,6 +52,7 @@ export const AsyncSelect = ({
     setOptionsInternal(options);
   }, [options]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const fetchOptions = useCallback(
     debounce(async (value: string, page = 1) => {
       if (page === 1) {
@@ -150,6 +151,7 @@ export const AsyncSelect = ({
     if (!restProps.disabled) {
       fetchOptions(searchText, 1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchText, restProps.disabled]);
 
   return (

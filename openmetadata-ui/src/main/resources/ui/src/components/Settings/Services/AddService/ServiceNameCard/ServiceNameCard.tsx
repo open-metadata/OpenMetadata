@@ -74,6 +74,7 @@ const ServiceNameCard = ({
 
       {showDescription ? (
         <div className="tw:mt-4">
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor associates the textarea */}
           <label
             className="tw:mb-2 tw:block tw:font-medium tw:text-secondary"
             htmlFor="service-description">

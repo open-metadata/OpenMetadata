@@ -33,6 +33,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
 
   useEffect(() => {
     entityType && getResourceLimit(entityType);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityType]);
 
   const { configuredLimit: { maxVersions } = { maxVersions: -1 } } =
@@ -91,6 +92,7 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         ) : null}
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [versionList, currentVersion, versionHandler, t]);
 
   return (

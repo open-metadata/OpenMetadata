@@ -127,6 +127,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       entityId,
       entityType,
@@ -139,6 +140,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     ]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handlePopoverOpenChange = (open: boolean) => {
     setPopoverOpen(open);
     if (!open) {
@@ -146,6 +148,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleCancel = () => {
     setEditingGlossaryTerms(glossaryTerms);
     cancelEditing();

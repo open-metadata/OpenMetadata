@@ -126,6 +126,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         label: getKnowledgePageName(knowledgePage, t),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [knowledgePage?.id, knowledgePage?.name, knowledgePage?.displayName, t]
   );
 
@@ -189,6 +190,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } finally {
       setIsDeleting(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy, removeDraft]);
 
   const handleVersionClick = () => {
@@ -293,6 +295,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } else {
       return null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [contentChangeState]);
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();

@@ -69,6 +69,7 @@ const ProfilerConfigurationPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t(LABEL_PROFILER_CONFIGURATION)
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -160,6 +161,7 @@ const ProfilerConfigurationPage = () => {
 
   useEffect(() => {
     fetchProfilerConfiguration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   if (isLoading) {

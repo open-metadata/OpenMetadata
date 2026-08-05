@@ -32,11 +32,13 @@ export const useDrawer = (config: DrawerConfig = {}) => {
   const openDrawer = useCallback(() => {
     setOpen(true);
     config.onOpen?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [config.onOpen]);
 
   const closeDrawer = useCallback(() => {
     setOpen(false);
     config.onClose?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [config.onClose]);
 
   const toggleDrawer = useCallback(() => {

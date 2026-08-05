@@ -170,6 +170,7 @@ const GlossaryTermsV1 = ({
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
     activeTab !== EntityTabs.ASSETS && activeTabHandler(EntityTabs.ASSETS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [assetTabRef, activeTab]);
 
   const onTermUpdate = async (data: GlossaryTerm | Glossary) => {
@@ -223,6 +224,7 @@ const GlossaryTermsV1 = ({
       EntityTabs.OVERVIEW,
       isVersionView
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     customizedPage?.tabs,
     glossaryTerm,
@@ -248,6 +250,7 @@ const GlossaryTermsV1 = ({
       fetchTaskCounts();
       fetchActivityCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [glossaryFqn, isVersionView]);
 
   const updatedGlossaryTerm = useMemo(() => {
@@ -277,6 +280,7 @@ const GlossaryTermsV1 = ({
   const isExpandViewSupported = useMemo(
     () =>
       checkIfExpandViewSupported(tabItems[0], activeTab, PageType.GlossaryTerm),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabItems[0], activeTab]
   );
 

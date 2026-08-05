@@ -287,6 +287,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       id: option.value,
       label: t(FREQUENCY_LABEL_KEYS[option.value] ?? option.label),
     }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [includePeriodOptions]);
 
   const dayOptions = useMemo(

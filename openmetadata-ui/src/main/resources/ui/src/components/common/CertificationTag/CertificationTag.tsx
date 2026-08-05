@@ -64,6 +64,7 @@ const CertificationTag = ({
     return (
       <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [certification.tagLabel, showName]);
 
   const certificationRender = useMemo(() => {
@@ -101,6 +102,7 @@ const CertificationTag = ({
         </Link>
       </Tooltip>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [certification, imageItem]);
 
   return certificationRender;

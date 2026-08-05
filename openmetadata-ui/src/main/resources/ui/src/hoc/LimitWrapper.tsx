@@ -48,6 +48,7 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
     return () => {
       setBannerDetails(null);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [resource, config?.enable]);
   const currentLimits = resourceLimit[resource];
 

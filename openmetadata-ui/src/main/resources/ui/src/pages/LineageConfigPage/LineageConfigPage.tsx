@@ -53,6 +53,7 @@ const LineageConfigPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.lineage')
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -107,6 +108,7 @@ const LineageConfigPage = () => {
     } finally {
       setIsUpdating(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {

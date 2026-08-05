@@ -79,6 +79,7 @@ const AddRulePage = () => {
         url: '',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fqn, policy]
   );
 
@@ -136,6 +137,7 @@ const AddRulePage = () => {
 
   useEffect(() => {
     fetchPolicy();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   if (isLoading) {

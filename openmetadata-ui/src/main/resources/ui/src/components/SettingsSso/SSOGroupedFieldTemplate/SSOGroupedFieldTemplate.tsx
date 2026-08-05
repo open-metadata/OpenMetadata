@@ -295,6 +295,7 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
     <Fragment>
       {title && title.trim() !== '' && (
         <Space className="w-full justify-between header-title-wrapper">
+          {/* eslint-disable-next-line jsx-a11y/label-has-for -- schema group heading label */}
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':

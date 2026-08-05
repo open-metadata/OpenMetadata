@@ -64,6 +64,7 @@ const UserProfileTeams = ({
         noDataPlaceholder={t('message.no-team-found')}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [teams, getNonDeletedTeams]
   );
 

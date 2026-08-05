@@ -781,6 +781,7 @@ export function useOntologyGraph({
       explorationMode === 'data'
         ? inputNodes.filter((n) => !DATA_MODE_ASSET_TYPES.has(n.type)).length
         : inputNodes.length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [explorationMode, inputNodes]
   );
 
@@ -1372,6 +1373,7 @@ export function useOntologyGraph({
       graph.destroy();
       graphRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     applyBakedPositions,
     termNodeCount,
@@ -1765,6 +1767,7 @@ export function useOntologyGraph({
     };
 
     runUpdate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     graphData,
     layoutType,

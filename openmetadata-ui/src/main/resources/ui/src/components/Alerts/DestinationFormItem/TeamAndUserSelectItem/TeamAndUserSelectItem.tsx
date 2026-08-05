@@ -57,6 +57,7 @@ function TeamAndUserSelectItem({
   const [searchText, setSearchText] = useState('');
   const [options, setOptions] = useState<Array<SelectOption>>([]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const selectedOptions =
     Form.useWatch<Webhook['receivers']>(['destinations', ...fieldName], form) ??
     [];
@@ -114,6 +115,7 @@ function TeamAndUserSelectItem({
     [onSearch]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const debouncedOnSearch = useCallback(debounce(handleSearch, 500), [
     handleSearch,
   ]);
@@ -161,6 +163,7 @@ function TeamAndUserSelectItem({
         </Card>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [options, entityType, searchText, loadingOptions]
   );
 
@@ -176,6 +179,7 @@ function TeamAndUserSelectItem({
 
       form.setFieldValue(['destinations', ...fieldName], updatedValues);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [selectedOptions]
   );
 
@@ -191,11 +195,13 @@ function TeamAndUserSelectItem({
 
       form.setFieldValue(['destinations', ...fieldName], updatedValues);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [selectedOptions]
   );
 
   useEffect(() => {
     debouncedOnSearch(searchText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [searchText, entityType]);
 
   useEffect(() => {

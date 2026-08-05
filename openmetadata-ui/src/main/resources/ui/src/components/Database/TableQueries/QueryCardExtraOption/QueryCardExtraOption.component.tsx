@@ -71,6 +71,7 @@ const QueryCardExtraOption = ({
       search: Qs.stringify({ query: query.id }),
       pathname: getQueryPath(datasetFQN, query.id ?? ''),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [query]);
 
   const dropdownItems = useMemo(() => {
@@ -100,12 +101,14 @@ const QueryCardExtraOption = ({
     ];
 
     return items;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [permission]);
 
   const queryLine = useMemo(() => {
     const lineCount = split(query.query, '\n').length;
 
     return pluralize(lineCount, t('label.line'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [query]);
 
   const voteStatus = useMemo(() => {

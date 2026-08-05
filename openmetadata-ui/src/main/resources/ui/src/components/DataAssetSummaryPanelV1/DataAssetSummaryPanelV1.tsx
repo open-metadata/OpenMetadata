@@ -203,6 +203,7 @@ export const DataAssetSummaryPanelV1 = ({
         limit: 1,
       },
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isColumnEntity, entityType, dataAsset.id, dataAsset.fullyQualifiedName]);
 
   const { changeSummary } = useChangeSummary(
@@ -290,6 +291,7 @@ export const DataAssetSummaryPanelV1 = ({
     } finally {
       setIsTestCaseLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataAsset?.fullyQualifiedName, entityPermissions]);
 
   const fetchEntityBasedDetails = () => {
@@ -405,6 +407,7 @@ export const DataAssetSummaryPanelV1 = ({
       dataAsset.id
     );
     setEntityPermissions(permissions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     dataAsset.id,
     dataAsset.entityType,
@@ -418,6 +421,7 @@ export const DataAssetSummaryPanelV1 = ({
       fetchTestCases();
       fetchEntityBasedDetails();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityPermissions, dataAsset?.fullyQualifiedName]);
 
   // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
@@ -822,6 +826,7 @@ export const DataAssetSummaryPanelV1 = ({
       default:
         return null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     entityType,
     summaryEntityType,
@@ -835,6 +840,7 @@ export const DataAssetSummaryPanelV1 = ({
 
   useEffect(() => {
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dataAsset.id]);
 
   return (

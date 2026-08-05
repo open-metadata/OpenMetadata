@@ -350,6 +350,7 @@ const APIEndpointPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(apiEndpointFqn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [apiEndpointFqn]);
 
   if (permissionsLoading || apiEndpointLoading) {

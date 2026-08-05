@@ -470,6 +470,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       return;
     }
     fetchTestCases(searchText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityFQN, hasViewTests, searchText]);
 
   useEffect(() => {

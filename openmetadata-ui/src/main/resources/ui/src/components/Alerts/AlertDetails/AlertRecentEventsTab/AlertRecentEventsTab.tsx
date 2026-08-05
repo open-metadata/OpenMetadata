@@ -98,6 +98,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
   const handleFilterSelect = useCallback(
     (item: MenuInfo) => setFilter(item.key as AlertRecentEventFilters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [filter]
   );
 
@@ -312,6 +313,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
         )}
       </Row>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     loading,
     filter,
@@ -325,6 +327,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
   useEffect(() => {
     getAlertRecentEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [filter, pageSize]);
 
   return (

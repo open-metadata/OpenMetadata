@@ -85,6 +85,7 @@ const AppearanceConfigSettingsPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t(LABEL_THEME)
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -426,6 +427,7 @@ const AppearanceConfigSettingsPage = () => {
       applicationConfig?.customTheme?.primaryColor ?? '';
     isHoverColorManuallyEdited.current = false;
     isSelectedColorManuallyEdited.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [applicationConfig]);
 
   return (

@@ -245,6 +245,7 @@ const AddIngestionPage = () => {
       serviceData
     );
     setSlashedBreadcrumb(breadCrumbsArray);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const footerNextText =
@@ -333,6 +334,7 @@ const AddIngestionPage = () => {
     fetchAirflowStatus().finally(() => {
       fetchServiceDetails();
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [serviceCategory, serviceFQN]);
 
   if (isLoading) {

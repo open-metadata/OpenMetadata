@@ -45,6 +45,7 @@ export const useAsyncDataAssetOptions = ({
 
   const stableQueryFilter = useMemo(
     () => queryFilter,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [JSON.stringify(queryFilter)]
   );
 

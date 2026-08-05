@@ -169,6 +169,7 @@ const UserPage = () => {
         showErrorToast(error as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [userData, currentUser, updateCurrentUser]
   );
 
@@ -187,6 +188,7 @@ const UserPage = () => {
 
   useEffect(() => {
     fetchUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [username]);
 
   if (isLoading) {

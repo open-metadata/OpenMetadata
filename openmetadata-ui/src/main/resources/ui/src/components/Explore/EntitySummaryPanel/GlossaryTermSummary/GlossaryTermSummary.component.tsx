@@ -47,11 +47,13 @@ function GlossaryTermSummary({
 
   const reviewers = useMemo(
     () => entityDetails.reviewers ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [selectedData]
   );
 
   const synonyms = useMemo(
     () => entityDetails.synonyms?.filter((item) => !isEmpty(item)) ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [selectedData]
   );
 
@@ -77,6 +79,7 @@ function GlossaryTermSummary({
 
   useEffect(() => {
     fetchGlossaryTermDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [entityDetails]);
 
   return (

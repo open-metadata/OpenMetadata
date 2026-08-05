@@ -75,6 +75,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         setIsLoading(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fqn, pageSize]
   );
 
@@ -83,6 +84,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
       handlePageChange(page);
       fetchRetryQueue((page - 1) * pageSize);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [fetchRetryQueue, pageSize]
   );
 
@@ -90,6 +92,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
     if (fqn) {
       fetchRetryQueue();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   const columns: ColumnsType<SearchIndexRetryRecord> = useMemo(

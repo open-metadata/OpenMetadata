@@ -183,6 +183,7 @@ const APICollectionPage: FunctionComponent = () => {
     }
     // {@code setFilters} is a stable zustand setter; including it would re-run the effect
     // each render. {@code apiCollection.deleted} is the only signal that matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [apiCollection?.deleted]);
 
   const setAPICollection = useCallback(
@@ -240,6 +241,7 @@ const APICollectionPage: FunctionComponent = () => {
     } finally {
       setIsPermissionsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedAPICollectionFQN]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -313,6 +315,7 @@ const APICollectionPage: FunctionComponent = () => {
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tab, decodedAPICollectionFQN]
   );
 
@@ -452,6 +455,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   useEffect(() => {
     fetchAPICollectionPermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [decodedAPICollectionFQN]);
 
   useEffect(() => {
@@ -465,6 +469,7 @@ const APICollectionPage: FunctionComponent = () => {
     if (viewAPICollectionPermission && decodedAPICollectionFQN) {
       getApiEndpointCount();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     filters.showDeletedEndpoints,
     decodedAPICollectionFQN,
@@ -589,6 +594,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   const isExpandViewSupported = useMemo(
     () => checkIfExpandViewSupported(tabs[0], tab, PageType.APICollection),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [tabs[0], tab]
   );
   if (isPermissionsLoading || isLoading) {

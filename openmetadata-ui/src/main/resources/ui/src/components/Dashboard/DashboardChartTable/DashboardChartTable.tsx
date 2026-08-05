@@ -100,6 +100,7 @@ export const DashboardChartTable = ({
     } catch {
       return DEFAULT_ENTITY_PERMISSION;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const getAllChartsPermissions = useCallback(
@@ -125,6 +126,7 @@ export const DashboardChartTable = ({
         );
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [dashboardDetails]
   );
 
@@ -132,6 +134,7 @@ export const DashboardChartTable = ({
     if (charts) {
       getAllChartsPermissions(charts);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [charts]);
 
   const initializeCharts = useCallback(async () => {
@@ -149,6 +152,7 @@ export const DashboardChartTable = ({
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [listChartIds, chartFilters.showDeletedCharts]);
 
   const handleUpdateChart = (chart: ChartType, index: number) => {
@@ -284,6 +288,7 @@ export const DashboardChartTable = ({
     (value: boolean) => {
       setFilters({ showDeletedCharts: value });
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [setFilters, chartFilters]
   );
 
@@ -400,6 +405,7 @@ export const DashboardChartTable = ({
         filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       dashboardDetails?.deleted,
       chartsPermissionsArray,

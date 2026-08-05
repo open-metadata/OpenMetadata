@@ -115,14 +115,17 @@ const DomainVersion = () => {
 
   useEffect(() => {
     fetchDomainData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn]);
 
   useEffect(() => {
     fetchVersionsInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [domain]);
 
   useEffect(() => {
     fetchActiveVersion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [domain, version]);
 
   return (

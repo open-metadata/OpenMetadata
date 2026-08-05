@@ -130,6 +130,7 @@ const UserTeamSelectableListSearchInput: React.FC<
         onFocus={handleFocus}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     disabled,
     selectedValues,

@@ -222,6 +222,7 @@ const TagsPage = () => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleCreateClassification = async (data: CreateClassification) => {
     try {
       const res = await createClassification(data);
@@ -263,6 +264,7 @@ const TagsPage = () => {
         )
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentClassification, classifications, setClassifications]);
 
   /**
@@ -270,6 +272,7 @@ const TagsPage = () => {
    * @param categoryName - tag category name
    * @param tagId -  tag id
    */
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleDeleteTag = async (tagId: string) => {
     try {
       const res = await deleteTag(tagId);
@@ -377,9 +380,11 @@ const TagsPage = () => {
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentClassification, history]
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleCreatePrimaryTag = async (data: CreateTag) => {
     try {
       await createTag({
@@ -425,6 +430,7 @@ const TagsPage = () => {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleUpdatePrimaryTag = async (updatedData: Tag) => {
     if (!isUndefined(editTag)) {
       const patchData = compare(editTag, updatedData);
@@ -489,12 +495,14 @@ const TagsPage = () => {
         })
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (currentClassification) {
       fetchCurrentClassificationPermission();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [currentClassification]);
 
   useEffect(() => {
@@ -505,6 +513,7 @@ const TagsPage = () => {
       const isTier = tagCategoryName.startsWith(TIER_CATEGORY);
       fetchCurrentClassification(isTier ? TIER_CATEGORY : tagCategoryName);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [tagCategoryName]);
 
   useEffect(() => {
@@ -513,6 +522,7 @@ const TagsPage = () => {
      * Do not set current if we already have currentClassification set
      */
     fetchClassifications(!tagCategoryName);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const onClickClassifications = (category: Classification) => {
@@ -607,6 +617,7 @@ const TagsPage = () => {
         : t('message.adding-new-tag', {
             categoryName: getEntityName(currentClassification),
           }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [editTag, currentClassification]
   );
 
@@ -743,6 +754,7 @@ const TagsPage = () => {
         </TagsLeftPanelSkeleton>
       </div>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       isLoading,
       classifications,

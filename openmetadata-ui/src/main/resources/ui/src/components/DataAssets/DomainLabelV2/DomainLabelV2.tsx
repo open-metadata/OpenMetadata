@@ -116,6 +116,7 @@ export const DomainLabelV2 = <
         showErrorToast(err as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entityType, entityId, entityFqn, props.onUpdate]
   );
 
@@ -166,6 +167,7 @@ export const DomainLabelV2 = <
     }
 
     return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [activeDomain]);
 
   const hasPermission = useMemo(() => {
@@ -206,6 +208,7 @@ export const DomainLabelV2 = <
         {actionButton}
       </DomainSelectableList>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [hasPermission, activeDomain, handleDomainSave, props.isClearable]);
 
   const label = useMemo(() => {
@@ -232,6 +235,7 @@ export const DomainLabelV2 = <
         {selectableList}
       </Card>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [activeDomain, hasPermission, selectableList]);
 
   return label;

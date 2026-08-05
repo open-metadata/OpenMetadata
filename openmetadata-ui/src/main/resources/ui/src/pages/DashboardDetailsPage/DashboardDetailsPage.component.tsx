@@ -367,6 +367,7 @@ const DashboardDetailsPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(dashboardFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dashboardFQN]);
 
   if (permissionsLoading || dashboardLoading) {

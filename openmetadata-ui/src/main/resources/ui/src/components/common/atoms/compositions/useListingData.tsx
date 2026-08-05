@@ -106,6 +106,7 @@ export const useListingData = <
       urlState.searchQuery,
       urlState.filters
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     urlState.currentPage,
     urlState.searchQuery,
@@ -116,6 +117,7 @@ export const useListingData = <
 
   useEffect(() => {
     selectionState.clearSelection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [urlState.currentPage, urlState.searchQuery, urlState.filters]);
   // Note: selectionState.clearSelection intentionally excluded - we always want the latest version
 

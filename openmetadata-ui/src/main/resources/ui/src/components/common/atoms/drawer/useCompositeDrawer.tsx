@@ -42,6 +42,7 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
     } else {
       baseDrawer.closeDrawer();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [onBeforeClose, header.onClose, baseDrawer.closeDrawer]);
 
   const { drawerHeader } = useDrawerHeader({
@@ -72,6 +73,7 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
   const closeDrawer = useCallback(() => {
     onBeforeClose?.();
     baseDrawer.closeDrawer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [onBeforeClose, baseDrawer.closeDrawer]);
 
   return {

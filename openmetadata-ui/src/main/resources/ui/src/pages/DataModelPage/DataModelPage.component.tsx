@@ -383,6 +383,7 @@ const DataModelsPage = () => {
 
   useEffect(() => {
     fetchResourcePermission(dashboardDataModelFQN);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [dashboardDataModelFQN]);
 
   if (permissionsLoading || dataModelLoading) {

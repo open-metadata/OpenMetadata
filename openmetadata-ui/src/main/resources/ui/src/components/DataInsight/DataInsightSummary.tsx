@@ -67,11 +67,13 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   const entitiesSummaryList = useMemo(
     () => getEntitiesChartSummary(entitiesSummary),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [entitiesSummary, chartFilter]
   );
 
   const webSummaryList = useMemo(
     () => getWebChartSummary(webCharts),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [webCharts, chartFilter]
   );
 
@@ -174,6 +176,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
     tab === DataInsightTabs.DATA_ASSETS && fetchEntitiesChartData();
     tab === DataInsightTabs.APP_ANALYTICS && fetchMostActiveUser();
     tab === DataInsightTabs.APP_ANALYTICS && fetchWebChartData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [chartFilter, tab]);
 
   return (

@@ -167,6 +167,7 @@ const AddKPIPage = () => {
         placeHolder: t('message.write-your-description'),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 
@@ -180,6 +181,7 @@ const AddKPIPage = () => {
         ...option,
         name: translateWithNestedKeys(option.name, option.nameData),
       })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [t]
   );
 

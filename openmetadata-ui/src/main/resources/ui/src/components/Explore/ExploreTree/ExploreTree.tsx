@@ -231,6 +231,7 @@ const ExploreTree = ({
       : '';
 
     return [parsedSearch, searchQueryParam, defaultServiceType];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [location.search]);
 
   const onLoadData: TreeProps['loadData'] = useCallback(
@@ -400,6 +401,7 @@ const ExploreTree = ({
         showErrorToast(error as AxiosError);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       isTourOpen,
       updateTreeData,
@@ -595,6 +597,7 @@ const ExploreTree = ({
       hasFetchedRef.current = true;
       fetchEntityCounts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const previousIsTourOpenRef = useRef(isTourOpen);

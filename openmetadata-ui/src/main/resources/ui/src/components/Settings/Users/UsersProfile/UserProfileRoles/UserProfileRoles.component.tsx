@@ -79,6 +79,7 @@ const UserProfileRoles = ({
     }
 
     return options;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [roles, isUserAdmin, getEntityName]);
 
   const fetchRoles = useCallback(
@@ -165,6 +166,7 @@ const UserProfileRoles = ({
         showNoDataPlaceholder={!isUserAdmin}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [userRoles, isUserAdmin]
   );
 
@@ -201,6 +203,7 @@ const UserProfileRoles = ({
     if (isRolesEdit) {
       fetchRoles();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isRolesEdit]);
 
   useEffect(() => {

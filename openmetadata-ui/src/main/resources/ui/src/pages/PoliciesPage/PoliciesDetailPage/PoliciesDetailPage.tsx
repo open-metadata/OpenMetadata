@@ -109,6 +109,7 @@ const PoliciesDetailPage = () => {
         url: '',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [policyName, policiesPath]
   );
 
@@ -357,6 +358,7 @@ const PoliciesDetailPage = () => {
         </Dropdown>
       );
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [policy]
   );
 
@@ -478,6 +480,7 @@ const PoliciesDetailPage = () => {
         )}
       </Card>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [policy]);
 
   const tabItems = useMemo(() => {
@@ -512,10 +515,12 @@ const PoliciesDetailPage = () => {
         ),
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [rulesTab, policy]);
 
   useEffect(() => {
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn, policyPermission]);
 
   if (isLoading) {

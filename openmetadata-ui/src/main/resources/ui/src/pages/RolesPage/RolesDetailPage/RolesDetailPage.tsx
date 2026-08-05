@@ -94,6 +94,7 @@ const RolesDetailPage = () => {
         url: '',
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [rolesPath, roleName]
   );
 
@@ -350,10 +351,12 @@ const RolesDetailPage = () => {
         ),
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [role]);
 
   useEffect(() => {
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn, rolePermission]);
 
   if (isLoading) {

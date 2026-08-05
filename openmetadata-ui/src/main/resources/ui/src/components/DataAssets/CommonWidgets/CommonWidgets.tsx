@@ -250,6 +250,7 @@ export const CommonWidgets = ({
       tags: getTagsWithoutTier(tags ?? []),
       entityName: getEntityName(data),
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [updatedData, updatedData?.tags]);
 
   // To determine if Description is expanded or not
@@ -388,6 +389,7 @@ export const CommonWidgets = ({
         onSave={handleDataProductsSave}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     dataProducts,
     domains,
@@ -410,6 +412,7 @@ export const CommonWidgets = ({
         onSelectionChange={handleTagSelection}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     editTagsPermission,
     tags,
@@ -435,6 +438,7 @@ export const CommonWidgets = ({
         onSelectionChange={handleTagSelection}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     editGlossaryTermsPermission,
     tags,
@@ -471,6 +475,7 @@ export const CommonWidgets = ({
         }}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     description,
     entityName,
@@ -536,6 +541,7 @@ export const CommonWidgets = ({
       commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
 
     return Widget ? <Widget /> : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     widgetConfig,
     descriptionWidget,

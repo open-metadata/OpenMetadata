@@ -109,6 +109,7 @@ const QueryUsedByOtherTable = ({
         ) : null}
       </Text>
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [topThreeTable, remainingTable]
   );
 
@@ -184,12 +185,14 @@ const QueryUsedByOtherTable = ({
         onChange={handleOnChange}
       />
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [query, initialOptions, isLoading, fetchTableEntity, handleOnChange]);
 
   useEffect(() => {
     if (isEditMode) {
       fetchInitialOptions();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isEditMode]);
 
   return (

@@ -48,6 +48,7 @@ const GithubStarCard = () => {
     () =>
       cookieStorage.getItem(getVersionedStorageKey(VERSION, appVersion)) !==
       'true',
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [cookieStorage, appVersion]
   );
 
@@ -95,6 +96,7 @@ const GithubStarCard = () => {
       }
       setShowGithubStarPopup(show);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [currentUser?.name, userCookieName]
   );
 

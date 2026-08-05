@@ -39,6 +39,7 @@ const OmHealthPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.health-check')
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

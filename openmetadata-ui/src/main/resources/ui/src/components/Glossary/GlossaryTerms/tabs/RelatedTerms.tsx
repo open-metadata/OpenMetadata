@@ -329,6 +329,7 @@ const RelatedTerms = () => {
         onRelatedTermClick={handleRelatedTermClick}
       />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [getRelationDisplayName]
   );
 

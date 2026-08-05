@@ -50,6 +50,7 @@ function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
   const [selectedSource] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const destinations =
     Form.useWatch<CreateEventSubscription['destinations']>(
       ['destinations'],

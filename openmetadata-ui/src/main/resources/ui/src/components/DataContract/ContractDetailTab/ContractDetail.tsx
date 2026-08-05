@@ -181,6 +181,7 @@ const ContractDetail: React.FC<{
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [contract]);
 
   const handleExportODCSContract = useCallback(async () => {
@@ -199,6 +200,7 @@ const ContractDetail: React.FC<{
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [contract]);
 
   const handleImportContract = useCallback((format: ContractImportFormat) => {
@@ -215,6 +217,7 @@ const ContractDetail: React.FC<{
     onContractUpdated?.();
   }, [onContractUpdated]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const handleRunNow = async () => {
     if (!contract) {
       return;
@@ -540,6 +543,7 @@ const ContractDetail: React.FC<{
         </Box>
       </Box>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [
     contract,
     mode,
@@ -556,6 +560,7 @@ const ContractDetail: React.FC<{
     if (contract?.id && contract?.latestResult?.resultId) {
       fetchLatestContractResults();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [contract]);
 
   if (!contract) {

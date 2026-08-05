@@ -82,6 +82,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [knowledgePage]);
 
   const fetchKnowledgePage = useCallback(async () => {
@@ -96,12 +97,14 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     }
   }, [fqn]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onVersionChange = (selectedVersion: string) => {
     navigate(
       contextCenterClassBase.getArticleVersionPath(fqn, selectedVersion)
     );
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   const onBackHandler = () => {
     navigate(
       contextCenterClassBase.getArticlePath(
@@ -126,11 +129,13 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
 
   useEffect(() => {
     fetchKnowledgePage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [fqn, version]);
 
   useEffect(() => {
     fetchVersionsInfo();
     fetchActiveVersion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [knowledgePage]);
 
   useEffect(() => {
@@ -139,6 +144,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
       title: getKnowledgePageName(selectedData, t),
       data: knowledgePage,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [selectedData, loading, versionList, version, knowledgePage]);
 
   if (loading) {

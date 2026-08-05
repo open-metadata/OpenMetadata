@@ -56,6 +56,7 @@ const LoginConfigurationPage = () => {
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.login-configuration')
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     []
   );
 

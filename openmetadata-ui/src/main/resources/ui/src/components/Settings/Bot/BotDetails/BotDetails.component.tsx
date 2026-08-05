@@ -244,6 +244,7 @@ const BotDetails: FC<BotsDetailProps> = ({
   useEffect(() => {
     fetchRoles();
     initLimits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
@@ -267,6 +268,7 @@ const BotDetails: FC<BotsDetailProps> = ({
         'id'
       )
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [botUserData]);
 
   return (

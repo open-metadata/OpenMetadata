@@ -62,12 +62,14 @@ export const PartitionedKeys = ({
     ];
 
     return data;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   useEffect(() => {
     if (isEmpty(partitionColumnDetails)) {
       filterWidgets?.([DetailPageWidgetKeys.PARTITIONED_KEYS]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [partitionColumnDetails]);
 
   if (!data?.tablePartition) {

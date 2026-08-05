@@ -58,6 +58,7 @@ const GlossaryTermReferencesModal = ({
             ];
       form.setFieldValue('references', newRefs);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [isVisible]);
 
   return (

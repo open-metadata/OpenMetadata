@@ -42,6 +42,7 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
 
   useEffect(() => {
     form.reset({ Url: src });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [src]);
 
   const isAssetsUrl = useMemo(() => {

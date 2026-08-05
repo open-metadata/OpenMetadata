@@ -135,6 +135,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
         ]);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [node]);
 
   const handleScoringLevelChange = (
@@ -269,6 +270,7 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
           {scoringLevels.map((level, index) => (
             <div
               className="tw:flex tw:gap-3 tw:mb-3 tw:items-center"
+              // eslint-disable-next-line react/no-array-index-key -- static scoring rows
               key={index}>
               <div className="tw:flex tw:w-1/3 tw:min-w-0 tw:items-center tw:gap-2">
                 <div className="tw:min-w-0 tw:flex-1">

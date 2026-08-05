@@ -106,6 +106,7 @@ export const GlossaryUpdateConfirmationModal = ({
         ),
       },
     ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const updatingProgress = updateState === UpdateState.UPDATING ? 60 : 100;
@@ -212,6 +213,7 @@ export const GlossaryUpdateConfirmationModal = ({
           footer: <Button onClick={onCancel}>{t(LABEL_CANCEL)}</Button>,
         };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [updateState, failedStatus]);
 
   const modalTitle = useMemo(() => {
@@ -225,6 +227,7 @@ export const GlossaryUpdateConfirmationModal = ({
       default:
         return undefined;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, [updateState]);
 
   return (

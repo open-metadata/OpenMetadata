@@ -69,6 +69,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
 
   useEffect(() => {
     fetchResourceCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
   }, []);
 
   const clearCloseTimeout = useCallback(() => {

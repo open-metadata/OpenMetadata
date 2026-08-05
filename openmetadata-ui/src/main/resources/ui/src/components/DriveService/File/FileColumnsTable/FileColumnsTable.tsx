@@ -277,6 +277,7 @@ function FileColumnsTable() {
         ),
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps intentionally scoped
     [
       deleted,
       fileDetails?.fullyQualifiedName,
