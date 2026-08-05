@@ -17,7 +17,7 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
-import { fillDomainForm } from '../../utils/domain';
+import { clickDrawerSave, fillDomainForm } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { openAddGlossaryTermModal } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
@@ -629,7 +629,7 @@ test.describe(
           }
         };
         page.on('response', postListener);
-        await page.getByTestId('save-btn').click();
+        await clickDrawerSave(page);
 
         // Poll for up to 3s and confirm no POST ever fires. We intentionally
         // avoid `page.waitForTimeout` (linted as flaky) and instead use
@@ -1073,7 +1073,7 @@ test.describe(
             r.url().endsWith('/api/v1/dataProducts') &&
             r.request().method() === 'POST'
         );
-        await page.getByTestId('save-btn').click();
+        await clickDrawerSave(page);
         const response = await createResponse;
         expect(response.status()).toBe(201);
 
@@ -1414,7 +1414,7 @@ test.describe(
         }
       };
       page.on('request', trackCreateRequest);
-      await page.getByTestId('save-btn').click();
+      await clickDrawerSave(page);
       await expect(
         page.getByText('URL must use http or https protocol')
       ).toBeVisible();
@@ -1433,7 +1433,7 @@ test.describe(
           response.url().endsWith('/api/v1/dataProducts') &&
           response.request().method() === 'POST'
       );
-      await page.getByTestId('save-btn').click();
+      await clickDrawerSave(page);
 
       const request = await createRequest;
       const response = await createResponse;
@@ -1563,7 +1563,7 @@ test.describe(
           response.url().endsWith('/api/v1/domains') &&
           response.request().method() === 'POST'
       );
-      await page.getByTestId('save-btn').click();
+      await clickDrawerSave(page);
 
       const request = await createRequest;
       const response = await createResponse;
