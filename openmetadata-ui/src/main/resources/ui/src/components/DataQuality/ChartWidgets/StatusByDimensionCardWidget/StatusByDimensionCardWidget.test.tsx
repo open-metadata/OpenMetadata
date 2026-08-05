@@ -50,7 +50,7 @@ jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
 jest.mock('../StatusCardWidget/StatusCardWidget.component', () =>
   jest
     .fn()
-    .mockImplementation(() => <div>StatusByDimensionWidget.component</div>)
+    .mockImplementation(() => <div data-testid="status-by-dimension-widget" />)
 );
 jest.mock('../../../../constants/DataQuality.constants', () => ({
   ...jest.requireActual('../../../../constants/DataQuality.constants'),
@@ -171,7 +171,7 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     expect(
-      await screen.findAllByText('StatusByDimensionWidget.component')
+      await screen.findAllByTestId('status-by-dimension-widget')
     ).toHaveLength(8);
   });
 
@@ -189,7 +189,7 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     expect(
-      await screen.findAllByText('StatusByDimensionWidget.component')
+      await screen.findAllByTestId('status-by-dimension-widget')
     ).toHaveLength(8);
   });
 
