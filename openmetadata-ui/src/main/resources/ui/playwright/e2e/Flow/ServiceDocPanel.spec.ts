@@ -96,7 +96,9 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-links');
 
       const docPanel = page.getByTestId('service-requirements');
-      const externalLinks = docPanel.locator('a[target="_blank"][href^="http"]');
+      const externalLinks = docPanel.locator(
+        'a[target="_blank"][href^="http"]'
+      );
 
       await expect(externalLinks).not.toHaveCount(0);
     });

@@ -633,9 +633,8 @@ test.describe('Right Panel Test Suite', () => {
             );
 
             // Default view is downstream — verify downstream entity card
-            const downstreamCard = lineageContainer.locator(
-              '.lineage-item-card'
-            );
+            const downstreamCard =
+              lineageContainer.locator('.lineage-item-card');
             await expect(downstreamCard).toBeVisible();
             await expect(downstreamCard).toContainText(
               downstreamTable.entityResponseData?.displayName ??
@@ -644,9 +643,7 @@ test.describe('Right Panel Test Suite', () => {
 
             // Switch to upstream view and verify upstream entity card
             await localLineage.clickUpstreamButton();
-            const upstreamCard = lineageContainer.locator(
-              '.lineage-item-card'
-            );
+            const upstreamCard = lineageContainer.locator('.lineage-item-card');
             await expect(upstreamCard).toBeVisible();
             await expect(upstreamCard).toContainText(
               upstreamTable.entityResponseData?.displayName ??

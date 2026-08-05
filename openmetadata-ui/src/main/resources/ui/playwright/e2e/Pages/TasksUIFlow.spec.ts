@@ -465,9 +465,7 @@ test.describe('Task Activity Feed Integration', () => {
       if (await closedTab.isVisible()) {
         await closedTab.click();
 
-        const closedTaskCard = page.locator(
-          '[data-testid="task-feed-card"]'
-        );
+        const closedTaskCard = page.locator('[data-testid="task-feed-card"]');
         await expect(closedTaskCard).toBeVisible();
       }
     });
