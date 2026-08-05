@@ -14,6 +14,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -32,11 +33,21 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.CreateDashboardService;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -498,6 +509,100 @@ public class ServicesOverviewResourceIT {
         sumOf(counts),
         asConsumer.get("total").asInt(),
         "total must stay consistent with the authorized counts");
+  }
+
+  /**
+   * Builds a client for a user whose team carries a DENY rule on the given service resources.
+   * Nothing is torn down explicitly — the namespace prefix keeps these out of other tests' way and
+   * the deny only ever narrows what this one user can see.
+   */
+  private OpenMetadataClient clientDeniedOn(TestNamespace ns, String... deniedResources)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.shortPrefix();
+
+    Rule deny =
+        new Rule()
+            .withName("DenyServiceTypes")
+            .withResources(List.of(deniedResources))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withEffect(Rule.Effect.DENY);
+
+    CreatePolicy createPolicy = new CreatePolicy();
+    createPolicy.setName(prefix + "_denySvcPol");
+    createPolicy.setRules(List.of(deny));
+    Policy policy = admin.policies().create(createPolicy);
+
+    CreateRole createRole = new CreateRole();
+    createRole.setName(prefix + "_denySvcRole");
+    createRole.setPolicies(List.of(policy.getFullyQualifiedName()));
+    Role role = admin.roles().create(createRole);
+
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(prefix + "_denySvcTeam");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    createTeam.setDefaultRoles(List.of(role.getId()));
+    Team team = admin.teams().create(createTeam);
+
+    String email = prefix + "_denysvc@test.openmetadata.org";
+    CreateUser createUser = new CreateUser();
+    createUser.setName(prefix + "_denysvc");
+    createUser.setEmail(email);
+    createUser.setTeams(List.of(team.getId()));
+    User user = admin.users().create(createUser);
+    assertNotNull(user, "the restricted user should be created");
+
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /**
+   * The endpoint evaluates VIEW_BASIC per service entity type and drops the ones the caller cannot
+   * see, rather than failing the whole request. Without this the count maps a client drives its
+   * filter controls from would advertise service types the user cannot open.
+   */
+  @Test
+  void anUnauthorizedServiceTypeIsAbsentRatherThanEmpty(TestNamespace ns) throws Exception {
+    postgres(ns, "authz-visible");
+    metabase(ns, "authz-hidden");
+
+    JsonNode asAdmin = overview("limit=500");
+    assertTrue(
+        asAdmin.get("counts").has(DASHBOARD_SERVICE),
+        "precondition: an admin sees dashboard services");
+
+    JsonNode restricted =
+        overviewAs(clientDeniedOn(ns, DASHBOARD_SERVICE), "limit=500&excludeProvider=system");
+    JsonNode counts = restricted.get("counts");
+
+    assertFalse(
+        counts.has(DASHBOARD_SERVICE),
+        "a denied service type must be dropped from the counted universe, not returned as zero");
+    assertTrue(counts.has(DATABASE_SERVICE), "a permitted service type must still be counted");
+    assertEquals(
+        sumOf(counts),
+        restricted.get("total").asInt(),
+        "total must be consistent with the authorized counts");
+    for (JsonNode row : restricted.get("data")) {
+      assertNotEquals(
+          DASHBOARD_SERVICE,
+          row.get("entityType").asText(),
+          "no row of a denied service type may be listed");
+    }
+  }
+
+  /**
+   * Asking explicitly for only a denied type is a different case from asking broadly: there is
+   * nothing left to answer with, so it is rejected rather than answered with an empty page that
+   * looks like "no such services exist".
+   */
+  @Test
+  void requestingOnlyDeniedServiceTypesIsRejected(TestNamespace ns) throws Exception {
+    OpenMetadataClient restricted = clientDeniedOn(ns, DASHBOARD_SERVICE);
+
+    assertThrows(
+        Exception.class,
+        () -> overviewAs(restricted, "entityType=" + DASHBOARD_SERVICE),
+        "a universe consisting only of denied types should be rejected");
   }
 
   @Test
