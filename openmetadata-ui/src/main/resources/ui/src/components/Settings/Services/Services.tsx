@@ -419,9 +419,7 @@ const Services = ({ serviceName }: ServicesProps) => {
               markdown={highlightSearchText(description, searchTerm)}
             />
           ) : (
-            <span className="text-grey-muted">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
