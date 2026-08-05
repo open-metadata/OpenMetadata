@@ -89,14 +89,11 @@ ruleTester.run('justified-rule-disable', rule, {
 // exists precisely because this case can't be caught here.
 test('bare block-form eslint-disable self-suppresses this rule (pinned; enforcement is the CI grep guard, not this rule)', () => {
   const linter = new Linter();
-  const messages = linter.verify(
-    '/* eslint-disable */\nconst a = 1;',
-    {
-      languageOptions: { ecmaVersion: 2022, sourceType: 'module' },
-      plugins: { 'om-playwright': { rules: { 'justified-rule-disable': rule } } },
-      rules: { 'om-playwright/justified-rule-disable': 'error' },
-    }
-  );
+  const messages = linter.verify('/* eslint-disable */\nconst a = 1;', {
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module' },
+    plugins: { 'om-playwright': { rules: { 'justified-rule-disable': rule } } },
+    rules: { 'om-playwright/justified-rule-disable': 'error' },
+  });
 
   assert.deepEqual(messages, []);
 });
