@@ -15,7 +15,7 @@ Snowflake source module
 import json  # noqa: I001
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 import sqlparse
@@ -1216,7 +1216,9 @@ class SnowflakeSource(
                 _merge_semantic_view_column(merged, kind, row)
         return [_build_semantic_view_column(entry) for entry in merged.values()]
 
-    def _semantic_rows(self, query: str, schema: str, view: str) -> List[tuple]:  # noqa: UP006
+    def _semantic_rows(self, query: str, schema: str, view: str) -> List[Any]:  # noqa: UP006
+        """Fetch the semantic catalog rows for a view. Rows are SQLAlchemy ``Row``
+        objects, which are tuple-like (indexable) but not ``tuple``."""
         cursor = self.connection.execute(text(query.format(schema=schema, semantic_view=view)))
         return list(cursor)  # pyright: ignore[reportArgumentType]
 
