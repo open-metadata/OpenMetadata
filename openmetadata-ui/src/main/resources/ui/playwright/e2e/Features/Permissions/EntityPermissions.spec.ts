@@ -106,6 +106,7 @@ const test = base.extend<{
   testUserPage: Page;
 }>({
   page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     try {
       await adminUser.login(adminPage);
@@ -115,6 +116,7 @@ const test = base.extend<{
     }
   },
   testUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await testUser.login(page);
@@ -156,6 +158,7 @@ const headerPermTest = base.extend<{
   denyAllPage: Page;
 }>({
   editAllPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await editAllUser.login(page);
@@ -165,6 +168,7 @@ const headerPermTest = base.extend<{
     }
   },
   specificEditsPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await specificEditsUser.login(page);
@@ -267,6 +271,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
     // Allow permissions tests
     test.describe('Allow permissions', () => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await adminUser.login(page);
         await initializePermissions(page, 'allow', ALL_OPERATIONS);
@@ -303,6 +308,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
       }
 
       test.afterAll('Cleanup allow permissions', async ({ browser }) => {
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await adminUser.login(page);
         const { apiContext } = await getApiContext(page);
@@ -314,6 +320,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
     // Deny permissions tests
     test.describe('Deny permissions', () => {
       test.beforeAll('Initialize deny permissions', async ({ browser }) => {
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await adminUser.login(page);
         await initializePermissions(page, 'deny', ALL_OPERATIONS);
@@ -350,6 +357,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
       }
 
       test.afterAll('Cleanup deny permissions', async ({ browser }) => {
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await adminUser.login(page);
         const { apiContext } = await getApiContext(page);

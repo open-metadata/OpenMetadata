@@ -1375,6 +1375,7 @@ test.describe('Glossary tests', () => {
     browser,
   }) => {
     // Create page and set up mocked WebSocket BEFORE navigation
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await setupMockedWebSocket(page);
 
@@ -1462,6 +1463,7 @@ test.describe('Glossary tests', () => {
     test.slow(true);
 
     // Create page and set up mocked WebSocket BEFORE navigation
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await setupMockedWebSocket(page);
 

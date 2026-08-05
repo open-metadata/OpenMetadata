@@ -206,6 +206,7 @@ test(
         .locator('[data-testid="test-suite-name"] input')
         .fill(NEW_TEST_SUITE.name);
       await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }

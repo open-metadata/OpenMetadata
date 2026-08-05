@@ -83,6 +83,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .click();
 
         // Wait for dropdown to open
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -168,6 +169,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -277,6 +279,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -370,6 +373,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -468,6 +472,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -595,6 +600,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -784,6 +790,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
         await termRow.getByTestId('edit-button').click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('[role="dialog"].edit-glossary-modal');
 
         // Toggle ME to true
@@ -809,6 +816,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -872,6 +880,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -993,6 +1002,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });
@@ -1138,6 +1148,7 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
           .getByTestId('add-tag')
           .click();
 
+        // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
         await page.waitForSelector('.async-tree-select-list-dropdown', {
           state: 'visible',
         });

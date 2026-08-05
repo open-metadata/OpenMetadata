@@ -75,12 +75,14 @@ const test = base.extend<{
   dataContractViewPage: Page;
 }>({
   dataContractEditPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataContractEditUser.login(page);
     await use(page);
     await page.close();
   },
   dataContractViewPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataContractViewUser.login(page);
     await use(page);

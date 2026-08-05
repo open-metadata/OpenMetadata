@@ -27,6 +27,7 @@ const persona = new PersonaClass();
 
 const test = base.extend<{ adminPage: Page; userPage: Page }>({
   adminPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     await adminUser.login(adminPage);
     await use(adminPage);

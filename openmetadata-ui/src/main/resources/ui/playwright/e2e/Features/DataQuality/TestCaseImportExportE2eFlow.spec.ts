@@ -51,6 +51,7 @@ const test = base.extend<{
   testCaseEditPage: Page;
 }>({
   testCaseEditPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await testCaseEditUser.login(page);
     await use(page);

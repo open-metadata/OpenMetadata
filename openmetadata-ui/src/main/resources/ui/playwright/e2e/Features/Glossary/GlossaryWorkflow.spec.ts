@@ -39,18 +39,21 @@ const test = base.extend<{
   reviewer2Page: Page;
 }>({
   page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     await adminUser.login(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   reviewer1Page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await reviewer1.login(page);
     await use(page);
     await page.close();
   },
   reviewer2Page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await reviewer2.login(page);
     await use(page);

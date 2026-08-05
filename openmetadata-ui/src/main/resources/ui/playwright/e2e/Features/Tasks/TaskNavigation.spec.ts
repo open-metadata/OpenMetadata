@@ -506,6 +506,7 @@ test.describe('Task Navigation - URL Validation', () => {
       });
       const task = await taskResponse.json();
 
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const page = await browser.newPage();
       await adminUser.login(page);
 

@@ -112,6 +112,7 @@ export const updateTags = async (
     await editTagBtn.click();
   }
 
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('[data-testid="tag-selector"] input', {
     state: 'visible',
   });
@@ -148,6 +149,7 @@ export const updateDataAsset = async (
   );
   await page.getByTestId('add-data-assets-container').click();
 
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector(
     '[data-testid="asset-select-list"] > .ant-select-selector input',
     { state: 'visible' }
@@ -166,6 +168,7 @@ export const updateDataAsset = async (
   const response = await updateKnowledgePage;
   expect(response.status()).toBe(200);
 
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector(`[data-testid="${dataAsset.entity.name}"]`, {
     state: 'visible',
   });
@@ -353,6 +356,7 @@ export const readArticleInHierarchy = async (
   await hierarchyElement.hover();
   await page.mouse.wheel(0, -9999);
 
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
   await page.waitForTimeout(500);
 
   // Retry mechanism for pagination
@@ -363,6 +367,7 @@ export const readArticleInHierarchy = async (
   while (elementCount === 0 && retryCount < maxRetries) {
     await page.locator('[data-testid="knowledge-pages-hierarchy"]').hover();
     await page.mouse.wheel(0, 500);
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
     await page.waitForTimeout(500);
 
     // Create fresh locator and check if the article is now visible after this retry
@@ -394,6 +399,7 @@ export const createMentionInConversation = async (
 
   // Click on Conversations tab
   await page.getByRole('tab', { name: 'Conversations' }).click();
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('[data-testid="editor-wrapper"]');
 
   // Create message with mention
@@ -437,6 +443,7 @@ export const verifyNotificationAndClick = async (
   await page.locator('[data-testid="task-notifications"]').click();
 
   // Wait for notification dropdown to appear
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('[data-testid="notification-heading"]', {
     state: 'visible',
   });
@@ -535,11 +542,13 @@ export const createNewKnowledgePageArticle = async (
 export const getEditor = async (page: Page, waitForWrapper = false) => {
   if (waitForWrapper) {
     await waitForAllLoadersToDisappear(page);
+    // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
     await page.waitForSelector('#block-editor-wrapper', {
       state: 'visible',
     });
   }
 
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('.ProseMirror[contenteditable="true"]', {
     state: 'visible',
   });
@@ -654,6 +663,7 @@ export const clearCodeFormatting = async (
   if (isInCode) {
     await page.keyboard.press(SHORTCUTS.selectWord);
 
+    // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
     await page.waitForSelector('.menu-wrapper', {
       state: 'visible',
     });
@@ -678,6 +688,7 @@ export const createLink = async (
 
   await selectLastWord(page, linkText.split(' ').length, editor);
 
+  // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
   await page.waitForSelector('.menu-wrapper', {
     state: 'visible',
   });
@@ -838,6 +849,7 @@ export const toggleTask = async (
   const taskItem = editor.locator('li').filter({ hasText: taskText });
   const checkbox = taskItem.locator('input[type="checkbox"]');
   await checkbox.click();
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
   await page.waitForTimeout(100);
 };
 
@@ -846,6 +858,7 @@ export const createCallout = async (
   text: string
 ): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.callout);
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
   await page.waitForTimeout(200);
   await page.keyboard.type(text);
 };
@@ -862,6 +875,7 @@ export const verifyCallout = async (
 
 export const createTable = async (page: Page): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.table);
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- deliberate stabilization wait
   await page.waitForTimeout(300);
 };
 

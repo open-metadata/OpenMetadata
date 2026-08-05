@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { Browser, expect, Page } from '@playwright/test';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
@@ -676,7 +676,7 @@ export const serviceEntityConfig = {
 
 // Function to create custom properties for different entity types
 export const createCustomPropertyForEntity = async (
-  browser: any,
+  browser: Browser,
   entityType: string,
   customPropertyName: string,
   adminUser: UserClass

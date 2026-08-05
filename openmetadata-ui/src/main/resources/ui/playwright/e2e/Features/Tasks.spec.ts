@@ -95,6 +95,7 @@ test.describe('Task Workflow Tests', () => {
       await requestDescBtn.click();
 
       // Wait for task form page to load (navigates to separate page, not modal)
+      // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
       await page.waitForSelector('[data-testid="form-container"]', {
         state: 'visible',
       });
@@ -123,6 +124,7 @@ test.describe('Task Workflow Tests', () => {
       await requestDescBtn.click();
 
       // Wait for task form page to load
+      // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
       await page.waitForSelector('[data-testid="form-container"]', {
         state: 'visible',
       });
@@ -151,6 +153,7 @@ test.describe('Task Workflow Tests', () => {
       await requestTagsBtn.click();
 
       // Wait for task form page to load
+      // eslint-disable-next-line playwright/no-wait-for-selector -- waiting on dynamic element
       await page.waitForSelector('[data-testid="form-container"]', {
         state: 'visible',
       });
@@ -199,6 +202,7 @@ test.describe('Task Workflow Tests', () => {
           },
         });
 
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await adminUser.login(page);
 
@@ -270,6 +274,7 @@ test.describe('Task Workflow Tests', () => {
         const task = await taskResponse.json();
 
         // Login as regular user (who is the assignee)
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await regularUser.login(page);
 
@@ -307,6 +312,7 @@ test.describe('Task Workflow Tests', () => {
       await nonAssignee.create(apiContext);
 
       try {
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await nonAssignee.login(page);
 
@@ -451,6 +457,7 @@ test.describe('Task Workflow Tests', () => {
         });
         expect(taskResponse.ok()).toBe(true);
 
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await adminUser.login(page);
         await tableWithOwner.visitEntityPage(page);
@@ -500,6 +507,7 @@ test.describe('Task Workflow Tests', () => {
           },
         });
 
+        // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
         const page = await browser.newPage();
         await regularUser.login(page);
         await redirectToHomePage(page);

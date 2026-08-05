@@ -93,18 +93,21 @@ const test = base.extend<{
     await afterAction();
   },
   dataConsumerPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataConsumerUser.login(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await dataStewardUser.login(page);
     await use(page);
     await page.close();
   },
   viewOnlyPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     await viewOnlyUser.login(page);
     await use(page);

@@ -32,6 +32,7 @@ const test = base.extend<{
   testUserPage: Page;
 }>({
   page: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const adminPage = await browser.newPage();
     try {
       await adminUser.login(adminPage);
@@ -41,6 +42,7 @@ const test = base.extend<{
     }
   },
   testUserPage: async ({ browser }, use) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const page = await browser.newPage();
     try {
       await testUser.login(page);
@@ -72,6 +74,7 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
   test.slow(true);
 
   // Setup allow permissions
+  // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
   const page = await browser.newPage();
   await adminUser.login(page);
   const { apiContext } = await getApiContext(page);
@@ -143,6 +146,7 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
   test.slow(true);
 
   // Setup deny permissions
+  // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
   const page = await browser.newPage();
   await adminUser.login(page);
   const { apiContext } = await getApiContext(page);

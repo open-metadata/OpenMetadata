@@ -101,6 +101,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     browser,
     page,
   }) => {
+    // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
     const userPage = await browser.newPage();
     try {
       await testUser.login(userPage);
@@ -233,6 +234,7 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   }) => {
     test.slow(); // Mark this test as slow since it involves multiple logins and navigation
     await test.step('Visit Explore Page as New User', async () => {
+      // eslint-disable-next-line no-restricted-syntax -- existing multi-context test pattern
       const userPage = await browser.newPage();
       await testUser.login(userPage);
       await redirectToHomePage(userPage);
