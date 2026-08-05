@@ -499,7 +499,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     def update_custom_properties(cls, identifier: UuidLike):
         """Convenience accessor for custom property updates by entity id."""
 
-        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel
             CustomProperties,
         )
 
@@ -511,7 +511,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     def update_custom_properties_by_name(cls, fqn: str):
         """Convenience accessor for custom property updates by entity FQN."""
 
-        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel
             CustomProperties,
         )
 

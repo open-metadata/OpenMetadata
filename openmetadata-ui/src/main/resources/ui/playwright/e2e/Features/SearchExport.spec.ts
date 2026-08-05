@@ -45,10 +45,10 @@ const startAsyncExport = async (page: Page) => {
   return jobId;
 };
 
-const fetchCompletedExportCsv = async (
+const waitForExportJobCompleted = async (
   apiContext: APIRequestContext,
   jobId: string
-): Promise<string> => {
+): Promise<void> => {
   await expect
     .poll(
       async () => {
@@ -58,11 +58,28 @@ const fetchCompletedExportCsv = async (
           status: string;
         }>;
 
+        // An unauthenticated or errored call returns an object, not a list, and
+        // `jobs.find` then fails with a TypeError that says nothing about why.
+        if (!Array.isArray(jobs)) {
+          throw new Error(
+            `csvAsyncJobs returned ${response.status()}: ${JSON.stringify(
+              jobs
+            ).slice(0, 200)}`
+          );
+        }
+
         return jobs.find((job) => job.jobId === jobId)?.status;
       },
       { timeout: 90_000 }
     )
     .toBe('COMPLETED');
+};
+
+const fetchCompletedExportCsv = async (
+  apiContext: APIRequestContext,
+  jobId: string
+): Promise<string> => {
+  await waitForExportJobCompleted(apiContext, jobId);
 
   const resultResponse = await apiContext.get(
     `/api/v1/csvAsyncJobs/${jobId}/result`
@@ -412,6 +429,7 @@ test.describe(
 
     test('Export queues a background job and downloads from the jobs tray', async ({
       page,
+      browser,
     }) => {
       test.slow();
 
@@ -430,9 +448,33 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('Jobs tray surfaces the export job', async () => {
-        await page
-          .getByRole('button', { name: /Background jobs|jobs running/ })
-          .click();
+        // PR #30615 added a useEffect that calls setOpen(true) when a job
+        // reaches a terminal state, auto-opening the tray and hiding the
+        // launcher button ({!open && !isEmpty(visibleJobs) && ...} renders
+        // nothing once open=true).
+        //
+        // Race: right after startAsyncExport, visibleJobs may still be
+        // empty (socket event not yet received), so neither the launcher
+        // nor the tray has rendered yet. A bare click() on the launcher
+        // fails during this window.
+        //
+        // Fix: wait for whichever surface appears first, then open the tray
+        // only if it has not already been auto-opened.
+        const launcherButton = page.getByRole('button', {
+          name: /Background jobs|jobs running/,
+        });
+        const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+        // Block until the launcher (job in progress) or the tray (job
+        // completed and auto-opened by the useEffect) is in the DOM.
+        await expect(launcherButton.or(trayPopover)).toBeVisible();
+
+        // Open the tray only if it has not already been auto-opened.
+        // When the job finished fast, the tray is already visible and the
+        // launcher is gone from the DOM — clicking it would throw.
+        if (!(await trayPopover.isVisible())) {
+          await launcherButton.click();
+        }
 
         await expect(
           page.getByText(/Exporting|Exported/).first()
@@ -440,11 +482,25 @@ test.describe(
       });
 
       await test.step('Download from the tray serves the job result CSV', async () => {
+        // The Download button only renders once the async job finishes, so waiting
+        // blind on it spent up to 90s of the test budget before the download waits
+        // even started -- the remainder then ran out mid-wait and surfaced as
+        // "Target page, context or browser has been closed". Poll the job over the
+        // API first (the same way fetchCompletedExportCsv does), so a stalled job is
+        // named as such and the UI waits that follow are short.
+        //
+        // performAdminLogin, not page.request: the latter carries the page's cookies
+        // but not the bearer token these endpoints need, so it returns an error object
+        // rather than the job array.
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await waitForExportJobCompleted(apiContext, jobId);
+        await afterAction();
+
         const downloadButton = page
           .getByRole('button', { name: 'Download' })
           .first();
 
-        await expect(downloadButton).toBeVisible({ timeout: 90_000 });
+        await expect(downloadButton).toBeVisible();
 
         const resultResponsePromise = page.waitForResponse(
           (response) =>

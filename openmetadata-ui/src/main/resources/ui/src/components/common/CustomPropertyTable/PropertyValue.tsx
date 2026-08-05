@@ -71,7 +71,11 @@ import { EntityReference } from '../../../generated/entity/type';
 import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import { Config } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
-import { getCustomPropertyLuxonFormat } from '../../../utils/CustomProperty.utils';
+import {
+  formatCustomPropertyDateTime,
+  getCustomPropertyLuxonFormat,
+  parseCustomPropertyDateTime,
+} from '../../../utils/CustomProperty.utils';
 import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -306,7 +310,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
 
         const initialValues = {
-          dateTimeValue: value ? DateTime.fromFormat(value, format) : undefined,
+          dateTimeValue: value
+            ? parseCustomPropertyDateTime(
+                value,
+                propertyType.name ?? '',
+                property.customPropertyConfig?.config
+              )
+            : undefined,
         };
 
         const formId = `dateTime-form-${propertyName}`;
@@ -329,7 +339,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { dateTimeValue: DateTime }) => {
                 onInputSave(
                   values.dateTimeValue
-                    ? values.dateTimeValue.toFormat(format)
+                    ? formatCustomPropertyDateTime(
+                        values.dateTimeValue,
+                        propertyType.name ?? '',
+                        property.customPropertyConfig?.config
+                      )
                     : values.dateTimeValue // If date is cleared and set undefined
                 );
               }}>

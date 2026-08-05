@@ -13,9 +13,8 @@
 
 import { get } from 'lodash';
 import { lazy } from 'react';
-import withSuspenseFallback, {
-  TAB_CONTENT_FALLBACK,
-} from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -38,7 +37,7 @@ const WorksheetColumnsTable = withSuspenseFallback(
         '../components/DriveService/Worksheet/WorksheetColumnsTable/WorksheetColumnsTable'
       )
   ),
-  TAB_CONTENT_FALLBACK
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 export interface WorksheetDetailPageTabProps {

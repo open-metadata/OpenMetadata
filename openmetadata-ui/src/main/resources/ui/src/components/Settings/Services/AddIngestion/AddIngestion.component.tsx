@@ -15,6 +15,8 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import {
   forwardRef,
+  useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -86,6 +88,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       showSuccessScreen = true,
       status,
       onFocus,
+      onStepReadyChange,
     }: Readonly<AddIngestionProps>,
     ref
   ) {
@@ -174,6 +177,20 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       LOADING_STATE.INITIAL
     );
     const [showDeployModal, setShowDeployModal] = useState(false);
+    const [isWorkflowFormReady, setIsWorkflowFormReady] = useState(false);
+
+    const handleWorkflowFormReady = useCallback(
+      () => setIsWorkflowFormReady(true),
+      []
+    );
+
+    // Step 1's RJSF form loads its templates lazily, so its imperative submit()
+    // is a no-op until it mounts. Only step 1 has to wait for that signal.
+    useEffect(() => {
+      onStepReadyChange?.(
+        activeIngestionStep === 1 ? isWorkflowFormReady : true
+      );
+    }, [activeIngestionStep, isWorkflowFormReady, onStepReadyChange]);
 
     const handleDataChange = (data: IngestionWorkflowData) =>
       setWorkflowData(data);
@@ -377,6 +394,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
                 onCancel={handleCancelClick}
                 onChange={handleDataChange}
                 onFocus={onFocus}
+                onReady={handleWorkflowFormReady}
                 onSubmit={handleSubmit}
               />
             </div>

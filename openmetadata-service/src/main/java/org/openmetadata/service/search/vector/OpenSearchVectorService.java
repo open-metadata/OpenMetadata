@@ -441,7 +441,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     preflightEmbedding();
     synchronized (stagedChunkLock) {
       String base = getChunkIndexName();
-      String liveTarget = resolveLiveChunkTarget(base);
+      String liveTarget = requireResolvedLiveChunkTarget(base);
       deleteOrphanChunkGenerations(base, liveTarget);
       String generation = nextChunkGenerationName(base);
       try {
@@ -560,7 +560,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
       if (generation != null) {
         String base = getChunkIndexName();
-        String oldTarget = resolveLiveChunkTarget(base);
+        String oldTarget = requireResolvedLiveChunkTarget(base);
         try {
           executeGenericRequest(
               "POST",
@@ -656,29 +656,51 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * The physical index currently serving chunk reads: the alias target when the read name is an
    * alias (post-promotion layout), the legacy physical index when it exists under the read name,
-   * or null on a fresh install.
+   * or null on a fresh install. Throws when the cluster cannot answer, so callers can distinguish
+   * "nothing is live" from "could not tell".
    */
-  private String resolveLiveChunkTarget(String base) {
+  private String resolveLiveChunkTargetStrict(String base) throws IOException {
     String target = null;
-    try {
+    // Boolean alias probe first: on the pre-promotion physical-index layout no alias exists, and
+    // a direct GET /_alias/{base} logs that expected 404 as an ERROR with a stack trace.
+    if (client.indices().existsAlias(a -> a.name(base)).value()) {
       String response = executeGenericRequest("GET", "/_alias/" + base, null);
       Iterator<String> names = MAPPER.readTree(response).fieldNames();
       if (names.hasNext()) {
         target = names.next();
       }
-    } catch (Exception e) {
-      LOG.debug("No alias named {} — checking for a legacy physical index", base);
-    }
-    if (target == null) {
-      try {
-        if (client.indices().exists(x -> x.index(base)).value()) {
-          target = base;
-        }
-      } catch (Exception e) {
-        LOG.warn("Could not resolve live chunk target for {}: {}", base, e.getMessage());
-      }
+    } else if (client.indices().exists(x -> x.index(base)).value()) {
+      LOG.debug("No alias named {} — serving chunks from the legacy physical index", base);
+      target = base;
     }
     return target;
+  }
+
+  /**
+   * Lenient resolution for the ensure/create path: a wrongly-null target there can only make an
+   * index create attempt fail and be retried — it can never delete anything.
+   */
+  private String resolveLiveChunkTarget(String base) {
+    String target = null;
+    try {
+      target = resolveLiveChunkTargetStrict(base);
+    } catch (Exception e) {
+      LOG.warn("Could not resolve live chunk target for {}: {}", base, e.getMessage());
+    }
+    return target;
+  }
+
+  /**
+   * Strict resolution for destructive paths (orphan sweep, alias swap): an indeterminate probe
+   * aborts the operation, because a null target would read as "nothing is live" and let the sweep
+   * delete the live generation.
+   */
+  private String requireResolvedLiveChunkTarget(String base) {
+    try {
+      return resolveLiveChunkTargetStrict(base);
+    } catch (Exception e) {
+      throw new RuntimeException("Cannot determine the live chunk target for " + base, e);
+    }
   }
 
   /**
@@ -882,8 +904,19 @@ public class OpenSearchVectorService implements VectorIndexService {
             .set("method", method);
     var properties = MAPPER.createObjectNode();
     properties.set("embedding", embedding);
+    // The three metric enums are mapped as real keywords, not source-only: they are cheap to index
+    // and are the natural facets to filter a metric search on (granularity DAY vs MONTH).
     for (String keyword :
-        List.of("parentId", "fingerprint", "entityType", "fullyQualifiedName", "serviceType")) {
+        List.of(
+            "parentId",
+            "fingerprint",
+            "entityType",
+            "fullyQualifiedName",
+            "serviceType",
+            "metricType",
+            "granularity",
+            "unitOfMeasurement",
+            "customUnitOfMeasurement")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -917,6 +950,11 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("columns", columnsMapping());
     properties.set(
         "relatedTerms", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
+    // Display-only: semantic_search returns a metric's expression, nothing filters or scores on it,
+    // and the code is already searchable through textToEmbed. `enabled: false` keeps it in _source
+    // without paying to index it on a dynamic:false index.
+    properties.set(
+        "metricExpression", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
     return properties;
   }
 
@@ -1384,6 +1422,9 @@ public class OpenSearchVectorService implements VectorIndexService {
       hitMap.put("_score", score);
 
       String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      // Persist the fallback into the result map so consumers (e.g. SemanticSearchTool collapsing
+      // chunks by entity) see the same parentId this grouping used, matching the ES service.
+      hitMap.put("parentId", parentId);
       List<Map<String, Object>> group =
           byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>());
       // During chunk-index migration the same chunk can surface twice — once from the legacy

@@ -785,7 +785,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await glossaryResponse;
   await waitForAllLoadersToDisappear(page);
   await page
-    .getByRole('menuitem', { name: glossaryName })
+    .getByTestId('glossary-left-panel')
+    .getByRole('menuitem', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -850,7 +851,8 @@ export const verifyDomainLinkInCard = async (
 export const waitForSearchResult = async (
   page: Page,
   searchTerm: string,
-  result: Locator
+  result: Locator,
+  tabSelector?: Locator
 ) => {
   let hasSubmittedSearch = false;
 
@@ -874,6 +876,8 @@ export const waitForSearchResult = async (
           ]);
           hasSubmittedSearch = true;
         }
+        await waitForAllLoadersToDisappear(page);
+        await tabSelector?.click();
         await waitForAllLoadersToDisappear(page);
 
         return result.isVisible();
