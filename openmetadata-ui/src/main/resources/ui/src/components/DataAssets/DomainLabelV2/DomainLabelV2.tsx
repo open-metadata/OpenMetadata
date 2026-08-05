@@ -166,7 +166,7 @@ export const DomainLabelV2 = <
     }
 
     return null;
-  }, [activeDomain]);
+  }, [activeDomain, domainLabel]);
 
   const hasPermission = useMemo(() => {
     return props?.hasPermission ?? (permissions?.EditAll && !data?.deleted);
@@ -206,7 +206,14 @@ export const DomainLabelV2 = <
         {actionButton}
       </DomainSelectableList>
     );
-  }, [hasPermission, activeDomain, handleDomainSave, props.isClearable]);
+  }, [
+    hasPermission,
+    activeDomain,
+    handleDomainSave,
+    props.isClearable,
+    props.multiple,
+    domainLabel,
+  ]);
 
   const label = useMemo(() => {
     if (props.showDomainHeading) {
@@ -232,7 +239,14 @@ export const DomainLabelV2 = <
         {selectableList}
       </Card>
     );
-  }, [activeDomain, hasPermission, selectableList]);
+  }, [
+    activeDomain,
+    hasPermission,
+    selectableList,
+    domainLink,
+    domainLabel,
+    props.showDomainHeading,
+  ]);
 
   return label;
 };

@@ -55,8 +55,10 @@ jest.mock('../../common/WidgetCard/WidgetCard', () => ({
   ),
 }));
 
-jest.mock('../../common/DomainSelectableList/DomainSelectableList.component', () =>
-  jest.fn().mockImplementation(() => <div data-testid="selectable-list" />)
+jest.mock(
+  '../../common/DomainSelectableList/DomainSelectableList.component',
+  () =>
+    jest.fn().mockImplementation(() => <div data-testid="selectable-list" />)
 );
 
 jest.mock('../../../utils/DomainUtils', () => ({
