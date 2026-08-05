@@ -809,11 +809,6 @@ class TestPrefectSource:
     def test_yield_pipeline_lineage_details_builds_table_to_table_edges(self, prefect_source):
         pipeline_entity = Mock()
         pipeline_entity.id.root = uuid.uuid4()
-        source_tag = Mock()
-        source_tag.name = "om-source:mysql.sales.orders"
-        dest_tag = Mock()
-        dest_tag.name = "om-destination:mysql.analytics.summary"
-        pipeline_entity.tags = [source_tag, dest_tag]
         source_table = Mock(id=uuid.uuid4())
         dest_table = Mock(id=uuid.uuid4())
 
@@ -832,6 +827,9 @@ class TestPrefectSource:
             }.get((database, schema, table))
 
         prefect_source.metadata.get_by_name.side_effect = get_by_name
+        prefect_source.client.get_deployments.return_value = [
+            PrefectDeployment(tags=["om-source:mysql.sales.orders", "om-destination:mysql.analytics.summary"])
+        ]
         # Cloud config: force the flow straight to tag-based lineage, no runs to check for assets.
         prefect_source.client.get_flow_runs.return_value = []
 
@@ -860,13 +858,6 @@ class TestPrefectSource:
         doesn't resolve to a real table is dropped, not sent as a broken edge."""
         pipeline_entity = Mock()
         pipeline_entity.id.root = uuid.uuid4()
-        source_tag_1 = Mock()
-        source_tag_1.name = "om-source:mysql.sales.orders"
-        source_tag_2 = Mock()
-        source_tag_2.name = "om-source:mysql.sales.missing"
-        dest_tag = Mock()
-        dest_tag.name = "om-destination:mysql.analytics.summary"
-        pipeline_entity.tags = [source_tag_1, source_tag_2, dest_tag]
         source_table = Mock(id=uuid.uuid4())
         dest_table = Mock(id=uuid.uuid4())
 
@@ -885,6 +876,15 @@ class TestPrefectSource:
             }.get((database, schema, table))  # "missing" resolves to None
 
         prefect_source.metadata.get_by_name.side_effect = get_by_name
+        prefect_source.client.get_deployments.return_value = [
+            PrefectDeployment(
+                tags=[
+                    "om-source:mysql.sales.orders",
+                    "om-source:mysql.sales.missing",
+                    "om-destination:mysql.analytics.summary",
+                ]
+            )
+        ]
         prefect_source.client.get_flow_runs.return_value = []
 
         with (
@@ -905,10 +905,8 @@ class TestPrefectSource:
 
     def test_yield_pipeline_lineage_details_skips_when_only_one_side_present(self, prefect_source):
         pipeline_entity = Mock()
-        tag = Mock()
-        tag.name = "om-source:mysql.sales.orders"
-        pipeline_entity.tags = [tag]
         prefect_source.metadata.get_by_name.return_value = pipeline_entity
+        prefect_source.client.get_deployments.return_value = [PrefectDeployment(tags=["om-source:mysql.sales.orders"])]
         prefect_source.client.get_flow_runs.return_value = []
 
         with (
@@ -936,33 +934,10 @@ class TestPrefectSource:
 
         assert results == []
 
-    def test_yield_pipeline_lineage_details_ignores_tags_without_a_name(self, prefect_source):
-        """Locally-built TagLabels never set .name (see get_tag_label) — only
-        server-hydrated ones do (TagLabelUtil.setName). A None here must not
-        crash tag.strip() in _parse_lineage_from_tags."""
-        pipeline_entity = Mock()
-        unnamed_tag = Mock()
-        unnamed_tag.name = None
-        pipeline_entity.tags = [unnamed_tag]
-        prefect_source.metadata.get_by_name.return_value = pipeline_entity
-        prefect_source.client.get_flow_runs.return_value = []
-
-        with (
-            patch.object(prefect_source.context, "get", return_value=_context()),
-            patch(
-                "metadata.ingestion.source.pipeline.prefect.metadata.fqn.build",
-                return_value="test_prefect.test-flow",
-            ),
-        ):
-            results = list(prefect_source.yield_pipeline_lineage_details(MOCK_FLOWS[0]))
-
-        assert results == []
-
     def test_yield_pipeline_lineage_details_prefers_asset_lineage_on_cloud(self, prefect_source):
         """On Prefect Cloud, a run with materializations takes priority over
         tag-based lineage — see _yield_lineage_from_assets."""
         pipeline_entity = Mock()
-        pipeline_entity.tags = []
         prefect_source.metadata.get_by_name.return_value = pipeline_entity
         prefect_source.client.get_flow_runs.return_value = [PrefectFlowRun(id="run-1", state_type="COMPLETED")]
         asset_edge = Mock()
@@ -982,8 +957,8 @@ class TestPrefectSource:
 
     def test_yield_pipeline_lineage_details_falls_back_to_tags_when_no_materializations(self, prefect_source):
         pipeline_entity = Mock()
-        pipeline_entity.tags = []
         prefect_source.metadata.get_by_name.return_value = pipeline_entity
+        prefect_source.client.get_deployments.return_value = []
         prefect_source.client.get_flow_runs.return_value = [PrefectFlowRun(id="run-1", state_type="COMPLETED")]
 
         with (
@@ -1000,8 +975,8 @@ class TestPrefectSource:
 
     def test_yield_pipeline_lineage_details_skips_asset_check_when_no_flow_runs(self, prefect_source):
         pipeline_entity = Mock()
-        pipeline_entity.tags = []
         prefect_source.metadata.get_by_name.return_value = pipeline_entity
+        prefect_source.client.get_deployments.return_value = []
         prefect_source.client.get_flow_runs.return_value = []
 
         with (
@@ -1021,8 +996,8 @@ class TestPrefectSource:
         branch must not even check for flow runs."""
         source = _self_hosted_source()
         pipeline_entity = Mock()
-        pipeline_entity.tags = []
         source.metadata.get_by_name.return_value = pipeline_entity
+        source.client.get_deployments.return_value = []
 
         with (
             patch.object(source.context, "get", return_value=_context()),

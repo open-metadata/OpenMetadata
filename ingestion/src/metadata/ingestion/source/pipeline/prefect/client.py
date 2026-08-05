@@ -15,8 +15,9 @@ https://docs.prefect.io/v3/api-ref/rest-api
 
 import base64
 from collections.abc import Iterable
-from functools import lru_cache
 from typing import Any
+
+from cachetools import LRUCache
 
 from metadata.generated.schema.entity.services.connections.pipeline.prefect.cloudAuth import (
     PrefectCloudAuthentication,
@@ -95,6 +96,14 @@ class PrefectClient:
         )
         self.client = TrackedREST(client_config, source_name="prefect")
 
+        # Instance-level caches, not @lru_cache on the method — that keys on
+        # self and pins this PrefectClient (and everything it references)
+        # alive for as long as the process runs, not just this ingestion run.
+        # Same pattern as the OpenLineage/dbtcloud connectors.
+        self._flow_runs_cache: LRUCache = LRUCache(maxsize=256)
+        self._task_runs_cache: LRUCache = LRUCache(maxsize=256)
+        self._deployments_cache: LRUCache = LRUCache(maxsize=256)
+
     def _filter(self, resource: str, payload: dict, **kwargs: Any) -> list[dict]:
         result = self.client.post(f"{self._path_prefix}/{resource}/filter", json=payload, **kwargs)
         return result if isinstance(result, list) else []
@@ -112,7 +121,6 @@ class PrefectClient:
             offset += FLOWS_PAGE_SIZE
         logger.debug("Fetched %d flows", total)
 
-    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id, limit)
     def get_flow_runs(self, flow_id: str, limit: int) -> list[PrefectFlowRun]:
         """Most recent runs of one flow, newest first. Cached — yield_tag and
         yield_pipeline both fetch the same flow's latest run independently.
@@ -122,6 +130,9 @@ class PrefectClient:
         otherwise outrank every real past run under START_TIME_DESC and
         starve the DAG/task-status build of a run that actually has task runs.
         """
+        cache_key = (flow_id, limit)
+        if cache_key in self._flow_runs_cache:
+            return self._flow_runs_cache[cache_key]
         payload = {
             "flows": {"id": {"any_": [flow_id]}},
             "sort": FLOW_RUNS_SORT,
@@ -131,13 +142,17 @@ class PrefectClient:
         }
         runs = [PrefectFlowRun.model_validate(run) for run in self._filter("flow_runs", payload)]
         logger.debug("Fetched %d flow runs for flow %s", len(runs), flow_id)
+        self._flow_runs_cache[cache_key] = runs
         return runs
 
-    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_run_id), lives one ingestion run
     def get_task_runs(self, flow_run_id: str) -> list[PrefectTaskRun]:
         """Task runs of one flow run. Cached — the same flow run's task runs
         are read from multiple places (pipeline build, tags, status)."""
-        return self.get_task_runs_for_flow_runs([flow_run_id])[flow_run_id]
+        if flow_run_id in self._task_runs_cache:
+            return self._task_runs_cache[flow_run_id]
+        task_runs = self.get_task_runs_for_flow_runs([flow_run_id])[flow_run_id]
+        self._task_runs_cache[flow_run_id] = task_runs
+        return task_runs
 
     def get_task_runs_for_flow_runs(self, flow_run_ids: list[str]) -> dict[str, list[PrefectTaskRun]]:
         """Task runs for many flow runs in one paginated call, grouped by
@@ -161,11 +176,12 @@ class PrefectClient:
         logger.debug("Fetched %d task runs for %d flow runs", sum(len(v) for v in grouped.values()), len(flow_run_ids))
         return grouped
 
-    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id), lives one ingestion run
     def get_deployments(self, flow_id: str) -> list[PrefectDeployment]:
         """Every deployment of one flow, newest-created first. Cached — tags,
         schedule, and lineage tag parsing all fetch the same flow's
         deployments independently, so this avoids re-paginating per call."""
+        if flow_id in self._deployments_cache:
+            return self._deployments_cache[flow_id]
         deployments: list[PrefectDeployment] = []
         offset = 0
         while True:
@@ -181,6 +197,7 @@ class PrefectClient:
             deployments.extend(PrefectDeployment.model_validate(deployment) for deployment in page)
             if len(page) < DEPLOYMENTS_PAGE_SIZE:
                 logger.debug("Fetched %d deployments for flow %s", len(deployments), flow_id)
+                self._deployments_cache[flow_id] = deployments
                 return deployments
             offset += DEPLOYMENTS_PAGE_SIZE
 

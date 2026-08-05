@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import traceback
 from datetime import datetime
-from functools import lru_cache
 from itertools import product
 from typing import TYPE_CHECKING
+
+from cachetools import LRUCache
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -127,6 +128,14 @@ class PrefectSource(PipelineServiceSource):
     """
 
     client: PrefectClient
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
+        super().__init__(config, metadata)
+        # Instance-level cache, not @lru_cache on the method — that keys on
+        # self and pins this PrefectSource (and its OM client, topology
+        # context) alive for as long as the process runs. Same pattern as
+        # PrefectClient's caches and the OpenLineage/dbtcloud connectors.
+        self._resolve_table_fqn_cache: LRUCache = LRUCache(maxsize=256)
 
     @classmethod
     def create(
@@ -253,7 +262,6 @@ class PrefectSource(PipelineServiceSource):
 
         return sources, destinations
 
-    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, database, schema, table), lives one ingestion run
     def _resolve_table_fqn(self, database: str | None, schema: str | None, table: str) -> str | None:
         """
         Resolve a (database, schema, table) triple — either of the first two
@@ -272,9 +280,12 @@ class PrefectSource(PipelineServiceSource):
         flow with tag-based lineage and once per materialization with
         asset-based lineage — across many flows sharing the same source/
         destination table this collapses repeat REST round-trips to one,
-        same pattern as ``PrefectClient``'s ``lru_cache`` on
+        same pattern as ``PrefectClient``'s caches on
         ``get_deployments``/``get_flow_runs``/``get_task_runs``.
         """
+        cache_key = (database, schema, table)
+        if cache_key in self._resolve_table_fqn_cache:
+            return self._resolve_table_fqn_cache[cache_key]
         for db_service in self.get_db_service_names():
             candidate = fqn.build(
                 metadata=self.metadata,
@@ -285,7 +296,9 @@ class PrefectSource(PipelineServiceSource):
                 table_name=table,
             )
             if candidate and self.metadata.get_by_name(entity=Table, fqn=candidate):
+                self._resolve_table_fqn_cache[cache_key] = candidate
                 return candidate
+        self._resolve_table_fqn_cache[cache_key] = None
         return None
 
     @staticmethod
@@ -549,9 +562,12 @@ class PrefectSource(PipelineServiceSource):
         falls back to lineage tags — self-hosted always does, since it has no
         Assets API at all, and so does Cloud when a run has no materializations.
 
-        Tag-based fallback: reads tags off the already-created Pipeline entity
-        (flow + deployment tags are merged there by ``yield_pipeline``) rather
-        than re-deriving them, so this and ``Pipeline.tags`` never disagree.
+        Tag-based fallback: re-derives tags from ``get_deployments`` directly
+        (the same deployment tags ``yield_pipeline`` used to build
+        ``Pipeline.tags``) instead of reading them off the persisted entity —
+        that entity has no tags at all when ``includeTags=False``, which
+        silently dropped lineage. ``get_deployments`` is lru_cached, so this
+        costs no extra call within one ingestion run.
         Lineage is detected from tags: 'om-source:<database>.<schema>.<table>'
         and 'om-destination:<database>.<schema>.<table>'. Every detected
         source is linked to every detected destination, since tags carry no
@@ -566,7 +582,7 @@ class PrefectSource(PipelineServiceSource):
                 service_name=self.context.get().pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
                 pipeline_name=self.context.get().pipeline,  # pyright: ignore[reportAttributeAccessIssue]
             )
-            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tags"])  # pyright: ignore[reportArgumentType]
+            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)  # pyright: ignore[reportArgumentType]
             if not pipeline_entity:
                 logger.warning("Pipeline entity not found for %s", pipeline_fqn)
                 return
@@ -579,7 +595,7 @@ class PrefectSource(PipelineServiceSource):
                         yield from asset_edges
                         return
 
-            all_tags = [tag.name for tag in pipeline_entity.tags or [] if tag.name]
+            all_tags = self._get_all_tags(self.client.get_deployments(pipeline_details.id))
             sources, destinations = self._parse_lineage_from_tags(all_tags)
 
             if not sources or not destinations:
