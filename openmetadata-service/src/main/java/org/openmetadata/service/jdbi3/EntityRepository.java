@@ -6112,6 +6112,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(certTagsByTarget);
   }
 
+  /**
+   * Certification is stored as a {@code tag_usage} row but is surfaced as its own entity field, so
+   * every tags read path filters it out. A caller that wipes tags with the prefix-agnostic
+   * {@code deleteTagsByTarget} and re-applies from {@code entity.getTags()} would therefore drop the
+   * certification permanently (issue #30545). Use this instead when replacing an entity's tags
+   * outside the {@code EntityUpdater} path.
+   */
+  protected void deleteTagsPreservingCertification(String entityFQN) {
+    String certClassification = getCertificationClassification();
+    if (certClassification == null) {
+      daoCollection.tagUsageDAO().deleteTagsByTarget(entityFQN);
+    } else {
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTargetExcludingPrefix(
+              TagLabel.TagSource.CLASSIFICATION.ordinal(), certClassification + ".%", entityFQN);
+    }
+  }
+
   protected void deleteCertificationTag(String entityFQN) {
     String certClassification = getCertificationClassification();
     if (certClassification == null) return;

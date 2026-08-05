@@ -7138,6 +7138,13 @@ public interface CollectionDAO {
         @Bind("tagFQNPrefix") String tagFQNPrefix,
         @BindFQN("targetFQNHash") String targetFQNHash);
 
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE targetFQNHash = :targetFQNHash AND NOT (source = :source AND tagFQN LIKE :tagFQNPrefix)")
+    void deleteTagsByTargetExcludingPrefix(
+        @Bind("source") int source,
+        @Bind("tagFQNPrefix") String tagFQNPrefix,
+        @BindFQN("targetFQNHash") String targetFQNHash);
+
     @SqlUpdate("DELETE FROM tag_usage WHERE targetFQNHash IN (<targetFQNHashes>)")
     void deleteTagsByTargetsInternal(@BindListFQN("targetFQNHashes") List<String> targetFQNs);
 
