@@ -5,6 +5,7 @@ import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface VectorIndexService {
 
@@ -52,6 +53,22 @@ public interface VectorIndexService {
     return search(query, filters, size, from, k, threshold, null);
   }
 
+  default VectorSearchResponse search(
+      String query,
+      Map<String, List<String>> filters,
+      int size,
+      int from,
+      int k,
+      double threshold,
+      String preference) {
+    return search(query, filters, size, from, k, threshold, preference, null);
+  }
+
+  /**
+   * As above, resolving context memory visibility for {@code subjectContext}. A null subject is
+   * fail-closed: only org-wide memories match, so a caller that cannot identify its user never sees
+   * a restricted one. Callers whose filters already exclude memories can leave it null.
+   */
   VectorSearchResponse search(
       String query,
       Map<String, List<String>> filters,
@@ -59,7 +76,8 @@ public interface VectorIndexService {
       int from,
       int k,
       double threshold,
-      String preference);
+      String preference,
+      SubjectContext subjectContext);
 
   String getExistingFingerprint(String indexName, String entityId);
 

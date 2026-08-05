@@ -27,6 +27,7 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -1374,7 +1375,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       int from,
       int k,
       double threshold,
-      String preference) {
+      String preference,
+      SubjectContext subjectContext) {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embedQuery(query);
@@ -1392,7 +1394,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector, overFetchSize, rawOffset, k, filters, threshold);
+                queryVector, overFetchSize, rawOffset, k, filters, threshold, subjectContext);
         String endpoint =
             SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", preference);
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
