@@ -189,7 +189,11 @@ jobs:
           set -o pipefail
           source env/bin/activate
           cd ingestion
+          set +e
           nox --no-venv -s unit-tests 2>&1 | tee unit-test-run.log
+          test_exit_code=${PIPESTATUS[0]}
+          echo "exit-code=$test_exit_code" >> "$GITHUB_OUTPUT"
+          exit "$test_exit_code"
         shell: bash
 
       - name: Classify Python unit test outcome
@@ -201,6 +205,7 @@ jobs:
         run: |
           python3 .github/scripts/classify_test_outcome.py \
             --step-outcome "$TEST_STEP_OUTCOME" \
+            --exit-code '${{ steps.unit-tests.outputs.exit-code }}' \
             --report-glob 'ingestion/junit/test-results-*.xml' \
             --diagnostic-glob 'ingestion/*-test-run.log' \
             --diagnostic-glob 'ingestion/static-checks-run.log' \
