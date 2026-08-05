@@ -222,8 +222,8 @@ def test_snowflake_topology_does_not_leak_into_base_topology():
 
 
 def test_dimensions_carry_the_detail_stripped_from_columns():
-    """The view's columns no longer describe kind/logical table/synonyms, so the
-    Metric's dimensions must carry that detail or it is lost entirely."""
+    """The view's columns no longer describe synonyms, so the Metric's dimensions
+    must carry them or they are lost entirely."""
     row = ("customers", "REGION", "VARCHAR", "customers.c_region", "Customer region", "geo, area")
     request = build_metric_request(
         "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[], view_ref=None
@@ -232,10 +232,19 @@ def test_dimensions_carry_the_detail_stripped_from_columns():
     dimension = request.dimensions[0]
 
     assert dimension.name == "REGION"
-    assert "Customer region" in dimension.description
-    assert "Logical table: customers." in dimension.description
-    assert "Synonyms: geo, area." in dimension.description
+    assert dimension.description == "Customer region Synonyms: geo, area."
     assert dimension.expression == "customers.c_region"
+
+
+def test_description_omits_the_logical_table():
+    """The owning logical table is already named by the expression, so repeating it
+    in the description is noise."""
+    row = ("customers", "REGION", "VARCHAR", "customers.c_region", "Customer region", None)
+    request = build_metric_request(
+        "svc", "db", "sc", "v", metric_row=TOTAL_REVENUE, dimension_rows=[row], fact_rows=[], view_ref=None
+    )
+
+    assert request.dimensions[0].description == "Customer region"
 
 
 def test_dimension_type_is_classified_from_the_data_type():
