@@ -244,7 +244,7 @@ describe('StatusByDimensionCardWidget', () => {
     );
   });
 
-  it('bounds card widths at responsive breakpoints', async () => {
+  it('uses only two, four, or eight responsive columns', async () => {
     (fetchTestCaseSummaryByDimension as jest.Mock).mockResolvedValue({
       data: [],
     });
@@ -260,9 +260,19 @@ describe('StatusByDimensionCardWidget', () => {
       expect(fetchTestCaseSummaryByDimension).toHaveBeenCalledWith(chartFilter)
     );
 
-    expect(container.firstElementChild).toHaveClass(
-      'tw:md:grid-cols-[repeat(2,minmax(0,20rem))]',
-      'tw:lg:grid-cols-[repeat(4,minmax(0,20rem))]'
+    const responsiveContainer = container.firstElementChild;
+    const grid = responsiveContainer?.firstElementChild;
+
+    expect(responsiveContainer).toHaveClass('tw:@container');
+    expect(grid).toHaveClass(
+      'tw:grid-cols-[repeat(2,minmax(0,20rem))]',
+      'tw:@3xl:grid-cols-[repeat(4,minmax(0,20rem))]',
+      'tw:@8xl:grid-cols-[repeat(8,minmax(0,20rem))]',
+      'tw:@8xl:gap-x-8'
+    );
+    expect(grid).not.toHaveClass(
+      'tw:@7xl:grid-cols-[repeat(8,minmax(0,20rem))]',
+      'tw:@7xl:gap-x-8'
     );
   });
 });

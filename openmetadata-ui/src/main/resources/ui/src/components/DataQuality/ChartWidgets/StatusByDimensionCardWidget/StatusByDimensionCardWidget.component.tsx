@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -82,23 +83,31 @@ const StatusByDimensionCardWidget = ({
   }, [chartFilter]);
 
   return (
-    <div className="tw:grid tw:grid-cols-1 tw:justify-start tw:gap-x-6 tw:gap-y-10 tw:md:grid-cols-[repeat(2,minmax(0,20rem))] tw:lg:grid-cols-[repeat(4,minmax(0,20rem))]">
-      {dqDimensions.map((dimension) => (
-        <StatusByDimensionWidget
-          icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
-          isLoading={isDqByDimensionLoading}
-          key={dimension.title}
-          redirectPath={{
-            pathname: observabilityRouterClassBase.getDataQualityPagePath(
-              DataQualityPageTabs.TEST_CASES
-            ),
-            search: QueryString.stringify({
-              dataQualityDimension: dimension.title,
-            }),
-          }}
-          statusData={dimension}
-        />
-      ))}
+    <div className="tw:@container">
+      <div
+        className={classNames(
+          'tw:grid tw:grid-cols-[repeat(2,minmax(0,20rem))] tw:justify-start tw:gap-x-6 tw:gap-y-10',
+          'tw:@3xl:grid-cols-[repeat(4,minmax(0,20rem))]',
+          'tw:@8xl:grid-cols-[repeat(8,minmax(0,20rem))]',
+          'tw:@8xl:gap-x-8'
+        )}>
+        {dqDimensions.map((dimension) => (
+          <StatusByDimensionWidget
+            icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
+            isLoading={isDqByDimensionLoading}
+            key={dimension.title}
+            redirectPath={{
+              pathname: observabilityRouterClassBase.getDataQualityPagePath(
+                DataQualityPageTabs.TEST_CASES
+              ),
+              search: QueryString.stringify({
+                dataQualityDimension: dimension.title,
+              }),
+            }}
+            statusData={dimension}
+          />
+        ))}
+      </div>
     </div>
   );
 };
