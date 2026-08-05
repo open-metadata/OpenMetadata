@@ -45,8 +45,7 @@ public class SearchClusterMetrics {
   // than a flat count. 100 KB proved wildly optimistic: an `all` reindex with vector embeddings
   // OOM'd a 748 MB pod after AutoTune sized an 1840-entity queue at the old estimate. Wide tables,
   // embeddings, and status history run 250 KB - several MB; 256 KB is a calibrated middle ground.
-  // ponytail: calibration knob - the real runtime guard is HeapBackpressure; this only right-sizes
-  // the initial queue so that guard rarely has to fire.
+  // The runtime guard is HeapBackpressure; this only right-sizes the initial queue.
   public static final long ESTIMATED_ENTITY_BYTES = 256 * 1024L;
   public static final double QUEUE_HEAP_FRACTION = 0.25;
   // Floor for the heap-bounded queue: a tiny heap still gets a modest buffer, but never the old
