@@ -220,7 +220,9 @@ public class BasicAuthLoginServlet extends HttpServlet {
         if (pending.mcpState() != null) {
           queryParams.put("state", pending.mcpState());
         }
-        String redirectUrl = UriUtils.constructRedirectUri(pending.redirectUri(), queryParams);
+        String redirectUrl =
+            UriUtils.constructAuthorizationResponseUri(
+                pending.redirectUri(), queryParams, authProvider.getIssuer());
 
         LOG.info("Basic Auth login successful, redirecting to client callback");
         response.sendRedirect(redirectUrl);

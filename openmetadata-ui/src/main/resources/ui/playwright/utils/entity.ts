@@ -2623,6 +2623,46 @@ export const copyAndGetClipboardText = async (
 };
 
 /**
+ * Replaces navigator.clipboard with an in-memory implementation before any page
+ * script runs. Required for grid components (e.g. BulkImport) that call
+ * navigator.clipboard.writeText/readText directly, since the real OS clipboard
+ * API is unreliable in AUT/headless CI even with clipboard permissions granted.
+ *
+ * @param page - Playwright Page object
+ */
+export const mockClipboardApi = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    // The grid only calls navigator.clipboard when window.isSecureContext is true. On a
+    // plain-HTTP AUT origin it is false, so the copy half falls through to execCommand and
+    // writes to the real OS clipboard while the paste half reads this mock - the two never
+    // agree and every paste yields an empty cell.
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+    let clipboardData = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          clipboardData = text;
+        },
+        readText: async () => clipboardData,
+      },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  // addInitScript only applies to documents loaded after it is registered. Callers install
+  // this mid-test, by which point the fixture has already navigated, so without a reload the
+  // mock never runs and the grid silently uses the real clipboard.
+  if (!page.url().startsWith('about:')) {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
+};
+
+/**
  * Validates the format and structure of a copied link URL.
  * Ensures URLs are properly formatted, contain all required components, and follow expected patterns.
  *
@@ -2677,28 +2717,6 @@ export const validateCopiedLinkFormat = ({
     fragment: url.hash,
     isValid: true,
   };
-};
-
-/**
- * Replaces navigator.clipboard with an in-memory implementation before any
- * page script runs. Required for grid components (e.g. BulkImport) that call
- * navigator.clipboard.writeText/readText directly, since the real OS clipboard
- * API is unreliable in AUT/headless CI even with clipboard permissions granted.
- */
-export const mockClipboardApi = async (page: Page): Promise<void> => {
-  await page.addInitScript(() => {
-    let clipboardData = '';
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: {
-        readText: async () => clipboardData,
-        writeText: async (text: string) => {
-          clipboardData = text;
-        },
-      },
-      writable: true,
-    });
-  });
 };
 
 /**
