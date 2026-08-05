@@ -155,19 +155,19 @@ test(
     await test.step('Select all then unselect all test cases in modal', async () => {
       const dialog = page.getByRole('dialog', ADD_TEST_CASES_DIALOG);
       const selectAllCheckbox = dialog.getByTestId('select-all-test-cases');
-      const firstTestCaseCheckbox = dialog
-        .locator('[data-testid^="checkbox-"]')
-        .first();
+      const knownTestCaseCheckbox = dialog.getByTestId(
+        `checkbox-${testCaseName1}`
+      );
 
       await expect(
         dialog.getByTestId('select-all-total-test-cases')
       ).not.toBeVisible();
 
       await selectAllCheckbox.click();
-      await expect(firstTestCaseCheckbox).toBeChecked();
+      await expect(knownTestCaseCheckbox).toBeChecked();
 
       await selectAllCheckbox.click();
-      await expect(firstTestCaseCheckbox).not.toBeChecked();
+      await expect(knownTestCaseCheckbox).not.toBeChecked();
     });
 
     await test.step('Select test case in modal then cancel', async () => {

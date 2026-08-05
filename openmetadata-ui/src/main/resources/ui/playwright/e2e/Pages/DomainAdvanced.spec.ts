@@ -175,9 +175,9 @@ test.describe('Move Assets Between Domains', () => {
         )}`
       );
 
-      await expect(
-        page.locator('[data-testid="domain-link"]').first()
-      ).toContainText(domain1.data.displayName);
+      await expect(page.locator('[data-testid="domain-link"]')).toContainText(
+        domain1.data.displayName
+      );
 
       await table.patch({
         apiContext,
@@ -195,9 +195,9 @@ test.describe('Move Assets Between Domains', () => {
 
       await page.reload();
 
-      await expect(
-        page.locator('[data-testid="domain-link"]').first()
-      ).toContainText(domain2.data.displayName);
+      await expect(page.locator('[data-testid="domain-link"]')).toContainText(
+        domain2.data.displayName
+      );
 
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain1.data);
@@ -266,9 +266,7 @@ test.describe('Move Assets Between Domains', () => {
       const count = await domainLinks.count();
 
       if (count > 0) {
-        await expect(domainLinks.first()).toContainText(
-          subDomain.data.displayName
-        );
+        await expect(domainLinks).toContainText(subDomain.data.displayName);
       }
     } finally {
       await table.delete(apiContext);

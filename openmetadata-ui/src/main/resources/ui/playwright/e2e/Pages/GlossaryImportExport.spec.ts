@@ -73,6 +73,7 @@ type CsvExportResponse = {
 const selectGlossaryManageItem = async (page: Page, itemTestId: string) => {
   await page.getByTestId('manage-button').click();
 
+  // eslint-disable-next-line om-playwright/no-positional-locator -- this dropdown is re-opened repeatedly in this file without a page reload; the AntD Dropdown portal for the previous open can still be animating out, so `.last()` targets the freshest (currently shown) overlay rather than an arbitrary ranked item.
   const manageDropdown = page
     .locator('.glossary-manage-dropdown-list-container')
     .last();
@@ -212,7 +213,9 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
       await expect(page.locator('.rdg-row')).toHaveCount(rowCount + 1);
 
       // click on last row first cell
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the row added by the `add-row-btn` click above is genuinely appended last in the grid, verified by the `rowCount + 1` count assertion.
       const lastRow = page.locator('.rdg-row').last();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the first grid column is a fixed, ordered position (not a ranked pick among ambiguous matches).
       const firstCell = lastRow.locator('.rdg-cell').first();
       await firstCell.click();
 
@@ -422,7 +425,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           failed: '1',
         });
 
-        const firstRow = page.locator('.rdg-row').first();
+        const firstRow = page.locator('.rdg-row').filter({ hasText: 'name1' });
         const errorText = await firstRow
           .locator('.rdg-cell-details')
           .textContent();
@@ -893,10 +896,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           failed: '1',
         });
 
-        const errorCell = page
-          .locator('.rdg-row')
-          .first()
-          .locator('.rdg-cell-details');
+        const errorCell = page.locator('.rdg-row').locator('.rdg-cell-details');
         await errorCell.waitFor({ state: 'visible', timeout: 30000 });
         await expect(errorCell).toContainText('Invalid relation type');
       });

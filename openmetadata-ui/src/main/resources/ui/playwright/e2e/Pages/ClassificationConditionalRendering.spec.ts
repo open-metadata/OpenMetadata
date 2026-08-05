@@ -63,9 +63,9 @@ test('Should show loader then render classification content on initial page load
   await expect(page.getByTestId('header')).toBeVisible();
   await expect(page.getByTestId('description-container')).toBeVisible();
   await expect(page.getByTestId('table')).toBeVisible();
-  await expect(
-    page.getByTestId('side-panel-classification').first()
-  ).toBeVisible();
+  await expect(page.getByTestId('side-panel-classification')).not.toHaveCount(
+    0
+  );
 });
 
 test('Should render all classification detail sections after loading', async ({
@@ -123,9 +123,9 @@ test('Should render classification correctly after page reload', async ({
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(
-    page.getByTestId('side-panel-classification').first()
-  ).toBeVisible();
+  await expect(page.getByTestId('side-panel-classification')).not.toHaveCount(
+    0
+  );
   await expect(page.getByTestId('header')).toBeVisible();
   await expect(page.getByTestId('table')).toBeVisible();
 });

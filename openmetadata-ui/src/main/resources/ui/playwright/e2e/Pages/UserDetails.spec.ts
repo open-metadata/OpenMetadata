@@ -103,9 +103,9 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
-    const teamOption = adminPage
-      .locator('[title="' + team.responseData.displayName + '"]')
-      .first();
+    const teamOption = adminPage.locator(
+      '[title="' + team.responseData.displayName + '"]'
+    );
 
     await expect(teamOption).toBeVisible();
     await teamOption.click();
@@ -154,7 +154,12 @@ test.describe('User with different Roles', () => {
       team.responseData.displayName
     );
 
-    await adminPage.getByText(team.responseData.displayName).first().click();
+    // Scope to the teams section: the team name can also still be present
+    // in the just-closed tree-select's own tag display at this point.
+    await adminPage
+      .getByTestId('user-profile-teams')
+      .getByText(team.responseData.displayName)
+      .click();
 
     const domainResponse = adminPage.waitForResponse((response) =>
       response.url().includes('/api/v1/domains/hierarchy')
@@ -198,10 +203,7 @@ test.describe('User with different Roles', () => {
     await visitUserProfilePage(adminPage, user3.getUserName());
 
     // Wait for the team to be visible in the teams section
-    await adminPage
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await expect(adminPage.getByTestId('loader')).toHaveCount(0);
 
     await adminPage
       .getByTestId('user-profile-teams')
@@ -230,6 +232,10 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
+    // The team is already assigned, so its title attribute matches both the
+    // Select's own selected-tag display and the tree node in the dropdown;
+    // index 1 is the actual tree node (needed to toggle it off).
+    // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
     await adminPage
       .locator('[title="' + team.responseData.displayName + '"]')
       .nth(1)
@@ -471,8 +477,7 @@ test.describe('User with different Roles', () => {
     const parentDomainNode = adminPage
       .locator('.domain-custom-dropdown-class')
       .locator('.ant-tree-treenode')
-      .filter({ hasText: domain.responseData.displayName })
-      .first();
+      .filter({ hasText: domain.responseData.displayName });
 
     // Click on the switcher icon to expand the parent domain
     await parentDomainNode.locator('.ant-tree-switcher').click();
@@ -645,7 +650,9 @@ test.describe('User with different Roles', () => {
       const searchResponse = await searchPromise;
       expect(searchResponse.status()).toBe(200);
 
-      const assetCard = adminPage.getByText(assetCardText).first();
+      const assetCard = adminPage
+        .locator('#asset-tab')
+        .getByText(assetCardText);
 
       await expect(assetCard).toBeVisible();
 

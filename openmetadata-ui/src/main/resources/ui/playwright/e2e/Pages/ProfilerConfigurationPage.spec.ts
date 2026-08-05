@@ -56,12 +56,10 @@ base.beforeAll(async ({ browser }) => {
 const removeAllMetricConfigRows = async (page: Page) => {
   await page.getByTestId('add-fields').waitFor();
   try {
-    await page
-      .locator('[data-testid^="remove-filter-"]')
-      .first()
-      .waitFor({ timeout: 1000 });
     const rows = page.locator('[data-testid^="remove-filter-"]');
+    await expect(rows).not.toHaveCount(0, { timeout: 1000 });
     while ((await rows.count()) > 0) {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- draining every row one click at a time; which row is removed first is immaterial
       await rows.first().click();
     }
   } catch {

@@ -859,6 +859,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             // If there are multiple columns, test navigation
             if (totalCount > 1) {
+              // The nav footer has exactly two icon-only buttons (prev, next)
+              // with no testid or aria-label to distinguish them.
+              // eslint-disable-next-line om-playwright/no-positional-locator -- icon-only prev/next pair, no other distinguishing attribute
               const nextButton = panelContainer
                 .locator('.navigation-container')
                 .locator('button')
@@ -881,6 +884,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 }
 
                 // Navigate back
+                // eslint-disable-next-line om-playwright/no-positional-locator -- icon-only prev/next pair, no other distinguishing attribute
                 const prevButton = panelContainer
                   .locator('.navigation-container')
                   .locator('button')
@@ -970,8 +974,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               '.nested-column-name'
             );
 
-            // Should have at least one nested column link
-            await expect(nestedColumnLinks.first()).toBeVisible({
+            // Nested tables render multiple links; this is really an
+            // existence check, so assert on count rather than a specific
+            // (positionally-picked) element.
+            await expect(nestedColumnLinks).not.toHaveCount(0, {
               timeout: 5000,
             });
 
@@ -983,7 +989,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await test.step('Verify count badge shows only top-level columns', async () => {
             const panelContainer = page.locator('.column-detail-panel');
 
-            // Find count badge - it's a Box with Typography.Text containing just a number
+            // Find count badge - it's a Box with Typography.Text containing just a number.
+            // The panel can contain more than one bare-digit element (e.g. other
+            // count badges); there is no testid to disambiguate, so the first
+            // digit-only, non-nested-link match is used.
+            // eslint-disable-next-line om-playwright/no-positional-locator -- no testid distinguishes the top-level count badge from other bare-digit text in the panel
             const countBadge = panelContainer
               .locator('text=/^\\d+$/')
               .filter({ hasNot: page.locator('.nested-column-name') })
@@ -1042,6 +1052,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               '.nested-column-name'
             );
 
+            // Any nested column link exercises the click flow; the first one
+            // is a deterministic, arbitrary pick among possibly several.
+            // eslint-disable-next-line om-playwright/no-positional-locator -- deliberately picks one deterministic nested link to click, any of them exercises the same flow
             const firstLink = nestedColumnLinks.first();
             await firstLink.scrollIntoViewIfNeeded();
 
@@ -1073,6 +1086,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const panelContainer = page.locator('.column-detail-panel');
 
             // Navigate back to parent column first
+            // eslint-disable-next-line om-playwright/no-positional-locator -- icon-only prev/next pair, no other distinguishing attribute
             const prevButton = panelContainer
               .locator('.navigation-container')
               .locator('button')
@@ -1096,6 +1110,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
                 Math.floor(totalLinks / 2),
                 totalLinks - 1
               );
+              // eslint-disable-next-line om-playwright/no-positional-locator -- deliberately targets the middle tree depth, not a UI-derived guess
               const intermediateLink = allNestedLinks.nth(middleIndex);
 
               await intermediateLink.scrollIntoViewIfNeeded();
@@ -1267,7 +1282,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             );
 
             if ((await nestedColumnLinks.count()) > 0) {
-              await expect(nestedColumnLinks.first()).toBeVisible();
+              // Multiple nested links can exist; this is really an existence
+              // check, so assert on count rather than a positionally-picked element.
+              await expect(nestedColumnLinks).not.toHaveCount(0);
 
               const linkCount = await nestedColumnLinks.count();
 
@@ -1605,7 +1622,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const dataTypeChip = page.locator('.data-type-chip');
 
             // Data type chip should be attached to DOM (may be empty for some entity types)
-            await expect(dataTypeChip.first()).toBeAttached();
+            await expect(dataTypeChip).not.toHaveCount(0);
           }
 
           // Verify Overview tab is active by default
@@ -1621,7 +1638,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           if (await editDescriptionButton.isVisible()) {
             await editDescriptionButton.click();
 
-            // Wait for description box to be visible and ready
+            // Wait for description box to be visible and ready. `.first()` matches
+            // the established convention for this selector across the suite
+            // (e.g. playwright/utils/entity.ts), which can briefly leave a prior
+            // editor instance mounted.
+            // eslint-disable-next-line om-playwright/no-positional-locator -- matches this selector's established convention elsewhere in the suite (playwright/utils/entity.ts)
             const descBox = page.locator(descriptionBox).first();
             await expect(descBox).toBeVisible();
             await descBox.clear();
@@ -1671,6 +1692,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           // Verify pagination text format: "X of Y columns" (includes nested columns)
           expect(initialText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
 
+          // eslint-disable-next-line om-playwright/no-positional-locator -- icon-only prev/next pair, no other distinguishing attribute
           const nextButton = page
             .locator('.navigation-container')
             .locator('button')
@@ -1695,6 +1717,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             expect(updatedText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
 
             // Navigate back to previous column
+            // eslint-disable-next-line om-playwright/no-positional-locator -- icon-only prev/next pair, no other distinguishing attribute
             const prevButton = page
               .locator('.navigation-container')
               .locator('button')
@@ -1731,6 +1754,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await test.step('Verify key profile metrics are displayed in column detail panel', async () => {
             // Open column detail panel and wait for profile API call
             const columnNameTestId = 'column-name';
+            // A nested-column row can contain descendant rows that carry their
+            // own column-name testid, so this is not provably a singleton.
+            // eslint-disable-next-line om-playwright/no-positional-locator -- row can contain nested descendant rows with the same testid; conservative pick on a historically flaky spec
             const columnName = page
               .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
               .getByTestId(columnNameTestId)
@@ -1945,11 +1971,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
               await expect(failedCards).toHaveCount(1);
 
-              const failedCard = failedCards.first();
-
-              await expect(failedCard.locator('.test-case-name')).toContainText(
-                testCase2Name
-              );
+              await expect(
+                failedCards.locator('.test-case-name')
+              ).toContainText(testCase2Name);
             });
 
             await test.step('Filter by success and verify test case card', async () => {
@@ -1967,7 +1991,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
               await expect(successCards).toHaveCount(1);
               await expect(
-                successCards.first().locator('.test-case-name')
+                successCards.locator('.test-case-name')
               ).toContainText(testCase1Name);
 
               await closeColumnDetailPanel(page);
@@ -2090,6 +2114,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
               const cardCount = await incidentCards.count();
 
               if (cardCount > 0) {
+                // cardCount is not asserted to be 1; picking a representative
+                // card (first) is deliberate so the visibility check below stays
+                // strict-mode safe regardless of how many incident cards exist.
+                // eslint-disable-next-line om-playwright/no-positional-locator -- cardCount can exceed 1; first is a deliberate representative pick, not a UI-derived guess
                 const assigneeSection = incidentCards
                   .first()
                   .locator('.test-case-detail-item')

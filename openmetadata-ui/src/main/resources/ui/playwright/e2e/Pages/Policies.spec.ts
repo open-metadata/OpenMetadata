@@ -55,7 +55,12 @@ const addRule = async (
   // Validate form name field input
   await page.fill('[data-testid="rule-name"]', rulename);
 
-  // Enter rule description
+  // Enter rule description. descriptionIndex is a caller-supplied index:
+  // how many description boxes already exist on the page before this one
+  // (the policy's own description box, any earlier rules' description
+  // boxes) differs depending on which flow (inline creation vs. the
+  // "Add Rule" modal) addRule is invoked from.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
   await page
     .locator(descriptionBox)
     .nth(descriptionIndex)
@@ -64,13 +69,17 @@ const addRule = async (
   // Select resource dropdown
   await page.locator('[data-testid="resources"]').click();
 
-  // Select All
+  // Select All — position 0 is always the tree-select's root "All" node.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
   await page.locator('.ant-select-tree-checkbox-inner').first().click();
 
   // Click on operations dropdown
   await page.locator('[data-testid="operations"]').click();
 
-  // Select operation
+  // Select "All" operations — the operations tree renders one extra node
+  // ahead of the root "All" checkbox, so it lands at position 1 here
+  // rather than 0 (RULE_DETAILS.operations asserts 'All' below).
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
   await page.locator('.ant-select-tree-checkbox-inner').nth(1).click();
 
   // Click on condition combobox
@@ -137,7 +146,7 @@ test.describe(
         });
 
         // Enter description
-        await page.locator(descriptionBox).nth(0).fill(DESCRIPTION);
+        await page.locator(descriptionBox).fill(DESCRIPTION);
 
         // Enter rule name
         await addRule(page, RULE_NAME, RULE_DESCRIPTION, 1);
@@ -151,20 +160,19 @@ test.describe(
 
         // Verify policy description
         await expect(
-          page
-            .locator(
-              '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
-            )
-            .nth(0)
+          page.locator(
+            '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
+          )
         ).toContainText(DESCRIPTION);
 
-        // Verify rule description
+        // Verify rule description — scope to the rule card so this targets
+        // the rule's own description viewer, not the policy's.
         await expect(
           page
+            .getByTestId('rule-card')
             .locator(
               '[data-testid="viewer-container"] > [data-testid="markdown-parser"]'
             )
-            .nth(1)
         ).toContainText(RULE_DESCRIPTION);
 
         // Verify other details
@@ -200,11 +208,9 @@ test.describe(
 
         // Validate added description
         await expect(
-          page
-            .locator(
-              '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
-            )
-            .nth(0)
+          page.locator(
+            '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
+          )
         ).toContainText(`${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
       });
 
@@ -233,21 +239,29 @@ test.describe(
         // Verify other details
         await page.getByText(RULE_NAME, { exact: true }).click();
 
-        await expect(
-          page.locator('[data-testid="resources"]').last()
-        ).toContainText(RULE_DETAILS.resources);
+        // Scope to the newly-added rule's own card rather than relying on
+        // DOM order, since every rule's details render simultaneously.
+        const newRuleCard = page.getByTestId('rule-card').filter({
+          has: page.getByTestId('rule-name').getByText(NEW_RULE_NAME, {
+            exact: true,
+          }),
+        });
 
-        await expect(
-          page.locator('[data-testid="operations"]').last()
-        ).toContainText(RULE_DETAILS.operations);
+        await expect(newRuleCard.getByTestId('resources')).toContainText(
+          RULE_DETAILS.resources
+        );
 
-        await expect(
-          page.locator('[data-testid="effect"]').last()
-        ).toContainText(RULE_DETAILS.effect);
+        await expect(newRuleCard.getByTestId('operations')).toContainText(
+          RULE_DETAILS.operations
+        );
 
-        await expect(
-          page.locator('[data-testid="condition"]').last()
-        ).toContainText(RULE_DETAILS.condition);
+        await expect(newRuleCard.getByTestId('effect')).toContainText(
+          RULE_DETAILS.effect
+        );
+
+        await expect(newRuleCard.getByTestId('condition')).toContainText(
+          RULE_DETAILS.condition
+        );
       });
 
       await test.step('Edit rule name for created Rule', async () => {

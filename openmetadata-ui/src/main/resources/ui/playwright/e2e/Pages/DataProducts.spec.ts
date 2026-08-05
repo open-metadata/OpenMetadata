@@ -286,7 +286,7 @@ test.describe('Data Products', () => {
       // Table should be hidden, cards should be visible
       await expect(page.getByTestId('table-view-container')).not.toBeVisible();
       await expect(page.getByTestId('card-view-container')).toBeVisible();
-      await expect(page.getByTestId('entity-card').first()).toBeVisible();
+      await expect(page.getByTestId('entity-card')).not.toHaveCount(0);
     });
 
     await test.step('Switch back to table view', async () => {
@@ -486,10 +486,7 @@ test.describe('Data Products', () => {
       await domainOption.waitFor({ state: 'visible' });
       await domainOption.click();
       await page.keyboard.press('Escape');
-      await page
-        .locator('[role="listbox"]')
-        .first()
-        .waitFor({ state: 'hidden' });
+      await page.locator('[role="listbox"]').waitFor({ state: 'hidden' });
     });
 
     await test.step('Search and select tag via TagSuggestion', async () => {

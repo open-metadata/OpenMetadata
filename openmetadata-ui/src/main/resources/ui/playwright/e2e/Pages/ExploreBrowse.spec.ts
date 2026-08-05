@@ -48,7 +48,6 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
     .locator('.ant-tree-switcher svg')
-    .first()
     .click();
   await res;
   await waitForAllLoadersToDisappear(page);
@@ -218,9 +217,12 @@ test.describe(
 
       // The middle crumbs are collapsed into a clickable "…" menu — the trail
       // stays compact (first / … / last) instead of spanning the whole card.
-      const collapseButton = page
-        .getByRole('button', { name: 'Show hidden breadcrumbs' })
-        .first();
+      const resultCard = page.getByTestId(
+        `table-data-card_${table.entityResponseData.fullyQualifiedName}`
+      );
+      const collapseButton = resultCard.getByRole('button', {
+        name: 'Show hidden breadcrumbs',
+      });
       await expect(collapseButton).toBeVisible();
 
       // Clicking the "…" reveals the hidden middle crumbs.

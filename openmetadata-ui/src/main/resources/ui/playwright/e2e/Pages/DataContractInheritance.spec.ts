@@ -77,6 +77,7 @@ const fillContractDetailsForm = async (
   await page.fill('.om-block-editor[contenteditable="true"]', description);
 
   await page.getByTestId('select-owners').click();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- the test only needs any owner assigned (asserted via user-tag becoming visible), not a specific identity, so the first suggested option in the unfiltered picker is picked deliberately
   await page.locator('.rc-virtual-list-holder-inner li').first().click();
 
   await expect(page.getByTestId('user-tag')).toBeVisible();
@@ -96,7 +97,7 @@ const fillSemanticsForm = async (
   await page.fill('#semantics_0_name', semanticsData.name);
   await page.fill('#semantics_0_description', semanticsData.description);
 
-  const ruleLocator = page.locator('.group').nth(0);
+  const ruleLocator = page.locator('.group');
   await selectOption(
     page,
     ruleLocator.locator('.group--field .ant-select'),

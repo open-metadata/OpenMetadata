@@ -411,7 +411,7 @@ test('Classification Page', async ({ page }) => {
 
     const acceptSuggestion = waitForTaskResolveResponse(page);
 
-    const acceptButton = page.getByTestId('approve-button').first();
+    const acceptButton = page.getByTestId('approve-button');
     await acceptButton.waitFor({ state: 'visible' });
     await acceptButton.click();
     await acceptSuggestion;
@@ -482,9 +482,9 @@ test('Classification Page', async ({ page }) => {
 
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByTestId('side-panel-classification').first().waitFor({
-      state: 'visible',
-    });
+    await expect(page.getByTestId('side-panel-classification')).not.toHaveCount(
+      0
+    );
 
     // Find the classification and verify term count is 0
     const classificationElement = page
@@ -535,7 +535,6 @@ test('Search tag using classification display name should work', async ({
     .getByTestId('KnowledgePanel.Tags')
     .getByTestId('tags-container')
     .getByTestId('add-tag')
-    .first()
     .click();
 
   await initialQueryResponse;
@@ -582,9 +581,9 @@ test('Verify system classification term counts', async ({ page }) => {
 
   await classificationsResponse;
 
-  await page.getByTestId('side-panel-classification').first().waitFor({
-    state: 'visible',
-  });
+  await expect(page.getByTestId('side-panel-classification')).not.toHaveCount(
+    0
+  );
 
   // Get all classification elements
   const classificationElements = await page
@@ -680,11 +679,9 @@ test('Disabled tag should not allow adding assets from Assets tab', async ({
     // Visit the disabled tag page
     await tag1.visitPage(page);
 
-    await page
-      .getByTestId('tags-container')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await expect(
+      page.getByTestId('tags-container').getByTestId('loader')
+    ).toHaveCount(0);
 
     // Verify the disabled badge is visible
     await expect(page.getByTestId('disabled')).toBeVisible();
@@ -762,6 +759,11 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
     await expect(tagsPanel.getByTestId(`tag-${keptTagFqn}`)).toBeVisible();
     await expect(tagsPanel.getByTestId(`tag-${removedTagFqn}`)).toBeVisible();
 
+    // TagsContainerV2 can render two edit-button instances at once (a
+    // header WidgetEditButton and an inline EditIconButton next to
+    // existing tags); both call the same handleAddClick handler, so
+    // either is equivalent to click.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
     await tagsPanel.getByTestId('edit-button').first().click();
 
     await expect(page.locator('#tagsForm_tags')).toBeVisible();
@@ -776,8 +778,8 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
     await page.locator('#tagsForm_tags').click();
     await page.locator('#tagsForm_tags').fill(addedTag.data.name);
 
-    await expect(page.getByTestId(`tag-${addedTagFqn}`).first()).toBeVisible();
-    await page.getByTestId(`tag-${addedTagFqn}`).first().click();
+    await expect(page.getByTestId(`tag-${addedTagFqn}`)).toBeVisible();
+    await page.getByTestId(`tag-${addedTagFqn}`).click();
 
     await page
       .locator('.ant-select-dropdown')

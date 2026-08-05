@@ -201,8 +201,8 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify lineage section shows zero counts', async () => {
-        await expect(page.locator('text=0 input').first()).toBeVisible();
-        await expect(page.locator('text=0 output').first()).toBeVisible();
+        await expect(page.locator('text=0 input')).toBeVisible();
+        await expect(page.locator('text=0 output')).toBeVisible();
       });
     });
 
@@ -255,11 +255,10 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port counts', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
-        await expect(page.locator('text=(3)').first()).toBeVisible();
+        await verifyPortCounts(page, 2, 3);
 
-        await expect(page.locator('text=2 input').first()).toBeVisible();
-        await expect(page.locator('text=3 output').first()).toBeVisible();
+        await expect(page.locator('text=2 input')).toBeVisible();
+        await expect(page.locator('text=3 output')).toBeVisible();
       });
     });
 
@@ -308,7 +307,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await verifyPortCounts(page, 1, 0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -417,7 +416,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify both ports were added', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
+        await verifyPortCounts(page, 2, 0);
       });
     });
 
@@ -566,7 +565,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await verifyPortCounts(page, 1, 0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -921,7 +920,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was removed', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await verifyPortCounts(page, 1, 0);
       });
     });
 
@@ -1005,7 +1004,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port still exists', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await verifyPortCounts(page, 1, 0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -1052,7 +1051,7 @@ test.describe('Input Output Ports', () => {
         await expect(
           page.getByTestId('no-input-ports-placeholder')
         ).toBeVisible();
-        await expect(page.locator('text=(0)').first()).toBeVisible();
+        await verifyPortCounts(page, 0, 0);
       });
     });
   });

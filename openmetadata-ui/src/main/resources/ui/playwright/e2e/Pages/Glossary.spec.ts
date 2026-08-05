@@ -166,6 +166,9 @@ test.describe('Glossary tests', () => {
       // Check reviewer's notifications before approval
       await page1.getByTestId('task-notifications').click();
       await page1.locator('.ant-dropdown').waitFor();
+      // Notification list renders newest-first and the task above was just
+      // created/verified, so the first entry is that task's notification.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
       const firstNotification = page1
         .locator('.ant-list-items > .ant-list-item')
         .first();
@@ -1232,7 +1235,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossary1);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await page.getByTestId('approve-button').click();
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1275,7 +1278,7 @@ test.describe('Glossary tests', () => {
       await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
 
       const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
+      await page.getByTestId('approve-button').click();
       await taskResolve;
 
       await redirectToHomePage(page);
@@ -1700,7 +1703,7 @@ test.describe('Glossary tests', () => {
       const dragColumnKey = 'status';
       const dropColumnKey = 'owners';
       await dragAndDropColumn(page, dragColumnKey, dropColumnKey);
-      await page.locator('thead th').first().waitFor({ state: 'visible' });
+      await expect(page.locator('thead th')).not.toHaveCount(0);
       const columnHeaders = page.locator('thead th');
       // eslint-disable-next-line playwright/prefer-web-first-assertions
       const columnText = await columnHeaders.allTextContents();
@@ -2173,10 +2176,7 @@ test.describe('Glossary tests', () => {
       await test.step('Change application language to German', async () => {
         await waitForAllLoadersToDisappear(page);
 
-        const languageDropdown = page
-          .locator('.nav-bar-side-items button.ant-dropdown-trigger')
-          .filter({ hasText: 'EN' })
-          .first();
+        const languageDropdown = page.getByTestId('language-selector-button');
         await languageDropdown.click();
 
         const germanOption = page.getByRole('menuitem', {
@@ -2209,10 +2209,7 @@ test.describe('Glossary tests', () => {
       await test.step('Change language back to English', async () => {
         await waitForAllLoadersToDisappear(page);
 
-        const languageDropdown = page
-          .locator('.nav-bar-side-items button.ant-dropdown-trigger')
-          .filter({ hasText: 'DE' })
-          .first();
+        const languageDropdown = page.getByTestId('language-selector-button');
         await languageDropdown.click();
 
         const englishOption = page.getByRole('menuitem', {
@@ -2530,7 +2527,7 @@ test.describe('Glossary tests', () => {
       const synonymsSelect = termModal.getByTestId('synonyms');
       await synonymsSelect.click();
 
-      const synonymsInput = synonymsSelect.locator('input').first();
+      const synonymsInput = synonymsSelect.locator('input');
       for (const synonym of synonyms) {
         await synonymsInput.fill(synonym);
         await synonymsInput.press('Enter');
@@ -2689,7 +2686,14 @@ test.describe('Glossary tests', () => {
 
       const termModal = page.locator('.edit-glossary-modal');
       const tagsSelect = termModal.locator('[data-testid="tag-selector"]');
+      // AddGlossaryTermForm's Tags and Related Terms fields both render via
+      // AsyncSelectList/TreeAsyncSelectList, which hardcode the same
+      // data-testid="tag-selector" — the field-level testid passed down
+      // ('tags-container' / 'related-terms') is swallowed by TagSuggestion
+      // and never reaches the DOM. Tags renders first in the form.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
       await tagsSelect.first().click();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
       await tagsSelect.first().locator('input[type="search"]').fill(tagFqn);
 
       await expect(page.getByTestId(`tag-${tagFqn}`)).toBeVisible();

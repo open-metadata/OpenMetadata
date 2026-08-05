@@ -214,6 +214,7 @@ test.describe('Search Settings', () => {
       await openMatchingFieldsPanel(page);
 
       const fieldContainers = page.getByTestId('field-container-header');
+      // eslint-disable-next-line om-playwright/no-positional-locator -- any configured field works; this only exercises the shared highlight/weight/match-type widgets, not a specific field's identity
       const firstFieldContainer = fieldContainers.first();
       await firstFieldContainer.click();
 
@@ -663,6 +664,7 @@ test.describe('Search Settings', () => {
       await openMatchingFieldsPanel(page);
 
       const fieldContainers = page.getByTestId('field-container-header');
+      // eslint-disable-next-line om-playwright/no-positional-locator -- any configured field works; this only exercises the shared highlight/weight/match-type widgets, not a specific field's identity
       const firstFieldContainer = fieldContainers.first();
       await firstFieldContainer.click();
 

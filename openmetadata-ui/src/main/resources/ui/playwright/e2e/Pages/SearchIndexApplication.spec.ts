@@ -48,10 +48,9 @@ const installSearchIndexApplication = async (page: Page) => {
   expect(response.status()).toBe(200);
 
   // Wait for at least one app card to be rendered before polling.
-  await page
-    .locator('[data-testid$="-application-card"]')
-    .first()
-    .waitFor({ state: 'visible' });
+  await expect(
+    page.locator('[data-testid$="-application-card"]')
+  ).not.toHaveCount(0);
 
   // Paginate through marketplace pages until the card is found.
   let cardFound = await page
@@ -74,10 +73,9 @@ const installSearchIndexApplication = async (page: Page) => {
     await nextPageResponse;
 
     // Wait for the next page's cards to render before re-checking.
-    await page
-      .locator('[data-testid$="-application-card"]')
-      .first()
-      .waitFor({ state: 'visible' });
+    await expect(
+      page.locator('[data-testid$="-application-card"]')
+    ).not.toHaveCount(0);
 
     cardFound = await page
       .locator('[data-testid="search-indexing-application-card"]')

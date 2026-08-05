@@ -127,7 +127,7 @@ test.describe('Domain Owner Management', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(page.getByTestId('owner-link')).toBeVisible();
     } finally {
       await domain.delete(apiContext);
       await user.delete(apiContext);
@@ -169,7 +169,7 @@ test.describe('Domain Owner Management', () => {
         timeout: 10000,
       });
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(page.getByTestId('owner-link')).toBeVisible();
 
       // Click edit owner button
       await page.getByTestId('edit-owner').click();
@@ -338,7 +338,10 @@ test.describe('Data Product UI Operations', () => {
       await selectDataProduct(page, dataProduct.responseData);
 
       await page.getByTestId('manage-button').click();
-      // Use first() since there may be multiple items with rename-button
+      // DataProductsDetailsPage.component.tsx's "Style" menu item reuses
+      // id="rename-button" (a pre-existing bug), so this testid matches two
+      // menu entries; the Rename item renders first in DOM order.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
       await page.getByTestId('rename-button').first().click();
 
       // Wait for modal to appear
@@ -472,7 +475,7 @@ test.describe('Data Product UI Operations', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(page.getByTestId('owner-link')).toBeVisible();
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
@@ -560,7 +563,7 @@ test.describe('Subdomain Management', () => {
       });
 
       await page.getByTestId('manage-button').click();
-      await page.getByTestId('rename-button').first().click();
+      await page.getByTestId('rename-button').click();
 
       // Wait for modal to appear
       await expect(page.getByRole('dialog')).toBeVisible();
@@ -813,7 +816,7 @@ test.describe('Domain Breadcrumb Navigation', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.responseData);
 
-      const domainLink = page.locator('[data-testid="domain-link"]').first();
+      const domainLink = page.locator('[data-testid="domain-link"]');
 
       if (await domainLink.isVisible()) {
         await domainLink.click();
@@ -915,9 +918,9 @@ test.describe('Copy FQN Functionality', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      const copyButton = page
-        .locator('[data-testid="entity-header-name"] button')
-        .first();
+      const copyButton = page.locator(
+        '[data-testid="entity-header-name"] button'
+      );
 
       if (await copyButton.isVisible()) {
         await copyButton.click();

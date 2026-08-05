@@ -372,7 +372,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('entity-header-title')
       ).toHaveText(topic.entityResponseData.displayName ?? '');
 
-      await page.getByLabel('Close').first().click();
+      await page.getByLabel('Close').click();
 
       await expect(page.locator('[role="dialog"]')).not.toBeVisible();
     });
@@ -422,6 +422,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         const visibleTexts: Array<string> = [];
         for (let i = 0; i < breadcrumbCount; i++) {
           visibleTexts.push(
+            // eslint-disable-next-line om-playwright/no-positional-locator -- iterating breadcrumb items by loop index to read them in DOM order
             (await breadcrumbItems.nth(i).textContent())?.trim() ?? ''
           );
         }

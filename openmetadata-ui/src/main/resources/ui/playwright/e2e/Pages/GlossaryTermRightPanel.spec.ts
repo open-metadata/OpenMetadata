@@ -153,7 +153,7 @@ test.describe('Glossary Term Assets Tab - Right Panel', () => {
     await rightPanel.waitForPanelLoaded();
 
     await expect(
-      rightPanel.getSummaryPanel().getByTestId('entity-link').first()
+      rightPanel.getSummaryPanel().getByTestId('entity-link')
     ).toBeVisible();
   });
 

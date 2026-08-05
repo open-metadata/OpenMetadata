@@ -878,7 +878,7 @@ test.describe('Teams Page', () => {
       });
 
       await test.step('Toggle Show Deleted and verify include=deleted is sent', async () => {
-        const deletedToggle = page.getByRole('switch').first();
+        const deletedToggle = page.getByRole('switch');
         await expect(deletedToggle).toBeVisible();
 
         const teamsResponsePromise = page.waitForResponse(

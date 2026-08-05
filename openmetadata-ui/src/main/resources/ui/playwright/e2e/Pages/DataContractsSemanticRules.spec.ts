@@ -98,7 +98,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -195,7 +195,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -299,7 +299,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -403,7 +403,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -499,7 +499,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -582,7 +582,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -666,7 +666,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -756,7 +756,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -844,7 +844,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -933,7 +933,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1066,7 +1066,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1151,7 +1151,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1237,7 +1237,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1321,7 +1321,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1405,7 +1405,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1481,7 +1481,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1563,7 +1563,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1611,7 +1611,6 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .locator('.group')
-        .first()
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
       await versionInput.clear();
       await versionInput.fill(actualVersion);
@@ -1680,7 +1679,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1733,7 +1732,6 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .locator('.group')
-        .first()
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
       await versionInput.clear();
       await versionInput.fill(domainBumpedVersion);
@@ -1800,7 +1798,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1837,7 +1835,6 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .locator('.group')
-        .first()
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
       await versionInput.clear();
       await versionInput.fill('0.01');
@@ -1877,7 +1874,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1915,7 +1912,6 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .locator('.group')
-        .first()
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
       await versionInput.clear();
       await versionInput.fill('0.01');
@@ -1957,7 +1953,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -1994,7 +1990,6 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .locator('.group')
-        .first()
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
       await versionInput.clear();
       await versionInput.fill('0.01');
@@ -2037,7 +2032,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2074,7 +2069,6 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       const versionInput = page
         .locator('.group')
-        .first()
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
       await versionInput.clear();
       await versionInput.fill('0.01');
@@ -2139,7 +2133,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2237,7 +2231,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2335,7 +2329,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2432,7 +2426,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2573,7 +2567,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2657,7 +2651,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2747,7 +2741,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2837,7 +2831,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -2927,7 +2921,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3016,7 +3010,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3105,7 +3099,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3189,7 +3183,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3275,7 +3269,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3362,7 +3356,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3412,7 +3406,6 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
       );
       await page
         .locator('.group')
-        .nth(0)
         .locator('.rule--value .ant-picker-range')
         .click();
 
@@ -3461,7 +3454,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3511,11 +3504,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'dd.MM.yyyy'
       );
 
-      await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
+      await page.locator('.group').locator('.rule--value .ant-picker').click();
       await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
@@ -3557,7 +3546,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3610,11 +3599,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'dd.MM.yyyy'
       );
 
-      await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
+      await page.locator('.group').locator('.rule--value .ant-picker').click();
       await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
@@ -3656,7 +3641,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3708,11 +3693,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'dd.MM.yyyy'
       );
 
-      await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
+      await page.locator('.group').locator('.rule--value .ant-picker').click();
       await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
@@ -3758,7 +3739,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3810,11 +3791,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         'dd.MM.yyyy'
       );
 
-      await page
-        .locator('.group')
-        .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
+      await page.locator('.group').locator('.rule--value .ant-picker').click();
       await page.locator('.ant-picker-dropdown').waitFor({
         state: 'visible',
       });
@@ -3871,7 +3848,7 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
         DATA_CONTRACT_SEMANTICS1.description
       );
 
-      const ruleLocator = page.locator('.group').nth(0);
+      const ruleLocator = page.locator('.group');
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
@@ -3888,11 +3865,14 @@ test.describe('Data Contract - Semantics Fields Validation', () => {
     await test.step('Add a second rule condition', async () => {
       await page.getByTestId('add-new-rule-btn').click();
 
-      await expect(page.locator('.action--DELETE').first()).toBeVisible();
+      await expect(page.locator('.action--DELETE')).not.toHaveCount(0);
     });
 
     await test.step('Delete the filled rule condition and verify rule error is shown', async () => {
       const deleteButtons = page.locator('.action--DELETE');
+      // The first rule (added and filled in the previous step) must be removed,
+      // leaving the second, still-empty rule — deletion is by DOM order, not identity.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- deletes the filled first rule by design, leaving the empty second rule to assert its validation error
       await deleteButtons.first().click();
 
       await expect(page.locator('.action--DELETE')).not.toBeVisible();

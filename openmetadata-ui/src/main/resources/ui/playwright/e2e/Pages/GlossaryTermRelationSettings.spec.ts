@@ -148,7 +148,7 @@ const findRowAcrossPages = async (
 
     if (found) return;
 
-    const nextBtn = page.getByRole('button', { name: 'Next Page' }).first();
+    const nextBtn = page.getByRole('button', { name: 'Next Page' });
 
     if ((await nextBtn.count()) === 0 || !(await nextBtn.isEnabled())) {
       throw new Error(`testId "${testId}" not found on any page`);
@@ -331,7 +331,7 @@ test.describe('Glossary Term Relation Settings', () => {
           response.request().method() === 'GET'
       );
 
-      await page.getByRole('button', { name: 'Next Page' }).first().click();
+      await page.getByRole('button', { name: 'Next Page' }).click();
 
       expect((await nextPageResponse).ok()).toBe(true);
     } finally {

@@ -583,11 +583,9 @@ test.describe('User Profile Feed Interactions', () => {
     await visitOwnProfilePage(page);
     await feedResponse;
 
-    await page
-      .getByTestId('message-container')
-      .first()
-      .waitFor({ state: 'visible' });
+    await expect(page.getByTestId('message-container')).not.toHaveCount(0);
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test clicks any real feed message's avatar to verify profile navigation, not a specific one
     const avatar = page
       .locator('#feedData [data-testid="message-container"]')
       .first()
@@ -768,8 +766,12 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     const personaCount = await personaLabels.count();
 
     if (personaCount > 1) {
-      // Get the second persona (not the default one)
-      const secondPersona = personaLabels.nth(1);
+      // Select persona2 (the known non-default persona) by its own display
+      // name — which persona this is does not matter here, only that
+      // switching to a specific, identifiable non-default persona works.
+      const secondPersona = personaLabels.filter({
+        hasText: persona2.responseData.displayName,
+      });
 
       // Click on the second persona
       const personaChangeResponse = adminPage.waitForResponse(
@@ -815,6 +817,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
     if (personaCount > 1) {
       // First persona should have the default tag
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the default persona sorts first; position is the subject under test
       const firstPersona = personaLabels.first();
 
       await expect(
@@ -853,14 +856,18 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
     if (personaCount > 1) {
       // Verify default persona is initially selected (first one)
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the default persona sorts first; position is the subject under test
       const defaultPersonaRadio = personaLabels
         .first()
         .locator('input[type="radio"]');
 
       await expect(defaultPersonaRadio).toBeChecked();
 
-      // Select the second (non-default) persona
-      const secondPersona = personaLabels.nth(1);
+      // Select persona2 (the known non-default persona) by its own display
+      // name, not by position.
+      const secondPersona = personaLabels.filter({
+        hasText: persona2.responseData.displayName,
+      });
       const personaChangeResponse = adminPage.waitForResponse(
         '/api/v1/docStore/name/persona.*'
       );
@@ -872,7 +879,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       // Verify the second persona is now selected
       const secondPersonaRadio = personaLabels
-        .nth(1)
+        .filter({ hasText: persona2.responseData.displayName })
         .locator('input[type="radio"]');
 
       await expect(secondPersonaRadio).toBeChecked();
@@ -899,6 +906,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       const personaLabelsAfterRefresh = adminPage.locator(
         '[data-testid="persona-label"]'
       );
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the default persona sorts first; position is the subject under test
       const defaultPersonaRadioAfterRefresh = personaLabelsAfterRefresh
         .first()
         .locator('input[type="radio"]');
@@ -907,6 +915,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       // Verify default persona tag is still visible
       await expect(
+        // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the default persona sorts first; position is the subject under test
         personaLabelsAfterRefresh
           .first()
           .locator('[data-testid="default-persona-tag"]')
@@ -933,13 +942,16 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     const personaLabels = adminPage.locator('[data-testid="persona-label"]');
 
     await expect(
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the default persona sorts first; position is the subject under test
       personaLabels.first().locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
     await expect(
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the default persona sorts first; position is the subject under test
       personaLabels.first().locator('input[type="radio"]')
     ).toBeChecked();
 
     // Get the current default persona name for later verification
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the default persona sorts first; position is the subject under test
     const originalDefaultPersonaText = await personaLabels
       .first()
       .locator('.ant-typography')
@@ -991,6 +1003,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     const updatedPersonaLabels = adminPage.locator(
       '[data-testid="persona-label"]'
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the newly-selected default persona sorts first; position is the subject under test
     const newDefaultPersonaLocator = updatedPersonaLabels
       .first()
       .locator('.ant-typography');
@@ -1003,11 +1016,13 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     );
 
     await expect(
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the newly-selected default persona sorts first; position is the subject under test
       updatedPersonaLabels
         .first()
         .locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
     await expect(
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test asserts the newly-selected default persona sorts first; position is the subject under test
       updatedPersonaLabels.first().locator('input[type="radio"]')
     ).toBeChecked();
 
@@ -1129,10 +1144,11 @@ test.describe('User Profile Persona Interactions', () => {
       const personaCard = adminPage.locator(
         '[data-testid="persona-details-card"]'
       );
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test navigates via any assigned persona chip to verify the link works, not a specific persona
       const personaChip = personaCard
         .locator('[data-testid="chip-container"] [data-testid="tag-chip"]')
         .first();
-      const personaLink = personaChip.locator('a').first();
+      const personaLink = personaChip.locator('a');
 
       // Verify the persona link has text content
       await expect(personaLink).not.toHaveText('');
@@ -1153,10 +1169,7 @@ test.describe('User Profile Persona Interactions', () => {
     // Test removing personas
     await test.step('Remove personas from user profile', async () => {
       // Click edit button for Personas section
-      await adminPage
-        .locator('[data-testid="edit-user-persona"]')
-        .first()
-        .click();
+      await adminPage.locator('[data-testid="edit-user-persona"]').click();
 
       // Wait for persona popover to be visible
       await adminPage.getByTestId('persona-select-list').waitFor();
@@ -1243,10 +1256,10 @@ test.describe('User Profile Persona Interactions', () => {
 
     // Test clicking on default persona chip to navigate to persona page
     await test.step('Navigate to persona page by clicking on default persona chip', async () => {
-      const defaultPersonaChip = adminPage
-        .locator('.default-persona-text [data-testid="tag-chip"]')
-        .first();
-      const personaLink = defaultPersonaChip.locator('a').first();
+      const defaultPersonaChip = adminPage.locator(
+        '.default-persona-text [data-testid="tag-chip"]'
+      );
+      const personaLink = defaultPersonaChip.locator('a');
 
       // Verify the persona link has text content
       await expect(personaLink).not.toHaveText('');
