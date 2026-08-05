@@ -55,6 +55,7 @@ export const useDrawerFooter = (config: DrawerFooterConfig = {}) => {
     align = 'right',
   } = config;
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   const drawerFooter = useMemo(() => {
     if (customContent) {
       return <SlideoutMenu.Footer>{customContent}</SlideoutMenu.Footer>;

@@ -41,9 +41,12 @@ export enum ImageQuality {
 export const getImageWithResolutionAndFallback = (
   quality: ImageQuality,
   imageList?: ImageList
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- image quality switch; refactor risky
 ): string | undefined => {
   const { image, image24, image32, image48, image72, image192, image512 } =
     imageList || {};
+
+  const fallbackFrom48 = image48 || image32 || image24 || image;
 
   switch (quality) {
     case ImageQuality['1.5x']:
@@ -53,19 +56,11 @@ export const getImageWithResolutionAndFallback = (
     case ImageQuality['3x']:
       return image48 || image32 || image24 || image;
     case ImageQuality['4x']:
-      return image72 || image48 || image32 || image24 || image;
+      return image72 || fallbackFrom48;
     case ImageQuality['5x']:
-      return image192 || image72 || image48 || image32 || image24 || image;
+      return image192 || image72 || fallbackFrom48;
     case ImageQuality['6x']:
-      return (
-        image512 ||
-        image192 ||
-        image72 ||
-        image48 ||
-        image32 ||
-        image24 ||
-        image
-      );
+      return image512 || image192 || image72 || fallbackFrom48;
     case ImageQuality['1x']:
     default:
       return image;

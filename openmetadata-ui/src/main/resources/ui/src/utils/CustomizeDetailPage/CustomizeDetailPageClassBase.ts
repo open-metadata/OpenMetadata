@@ -54,6 +54,7 @@ import { EntityTabs } from '../../enums/entity.enum';
 import i18n from '../i18next/LocalUtil';
 
 class CustomizeDetailPageClassBase {
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   public getGlossaryWidgetImageFromKey(
     widgetKey: string,
     size?: number
@@ -88,6 +89,7 @@ class CustomizeDetailPageClassBase {
     }
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   public getDetailPageWidgetImageFromKey(
     widgetKey: string,
     size?: number

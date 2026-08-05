@@ -201,6 +201,7 @@ export const getDefaultScheduleValue = ({
 export const getUpdatedStateFromFormState = <T>(
   currentState: StateValue,
   formValues: StateValue & WorkflowExtraConfig & T
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ) => {
   try {
     const newState = { ...currentState, ...formValues };

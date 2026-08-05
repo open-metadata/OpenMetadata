@@ -87,6 +87,7 @@ const AddDataContract: React.FC<{
   // Inherited fields should not be shown in the edit form
   // IMPORTANT: We must completely REMOVE inherited fields from the object (not set to undefined)
   // so that fast-json-patch generates /add operations instead of /replace when adding new values
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   const filteredContract = useMemo(() => {
     if (!contract) {
       return undefined;

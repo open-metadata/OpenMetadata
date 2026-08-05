@@ -74,6 +74,7 @@ const SsoTestLoginModal = ({
     );
   }, [result, t]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   const body = useMemo(() => {
     let content = null;
     if (isTesting) {
@@ -102,7 +103,8 @@ const SsoTestLoginModal = ({
         ? t('message.sso-test-login-success', {
             email: result.resolvedEmail ?? '',
           })
-        : !isEmpty(result.errors)
+        : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+        !isEmpty(result.errors)
         ? (result.errors ?? []).join(' ')
         : t('message.sso-test-login-failed');
       content = (

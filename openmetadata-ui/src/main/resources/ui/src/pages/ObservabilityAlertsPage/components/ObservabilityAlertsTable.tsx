@@ -213,7 +213,7 @@ function ObservabilityAlertsTable({
   return (
     <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:outline-0">
       {isAlertsEmpty ? (
-        hasResourcePermissionError ? (
+        hasResourcePermissionError ? ( // eslint-disable-line sonarjs/no-nested-conditional
           errorStatePlaceholder
         ) : (
           emptyStatePlaceholder

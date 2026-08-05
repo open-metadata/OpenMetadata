@@ -555,6 +555,7 @@ function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
       const formatColumnData = (arr: Array<A>, updateAll?: boolean) => {
         arr?.forEach((i) => {
           if (isEqual(i.name, col.name) || updateAll) {
+            // eslint-disable-next-line sonarjs/no-nested-functions -- local closure
             i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
             i.description = getTextDiff('', i.description ?? '');
             i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');

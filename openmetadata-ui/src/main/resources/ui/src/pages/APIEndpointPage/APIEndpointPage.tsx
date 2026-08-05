@@ -57,6 +57,7 @@ import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const APIEndpointPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();

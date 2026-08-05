@@ -42,6 +42,7 @@ import { getPartialNameFromTableFQN } from './FqnUtils';
 export const getEntityColumnsDetails = (
   entityType: string,
   entityData: EntityData
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ) => {
   switch (entityType) {
     case EntityType.TOPIC:
@@ -296,6 +297,7 @@ export const getEntityTableName = (
   entityType: EntityType,
   name: string,
   entityData: EntityData
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ): string => {
   if (name.includes('.')) {
     return name;

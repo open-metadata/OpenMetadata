@@ -375,7 +375,8 @@ const EntitySearchSettings = () => {
       ...ranking,
       stages: (ranking.stages ?? []).map((stage, index) =>
         index === stageIndex
-          ? weight === null
+          ? // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+            weight === null
             ? omit(stage, 'weight')
             : { ...stage, weight }
           : stage
@@ -700,6 +701,7 @@ const EntitySearchSettings = () => {
       : `ranking-stage-unnamed-${stageIndex}`;
     const matchType = stage.matchType
       ? `${startCase(stage.matchType)}${
+          // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
           stage.minimumShouldMatch ? ` (${stage.minimumShouldMatch})` : ''
         }`
       : t(LABEL_NO_DATA);

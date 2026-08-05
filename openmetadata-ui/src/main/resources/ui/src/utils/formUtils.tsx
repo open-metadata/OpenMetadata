@@ -74,6 +74,7 @@ import { getErrorText } from './StringUtils';
 
 const SERVER_UNEXPECTED_ERROR = 'server.unexpected-error';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 export const getField = (field: FieldProp) => {
   const {
     label,

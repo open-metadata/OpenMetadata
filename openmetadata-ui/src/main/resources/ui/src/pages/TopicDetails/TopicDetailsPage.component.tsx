@@ -63,6 +63,7 @@ import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();

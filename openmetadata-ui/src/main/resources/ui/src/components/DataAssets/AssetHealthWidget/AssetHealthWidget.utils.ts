@@ -142,6 +142,7 @@ export const getPipelineHealthRow = (
 export const getDataQualityHealthRow = (
   hasTests: boolean,
   summary?: TestSummary
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- branchy mapping; refactor risky
 ): AssetHealthRow => {
   const total = summary?.total ?? 0;
   let row: AssetHealthRow;

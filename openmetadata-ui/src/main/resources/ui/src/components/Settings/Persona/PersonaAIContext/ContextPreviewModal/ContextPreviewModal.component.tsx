@@ -317,6 +317,7 @@ export const ContextPreviewModal = ({
   // Split the body at each h1/h2 boundary so every heading section can be
   // rendered lazily and independently. Any pre-heading preamble is folded into
   // the first section to keep indices aligned 1:1 with `headings`.
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const sections = useMemo(() => {
     if (!bodyMarkdown) {
       return [];

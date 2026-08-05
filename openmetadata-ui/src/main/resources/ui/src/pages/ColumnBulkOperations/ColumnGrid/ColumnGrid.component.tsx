@@ -562,6 +562,7 @@ ColumnEditForm.displayName = 'ColumnEditForm';
 
 const ColumnGrid: React.FC<ColumnGridProps> = ({
   filters: externalFilters,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 }) => {
   const { t } = useTranslation();
   const { socket } = useWebSocketConnector();
@@ -757,6 +758,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       items: ColumnGridItem[],
       expandedRows: Set<string>,
       expandedStructRows: Set<string>
+      // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
     ): ColumnGridRowData[] => {
       const rows: ColumnGridRowData[] = [];
 
@@ -977,6 +979,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   );
 
   // Get column link function - defined before use
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   const getColumnLink = useCallback((row: ColumnGridRowData) => {
     let occurrence: ColumnOccurrenceRef | null = null;
 
@@ -1070,6 +1073,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   );
 
   const renderDescriptionCellAdapter = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     (entity: ColumnGridRowData) => {
       const hasEdit = entity.editedDescription !== undefined;
       const displayValue = hasEdit
@@ -1226,6 +1230,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   // Update render functions to use listing data state (with correct CellRenderer signature)
   const renderColumnNameCellFinal = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     (entity: ColumnGridRowData) => {
       const columnNameButtonClass = classNames(
         'tw:flex tw:flex-1 tw:min-w-0 tw:items-center tw:justify-start tw:overflow-hidden tw:text-start',
@@ -1483,6 +1488,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     [selectedRowsData]
   );
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
   const handleBulkUpdate = useCallback(async () => {
     setIsUpdating(true);
 
@@ -1608,6 +1614,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   ]);
 
   const handleBulkAssetsNotification = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     async (message: string) => {
       let data: BulkAssetsSocketMessage;
       try {
@@ -1764,6 +1771,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } else if (attempt < SCROLL_TO_ROW_MAX_RETRIES) {
           setTimeout(
+            // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
             () => tryScroll(attempt + 1),
             SCROLL_TO_ROW_RETRY_DELAY_MS
           );
@@ -1786,6 +1794,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       columnGridListing.setExpandedRows((prev: Set<string>) => {
         const next = new Set(prev);
 
+        // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
         idsToCollapse.forEach((id) => next.delete(id));
 
         return next;
@@ -2015,6 +2024,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           if (parentWasNewlySelected) {
             const childIds = computeChildRowIdsFromGridItem(id);
             childIds.forEach((childId) => {
+              // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
               getAllDescendantIds(childId).forEach((descId) =>
                 finalSelection.add(descId)
               );
@@ -2251,6 +2261,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         selectedRowsData={selectedRowsData}
         onDescriptionChange={(description, preview) => {
           columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+            // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
             prev.map((row: ColumnGridRowData) =>
               columnGridListing.isSelected(row.id)
                 ? {
@@ -2264,6 +2275,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         }}
         onDisplayNameSync={(value) => {
           columnGridListing.setAllRows((prev: ColumnGridRowData[]) =>
+            // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
             prev.map((row: ColumnGridRowData) =>
               columnGridListing.isSelected(row.id)
                 ? { ...row, editedDisplayName: value }

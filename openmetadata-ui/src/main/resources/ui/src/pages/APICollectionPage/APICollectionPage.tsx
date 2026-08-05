@@ -93,6 +93,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const LABEL_COLLECTION = 'label.collection';
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();

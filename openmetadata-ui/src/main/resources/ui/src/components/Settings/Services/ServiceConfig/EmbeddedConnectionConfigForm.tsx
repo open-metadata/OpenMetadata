@@ -204,13 +204,16 @@ const EmbeddedConnectionConfigForm = forwardRef<
     );
 
     const shouldShowIPAlert = useMemo(() => {
+      const isRunnerAllowed =
+        platform !== AIRFLOW_HYBRID ||
+        ingestionRunner === COLLATE_SAAS ||
+        ingestionRunner === COLLATE_SAAS_RUNNER;
+
       return (
         !isEmpty(connSch.schema) &&
         isAirflowAvailable &&
         hostIp &&
-        (platform !== AIRFLOW_HYBRID ||
-          ingestionRunner === COLLATE_SAAS ||
-          ingestionRunner === COLLATE_SAAS_RUNNER)
+        isRunnerAllowed
       );
     }, [connSch.schema, isAirflowAvailable, hostIp, platform, ingestionRunner]);
 

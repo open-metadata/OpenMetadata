@@ -703,7 +703,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
             )}
           </Box>
         </Box>
-      ) : selectedFolderName ? (
+      ) : selectedFolderName ? ( // eslint-disable-line sonarjs/no-nested-conditional
         <div className="tw:relative tw:flex-1">
           <EmptyPlaceholder
             actions={

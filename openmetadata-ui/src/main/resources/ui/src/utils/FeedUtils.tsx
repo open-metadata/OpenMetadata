@@ -245,6 +245,7 @@ export const getFeedHeaderTextFromCardStyle = (
   cardStyle?: CardStyle,
   fieldName?: string,
   entityType?: EntityType
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   if (fieldName === 'assets') {
     return (
@@ -319,6 +320,7 @@ export const getActivityEventHeaderText = (
   eventType?: ActivityEventType,
   fieldName?: string,
   _entityType?: EntityType
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): ReactNode => {
   if (!eventType) {
     return t('label.posted-on-lowercase');

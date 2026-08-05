@@ -186,6 +186,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const updateInitialConfig = async (
     tableProfilerConfig: TableProfilerConfig
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   ) => {
     const {
       includeColumns,
@@ -293,6 +294,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   };
 
   const handleSave: FormProps['onFinish'] = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
     async (data: ProfilerForm) => {
       const {
         excludeCol,
@@ -311,7 +313,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       } = data;
 
       const profileSample = profileSampleType
-        ? profileSampleType === ProfileSampleType.Percentage
+        ? // eslint-disable-next-line sonarjs/no-nested-conditional -- sample type branch
+          profileSampleType === ProfileSampleType.Percentage
           ? profileSamplePercentage
           : profileSampleRows
         : undefined;

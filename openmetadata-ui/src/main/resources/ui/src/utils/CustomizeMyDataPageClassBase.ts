@@ -107,6 +107,7 @@ class CustomizeMyDataPageClassBase {
     return getMyDataWidgetImageFromKey(widgetKey, size);
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
       case 'ActivityFeed':

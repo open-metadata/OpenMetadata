@@ -268,6 +268,7 @@ export const CsvJobsTray = () => {
       : t('label.exporting-entity-plural', { entity: entityLabel });
   };
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   const renderJobSubLine = (job: CsvAsyncJob) => {
     const total = job.total ?? 0;
     const progress = job.progress ?? 0;
@@ -392,7 +393,8 @@ export const CsvJobsTray = () => {
                     <span className="csv-jobs-tray-kind-icon">
                       {variant === 'running' ? (
                         renderStatusIcon(job)
-                      ) : downloadedJobIds.has(job.jobId) ? (
+                      ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+                      downloadedJobIds.has(job.jobId) ? (
                         <Check size={16} />
                       ) : (
                         <KindIcon size={16} />

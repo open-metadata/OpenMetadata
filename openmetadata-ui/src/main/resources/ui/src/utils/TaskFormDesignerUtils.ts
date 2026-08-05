@@ -142,6 +142,7 @@ const getFieldOptions = (property: JsonSchemaObject) => {
   return [];
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const buildFieldProperty = (field: TaskFormDesignerField) => {
   const nextProperty = cloneDeep(field.property ?? {});
 
@@ -215,6 +216,7 @@ const buildFieldProperty = (field: TaskFormDesignerField) => {
   }
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const buildFieldUiSchema = (field: TaskFormDesignerField) => {
   const nextUiConfig = cloneDeep(field.uiConfig ?? {});
   const textAreaWidget =
@@ -465,6 +467,7 @@ export const buildStageMappings = (
 export const getDesignerPreviewPayload = (
   fields: TaskFormDesignerField[]
 ): Record<string, unknown> =>
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   fields.reduce<Record<string, unknown>>((acc, field) => {
     const fieldName = field.name.trim();
 

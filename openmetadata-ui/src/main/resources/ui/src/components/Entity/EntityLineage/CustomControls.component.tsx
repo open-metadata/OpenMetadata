@@ -86,6 +86,7 @@ const CustomControls: FC<{
   deleted = false,
   hasEditAccess = false,
   impactLevel,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 }) => {
   const { t } = useTranslation();
   const {
@@ -372,6 +373,7 @@ const CustomControls: FC<{
   );
   const lineageEditButton = useMemo(() => {
     const showEditOption =
+      // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
       hasEditAccess &&
       !deleted &&
       platformView === LineagePlatformView.None &&

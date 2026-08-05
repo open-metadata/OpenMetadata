@@ -44,6 +44,7 @@ const resolveEvery = (
   hour: string,
   dayOfMonth: string,
   dayOfWeek: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): string => {
   if (hour === '*' && dayOfMonth === '*' && dayOfWeek === '*') {
     return 'Hour';
@@ -116,8 +117,8 @@ const generateDescription = (cronConfig: CronConfig): string => {
   const hourNum = parseInt(hour);
   const minuteNum = parseInt(minute);
   const ampm = hourNum >= 12 ? 'PM' : 'AM';
-  const displayHour =
-    hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum;
+  const twelveHourValue = hourNum > 12 ? hourNum - 12 : hourNum;
+  const displayHour = hourNum === 0 ? 12 : twelveHourValue;
   const timeStr = `${displayHour}:${minute} ${ampm}`;
 
   if (every === 'Hour') {

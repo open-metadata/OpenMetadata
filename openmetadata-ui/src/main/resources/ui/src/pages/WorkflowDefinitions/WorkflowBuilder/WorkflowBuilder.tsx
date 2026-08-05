@@ -71,6 +71,7 @@ interface WorkflowBuilderInternalProps {
 
 const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   workflowLogic,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const {
@@ -495,7 +496,8 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
                 isNodeDragEnabled={
                   canDragNodes
                     ? isNodeDragEnabledWrapper
-                    : canDragNodesInViewMode
+                    : // eslint-disable-next-line sonarjs/no-nested-conditional -- drag mode branch
+                    canDragNodesInViewMode
                     ? () => true
                     : () => false
                 }

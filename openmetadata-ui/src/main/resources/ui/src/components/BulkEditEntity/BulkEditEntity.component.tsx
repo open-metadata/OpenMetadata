@@ -143,7 +143,8 @@ const BulkEditEntity = ({
   sourceEntityType,
   workflowHeaderConfig,
   workflowMode = 'bulkEdit',
-}: BulkEditEntityProps) => {
+}: // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
+BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
@@ -466,6 +467,7 @@ const BulkEditEntity = ({
 
             return row.id === highlightedRowId
               ? `${operationClass}${
+                  // eslint-disable-next-line sonarjs/no-nested-conditional -- template ternary
                   isNewMetricRowMissingName(row)
                     ? ''
                     : ' bulk-edit-row-highlight'
@@ -569,6 +571,7 @@ const BulkEditEntity = ({
         )}
       </div>
 
+      {/* eslint-disable sonarjs/no-nested-conditional, sonarjs/expression-complexity -- chained render ternary */}
       {isExportHydrationRequired && csvExportError ? (
         <div className="csv-import-card bulk-edit-card">
           <Banner
@@ -754,6 +757,7 @@ const BulkEditEntity = ({
           )}
         </>
       )}
+      {/* eslint-enable sonarjs/no-nested-conditional, sonarjs/expression-complexity */}
     </>
   );
 };

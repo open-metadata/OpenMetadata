@@ -96,6 +96,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onSetThreadLink,
   fetchKnowledgePageHierarchy,
   onUpdate,
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();

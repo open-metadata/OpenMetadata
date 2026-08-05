@@ -72,7 +72,8 @@ const LABEL_DATA_PRODUCT = 'label.data-product';
 
 const DataProductListPage = ({
   renderPageHeader,
-}: DataProductListPageProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
@@ -188,6 +189,7 @@ const DataProductListPage = ({
   );
 
   const renderDataProductCell = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
     (entity: DataProduct, columnId: string): ReactNode => {
       switch (columnId) {
         case 'name': {

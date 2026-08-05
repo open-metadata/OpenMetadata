@@ -91,6 +91,7 @@ export function createAddedSchemasDiff(
     const formatSchemaFieldsData = (arr: Array<Field>, updateAll?: boolean) => {
       arr?.forEach((i) => {
         if (isEqual(i.name, field.name) || updateAll) {
+          // eslint-disable-next-line sonarjs/no-nested-functions -- inline tag map
           i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
           i.description = getTextDiff('', i.description ?? '');
           i.dataType = getTextDiff('', i.dataType ?? '') as DataTypeTopic;

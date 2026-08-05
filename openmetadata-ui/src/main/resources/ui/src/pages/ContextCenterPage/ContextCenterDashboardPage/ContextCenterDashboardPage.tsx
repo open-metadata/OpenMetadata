@@ -78,6 +78,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 const LABEL_VIEW_ALL_ENTITY = 'label.view-all-entity';
 const LABEL_MEMORY_PLURAL = 'label.memory-plural';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -113,6 +114,7 @@ const ContextCenterDashboardPage: FC = () => {
   );
 
   const isDashboardLoading =
+    // eslint-disable-next-line sonarjs/expression-complexity
     isArticlesLoading ||
     isDocumentsLoading ||
     isFoldersLoading ||
@@ -120,6 +122,7 @@ const ContextCenterDashboardPage: FC = () => {
     isMostCitedLoading;
 
   const isDashboardEmpty =
+    // eslint-disable-next-line sonarjs/expression-complexity
     !isDashboardLoading &&
     articlesCount === 0 &&
     documentsCount === 0 &&

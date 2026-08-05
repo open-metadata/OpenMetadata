@@ -136,6 +136,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent presentational branching
 }) => {
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;

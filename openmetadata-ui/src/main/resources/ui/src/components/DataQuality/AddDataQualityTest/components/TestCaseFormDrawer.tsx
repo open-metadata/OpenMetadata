@@ -92,7 +92,8 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   testCase,
   showOnlyParameter = false,
   onUpdate,
-}: TestCaseFormDrawerProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+TestCaseFormDrawerProps) => {
   const { t } = useTranslation();
   const { getResourceLimit } = useLimitStore();
   const { isAirflowAvailable } = useAirflowStatus();

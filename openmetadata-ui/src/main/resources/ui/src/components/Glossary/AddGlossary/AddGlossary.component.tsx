@@ -102,7 +102,8 @@ const AddGlossary = ({
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
       domains: selectedDomain
-        ? ((isArray(selectedDomain) ? selectedDomain : [selectedDomain])
+        ? // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+          ((isArray(selectedDomain) ? selectedDomain : [selectedDomain])
             .map((d) => d.fullyQualifiedName)
             .filter(Boolean) as string[]) ?? []
         : undefined,

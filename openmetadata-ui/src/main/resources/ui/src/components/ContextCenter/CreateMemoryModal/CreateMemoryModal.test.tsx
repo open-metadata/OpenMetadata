@@ -168,6 +168,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
                 id={testId}
                 value={field.value?.id ?? ''}
                 onChange={(e) => {
+                  // eslint-disable-next-line sonarjs/no-nested-functions -- test mock
                   const next = options.find((opt) => opt.id === e.target.value);
                   field.onChange(next ?? null);
                 }}>

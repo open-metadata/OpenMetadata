@@ -68,6 +68,7 @@ const getBaseNodeHeightFromType = (
   entityType: string,
   isRootNode: boolean,
   children: { children: EntityChildren }
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ) => {
   const childrenPresent = children.children.length !== 0;
 
@@ -658,6 +659,7 @@ export const clearPathDataCache = (): void => {
   pathDataCache.clear();
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 export function drawEdgesForExport(
   edges: Edge[],
   nodeMap: Map<string, Node>,

@@ -50,6 +50,7 @@ const LABEL_SUCCESS = 'label.success';
 const LABEL_FAILED = 'label.failed';
 const LABEL_ENTITY_RECORD_PLURAL = 'label.entity-record-plural';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- log viewer; refactor risky
 const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
   const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);

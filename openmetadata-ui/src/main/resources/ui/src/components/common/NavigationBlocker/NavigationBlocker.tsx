@@ -131,6 +131,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
         const download = link.getAttribute('download');
 
         const shouldBlock =
+          // eslint-disable-next-line sonarjs/expression-complexity
           href &&
           (href.startsWith('/') || href.startsWith('http')) &&
           !download &&
@@ -147,6 +148,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
+        // eslint-disable-next-line sonarjs/expression-complexity
         !isNavigatingRef.current &&
         (event.key === 'F5' ||
           (event.ctrlKey && event.key === 'r') ||

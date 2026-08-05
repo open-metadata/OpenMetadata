@@ -207,15 +207,16 @@ const QueryBuilderWidgetV1: FC<{
     [fetchEntityCount]
   );
 
-  const showFilteredResourceCount = useMemo(
-    () =>
+  const showFilteredResourceCount = useMemo(() => {
+    const isElasticSearchWithValue =
       showCountPreview &&
       outputType === SearchOutputType.ElasticSearch &&
-      !isUndefined(value) &&
-      searchResults !== undefined &&
-      !isCountLoading,
-    [isCountLoading, outputType, showCountPreview, value]
-  );
+      !isUndefined(value);
+
+    return (
+      isElasticSearchWithValue && searchResults !== undefined && !isCountLoading
+    );
+  }, [isCountLoading, outputType, showCountPreview, value]);
 
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
     onTreeUpdate(nTree, nConfig);

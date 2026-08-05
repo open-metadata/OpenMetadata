@@ -66,7 +66,8 @@ const GlossaryV1 = ({
   isSummaryPanelOpen,
   refreshActiveGlossaryTerm,
   refreshGlossaryList,
-}: GlossaryV1Props) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } = useRequiredParams<{
     action: EntityAction;
@@ -458,6 +459,7 @@ const GlossaryV1 = ({
         }
         type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         onUpdate={handleGlossaryUpdate}>
+        {/* eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order */}
         {!isLoading &&
           !isPermissionLoading &&
           !isEmpty(selectedData) &&

@@ -168,6 +168,7 @@ export const useTestCaseFilterOptions = () => {
       search === WILD_CARD_CHAR ? search : `*${search}*`
     );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const getInitialOptions = (key: string, isLengthCheck = false) => {
     switch (key) {
       case TEST_CASE_FILTERS.tier:

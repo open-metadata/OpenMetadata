@@ -74,7 +74,8 @@ const CustomiseLandingPageHeader = ({
   placeholderWidgetKey,
   announcements: announcementsFromParent,
   isAnnouncementLoading: isAnnouncementLoadingFromParent,
-}: CustomiseLandingPageHeaderProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+CustomiseLandingPageHeaderProps) => {
   const { t } = useTranslation();
   const { currentUser, applicationConfig } = useApplicationStore();
   const [showCustomiseHomeModal, setShowCustomiseHomeModal] = useState(false);
@@ -190,6 +191,7 @@ const CustomiseLandingPageHeader = ({
           </div>
         </div>
 
+        {/* eslint-disable-next-line sonarjs/expression-complexity */}
         {!isPreviewHeader &&
           showAnnouncements &&
           !isAnnouncementLoading &&

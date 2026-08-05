@@ -87,7 +87,8 @@ export const AddTestCaseList = ({
   testCaseParams,
   hideTableFilter = false,
   getPopupContainer,
-}: AddTestCaseModalProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
+AddTestCaseModalProps) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState<string>();
   const [items, setItems] = useState<TestCase[]>([]);
@@ -266,6 +267,7 @@ export const AddTestCaseList = ({
       searchText?: string;
       page?: number;
       hydrateSelectedFromProp?: boolean;
+      // eslint-disable-next-line sonarjs/cyclomatic-complexity -- fetch handler; refactor risky
     }) => {
       try {
         setIsLoading(true);

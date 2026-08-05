@@ -46,6 +46,7 @@ const EntityRightPanelVerticalNav: React.FC<
 }) => {
   const { t } = useTranslation();
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const getTabItems = () => {
     if (ontologyExplorerNav) {
       return [

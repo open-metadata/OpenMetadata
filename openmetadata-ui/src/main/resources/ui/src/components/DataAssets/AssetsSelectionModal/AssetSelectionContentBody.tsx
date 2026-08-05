@@ -87,7 +87,8 @@ const AssetSelectionContentBody = ({
   getErrorStatusAndMessage,
   handleQuickFiltersValueSelect,
   clearFilters,
-}: AssetSelectionContentBodyProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+AssetSelectionContentBodyProps) => {
   const { t } = useTranslation();
 
   return (

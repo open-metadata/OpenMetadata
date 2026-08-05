@@ -98,6 +98,7 @@ const ContractSecurityCard: React.FC<{
                       filter.columnName ??
                       NO_DATA_PLACEHOLDER
                     } = `}
+                    {/* eslint-disable-next-line sonarjs/no-nested-functions -- inline map */}
                     {filter.values?.map((item, index) => (
                       <span className="row-filter-value">{`${item}${
                         filter.values?.length === index + 1 ? '' : ','

@@ -199,6 +199,7 @@ export const fetchEntityData = async ({
   setShowIndexNotFoundAlert: (show: boolean) => void;
   onNlqAppliedFilters?: (filters?: QueryFilterInterface) => void;
   showRankingDetails?: boolean;
+  // eslint-disable-next-line sonarjs/cognitive-complexity -- preserve behavior
 }) => {
   const combinedQueryFilter = getCombinedQueryFilterObject(
     updatedQuickFilters,

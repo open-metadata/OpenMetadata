@@ -58,7 +58,8 @@ const TestConnectionModal = ({
   hostIp,
   connectionType,
   connectionDisplayName,
-}: Readonly<TestConnectionModalProps>) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+Readonly<TestConnectionModalProps>) => {
   const { t } = useTranslation();
 
   const [showRawLog, setShowRawLog] = useState(false);
@@ -136,6 +137,7 @@ const TestConnectionModal = ({
   // Gate failed either because the gate step itself failed, or because the API
   // errored before the workflow ran (no step results at all but test is done).
   const connectionFailed =
+    // eslint-disable-next-line sonarjs/expression-complexity
     !isTestingConnection &&
     ((gateResult !== undefined && !gateResult.passed) ||
       (isFailed && gateResult === undefined));

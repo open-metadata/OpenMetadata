@@ -70,7 +70,8 @@ const DescriptionSourceBadge = ({
   showAcceptedBy = true,
   showBadge = true,
   showTimestamp = true,
-}: DescriptionSourceBadgeProps) => {
+}: // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
+DescriptionSourceBadgeProps) => {
   const { t } = useTranslation();
 
   const config = useMemo(() => {

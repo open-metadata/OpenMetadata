@@ -58,6 +58,7 @@ const MESSAGE_FIELD_TEXT_IS_REQUIRED = 'message.field-text-is-required';
 const LABEL_DESTINATION = 'label.destination';
 const LABEL_SELECT_FIELD = 'label.select-field';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 function DestinationSelectItem({
   selectorKey,
   id,
@@ -288,6 +289,7 @@ function DestinationSelectItem({
                 selectedDestinations[id]?.destinationType,
                 id
               )}
+            {/* eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value */}
             {destinationType &&
               checkIfDestinationIsInternal(destinationType) && (
                 <>

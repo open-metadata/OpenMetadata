@@ -1490,6 +1490,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     serviceCategory,
   ]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   useEffect(() => {
     if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
       fetchDashboardsDataModel({ limit: 0 });

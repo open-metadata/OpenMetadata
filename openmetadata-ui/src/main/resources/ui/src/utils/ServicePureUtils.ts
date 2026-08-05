@@ -61,6 +61,7 @@ export const getIngestionName = (
 
 export const shouldTestConnection = (serviceType: string) => {
   return (
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     serviceType !== DatabaseServiceType.CustomDatabase &&
     serviceType !== MessagingServiceType.CustomMessaging &&
     serviceType !== DashboardServiceType.CustomDashboard &&
@@ -81,6 +82,7 @@ export const getServiceTypesFromServiceCategory = (
   return SERVICE_TYPES_ENUM[serviceCat];
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   switch (type) {
     case ServiceCategory.MESSAGING_SERVICES:
@@ -136,6 +138,7 @@ export const getSearchIndexForService = (type: ServiceTypes): SearchIndex => {
 
 export const getResourceEntityFromServiceCategory = (
   category: string | ServiceCategory
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   switch (category) {
     case 'dashboards':
@@ -217,6 +220,7 @@ export const getTestConnectionName = (connectionType: string) => {
 
 export const getServiceCategoryFromEntityType = (
   entityType: EntityType
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): string => {
   switch (entityType) {
     case EntityType.DASHBOARD_SERVICE:
@@ -247,6 +251,7 @@ export const getServiceCategoryFromEntityType = (
 
 export const getEntityTypeFromServiceCategory = (
   serviceCategory: ServiceTypes
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   switch (serviceCategory) {
     case ServiceCategory.DASHBOARD_SERVICES:

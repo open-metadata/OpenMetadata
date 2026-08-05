@@ -124,6 +124,7 @@ function isInversePair(
   return inverseMap[a] === b || inverseMap[b] === a;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
 export function mergeEdges(
   inputEdges: OntologyEdge[],
   configuredTypes?: GlossaryTermRelationType[]
@@ -293,6 +294,7 @@ export function useGraphDataBuilder({
     return set;
   }, [selectedNodeId, inputEdges, inputNodes, explorationMode]);
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
   const graphData = useMemo(() => {
     const searchHighlightActive = Boolean(graphSearchHighlight?.active);
     let searchNodeSet: Set<string> | null = null;
@@ -484,6 +486,7 @@ export function useGraphDataBuilder({
         const fromIsTerm = termIdSet.has(edge.from);
         const toIsTerm = termIdSet.has(edge.to);
         const getTermColor = (termId: string) => {
+          // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
           const termNode = nodesForGraph.find((n) => n.id === termId);
 
           return termNode?.glossaryId
@@ -498,6 +501,7 @@ export function useGraphDataBuilder({
       });
     }
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
     const g6Nodes: NodeData[] = nodesForGraph.map((node) => {
       const color = computeNodeColor(node);
       const height = NODE_HEIGHT;
@@ -516,8 +520,10 @@ export function useGraphDataBuilder({
       const pos =
         explorationMode === 'hierarchy'
           ? nodePositions?.[node.id]
-          : explorationMode === 'data'
-          ? isDataAsset
+          : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+          explorationMode === 'data'
+          ? // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+            isDataAsset
             ? undefined
             : dataModeTermPositions[node.id]
           : undefined;
@@ -700,6 +706,7 @@ export function useGraphDataBuilder({
     });
 
     const g6Edges: EdgeData[] = Array.from(directedGroupMap.values()).flatMap(
+      // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
       (group) => {
         const rep = group[0];
         const n = group.length;
@@ -710,11 +717,13 @@ export function useGraphDataBuilder({
           fromGlossary && toGlossary && fromGlossary !== toGlossary
         );
         const isHighlighted =
+          // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
           selectedNodeId === rep.from ||
           selectedNodeId === rep.to ||
           (selectedScopedIds != null &&
             (selectedScopedIds.has(rep.from) || selectedScopedIds.has(rep.to)));
         const isDimmedBySelection =
+          // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
           selectedNodeId !== null &&
           selectedNodeId !== rep.from &&
           selectedNodeId !== rep.to &&
@@ -727,12 +736,14 @@ export function useGraphDataBuilder({
         const fromType = nodeIdToType.get(rep.from);
         const toType = nodeIdToType.get(rep.to);
         const isTermTermInDataMode =
+          // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
           explorationMode === 'data' &&
           fromType !== 'dataAsset' &&
           fromType !== 'metric' &&
           toType !== 'dataAsset' &&
           toType !== 'metric';
 
+        // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
         return group.map((singleEdge, i) => {
           const edgeId = `edge-${singleEdge.from}-${singleEdge.to}-${singleEdge.relationType}`;
           const isPrimary = i === 0;
@@ -745,6 +756,7 @@ export function useGraphDataBuilder({
           const isClickedEdge = edgeId === clickedEdgeId;
 
           const rawEdgeColor =
+            // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
             explorationMode === 'data' && !isTermTermInDataMode
               ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
               : customRelationColorMap[singleEdge.relationType] ??
@@ -758,6 +770,7 @@ export function useGraphDataBuilder({
           );
 
           const showLabel =
+            // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
             settings.showEdgeLabels &&
             (explorationMode === 'model' ||
               explorationMode === 'hierarchy' ||
@@ -765,7 +778,8 @@ export function useGraphDataBuilder({
               isTermTermInDataMode);
 
           const labelText = showLabel
-            ? singleEdge.inverseRelationType
+            ? // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+              singleEdge.inverseRelationType
               ? `${formatRelationLabel(
                   singleEdge.relationType
                 )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`

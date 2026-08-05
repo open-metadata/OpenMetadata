@@ -90,6 +90,7 @@ const TeamsHeadingLabel = ({
 
   const teamHeadingRender = useMemo(
     () =>
+      // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
       isHeadingEditing ? (
         // Used onClick stop click propagation event anywhere in the component to parent
         // TeamDetailsV1 component collapsible panel

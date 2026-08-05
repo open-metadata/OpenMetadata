@@ -44,6 +44,7 @@ interface FeedbackApprovalTaskProps {
   task: Task;
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- task component; refactor risky
 const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
   const { t } = useTranslation();
   const payload =

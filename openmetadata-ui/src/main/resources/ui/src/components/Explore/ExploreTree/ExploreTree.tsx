@@ -311,6 +311,7 @@ const ExploreTree = ({
           a.key.localeCompare(b.key, undefined, { sensitivity: 'base' })
         );
 
+        // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
         const children = sortedBuckets.map((bucket) => {
           const id = generateUUID();
           let type = null;
@@ -469,6 +470,7 @@ const ExploreTree = ({
     [onFieldValueSelect, onTreeSelect]
   );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const fetchEntityCounts = useCallback(async () => {
     // Explore is mock-driven during the tour; skip the real aggregation calls.
     if (isTourOpen) {

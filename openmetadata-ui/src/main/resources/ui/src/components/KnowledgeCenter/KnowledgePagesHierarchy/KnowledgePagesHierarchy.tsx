@@ -121,6 +121,7 @@ const KnowledgePagesHierarchy = forwardRef<
       permissions,
     },
     ref
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   ) => {
     const { fqn } = useRequiredParams<{ fqn: string }>();
     const navigate = useNavigate();
@@ -286,6 +287,7 @@ const KnowledgePagesHierarchy = forwardRef<
       offset = 0,
       limit = KNOWLEDGE_CENTER_PAGINATION_LIMIT,
       forceRefresh = false
+      // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
     ) => {
       const isCreateHash =
         hash?.slice(1) === CREATE_PAGE_HASH &&
@@ -293,6 +295,7 @@ const KnowledgePagesHierarchy = forwardRef<
         consumedCreateHashFqnRef.current !== fqn;
 
       if (
+        // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
         !forceRefresh &&
         !isPaginationLoading &&
         isHierarchyInitialized &&

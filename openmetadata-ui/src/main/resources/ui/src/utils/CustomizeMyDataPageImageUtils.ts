@@ -36,6 +36,7 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 export const getMyDataWidgetImageFromKey = (
   widgetKey: string,
   size?: number
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 ): string => {
   switch (widgetKey) {
     case LandingPageWidgetKeys.ACTIVITY_FEED: {

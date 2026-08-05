@@ -64,6 +64,7 @@ export const DomainLabelV2 = <
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
 
   const handleDomainSave = useCallback(
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- inherent branching
     async (selectedDomain: EntityReference | EntityReference[]) => {
       if (props.onUpdate) {
         try {
@@ -91,7 +92,8 @@ export const DomainLabelV2 = <
             ...entityDetailsResponse,
             domains: Array.isArray(selectedDomain)
               ? selectedDomain
-              : isEmpty(selectedDomain)
+              : // eslint-disable-next-line sonarjs/no-nested-conditional -- domain normalization
+              isEmpty(selectedDomain)
               ? []
               : [selectedDomain],
           });

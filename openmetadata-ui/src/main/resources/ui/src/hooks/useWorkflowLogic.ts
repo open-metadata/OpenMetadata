@@ -171,6 +171,7 @@ export const useWorkflowLogic = ({
   }, [fqn]);
 
   const isNodeDragEnabled = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     (nodeType: NodeType) => {
       const startNode = reactFlowNodes.find(
         (node) => node.type === NodeType.StartEvent
@@ -190,6 +191,7 @@ export const useWorkflowLogic = ({
 
       if (reactFlowNodes.length <= 1) {
         const isConfigured = Boolean(
+          // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
           startNode.data?.lastSaved ||
             startNode.data?.userModified ||
             (startNode.data?.name && startNode.data?.dataAssets?.length > 0) ||

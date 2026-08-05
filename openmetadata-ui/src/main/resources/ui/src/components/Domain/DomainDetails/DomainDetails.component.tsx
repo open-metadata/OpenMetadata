@@ -157,7 +157,8 @@ const DomainDetails = ({
   onNavigate,
   refreshDomains,
   isTreeView = false,
-}: DomainDetailsProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+DomainDetailsProps) => {
   const { t } = useTranslation();
   const { isMarketplace } = useMarketplaceStore();
   const location = useLocation();

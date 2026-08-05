@@ -82,6 +82,7 @@ export const OntologyNodeRelationsContent: React.FC<
       const builtInLabelKey = RELATION_META[relationType]?.labelKey;
 
       return (
+        // eslint-disable-next-line sonarjs/expression-complexity
         (relationMeta?.displayName ||
           relationMeta?.name ||
           relationLabelOverrides[relationType]) ??

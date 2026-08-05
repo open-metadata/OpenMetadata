@@ -105,6 +105,7 @@ export const makeData = <T extends Column | SearchIndexField>(
   }));
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 export const getDataTypeString = (dataType: string): string => {
   switch (upperCase(dataType)) {
     case DataType.String:

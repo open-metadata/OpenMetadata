@@ -53,7 +53,8 @@ const EntityHeaderTitle = ({
   displayNameClassName = '',
   isCustomizedView = false,
   entityUrl,
-}: EntityHeaderTitleProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
+EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const [copyTooltip, setCopyTooltip] = useState<string>();
@@ -188,6 +189,7 @@ const EntityHeaderTitle = ({
             />
           </Tooltip>
           {(isEmpty(displayName) || !showName) && suffix}
+          {/* eslint-disable-next-line sonarjs/expression-complexity */}
           {!excludeEntityService &&
             !deleted &&
             !isCustomizedView &&

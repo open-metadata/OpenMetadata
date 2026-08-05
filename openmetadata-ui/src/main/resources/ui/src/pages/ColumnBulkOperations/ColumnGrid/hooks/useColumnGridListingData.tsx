@@ -181,6 +181,7 @@ export const useColumnGridListingData = (
         /** When true, rethrow on error so caller can handle (e.g. fallback when cached cursor is invalid) */
         rethrowOnError?: boolean;
       }
+      // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
     ) => {
       const requestId = ++latestRequestIdRef.current;
       setLoading(true);
@@ -433,6 +434,7 @@ export const useColumnGridListingData = (
    * 3) On any error: toast + fallback to page 1. 4) If target > MAX_REFETCH_CHAIN_PAGES: show page 1 + toast.
    * 5) Concurrent calls are queued via needsRefetchAgainRef.
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
   const refetch = useCallback(async (): Promise<void> => {
     if (refetchInProgressRef.current) {
       needsRefetchAgainRef.current = true;

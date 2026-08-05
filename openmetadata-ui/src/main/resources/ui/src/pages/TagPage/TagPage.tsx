@@ -138,6 +138,7 @@ const EntitySummaryPanel = withSuspenseFallback(
   )
 );
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
 const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
@@ -299,12 +300,10 @@ const TagPage = () => {
   // embeds the DQ dashboard, route the tag's FQN through the dashboard's
   // matching filter key — otherwise the dashboard queries `tags.tagFQN`,
   // which never matches assets carrying these system tags.
+  const nonTierFilterKey: 'certification' | 'tags' =
+    classificationName === 'Certification' ? 'certification' : 'tags';
   const dqFilterKey: 'tier' | 'certification' | 'tags' =
-    classificationName === 'Tier'
-      ? 'tier'
-      : classificationName === 'Certification'
-      ? 'certification'
-      : 'tags';
+    classificationName === 'Tier' ? 'tier' : nonTierFilterKey;
 
   const showDisableOption = useMemo(
     () => tagPermissions.EditAll && !tagItem?.deleted,

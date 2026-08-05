@@ -180,6 +180,7 @@ export const useMapBasedNodesEdges = (
   );
 
   const onNodesChange: OnNodesChange = useCallback((changes) => {
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
     setNodesMap((prev) => {
       let next = new Map(prev);
       for (const change of changes) {

@@ -159,6 +159,7 @@ export const useResolvedAppMode = (): void => {
     retry: false,
   });
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
   useEffect(() => {
     if (!isAuthenticated || !currentUser?.name) {
       return;

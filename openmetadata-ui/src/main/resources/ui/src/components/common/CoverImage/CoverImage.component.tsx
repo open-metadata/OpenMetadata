@@ -17,6 +17,7 @@ interface CoverImageProps {
   position?: { x?: string; y?: string }; // CSS percentage values like "-16%"
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
 

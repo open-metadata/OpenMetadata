@@ -56,6 +56,7 @@ interface ConditionBuilderValueControlProps {
   onChange: (values: string[]) => void;
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 function ConditionBuilderValueControl(
   props: Readonly<ConditionBuilderValueControlProps>
 ) {
@@ -183,9 +184,11 @@ function ConditionBuilderValueControl(
   }
 
   const options = hasFetchOptions ? asyncOptions : staticOptions;
-  const items: SelectItemType[] = (
-    hasFetchOptions ? (loading ? [] : asyncOptions) : staticOptions
-  ).map((o) => ({ id: o.value, label: o.label }));
+  const items: SelectItemType[] =
+    // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+    (hasFetchOptions ? (loading ? [] : asyncOptions) : staticOptions).map(
+      (o) => ({ id: o.value, label: o.label })
+    );
 
   return (
     <Autocomplete

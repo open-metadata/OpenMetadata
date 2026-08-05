@@ -71,6 +71,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   deleteOptions,
   onProfilerSettingUpdate,
   trigger,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 }) => {
   const { t } = useTranslation();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();

@@ -175,6 +175,7 @@ const TableDiffForm = ({
                     // Update columns or clear them
                     if (value) {
                       const selectedTable = tableList.find(
+                        // eslint-disable-next-line sonarjs/no-nested-functions -- local closure
                         (hit) => hit._source.fullyQualifiedName === value
                       );
                       setTable2Columns(selectedTable?._source.columns);
@@ -257,6 +258,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const prepareForm = (
     data: TestCaseParameterDefinition,
     DynamicField?: ReactElement
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   ) => {
     const label = getEntityName(data);
     const ruleValidation: RuleRender = ({ getFieldValue }) => ({
@@ -469,6 +471,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                           />
                         }
                         type="text"
+                        // eslint-disable-next-line sonarjs/no-nested-functions -- local closure
                         onClick={() => remove(name)}
                       />
                     </div>

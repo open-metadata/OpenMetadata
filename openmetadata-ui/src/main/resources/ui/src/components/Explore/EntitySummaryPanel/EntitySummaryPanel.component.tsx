@@ -347,6 +347,7 @@ export default function EntitySummaryPanel({
     };
   }, []);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const fetchEntityData = useCallback(async () => {
     if (!entityDetails?.details?.fullyQualifiedName || !entityType) {
       return;
@@ -919,6 +920,7 @@ export default function EntitySummaryPanel({
     );
   };
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const renderTabContent = () => {
     if (
       activeTab === EntityRightPanelTab.RELATIONS &&

@@ -230,6 +230,7 @@ export function useOntologyGraphDerived({
         const fromType = nodeTypeMap.get(e.from);
         const toType = nodeTypeMap.get(e.to);
         if (
+          // eslint-disable-next-line sonarjs/expression-complexity -- preserves short-circuit value
           explorationMode === 'data' &&
           (fromType === ASSET_NODE_TYPE ||
             fromType === METRIC_NODE_TYPE ||
@@ -418,7 +419,8 @@ export function useOntologyGraphDerived({
   const exportableGlossaryId =
     scope === 'glossary'
       ? glossaryId
-      : scope === 'term'
+      : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+      scope === 'term'
       ? termGlossaryId
       : undefined;
 

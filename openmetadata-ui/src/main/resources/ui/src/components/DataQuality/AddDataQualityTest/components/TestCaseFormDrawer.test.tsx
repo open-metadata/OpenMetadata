@@ -168,7 +168,7 @@ jest.mock('./TestCaseFormBody', () =>
       errorMessage,
       isEditMode,
       showOnlyParameter,
-    }: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }: // eslint-disable-next-line @typescript-eslint/no-explicit-any, sonarjs/cyclomatic-complexity
     any) => {
       emitContextFn = onContextChange;
       emitActiveFieldFn = onActiveFieldChange;

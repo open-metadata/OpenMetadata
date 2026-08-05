@@ -454,6 +454,7 @@ export function getEffectiveRelationColor(
   return customRelation.color ?? RELATION_META[relationType]?.color;
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- style builder; refactor risky
 export function getEdgeRelationLabelStyle(
   labelText: string,
   relationType?: string,
@@ -611,6 +612,7 @@ function truncateTextWithEllipsis(
   return lo === 0 ? ellipsis : text.slice(0, lo) + ellipsis;
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- style builder; refactor risky
 export function buildDataModeAssetNodeStyle(
   getColor: (cssVar: string, fallback: string) => string,
   label: string,

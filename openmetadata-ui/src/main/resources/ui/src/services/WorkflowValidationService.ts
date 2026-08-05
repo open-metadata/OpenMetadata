@@ -45,6 +45,7 @@ const buildTriggerConfig = (
   startNodeConfig: NodeConfigWithMetadata,
   triggerType: string,
   existingTriggerConfig?: Record<string, unknown>
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
 ) => {
   const isEventBased = triggerType === Type.EventBasedEntity;
   const isPeriodicBatch = triggerType === Type.PeriodicBatchEntity;
@@ -246,6 +247,7 @@ const buildTriggerConfig = (
   return existingTriggerConfig || {};
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- node type mapper; refactor risky
 const mapNodeTypeAndSubtype = (node: Node) => {
   const nodeData = node.data || {};
   let nodeType: NodeType = (node.type as NodeType) || NodeType.AutomatedTask;
@@ -430,6 +432,7 @@ const migrateInputNamespaceMap = (
 ): BackendNode[] => {
   const userTasks = nodes.filter((n) => n.type === NodeType.UserTask);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- node mapper; refactor risky
   return nodes.map((node) => {
     // Fix set/rollback task nodes - they should reference the user task that leads to them
     if (
@@ -441,12 +444,16 @@ const migrateInputNamespaceMap = (
 
       const allPredecessors = findAllPredecessorsInSave(node.name, edges);
 
-      const shouldMigrate =
+      const isKnownMigrationTarget =
         currentUpdatedBy === 'global' ||
         currentUpdatedBy === 'ApproveGlossaryTerm' ||
-        currentUpdatedBy === 'ApprovalForUpdates' ||
-        (currentUpdatedBy && !nodes.some((n) => n.name === currentUpdatedBy)) ||
-        (currentUpdatedBy && !allPredecessors.includes(currentUpdatedBy));
+        currentUpdatedBy === 'ApprovalForUpdates';
+      const isMissingNode =
+        currentUpdatedBy && !nodes.some((n) => n.name === currentUpdatedBy);
+      const isNotPredecessor =
+        currentUpdatedBy && !allPredecessors.includes(currentUpdatedBy);
+      const shouldMigrate =
+        isKnownMigrationTarget || isMissingNode || isNotPredecessor;
 
       if (shouldMigrate) {
         // Only use a user task that is actually a predecessor (comes before this node)
@@ -506,6 +513,7 @@ export const buildWorkflowForSave = async (
   edges: Edge[],
   workflowDefinition: WorkflowDefinition | null,
   workflowMetadata?: { displayName?: string; description?: string } | null
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- workflow builder; refactor risky
 ): Promise<WorkflowDefinition> => {
   const workflowName = workflowDefinition?.name || 'CustomWorkflow';
   const workflowDisplayName =

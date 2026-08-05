@@ -85,6 +85,7 @@ const getCleanStraightPath = (
 const formatEdgeLabel = (label: string): string =>
   startCase(label).split(' ').map(capitalize).join(' ');
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 export const StraightEdge = (props: EdgeProps) => {
   const {
     id,

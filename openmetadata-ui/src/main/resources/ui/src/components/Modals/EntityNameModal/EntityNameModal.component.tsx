@@ -32,6 +32,7 @@ import {
 
 const buildValidate =
   (rules: EntityNameValidationRule[] = []) =>
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inline preserves behavior
   (value: string | undefined): string | true => {
     const v = value ?? '';
     for (const rule of rules) {

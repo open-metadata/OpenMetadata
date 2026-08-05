@@ -93,6 +93,7 @@ export const EntityAttachmentProvider = ({
       view: EditorView,
       pos: number,
       showInlineAlert?: boolean
+      // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- refactor risky
     ) => {
       if (!onImageUpload) {
         return;
@@ -207,12 +208,12 @@ export const EntityAttachmentProvider = ({
           view.dispatch(currentTr);
         }
 
+        const resolvedErrorMessage =
+          !isUndefined(errorMessage) && isString(errorMessage)
+            ? errorMessage
+            : t('label.failed-to-upload-file');
         showInlineAlert
-          ? setErrorMessage(
-              !isUndefined(errorMessage) && isString(errorMessage)
-                ? errorMessage
-                : t('label.failed-to-upload-file')
-            )
+          ? setErrorMessage(resolvedErrorMessage)
           : showErrorToast(
               error as AxiosError,
               t('label.failed-to-upload-file')

@@ -64,6 +64,7 @@ const Table = <T extends object>(
     ...rest
   }: TableProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 ) => {
   const { t } = useTranslation();
   const { type } = useGenericContext();

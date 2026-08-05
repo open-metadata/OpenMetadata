@@ -217,16 +217,15 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
 const clearBrandCssVars = (root: HTMLElement) => {
   const allSet = Array.from(root.style);
   allSet
-    .filter(
-      (p) =>
-        p.startsWith('--tw-') &&
-        (p.includes('brand') ||
-          p.includes('error') ||
-          p.includes('success') ||
-          p.includes('warning') ||
-          p.includes('info') ||
-          p.includes('blue'))
-    )
+    .filter((p) => {
+      const isTwVar = p.startsWith('--tw-');
+      const isThemeColor =
+        p.includes('brand') || p.includes('error') || p.includes('success');
+      const isStatusColor =
+        p.includes('warning') || p.includes('info') || p.includes('blue');
+
+      return isTwVar && (isThemeColor || isStatusColor);
+    })
     .forEach((p) => root.style.removeProperty(p));
 };
 

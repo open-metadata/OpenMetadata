@@ -45,6 +45,7 @@ type ServiceConnectionDetailsProps = {
 const loadSchemaForServiceCategory = (
   serviceCategory: string,
   serviceFQN: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
 ): Promise<{ schema: Record<string, unknown> }> => {
   switch (serviceCategory.slice(0, -1)) {
     case EntityType.DATABASE_SERVICE:

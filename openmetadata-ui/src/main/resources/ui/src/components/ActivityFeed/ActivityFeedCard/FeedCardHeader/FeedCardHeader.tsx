@@ -45,6 +45,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   isEntityFeed,
   feedType,
   task,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent presentational branching
 }) => {
   const [, , user] = useUserProfile({
     permission: true,

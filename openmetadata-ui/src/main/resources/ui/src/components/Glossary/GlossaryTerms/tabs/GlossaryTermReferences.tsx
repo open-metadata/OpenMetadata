@@ -167,7 +167,8 @@ const GlossaryTermReferences = () => {
         isExpandDisabled={isEmpty(references)}>
         {isVersionView ? (
           getVersionReferenceElements()
-        ) : !permissions.EditAll || !isEmpty(references) ? (
+        ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserves branch order
+        !permissions.EditAll || !isEmpty(references) ? (
           <div className="d-flex flex-wrap">
             {references.map((ref) => renderReferenceElement(ref))}
             {!permissions.EditAll && references.length === 0 && (

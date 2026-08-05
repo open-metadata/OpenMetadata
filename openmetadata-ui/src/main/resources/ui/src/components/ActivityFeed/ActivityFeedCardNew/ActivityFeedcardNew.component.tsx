@@ -82,7 +82,8 @@ const ActivityFeedCardNew = ({
   isFeedWidget = false,
   isFullSizeWidget = false,
   onActivityClick,
-}: ActivityFeedCardNewProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- top-level card component
+ActivityFeedCardNewProps) => {
   const isActivityEvent = !isUndefined(activity);
 
   const { entityFQN, entityType } = useMemo(() => {
@@ -514,6 +515,7 @@ const ActivityFeedCardNew = ({
             onUpdate={onUpdate}
           />
 
+          {/* eslint-disable-next-line sonarjs/expression-complexity -- preserve short-circuit order */}
           {(isPost || (!showThread && !isPost)) && !isActivityEvent && feed && (
             <FeedCardFooterNew
               feed={feed}

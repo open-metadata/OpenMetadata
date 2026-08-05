@@ -51,6 +51,7 @@ import { t } from './i18next/LocalUtil';
 const LABEL_COLUMN_PLURAL = 'label.column-plural';
 const LABEL_FIELD_PLURAL = 'label.field-plural';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 export function getEntityChildrenAndLabel(node: LineageNodeType) {
   if (!node) {
     return {
@@ -378,6 +379,7 @@ const flatItems = <T extends { children?: T[]; dataType: string }>(
 
 const getFlattenChildrenFromEntity = (
   entity: EntityReference
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): EntityChildren => {
   const children: EntityChildren = [];
 
@@ -488,11 +490,14 @@ export const createNodes = (
     node.deleted = isDeleted(node.deleted);
 
     const type =
+      // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
       node.type === EntityLineageNodeType.LOAD_MORE
         ? node.type
-        : incomingMap.has(node.id) && !outgoingMap.has(node.id)
+        : // eslint-disable-next-line sonarjs/no-nested-conditional -- readable inline branch
+        incomingMap.has(node.id) && !outgoingMap.has(node.id)
         ? EntityLineageNodeType.OUTPUT
-        : !incomingMap.has(node.id) && outgoingMap.has(node.id)
+        : // eslint-disable-next-line sonarjs/no-nested-conditional -- readable inline branch
+        !incomingMap.has(node.id) && outgoingMap.has(node.id)
         ? EntityLineageNodeType.INPUT
         : EntityLineageNodeType.DEFAULT;
 

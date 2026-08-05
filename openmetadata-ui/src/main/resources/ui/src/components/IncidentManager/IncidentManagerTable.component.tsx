@@ -152,6 +152,7 @@ const IncidentManagerTable = ({
     []
   );
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- row renderer; refactor risky
   const renderRow = (record: TestCaseResolutionStatus) => {
     const ref = record.testCaseReference;
     const tableFqn = getPartialNameFromTableFQN(

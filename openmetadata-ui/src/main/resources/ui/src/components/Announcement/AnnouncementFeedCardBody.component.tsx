@@ -29,7 +29,8 @@ const AnnouncementFeedCardBody = ({
   editPermission,
   onConfirmation,
   updateAnnouncementHandler,
-}: AnnouncementFeedCardBodyProp) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+AnnouncementFeedCardBodyProp) => {
   const { t } = useTranslation();
   const [isEditAnnouncement, setIsEditAnnouncement] = useState(false);
   const entityType = getEntityType(announcement.entityLink ?? '');

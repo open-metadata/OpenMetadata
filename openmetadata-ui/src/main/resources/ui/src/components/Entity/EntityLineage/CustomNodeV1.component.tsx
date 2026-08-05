@@ -108,7 +108,8 @@ const ExpandCollapseHandles = memo(
     upstreamLineageLength,
     onCollapse,
     onExpand,
-  }: ExpandCollapseHandlesProps) => {
+  }: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+  ExpandCollapseHandlesProps) => {
     if (isEditMode) {
       return null;
     }

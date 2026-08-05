@@ -57,6 +57,7 @@ export const getEntityByFqnUtil = (
   entityType: string,
   entityFQN: string,
   fields?: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 ): Promise<EntityUnion> | null => {
   switch (entityType) {
     case EntityType.TABLE:

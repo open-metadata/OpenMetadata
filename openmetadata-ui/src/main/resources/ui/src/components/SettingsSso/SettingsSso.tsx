@@ -217,6 +217,7 @@ const SettingsSso = () => {
     }
 
     // Check for existing SSO configuration
+    // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
     const checkExistingConfig = async () => {
       // Prevent duplicate API calls
       if (configFetched.current) {

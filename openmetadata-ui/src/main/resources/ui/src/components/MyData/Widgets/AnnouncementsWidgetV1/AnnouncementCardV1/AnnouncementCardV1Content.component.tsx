@@ -84,7 +84,8 @@ const AnnouncementCardV1Content = ({
   title,
   userName,
   variant = 'default',
-}: AnnouncementCardV1ContentProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
+AnnouncementCardV1ContentProps) => {
   const variantConfig = VARIANT_CONFIG[variant];
   const { t } = useTranslation();
 

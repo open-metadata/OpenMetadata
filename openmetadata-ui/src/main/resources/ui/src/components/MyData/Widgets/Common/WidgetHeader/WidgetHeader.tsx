@@ -105,38 +105,41 @@ const WidgetHeader = ({
 
       <Col flex="none">
         <div className="flex gap-2">
-          {isEditView ? (
-            <>
-              <DragOutlined
-                className="drag-widget-icon cursor-pointer widget-header-options widget-header-drag-button"
-                data-testid="drag-widget-button"
-                size={20}
-              />
-              {onEditClick && (
-                <Button
-                  className="widget-header-options widget-header-edit-button"
-                  data-testid="edit-widget-button"
-                  disabled={disableEdit}
-                  icon={<EditIcon height={20} width={20} />}
-                  onClick={onEditClick}
+          {
+            // eslint-disable-next-line sonarjs/expression-complexity -- JSX branch selection
+            isEditView ? (
+              <>
+                <DragOutlined
+                  className="drag-widget-icon cursor-pointer widget-header-options widget-header-drag-button"
+                  data-testid="drag-widget-button"
+                  size={20}
                 />
-              )}
+                {onEditClick && (
+                  <Button
+                    className="widget-header-options widget-header-edit-button"
+                    data-testid="edit-widget-button"
+                    disabled={disableEdit}
+                    icon={<EditIcon height={20} width={20} />}
+                    onClick={onEditClick}
+                  />
+                )}
 
-              <WidgetMoreOptions
-                menuItems={WIDGET_MORE_MENU_ITEMS}
-                onMenuClick={handleMoreClick}
-              />
-            </>
-          ) : (
-            sortOptions &&
-            selectedSortBy && (
-              <WidgetSortFilter
-                selectedSortBy={selectedSortBy}
-                sortOptions={sortOptions}
-                onSortChange={handleSortByClick}
-              />
+                <WidgetMoreOptions
+                  menuItems={WIDGET_MORE_MENU_ITEMS}
+                  onMenuClick={handleMoreClick}
+                />
+              </>
+            ) : (
+              sortOptions &&
+              selectedSortBy && (
+                <WidgetSortFilter
+                  selectedSortBy={selectedSortBy}
+                  sortOptions={sortOptions}
+                  onSortChange={handleSortByClick}
+                />
+              )
             )
-          )}
+          }
         </div>
       </Col>
     </Row>

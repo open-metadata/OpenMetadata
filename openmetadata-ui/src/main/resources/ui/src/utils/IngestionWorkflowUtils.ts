@@ -40,6 +40,7 @@ import ProfilerConfigurationClassBase from '../pages/ProfilerConfigurationPage/P
 
 export const getMetadataSchemaByServiceCategory = (
   serviceCategory: ServiceCategory
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   switch (serviceCategory) {
     case ServiceCategory.METADATA_SERVICES:
@@ -74,6 +75,7 @@ export const getMetadataSchemaByServiceCategory = (
 export const getSchemaByWorkflowType = (
   workflowType: WorkflowType,
   serviceCategory: ServiceCategory
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   const customProperties: RJSFSchema = {
     displayName: {
@@ -209,6 +211,7 @@ export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
   keys.forEach((key) => {
     const value = cleanedWorkFlowData[key as keyof Pipeline];
     if (
+      // eslint-disable-next-line sonarjs/expression-complexity -- type-narrowing guard chain
       value &&
       typeof value === 'object' &&
       'excludes' in value &&

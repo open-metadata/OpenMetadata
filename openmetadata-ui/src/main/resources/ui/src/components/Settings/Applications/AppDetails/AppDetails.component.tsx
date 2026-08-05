@@ -87,6 +87,7 @@ import './app-details.less';
 import { AppAction } from './AppDetails.interface';
 import applicationsClassBase from './ApplicationsClassBase';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const AppDetails = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -374,6 +375,7 @@ const AppDetails = () => {
     return plugin?.getAppDetails?.(appData) || null;
   }, [appData?.name, plugins]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   const tabs = useMemo(() => {
     const ApplicationConfigurationComponent =
       applicationsClassBase.getApplicationConfigurationComponent();
@@ -389,6 +391,7 @@ const AppDetails = () => {
         !isRuntimeDisabled
     );
     const showAppConfigTab = Boolean(
+      // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
       !showMcpConfigTab &&
         appData?.appConfiguration &&
         appData.allowConfiguration &&

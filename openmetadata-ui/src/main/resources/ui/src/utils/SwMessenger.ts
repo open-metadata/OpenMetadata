@@ -51,6 +51,7 @@ export function waitForServiceWorkerController(): Promise<ServiceWorker> {
         if (registration.installing) {
           const installingWorker = registration.installing;
           await new Promise<void>((resolve) => {
+            // eslint-disable-next-line sonarjs/no-nested-functions -- closes over resolve
             installingWorker.addEventListener('statechange', function () {
               if (this.state === 'activated') {
                 resolve();
@@ -63,6 +64,7 @@ export function waitForServiceWorkerController(): Promise<ServiceWorker> {
           const waitingWorker = registration.waiting;
           waitingWorker.postMessage({ type: 'SKIP_WAITING' });
           await new Promise<void>((resolve) => {
+            // eslint-disable-next-line sonarjs/no-nested-functions -- closes over resolve
             waitingWorker.addEventListener('statechange', function () {
               if (this.state === 'activated') {
                 resolve();

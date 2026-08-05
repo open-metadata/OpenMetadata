@@ -58,6 +58,7 @@ const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();

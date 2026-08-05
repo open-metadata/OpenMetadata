@@ -122,7 +122,8 @@ export const useDataQualityDashboardFilters = ({
   initialFilters,
   hideFilterBar = false,
   hiddenFilters = [],
-}: UseDataQualityDashboardFiltersProps): UseDataQualityDashboardFiltersReturn => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
+UseDataQualityDashboardFiltersProps): UseDataQualityDashboardFiltersReturn => {
   const { t } = useTranslation();
 
   const DEFAULT_RANGE_DATA = useMemo<DateRangeObject>(() => {
@@ -721,6 +722,7 @@ export const useDataQualityDashboardFilters = ({
 
   const showFilterBar = !hideFilterBar;
   const hasVisibleFilters =
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     showOwnerFilter ||
     showTierFilter ||
     showCertificationFilter ||
@@ -729,6 +731,7 @@ export const useDataQualityDashboardFilters = ({
     showDataProductsFilter;
 
   const hasActiveFilters =
+    // eslint-disable-next-line sonarjs/expression-complexity -- readable predicate
     !isEmpty(selectedTierFilter) ||
     !isEmpty(selectedCertificationFilter) ||
     !isEmpty(selectedTagFilter) ||

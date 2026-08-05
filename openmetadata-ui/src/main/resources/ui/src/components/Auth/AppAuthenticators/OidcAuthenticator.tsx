@@ -115,11 +115,13 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                 post_logout_redirect_uri:
                   window.location.origin + ROUTES.SIGNIN,
               })
+              // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local state
               .then(() => {
                 // Cleanup application state
                 handleSuccessfulLogout();
                 resolve();
               })
+              // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local state
               .catch((error) => {
                 reject(error);
               });

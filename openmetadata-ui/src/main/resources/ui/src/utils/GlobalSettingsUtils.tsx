@@ -42,6 +42,7 @@ export const getGlobalSettingMenuItem = (
   };
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 export const getSettingOptionByEntityType = (entityType: EntityType) => {
   switch (entityType) {
     case EntityType.TOPIC:

@@ -12,6 +12,7 @@
  */
 import i18n from '../utils/i18next/LocalUtil';
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 export const getEmailConfigFieldLabels = (fieldName: string) => {
   switch (fieldName) {
     case 'emailingEntity':

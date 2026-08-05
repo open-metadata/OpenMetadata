@@ -339,6 +339,7 @@ export const convertMillisecondsToHumanReadableFormat = (
   length?: number,
   showMilliseconds = false,
   prependForNegativeValue = '-'
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- branch-heavy duration formatter
 ): string => {
   // Handle zero and very small positive values
   if (
@@ -417,6 +418,7 @@ export const convertSecondsToHumanReadableFormat = (
   seconds: number,
   length?: number,
   prependForNegativeValue = '-'
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- branch-heavy duration formatter
 ): string => {
   // Handle zero
   if (seconds === 0) {

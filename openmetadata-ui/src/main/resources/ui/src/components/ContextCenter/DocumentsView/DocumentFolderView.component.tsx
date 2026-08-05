@@ -366,6 +366,7 @@ const DocumentFolderView = (
               className="tw:w-full"
               expandedKeys={expandedKeys}
               onExpandedChange={handleExpandedChange}>
+              {/* eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior */}
               {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
                 const isExpanded = expandedKeys.has(folder.id);

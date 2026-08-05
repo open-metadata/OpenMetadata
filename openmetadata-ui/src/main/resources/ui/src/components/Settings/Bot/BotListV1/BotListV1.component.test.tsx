@@ -155,6 +155,7 @@ describe('BotListV1', () => {
         const filterStr = JSON.stringify(arg.queryFilter);
 
         return (
+          // eslint-disable-next-line sonarjs/expression-complexity -- preserve evaluation/short-circuit order
           arg.query === '' &&
           filterStr.includes('*testbot*') &&
           filterStr.includes('email.keyword') &&

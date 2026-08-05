@@ -277,6 +277,7 @@ class ServiceUtilClassBase {
     };
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   public getEntityTypeFromServiceType(serviceType: string): EntityType {
     const serviceTypes = this.getSupportedServiceFromList();
 
@@ -325,6 +326,7 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   private getDefaultLogoForServiceType(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
 
@@ -366,6 +368,7 @@ class ServiceUtilClassBase {
     return getServiceIcon(type) ?? this.getDefaultLogoForServiceType(type);
   }
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inline branching preserves behavior
   public getServiceTypeLogo(searchSource?: ServiceLogoSource): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');

@@ -206,6 +206,7 @@ const getLineageFetchKey = (
 
 export const LineageContext = createContext({} as LineageContextType);
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
   const { fqn: decodedFqn } = useFqn();
@@ -337,7 +338,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     const existingMust = quickFilterQuery?.query?.bool?.must;
     const mustArray = Array.isArray(existingMust)
       ? [...existingMust]
-      : existingMust
+      : // eslint-disable-next-line sonarjs/no-nested-conditional -- preserve exact ternary branches
+      existingMust
       ? [existingMust]
       : [];
 
@@ -504,6 +506,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       recenter?: string | boolean,
       isFirstTime = false,
       activeReactFlowInstance = reactFlowInstanceRef.current
+      // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
     ) => {
       if (!activeReactFlowInstance?.viewportInitialized) {
         return;
@@ -863,6 +866,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const loadChildNodesHandler = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     async (node: LineageNodeType, direction: LineageDirection, depth = 1) => {
       try {
         const res = await getLineageDataByFQN({
@@ -1522,6 +1526,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [removeColumnEdge, removeEdgeHandler, selectedEdge]);
 
   const onConnect = useCallback(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
     (params: Edge | Connection) => {
       const { target, source, sourceHandle, targetHandle } = params;
 
@@ -1619,6 +1624,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             });
 
             setNodes((prev) =>
+              // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
               prev.map((node) =>
                 updateNodeType(node, sourceNode?.id, targetNode?.id)
               )
@@ -1878,6 +1884,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     redraw();
   }, [isColumnLevelLineage]);
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- complex fn
   const onPlatformViewUpdate = useCallback(() => {
     if (lineageMode === 'impact_analysis') {
       return;

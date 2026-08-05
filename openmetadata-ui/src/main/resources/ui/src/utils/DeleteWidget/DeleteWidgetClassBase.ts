@@ -16,6 +16,7 @@ import { getEntityDeleteMessage } from '../EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
 
 class DeleteWidgetClassBase {
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- entity type switch; refactor risky
   public prepareEntityType(entityType: string) {
     switch (entityType) {
       case EntityType.DASHBOARD_SERVICE:

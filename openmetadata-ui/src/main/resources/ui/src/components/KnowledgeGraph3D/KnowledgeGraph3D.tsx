@@ -72,6 +72,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   entity,
   entityType,
   depth = 1,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- component render; refactor risky
 }) => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -141,12 +142,15 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   const getLinkTooltip = useCallback<
     NonNullable<KnowledgeGraph3DSceneProps['getLinkTooltip']>
   >(
-    (link) =>
-      link.derived && link.relation
-        ? formatDerivedRelation(t, link.relation)
-        : RELATION_LABEL_KEYS[link.label]
+    (link) => {
+      if (link.derived && link.relation) {
+        return formatDerivedRelation(t, link.relation);
+      }
+
+      return RELATION_LABEL_KEYS[link.label]
         ? t(RELATION_LABEL_KEYS[link.label])
-        : link.label,
+        : link.label;
+    },
     [t]
   );
 
@@ -169,12 +173,8 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
         truncated,
       };
     }
-    const levelKey =
-      level === 'asset'
-        ? 'data-asset'
-        : level === 'product'
-        ? 'data-product'
-        : 'domain';
+    const nonAssetLevelKey = level === 'product' ? 'data-product' : 'domain';
+    const levelKey = level === 'asset' ? 'data-asset' : nonAssetLevelKey;
     const lensSuffix =
       lens === 'all' ? '' : t(`message.knowledge-graph-lens-${lens}-suffix`);
 

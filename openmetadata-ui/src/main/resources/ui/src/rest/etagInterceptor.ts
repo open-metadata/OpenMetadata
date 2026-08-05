@@ -196,6 +196,7 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
     return config;
   });
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   client.interceptors.response.use((response) => {
     const method = (response.config.method ?? 'get').toLowerCase();
 

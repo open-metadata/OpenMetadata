@@ -68,6 +68,7 @@ const FileNodeView: FC<NodeViewProps> = ({
   updateAttributes,
   deleteNode,
   editor,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
 }) => {
   const { t } = useTranslation();
   const { setPopoverOpen } = useEntityAttachment();

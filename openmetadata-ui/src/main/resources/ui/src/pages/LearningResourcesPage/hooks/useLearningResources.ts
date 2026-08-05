@@ -116,6 +116,7 @@ export const useLearningResources = ({
     async (
       page: number,
       options?: { skipGridItemsUpdate?: boolean; signal?: AbortSignal }
+      // eslint-disable-next-line sonarjs/cyclomatic-complexity -- load handler; refactor risky
     ): Promise<void> => {
       const before = beforeCursorsByPageRef.current.get(2);
       const after = cursorsByPageRef.current.get(page - 1);

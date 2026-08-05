@@ -61,7 +61,7 @@ const CertificationWidget = () => {
   };
 
   const headerExtra = canEdit ? (
-    entity.certification ? (
+    entity.certification ? ( // eslint-disable-line sonarjs/no-nested-conditional
       <WidgetEditButton
         data-testid="edit-certification"
         title={t('label.edit-entity', { entity: t(LABEL_CERTIFICATION) })}

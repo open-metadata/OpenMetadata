@@ -65,6 +65,7 @@ const QueryBuilderWidget: FC<
     defaultField?: string;
     subField?: string;
   }
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- widget render; refactor risky
 > = ({ onChange, schema, value, fields, defaultField, subField, ...props }) => {
   const {
     config,

@@ -324,6 +324,7 @@ const diffContextRules = (
 const diffContextSettings = (
   previous?: PersonaContextDefinition,
   current?: PersonaContextDefinition
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): PersonaContextVersionChange[] => {
   const changes: PersonaContextVersionChange[] = [];
   if (

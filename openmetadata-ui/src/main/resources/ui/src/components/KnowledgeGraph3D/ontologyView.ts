@@ -163,6 +163,7 @@ const buildLookups = (
   const mapped = new Map<string, Set<string>>();
   const parentOf = new Map<string, Set<string>>();
   const related = new Map<string, Set<string>>();
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- complex fn; refactor risks behavior change
   graph.links.forEach((link) => {
     if (link.kind !== 'ontology') {
       return;

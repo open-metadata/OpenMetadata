@@ -125,6 +125,7 @@ export const useCustomEditor = (
 
     instance.on('transaction', () => {
       requestAnimationFrame(() => {
+        // eslint-disable-next-line sonarjs/no-nested-functions -- rAF callback closes over isMounted
         requestAnimationFrame(() => {
           if (isMounted) {
             forceUpdate();

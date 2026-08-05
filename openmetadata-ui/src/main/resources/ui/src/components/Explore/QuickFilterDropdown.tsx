@@ -219,7 +219,8 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
               <div className="tw:flex tw:justify-center tw:py-3">
                 <Loader size="small" />
               </div>
-            ) : displayedOptions.length > 0 ? (
+            ) : // eslint-disable-next-line sonarjs/no-nested-conditional -- inline JSX ternary
+            displayedOptions.length > 0 ? (
               displayedOptions.map((option) => (
                 <div
                   className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover"

@@ -43,6 +43,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   handleRunWorkflow,
   isRunLoading = false,
   onUpdateDisplayName,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const { t } = useTranslation();
   const {

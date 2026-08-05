@@ -78,7 +78,8 @@ export const DataInsightChartCard = ({
   header,
   subHeader,
   listAssets,
-}: DataInsightChartCardProps) => {
+}: // eslint-disable-next-line sonarjs/cyclomatic-complexity -- chart card branches over many insight chart types
+DataInsightChartCardProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>({
     results: [],
@@ -102,6 +103,7 @@ export const DataInsightChartCard = ({
   const isPercentageGraph = isPercentageSystemGraph(type);
 
   const { rightSideEntityList, latestData, graphData, changeInValue } =
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- derives multiple chart aggregates in one pass over data
     useMemo(() => {
       let changeInValue = 0;
 
@@ -406,6 +408,7 @@ export const DataInsightChartCard = ({
     kpi.isLoading,
   ]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- switch maps each chart type to its panel label
   const rightSidePanelLabel = useMemo(() => {
     switch (type) {
       case SystemChartType.TotalDataAssets:

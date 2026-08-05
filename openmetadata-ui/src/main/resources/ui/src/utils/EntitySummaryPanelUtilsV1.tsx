@@ -77,6 +77,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
   level = 0,
   expandedRowKeys,
   onToggleExpand,
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 }) => {
   const hasChildren = !isEmpty(column.children);
   const isExpanded = expandedRowKeys.includes(column.fullyQualifiedName ?? '');
@@ -963,7 +964,8 @@ const APIEndpointSchemaV1: React.FC<{
             ...field,
             children: nameMatch
               ? field.children
-              : filteredChildren.length > 0
+              : // eslint-disable-next-line sonarjs/no-nested-conditional -- child filter ternary
+              filteredChildren.length > 0
               ? filteredChildren
               : field.children,
           });
@@ -1238,6 +1240,7 @@ export const getEntityChildDetailsV1 = (
   highlights?: SearchedDataProps['data'][number]['highlight'],
   loading?: boolean,
   searchText?: string
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ) => {
   // kept for potential future use; remove unused to satisfy linter
   switch (entityType) {

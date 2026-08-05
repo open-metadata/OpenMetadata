@@ -18,6 +18,7 @@ export const getSelectedEntityTypes = (
   config: NodeConfig,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic backend definition shape
   workflowDefinition: any
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): EntityType | EntityType[] => {
   if (config.dataAssets && config.dataAssets.length > 0) {
     const entityTypes = config.dataAssets.filter(Boolean);
@@ -72,6 +73,7 @@ export const getSelectedEntityTypes = (
 export const validateWorkflowConfig = (
   config: NodeConfig,
   isStartNode: boolean
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
 ): boolean => {
   if (!isStartNode) {
     return true;

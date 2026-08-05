@@ -254,6 +254,7 @@ export const CommonWidgets = ({
 
   // To determine if Description is expanded or not
   // Typically needed when description schema, charts or any other table is empty will expand description by default
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const isDescriptionExpanded = useMemo(() => {
     switch (entityType) {
       case EntityType.TABLE:
@@ -299,6 +300,7 @@ export const CommonWidgets = ({
     editCustomAttributePermission,
     viewCustomPropertiesPermission,
   } = useMemo(
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
     () => ({
       editDataProductPermission: permissions.EditAll && !deleted,
       editTagsPermission:
@@ -479,6 +481,7 @@ export const CommonWidgets = ({
     isDescriptionExpanded,
   ]);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const widget = useMemo(() => {
     if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
       return descriptionWidget;

@@ -114,7 +114,7 @@ const KPILegend: React.FC<KPILegendProps> = ({
                 <div className="kpi-legend-center-section">
                   {isTargetMet ? (
                     <GoalCompleted />
-                  ) : isTargetMissed ? (
+                  ) : isTargetMissed ? ( // eslint-disable-line sonarjs/no-nested-conditional
                     <GoalMissed />
                   ) : (
                     <Typography.Text className="text-xss font-semibold kpi-legend-days-left text-center">

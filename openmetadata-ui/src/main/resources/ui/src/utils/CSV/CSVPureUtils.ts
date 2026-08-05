@@ -148,7 +148,7 @@ export const getCsvGridRowHeight = (
     const columnWidth =
       typeof column.width === 'number'
         ? column.width
-        : typeof column.minWidth === 'number'
+        : typeof column.minWidth === 'number' // eslint-disable-line sonarjs/no-nested-conditional
         ? column.minWidth
         : CSV_DEFAULT_CHIP_COLUMN_WIDTH;
 

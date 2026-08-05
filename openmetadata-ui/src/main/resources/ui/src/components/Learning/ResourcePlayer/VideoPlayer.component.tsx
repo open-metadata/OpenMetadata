@@ -23,6 +23,7 @@ interface VideoPlayerProps {
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
   const [isLoading, setIsLoading] = useState(true);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   const embedUrl = useMemo(() => {
     const url = resource.source.url;
 

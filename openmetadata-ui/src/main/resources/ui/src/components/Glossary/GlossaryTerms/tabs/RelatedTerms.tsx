@@ -118,7 +118,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
         className={
           versionStatus?.added
             ? 'diff-added'
-            : versionStatus?.removed
+            : versionStatus?.removed // eslint-disable-line sonarjs/no-nested-conditional
             ? 'diff-removed'
             : undefined
         }
@@ -136,6 +136,7 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   );
 };
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const RelatedTerms = () => {
   const navigate = useNavigate();
   const {
@@ -443,6 +444,7 @@ const RelatedTerms = () => {
         <Typography as="span" className="text-sm font-medium">
           {t(LABEL_RELATED_TERM_PLURAL)}
         </Typography>
+        {/* eslint-disable-next-line sonarjs/expression-complexity */}
         {getPrioritizedEditPermission(
           permissions,
           Operation.EditGlossaryTerms

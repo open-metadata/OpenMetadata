@@ -99,6 +99,7 @@ export function rulesToRows(
 /**
  * Parse payload into rows and condition. Supports config.rules (object) and config.include (legacy).
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- payload parser; refactor risky
 export function parseConditionBuilderPayload(
   payload: ConditionBuilderPayload | null | undefined
 ): { rows: ConditionRow[]; condition: ConditionType } {

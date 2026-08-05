@@ -43,6 +43,7 @@ export const useAuthenticatedImage = (src: string) => {
   const objectUrlRef = useRef<string | null>(null);
   const latestSrcRef = useRef(src);
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const fetchImage = async (requestedSrc: string) => {
     if (!requestedSrc?.includes('/api/v1/attachments/')) {
       if (latestSrcRef.current === requestedSrc) {

@@ -275,6 +275,7 @@ export const ContractSecurityFormTab: React.FC<{
                       dataTestId={`contract-policy-card-${policyField.key}`}
                       defaultExpanded={editingKey === policyField.name}
                       key={policyField.name}>
+                      {/* eslint-disable sonarjs/no-nested-conditional -- preserve ternary branches */}
                       {editingKey === policyField.name ? (
                         <Row
                           className="security-form-item-content"
@@ -343,7 +344,10 @@ export const ContractSecurityFormTab: React.FC<{
                                             data-testid={`add-row-filter-button-${policyIndex}`}
                                             icon={<Icon component={PlusIcon} />}
                                             type="link"
-                                            onClick={() => addRowFilter()}>
+                                            onClick={
+                                              /* eslint-disable-line sonarjs/no-nested-functions -- inline handler */ () =>
+                                                addRowFilter()
+                                            }>
                                             {t('label.add-entity', {
                                               entity: t('label.row-filter'),
                                             })}
@@ -355,6 +359,7 @@ export const ContractSecurityFormTab: React.FC<{
                                             (
                                               rowFilterField,
                                               rowFilterIndex
+                                              // eslint-disable-next-line sonarjs/no-nested-functions -- inline
                                             ) => {
                                               return (
                                                 <Row
@@ -445,14 +450,20 @@ export const ContractSecurityFormTab: React.FC<{
                                         <div className="contract-consumer-security-card-form-actions-items">
                                           <Button
                                             data-testid="cancel-policy-button"
-                                            onClick={() => setEditingKey(null)}>
+                                            onClick={
+                                              /* eslint-disable-line sonarjs/no-nested-functions -- inline handler */ () =>
+                                                setEditingKey(null)
+                                            }>
                                             {t('label.cancel')}
                                           </Button>
                                           <Button
                                             className="m-l-md"
                                             data-testid="save-policy-button"
                                             type="primary"
-                                            onClick={() => setEditingKey(null)}>
+                                            onClick={
+                                              /* eslint-disable-line sonarjs/no-nested-functions -- inline handler */ () =>
+                                                setEditingKey(null)
+                                            }>
                                             {t('label.save')}
                                           </Button>
                                         </div>
@@ -485,6 +496,7 @@ export const ContractSecurityFormTab: React.FC<{
                             return (
                               <div className="contract-consumer-security-card-rule-container">
                                 {rowFilterFields.map(
+                                  // eslint-disable-next-line sonarjs/no-nested-functions -- closes over local scope
                                   (rowFilterField, rowFilterIndex) => {
                                     return (
                                       <Row
@@ -544,6 +556,7 @@ export const ContractSecurityFormTab: React.FC<{
                           }}
                         </Form.List>
                       ) : null}
+                      {/* eslint-enable sonarjs/no-nested-conditional */}
                     </ExpandableCard>
                   );
                 });

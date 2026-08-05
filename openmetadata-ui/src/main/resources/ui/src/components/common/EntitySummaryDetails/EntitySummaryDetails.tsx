@@ -53,6 +53,7 @@ const InfoIcon = ({ content }: { content: React.ReactNode }): JSX.Element => (
   </Tooltip>
 );
 
+// eslint-disable-next-line sonarjs/cognitive-complexity, sonarjs/cyclomatic-complexity -- inherent branching
 const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
@@ -75,6 +76,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
       };
     }, [data]);
 
+  /* eslint-disable sonarjs/no-nested-conditional, sonarjs/expression-complexity -- dense JSX ternaries */
   switch (data.key) {
     case 'Owner':
       {
@@ -261,6 +263,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
       )}
     </Space>
   );
+  /* eslint-enable sonarjs/no-nested-conditional, sonarjs/expression-complexity */
 };
 
 export default EntitySummaryDetails;

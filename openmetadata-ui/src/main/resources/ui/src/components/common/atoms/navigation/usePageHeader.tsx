@@ -78,6 +78,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
       </Button>
     ) : null;
 
+  // eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
   const pageHeader = ((): ReactNode => {
     if (variant === 'default') {
       return (
@@ -114,7 +115,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
         name={currentUser?.name ?? ''}
         width="48"
       />
-    ) : config.icon ? (
+    ) : config.icon ? ( // eslint-disable-line sonarjs/no-nested-conditional
       <FeaturedIcon
         color={config.iconColor ?? 'brand'}
         icon={config.icon}

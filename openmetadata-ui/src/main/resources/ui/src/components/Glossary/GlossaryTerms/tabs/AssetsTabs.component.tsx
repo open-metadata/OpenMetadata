@@ -134,6 +134,7 @@ const AssetsTabs = forwardRef(
       skipSearch = false,
     }: AssetsTabsProps,
     ref
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
   ) => {
     const [assetRemoving, setAssetRemoving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -211,6 +212,7 @@ const AssetsTabs = forwardRef(
       }));
     }, [filters]);
 
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
     const queryParam = useMemo(() => {
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
@@ -516,6 +518,7 @@ const AssetsTabs = forwardRef(
     };
 
     const onAssetRemove = useCallback(
+      // eslint-disable-next-line sonarjs/cyclomatic-complexity -- inherent branching
       async (assetsData: SourceType[]) => {
         if (!activeEntity) {
           return;

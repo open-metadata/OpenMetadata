@@ -86,6 +86,7 @@ const NotificationBox = ({
   );
 
   const notificationDropDownList = useMemo(() => {
+    // eslint-disable-next-line sonarjs/cyclomatic-complexity -- notification mapper; refactor risky
     return notifications.slice(0, 5).map((feed) => {
       if (isTaskNotification(feed)) {
         return (

@@ -112,14 +112,11 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
     // - the selection is a node selection (for drag handles)
     // - link is active
     // - editor is not editable
-    if (
-      editor.isActive('image') ||
-      empty ||
-      isNodeSelection(selection) ||
-      editor.isActive('link') ||
-      editor.isActive('table') ||
-      !editor.isEditable
-    ) {
+    const isNonTextSelection =
+      editor.isActive('image') || empty || isNodeSelection(selection);
+    const isBlockedContext =
+      editor.isActive('link') || editor.isActive('table') || !editor.isEditable;
+    if (isNonTextSelection || isBlockedContext) {
       return false;
     }
 

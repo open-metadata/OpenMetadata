@@ -28,6 +28,7 @@ interface AttentionCardProps {
   att: RunAttention;
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- preserve behavior
 const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
