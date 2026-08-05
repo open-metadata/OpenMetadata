@@ -18,7 +18,7 @@ import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from datetime import datetime as _datetime
-from typing import Callable, List, Optional, Tuple, Type  # noqa: UP035
+from typing import Callable, ClassVar, List, Optional, Tuple, Type  # noqa: UP035
 
 from sqlalchemy import (
     BigInteger,
@@ -173,6 +173,66 @@ class BaseTableMetricComputer(AbstractTableMetricComputer):
         """Default compute behavior for table metrics. This method will use the raw table
         to compute metrics and omit any sampling or partitioning logic."""
         return self.runner.select_first_from_table(*[metric().fn() for metric in self.metrics])
+
+
+def clickzetta_full_scan_allowed(conn_config) -> bool:
+    """Return whether an operator explicitly opted into ``COUNT(*)`` scans."""
+
+    for option_name in ("connectionOptions", "connectionArguments"):
+        options = getattr(conn_config, option_name, None)
+        if isinstance(options, dict):
+            values = options
+        else:
+            values = getattr(options, "root", None) or {}
+        for key in ("allowFullTableScan", "clickzettaAllowFullTableScan"):
+            value = values.get(key)
+            if value is not None:
+                return str(value).strip().lower() == "true"
+    return False
+
+
+class ClickzettaTableMetricComputer(BaseTableMetricComputer):
+    """Compute ClickZetta table metrics without an implicit data scan.
+
+    Column count and names come from the OpenMetadata table entity/ORM and do
+    not query ClickZetta.  Row count is available only when the operator sets
+    ``connectionOptions.allowFullTableScan=true``; this makes the cost and
+    production impact explicit while the dialect is still being validated.
+    """
+
+    SUPPORTED_METRICS: ClassVar[set[str]] = {ROW_COUNT, COLUMN_COUNT, COLUMN_NAMES}
+
+    @staticmethod
+    def _metric_name(metric) -> str:
+        name = metric.name() if callable(getattr(metric, "name", None)) else getattr(metric, "name", metric)
+        return str(name)
+
+    def compute(self):
+        metric_names = [self._metric_name(metric) for metric in self.metrics]
+        unsupported = set(metric_names) - self.SUPPORTED_METRICS
+        if unsupported:
+            raise ValueError(f"ClickZetta table metrics are not supported: {sorted(unsupported)}")
+
+        result = {}
+        if COLUMN_COUNT in metric_names:
+            result[COLUMN_COUNT] = len(inspect(self.runner.raw_dataset).c)
+        if COLUMN_NAMES in metric_names:
+            result[COLUMN_NAMES] = ",".join(inspect(self.runner.raw_dataset).c.keys())
+
+        if ROW_COUNT in metric_names:
+            if not clickzetta_full_scan_allowed(self.conn_config):
+                raise ValueError(
+                    "ClickZetta row-count profiling requires explicit connectionOptions.allowFullTableScan=true"
+                )
+            row = self.runner.select_first_from_table(
+                *[metric().fn() for metric in self.metrics if self._metric_name(metric) == ROW_COUNT]
+            )
+            if row:
+                result.update(row._asdict())
+
+        if not result:
+            return None
+        return namedtuple("ClickzettaTableMetrics", result.keys())(**result)
 
 
 class SnowflakeTableMetricComputer(BaseTableMetricComputer):
@@ -1183,3 +1243,4 @@ table_metric_computer_factory.register(Dialects.Presto, TrinoTableMetricComputer
 table_metric_computer_factory.register(Dialects.Hive, HiveTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Impala, ImpalaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Databricks, DatabricksTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Clickzetta, ClickzettaTableMetricComputer)

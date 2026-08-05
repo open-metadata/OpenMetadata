@@ -40,13 +40,16 @@ def test_clickzetta_keeps_unvalidated_data_capabilities_disabled():
 
 def test_clickzetta_dbt_flag_defaults_to_disabled():
     """DBT artifacts use the separate DBT source until attached UI support is validated."""
+    schema_path = (
+        Path(__file__).resolve().parents[5]
+        / "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/clickzettaConnection.json"
+    )
+    schema = json.loads(schema_path.read_text())
+    assert schema["properties"]["supportsDBTExtraction"]["default"] is False
+    assert schema["properties"]["supportsProfiler"]["default"] is False
+    assert schema["properties"]["supportsDataDiff"]["default"] is False
+
     if not hasattr(ClickzettaConnection, "model_validate"):
-        schema_path = (
-            Path(__file__).resolve().parents[5]
-            / "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/clickzettaConnection.json"
-        )
-        schema = json.loads(schema_path.read_text())
-        assert schema["properties"]["supportsDBTExtraction"]["default"] is False
         return
 
     config = ClickzettaConnection.model_validate(
@@ -60,3 +63,11 @@ def test_clickzetta_dbt_flag_defaults_to_disabled():
     )
 
     assert config.supportsDBTExtraction is False
+    # Generated models are ignored by git and can lag the schema in a local
+    # checkout until `make generate` is run. Validate the generated defaults
+    # when those fields are available, while keeping this source-schema test
+    # runnable in a clean checkout.
+    if hasattr(config, "supportsProfiler"):
+        assert config.supportsProfiler is False
+    if hasattr(config, "supportsDataDiff"):
+        assert config.supportsDataDiff is False

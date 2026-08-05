@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add ClickZetta support for profiling, sampling, data diff, native test execution, and the existing OpenMetadata dbt-artifact workflow without enabling an unvalidated data-reading path in production.
+**Goal:** Add ClickZetta support for profiling, sampling, data diff, native test execution, and the existing OpenMetadata dbt-artifact workflow without enabling an unvalidated data-reading path in production. Implement every capability that can be proven offline, then keep service registration behind bounded live gates.
 
 **Architecture:** Treat each capability as an independent OpenMetadata service-spec contract. Keep the metadata/usage/lineage connector separate from the DBT artifact source, and add a ClickZetta implementation only after its generated SQL is covered by offline compilation tests and a bounded `seller_center` smoke test. Capability registration remains `None` until the corresponding gate is green, so an ingestion run cannot silently issue data scans.
 
@@ -206,19 +206,19 @@ git commit -m "feat(clickzetta): map native job history"
 - Consumes: OpenMetadata table entities and the ClickZetta SQLAlchemy engine.
 - Produces: only metrics proven to compile and execute on ClickZetta; failures must abort/skip with a useful diagnostic instead of silently falling back to a full table scan.
 
-- [ ] **Step 1: Write failing offline compilation tests**
+- [x] **Step 1: Write failing offline compilation tests**
 
 Cover ORM column conversion for numeric, string, date, boolean, and array types; row-count SQL; null-count SQL; and the configured bounded sample query. Assert the compiled dialect is `clickzetta` and the SQL contains a limit or an explicitly approved aggregate.
 
-- [ ] **Step 2: Register the ClickZetta dialect and common type converter**
+- [x] **Step 2: Register the ClickZetta dialect and common type converter**
 
 Add `PythonDialects.Clickzetta = "clickzetta"` and map ClickZetta to the common converter only after tests prove every supported OpenMetadata type maps to a SQLAlchemy type.
 
-- [ ] **Step 3: Implement a minimal ClickZetta profiler**
+- [x] **Step 3: Implement a minimal ClickZetta profiler**
 
 Reuse `SQAProfilerInterface`; override only the ClickZetta-specific metric/table behavior. Start with row count, null count, and supported numeric aggregates. Do not expose system metrics, window metrics, approximate statistics, or array expansion until each SQL form has a ClickZetta test.
 
-- [ ] **Step 4: Run local/container tests and inspect generated SQL**
+- [x] **Step 4: Run local/container tests and inspect generated SQL**
 
 Run the focused profiler tests, existing ClickZetta tests, Ruff on changed Python files, and the containerized focused suite.
 
@@ -252,15 +252,15 @@ git commit -m "feat(clickzetta): add gated profiler support"
 - Consumes: a table entity plus OpenMetadata `DatabaseSamplerConfig`.
 - Produces: a bounded `LIMIT n` sample with column filters, no implicit percentage/full-table scan, and no sample persistence unless the operator explicitly enables it.
 
-- [ ] **Step 1: Write failing SQL-bound tests**
+- [x] **Step 1: Write failing SQL-bound tests**
 
 Assert the sample query always has a positive limit, preserves quoted database/schema/table identifiers, rejects an empty/unbounded custom query, and honors included/excluded columns.
 
-- [ ] **Step 2: Implement the smallest sampler**
+- [x] **Step 2: Implement the smallest sampler**
 
 Subclass `SQASampler`; use ClickZetta's validated `LIMIT` syntax and disable percentage/random sampling until a ClickZetta-native equivalent is proven. Raise a configuration error rather than silently querying the full table.
 
-- [ ] **Step 3: Run unit/container tests and one seller-center smoke**
+- [x] **Step 3: Run unit/container tests; live seller-center smoke remains pending**
 
 Verify row count, sample width, sample limit, and no data outside the configured schema is read. Use a test table with non-sensitive values where possible.
 
@@ -291,15 +291,15 @@ git commit -m "feat(clickzetta): add bounded sampler"
 - Consumes: the ClickZetta sampler, `SQATestSuiteInterface`, OpenMetadata test definitions, and a ClickZetta SQLAlchemy session.
 - Produces: standard OpenMetadata test results with explicit `Success`, `Failed`, and `Aborted` mapping; no DDL or test-data mutation.
 
-- [ ] **Step 1: Write failing tests for SQL expression and result mapping**
+- [x] **Step 1: Write failing tests for SQL expression and result mapping**
 
 Cover table row count, column not-null, uniqueness, custom SQL, permission denial, and timeout. Assert an unsupported SQL expression returns `Aborted` with the source error rather than `Success`.
 
-- [ ] **Step 2: Implement the ClickZetta session/test adapter**
+- [x] **Step 2: Implement the ClickZetta session/test adapter**
 
 Reuse `SQATestSuiteInterface` and override only identifier quoting, session setup, and ClickZetta-specific error mapping. Keep the test runner read-only.
 
-- [ ] **Step 3: Run unit/container tests**
+- [x] **Step 3: Run unit/container tests**
 
 Run the data-quality tests, ClickZetta focused suite, and Ruff. No live test is allowed until a non-production table and least-privilege test role are available.
 
@@ -324,7 +324,7 @@ git commit -m "feat(clickzetta): add native test execution"
 **Files:**
 - Create: `ingestion/src/metadata/ingestion/source/database/clickzetta/data_diff/__init__.py`
 - Create: `ingestion/src/metadata/ingestion/source/database/clickzetta/data_diff/data_diff.py`
-- Modify: `ingestion/src/metadata/data_quality/validations/table/sqlalchemy/tableDiff.py`
+- Create: `ingestion/src/metadata/ingestion/source/database/clickzetta/data_diff/table_parameter.py`
 - Modify: `ingestion/src/metadata/ingestion/source/database/clickzetta/service_spec.py`
 - Modify: `openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/clickzettaConnection.json`
 - Create: `ingestion/tests/unit/data_quality/test_clickzetta_data_diff.py`
@@ -333,15 +333,15 @@ git commit -m "feat(clickzetta): add native test execution"
 - Consumes: two ClickZetta table parameters, explicitly configured key columns, and `data-diff`.
 - Produces: schema and row differences with bounded key ranges; no automatic full-table diff.
 
-- [ ] **Step 1: Write failing tests for dialect registration and hash/key SQL**
+- [x] **Step 1: Write failing tests for dialect registration and hash/key SQL**
 
 Assert ClickZetta is rejected before registration, then accepted only for the tested key/hash expression and identifier quoting. Assert missing key columns produce `Aborted`.
 
-- [ ] **Step 2: Implement ClickZetta table parameters and SQL expression support**
+- [x] **Step 2: Implement ClickZetta table parameters and SQL expression support**
 
-Use the shared table-diff validator, add a ClickZetta dialect mapping, and keep key-column selection mandatory. Do not copy the Databricks implementation without proving ClickZetta semantics.
+Use the shared table-diff validator, add a ClickZetta dialect mapping, and keep key-column selection mandatory. The shared validator remains unchanged; the connector-specific table parameter registers the dialect only when a future service spec explicitly imports it. Do not copy the Databricks implementation without proving ClickZetta semantics.
 
-- [ ] **Step 3: Run unit/container tests and a two-table smoke test**
+- [x] **Step 3: Run unit/container tests; two-table live smoke remains pending**
 
 Use two small, non-production seller-center tables or snapshots. Record query count, row limit, and runtime.
 
@@ -371,11 +371,11 @@ git commit -m "feat(clickzetta): add opt-in data diff support"
 
 Assert the source reads the latest manifest path and treats catalog/run-results as optional artifacts without querying ClickZetta.
 
-- [ ] **Step 2: Document the production sequence**
+- [x] **Step 2: Document the production sequence**
 
 After a merge: run `dbt parse` (or the already-approved affected-model artifact job), upload the artifact set to S3 atomically, then trigger the OpenMetadata DBT ingestion. Run ClickZetta metadata ingestion separately only when catalog structure changes or a usage/lineage window needs refresh.
 
-- [ ] **Step 3: Keep `supportsDBTExtraction` false until the attached UI workflow is tested**
+- [x] **Step 3: Keep `supportsDBTExtraction` false until the attached UI workflow is tested**
 
 The separate S3 DBT ingestion remains the production path. Change the flag in a later, isolated task only after the UI creates the expected DBT source and the same S3 artifacts are ingested successfully.
 
@@ -399,13 +399,13 @@ git commit -m "docs(clickzetta): document separate dbt artifact ingestion"
 - Consumes: capability-specific test evidence, container evidence, and live smoke-test logs with credentials removed.
 - Produces: a PR-ready support statement that separates implemented features from pending external permission/environment gates.
 
-- [ ] **Step 1: Run local focused tests, Ruff, JSON parsing, and container tests**
+- [x] **Step 1: Run local focused tests, Ruff, JSON parsing, and container tests**
 
-- [ ] **Step 2: Confirm no production/EC2 files or credentials changed**
+- [x] **Step 2: Confirm no production/EC2 files or credentials changed**
 
 Run `git status`, inspect the diff, and verify no `.env.local` or secret material is staged.
 
-- [ ] **Step 3: Update the matrix with exact evidence and remaining gates**
+- [x] **Step 3: Update the matrix with exact evidence and remaining gates**
 
 - [ ] **Step 4: Commit each independently reviewable capability**
 
@@ -415,8 +415,10 @@ Run `git status`, inspect the diff, and verify no `.env.local` or secret materia
 
 - Task 1 contract/matrix phase: complete in commits `b4424d92c2` and `bc49650097`.
 - Existing native job-history mapping phase: local and container tests complete in commit `a8600d9346`; the live gate is pending read access to `sys.information_schema.job_history`.
-- Focused local validation: `27 passed, 7 warnings` for the capability, usage, and ClickZetta connection tests.
-- OpenMetadata 1.13.0 container validation: `27 passed, 6 warnings` for the same focused suite.
-- Ruff check and format validation: passed for the new capability test.
+- Offline capability expansion: bounded sampler, guarded profiler, read-only test-suite adapter, and opt-in data-diff adapter implemented on the current branch; service registrations remain `None` pending live gates.
+- Focused local validation: `44 passed, 7 warnings` across ClickZetta metadata/usage/capability, sampler, profiler, test-suite, and data-diff tests.
+- OpenMetadata 1.13.0 container validation: `42 passed, 2 skipped, 7 warnings`; the two skips are ClickZetta SQLAlchemy compilation tests because the stock image does not install the ClickZetta extras.
+- Ruff check and format validation: passed for all changed Python files.
 - ClickZetta schema JSON parse: passed.
-- No EC2 deployment, production data scan, or ClickZetta permission change was performed.
+- Existing offline DBT artifact validation: `162 passed, 7 warnings` across manifest/catalog parsing and HTTP artifact configuration tests; no ClickZetta query was issued.
+- No EC2 deployment, production data scan, or ClickZetta permission change was performed. The safety gate explicitly rejects unbounded custom sampling SQL and data-diff queries without `allowFullTableScan=true`.

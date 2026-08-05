@@ -63,6 +63,7 @@ class PythonDialects(Enum):
     AzureSQL = "azuresql"
     BigQuery = "bigquery"
     ClickHouse = "clickhouse"
+    Clickzetta = "clickzetta"
     Cockroach = "cockroachdb"
     Databricks = "databricks"
     Db2 = "db2"
