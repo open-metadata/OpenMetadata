@@ -15,6 +15,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -54,6 +55,7 @@ import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.engine.runtime.ProcessInstanceQuery;
 import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -113,6 +115,11 @@ public class WorkflowHandler {
   // versions on long-lived deployments. Fetching them one page at a time keeps memory bounded and
   // lets the loop stop cleanly the moment the backlog for THIS key is fully drained.
   private static final int CLEANUP_BATCH_SIZE = 100;
+
+  // Max entity ids per Flowable OR-chained query when cancelling running instances during a
+  // bulk hard-delete. Keeps the generated statement inside driver parameter limits (Postgres
+  // caps at 32767 bind params; MySQL is lower under some JDBC configs).
+  private static final int CANCEL_BATCH_SIZE = 100;
 
   /**
    * Message name used by the Collate Policy Agent node's await event. The batch coordinator delivers
@@ -1498,21 +1505,45 @@ public class WorkflowHandler {
    * hit EntityNotFoundException on an entity that no longer exists.
    */
   public void cancelInstancesForEntity(UUID entityId, String reason) {
-    if (entityId == null) {
+    if (entityId != null) {
+      cancelInstancesForEntities(List.of(entityId), reason);
+    }
+  }
+
+  /**
+   * Batch variant of {@link #cancelInstancesForEntity}. Uses Flowable's OR builder in bounded
+   * sub-chunks so a large subtree hard-delete does not fan out into thousands of
+   * variableValueEquals queries. The count() gate short-circuits when the engine has zero
+   * running instances, which is the common case on tenants that don't use governance workflows.
+   */
+  public void cancelInstancesForEntities(Collection<UUID> entityIds, String reason) {
+    if (entityIds == null || entityIds.isEmpty()) {
       return;
     }
     RuntimeService runtimeService = processEngine.getRuntimeService();
+    if (runtimeService.createProcessInstanceQuery().count() == 0) {
+      return;
+    }
     String namespacedVar = getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE);
-    List<ProcessInstance> instances =
-        runtimeService
-            .createProcessInstanceQuery()
-            .variableValueEquals(namespacedVar, entityId.toString())
-            .list();
-    for (ProcessInstance pi : instances) {
-      try {
-        runtimeService.deleteProcessInstance(pi.getId(), reason);
-      } catch (FlowableException ignored) {
-        // Instance already ending or gone; deleteProcessInstance is idempotent enough here.
+    List<UUID> ids = new ArrayList<>(entityIds.size());
+    for (UUID id : entityIds) {
+      if (id != null) {
+        ids.add(id);
+      }
+    }
+    for (int i = 0; i < ids.size(); i += CANCEL_BATCH_SIZE) {
+      List<UUID> subChunk = ids.subList(i, Math.min(i + CANCEL_BATCH_SIZE, ids.size()));
+      ProcessInstanceQuery query = runtimeService.createProcessInstanceQuery().or();
+      for (UUID id : subChunk) {
+        query = query.variableValueEquals(namespacedVar, id.toString());
+      }
+      List<ProcessInstance> instances = query.endOr().list();
+      for (ProcessInstance pi : instances) {
+        try {
+          runtimeService.deleteProcessInstance(pi.getId(), reason);
+        } catch (FlowableException ignored) {
+          // Instance already ending or gone; deleteProcessInstance is idempotent enough here.
+        }
       }
     }
   }

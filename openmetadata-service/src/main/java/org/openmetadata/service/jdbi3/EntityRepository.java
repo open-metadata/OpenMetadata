@@ -6960,10 +6960,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     try (var ignored = phase("bulkHardDeleteWorkflows")) {
       if (WorkflowHandler.isInitialized()) {
-        WorkflowHandler handler = WorkflowHandler.getInstance();
-        for (UUID entityId : entityIds) {
-          handler.cancelInstancesForEntity(entityId, "Entity deleted");
-        }
+        WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
       }
     }
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
