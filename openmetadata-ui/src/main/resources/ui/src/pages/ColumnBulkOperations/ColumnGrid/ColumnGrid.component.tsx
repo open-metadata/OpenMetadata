@@ -440,6 +440,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           <AsyncSelectList
             autoFocus={false}
             fetchOptions={tagClassBase.getTags}
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={classificationTagOptions}
             key={`tags-${drawerKey}`}
             mode="multiple"
@@ -496,6 +497,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           </Typography>
           <TreeAsyncSelectList
             hasNoActionButtons
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={glossaryTermOptions}
             key={`glossaryTerms-${drawerKey}`}
             open={false}

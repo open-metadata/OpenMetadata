@@ -168,9 +168,9 @@ def get_table_comment(  # pylint: disable=unused-argument
     )
     try:
         for result in list(cursor):
-            data = result.values()
+            data = tuple(result)
             if data[1] and data[1].strip() == "comment":
-                return {"text": data[2] if data and data[2] else None}
+                return {"text": data[2].strip() if data[2] else None}
     except Exception:
         return {"text": None}
     return {"text": None}

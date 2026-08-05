@@ -136,7 +136,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
     .mockReturnValue({ customizedPage: null, isLoading: false }),
 }));
 
-jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
   getDetailsTabWithNewLabel: jest.fn().mockImplementation((items) => items),
   getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),

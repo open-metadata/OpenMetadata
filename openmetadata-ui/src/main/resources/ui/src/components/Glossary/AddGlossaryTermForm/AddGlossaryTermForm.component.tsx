@@ -14,14 +14,21 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 
+import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
+import { CustomProperty, EntityReference } from '../../../generated/entity/type';
+import {
+  FieldKind,
+  IntakeForm,
+  IntakeFormField,
+  TargetEntityType,
+} from '../../../generated/governance/intakeForm';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
@@ -30,11 +37,19 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
+import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
+import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryUtils';
+import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import AddDomainFormExtensionFields from '../../Domain/AddDomainForm/AddDomainFormExtensionFields';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
+
+const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);
 
 const AddGlossaryTermForm = ({
   editMode,
@@ -47,6 +62,124 @@ const AddGlossaryTermForm = ({
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
   const { t } = useTranslation();
+  const [intakeForm, setIntakeForm] = useState<IntakeForm | null>(null);
+  const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
+    []
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (editMode) {
+      setIntakeForm(null);
+
+      return;
+    }
+
+    getIntakeFormByEntityType(TargetEntityType.GlossaryTerm)
+      .then((result) => {
+        if (!cancelled) {
+          setIntakeForm(result);
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (!cancelled) {
+          setIntakeForm(null);
+          showErrorToast(error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (editMode) {
+      setCustomProperties([]);
+
+      return;
+    }
+
+    getCustomPropertiesByEntityType(TargetEntityType.GlossaryTerm)
+      .then((properties) => {
+        if (!cancelled) {
+          setCustomProperties(properties ?? []);
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (!cancelled) {
+          setCustomProperties([]);
+          showErrorToast(error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editMode]);
+
+  const nativeRequiredFieldsByPath = useMemo(() => {
+    const fields = new Map<string, IntakeFormField>();
+
+    getIntakeFormFields(intakeForm).forEach((field) => {
+      const isCustomProperty =
+        field.fieldKind === FieldKind.CustomProperty ||
+        field.fieldPath.startsWith('extension.');
+
+      if (field.required && !isCustomProperty) {
+        fields.set(field.fieldPath, field);
+      }
+    });
+
+    return fields;
+  }, [intakeForm]);
+
+  const extensionFormFields = useMemo(
+    () =>
+      getIntakeFormFields(intakeForm).filter(
+        (field) =>
+          field.fieldKind === FieldKind.CustomProperty ||
+          field.fieldPath.startsWith('extension.')
+      ),
+    [intakeForm]
+  );
+
+  const applyIntakeFormRequired = useCallback(
+    (field: FieldProp): FieldProp => {
+      const requiredField = nativeRequiredFieldsByPath.get(
+        field.name.toString()
+      );
+
+      if (!requiredField) {
+        return field;
+      }
+
+      const isArrayValuedField = ARRAY_VALUED_NATIVE_FIELDS.has(
+        field.name.toString()
+      );
+
+      return {
+        ...field,
+        required: true,
+        rules: [
+          ...(field.rules ?? []),
+          {
+            required: true,
+            ...(isArrayValuedField ? { type: 'array' as const } : {}),
+            message:
+              requiredField.errorMessage ||
+              t('label.field-required', {
+                field: requiredField.fieldLabel,
+              }),
+          },
+        ],
+      };
+    },
+    [nativeRequiredFieldsByPath, t]
+  );
 
   const ownersList = Array.isArray(selectedOwners)
     ? selectedOwners
@@ -80,6 +213,8 @@ const AddGlossaryTermForm = ({
       color,
       iconURL,
     } = formObj;
+
+    const extension = editMode ? {} : buildExtension(formObj.extension);
 
     const selectedOwners =
       ownersList.length > 0
@@ -123,6 +258,7 @@ const AddGlossaryTermForm = ({
       tags: tags,
       owners: selectedOwners,
       style: isEmpty(style) ? undefined : style,
+      ...(!editMode && !isEmpty(extension) ? { extension } : {}),
     };
 
     await onSave(data);
@@ -346,7 +482,7 @@ const AddGlossaryTermForm = ({
     },
   };
 
-  const reviewersField: FieldProp = {
+  const reviewersField: FieldProp = applyIntakeFormRequired({
     name: 'reviewers',
     id: 'root/reviewers',
     required: false,
@@ -374,18 +510,39 @@ const AddGlossaryTermForm = ({
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',
     },
+  });
+
+  const buildExtension = (extension?: Record<string, unknown>) => {
+    if (!extension) {
+      return {};
+    }
+    const result: Record<string, unknown> = {};
+    Object.entries(extension).forEach(([key, value]) => {
+      const definition = customProperties.find((cp) => cp.name === key);
+      if (definition) {
+        const serialized = serializeExtensionValue(definition, value);
+        if (serialized !== undefined) {
+          result[key] = serialized;
+        }
+      } else {
+        result[key] = value;
+      }
+    });
+
+    return result;
   };
 
+  const intakeAwareFormFields = formFields.map(applyIntakeFormRequired);
+
   return (
-    <>
-      <Form
-        form={form}
-        initialValues={{
-          description: editMode && glossaryTerm ? glossaryTerm.description : '',
-        }}
-        layout="vertical"
-        onFinish={handleSave}>
-        {generateFormFields(formFields)}
+    <Form
+      form={form}
+      initialValues={{
+        description: editMode && glossaryTerm ? glossaryTerm.description : '',
+      }}
+      layout="vertical"
+      onFinish={handleSave}>
+        {generateFormFields(intakeAwareFormFields)}
 
         <Form.List name="references">
           {(fields, { add, remove }) => (
@@ -480,8 +637,14 @@ const AddGlossaryTermForm = ({
             </Space>
           )}
         </div>
-      </Form>
-    </>
+
+      {extensionFormFields.length > 0 && (
+        <AddDomainFormExtensionFields
+          customProperties={customProperties}
+          formFields={extensionFormFields}
+        />
+      )}
+    </Form>
   );
 };
 

@@ -78,6 +78,7 @@ interface TreeAsyncSelectListProps
   newLook?: boolean;
   onSubmit?: () => void;
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
+  getPopupContainer?: TreeSelectProps['getPopupContainer'];
 }
 
 interface ExtendedTreeNode {

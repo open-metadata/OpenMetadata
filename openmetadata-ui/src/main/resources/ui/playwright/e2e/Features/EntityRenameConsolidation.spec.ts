@@ -643,8 +643,7 @@ test.describe(
     // DOMAIN TESTS
     // ===================================================================
 
-    // eslint-disable-next-line playwright/no-skipped-test -- domain rename consolidation not yet stable
-    test.skip('Domain - rename then update description should work', async ({
+    test('Domain - rename then update description should work', async ({
       page,
       browser,
     }) => {
@@ -699,8 +698,7 @@ test.describe(
       }
     });
 
-    // eslint-disable-next-line playwright/no-skipped-test -- domain rename consolidation not yet stable
-    test.skip('Domain - multiple rename + update cycles should work', async ({
+    test('Domain - multiple rename + update cycles should work', async ({
       page,
       browser,
     }) => {

@@ -118,6 +118,14 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
           .build();
 
+  private static final IndexMapping MLMODEL_SERVICE_MAPPING =
+      IndexMapping.builder()
+          .indexName("mlmodel_service_search_index")
+          .alias("mlModelService")
+          .childAliases(List.of("mlmodel"))
+          .indexMappingFile("/elasticsearch/%s/mlmodel_service_index_mapping.json")
+          .build();
+
   private static final IndexMapping DATABASE_MAPPING =
       IndexMapping.builder()
           .indexName("database_search_index")
@@ -203,6 +211,7 @@ class SearchRepositoryBehaviorTest {
                 Map.entry(Entity.DOMAIN, DOMAIN_MAPPING),
                 Map.entry(Entity.DATA_PRODUCT, DATA_PRODUCT_MAPPING),
                 Map.entry(Entity.DATABASE_SERVICE, DATABASE_SERVICE_MAPPING),
+                Map.entry(Entity.MLMODEL_SERVICE, MLMODEL_SERVICE_MAPPING),
                 Map.entry(Entity.TAG, TABLE_MAPPING),
                 Map.entry(Entity.GLOSSARY_TERM, TABLE_MAPPING),
                 Map.entry(Entity.GLOSSARY, TABLE_MAPPING),
@@ -364,6 +373,20 @@ class SearchRepositoryBehaviorTest {
   void getIndexOrAliasNameResolvesEntitySpecificAliasToCanonicalIndex() {
     assertEquals("cluster_table_search_index", repository.getIndexOrAliasName("table"));
     assertEquals("cluster_domain_search_index", repository.getIndexOrAliasName("domain"));
+  }
+
+  /**
+   * When an entity's {@code entityIndexMap} key differs from its {@code alias} (the mlModel service
+   * key is {@code mlmodelService} but its alias is {@code mlModelService}), a query for the alias
+   * must still resolve to the single canonical index. Without alias resolution the token misses the
+   * by-key lookup, passes through as a raw ES alias, and fans out to every index that carries it —
+   * for {@code mlModelService} that includes {@code mlmodel_search_index}, so the response leaks
+   * mlModel assets alongside the services.
+   */
+  @Test
+  void getIndexOrAliasNameResolvesEntityAliasWhenKeyCasingDiffers() {
+    assertEquals(
+        "cluster_mlmodel_service_search_index", repository.getIndexOrAliasName("mlModelService"));
   }
 
   /**
@@ -3013,6 +3036,7 @@ class SearchRepositoryBehaviorTest {
             Entity.DOMAIN,
             Entity.DATA_PRODUCT,
             Entity.DATABASE_SERVICE,
+            Entity.MLMODEL_SERVICE,
             Entity.TAG,
             Entity.GLOSSARY_TERM,
             Entity.GLOSSARY,

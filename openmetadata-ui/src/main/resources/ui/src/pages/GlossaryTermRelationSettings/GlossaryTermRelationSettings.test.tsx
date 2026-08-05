@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { RelationCategory } from '../../generated/configuration/glossaryTermRelationSettings';
 import {
   createGlossaryTermRelationType,
@@ -21,7 +22,93 @@ import {
 import GlossaryTermRelationSettingsPage from './GlossaryTermRelationSettings';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Badge: ({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  ),
+  Button: ({
+    children,
+    onClick,
+    isDisabled,
+    'data-testid': testId,
+  }: {
+    children?: React.ReactNode;
+    onClick?: () => void;
+    isDisabled?: boolean;
+    'data-testid'?: string;
+  }) => (
+    <button data-testid={testId} disabled={isDisabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
+  ButtonUtility: ({
+    children,
+    onPress,
+    isDisabled,
+    'data-testid': testId,
+  }: {
+    children?: React.ReactNode;
+    onPress?: () => void;
+    isDisabled?: boolean;
+    'data-testid'?: string;
+  }) => (
+    <button data-testid={testId} disabled={isDisabled} onClick={onPress}>
+      {children}
+    </button>
+  ),
+  Card: ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  Checkbox: ({
+    isSelected,
+    onChange,
+    isDisabled,
+    'aria-label': label,
+  }: {
+    isSelected?: boolean;
+    onChange?: (v: boolean) => void;
+    isDisabled?: boolean;
+    'aria-label'?: string;
+  }) => (
+    <input
+      aria-label={label}
+      checked={isSelected}
+      disabled={isDisabled}
+      type="checkbox"
+      onChange={(e) => onChange?.(e.target.checked)}
+    />
+  ),
+  Divider: () => <hr />,
+  Input: ({
+    value,
+    onChange,
+    label,
+    hint,
+    'aria-label': ariaLabel,
+    'data-testid': testId,
+  }: {
+    value?: string;
+    onChange?: (v: string) => void;
+    label?: string;
+    hint?: string;
+    'aria-label'?: string;
+    'data-testid'?: string;
+  }) => {
+    const id = testId ?? label;
+
+    return (
+      <div>
+        {label && <label htmlFor={id}>{label}</label>}
+        <input
+          aria-label={label ?? ariaLabel}
+          data-testid={testId}
+          id={id}
+          value={value ?? ''}
+          onChange={(e) => onChange?.(e.target.value)}
+        />
+        {hint && <span>{hint}</span>}
+      </div>
+    );
+  },
   PaginationCardWithControls: ({
     onPageChange,
   }: {
@@ -31,6 +118,112 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Next page
     </button>
   ),
+  Select: Object.assign(
+    ({
+      children,
+      'aria-label': label,
+    }: {
+      children?: React.ReactNode;
+      'aria-label'?: string;
+    }) => <select aria-label={label}>{children}</select>,
+    {
+      Item: ({ children }: { children?: React.ReactNode }) => (
+        <option>{children}</option>
+      ),
+    }
+  ),
+  SlideoutMenu: Object.assign(
+    ({
+      children,
+      isOpen,
+    }: {
+      children?: React.ReactNode | (() => React.ReactNode);
+      isOpen?: boolean;
+    }) => {
+      if (!isOpen) {
+        return null;
+      }
+      const content =
+        typeof children === 'function' ? children() : children;
+
+      return <div>{content}</div>;
+    },
+    {
+      Header: ({ children }: { children?: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+      Content: ({ children }: { children?: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+      Footer: ({ children }: { children?: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+    }
+  ),
+  Table: Object.assign(
+    ({ children }: { children?: React.ReactNode }) => (
+      <table>{children}</table>
+    ),
+    {
+      Header: ({ children }: { children?: React.ReactNode }) => (
+        <thead>{children}</thead>
+      ),
+      Head: ({ children }: { children?: React.ReactNode }) => (
+        <th>{children}</th>
+      ),
+      Body: ({
+        children,
+        items,
+      }: {
+        children?: (item: unknown) => React.ReactNode;
+        items?: unknown[];
+      }) => <tbody>{items?.map((item) => children?.(item))}</tbody>,
+      Row: ({ children }: { children?: React.ReactNode }) => (
+        <tr>{children}</tr>
+      ),
+      Cell: ({ children }: { children?: React.ReactNode }) => (
+        <td>{children}</td>
+      ),
+    }
+  ),
+  TableCard: Object.assign(
+    ({ children }: { children?: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    {
+      Root: ({ children }: { children?: React.ReactNode }) => (
+        <div>{children}</div>
+      ),
+    }
+  ),
+  TextArea: ({
+    value,
+    onChange,
+    'aria-label': label,
+  }: {
+    value?: string;
+    onChange?: (v: string) => void;
+    'aria-label'?: string;
+  }) => (
+    <textarea
+      aria-label={label}
+      value={value ?? ''}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  ),
+  Tooltip: ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  TooltipTrigger: ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  Typography: ({
+    children,
+    'data-testid': testId,
+  }: {
+    children?: React.ReactNode;
+    'data-testid'?: string;
+  }) => <span data-testid={testId}>{children}</span>,
 }));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>

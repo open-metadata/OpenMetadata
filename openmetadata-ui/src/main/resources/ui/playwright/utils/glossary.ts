@@ -63,10 +63,18 @@ export const checkName = async (page: Page, name: string) => {
 
 export const selectActiveGlossary = async (
   page: Page,
-  glossaryName: string,
+  glossaryLabel: string,
   bWaitForResponse = true
 ) => {
-  const menuItem = page.getByRole('menuitem', { name: glossaryName }).first();
+  const sidebar = page.getByTestId('glossary-left-panel');
+  await sidebar.locator('[role="menuitem"]').first().waitFor();
+
+  const menuItem = sidebar.getByRole('menuitem', {
+    name: glossaryLabel,
+    exact: true,
+  });
+  await menuItem.waitFor({ state: 'visible' });
+
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
@@ -259,6 +267,8 @@ export const createGlossary = async (
 
   await page.fill('[data-testid="name"]', glossaryData.name);
 
+  await page.fill('[data-testid="display-name"]', glossaryData.displayName);
+
   await page.locator(descriptionBox).fill(glossaryData.description);
 
   await expect(
@@ -322,7 +332,7 @@ export const verifyGlossaryDetails = async (
   glossaryDetails: GlossaryData
 ) => {
   await page
-    .getByRole('menuitem', { name: glossaryDetails.name })
+    .getByRole('menuitem', { name: glossaryDetails.displayName, exact: true })
     .locator('span')
     .click();
 
@@ -761,7 +771,7 @@ export const createGlossaryTerms = async (
   page: Page,
   glossary: GlossaryData
 ) => {
-  await selectActiveGlossary(page, glossary.name);
+  await selectActiveGlossary(page, glossary.displayName ?? glossary.name);
 
   const termStatus = glossary.reviewers.length > 0 ? 'Draft' : 'Approved';
 
@@ -2051,17 +2061,24 @@ export const expandToGlossaryTermChildren = async (
     timeout: 10000,
   });
 
+  // Always narrow the tree to the glossary first. It is virtualized, so on an instance with
+  // enough glossaries a freshly created one is simply not among the rendered rows and the
+  // lookup below fails with "element(s) not found" - which is exactly what happens on a loaded
+  // AUT where parallel specs have created many glossaries.
+  //
+  // Only search at the top level: searching re-queries the API and returns matched terms one
+  // level deep, so a nested term found that way looks like a leaf and its expand chevron never
+  // becomes interactive. The parent term is resolved from the glossary's already-loaded subtree.
+  const searchResponse = page.waitForResponse(
+    /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
+  );
+  await glossaryField.fill(glossaryDisplayName);
+  await searchResponse;
+  await waitForAllLoadersToDisappear(page);
+  await expandTreeNodeByName(page, glossaryDisplayName);
+
   if (parentTermDisplayName) {
-    await expandTreeNodeByName(page, glossaryDisplayName);
     await expandTreeNodeByName(page, parentTermDisplayName);
-  } else {
-    const searchResponse = page.waitForResponse(
-      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
-    );
-    await glossaryField.fill(glossaryDisplayName);
-    await searchResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expandTreeNodeByName(page, glossaryDisplayName);
   }
 };
 
