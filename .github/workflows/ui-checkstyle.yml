@@ -102,8 +102,6 @@ jobs:
       app_docs_changed_files: ${{ steps.app_docs.outputs.changed_files }}
       lint_playwright_result: ${{ steps.lint_playwright.outcome }}
       lint_playwright_changed_files: ${{ steps.lint_playwright.outputs.changed_files }}
-      lint_playwright_suppressions_result: ${{ steps.lint_playwright_suppressions.outcome }}
-      lint_playwright_suppressions_changed_files: ${{ steps.lint_playwright_suppressions.outputs.changed_files }}
       lint_core_components_result: ${{ steps.lint_core_components.outcome }}
       lint_core_components_changed_files: ${{ steps.lint_core_components.outputs.changed_files }}
       i18n_core_result: ${{ steps.i18n_core.outcome }}
@@ -279,6 +277,8 @@ jobs:
             playwright/test-data/**
           files: |
             playwright/**/*.{ts,tsx,js,jsx}
+            eslint.config.mjs
+            eslint-suppressions.json
 
       - name: ESLint + Prettier + Organise Imports (playwright)
         id: lint_playwright
@@ -292,24 +292,14 @@ jobs:
             echo "No added or modified files to process."
             exit 0
           fi
-          yarn organize-imports:cli $CHANGED_FILES
-          yarn lint:base --fix $CHANGED_FILES
-          yarn pretty:base --write $CHANGED_FILES
-          if [ -n "$(git status --porcelain)" ]; then
-            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
-            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$FILES" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-            git checkout -- .
-            git clean -fd
-            exit 1
-          fi
 
-      - name: Playwright guardrails (full corpus + suppressions ratchet)
-        id: lint_playwright_suppressions
-        continue-on-error: true
-        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: |
+          # The guardrail checks run here, before --fix/--write, so they judge
+          # what the contributor actually wrote. Deliberately part of this step
+          # rather than its own: every `run:` executing PR-authored code in this
+          # pull_request_target job is a CodeQL "poisonable step", and a separate
+          # step would add one more for no gain in isolation — it would run the
+          # same commands with the same privileges against the same checkout.
+          #
           # Guard against directives that bypass the entire guardrail system.
           # A bare `eslint-disable` (no rule list) disables all 18 rules, and
           # disabling om-playwright/justified-rule-disable itself removes the
@@ -353,6 +343,19 @@ jobs:
             echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
             echo "$OUT" >> "$GITHUB_OUTPUT"
             echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          yarn organize-imports:cli $CHANGED_FILES
+          yarn lint:base --fix $CHANGED_FILES
+          yarn pretty:base --write $CHANGED_FILES
+          if [ -n "$(git status --porcelain)" ]; then
+            FILES=$(git status --porcelain | awk '{print "  - `" $2 "`"}' | head -30)
+            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
+            echo "$FILES" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            git checkout -- .
+            git clean -fd
             exit 1
           fi
 
@@ -504,16 +507,10 @@ jobs:
                 files:   ${{ toJSON(needs.checkstyle.outputs.app_docs_changed_files) }} || '',
               },
               {
-                name:    'Playwright - ESLint + Prettier + Organise Imports',
-                reason:  'One or more Playwright test files have linting or formatting issues.',
+                name:    'Playwright - Guardrails + ESLint + Prettier + Organise Imports',
+                reason:  'Either a Playwright test file has linting/formatting issues, or a guardrail check failed: ESLint rule unit tests, a new guardrail violation, a stale suppression entry (its violation was fixed but the baseline was not pruned), a blanket `eslint-disable`, or a stale generated rule table. For the guardrail cases run `yarn lint:playwright:suppressions` in `openmetadata-ui/src/main/resources/ui` and commit the pruned `eslint-suppressions.json`, then `yarn test:eslint-rules && node scripts/generate-playwright-rule-table.js --check`.',
                 result:  '${{ needs.checkstyle.outputs.lint_playwright_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.lint_playwright_changed_files) }} || '',
-              },
-              {
-                name:    'Playwright Guardrails (rule tests + suppressions ratchet)',
-                reason:  'ESLint rule unit tests failed, a new Playwright guardrail violation was introduced, a suppression entry is now stale (its violation was fixed but the baseline was not pruned), or the generated rule table is stale. Run `yarn lint:playwright:suppressions` locally in `openmetadata-ui/src/main/resources/ui` and commit the resulting pruned `eslint-suppressions.json`, then re-run `yarn test:eslint-rules && node scripts/generate-playwright-rule-table.js --check`.',
-                result:  '${{ needs.checkstyle.outputs.lint_playwright_suppressions_result }}',
-                files:   ${{ toJSON(needs.checkstyle.outputs.lint_playwright_suppressions_changed_files) }} || '',
               },
               {
                 name:    'Core Components - ESLint + Prettier',
@@ -628,7 +625,6 @@ jobs:
              [ "${{ needs.checkstyle.outputs.i18n_core_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.app_docs_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.lint_playwright_result }}" = 'failure' ] || \
-             [ "${{ needs.checkstyle.outputs.lint_playwright_suppressions_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ]; then
