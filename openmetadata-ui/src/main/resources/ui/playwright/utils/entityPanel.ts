@@ -102,12 +102,9 @@ export const openEntitySummaryPanel = async ({
 
   const entityResultCard = fullyQualifiedName
     ? page.getByTestId(`table-data-card_${fullyQualifiedName}`)
-    : page
-        .locator('[data-testid^="table-data-card"]')
-        .filter({
-          has: page.getByTestId('entity-link').filter({ hasText: entityName }),
-        })
-        .first();
+    : page.locator('[data-testid^="table-data-card"]').filter({
+        has: page.getByTestId('entity-link').filter({ hasText: entityName }),
+      });
 
   if (dataAssetTypeLeftPanelTestId) {
     // The knowledge-center card is only revealed after selecting the KC item
@@ -273,7 +270,6 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     .locator(
       '[data-testid="edit-glossary-terms"], [data-testid="glossary-container"] [data-testid="add-tag"]'
     )
-    .first()
     .waitFor({
       state: 'visible',
     });
@@ -305,6 +301,7 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
 
     await termOption.click();
   } else {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- caller opted out of a specific term name, so whichever term renders first is deliberately picked
     const firstTerm = page.locator('.ant-list-item').first();
     await firstTerm.click();
   }

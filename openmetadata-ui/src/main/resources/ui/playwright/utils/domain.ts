@@ -52,8 +52,7 @@ const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
   try {
-    await page.getByTestId('loader').first().waitFor({
-      state: 'attached',
+    await expect(page.getByTestId('loader')).not.toHaveCount(0, {
       timeout: 999,
     });
     await waitForAllLoadersToDisappear(page);
@@ -67,7 +66,7 @@ const clickAvailableWidgetAction = async (
   addBtn: Locator,
   editBtn: Locator
 ) => {
-  await addBtn.or(editBtn).first().waitFor({ state: 'visible' });
+  await addBtn.or(editBtn).waitFor({ state: 'visible' });
 
   if (await addBtn.isVisible()) {
     await addBtn.click();
@@ -2040,7 +2039,7 @@ export const openDataProductDrawer = async (page: Page, domain: Domain) => {
 
   await page.getByTestId('name').locator('input').fill(`test-dp-${Date.now()}`);
 
-  const descriptionEditor = page.locator('[contenteditable="true"]').first();
+  const descriptionEditor = page.locator('[contenteditable="true"]');
   await descriptionEditor.waitFor({ state: 'visible', timeout: 10000 });
   await descriptionEditor.click();
   await page.keyboard.type('Test data product description');

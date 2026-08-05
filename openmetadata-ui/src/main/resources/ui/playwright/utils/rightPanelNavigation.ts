@@ -38,9 +38,9 @@ async function waitForCardVisibility(
         if (
           count > 0 &&
           (await card
-            .first()
-            .isVisible()
-            .catch(() => false))
+            .filter({ visible: true })
+            .count()
+            .catch(() => 0)) > 0
         ) {
           return true;
         }

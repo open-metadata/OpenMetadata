@@ -84,9 +84,9 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
 
 export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
-    page
-      .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
-      .first()
+    page.locator(
+      '[data-testid="user-profile"] [data-testid="edit-user-persona"]'
+    )
   ).toBeVisible();
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
@@ -622,13 +622,9 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
 
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('loader')
-    .first()
-    .waitFor({
-      state: 'detached',
-    });
+  await expect(
+    page.getByTestId('drop-down-menu').getByTestId('loader')
+  ).toHaveCount(0);
 
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
@@ -747,8 +743,7 @@ export const addUser = async (
   await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) })
-    .first();
+    .filter({ hasText: new RegExp(`^${role}$`) });
   await expect(roleOption).toBeVisible({ timeout: 120000 });
   await roleOption.click();
   await clickOutside(page);
@@ -761,14 +756,13 @@ export const addUser = async (
       .getByTestId('personas-dropdown')
       .getByRole('combobox')
       .fill(personas[0]);
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
+    await page.locator('.ant-select-dropdown:visible').waitFor({
       state: 'visible',
     });
     const personaOption = page
       .locator('.ant-select-dropdown:visible')
       .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] })
-      .first();
+      .filter({ hasText: personas[0] });
     await personaOption.waitFor({ state: 'visible' });
     await personaOption.click();
     await clickOutside(page);

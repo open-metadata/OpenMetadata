@@ -234,15 +234,12 @@ export const navigateToArchive = async (page: Page) => {
 // ─── Archive page test helpers ─────────────────────────────────────────────────
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
-  page
-    .getByRole('treegrid', { name: 'Folders' })
-    .getByRole('row', {
-      name: folderName,
-    })
-    .first();
+  page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    name: folderName,
+  });
 
 export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>
-  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]').first();
+  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]');
 
 /**
  * The sidebar folder tree is paginated (FOLDER_PAGE_SIZE), so a folder
@@ -336,7 +333,7 @@ export const uploadFileViaModal = async (
     name: fileName,
   });
 
-  await expect(modal.getByText(fileName).first()).toBeVisible();
+  await expect(modal.getByText(fileName)).toBeVisible();
 
   const uploadResPromise = page.waitForResponse(
     '/api/v1/contextCenter/drive/files/upload'
@@ -716,6 +713,7 @@ export const scrollHierarchyToNode = async (
   await hierarchy.waitFor({ state: 'visible' });
 
   const getLastNode = () =>
+    // eslint-disable-next-line om-playwright/no-positional-locator -- tracks the last loaded item in an infinite-scroll list to detect when pagination has stopped adding rows
     hierarchy
       .locator('[data-testid^="page-node-"]')
       .last()
@@ -730,8 +728,8 @@ export const scrollHierarchyToNode = async (
   for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
     await scrollNearestScrollableAncestor(hierarchy);
     await expect(
-      hierarchy.locator('[data-testid^="page-node-"]').first()
-    ).toBeVisible();
+      hierarchy.locator('[data-testid^="page-node-"]')
+    ).not.toHaveCount(0);
 
     let lastNode = await getLastNode();
 
@@ -823,6 +821,7 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
   await listing.waitFor({ state: 'visible' });
 
   const getLastCard = () =>
+    // eslint-disable-next-line om-playwright/no-positional-locator -- tracks the last loaded item in an infinite-scroll list to detect when pagination has stopped adding rows
     listing
       .locator('[data-testid^="knowledge-card-"]')
       .last()
@@ -837,8 +836,8 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
   for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
     await scrollNearestScrollableAncestor(listing);
     await expect(
-      listing.locator('[data-testid^="knowledge-card-"]').first()
-    ).toBeVisible();
+      listing.locator('[data-testid^="knowledge-card-"]')
+    ).not.toHaveCount(0);
 
     let lastCard = await getLastCard();
 
@@ -1086,6 +1085,7 @@ export const insertImageViaUrl = async (
   url: string
 ): Promise<void> => {
   await executeSlashCommand(page, SLASH_COMMANDS.image);
+  // eslint-disable-next-line om-playwright/no-positional-locator -- every file/image node keeps this testid for its lifetime, so with prior nodes in the doc, .last() is required to target the node the slash command just inserted
   await page.getByTestId('add-image-container').last().click();
   const embedForm = page.getByTestId('embed-link-form');
   await expect(embedForm).toBeVisible();

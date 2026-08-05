@@ -138,6 +138,12 @@ class ServiceBaseClass {
       // its visible label (displayName); the substring match tolerates a
       // display-name suffix (e.g. "Collate SaaS" matches "Collate SaaS Runner").
       const runnerLabel = this.ingestionRunner.displayName;
+      // The name match is a deliberate substring match (see RunnerDetails
+      // above), so more than one option can match if multiple configured
+      // runners share a display-name prefix; .first() picks whichever
+      // matches, consistent with every subclass using the same default
+      // "Collate SaaS" runner.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- see comment above
       const runnerOption = page
         .getByRole('option', { name: runnerLabel })
         .first();
@@ -257,7 +263,7 @@ class ServiceBaseClass {
           .includes('/api/v1/services/ingestionPipelines/trigger/') &&
         response.status() === 200
     );
-    await page.getByTestId('run-agent-button').first().click();
+    await page.getByTestId('run-agent-button').click();
 
     await triggerPipeline;
 
@@ -449,7 +455,7 @@ class ServiceBaseClass {
   }
 
   async openAgentScheduleStep(page: Page) {
-    await page.getByTestId('more-actions').first().click();
+    await page.getByTestId('more-actions').click();
     await page.click('[data-testid="edit-button"]');
     await waitForIngestionWorkflowForm(page);
     await page.click('[data-testid="next-button"]');
@@ -611,7 +617,7 @@ class ServiceBaseClass {
       .getByLabel('agents')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
-    await page.getByTestId('logs-button').first().waitFor({ state: 'visible' });
+    await page.getByTestId('logs-button').waitFor({ state: 'visible' });
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(3000);
@@ -624,7 +630,7 @@ class ServiceBaseClass {
         response.status() === 200
     );
 
-    await page.getByTestId('run-agent-button').first().click();
+    await page.getByTestId('run-agent-button').click();
     await triggerPipeline;
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
@@ -642,9 +648,13 @@ class ServiceBaseClass {
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
 
-    await expect(page.getByTestId('markdown-parser').first()).toHaveText(
-      description
-    );
+    // Scope to the entity's own description container — a table page can
+    // also render markdown-parser instances for column/schema descriptions.
+    await expect(
+      page
+        .getByTestId('asset-description-container')
+        .getByTestId('markdown-parser')
+    ).toHaveText(description);
 
     // Check for right side widgets visibility
     await expect(page.getByTestId('KnowledgePanel.Tags')).toBeVisible();

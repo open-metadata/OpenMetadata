@@ -30,7 +30,8 @@ export const deletePage = async (
   entityFqn?: string
 ) => {
   if (!isQuickLink) {
-    await page.getByTestId('manage-button').first().click();
+    // This branch only runs on a single-article detail page (ArticleDetailHeader), not a list row.
+    await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-btn').click();
   }
 
@@ -102,7 +103,7 @@ export const updateTags = async (
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
-  const tagsContainer = page.locator('[data-testid="tags-container"]').first();
+  const tagsContainer = page.locator('[data-testid="tags-container"]');
   const addTagBtn = tagsContainer.getByTestId('add-tag');
   const editTagBtn = tagsContainer.getByTestId('edit-button');
   const isAdd = await addTagBtn.isVisible();
@@ -415,7 +416,7 @@ export const createMentionInConversation = async (
   await userSuggestionsResponse;
 
   // Select the mention from suggestions
-  await page.locator(`[data-value="@${userName}"]`).first().click();
+  await page.locator(`[data-value="@${userName}"]`).click();
 
   // Send the message
   const feedResponse = page.waitForResponse('/api/v1/feed');
@@ -449,16 +450,17 @@ export const verifyNotificationAndClick = async (
   await page.getByRole('tab', { name: 'Mentions' }).click();
   await mentionsTabResponse;
 
-  // Verify the notification contains the mentioned user and entity type
-  await expect(
-    page.getByTestId(`notification-item-${entityName}`).nth(1)
-  ).toContainText(expectedUserName);
-
-  await expect(
-    page.getByTestId(`notification-item-${entityName}`).nth(1)
-  ).toContainText(entityName);
+  // The mention notification is rendered alongside an earlier activity card for
+  // the same entity; index 1 is the mention card verified/clicked below.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- second card for this entity is the mention notification being verified
+  const notificationItem = page
+    .getByTestId(`notification-item-${entityName}`)
+    .nth(1);
+  await expect(notificationItem).toContainText(expectedUserName);
+  await expect(notificationItem).toContainText(entityName);
 
   // Click on the notification to navigate to the entity
+  // eslint-disable-next-line om-playwright/no-positional-locator -- second card for this entity is the mention notification being verified
   await page.getByTestId(`notification-link-${entityName}`).nth(1).click();
 };
 
@@ -468,8 +470,10 @@ export const getKnowledgePageCardByIndex = async (
 ) => {
   const listing = page.getByTestId('knowledge-page-listing');
   const cards = listing.locator('[data-testid^="knowledge-card-"]');
-  await expect(cards.nth(index)).toBeAttached();
+  // `index` is the caller's requested position in the listing (e.g. verifying pagination order).
+  // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied listing position, not a UI-derived guess
   const card = cards.nth(index);
+  await expect(card).toBeAttached();
   await card.scrollIntoViewIfNeeded();
   await expect(card).toBeVisible();
   return card;
@@ -543,7 +547,7 @@ export const getEditor = async (page: Page, waitForWrapper = false) => {
   await page.waitForSelector('.ProseMirror[contenteditable="true"]', {
     state: 'visible',
   });
-  return page.locator('.ProseMirror[contenteditable="true"]').first();
+  return page.locator('.ProseMirror[contenteditable="true"]');
 };
 
 export const executeSlashCommand = async (
@@ -879,8 +883,11 @@ export const typeInTableCell = async (
   const editor = await getEditor(page);
   const table = editor.locator('table');
   const rows = table.locator('tr');
+  // `row`/`col` are the caller's target grid coordinates in the table being typed into.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied table row index, not a UI-derived guess
   const targetRow = rows.nth(row);
   const cells = targetRow.locator('td, th');
+  // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied table column index, not a UI-derived guess
   const targetCell = cells.nth(col);
 
   await targetCell.click();

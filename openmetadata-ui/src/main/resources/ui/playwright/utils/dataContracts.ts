@@ -221,7 +221,7 @@ export const waitForContractExecutionWithFallback = async (
     const testCaseListResponse = page.waitForResponse(
       '/api/v1/dataQuality/testCases/search/list*'
     );
-    await suiteNameCell.locator('a').first().click();
+    await suiteNameCell.locator('a').click();
     const testCasesJson = await (await testCaseListResponse).json();
     await waitForAllLoadersToDisappear(page);
 

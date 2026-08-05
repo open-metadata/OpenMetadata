@@ -57,8 +57,7 @@ export const navigateToBundleSuiteWithPagination = async (
 
     const bundleSuiteLink = page
       .getByTestId('test-suite-table')
-      .locator(`a[href*="${encodedBundleSuiteFqn}"]`)
-      .first();
+      .locator(`a[href*="${encodedBundleSuiteFqn}"]`);
 
     if (await bundleSuiteLink.isVisible()) {
       await bundleSuiteLink.click();
@@ -95,9 +94,11 @@ export async function waitForFirstPipelineStatusNotQueued(page: Page) {
 
     const row = page
       .getByRole('row')
-      .filter({ has: page.getByTestId('logs-button') })
-      .first();
+      .filter({ has: page.getByTestId('logs-button') });
     await expect(row).toBeVisible();
+    // Recent-run badges render oldest-to-newest (IngestionRecentRuns marks
+    // only the last one "latest"), so .last() is the current run's status.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- ordinal by design: the run history list is oldest-to-newest, so the last badge is the current run
     const statusBadge = row.getByTestId('pipeline-status').last();
     const text = ((await statusBadge.textContent()) ?? '').trim();
     expect(text.length).toBeGreaterThan(0);

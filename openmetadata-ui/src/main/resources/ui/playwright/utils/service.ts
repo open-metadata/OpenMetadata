@@ -53,6 +53,7 @@ export const visitServiceDetailsPage = async (
 
   if (visitChildrenTab) {
     // Click on children tab Ex. DatabaseService -> Databases
+    // eslint-disable-next-line om-playwright/no-positional-locator -- tab label differs per service category (20+ callers); index is the only stable identifier here
     await page.getByRole('tab').nth(1).click();
   }
 

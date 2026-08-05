@@ -252,6 +252,7 @@ export const addTeamHierarchy = async (
   index?: number,
   isHierarchy = false
 ) => {
+  // eslint-disable-next-line om-playwright/no-positional-locator -- targets the most recently opened modal, in case a stale one from prior state is still mounted
   const addTeamModal = page.locator('[role="dialog"].ant-modal').last();
 
   // Fetching the add button and clicking on it
@@ -375,11 +376,7 @@ export const searchTeam = async (
           const count = await matchingCells.count();
 
           return (
-            count > 0 &&
-            (await matchingCells
-              .first()
-              .isVisible()
-              .catch(() => false))
+            count > 0 && (await matchingCells.isVisible().catch(() => false))
           );
         },
         { timeout: 30000, intervals: [500, 1000, 2000] }

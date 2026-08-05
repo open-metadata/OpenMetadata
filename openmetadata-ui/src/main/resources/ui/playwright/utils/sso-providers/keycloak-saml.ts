@@ -94,25 +94,19 @@ const performProviderLogin = async (
   page: Page,
   { username, password }: ProviderCredentials
 ): Promise<void> => {
-  const usernameInput = page
-    .locator('input#username, input[name="username"]')
-    .first();
+  const usernameInput = page.locator('input#username, input[name="username"]');
 
   await expect(usernameInput).toBeVisible();
   await usernameInput.fill(username);
 
-  const passwordInput = page
-    .locator('input#password, input[name="password"]')
-    .first();
+  const passwordInput = page.locator('input#password, input[name="password"]');
 
   await expect(passwordInput).toBeVisible();
   await passwordInput.fill(password);
 
-  const loginButton = page
-    .locator(
-      'input#kc-login, button[name="login"], input[type="submit"], button[type="submit"]'
-    )
-    .first();
+  const loginButton = page.locator(
+    'input#kc-login, button[name="login"], input[type="submit"], button[type="submit"]'
+  );
 
   await expect(loginButton).toBeEnabled();
   await loginButton.click();

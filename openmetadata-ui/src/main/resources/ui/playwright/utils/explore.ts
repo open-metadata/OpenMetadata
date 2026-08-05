@@ -267,23 +267,6 @@ export const expandTableInExploreTree = async (
   await columnRes;
 };
 
-export const verifyColumnSuggestion = async (
-  page: Page,
-  columnName: string,
-  tableName: string
-) => {
-  const suggestionsContainer = page.locator('[data-testid="suggestion-box"]');
-  const columnSuggestion = suggestionsContainer
-    .locator('.suggestion-item')
-    .filter({ hasText: columnName })
-    .filter({ hasText: tableName })
-    .first();
-
-  await expect(columnSuggestion).toBeVisible();
-
-  return columnSuggestion;
-};
-
 export const verifyDatabaseAndSchemaInExploreTree = async (
   page: Page,
   serviceName: string,

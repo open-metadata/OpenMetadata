@@ -31,16 +31,18 @@ const NAV_ITEMS = [
 
 export const checkDefaultStateForNavigationTree = async (page: Page) => {
   for (const item of NAV_ITEMS) {
-    await expect(
-      page.getByTestId('page-layout-v1').getByText(item).first()
-    ).toBeVisible();
-    await expect(
-      page
-        .getByTestId('page-layout-v1')
-        .getByText(item)
-        .first()
-        .getByRole('switch')
-    ).toBeChecked();
+    // Scope to the tree row's title container (`div.space-between` from
+    // SettingsNavigationPage's titleRenderer) rather than a bare getByText:
+    // antd Tree nests title wrappers inside node wrappers that share the
+    // same text content, so an unscoped getByText would match every
+    // ancestor and never resolve to a single row.
+    const itemRow = page
+      .getByTestId('page-layout-v1')
+      .locator('div.space-between')
+      .filter({ hasText: item });
+
+    await expect(itemRow).toBeVisible();
+    await expect(itemRow.getByRole('switch')).toBeChecked();
   }
 };
 
@@ -67,16 +69,15 @@ export const validateLeftSidebarWithHiddenItems = async (
         // Wait for dropdown to expand - wait for any child item of the parent to be visible
         // This confirms the dropdown has fully expanded before checking specific items
         // For Observability, wait for at least one of its children to be visible
-        const anyChildInDropdown = page
+        const childrenInDropdown = page
           .locator(`[data-testid="left-sidebar"]`)
-          .locator(`[data-testid^="app-bar-item-"]`)
-          .first();
+          .locator(`[data-testid^="app-bar-item-"]`);
 
-        await expect(anyChildInDropdown).toBeVisible(); // Ensure at least one child is visible before proceeding
+        await expect(childrenInDropdown).not.toHaveCount(0); // Ensure at least one child is visible before proceeding
 
-        const childElement = page
-          .locator(`[data-testid="app-bar-item-${items[1]}"]`)
-          .first();
+        const childElement = page.locator(
+          `[data-testid="app-bar-item-${items[1]}"]`
+        );
 
         if (hiddenItems.includes(items[1])) {
           // For hidden items, they are filtered out from DOM entirely by filterHiddenNavigationItems
