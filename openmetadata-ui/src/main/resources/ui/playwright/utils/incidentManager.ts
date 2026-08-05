@@ -147,13 +147,13 @@ export const addAssigneeFromPopoverWidget = async (data: {
   testCaseName?: string;
 }) => {
   const { page, user, testCaseName } = data;
+  // eslint-disable-next-line om-playwright/no-positional-locator -- this testid renders once for the entity Owner widget and again for the Task assignee widget when both are mounted on the same page; .last() targets the task assignee button
   const taskTabEditAssigneesButton = page.getByTestId('edit-assignees').last();
 
   if (testCaseName) {
     const incidentRow = page
       .locator('tr')
-      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) })
-      .first();
+      .filter({ has: page.getByTestId(`test-case-${testCaseName}`) });
     const editOwnerButton = incidentRow.getByTestId('edit-owner');
 
     await expect(editOwnerButton).toBeVisible();
@@ -162,11 +162,15 @@ export const addAssigneeFromPopoverWidget = async (data: {
     await taskTabEditAssigneesButton.click();
     await waitForAllLoadersToDisappear(page);
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design keeps previously-closed modals mounted (not unmounted), so .last() targets the currently-open one
     const assigneeModal = page.locator('.ant-modal-content').last();
     const assigneeSelect = assigneeModal.getByTestId('select-assignee');
     const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
+    // eslint-disable-next-line om-playwright/no-positional-locator -- the Select renders a hidden accessibility input plus the visible search input; .last() is the visible one
     const assigneeInput = assigneeSelect.locator('input').last();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design's grouped Select renders each option's custom label node twice (dropdown list + internal value cache), so this testid is never a true singleton
     const assigneeOption = page.getByTestId(user.name).first();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- same Select option-label duplication as assigneeOption above
     const normalizedAssigneeOption = page
       .getByTestId(user.name.toLowerCase())
       .first();
@@ -202,7 +206,8 @@ export const addAssigneeFromPopoverWidget = async (data: {
         ? taskHeaderAssignee
         : (await incidentAssignee.isVisible().catch(() => false))
         ? incidentAssignee
-        : page.getByTestId('assignee').first()
+        : // eslint-disable-next-line om-playwright/no-positional-locator -- last-resort fallback when neither known assignee container is visible; the calling page context determines which of possibly several 'assignee' elements is relevant, which can't be known statically here
+          page.getByTestId('assignee').first()
     ).toContainText(user.displayName, {
       timeout: 30_000,
     });
@@ -230,11 +235,9 @@ export const addAssigneeFromPopoverWidget = async (data: {
   await page.click(`.ant-popover [title="${user.displayName}"]`);
   await updateIncident;
 
-  await page
-    .getByTestId('assignee')
-    .getByTestId('owner-link')
-    .first()
-    .waitFor();
+  await expect(
+    page.getByTestId('assignee').getByTestId('owner-link')
+  ).not.toHaveCount(0);
 
   const taskHeaderAssignee = page.getByTestId(
     'incident-manager-task-header-container'
@@ -243,7 +246,8 @@ export const addAssigneeFromPopoverWidget = async (data: {
   await expect(
     (await taskHeaderAssignee.isVisible().catch(() => false))
       ? taskHeaderAssignee
-      : page.getByTestId('assignee').first()
+      : // eslint-disable-next-line om-playwright/no-positional-locator -- last-resort fallback when the known assignee container isn't visible; the calling page context determines which of possibly several 'assignee' elements is relevant, which can't be known statically here
+        page.getByTestId('assignee').first()
   ).toContainText(user.displayName);
 };
 
@@ -258,12 +262,8 @@ export const assignIncident = async (data: {
   await expect
     .poll(
       async () => {
-        const incidentRow = page
-          .getByTestId(`test-case-${testCaseName}`)
-          .first();
-        const incidentLink = page
-          .getByRole('link', { name: testCaseName })
-          .first();
+        const incidentRow = page.getByTestId(`test-case-${testCaseName}`);
+        const incidentLink = page.getByRole('link', { name: testCaseName });
 
         return (
           (await incidentRow.isVisible().catch(() => false)) ||

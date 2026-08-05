@@ -140,7 +140,7 @@ test.describe('Curated Assets Widget', () => {
       await selectAssetTypes(page, [entityType.name]);
 
       // Apply Display Name filter with the actual entity's display name
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.locator('.rule');
 
       await selectOption(
         page,
@@ -184,8 +184,7 @@ test.describe('Curated Assets Widget', () => {
         curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
-          .first()
-      ).toBeVisible();
+      ).not.toHaveCount(0);
 
       await redirectToHomePage(page);
       await removeLandingBanner(page);
@@ -214,8 +213,7 @@ test.describe('Curated Assets Widget', () => {
         curatedAssetsWidget
           .locator('.entity-list-item-title')
           .filter({ hasText: entityDisplayName })
-          .first()
-      ).toBeVisible();
+      ).not.toHaveCount(0);
 
       await navigateToCustomizeLandingPage(page, {
         personaName: persona.responseData.name,
@@ -257,7 +255,7 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, 'all');
 
     // Add a simple filter condition
-    const ruleLocator = page.locator('.rule').nth(0);
+    const ruleLocator = page.locator('.rule');
     await selectOption(
       page,
       ruleLocator.locator('.rule--field .ant-select'),
@@ -333,7 +331,7 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, ['Chart', 'Dashboard']);
 
     // Add OR conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.locator('.rule');
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
@@ -351,6 +349,7 @@ test.describe('Curated Assets Widget', () => {
     // Switch to OR condition (AND is selected by default, click OR button)
     await page.locator('.group--conjunctions button:has-text("OR")').click();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- rule just created via "Add Condition"; position is the only way to target it, no test-owned identifier exists yet
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
@@ -397,8 +396,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {
@@ -436,7 +435,7 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, ['Pipeline', 'Topic', 'ML Model']);
 
     // Configure conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.locator('.rule');
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
@@ -455,6 +454,7 @@ test.describe('Curated Assets Widget', () => {
     await page.getByRole('button', { name: 'Add Condition' }).click();
     await page.locator('.group--conjunctions button:has-text("AND")').click();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- rule just created via "Add Condition"; position is the only way to target it, no test-owned identifier exists yet
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
@@ -496,8 +496,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
 
@@ -513,8 +513,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {
@@ -552,7 +552,7 @@ test.describe('Curated Assets Widget', () => {
     await selectAssetTypes(page, 'all');
 
     // Create first group with OR conditions
-    const ruleLocator1 = page.locator('.rule').nth(0);
+    const ruleLocator1 = page.locator('.rule');
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
@@ -576,6 +576,7 @@ test.describe('Curated Assets Widget', () => {
     // Switch first group to OR condition (AND is default)
     await page.locator('.group--conjunctions button:has-text("OR")').click();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- rule just created via "Add Condition"; position is the only way to target it, no test-owned identifier exists yet
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
@@ -598,6 +599,7 @@ test.describe('Curated Assets Widget', () => {
     // Add another condition
     await page.getByRole('button', { name: 'Add Condition' }).click();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- rule just created via "Add Condition"; position is the only way to target it, no test-owned identifier exists yet
     const ruleLocator3 = page.locator('.rule').nth(2);
     await selectOption(
       page,
@@ -639,8 +641,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Wait for auto-save to complete before navigating
 
@@ -656,8 +658,8 @@ test.describe('Curated Assets Widget', () => {
     );
 
     await expect(
-      curatedAssetsWidget.locator('.entity-list-item-title').first()
-    ).toBeVisible();
+      curatedAssetsWidget.locator('.entity-list-item-title')
+    ).not.toHaveCount(0);
 
     // Navigate back, delete the widget and save at the end
     await navigateToCustomizeLandingPage(page, {

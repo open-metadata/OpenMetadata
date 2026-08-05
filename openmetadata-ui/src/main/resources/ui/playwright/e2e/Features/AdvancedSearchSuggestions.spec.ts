@@ -54,7 +54,7 @@ test.describe('Advanced Search Suggestions', () => {
       await waitForAllLoadersToDisappear(page);
       await showAdvancedSearchDialog(page);
 
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.locator('.rule');
 
       await selectOption(
         page,

@@ -120,6 +120,7 @@ test.describe(
 
         await clickOutside(page);
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- CodeMirror renders one `pre[role="presentation"]` per line; clicking the last one positions the cursor at the end of the existing content before appending text
         await page.locator("pre[role='presentation']").last().click();
         await page.keyboard.type('SELECT SUM(amount) FROM sales');
 

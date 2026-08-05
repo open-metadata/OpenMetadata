@@ -432,22 +432,18 @@ export const addMultiOwner = async (data: {
 
   await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
 
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByTestId('loader')
-    .first()
-    .waitFor({ state: 'detached' });
+  await expect(
+    page.getByTestId('select-owner-tabs').getByTestId('loader')
+  ).toHaveCount(0);
 
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: 'Users' })
     .click();
 
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByTestId('loader')
-    .first()
-    .waitFor({ state: 'detached' });
+  await expect(
+    page.getByTestId('select-owner-tabs').getByTestId('loader')
+  ).toHaveCount(0);
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
@@ -462,11 +458,9 @@ export const addMultiOwner = async (data: {
       .getByRole('tab', { name: 'Users' })
       .click();
 
-    await page
-      .getByTestId('select-owner-tabs')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await expect(
+      page.getByTestId('select-owner-tabs').getByTestId('loader')
+    ).toHaveCount(0);
   }
 
   if (clearAll && isMultipleOwners) {
@@ -490,11 +484,9 @@ export const addMultiOwner = async (data: {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
-    await page
-      .getByTestId('select-owner-tabs')
-      .getByTestId('loader')
-      .first()
-      .waitFor({ state: 'detached' });
+    await expect(
+      page.getByTestId('select-owner-tabs').getByTestId('loader')
+    ).toHaveCount(0);
 
     const ownerItem = page.getByRole('listitem', {
       name: ownerName,
@@ -539,7 +531,7 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
     ).toBeVisible();
   }
 };
@@ -699,7 +691,7 @@ export const updateDescription = async (
   }
 
   // Wait for description box to be visible and ready
-  const descBox = page.locator(descriptionBox).first();
+  const descBox = page.locator(descriptionBox);
   await expect(descBox).toBeVisible();
   await descBox.click();
   await descBox.clear();
@@ -754,7 +746,6 @@ export const updateDescriptionForChildren = async (
   const editButton = page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('description')
-    .first()
     .getByTestId('edit-button');
 
   await expect(editButton).toBeVisible();
@@ -836,8 +827,7 @@ export const assignTag = async (
   const tagButton = page
     .getByTestId(parentId)
     .getByTestId('tags-container')
-    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
-    .first();
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
 
   await expect(tagButton).toBeVisible();
   await tagButton.click();
@@ -852,9 +842,11 @@ export const assignTag = async (
 
   await searchTags;
 
+  // Scope to the open dropdown: the same tag FQN can also appear as an
+  // already-applied chip elsewhere on the page, which shares this testid.
   await page
+    .locator('.ant-select-dropdown')
     .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
-    .first()
     .click();
 
   await page
@@ -1000,6 +992,9 @@ export const removeTagsFromChildren = async ({
   entityEndpoint: string;
 }) => {
   for (const tag of tags) {
+    // TableTags renders showBottomEditButton, so TagsContainerV2 mounts both its
+    // header edit-button and its inline/bottom edit-button with the same testid.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- TagsContainerV2 in a table row renders two edit-button elements (header + inline/bottom)
     await page
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
@@ -1129,12 +1124,12 @@ export const openColumnDetailPanel = async ({
   if (entityType === 'MlModel') {
     const columnName = page
       .locator(`[${rowSelector}="${columnId}"]`)
-      .getByTestId(columnNameTestId)
-      .first();
+      .getByTestId(columnNameTestId);
     await columnName.waitFor({ state: 'visible' });
     await columnName.click();
   } else {
-    const row = page.locator(`[${rowSelector}="${columnId}"]`).first();
+    // `rowSelector`/`columnId` is an exact-match attribute selector, already unique.
+    const row = page.locator(`[${rowSelector}="${columnId}"]`);
     await row.waitFor({ state: 'visible' });
 
     const nameCell = row.getByTestId('column-name-cell');
@@ -1193,6 +1188,10 @@ export const assignGlossaryTermToChildren = async ({
   // Scroll the row into view to ensure it's accessible
   await rowLocator.scrollIntoViewIfNeeded();
 
+  // TableTags renders showBottomEditButton, so for the 'Edit' action
+  // TagsContainerV2 mounts both its header edit-button and its inline/bottom
+  // edit-button with the same testid; 'add-tag' itself is always singular.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- TagsContainerV2 in a table row can render two edit-button elements (header + inline/bottom)
   const addButton = rowLocator
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
@@ -1318,6 +1317,9 @@ export const removeGlossaryTermFromChildren = async ({
   rowSelector?: string;
 }) => {
   for (const tag of glossaryTerms) {
+    // TableTags renders showBottomEditButton, so TagsContainerV2 mounts both its
+    // header edit-button and its inline/bottom edit-button with the same testid.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- TagsContainerV2 in a table row renders two edit-button elements (header + inline/bottom)
     await page
       .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('glossary-container')
@@ -1631,14 +1633,13 @@ export const replyAnnouncement = async (page: Page) => {
   await page
     .locator('[data-testid="entity-header-announcements"]')
     .locator('[data-testid^="announcement-item-"]')
-    .first()
     .click();
 
   await page.hover(
     '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
   );
 
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
+  await page.locator('.ant-popover').waitFor({ state: 'visible' });
 
   await expect(page.getByTestId('add-reply')).toBeVisible();
 
@@ -1659,7 +1660,7 @@ export const replyAnnouncement = async (page: Page) => {
   );
 
   await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
+  await page.locator('.ant-popover').waitFor({ state: 'visible' });
   await page.click('[data-testid="edit-message"]');
 
   await page.fill(
@@ -1960,6 +1961,9 @@ export const checkForEditActions = async ({
     }
 
     if (entityType.startsWith('services/')) {
+      // This helper runs across many different service entity types, each with
+      // a different tab set/labels, so there is no name available to select by.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- generic helper across service types with differing tab labels, position is the only shared selector
       await page.getByRole('tab').nth(1).click();
 
       continue;
@@ -2251,6 +2255,9 @@ export const softDeleteEntity = async (
   await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
+    // Breadcrumb order is fixed hierarchy (Database > Schema > Table); the last
+    // link is always the immediate parent schema, which is the navigation target.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- breadcrumb hierarchy is fixed, last link is always the immediate parent
     await page.getByTestId('breadcrumb').getByRole('link').last().click();
     const deletedTableResponse = page.waitForResponse(
       '/api/v1/tables?*databaseSchema=*'
@@ -2321,7 +2328,10 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   // assert on checkbox state
   await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
 
+  // `filter({ hasText })` matches ancestor spans too (the row wrapper as well as
+  // the inner label span), so more than one span legitimately contains this text.
   await expect(
+    // eslint-disable-next-line om-playwright/no-positional-locator -- hasText filter matches nested ancestor/label spans for the same tree node
     page
       .getByTestId('explore-tree')
       .locator('span')
@@ -2376,6 +2386,7 @@ export const getTextFromHtmlString = (description?: string): string => {
 };
 
 export const getFirstRowColumnLink = (page: Page) => {
+  // eslint-disable-next-line om-playwright/no-positional-locator -- function's purpose is to target the first row specifically
   return page
     .getByTestId('databaseSchema-tables')
     .locator('[data-testid="column-name"] a')
@@ -2568,7 +2579,9 @@ export const testCopyLinkButton = async ({
 }) => {
   await expect(page.getByTestId(containerTestId)).toBeVisible();
 
-  // Find the first copy button and verify it's visible
+  // Deliberately exercises the copy-link flow on whichever column/field is
+  // first; which one is irrelevant to what this test verifies.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- arbitrary column/field pick, order is not under test
   const copyButton = page.getByTestId(buttonTestId).first();
   await expect(copyButton).toBeVisible();
 

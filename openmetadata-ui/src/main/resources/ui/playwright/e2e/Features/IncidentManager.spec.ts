@@ -149,40 +149,33 @@ const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
 
   expect(rowCount).toBeGreaterThan(0);
 
-  for (let index = 0; index < rowCount; index++) {
-    await expect(rows.nth(index)).toContainText(text);
-  }
+  await expect(rows).toContainText(Array(rowCount).fill(text));
 };
 
 const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
-  const visibleReassignButton = page
-    .getByRole('button', { name: /^Re-?assign$/ })
-    .last();
-  const primaryActionButton = page
-    .locator(
-      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
-    )
-    .last();
-  const actionTrigger = page
-    .locator(
-      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
-    )
-    .last();
-  const editAssigneesButton = page
-    .locator('[data-testid="edit-assignees"]:visible')
-    .last();
+  const visibleReassignButton = page.getByRole('button', {
+    name: /^Re-?assign$/,
+  });
+  const primaryActionButton = page.locator(
+    '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+  );
+  const actionTrigger = page.locator(
+    '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+  );
+  const editAssigneesButton = page.locator(
+    '[data-testid="edit-assignees"]:visible'
+  );
   const reassignModal = page
     .locator('.ant-modal-wrap:visible')
     .filter({ hasText: /Re-?assign Task/i });
   const reassignMenuItem = page
     .locator('.task-action-dropdown:visible')
-    .getByRole('menuitem', { name: /^Reassign$/ })
-    .last();
+    .getByRole('menuitem', { name: /^Reassign$/ });
   const incidentListRowAction = testCaseName
-    ? page
+    ? // eslint-disable-next-line om-playwright/no-positional-locator -- the row can render more than one interactive control (status/severity/assignee); the assignee action is the last one in DOM order and has no distinguishing testid
+      page
         .locator('[data-testid="test-case-incident-manager-table"] tbody tr')
         .filter({ hasText: testCaseName })
-        .first()
         .locator('button')
         .last()
     : null;
@@ -259,7 +252,7 @@ const reassignIncidentTask = async (
   const reassignModal = await openIncidentReassignModal(page, testCaseName);
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
   const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-  const assigneeInput = assigneeSelect.locator('input').last();
+  const assigneeInput = assigneeSelect.locator('input');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
 
   await expect(assigneeSelector).toBeVisible();
@@ -296,16 +289,13 @@ const openIncidentResolveDialog = async (
   page: Page,
   allowProgressTransition = true
 ) => {
-  const primaryActionButton = page
-    .locator(
-      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
-    )
-    .last();
-  const actionTrigger = page
-    .locator(
-      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
-    )
-    .last();
+  const primaryActionButton = page.locator(
+    '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+  );
+  const actionTrigger = page.locator(
+    '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+  );
+  // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design Modal does not unmount on close, so a prior resolve dialog's DOM node can persist; the most recently opened modal is always the last one
   const resolveModal = page.locator('.ant-modal .ant-modal-content').last();
   const modalTextareas = resolveModal.locator('textarea');
 
@@ -341,21 +331,15 @@ const openIncidentResolveDialog = async (
     await actionTrigger.scrollIntoViewIfNeeded();
     await actionTrigger.click();
 
-    const resolveMenuItem = page
-      .locator(
-        '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible'
-      )
-      .last();
-    const startProgressMenuItem = page
-      .locator(
-        '[data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
-      )
-      .last();
-    const workflowMenuItem = page
-      .locator(
-        '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible, [data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
-      )
-      .first();
+    const resolveMenuItem = page.locator(
+      '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible'
+    );
+    const startProgressMenuItem = page.locator(
+      '[data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
+    );
+    const workflowMenuItem = page.locator(
+      '[data-testid="task-action-menu-item-resolve"]:visible, [data-testid="workflow-transition-menu-item-resolve"]:visible, [data-testid="task-action-menu-item-startProgress"]:visible, [data-testid="workflow-transition-menu-item-startProgress"]:visible'
+    );
 
     await expect(workflowMenuItem).toBeVisible({ timeout: 5_000 });
 
@@ -406,9 +390,7 @@ const openIncidentResolveDialog = async (
   await expect(resolveModal).toBeVisible({
     timeout: 10_000,
   });
-  await expect(modalTextareas.first()).toBeVisible({
-    timeout: 10_000,
-  });
+  await expect(modalTextareas).not.toHaveCount(0, { timeout: 10_000 });
 
   return resolveModal;
 };
@@ -750,21 +732,23 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await openIncidentTaskTab(actorPage, true);
       const resolveModal = await openIncidentResolveDialog(actorPage);
       const resolveTextareas = resolveModal.locator('textarea');
-      const resolveReasonSelect = resolveModal
-        .locator('.ant-select-selector')
-        .first();
+      const resolveReasonSelect = resolveModal.locator('.ant-select-selector');
       const textareaCount = await resolveTextareas.count();
 
       if (await resolveReasonSelect.isVisible().catch(() => false)) {
         await resolveReasonSelect.click();
         await actorPage.keyboard.press('ArrowDown');
         await actorPage.keyboard.press('Enter');
-        await resolveTextareas.first().fill('test');
+        await resolveTextareas.fill('test');
       } else if (textareaCount >= 2) {
+        // The reason and comment fields are two unlabeled textareas from the same
+        // schema-driven form, distinguishable only by their fixed DOM order.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- reason textarea is always first in the two-textarea resolve form
         await resolveTextareas.nth(0).fill('Missing Data');
+        // eslint-disable-next-line om-playwright/no-positional-locator -- comment textarea is always second in the two-textarea resolve form
         await resolveTextareas.nth(1).fill('test');
       } else {
-        await resolveTextareas.first().fill('test');
+        await resolveTextareas.fill('test');
       }
 
       const updateIncident = waitForTaskResolveResponse(actorPage);
@@ -832,7 +816,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.getByTestId('resolved-comment-textarea').click();
       await page
         .locator('[data-testid="resolved-comment-textarea"] textarea')
-        .first()
         .fill('test');
       const updateTestCaseIncidentStatus = waitForTaskResolveResponse(page);
       await page.getByTestId('submit-resolved-popover-button').click();

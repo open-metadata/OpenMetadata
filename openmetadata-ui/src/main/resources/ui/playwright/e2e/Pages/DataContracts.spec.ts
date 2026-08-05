@@ -247,6 +247,7 @@ test.describe('Data Contracts', () => {
           DATA_CONTRACT_SEMANTICS1.description
         );
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
         const ruleLocator = page.locator('.group').nth(0);
         await selectOption(
           page,
@@ -269,6 +270,7 @@ test.describe('Data Contracts', () => {
 
         await expect(page.locator('.group--conjunctions')).toBeVisible();
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
         const ruleLocator2 = page.locator('.rule').nth(1);
         await selectOption(
           page,
@@ -308,6 +310,7 @@ test.describe('Data Contracts', () => {
           '#semantics_1_description',
           DATA_CONTRACT_SEMANTICS2.description
         );
+        // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
         const ruleLocator3 = page.locator('.group').nth(2);
         await selectOption(
           page,
@@ -410,8 +413,7 @@ test.describe('Data Contracts', () => {
 
           const testTypeOption = page
             .getByRole('option')
-            .filter({ hasText: NEW_TABLE_TEST_CASE.label })
-            .first();
+            .filter({ hasText: NEW_TABLE_TEST_CASE.label });
 
           await expect(testTypeOption).toBeVisible();
 
@@ -627,6 +629,7 @@ test.describe('Data Contracts', () => {
           .getByRole('tab', { name: 'Semantics' })
           .click();
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- deletes the condition row this test itself added last (the Description field rule); construction order is deterministic and the outcome is verified by the assertion below
         await page.getByTestId('delete-condition-button').last().click();
 
         await expect(
@@ -1021,6 +1024,7 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_CONTAIN_SEMANTICS.description
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
@@ -1043,6 +1047,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
@@ -1069,6 +1074,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator3 = page.locator('.rule').nth(2);
     await selectOption(
       page,
@@ -1214,6 +1220,7 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.description
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
@@ -1236,6 +1243,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
@@ -1262,6 +1270,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator3 = page.locator('.rule').nth(2);
     await selectOption(
       page,
@@ -1595,6 +1604,7 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_SEMANTICS1.description
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
@@ -1617,6 +1627,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
@@ -1675,6 +1686,7 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_SEMANTICS1.description
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
@@ -1697,6 +1709,7 @@ test.describe('Data Contracts', () => {
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
@@ -1717,6 +1730,7 @@ test.describe('Data Contracts', () => {
       '#semantics_1_description',
       DATA_CONTRACT_SEMANTICS2.description
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator3 = page.locator('.group').nth(2);
     await selectOption(
       page,
@@ -1769,6 +1783,7 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_SEMANTICS1.description
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
@@ -1829,6 +1844,7 @@ test.describe('Data Contracts', () => {
       '#semantics_0_description',
       DATA_CONTRACT_SEMANTICS1.description
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator = page.locator('.group').nth(0);
     await selectOption(
       page,
@@ -1855,6 +1871,7 @@ test.describe('Data Contracts', () => {
       '#semantics_1_description',
       DATA_CONTRACT_SEMANTICS2.description
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
     const ruleLocator3 = page.locator('.group').nth(2);
     await selectOption(
       page,
@@ -2343,6 +2360,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               );
 
               await page.getByTestId('select-owners').click();
+              // eslint-disable-next-line om-playwright/no-positional-locator -- test doesn't care which owner is selected, only that one is; picks whichever suggestion the virtual list renders first
               await page
                 .locator('.rc-virtual-list-holder-inner li')
                 .first()
@@ -2366,6 +2384,7 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 DATA_CONTRACT_SEMANTICS1.description
               );
 
+              // eslint-disable-next-line om-playwright/no-positional-locator -- query-builder rule/group rows are structurally identical; index tracks the order this test itself added them
               const ruleLocator = page.locator('.group').nth(0);
               await selectOption(
                 page,
@@ -2414,9 +2433,9 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await settingClick(page, GlobalSettingOptions.PERSONA);
               await personaGetResponse;
 
-              await page.locator('.ant-skeleton-content').first().waitFor({
-                state: 'detached',
-              });
+              await expect(page.locator('.ant-skeleton-content')).toHaveCount(
+                0
+              );
 
               // Navigate to persona details
               await navigateToPersonaWithPagination(

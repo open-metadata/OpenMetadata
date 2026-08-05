@@ -514,6 +514,7 @@ test.describe.serial('Persona AI Context', () => {
     await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
       2
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- both condition rows are functionally identical (empty rule rows); deleting either one leaves the intended count of 1, position is arbitrary not semantic
     await adminPage.getByTestId('delete-condition-button').last().click();
 
     await entitySelect.click();

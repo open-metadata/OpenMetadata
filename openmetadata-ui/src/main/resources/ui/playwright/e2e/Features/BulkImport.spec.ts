@@ -957,6 +957,7 @@ test.describe('Bulk Import Export', () => {
     });
 
     await test.step('Perform Cell Delete Operation and Save', async () => {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- test doesn't target a specific row's name cell, only that deleting some cell's value round-trips on save (all 9 rows assert 'Entity updated' below, not one distinguished row)
       await page.locator('.rdg-cell-name').first().click();
 
       // Perform Delete Operation on Edit Operation on Entity
@@ -998,6 +999,7 @@ test.describe('Bulk Import Export', () => {
     await test.step('should verify the removed value from entity', async () => {
       await page.getByTestId('alert-bar').waitFor({ state: 'detached' });
       await waitForAllLoadersToDisappear(page);
+      // eslint-disable-next-line om-playwright/no-positional-locator -- follows up on the arbitrary first row targeted by the cell-delete step above; consistent with that step's "don't care which row" intent
       const columnNameLink = page
         .getByTestId('column-name')
         .first()
@@ -1071,10 +1073,12 @@ test.describe('Bulk Import Export', () => {
         await expect(page.locator('.rdg-row')).toHaveCount(rowCount);
         // Principle 3: wait for all headers to render before any interaction
         await expect(
+          // eslint-disable-next-line om-playwright/no-positional-locator -- this "Range selection" test validates keyboard/mouse grid-navigation behavior at specific row/column coordinates; cell position is the subject under test, not a stand-in for identity
           page.locator('.rdg-header-row').first().locator('.rdg-cell')
         ).toHaveCount(colCount);
         // Confirm data has loaded (not just skeleton rows)
         await expect(
+          // eslint-disable-next-line om-playwright/no-positional-locator -- same rationale: grid-position test, not identity lookup
           page.locator('.rdg-row').first().locator('.rdg-cell').first()
         ).not.toBeEmpty();
 
@@ -1105,12 +1109,14 @@ test.describe('Bulk Import Export', () => {
           // The CSV jobs tray can steal keyboard focus when it appears; an explicit
           // click + toBeFocused() guarantees the grid owns the keyboard.
           await focusCell(
+            // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: exercises Ctrl+A over specific cell coordinates, not identity lookup
             page.locator('.rdg-row').first().locator('.rdg-cell').first()
           );
           await page.keyboard.press('Control+A');
           await expect(selection).toHaveCount(rowCount * colCount);
 
           // Deselect by clicking the second cell (fresh locator, principle 8)
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: "the second cell" is the coordinate under test
           const secondCell = page
             .locator('.rdg-row')
             .first()
@@ -1122,6 +1128,7 @@ test.describe('Bulk Import Export', () => {
         });
 
         await test.step('should select all the cells in the column by clicking on column header', async () => {
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: clicking the first column header is the scenario under test
           const firstHeaderCell = page
             .locator('.rdg-header-row')
             .first()
@@ -1135,8 +1142,11 @@ test.describe('Bulk Import Export', () => {
         await test.step('allow multiple column selection', async () => {
           // Principle 4: hover() instead of boundingBox() — locators auto-retry
           // until visible, unaffected by scroll, DPI, or layout shifts.
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: only one header row renders; .first() avoids a strict-mode dependency on that invariant
           const headerRow = page.locator('.rdg-header-row').first();
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: start/end header cells are chosen by column index to exercise multi-column selection
           const startHeaderCell = headerRow.locator('.rdg-cell').nth(1);
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: start/end header cells are chosen by column index to exercise multi-column selection
           const endHeaderCell = headerRow.locator('.rdg-cell').nth(3);
 
           await startHeaderCell.hover();
@@ -1149,11 +1159,13 @@ test.describe('Bulk Import Export', () => {
         });
 
         await test.step('allow multiple column selection using keyboard', async () => {
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: navigation starts from the first header/data cell coordinate
           const firstHeaderCell = page
             .locator('.rdg-header-row')
             .first()
             .locator('.rdg-cell')
             .first();
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: navigation starts from the first header/data cell coordinate
           const firstDataCell = page
             .locator('.rdg-row')
             .first()
@@ -1169,6 +1181,7 @@ test.describe('Bulk Import Export', () => {
           // Shift+click the 3rd header cell to select cols 0-2 deterministically.
           // Repeated Shift+ArrowRight races RDG's own internal keyboard handler
           // (both react to the same bubbling keydown event), causing flaky counts.
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: the 3rd header cell is the coordinate under test
           const targetHeaderCell = page
             .locator('.rdg-header-row')
             .first()
@@ -1183,16 +1196,19 @@ test.describe('Bulk Import Export', () => {
 
         await test.step('allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click', async () => {
           // Principle 4 & 8: fresh locators + hover-drag instead of boundingBox()
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: drag-select coordinates are the subject under test
           const firstCellFirstRow = page
             .locator('.rdg-row')
             .first()
             .locator('.rdg-cell')
             .first();
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: drag-select coordinates are the subject under test
           const secondCellFourthRow = page
             .locator('.rdg-row')
             .nth(3)
             .locator('.rdg-cell')
             .nth(1);
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: drag-select coordinates are the subject under test
           const fifthCellSixthRow = page
             .locator('.rdg-row')
             .nth(5)
@@ -1224,11 +1240,13 @@ test.describe('Bulk Import Export', () => {
 
         await test.step('perform single cell copy-paste and undo-redo', async () => {
           // Principle 1, 8: fresh locators + confirm focus before Ctrl+C
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: copy-paste source/destination coordinates are the subject under test
           const firstCell = page
             .locator('.rdg-row')
             .first()
             .locator('.rdg-cell')
             .first();
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: copy-paste source/destination coordinates are the subject under test
           const secondCell = page
             .locator('.rdg-row')
             .first()
@@ -1254,11 +1272,13 @@ test.describe('Bulk Import Export', () => {
         });
 
         await test.step('Select range, copy-paste and undo-redo', async () => {
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: range-select anchor coordinates are the subject under test
           const firstHeaderCell = page
             .locator('.rdg-header-row')
             .first()
             .locator('.rdg-cell')
             .first();
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: range-select anchor coordinates are the subject under test
           const firstCell = page
             .locator('.rdg-row')
             .first()
@@ -1277,6 +1297,7 @@ test.describe('Bulk Import Export', () => {
           await page.keyboard.press('Control+C');
 
           // click on fourth cell of first row (principle 8: fresh locator)
+          // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: paste-destination coordinate is the subject under test
           const fourthCellFirstRow = page
             .locator('.rdg-row')
             .first()
@@ -1292,8 +1313,10 @@ test.describe('Bulk Import Export', () => {
             (await firstCell.textContent()) || ''
           );
           await expect(
+            // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: verifies the pasted value landed at row 0 / column 3
             page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
           ).toContainText(
+            // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: reads back the source cell (row 0, first column) that was copied
             (await page
               .locator('.rdg-row')
               .nth(0)
@@ -1308,6 +1331,7 @@ test.describe('Bulk Import Export', () => {
           // check if the range is pasted correctly
           await expect(fourthCellFirstRow).toHaveText('—');
           await expect(
+            // eslint-disable-next-line om-playwright/no-positional-locator -- grid-position test: verifies the undo reverted row 0 / column 3
             page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
           ).toHaveText('—');
 

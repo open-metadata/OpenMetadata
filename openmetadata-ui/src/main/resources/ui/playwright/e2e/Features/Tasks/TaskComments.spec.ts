@@ -96,7 +96,7 @@ test.describe('Task Comments - Add Comment', () => {
     }
 
     // Click on task to open detail drawer
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -146,7 +146,7 @@ test.describe('Task Comments - Add Comment', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -187,7 +187,7 @@ test.describe('Task Comments - Add Comment', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -278,7 +278,7 @@ test.describe('Task Comments - @Mention', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -300,6 +300,7 @@ test.describe('Task Comments - @Mention', () => {
             '.mention-dropdown, .ql-mention-list-container, [data-testid="mention-suggestions"]'
           );
 
+          // eslint-disable-next-line om-playwright/no-positional-locator -- mentionDropdown is a comma-joined selector of alternative implementations; only one variant renders, .first() picks whichever one matched
           await mentionDropdown
             .first()
             .waitFor({ state: 'visible', timeout: 2000 })
@@ -324,7 +325,7 @@ test.describe('Task Comments - @Mention', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -346,6 +347,7 @@ test.describe('Task Comments - @Mention', () => {
           const mentionItem = page.locator(
             `.mention-item, .ql-mention-list-item:has-text("${mentionedUser.responseData.displayName}")`
           );
+          // eslint-disable-next-line om-playwright/no-positional-locator -- mentionItem is a comma-joined selector of alternative implementations; only one variant renders, .first() picks whichever one matched
           await mentionItem
             .first()
             .waitFor({ state: 'visible', timeout: 2000 })
@@ -438,7 +440,7 @@ test.describe('Task Comments - Edit/Delete', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -451,13 +453,13 @@ test.describe('Task Comments - Edit/Delete', () => {
           '[data-testid="comment-item"], .task-comment'
         );
 
-        if (await comment.first().isVisible()) {
+        if (await comment.isVisible()) {
           // Hover to show actions
-          await comment.first().hover();
+          await comment.hover();
 
           // Look for edit/delete buttons
-          const editBtn = comment.first().getByTestId('edit-comment');
-          const deleteBtn = comment.first().getByTestId('delete-comment');
+          const editBtn = comment.getByTestId('edit-comment');
+          const deleteBtn = comment.getByTestId('delete-comment');
 
           // Author should see these buttons
           // (depends on UI implementation)
@@ -479,7 +481,7 @@ test.describe('Task Comments - Edit/Delete', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -491,10 +493,10 @@ test.describe('Task Comments - Edit/Delete', () => {
           '[data-testid="comment-item"], .task-comment'
         );
 
-        if (await comment.first().isVisible()) {
-          await comment.first().hover();
+        if (await comment.isVisible()) {
+          await comment.hover();
 
-          const editBtn = comment.first().getByTestId('edit-comment');
+          const editBtn = comment.getByTestId('edit-comment');
 
           if (await editBtn.isVisible()) {
             await editBtn.click();
@@ -533,7 +535,7 @@ test.describe('Task Comments - Edit/Delete', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -547,9 +549,9 @@ test.describe('Task Comments - Edit/Delete', () => {
         const initialCount = await comments.count();
 
         if (initialCount > 0) {
-          await comments.first().hover();
+          await comments.hover();
 
-          const deleteBtn = comments.first().getByTestId('delete-comment');
+          const deleteBtn = comments.getByTestId('delete-comment');
 
           if (await deleteBtn.isVisible()) {
             await deleteBtn.click();
@@ -585,7 +587,7 @@ test.describe('Task Comments - Edit/Delete', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = page.locator('[data-testid="task-feed-card"]');
     if (await taskCard.isVisible()) {
       await taskCard.click();
       await waitForPageLoaded(page);
@@ -598,12 +600,12 @@ test.describe('Task Comments - Edit/Delete', () => {
           '[data-testid="comment-item"], .task-comment'
         );
 
-        if (await comment.first().isVisible()) {
-          await comment.first().hover();
+        if (await comment.isVisible()) {
+          await comment.hover();
 
           // Non-author should NOT see edit/delete buttons for others' comments
-          const editBtn = comment.first().getByTestId('edit-comment');
-          const deleteBtn = comment.first().getByTestId('delete-comment');
+          const editBtn = comment.getByTestId('edit-comment');
+          const deleteBtn = comment.getByTestId('delete-comment');
 
           // These should not be visible (or should be for own comments only)
         }

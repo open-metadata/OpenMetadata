@@ -46,7 +46,7 @@ const logTaskDebug = (...messages: Array<string | number | boolean>) => {
 };
 
 const getDropdownTrigger = (dropdown: Locator) =>
-  dropdown.getByRole('button', { name: /down/i }).first();
+  dropdown.getByRole('button', { name: /down/i });
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -62,12 +62,11 @@ const selectTagSuggestion = async ({
   searchText: string;
   tagTestId: string;
 }) => {
-  const tagSelector = root.locator('[data-testid="tag-selector"]').first();
-  const tagsInput = tagSelector
-    .locator(
-      '.ant-select-selection-search-input, input[type="search"], .ant-select-selection-search input'
-    )
-    .first();
+  const tagSelector = root.locator('[data-testid="tag-selector"]');
+  const tagsInput = tagSelector.locator(
+    '.ant-select-selection-search-input, input[type="search"], .ant-select-selection-search input'
+  );
+  // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design's grouped Select renders each option's custom label node twice (dropdown list + internal value cache), so this testid is never a true singleton
   const tagOption = page.getByTestId(tagTestId).first();
   const tagSearchResponse = page
     .waitForResponse(
@@ -110,18 +109,24 @@ const clickDropdownMenuItem = async ({
   menuPattern: RegExp;
 }) => {
   const dropdownTrigger = getDropdownTrigger(dropdown);
+  // eslint-disable-next-line om-playwright/no-positional-locator -- fallback trigger is deliberately the last button in the dropdown container (primary action renders after secondary ones)
   const fallbackTrigger = dropdown.locator('button').last();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- deliberately the last CTA button in the group (primary action renders after secondary ones)
   const taskCtaFallbackTrigger = page
     .locator('#task-panel [data-testid="task-cta-buttons"] button')
     .last();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- panel can have several "down"-labelled toggles; this fallback deliberately targets the last one
   const plainDownButtonFallbackTrigger = page
     .locator('#task-panel')
     .getByRole('button', { name: /down/i })
     .last();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design keeps previously-closed dropdown menus mounted, so .last() targets the currently-open one
   const visibleDropdownMenu = page.locator('.task-action-dropdown').last();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- unscoped page-level menuitem lookup can match residual mounted-but-hidden menu instances from Ant Design's dropdown stacking
   const roleMenuItem = page
     .getByRole('menuitem', { name: menuPattern })
     .first();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- menuPattern is a broad OR regex (e.g. edit|update|add) that can match more than one distinct menu item
   const cssMenuItem = visibleDropdownMenu
     .locator('.ant-dropdown-menu-item')
     .filter({ hasText: menuPattern })
@@ -260,6 +265,7 @@ export const selectAssignee = async (page: Page, assigneeName: string) => {
   const assigneeInput = page.locator(
     '[data-testid="select-assignee"] .ant-select-selection-search input'
   );
+  // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design's grouped Select renders each option's custom label node twice (dropdown list + internal value cache), so this testid is never a true singleton
   const assigneeOption = page.getByTestId(assigneeName).first();
   const assigneeSearchResponse = page
     .waitForResponse(
@@ -377,8 +383,7 @@ export const getTaskCard = (page: Page, task: CreatedTask) => {
 
   return page
     .locator(TASK_CARD_SELECTOR)
-    .filter({ hasText: `#${taskDisplayId}` })
-    .first();
+    .filter({ hasText: `#${taskDisplayId}` });
 };
 
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {
@@ -399,20 +404,20 @@ export const openTaskEditModal = async (page: Page) => {
   logTaskDebug('openTaskEditModal:start');
   const editTransitionPattern =
     /edit suggestion|edit|update description|update tags|add description|add tags/i;
-  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
-  const workflowTaskActionPrimary = page
-    .locator('#task-panel [data-testid="workflow-task-action-primary"]')
-    .first();
-  const workflowTaskActionDropdown = page
-    .locator('#task-panel [data-testid="workflow-task-action-dropdown"]')
-    .first();
-  const genericTaskActionPanel = page.locator('#task-panel').first();
-  const addSuggestionDropdown = page
-    .locator('#task-panel [data-testid="add-close-task-dropdown"]')
-    .first();
-  const editSuggestionDropdown = page
-    .locator('#task-panel [data-testid="edit-accept-task-dropdown"]')
-    .first();
+  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR);
+  const workflowTaskActionPrimary = page.locator(
+    '#task-panel [data-testid="workflow-task-action-primary"]'
+  );
+  const workflowTaskActionDropdown = page.locator(
+    '#task-panel [data-testid="workflow-task-action-dropdown"]'
+  );
+  const genericTaskActionPanel = page.locator('#task-panel');
+  const addSuggestionDropdown = page.locator(
+    '#task-panel [data-testid="add-close-task-dropdown"]'
+  );
+  const editSuggestionDropdown = page.locator(
+    '#task-panel [data-testid="edit-accept-task-dropdown"]'
+  );
 
   const waitForVisibleTaskModal = async () => {
     await visibleTaskModal
@@ -429,9 +434,9 @@ export const openTaskEditModal = async (page: Page) => {
 
   if (await workflowTaskActionDropdown.isVisible().catch(() => false)) {
     logTaskDebug('openTaskEditModal:workflowDropdown');
-    const dropdownPrimaryButton = workflowTaskActionDropdown
-      .locator('[data-testid="workflow-task-action-primary"]')
-      .first();
+    const dropdownPrimaryButton = workflowTaskActionDropdown.locator(
+      '[data-testid="workflow-task-action-primary"]'
+    );
     const dropdownPrimaryLabel = (
       await dropdownPrimaryButton.textContent().catch(() => '')
     )
@@ -491,6 +496,7 @@ export const openTaskEditModal = async (page: Page) => {
     }
   } else if (await addSuggestionDropdown.isVisible().catch(() => false)) {
     logTaskDebug('openTaskEditModal:addSuggestionDropdown');
+    // eslint-disable-next-line om-playwright/no-positional-locator -- this is an Ant Design Dropdown.Button compound control (primary action button + caret toggle button); .first() targets the primary action
     const primaryActionButton = addSuggestionDropdown.locator('button').first();
 
     await primaryActionButton.scrollIntoViewIfNeeded().catch(() => undefined);
@@ -513,14 +519,15 @@ export const openTaskEditModal = async (page: Page) => {
   } else if (
     await genericTaskActionPanel
       .getByRole('button', { name: /approve|resolve|edit|update|add|down/i })
-      .first()
       .isVisible()
       .catch(() => false)
   ) {
     logTaskDebug('openTaskEditModal:genericTaskActionPanel');
+    // eslint-disable-next-line om-playwright/no-positional-locator -- broad OR regex (edit|resolve|update|add) can match more than one distinct button in the panel
     const genericPrimaryAction = genericTaskActionPanel
       .getByRole('button', { name: /edit suggestion|edit|resolve|update|add/i })
       .first();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- panel can have several "down"-labelled toggles for different widgets; this fallback deliberately targets the first one
     const genericDropdownTrigger = genericTaskActionPanel
       .getByRole('button', { name: /down/i })
       .first();
@@ -552,7 +559,6 @@ export const saveTaskEditModal = async (page: Page) => {
   const taskResolveResponse = waitForTaskResolveResponse(page);
   await page
     .locator(VISIBLE_TASK_MODAL_SELECTOR)
-    .first()
     .getByRole('button', { name: /save|ok/i })
     .click();
   await taskResolveResponse;
@@ -569,7 +575,6 @@ export const editDescriptionAndAccept = async (
   logTaskDebug('editDescriptionAndAccept:modalOpen');
   const editor = page
     .locator(VISIBLE_TASK_MODAL_SELECTOR)
-    .first()
     .locator(descriptionBox);
   await expect(editor).toBeVisible();
   await editor.click();
@@ -595,7 +600,7 @@ export const editTagsAndAccept = async ({
   await openTaskEditModal(page);
   await selectTagSuggestion({
     page,
-    root: page.locator(VISIBLE_TASK_MODAL_SELECTOR).first(),
+    root: page.locator(VISIBLE_TASK_MODAL_SELECTOR),
     searchText,
     tagTestId,
   });
@@ -646,9 +651,9 @@ export const closeTaskFromDetails = async (page: Page) => {
   logTaskDebug('closeTaskFromDetails:start');
   const taskPanel = page.locator(TASK_PANEL_SELECTOR);
   const closeButton = taskPanel.getByTestId('close-button');
-  const workflowPrimaryButton = taskPanel
-    .getByTestId('workflow-task-action-primary')
-    .first();
+  const workflowPrimaryButton = taskPanel.getByTestId(
+    'workflow-task-action-primary'
+  );
 
   await expect(taskPanel).toBeVisible();
   await expect
@@ -660,7 +665,6 @@ export const closeTaskFromDetails = async (page: Page) => {
           .locator(
             '[data-testid="workflow-task-action-dropdown"], [data-testid="edit-accept-task-dropdown"], [data-testid="add-close-task-dropdown"]'
           )
-          .first()
           .isVisible()
           .catch(() => false))
       );
@@ -694,11 +698,9 @@ export const closeTaskFromDetails = async (page: Page) => {
     }
   }
 
-  const dropdown = taskPanel
-    .locator(
-      '[data-testid="workflow-task-action-dropdown"], [data-testid="edit-accept-task-dropdown"], [data-testid="add-close-task-dropdown"]'
-    )
-    .first();
+  const dropdown = taskPanel.locator(
+    '[data-testid="workflow-task-action-dropdown"], [data-testid="edit-accept-task-dropdown"], [data-testid="add-close-task-dropdown"]'
+  );
   logTaskDebug('closeTaskFromDetails:dropdown');
   const taskActionResponse = waitForTaskActionResponse(page);
   await clickDropdownMenuItem({
@@ -707,20 +709,23 @@ export const closeTaskFromDetails = async (page: Page) => {
     menuPattern: /reject|decline|close/i,
   });
 
-  const visibleModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
+  const visibleModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR);
   await visibleModal
     .waitFor({ state: 'visible', timeout: 3000 })
     .catch(() => undefined);
 
   if (await visibleModal.isVisible().catch(() => false)) {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- some confirmation modals render more than one textarea; the actionable comment box is deliberately the last one
     const commentInput = visibleModal.locator('textarea').last();
     if (await commentInput.isVisible().catch(() => false)) {
       await commentInput.fill('Rejected by Playwright');
     }
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- broad OR regex (reject|decline|close) can match more than one distinct button in the modal
     const rejectButton = visibleModal
       .getByRole('button', { name: /reject|decline|close/i })
       .first();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- broad OR regex (save|ok) can match more than one distinct button in the modal
     const confirmButton = visibleModal
       .getByRole('button', { name: /save|ok/i })
       .first();
@@ -740,14 +745,16 @@ export const closeTaskFromDetails = async (page: Page) => {
 export const approveTaskFromDetails = async (page: Page) => {
   logTaskDebug('approveTaskFromDetails:start');
   const taskPanel = page.locator(TASK_PANEL_SELECTOR);
-  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
-  const approveButton = taskPanel.getByTestId('approve-button').first();
-  const workflowPrimaryButton = taskPanel
-    .getByTestId('workflow-task-action-primary')
-    .first();
+  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR);
+  const approveButton = taskPanel.getByTestId('approve-button');
+  const workflowPrimaryButton = taskPanel.getByTestId(
+    'workflow-task-action-primary'
+  );
+  // eslint-disable-next-line om-playwright/no-positional-locator -- this is an Ant Design Dropdown.Button compound control (primary action button + caret toggle button); .first() targets the primary action
   const workflowDropdownPrimaryButton = taskPanel
     .locator('[data-testid="workflow-task-action-dropdown"] button')
     .first();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- broad OR regex (approve|accept|resolve|complete) can match more than one distinct button in the panel
   const genericPrimaryButton = taskPanel
     .getByRole('button', { name: /approve|accept|resolve|complete/i })
     .first();
@@ -762,11 +769,13 @@ export const approveTaskFromDetails = async (page: Page) => {
       .catch(() => undefined);
 
     if (await visibleTaskModal.isVisible().catch(() => false)) {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- some confirmation modals render more than one textarea; the actionable comment box is deliberately the last one
       const commentInput = visibleTaskModal.locator('textarea').last();
       if (await commentInput.isVisible().catch(() => false)) {
         await commentInput.fill('Approved by Playwright');
       }
 
+      // eslint-disable-next-line om-playwright/no-positional-locator -- broad OR regex (approve|accept|ok|save) can match more than one distinct button; the primary confirm action is deliberately the last one
       const confirmButton = visibleTaskModal
         .getByRole('button', { name: /approve|accept|ok|save/i })
         .last();

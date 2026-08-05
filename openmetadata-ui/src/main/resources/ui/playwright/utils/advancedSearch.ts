@@ -203,16 +203,14 @@ export const selectOption = async (
 
   await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
 
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
+  await page.locator('.ant-select-dropdown:visible').waitFor({
     state: 'visible',
   });
 
   // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
-  // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
   const optionLocator = page
     .locator('.ant-select-dropdown:visible')
-    .getByTitle(optionTitle, { exact: true })
-    .first();
+    .getByTitle(optionTitle, { exact: true });
   await expect(optionLocator).toBeVisible();
 
   // Wait for dropdown animations to settle before clicking
@@ -257,6 +255,10 @@ export const fillRule = async (
   const escapeRegex = (value: string) =>
     value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+  // `index` is the caller's sequence position for the rule it just created in
+  // the query-builder tree (1st rule, 2nd rule, ...) — rule rows carry no other
+  // distinguishing attribute, so the position is the only valid selector.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied rule sequence index, not a UI-derived guess
   const ruleLocator = page.locator('.rule').nth(index - 1);
 
   // Perform click on rule field
@@ -304,12 +306,17 @@ export const fillRule = async (
       await aggregateRes2;
 
       const dropdown = page.locator('.ant-select-dropdown:visible');
+      // Suggestions come from live search data, so two distinct entities can
+      // legitimately render the same display text; any regex match is an
+      // acceptable pick for exercising the fill flow.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- live suggestion text can collide across entities, any match is acceptable
       const exactTitleMatch = dropdown
         .locator('[title]')
         .filter({
           hasText: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
         })
         .first();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- live suggestion text can collide across entities, any match is acceptable
       const partialTextMatch = dropdown
         .locator('.ant-select-item-option-content')
         .filter({
@@ -566,8 +573,14 @@ export const checkAddRuleOrGroupWithOperator = async (
   });
 
   if (isGroupTest) {
+    // renderAdvanceSearchButtons renders one add-group button per query-builder
+    // group node; the outermost group's button is the only sensible target here.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- one add-group button per tree node, no other attribute distinguishes them
     await page.getByTestId('advanced-search-add-group').first().click();
   } else {
+    // Same button renders per rule row; index 1 targets the group-level add-rule
+    // button that appears after the first rule was created above.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
     await page.getByTestId('advanced-search-add-rule').nth(1).click();
   }
 
@@ -659,7 +672,8 @@ export const runRuleGroupTests = async (
 
 export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await showAdvancedSearchDialog(page);
-  const ruleLocator = page.locator('.rule').nth(0);
+  // The query builder opens with a single default empty rule, so this is already unique.
+  const ruleLocator = page.locator('.rule');
 
   // Perform click on rule field
   await selectOption(
@@ -705,6 +719,7 @@ export const fillStaticListRule = async (
     ruleIndex: number;
   }
 ) => {
+  // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied rule sequence index, mirrors fillRule's index param
   const ruleLocator = page.locator('.rule').nth(ruleIndex - 1);
 
   await selectOption(

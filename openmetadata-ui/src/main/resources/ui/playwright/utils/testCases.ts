@@ -759,15 +759,22 @@ export const performE2EExportImportFlow = async (
       failed: '3',
     });
 
+    // Each row of the CSV import review grid corresponds 1:1, in order, to a
+    // row of the CSV this test authored, so cell position IS the row identity.
     const cellDetails = page.locator('.rdg-cell-details');
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the authored CSV row order
     await expect(cellDetails.nth(0)).toContainText('Entity created');
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the authored CSV row order
     await expect(cellDetails.nth(1)).toContainText('Entity created');
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the authored CSV row order
     await expect(cellDetails.nth(2)).toContainText(
       '#FIELD_REQUIRED: Field 1 is required'
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the authored CSV row order
     await expect(cellDetails.nth(3)).toContainText(
       '#FIELD_REQUIRED: Field 4 is required'
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the authored CSV row order
     await expect(cellDetails.nth(4)).toContainText(
       '#FIELD_REQUIRED: Field 5 is required'
     );
@@ -807,8 +814,11 @@ export const performE2EExportImportFlow = async (
     await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-    // Update display name for first test case (existing test case)
+    // Update display name for first test case (existing test case). Grid row
+    // index matches the bulk-edit table's known, test-controlled row order.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the known bulk-edit table row order
     await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the known bulk-edit table row order
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
@@ -818,7 +828,9 @@ export const performE2EExportImportFlow = async (
     await page.keyboard.press('Enter');
 
     // Update display name for second test case (e2e_${testNamePrefix}_complete_test)
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the known bulk-edit table row order
     await page.locator('.rdg-row').nth(1).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the known bulk-edit table row order
     const displayNameCell2 = page
       .locator('.rdg-row')
       .nth(1)
@@ -828,7 +840,9 @@ export const performE2EExportImportFlow = async (
     await page.keyboard.press('Enter');
 
     // First test case - add tag
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the known bulk-edit table row order
     await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the known bulk-edit table row order
     await page
       .locator('.rdg-row')
       .nth(0)
@@ -846,7 +860,9 @@ export const performE2EExportImportFlow = async (
     });
 
     const cellDetails = page.locator('.rdg-cell-details');
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the authored CSV row order
     await expect(cellDetails.nth(0)).toContainText('Entity created');
+    // eslint-disable-next-line om-playwright/no-positional-locator -- grid row index matches the authored CSV row order
     await expect(cellDetails.nth(1)).toContainText('Entity created');
 
     // Click Update button

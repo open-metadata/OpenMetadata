@@ -132,10 +132,16 @@ export const fillSSOAuthConfig = async (
   page: Page,
   config: SSOConfig['authenticationConfiguration']
 ) => {
-  // Fill basic fields
+  // Fill basic fields. The RJSF schema reuses these ui:titles across more than
+  // one provider branch (e.g. 'Authority' is set twice in
+  // SSOConfigurationForm.tsx), so getByLabel can genuinely resolve to more than
+  // one match even for a single active provider form.
   await page.getByLabel('Provider Name').fill(config.providerName);
+  // eslint-disable-next-line om-playwright/no-positional-locator -- schema reuses this ui:title across provider branches, label alone does not disambiguate
   await page.getByLabel('Authority').first().fill(config.authority);
+  // eslint-disable-next-line om-playwright/no-positional-locator -- schema reuses this ui:title across provider branches, label alone does not disambiguate
   await page.getByLabel('Client ID').first().fill(config.clientId);
+  // eslint-disable-next-line om-playwright/no-positional-locator -- schema reuses this ui:title across provider branches, label alone does not disambiguate
   await page.getByLabel('Callback URL').first().fill(config.callbackUrl);
 
   // Add public key URLs (array field)
@@ -183,7 +189,9 @@ export const fillSSOAuthorizerConfig = async (
     await adminPrincipalsField.locator('input').press('Enter');
   }
 
-  // Fill principal domain
+  // Fill principal domain. Same ui:title-reuse-across-provider-branches
+  // situation as the fields in fillSSOAuthConfig above.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- schema reuses this ui:title across provider branches, label alone does not disambiguate
   await page
     .getByLabel('Principal Domain')
     .first()
@@ -213,10 +221,16 @@ export const fillSSOAuthorizerConfig = async (
       '[data-testid="sso-configuration-form-array-field-template"]'
     );
 
+    // botPrincipalsField is built from a `div` filtered by hasText, which
+    // matches every ancestor div containing that text, not just the innermost
+    // one — so multiple matches are expected here, not just defensive.
     if ((await botPrincipalsField.count()) > 0) {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- ancestor `div` + hasText filter matches every containing div, not just the innermost field
       await botPrincipalsField.first().click();
       for (const principal of config.botPrincipals) {
+        // eslint-disable-next-line om-playwright/no-positional-locator -- ancestor `div` + hasText filter matches every containing div, not just the innermost field
         await botPrincipalsField.first().locator('input').fill(principal);
+        // eslint-disable-next-line om-playwright/no-positional-locator -- ancestor `div` + hasText filter matches every containing div, not just the innermost field
         await botPrincipalsField.first().locator('input').press('Enter');
       }
     }
@@ -266,7 +280,7 @@ export const resetToProviderSelector = async (page: Page) => {
  */
 export const verifyReadOnlyMode = async (page: Page) => {
   await page.getByTestId('edit-sso-configuration').isVisible();
-  await page.locator('input[disabled]').first().isVisible();
+  await expect(page.locator('input[disabled]')).not.toHaveCount(0);
 };
 
 /**
@@ -275,7 +289,7 @@ export const verifyReadOnlyMode = async (page: Page) => {
 export const verifyEditMode = async (page: Page) => {
   await page.getByTestId('save-sso-configuration').isVisible();
   await page.getByTestId('cancel-sso-configuration').isVisible();
-  await page.locator('input:not([disabled])').first().isVisible();
+  await expect(page.locator('input:not([disabled])')).not.toHaveCount(0);
 };
 
 /**
@@ -395,6 +409,9 @@ export const verifyProviderFields = async (
     const labelCount = await labelLocator.count();
 
     if (labelCount > 0) {
+      // labelCount can exceed 1 for the same ui:title-reuse-across-provider-branches
+      // reason as fillSSOAuthConfig; toBeVisible() needs a single element.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- schema reuses this ui:title across provider branches, label alone does not disambiguate
       await expect(labelLocator.first()).toBeVisible();
     } else {
       const testId = ARRAY_FIELD_TESTIDS[field];

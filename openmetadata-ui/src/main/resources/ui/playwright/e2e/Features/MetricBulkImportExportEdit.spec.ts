@@ -555,6 +555,9 @@ const getFirstVisibleFixtureMetricRow = async (
 ): Promise<{ metric: MetricResponse; row: Locator }> => {
   await filterMetrics(page, fixtures.prefix);
 
+  // fixtures.prefix matches every fixture metric row; this helper deliberately
+  // grabs whichever one is currently visible, not a specific metric.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- picks any visible fixture-prefixed row by design, not a specific metric
   const row = page.locator('tr').filter({ hasText: fixtures.prefix }).first();
   await expect(row).toBeVisible();
 
@@ -594,24 +597,29 @@ const waitForMetricBulkEditGrid = async (page: Page, metricName?: string) => {
 
   if (metricName) {
     await expect(
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the search-filtered bulk-edit grid can surface more than the target row depending on backend text matching
       page
         .locator('.bulk-edit-name-value')
         .filter({ hasText: metricName })
         .first()
     ).toBeVisible();
   } else {
-    await expect(page.locator('.rdg-row').first()).toBeVisible();
+    await expect(page.locator('.rdg-row')).not.toHaveCount(0);
   }
 };
 
 const editFirstDisplayNameCell = async (page: Page, value: string) => {
+  // Callers always search-filter the grid down to a single target metric
+  // before calling this, so row 0 is the target row.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- callers pre-filter the grid to the single target metric row
   const displayNameCell = page
     .locator('.rdg-row')
     .first()
     .locator('[aria-colindex="3"]');
 
   await displayNameCell.dblclick();
-  const editor = page.locator(`${RDG_ACTIVE_CELL_SELECTOR} input`).first();
+  // RDG marks exactly one cell aria-selected="true" at a time, so this is already unique.
+  const editor = page.locator(`${RDG_ACTIVE_CELL_SELECTOR} input`);
   await expect(editor).toBeVisible();
   await editor.fill(value);
   await editor.press('Enter');
@@ -619,11 +627,12 @@ const editFirstDisplayNameCell = async (page: Page, value: string) => {
 };
 
 const editFirstDisplayNameCellAndBlur = async (page: Page, value: string) => {
+  // eslint-disable-next-line om-playwright/no-positional-locator -- callers pre-filter the grid to the single target metric row
   const firstRow = page.locator('.rdg-row').first();
   const displayNameCell = firstRow.locator('[aria-colindex="3"]');
 
   await displayNameCell.dblclick();
-  const editor = page.locator(`${RDG_ACTIVE_CELL_SELECTOR} input`).first();
+  const editor = page.locator(`${RDG_ACTIVE_CELL_SELECTOR} input`);
   await expect(editor).toBeVisible();
   await editor.fill(value);
   await firstRow.locator('[aria-colindex="4"]').click();
@@ -1229,6 +1238,7 @@ test.describe(
       await page.getByRole('button', { name: 'Revert Changes' }).click();
       await expect(nextButton).toBeDisabled();
       await expect(
+        // eslint-disable-next-line om-playwright/no-positional-locator -- the grid is pre-filtered to the single target metric row
         page.locator('.rdg-row').first().locator('[aria-colindex="3"]')
       ).toContainText(originalDisplayName);
     });
@@ -1438,8 +1448,8 @@ test.describe(
       await waitForMetricBulkEditGrid(page, targetMetric.name);
 
       await expect(
-        page.locator('.bulk-edit-operation-badge-no_change').first()
-      ).toBeVisible();
+        page.locator('.bulk-edit-operation-badge-no_change')
+      ).not.toHaveCount(0);
       await expect(
         page.getByTestId('bulk-edit-operation-summary')
       ).toBeVisible();
@@ -1464,8 +1474,8 @@ test.describe(
       await waitForMetricBulkEditGrid(page, targetMetric.name);
 
       await expect(
-        page.locator('.bulk-edit-operation-badge-no_change').first()
-      ).toBeVisible();
+        page.locator('.bulk-edit-operation-badge-no_change')
+      ).not.toHaveCount(0);
       await expect(
         page.locator('.bulk-edit-operation-summary-count-update')
       ).toContainText('0');
@@ -1473,8 +1483,8 @@ test.describe(
       await editFirstDisplayNameCell(page, updatedDisplayName);
 
       await expect(
-        page.locator('.bulk-edit-operation-badge-update').first()
-      ).toBeVisible();
+        page.locator('.bulk-edit-operation-badge-update')
+      ).not.toHaveCount(0);
       await expect(
         page.locator('.bulk-edit-operation-summary-count-update')
       ).toContainText('1');
@@ -1499,13 +1509,13 @@ test.describe(
 
       await expect(page.locator('.rdg-row')).toHaveCount(2);
 
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the grid holds exactly the target row plus the newly-appended row (asserted above), and the new row is always appended last
       const newRow = page.locator('.rdg-row').last();
       const nameCell = newRow.locator('[aria-colindex="2"]');
       await nameCell.dblclick();
 
-      const nameEditor = page
-        .locator(`${RDG_ACTIVE_CELL_SELECTOR} input`)
-        .first();
+      // RDG marks exactly one cell aria-selected="true" at a time, so this is already unique.
+      const nameEditor = page.locator(`${RDG_ACTIVE_CELL_SELECTOR} input`);
       await expect(nameEditor).toBeVisible();
       await nameEditor.fill(newMetricName);
       await nameEditor.press('Enter');
@@ -1533,6 +1543,7 @@ test.describe(
 
       await expect(page.locator('.bulk-edit-error-pill')).toBeVisible();
       await expect(
+        // eslint-disable-next-line om-playwright/no-positional-locator -- the SKIP badge belongs to the newly-appended row, which is always last in the grid
         page.locator('.bulk-edit-operation-badge-skip').last()
       ).toBeVisible();
     });
@@ -1572,7 +1583,7 @@ test.describe(
       await expect(page.locator('.rdg-header-row')).toBeVisible({
         timeout: 90_000,
       });
-      await expect(page.locator('.rdg-row').first()).toBeVisible();
+      await expect(page.locator('.rdg-row')).not.toHaveCount(0);
 
       const searchInput = page.getByTestId('bulk-edit-search').locator('input');
       await searchInput.fill(firstMetric.name);
@@ -1595,7 +1606,7 @@ test.describe(
       await expect(page.locator('.rdg-header-row')).toBeVisible({
         timeout: 90_000,
       });
-      await expect(page.locator('.rdg-row').first()).toBeVisible();
+      await expect(page.locator('.rdg-row')).not.toHaveCount(0);
 
       const searchInput = page.getByTestId('bulk-edit-search').locator('input');
       await searchInput.fill(firstMetric.name);
@@ -1680,7 +1691,7 @@ test.describe(
       await waitForMetricsPage(page);
       await filterMetrics(page, fixtures.prefix);
 
-      await expect(page.getByTestId('metric-name').first()).toBeVisible();
+      await expect(page.getByTestId('metric-name')).not.toHaveCount(0);
 
       // The table is React Aria — click the visible <label slot="selection"> in
       // the header to trigger select-all (no force needed; the label is visible).
@@ -1699,7 +1710,7 @@ test.describe(
       await waitForMetricsPage(page);
       await filterMetrics(page, fixtures.prefix);
 
-      await expect(page.getByTestId('metric-name').first()).toBeVisible();
+      await expect(page.getByTestId('metric-name')).not.toHaveCount(0);
 
       await page.locator('thead label[slot="selection"]').click();
       await expect(page.locator('.metric-list-selection-bar')).toBeVisible();

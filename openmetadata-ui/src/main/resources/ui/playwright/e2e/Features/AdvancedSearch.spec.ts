@@ -450,6 +450,9 @@ test.describe(
       });
 
       await test.step('Select Status field and == operator', async () => {
+        // Rule rows carry no other distinguishing attribute; this is the only
+        // rule created so far, so index 0 is the caller-known sequence position.
+        // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied rule sequence index, not a UI-derived guess
         const ruleLocator = page.locator('.rule').nth(0);
         await selectOption(
           page,
@@ -465,13 +468,13 @@ test.describe(
       });
 
       await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
+        // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied rule sequence index, not a UI-derived guess
         const ruleLocator = page.locator('.rule').nth(0);
         await ruleLocator.locator('.widget--widget > .ant-select').click();
 
         const dropdown = page
-          .locator('.ant-select-dropdown')
-          .filter({ hasText: EntityStatus.Approved })
-          .last();
+          .locator('.ant-select-dropdown:visible')
+          .filter({ hasText: EntityStatus.Approved });
 
         await expect(dropdown).toBeVisible();
 
@@ -480,7 +483,6 @@ test.describe(
             dropdown
               .locator('.ant-select-item-option')
               .filter({ hasText: new RegExp(`^${status}$`, 'i') })
-              .first()
           ).toBeVisible();
         }
       });
@@ -505,6 +507,7 @@ test.describe(
             ruleIndex: 1,
           });
 
+          // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
           await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
           await fillRule(page, {
@@ -569,6 +572,7 @@ test.describe(
           ruleIndex: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -610,6 +614,7 @@ test.describe(
             ruleIndex: 1,
           });
 
+          // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
           await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
           await fillRule(page, {
@@ -734,6 +739,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -777,6 +783,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -819,6 +826,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -861,6 +869,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -905,6 +914,7 @@ test.describe(
             ruleIndex: 1,
           });
 
+          // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
           await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
           await fillRule(page, {
@@ -948,6 +958,7 @@ test.describe(
             ruleIndex: 1,
           });
 
+          // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
           await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
           await fillRule(page, {
@@ -1301,6 +1312,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -1376,6 +1388,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -1451,6 +1464,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -1493,6 +1507,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -1535,6 +1550,7 @@ test.describe(
           index: 1,
         });
 
+        // eslint-disable-next-line om-playwright/no-positional-locator -- one add-rule button per tree node, targeting the second by tree position
         await page.getByTestId('advanced-search-add-rule').nth(1).click();
 
         await fillRule(page, {
@@ -1634,6 +1650,7 @@ test.describe(
       await sidebarClick(page, SidebarItem.EXPLORE);
       await showAdvancedSearchDialog(page);
 
+      // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied rule sequence index, not a UI-derived guess
       const ruleLocator = page.locator('.rule').nth(0);
 
       await selectOption(
@@ -1667,6 +1684,10 @@ test.describe(
       await expect(valueSelector).toBeVisible({ timeout: 15000 });
       await valueSelector.click();
 
+      // Ant Design can leave a closing dropdown's node mounted (`:visible` alone
+      // does not always exclude it during the fade-out); the most recently
+      // opened one is always the value dropdown just triggered above.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- most recently opened dropdown among transient Ant Design portal nodes
       const dropdown = page.locator('.ant-select-dropdown:visible').last();
 
       await expect(dropdown).toBeVisible();

@@ -126,7 +126,7 @@ test.describe('SSO Configuration Tests', () => {
         const fieldElement = page.getByLabel(field);
         const fieldCount = await fieldElement.count();
         if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
+          await expect(fieldElement).toBeVisible();
         }
       }
     });
@@ -153,7 +153,7 @@ test.describe('SSO Configuration Tests', () => {
         const fieldElement = page.getByLabel(field);
         const fieldCount = await fieldElement.count();
         if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
+          await expect(fieldElement).toBeVisible();
         }
       }
     });
@@ -180,7 +180,7 @@ test.describe('SSO Configuration Tests', () => {
         const fieldElement = page.getByLabel(field);
         const fieldCount = await fieldElement.count();
         if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
+          await expect(fieldElement).toBeVisible();
         }
       }
     });
@@ -253,8 +253,14 @@ test.describe('SSO Configuration Tests', () => {
         'Public Key URLs',
       ]);
 
-      // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      // Scope to the specific radio group containing the radio we just
+      // clicked: `.field-radio-group` is a generic RJSF class shared by every
+      // radio-type field on the form, not just Client Type.
+      await expect(
+        publicRadio.locator(
+          'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " field-radio-group ")][1]'
+        )
+      ).toBeVisible();
 
       // Verify Secret field is NOT visible for public client
       await expect(page.getByLabel('Secret Key')).not.toBeVisible();
@@ -280,8 +286,14 @@ test.describe('SSO Configuration Tests', () => {
         'Public Key URLs',
       ]);
 
-      // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      // Scope to the specific radio group containing the radio we just
+      // clicked: `.field-radio-group` is a generic RJSF class shared by every
+      // radio-type field on the form, not just Client Type.
+      await expect(
+        publicRadio.locator(
+          'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " field-radio-group ")][1]'
+        )
+      ).toBeVisible();
 
       const hiddenFields = [
         'LDAP Host',
@@ -316,8 +328,14 @@ test.describe('SSO Configuration Tests', () => {
         'Public Key URLs',
       ]);
 
-      // Verify Client Type radio group is visible
-      await expect(page.locator('.field-radio-group').first()).toBeVisible();
+      // Scope to the specific radio group containing the radio we just
+      // clicked: `.field-radio-group` is a generic RJSF class shared by every
+      // radio-type field on the form, not just Client Type.
+      await expect(
+        publicRadio.locator(
+          'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " field-radio-group ")][1]'
+        )
+      ).toBeVisible();
 
       const hiddenFields = [
         'LDAP Host',
@@ -470,7 +488,7 @@ test.describe('SSO Configuration Tests', () => {
         const fieldCount = await field.count();
 
         if (fieldCount > 0) {
-          await expect(field.first()).toBeVisible();
+          await expect(field).toBeVisible();
         }
       }
     });
@@ -486,7 +504,7 @@ test.describe('SSO Configuration Tests', () => {
 
       await expect(confidentialRadio).toBeChecked();
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
+      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]');
 
       await expect(publicKeyUrlsField).not.toBeVisible();
     });
@@ -560,7 +578,7 @@ test.describe('SSO Configuration Tests', () => {
     test('should hide publicKeyUrls for SAML provider', async ({ page }) => {
       await selectSSOProvider(page, 'saml');
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
+      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]');
 
       await expect(publicKeyUrlsField).not.toBeVisible();
     });
@@ -568,7 +586,7 @@ test.describe('SSO Configuration Tests', () => {
     test('should hide publicKeyUrls for LDAP provider', async ({ page }) => {
       await selectSSOProvider(page, 'ldap');
 
-      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]').first();
+      const publicKeyUrlsField = page.locator('[id*="publicKeyUrls"]');
 
       await expect(publicKeyUrlsField).not.toBeVisible();
     });
@@ -614,7 +632,7 @@ test.describe('SSO Configuration Tests', () => {
       const fieldCount = await clientAuthMethodField.count();
 
       if (fieldCount > 0) {
-        await expect(clientAuthMethodField.first()).toBeVisible();
+        await expect(clientAuthMethodField).toBeVisible();
       }
     });
 
@@ -691,18 +709,24 @@ test.describe('SSO Configuration Tests', () => {
 
       // Add first mapping — inputs and roles select appear; fill DN value persists
       await addMappingButton.click();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await expect(ldapGroupInputs.first()).toBeVisible();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await expect(rolesSelects.first()).toBeVisible();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.first().fill('cn=admins,dc=example,dc=com');
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await expect(ldapGroupInputs.first()).toHaveValue(
         'cn=admins,dc=example,dc=com'
       );
 
       // Open the roles dropdown — options are loaded from the API
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await rolesSelects.first().click();
       const roleOptions = page.locator('.ant-select-item-option');
 
       if ((await roleOptions.count()) > 0) {
+        // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
         await expect(roleOptions.first()).toBeVisible();
       }
 
@@ -710,33 +734,45 @@ test.describe('SSO Configuration Tests', () => {
 
       // Add a second mapping with a duplicate DN — both rows show an error
       await addMappingButton.click();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().fill('cn=admins,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(2);
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await expect(errorMessages.first()).toContainText(
         /already mapped|duplicate/i
       );
 
       // Fix the duplicate — errors clear; case-insensitive and whitespace variants also trigger errors
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().clear();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().fill('cn=unique,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(0);
 
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().clear();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().fill('CN=ADMINS,DC=EXAMPLE,DC=COM');
       await expect(errorMessages).toHaveCount(2);
 
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().clear();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().fill('  cn=admins,dc=example,dc=com  ');
       await expect(errorMessages).toHaveCount(2);
 
       // Add a third unique mapping — no errors with three distinct DNs
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().clear();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().fill('cn=users,dc=example,dc=com');
       await addMappingButton.click();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await ldapGroupInputs.last().fill('cn=guests,dc=example,dc=com');
       await expect(errorMessages).toHaveCount(0);
 
       // Remove the first mapping — row disappears
+      // eslint-disable-next-line om-playwright/no-positional-locator -- rows are dynamically added/removed and tracked by creation order (first/last), which is the test's own semantic here
       await page
         .locator('[data-testid^="remove-mapping-btn-"]')
         .first()
@@ -752,6 +788,9 @@ test.describe('SSO Configuration Tests', () => {
       const field = page.getByTestId(
         'sso-configuration-form-array-field-template-authReassignRoles'
       );
+      // AntD may keep an earlier select's dropdown container mounted (hidden);
+      // `.last()` targets the one just opened by this field's click below.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- most-recently-opened dropdown container
       const dropdown = page.locator('.ant-select-dropdown').last();
 
       // Field renders as a combobox (not a plain tags input)
@@ -765,7 +804,9 @@ test.describe('SSO Configuration Tests', () => {
         0
       );
 
-      // Select the first available role — it appears as a selection tag
+      // Select the first available role — it appears as a selection tag.
+      // Which role is picked is irrelevant; the test only verifies selection/removal behavior.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- arbitrary role pick, order is not under test
       await dropdown
         .locator(
           '.ant-select-item-option:not(.ant-select-item-option-disabled)'

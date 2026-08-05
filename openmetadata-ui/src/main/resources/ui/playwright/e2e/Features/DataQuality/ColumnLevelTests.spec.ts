@@ -86,8 +86,7 @@ test.describe(
         );
         const columnOption = page
           .getByRole('option')
-          .filter({ hasText: testCase.column })
-          .first();
+          .filter({ hasText: testCase.column });
         await expect(columnOption).toBeVisible();
         await columnOption.click();
         await testDefinitionResponse;
@@ -134,6 +133,7 @@ test.describe(
         await expect(page.getByTestId('topDimensions')).toBeVisible();
 
         await page.click('[id="root/dimensionColumns"]');
+        // eslint-disable-next-line om-playwright/no-positional-locator -- this test only proves that adding *a* dimension round-trips; it does not care which dimension is picked
         const dimensionOption = page.getByRole('option').first();
         await expect(dimensionOption).toBeVisible();
         await dimensionOption.click();
@@ -193,7 +193,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -281,7 +280,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -364,7 +362,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -475,7 +472,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -569,7 +565,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -654,7 +649,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -747,7 +741,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -850,7 +843,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -953,7 +945,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1056,7 +1047,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1159,7 +1149,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1263,7 +1252,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1362,7 +1350,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1450,7 +1437,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1539,7 +1525,6 @@ test.describe(
         await page
           .getByRole('option')
           .filter({ hasText: testCase.column })
-          .first()
           .click();
         await testDefinitionResponse;
 
@@ -1566,8 +1551,7 @@ test.describe(
         await page.click('#testCaseFormV1_params_locationReferenceType');
         const postalCodeOption = page
           .getByRole('option')
-          .filter({ hasText: 'POSTAL_CODE' })
-          .first();
+          .filter({ hasText: 'POSTAL_CODE' });
         await expect(postalCodeOption).toBeVisible();
         await postalCodeOption.click();
 

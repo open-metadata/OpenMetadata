@@ -77,8 +77,10 @@ const checkElementVisibility = async (
     switch (type) {
       case 'direct': {
         await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`).first()
-        ).toBeVisible();
+          testUserPage
+            .locator(`[data-testid="${testId}"]`)
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
 
         break;
       }
@@ -119,7 +121,9 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).toBeVisible();
+        await expect(
+          testUserPage.getByText(testId).filter({ visible: true })
+        ).not.toHaveCount(0);
 
         break;
       }
@@ -135,8 +139,10 @@ const checkElementVisibility = async (
     switch (type) {
       case 'direct': {
         await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`).first()
-        ).not.toBeVisible();
+          testUserPage
+            .locator(`[data-testid="${testId}"]`)
+            .filter({ visible: true })
+        ).toHaveCount(0);
 
         break;
       }
@@ -177,7 +183,9 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).not.toBeVisible();
+        await expect(
+          testUserPage.getByText(testId).filter({ visible: true })
+        ).toHaveCount(0);
 
         break;
       }
@@ -245,22 +253,14 @@ export const testCommonOperations = async (
   );
   if (await customPropertiesLocator.isVisible()) {
     await customPropertiesLocator.click();
+    const editIcons = testUserPage
+      .locator('[data-testid="custom-properties-card"]')
+      .getByTestId('edit-icon')
+      .filter({ visible: true });
     if (effect === 'allow') {
-      await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
-      ).toBeVisible();
+      await expect(editIcons).not.toHaveCount(0);
     } else {
-      await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
-      ).not.toBeVisible();
+      await expect(editIcons).toHaveCount(0);
     }
   }
 };
@@ -494,7 +494,9 @@ export const testDashboardDataModelSpecificOperations = async (
 // after a vote action triggers the re-fetch of entity details.
 const testVotePreservesUsage = async (testUserPage: Page) => {
   await testUserPage.locator('[data-testid="up-vote-btn"]').click();
-  await expect(testUserPage.getByText('Usage').first()).toBeVisible();
+  await expect(
+    testUserPage.getByText('Usage').filter({ visible: true })
+  ).not.toHaveCount(0);
 };
 
 export const testDashboardSpecificOperations = async (

@@ -84,14 +84,18 @@ const disableCsvJobsTrayInterception = async (page: Page) => {
 };
 
 const getTextEditorCandidates = (page: Page) => {
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
 
+  // Each candidate is tried in turn by waitForVisibleLocator/fillVisibleTextEditor,
+  // which swallow strict-mode/timeout failures and move to the next candidate, so
+  // an occasional multi-match candidate degrades gracefully rather than acting on
+  // the wrong element.
   return [
-    activeCell.getByTestId('bulk-edit-text-cell-editor').first(),
-    activeCell.locator('input, textarea').first(),
-    page.getByTestId('bulk-edit-text-cell-editor').first(),
-    page.locator('.bulk-edit-text-cell-editor, .rdg-text-editor').first(),
-    page.locator('.ant-layout-content').getByRole('textbox').first(),
+    activeCell.getByTestId('bulk-edit-text-cell-editor'),
+    activeCell.locator('input, textarea'),
+    page.getByTestId('bulk-edit-text-cell-editor'),
+    page.locator('.bulk-edit-text-cell-editor, .rdg-text-editor'),
+    page.locator('.ant-layout-content').getByRole('textbox'),
   ];
 };
 
@@ -118,14 +122,14 @@ const fillVisibleTextEditor = async (page: Page, text: string) => {
 };
 
 const clickActiveGridCell = async (page: Page) => {
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
   await scrollIntoViewCenter(activeCell);
   // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
   await activeCell.click({ force: true });
 };
 
 const doubleClickActiveGridCell = async (page: Page) => {
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
   await scrollIntoViewCenter(activeCell);
   // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
   await activeCell.dblclick({ force: true });
@@ -135,7 +139,7 @@ const getGridColumnClass = (columnKey: string) =>
   `rdg-cell-${columnKey.replaceAll(/[^a-zA-Z0-9-_]/g, '')}`;
 
 const scrollGridHorizontally = async (page: Page, scrollLeft: number) => {
-  const grid = page.locator('.om-rdg .rdg').first();
+  const grid = page.locator('.om-rdg .rdg');
 
   if (!(await waitForVisibleLocator(grid, EDITOR_OPEN_TIMEOUT))) {
     return false;
@@ -151,7 +155,7 @@ const scrollGridHorizontally = async (page: Page, scrollLeft: number) => {
 };
 
 const getGridHorizontalScrollPositions = async (page: Page) => {
-  const grid = page.locator('.om-rdg .rdg').first();
+  const grid = page.locator('.om-rdg .rdg');
 
   if (!(await waitForVisibleLocator(grid, EDITOR_OPEN_TIMEOUT))) {
     return [];
@@ -176,20 +180,21 @@ const getGridHorizontalScrollPositions = async (page: Page) => {
 };
 
 const getActiveGridRow = async (page: Page) => {
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
 
   if (await waitForVisibleLocator(activeCell, EDITOR_OPEN_TIMEOUT)) {
-    const row = activeCell
-      .locator(
-        'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " rdg-row ")]'
-      )
-      .first();
+    // `[1]` selects the nearest matching ancestor (reverse-document-order axis).
+    const row = activeCell.locator(
+      'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " rdg-row ")][1]'
+    );
 
     if ((await row.count()) > 0) {
       return row;
     }
   }
 
+  // No active cell: fall back to the most recently rendered row.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- fallback heuristic when no cell is active, picks the most recent row
   return page.locator('.rdg-row').last();
 };
 
@@ -199,7 +204,7 @@ const trySelectRenderedActiveRowCellByColumn = async (
   timeout = EDITOR_OPEN_TIMEOUT
 ) => {
   const row = await getActiveGridRow(page);
-  const cellByClass = row.locator(`.${columnClass}`).first();
+  const cellByClass = row.locator(`.${columnClass}`);
 
   if (await waitForVisibleLocator(cellByClass, timeout)) {
     await scrollIntoViewCenter(cellByClass);
@@ -209,15 +214,15 @@ const trySelectRenderedActiveRowCellByColumn = async (
     return true;
   }
 
-  const headerCell = page.locator(`.rdg-header-row .${columnClass}`).first();
+  const headerCell = page.locator(`.rdg-header-row .${columnClass}`);
   const columnIndex = (await waitForVisibleLocator(headerCell, timeout))
     ? await headerCell.getAttribute('aria-colindex')
     : undefined;
 
   if (columnIndex) {
-    const cellByIndex = row
-      .locator(`.rdg-cell[aria-colindex="${columnIndex}"]`)
-      .first();
+    const cellByIndex = row.locator(
+      `.rdg-cell[aria-colindex="${columnIndex}"]`
+    );
 
     if (await waitForVisibleLocator(cellByIndex, timeout)) {
       await scrollIntoViewCenter(cellByIndex);
@@ -296,10 +301,12 @@ const fillAndCommitTextEditor = async (
 };
 
 const getDescriptionEditorCandidates = (page: Page) => {
+  // Each candidate is tried in turn by waitForVisibleLocator, which swallows
+  // strict-mode/timeout failures and moves to the next candidate.
   return [
-    page.getByTestId('markdown-editor').locator(descriptionBox).first(),
-    page.locator(descriptionBox).first(),
-    page.locator('textarea.bulk-edit-description-editor-textarea').first(),
+    page.getByTestId('markdown-editor').locator(descriptionBox),
+    page.locator(descriptionBox),
+    page.locator('textarea.bulk-edit-description-editor-textarea'),
   ];
 };
 
@@ -545,16 +552,17 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
   await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType, { exact: true }).nth(0).click();
+  // getByRole('option') (not getByTitle) so this can't match the select's own
+  // closed-state display, which carries the same title text when editing an
+  // existing value.
+  await page.getByRole('option', { name: entityType, exact: true }).click();
   await clickInlineSave(page);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
+  const tagSelectorInput = page.locator('[data-testid="tag-selector"] input');
   await tagSelectorInput.waitFor({ state: 'visible' });
 
   const waitForQueryResponse = page.waitForResponse(
@@ -579,9 +587,7 @@ export const fillGlossaryTermDetails = async (
     .locator('.async-tree-select-list-dropdown')
     .waitFor({ state: 'visible' });
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
+  const tagSelectorInput = page.locator('[data-testid="tag-selector"] input');
   await tagSelectorInput.waitFor({ state: 'visible' });
 
   const searchResponse = page.waitForResponse(
@@ -970,7 +976,7 @@ export const validateImportStatus = async (
     timeout: IMPORT_STATUS_TIMEOUT,
   });
 
-  await waitForVisibleLocator(page.locator('.rdg-header-row').first(), 5000);
+  await waitForVisibleLocator(page.locator('.rdg-header-row'), 5000);
 };
 
 export const startCsvPreview = async (page: Page, timeout = 90000) => {
@@ -999,12 +1005,7 @@ export const startCsvPreviewAndWaitForGrid = async (
   // one-shot CSS injection is more robust than polling at specific steps.
   await disableCsvJobsTrayInterception(page);
 
-  if (
-    !(await waitForVisibleLocator(
-      page.locator('.rdg-header-row').first(),
-      1000
-    ))
-  ) {
+  if (!(await waitForVisibleLocator(page.locator('.rdg-header-row'), 1000))) {
     await startCsvPreview(page, timeout);
   }
 
@@ -1015,10 +1016,7 @@ export const startCsvPreviewAndWaitForGrid = async (
   await page
     .getByText('Import is in progress.')
     .waitFor({ state: 'detached', timeout });
-  await page
-    .locator('.rdg-header-row')
-    .first()
-    .waitFor({ state: 'visible', timeout });
+  await page.locator('.rdg-header-row').waitFor({ state: 'visible', timeout });
 };
 
 export const uploadCSVAndWaitForGrid = async (
@@ -1232,6 +1230,8 @@ export const fillRowDetails = async (
   isBulkEdit?: boolean
 ) => {
   if (!isFirstCellClick) {
+    // Multiple rows already exist; the row just added by the caller is the last one.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- targets the row most recently added to the grid
     await page.locator('.rdg-cell-name').last().click();
   }
 
@@ -1355,8 +1355,11 @@ export const pressKeyXTimes = async (
   key: string
 ) => {
   for (let i = 0; i < length; i++) {
-    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
     if (!(await activeCell.isVisible())) {
+      // No active cell: fall back to the most recently rendered row's first
+      // (name) column to re-establish a selection.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- fallback when nothing is selected, picks the most recent row's first column
       await page
         .locator('.rdg-row')
         .last()
@@ -1504,8 +1507,12 @@ export const fillRecursiveColumnDetails = async (
 };
 
 export const firstTimeGridAddRowAction = async (page: Page) => {
+  // This helper specifically verifies first-row/first-cell behavior in an
+  // empty-or-single-row grid, then focus on the newly added (last) row.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- function's purpose is to target the grid's first row specifically
   const firstRow = page.locator('.rdg-row').first();
   if ((await firstRow.count()) > 0) {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- function's purpose is to target the row's first cell specifically
     const firstCell = firstRow.locator('.rdg-cell').first();
     const hasFirstRowContent = await firstRow
       .locator('.rdg-cell')
@@ -1529,6 +1536,9 @@ export const firstTimeGridAddRowAction = async (page: Page) => {
     await page.click('[data-testid="add-row-btn"]');
   }
 
+  // Row just added by the click above is the last one; its first cell is the
+  // name column that should now hold focus.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- targets the newly added (last) row's first cell
   const lastRowFirstCell = page
     .locator('.rdg-row')
     .last()
@@ -1545,11 +1555,14 @@ export const addGridRowAndSelectFirstCell = async (page: Page) => {
   await page.click('[data-testid="add-row-btn"]');
   await expect(rows).toHaveCount(rowCount + 1);
 
+  // Row just added by the click above is the last one; its first cell is the
+  // name column this helper selects.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- targets the newly added (last) row's first cell
   const lastRowFirstCell = rows.last().locator('.rdg-cell').first();
 
   await scrollIntoViewCenter(lastRowFirstCell);
   await lastRowFirstCell.click();
-  await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR).first()).toBeVisible();
+  await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR)).toBeVisible();
   await selectActiveRowCellByColumn(page, 'name');
 };
 
@@ -1659,7 +1672,11 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
     name: 'Display Name',
   });
 
+  // Verifying a column-wide select/delete operation at a known grid position
+  // (row 0, the Display Name column) is the test's own subject here.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- verifying the effect at a specific, known grid position is the point of this test
   const firstRow = page.locator('.rdg-row').first();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- verifying the effect at a specific, known grid position is the point of this test
   const firstCell = firstRow.locator('.rdg-cell').nth(1);
 
   await displayNameHeader.click();
