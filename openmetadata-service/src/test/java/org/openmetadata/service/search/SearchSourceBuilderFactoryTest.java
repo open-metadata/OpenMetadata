@@ -347,58 +347,6 @@ public class SearchSourceBuilderFactoryTest {
     assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
   }
 
-  @Test
-  public void testFuzzyStageSkippedForMultiTokenFqnQueries() {
-    defaultConfig.setRanking(
-        new RankingConfiguration()
-            .withEnabled(true)
-            .withStages(
-                List.of(
-                    new RankingStage()
-                        .withName("exactName")
-                        .withFields(List.of("fullyQualifiedName"))
-                        .withMatchType(RankingStage.MatchType.EXACT)
-                        .withWeight(100.0),
-                    new RankingStage()
-                        .withName("fuzzyName")
-                        .withFields(List.of("name", "displayName"))
-                        .withMatchType(RankingStage.MatchType.FUZZY)
-                        .withMinimumShouldMatch("2<70%")
-                        .withWeight(24.0))));
-
-    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
-    ElasticSearchSourceBuilderFactory esFactory =
-        new ElasticSearchSourceBuilderFactory(searchSettings);
-    String fqnQuery = "pw-api-service-c38963de.pw-api-collection-1c1e2e24.pw-api-endpoint-26f9e043";
-    String shortQuery = "customer";
-    String fuzzyMarker = "ranking:fuzzyName:text";
-
-    String osFqn =
-        serializeOpenSearchRequest(
-            osFactory.buildDataAssetSearchBuilderV2("all", fqnQuery, 0, 10, false, false));
-    String esFqn =
-        esFactory
-            .buildDataAssetSearchBuilderV2("all", fqnQuery, 0, 10, false, false)
-            .query()
-            .toString();
-    String osShort =
-        serializeOpenSearchRequest(
-            osFactory.buildDataAssetSearchBuilderV2("all", shortQuery, 0, 10, false, false));
-    String esShort =
-        esFactory
-            .buildDataAssetSearchBuilderV2("all", shortQuery, 0, 10, false, false)
-            .query()
-            .toString();
-
-    // Multi-token FQN query: fuzziness is disabled, so the fuzzy stage is skipped and an ancestor
-    // whose name is a substring of the FQN can no longer match on the permissive fuzzy stage alone.
-    assertFalse(osFqn.contains(fuzzyMarker), osFqn);
-    assertFalse(esFqn.contains(fuzzyMarker), esFqn);
-    // Short name query keeps the fuzzy stage for typo tolerance.
-    assertTrue(osShort.contains(fuzzyMarker), osShort);
-    assertTrue(esShort.contains(fuzzyMarker), esShort);
-  }
-
   private static String serializeOpenSearchRequest(OpenSearchRequestBuilder requestBuilder) {
     JacksonJsonpMapper mapper = new JacksonJsonpMapper();
     StringWriter writer = new StringWriter();

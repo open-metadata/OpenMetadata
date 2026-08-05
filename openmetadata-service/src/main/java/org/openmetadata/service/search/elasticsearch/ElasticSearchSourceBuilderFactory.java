@@ -64,7 +64,6 @@ public class ElasticSearchSourceBuilderFactory
   private static final String INDEX_ALL = "all";
   private static final String INDEX_DATA_ASSET = "dataAsset";
   private static final String MINIMUM_SHOULD_MATCH = "2<70%";
-  private static final String FUZZINESS_DISABLED = "0";
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
   private static final float FUNCTION_BOOST_FACTOR = 0.3f;
@@ -665,25 +664,12 @@ public class ElasticSearchSourceBuilderFactory
     return switch (matchType) {
       case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
-      case FUZZY -> buildFuzzyRankingStageQueryV2(significantQuery, stage, assetConfig);
+      case FUZZY -> buildTextRankingStageQueryV2(
+          significantQuery, stage, assetConfig, getFuzziness(significantQuery));
       case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
           significantQuery, stage, assetConfig);
-      case STANDARD -> buildTextRankingStageQueryV2(
-          significantQuery, stage, assetConfig, FUZZINESS_DISABLED);
+      case STANDARD -> buildTextRankingStageQueryV2(significantQuery, stage, assetConfig, "0");
     };
-  }
-
-  private Query buildFuzzyRankingStageQueryV2(
-      String significantQuery, RankingStage stage, AssetTypeConfiguration assetConfig) {
-    String fuzziness = getFuzziness(significantQuery);
-    Query fuzzyQuery = null;
-    // With fuzziness disabled (multi-token / FQN queries) this stage degenerates into a permissive
-    // OR match, letting an ancestor whose name is a substring of a longer FQN outrank the exact
-    // entity. Non-fuzzy matching is already covered by the other stages, so skip it here.
-    if (!FUZZINESS_DISABLED.equals(fuzziness)) {
-      fuzzyQuery = buildTextRankingStageQueryV2(significantQuery, stage, assetConfig, fuzziness);
-    }
-    return fuzzyQuery;
   }
 
   private Query buildExactRankingStageQueryV2(
