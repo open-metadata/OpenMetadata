@@ -1241,10 +1241,16 @@ class SnowflakeSource(
             database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
             schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
             try:
-                dimension_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS, schema, view)
-                fact_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS, schema, view)
-                metric_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS, schema, view)
+                query_schema = fqn.unquote_name(schema)
+                query_view = fqn.unquote_name(view)
+                dimension_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS, query_schema, query_view)
+                fact_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS, query_schema, query_view)
+                metric_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS, query_schema, query_view)
                 view_ref = self._semantic_view_reference(database, schema, view)
+                logger.info(
+                    f"Semantic view [{schema}.{view}]: emitting {len(metric_rows)} metric(s) "
+                    f"with {len(dimension_rows)} dimension(s) and {len(fact_rows)} measure(s)"
+                )
                 for metric_row in metric_rows:
                     yield Either(  # pyright: ignore[reportCallIssue]
                         right=build_metric_request(
