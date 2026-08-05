@@ -51,10 +51,11 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
         yield service_connection.databaseName or DEFAULT_DATABASE
 
     def get_database_schema_names(self, bucket_name: Optional[str]) -> Iterable[str]:  # noqa: UP045
-        prefix = bucket_name or ""
-
-        for schema in self._client.list_containers(name_starts_with=prefix):
-            yield schema["name"]
+        if bucket_name:
+            yield bucket_name
+        else:
+            for schema in self._client.list_containers(name_starts_with=""):
+                yield schema["name"]
 
     def get_table_names(
         self,

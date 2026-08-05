@@ -149,25 +149,33 @@ jest.mock(
   () => {
     return jest
       .fn()
-      .mockImplementation(({ onSave, onValidateAdditionalRequiredFields }) => {
-        mockConnectionConfigFormProps({
+      .mockImplementation(
+        ({
+          isAdditionalValidationPending,
           onSave,
           onValidateAdditionalRequiredFields,
-        });
+        }) => {
+          mockConnectionConfigFormProps({
+            isAdditionalValidationPending,
+            onSave,
+            onValidateAdditionalRequiredFields,
+          });
 
-        return (
-          <div>
-            <button onClick={() => onSave({ formData: { host: 'localhost' } })}>
-              Save Connection
-            </button>
-            <button
-              data-testid="trigger-additional-validation"
-              onClick={() => onValidateAdditionalRequiredFields?.()}>
-              Validate Additional Fields
-            </button>
-          </div>
-        );
-      });
+          return (
+            <div>
+              <button
+                onClick={() => onSave({ formData: { host: 'localhost' } })}>
+                Save Connection
+              </button>
+              <button
+                data-testid="trigger-additional-validation"
+                onClick={() => onValidateAdditionalRequiredFields?.()}>
+                Validate Additional Fields
+              </button>
+            </div>
+          );
+        }
+      );
   }
 );
 
@@ -704,6 +712,24 @@ describe('AddServicePage', () => {
     expect(typeof lastProps.onValidateAdditionalRequiredFields).toBe(
       'function'
     );
+  });
+
+  it('should mark additional validation pending while checking a service name', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    const lastProps = mockConnectionConfigFormProps.mock.calls.at(-1)?.[0];
+
+    expect(lastProps.isAdditionalValidationPending).toBe(true);
   });
 
   it('should focus the service name input when additional validation fails on empty name', async () => {

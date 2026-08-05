@@ -124,6 +124,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   shouldValidateForm = true,
   showDetails = true,
   missingRequiredFieldsCount = 0,
+  isFormValidationPending = false,
   hostIp,
   extraInfo,
 }) => {
@@ -180,6 +181,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   const isTestConnectionDisabled =
     isTestingConnection ||
     isTestingDisabled ||
+    isFormValidationPending ||
     !allowTestConn ||
     !isAirflowAvailable;
 

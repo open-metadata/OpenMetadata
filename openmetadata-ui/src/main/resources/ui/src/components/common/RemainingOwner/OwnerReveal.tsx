@@ -80,7 +80,9 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
           />
         </Button>
         <Dropdown.Popover className="tw:z-999!" placement="bottom start">
-          <Dropdown.Menu aria-label="remaining owners">
+          <Dropdown.Menu
+            aria-label="remaining owners"
+            className="tw:max-h-64 tw:overflow-y-auto">
             {owners.map((owner) => {
               const name = getEntityName(owner);
 

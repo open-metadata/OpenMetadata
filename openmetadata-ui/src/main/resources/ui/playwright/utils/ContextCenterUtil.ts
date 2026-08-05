@@ -1012,12 +1012,15 @@ export const searchAndGetMemoryRow = async (
   query: string,
   memoryId: string
 ) => {
-  const searchResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes(MEMORIES_API) &&
-      res.url().includes('q=') &&
+  const searchResPromise = page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname === MEMORIES_API &&
+      url.searchParams.get('q') === query &&
       res.request().method() === 'GET'
-  );
+    );
+  });
   await page.getByTestId('search-input').locator('input').fill(query);
   await searchResPromise;
   await waitForAllLoadersToDisappear(page);
