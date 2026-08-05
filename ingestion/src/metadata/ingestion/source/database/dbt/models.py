@@ -54,3 +54,15 @@ class SnapshotNodeLocation(BaseModel):
 
     schema_: str
     database: Optional[str] = None  # noqa: UP045
+
+
+class UpstreamNode(BaseModel):
+    """An upstream dependency of a dbt node, keeping the dbt names alongside the table FQN.
+
+    ``ref()``/``source()`` expressions carry the dbt *name*, while the FQN is built from
+    the model *alias*, so both are needed to map a reference back to its table.
+    """
+
+    name: str
+    qualified_name: Optional[str] = None  # noqa: UP045
+    fqn: str
