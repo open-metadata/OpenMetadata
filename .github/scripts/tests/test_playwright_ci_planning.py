@@ -43,13 +43,13 @@ def test_basic_and_chromium_share_the_bounded_common_lane():
     assert planner.lane_bounds("chromium", "full") == (5, 24)
 
 
-def test_data_insight_uses_a_dedicated_single_shard_lane():
+def test_data_insight_shares_the_bounded_common_lane_with_basic():
     planner = load_script("build_playwright_shards")
 
     assert "Data Insight" in planner.FULL_PROJECTS
-    assert planner.PROJECT_LANES["Data Insight"] == "data-insight"
-    assert planner.lane_bounds("data-insight", "full") == (1, 1)
-    assert planner.lane_bounds("data-insight", "targeted") == (1, 1)
+    assert planner.PROJECT_LANES["Data Insight"] == "chromium"
+    assert planner.PROJECT_LANES["Data Insight"] == planner.PROJECT_LANES["Basic"]
+    assert planner.lane_bounds("chromium", "full") == (5, 24)
 
 
 def test_full_common_shard_count_is_capped_at_24():
