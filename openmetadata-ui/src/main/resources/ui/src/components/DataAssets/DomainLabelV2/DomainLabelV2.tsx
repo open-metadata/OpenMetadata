@@ -61,6 +61,10 @@ export const DomainLabelV2 = <
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
 
+  const domainLabel = props.multiple
+    ? t('label.domain-plural')
+    : t('label.domain');
+
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
       if (props.onUpdate) {
@@ -131,7 +135,7 @@ export const DomainLabelV2 = <
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
-              entity: t('label.domain-plural'),
+              entity: domainLabel,
             })}>
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
@@ -177,7 +181,7 @@ export const DomainLabelV2 = <
       <WidgetPlusButton
         data-testid="add-domain"
         title={t('label.add-entity', {
-          entity: t('label.domain-plural'),
+          entity: domainLabel,
         })}
         onClick={(e) => e.stopPropagation()}
       />
@@ -186,7 +190,7 @@ export const DomainLabelV2 = <
         data-testid="edit-domain"
         disabled={!hasPermission}
         title={t('label.edit-entity', {
-          entity: t('label.domain-plural'),
+          entity: domainLabel,
         })}
         onClick={(e) => e.stopPropagation()}
       />
@@ -210,7 +214,7 @@ export const DomainLabelV2 = <
         <WidgetCard
           headerExtra={selectableList}
           isExpandDisabled={isEmpty(activeDomain)}
-          title={t('label.domain-plural')}>
+          title={domainLabel}>
           {domainLink && (
             <div className="d-flex items-center gap-1 flex-wrap">
               {domainLink}
