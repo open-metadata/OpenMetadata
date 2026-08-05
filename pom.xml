@@ -213,12 +213,15 @@
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
       </dependency>
-      <!-- CVE-2026-43869: pin to 0.23.0. No Jena release ships the fix yet (6.0.0 still uses 0.22.0).
-           Excluding libthrift breaks RDF tests — Jena's ModelFactory statically references TException. -->
+      <!-- CVE-2026-43869 + CVE-2026-45112 (unbounded read) + CVE-2026-48586 (zlib data
+           amplification): pin to 0.24.0, the first release carrying all three fixes. No Jena
+           release ships a fixed libthrift yet (6.1.0 still pulls 0.22.0), so this pin cannot be
+           retired by upgrading Jena. Excluding libthrift breaks RDF tests — Jena's ModelFactory
+           statically references TException. -->
       <dependency>
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
-        <version>0.23.0</version>
+        <version>0.24.0</version>
       </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
@@ -766,17 +769,17 @@
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcutil-jdk18on</artifactId>
-        <version>1.84</version>
+        <version>1.85</version>
       </dependency>
       <!-- Jackson 3.x BOM — jsonschema2pojo-core 1.3.1 (provided scope, used by the
            jsonschema2pojo-maven-plugin) pulls tools.jackson 3.0.2 transitively

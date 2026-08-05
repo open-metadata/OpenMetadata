@@ -97,6 +97,10 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
+        // Runs in its own post-chromium project to prevent IntakeForm.spec.ts's
+        // per-test beforeEach (which deletes all intake forms) from racing against
+        // the domain intake form this spec creates in beforeAll.
+        '**/IntakeFormCustomPropertyFields.spec.ts',
       ],
     },
     {
@@ -176,6 +180,18 @@ export default defineConfig({
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
+    },
+    // IntakeFormCustomPropertyFields creates a domain intake form in beforeAll and
+    // relies on it persisting across two serial tests. IntakeForm.spec.ts (in the
+    // main chromium project) has a beforeEach that deletes ALL intake forms, so the
+    // two specs interfere when run in parallel. Running this file after chromium
+    // completes eliminates the race entirely.
+    {
+      name: 'IntakeFormCustomPropertyFields',
+      testMatch: '**/IntakeFormCustomPropertyFields.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
