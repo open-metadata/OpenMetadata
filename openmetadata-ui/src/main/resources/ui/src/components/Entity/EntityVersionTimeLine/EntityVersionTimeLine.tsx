@@ -73,10 +73,10 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
             </Tooltip>
             <div className="version-pricing-reached">
               <Typography.Title className="font-medium" level={4}>
-                Unlock all of your version history
+                {t('label.unlock-all-of-your-version-history')}
               </Typography.Title>
               <Typography.Text className="text-grey-muted font-normal">
-                Upgrade to paid plan for access to all of your version history.
+                {t('message.upgrade-to-paid-plan-for-version-history')}
               </Typography.Text>
 
               <Button
@@ -84,14 +84,14 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
                 className="m-t-lg"
                 href="/settings/billing/plans"
                 type="primary">
-                See Upgrade Options
+                {t('label.see-upgrade-options')}
               </Button>
             </div>
           </>
         ) : null}
       </div>
     );
-  }, [versionList, currentVersion, versionHandler]);
+  }, [versionList, currentVersion, versionHandler, t]);
 
   return (
     <Drawer

@@ -21,6 +21,8 @@ import {
 import { avatarCanvas, colorFor, iconCanvas } from './nodeCanvas';
 import { NodeType } from './types';
 
+const DISCLOSURE_ARROW = '▸';
+
 const TYPE_LABEL_KEY: Record<NodeType, string> = {
   domain: 'label.domain',
   product: 'label.data-product',
@@ -123,7 +125,7 @@ const KnowledgeGraph3DLegend: FC = () => {
         <span
           className="tw:ml-auto tw:text-xs tw:opacity-60 tw:transition-transform"
           style={{ transform: isOpen ? 'rotate(90deg)' : 'none' }}>
-          ▸
+          {DISCLOSURE_ARROW}
         </span>
       </button>
 

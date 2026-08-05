@@ -530,7 +530,7 @@ const TaskFormSettingsPage = () => {
                       })
                     ) : (
                       <Typography.Text className="text-grey-muted">
-                        No task forms found yet.
+                        {t('message.no-task-forms-found')}
                       </Typography.Text>
                     )}
                   </div>
@@ -551,7 +551,7 @@ const TaskFormSettingsPage = () => {
               <div className="task-form-settings-hero">
                 <div className="task-form-settings-hero__copy">
                   <Typography.Text className="task-form-settings-hero__eyebrow">
-                    Form Builder
+                    {t('label.form-builder')}
                   </Typography.Text>
                   <Typography.Title
                     className="task-form-settings-hero__title"
@@ -652,7 +652,7 @@ const TaskFormSettingsPage = () => {
                     <Button
                       data-testid="task-form-load-template-button"
                       onClick={handleLoadTemplate}>
-                      Load built-in template
+                      {t('label.load-built-in-template')}
                     </Button>
                   </div>
                 </Card>
@@ -729,12 +729,12 @@ const TaskFormSettingsPage = () => {
                                         <Typography.Title
                                           className="m-b-xs"
                                           level={5}>
-                                          Transition Forms
+                                          {t('label.transition-forms')}
                                         </Typography.Title>
                                         <Typography.Paragraph className="m-b-0 text-grey-muted">
-                                          Configure additional fields for
-                                          specific workflow transitions like
-                                          approve, reject, or reassign.
+                                          {t(
+                                            'message.configure-additional-fields-for-transitions'
+                                          )}
                                         </Typography.Paragraph>
                                       </div>
                                       <Button
@@ -746,7 +746,7 @@ const TaskFormSettingsPage = () => {
                                             createEmptyDesignerTransition(),
                                           ])
                                         }>
-                                        Add transition form
+                                        {t('label.add-transition-form')}
                                       </Button>
                                     </div>
                                     {transitionBuilders.length ? (
@@ -770,7 +770,7 @@ const TaskFormSettingsPage = () => {
                                                       )
                                                     )
                                                   }>
-                                                  Remove
+                                                  {t('label.remove')}
                                                 </Button>
                                               }
                                               key={transition.key}
@@ -847,7 +847,9 @@ const TaskFormSettingsPage = () => {
                                       </div>
                                     ) : (
                                       <Typography.Text className="text-grey-muted">
-                                        No transition forms configured yet.
+                                        {t(
+                                          'message.no-transition-forms-configured'
+                                        )}
                                       </Typography.Text>
                                     )}
                                   </div>
@@ -863,12 +865,12 @@ const TaskFormSettingsPage = () => {
                                         <Typography.Title
                                           className="m-b-xs"
                                           level={5}>
-                                          Stage to Status Mapping
+                                          {t('label.stage-to-status-mapping')}
                                         </Typography.Title>
                                         <Typography.Paragraph className="m-b-0 text-grey-muted">
-                                          Map workflow stage ids to the coarse
-                                          task status exposed in APIs and
-                                          counts.
+                                          {t(
+                                            'message.map-workflow-stage-ids-to-task-status'
+                                          )}
                                         </Typography.Paragraph>
                                       </div>
                                       <Button
@@ -880,7 +882,7 @@ const TaskFormSettingsPage = () => {
                                             createEmptyStageMapping(),
                                           ])
                                         }>
-                                        Add stage mapping
+                                        {t('label.add-stage-mapping')}
                                       </Button>
                                     </div>
                                     {stageMappings.length ? (
@@ -903,7 +905,7 @@ const TaskFormSettingsPage = () => {
                                                     )
                                                   )
                                                 }>
-                                                Remove
+                                                {t('label.remove')}
                                               </Button>
                                             }
                                             key={mapping.key}
@@ -980,7 +982,9 @@ const TaskFormSettingsPage = () => {
                                       </div>
                                     ) : (
                                       <Typography.Text className="text-grey-muted">
-                                        No stage mappings configured yet.
+                                        {t(
+                                          'message.no-stage-mappings-configured'
+                                        )}
                                       </Typography.Text>
                                     )}
                                   </div>
@@ -997,7 +1001,7 @@ const TaskFormSettingsPage = () => {
                       children: (
                         <div className="task-form-settings-json-pane">
                           <Typography.Title className="m-b-sm" level={5}>
-                            Resolve Form Schema
+                            {t('label.resolve-form-schema')}
                           </Typography.Title>
                           <CodeEditor
                             editorClass="task-form-schema-editor"
@@ -1020,7 +1024,7 @@ const TaskFormSettingsPage = () => {
                           />
 
                           <Typography.Title className="m-b-sm" level={5}>
-                            Resolve UI Schema
+                            {t('label.resolve-ui-schema')}
                           </Typography.Title>
                           <CodeEditor
                             editorClass="task-form-ui-schema-editor"
@@ -1043,7 +1047,7 @@ const TaskFormSettingsPage = () => {
                           />
 
                           <Typography.Title className="m-b-sm" level={5}>
-                            Create Form Schema
+                            {t('label.create-form-schema')}
                           </Typography.Title>
                           <CodeEditor
                             editorClass="task-form-create-schema-editor"
@@ -1066,7 +1070,7 @@ const TaskFormSettingsPage = () => {
                           />
 
                           <Typography.Title className="m-b-sm" level={5}>
-                            Create UI Schema
+                            {t('label.create-ui-schema')}
                           </Typography.Title>
                           <CodeEditor
                             editorClass="task-form-create-ui-schema-editor"
@@ -1090,7 +1094,7 @@ const TaskFormSettingsPage = () => {
                           />
 
                           <Typography.Title className="m-b-sm" level={5}>
-                            Transition Forms
+                            {t('label.transition-forms')}
                           </Typography.Title>
                           <CodeEditor
                             editorClass="task-form-transition-forms-editor"
@@ -1111,7 +1115,7 @@ const TaskFormSettingsPage = () => {
                           />
 
                           <Typography.Title className="m-b-sm" level={5}>
-                            Default Stage Mappings
+                            {t('label.default-stage-mappings')}
                           </Typography.Title>
                           <CodeEditor
                             editorClass="task-form-stage-mappings-editor"
@@ -1131,7 +1135,7 @@ const TaskFormSettingsPage = () => {
                           />
 
                           <Typography.Title className="m-b-sm" level={5}>
-                            Workflow Definition JSON
+                            {t('label.workflow-definition-json')}
                           </Typography.Title>
                           <CodeEditor
                             editorClass="task-form-workflow-definition-editor"
