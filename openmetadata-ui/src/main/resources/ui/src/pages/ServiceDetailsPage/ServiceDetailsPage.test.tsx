@@ -1221,6 +1221,7 @@ describe('ServiceDetailsPage', () => {
     it('should fetch host IP when airflow is available', async () => {
       (getPipelineServiceHostIp as jest.Mock).mockResolvedValue({
         status: 200,
+        // eslint-disable-next-line sonarjs/no-hardcoded-ip -- test fixture / mock IP
         data: { ip: '192.168.1.1' },
       });
 

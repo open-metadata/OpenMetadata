@@ -3033,6 +3033,7 @@ describe('parseSamlMetadataXml', () => {
   it('should parse Okta metadata correctly', () => {
     const result = parseSamlMetadataXml(OKTA_METADATA);
 
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- SAML entityId identifier, not a network call
     expect(result.entityId).toBe('http://www.okta.com/exk123456');
     expect(result.ssoLoginUrl).toBe(
       'https://dev-123456.okta.com/app/openmetadata/exk123456/sso/saml'

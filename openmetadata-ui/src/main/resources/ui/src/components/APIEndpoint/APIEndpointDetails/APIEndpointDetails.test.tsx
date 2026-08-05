@@ -29,7 +29,9 @@ const mockApiEndpointDetails: APIEndpoint = {
   version: 0.1,
   updatedAt: 1234567890,
   updatedBy: 'test-user',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://test.com',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   endpointURL: 'http://api.test.com/endpoint',
   requestMethod: APIRequestMethod.Get,
   service: {

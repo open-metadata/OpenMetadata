@@ -14,6 +14,7 @@ export const FORM_DATA = {
   type: 'Mysql',
   scheme: 'mysql+pymysql',
   username: 'openmetadata_user',
+  // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
   password: 'openmetadata_password',
   hostPort: 'mysql:3306',
 };
@@ -27,6 +28,7 @@ export const CREATE_WORKFLOW_PAYLOAD = {
         type: 'Mysql',
         scheme: 'mysql+pymysql',
         username: 'openmetadata_user',
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
         password: 'openmetadata_password',
         hostPort: 'mysql:3306',
       },
@@ -45,6 +47,7 @@ export const CREATE_WORKFLOW_PAYLOAD_WITH_RUNNER = {
         type: 'Mysql',
         scheme: 'mysql+pymysql',
         username: 'openmetadata_user',
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
         password: 'openmetadata_password',
         hostPort: 'mysql:3306',
       },
@@ -68,6 +71,7 @@ export const WORKFLOW_DETAILS = {
         type: 'Mysql',
         scheme: 'mysql+pymysql',
         username: 'openmetadata_user',
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
         password: 'openmetadata_password',
         hostPort: 'mysql:3306',
         supportsMetadataExtraction: true,
@@ -114,6 +118,7 @@ export const WORKFLOW_DETAILS = {
   openMetadataServerConnection: {
     clusterName: 'openmetadata',
     type: 'OpenMetadata',
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
     hostPort: 'http://openmetadata-server:8585/api',
     authProvider: 'openmetadata',
     verifySSL: 'no-ssl',

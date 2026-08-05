@@ -97,7 +97,9 @@ describe('ResetPassword', () => {
     });
 
     expect(mockHandleResetPassword).toHaveBeenCalledWith({
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
       confirmPassword: 'Password@123',
+      // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
       password: 'Password@123',
       token: 'token',
       username: 'admin',

@@ -90,6 +90,7 @@ export const MOCK_KNOWLEDGE_PAGES = [
     version: 0.6,
     updatedAt: 1705640284779,
     updatedBy: 'shilpa',
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/contextCenter/pages/2c0e3122-5699-472a-9634-241595a9a400',
     changeDescription: {
       fieldsAdded: [],
@@ -119,6 +120,7 @@ export const MOCK_KNOWLEDGE_PAGES = [
     version: 0.2,
     updatedAt: 1705656839361,
     updatedBy: 'sachin',
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/contextCenter/pages/8d383887-7b41-4ba4-b7e4-5f775df842d0',
     changeDescription: {
       fieldsAdded: [

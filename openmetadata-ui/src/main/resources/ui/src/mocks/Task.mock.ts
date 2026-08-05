@@ -204,6 +204,7 @@ export const MOCK_ASSIGNEE_DATA = {
                   'Organization under which all the other team hierarchy is created',
                 displayName: 'Organization',
                 deleted: false,
+                // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
                 href: 'http://sandbox-beta.open-metadata.org/api/v1/teams/9efbccd7-3d0b-485d-89c4-ac0f8fc80da5',
               },
             ],

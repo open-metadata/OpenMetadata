@@ -2067,6 +2067,7 @@ export const mockSearchData = {
           version: 0.1,
           updatedAt: 1682049945635,
           updatedBy: 'admin',
+          // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
           href: 'http://openmetadata-server:8585/api/v1/tables/9d664bbd-8c9e-4068-9112-9ab0457d4c52',
           tableType: 'Regular',
           columns: [
@@ -2218,6 +2219,7 @@ export const mockSearchData = {
             description:
               'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
           },
           database: {
@@ -2228,6 +2230,7 @@ export const mockSearchData = {
             description:
               'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
           },
           service: {
@@ -2236,6 +2239,7 @@ export const mockSearchData = {
             name: 'sample_data',
             fullyQualifiedName: 'sample_data',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/services/databaseServices/f24cd129-f864-45d9-8cce-46a9aecd6846',
           },
           serviceType: 'BigQuery',
@@ -2293,6 +2297,7 @@ export const mockSearchData = {
           version: 0.1,
           updatedAt: 1682049945673,
           updatedBy: 'admin',
+          // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
           href: 'http://openmetadata-server:8585/api/v1/tables/f1f03f22-24d6-4e88-a6bc-6aa0b03f0da0',
           tableType: 'Regular',
           columns: [
@@ -2433,6 +2438,7 @@ export const mockSearchData = {
             description:
               'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
           },
           database: {
@@ -2443,6 +2449,7 @@ export const mockSearchData = {
             description:
               'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
           },
           service: {
@@ -2451,6 +2458,7 @@ export const mockSearchData = {
             name: 'sample_data',
             fullyQualifiedName: 'sample_data',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/services/databaseServices/f24cd129-f864-45d9-8cce-46a9aecd6846',
           },
           serviceType: 'BigQuery',
@@ -2512,6 +2520,7 @@ export const mockSearchData = {
           version: 0.1,
           updatedAt: 1682049945868,
           updatedBy: 'admin',
+          // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
           href: 'http://openmetadata-server:8585/api/v1/tables/94edd207-9d60-40cc-aa73-615e8fe20e97',
           tableType: 'Regular',
           columns: [
@@ -2710,6 +2719,7 @@ export const mockSearchData = {
             description:
               'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
           },
           database: {
@@ -2720,6 +2730,7 @@ export const mockSearchData = {
             description:
               'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
           },
           service: {
@@ -2728,6 +2739,7 @@ export const mockSearchData = {
             name: 'sample_data',
             fullyQualifiedName: 'sample_data',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/services/databaseServices/f24cd129-f864-45d9-8cce-46a9aecd6846',
           },
           serviceType: 'BigQuery',
@@ -2791,6 +2803,7 @@ export const mockSearchData = {
           version: 0.1,
           updatedAt: 1682049945964,
           updatedBy: 'admin',
+          // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
           href: 'http://openmetadata-server:8585/api/v1/tables/4e3556eb-ac18-456e-b8ba-ea4a42dac422',
           tableType: 'Regular',
           columns: [
@@ -3158,6 +3171,7 @@ export const mockSearchData = {
             description:
               'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databaseSchemas/be37a61e-fb10-4748-86ab-0714613a42ea',
           },
           database: {
@@ -3168,6 +3182,7 @@ export const mockSearchData = {
             description:
               'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/databases/0dac7caf-8419-4a0b-a96e-345730b2c0f5',
           },
           service: {
@@ -3176,6 +3191,7 @@ export const mockSearchData = {
             name: 'sample_data',
             fullyQualifiedName: 'sample_data',
             deleted: false,
+            // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
             href: 'http://openmetadata-server:8585/api/v1/services/databaseServices/f24cd129-f864-45d9-8cce-46a9aecd6846',
           },
           serviceType: 'BigQuery',

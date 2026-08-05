@@ -74,8 +74,10 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       description: 'Access to Petstore orders',
       displayName: 'store',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/apiCollections/a5580b17-739b-4f86-b72a-96eb5c59de6f',
     },
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/apiEndpoints/eb95db42-9b0d-46e0-945d-dc6a4e115692',
     owners: [],
     service: {
@@ -86,6 +88,7 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       description: '',
       displayName: 'pet_api_service',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/services/apiServices/c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
     },
     serviceType: APIServiceType.REST,
@@ -111,8 +114,10 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       description: 'Access to Petstore orders',
       displayName: 'store',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/apiCollections/a5580b17-739b-4f86-b72a-96eb5c59de6f',
     },
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/apiEndpoints/24f70b58-d285-4f5e-881e-8d27076a3050',
     owners: [],
     service: {
@@ -123,6 +128,7 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       description: '',
       displayName: 'pet_api_service',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/services/apiServices/c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
     },
     serviceType: APIServiceType.REST,
@@ -189,8 +195,10 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       description: 'Access to Petstore orders',
       displayName: 'store',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/apiCollections/a5580b17-739b-4f86-b72a-96eb5c59de6f',
     },
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
     href: 'http://sandbox-beta.open-metadata.org/api/v1/apiEndpoints/80cebee6-c433-4aca-be10-00835607f434',
     owners: [],
     service: {
@@ -201,6 +209,7 @@ export const API_COLLECTION_API_ENDPOINTS: APIEndpoint[] = [
       description: '',
       displayName: 'pet_api_service',
       deleted: false,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
       href: 'http://sandbox-beta.open-metadata.org/api/v1/services/apiServices/c5d3b9ff-c8b4-4d3c-a695-7e94c798e3f8',
     },
     serviceType: APIServiceType.REST,

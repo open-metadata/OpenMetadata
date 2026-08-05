@@ -1097,6 +1097,7 @@ describe('Test Connection Component', () => {
     );
 
     await act(async () => {
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- test fixture / mock IP
       render(<TestConnection {...mockProps} hostIp="10.0.0.1" />);
     });
 
@@ -1110,6 +1111,7 @@ describe('Test Connection Component', () => {
 
     expect(
       await screen.findByTestId('connection-timeout-message')
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- test fixture / mock IP
     ).toHaveTextContent('10.0.0.1');
   });
 

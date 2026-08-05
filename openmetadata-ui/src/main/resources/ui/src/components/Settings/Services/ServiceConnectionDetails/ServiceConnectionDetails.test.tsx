@@ -72,6 +72,7 @@ jest.mock('../../../../utils/SearchServiceUtils', () => ({
 
 const databaseSchema = {
   hostPort: 'localhost:5432',
+  // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
   password: 'testPassword',
   username: 'testUsername',
   database: 'test_db',
@@ -97,6 +98,7 @@ const pipelineSchema = {
 const metaDataSchema = {
   type: MetadataServiceType.Atlas,
   username: 'AtlasUsername',
+  // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- test fixture credential
   password: 'AtlasPassword',
   hostPort: 'localhost:5432',
   projectName: 'AtlasProject',

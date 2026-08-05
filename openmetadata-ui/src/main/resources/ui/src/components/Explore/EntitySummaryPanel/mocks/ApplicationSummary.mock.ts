@@ -28,6 +28,7 @@ export const mockApplicationEntityDetails: App = {
   version: 0.1,
   updatedAt: 1672668265493,
   updatedBy: 'admin',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a real network call
   href: 'http://openmetadata-server:8585/api/v1/apps/app-id-101',
   permission: Permissions.All,
   runtime: {},

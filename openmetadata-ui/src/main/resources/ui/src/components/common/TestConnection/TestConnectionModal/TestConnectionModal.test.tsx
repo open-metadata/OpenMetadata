@@ -184,6 +184,7 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         {...commonProps}
         isConnectionTimeout
+        // eslint-disable-next-line sonarjs/no-hardcoded-ip -- mock IP fixture
         hostIp="10.0.0.1"
         progress={90}
       />

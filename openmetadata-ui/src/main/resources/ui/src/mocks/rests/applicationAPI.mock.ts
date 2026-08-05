@@ -114,6 +114,7 @@ export const mockExternalApplicationData = {
   version: 0.5,
   updatedAt: 1739539645532,
   updatedBy: 'joseph',
+  // eslint-disable-next-line sonarjs/no-clear-text-protocols -- mock API URL fixture, not a network call
   href: 'http://demo.getcollate.io/api/v1/apps/633f579c-512c-4b5f-864b-5664aa56b37f',
   deleted: false,
   developer: 'Collate Inc.',

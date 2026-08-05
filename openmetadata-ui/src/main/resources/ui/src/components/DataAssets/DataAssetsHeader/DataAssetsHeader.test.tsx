@@ -477,6 +477,7 @@ describe('DataAssetsHeader component', () => {
   });
 
   it('should render source URL button when sourceUrl is present', () => {
+    // eslint-disable-next-line sonarjs/no-clear-text-protocols -- test fixture URL, not a network call
     const mockSourceUrl = 'http://test-source.com';
 
     render(
