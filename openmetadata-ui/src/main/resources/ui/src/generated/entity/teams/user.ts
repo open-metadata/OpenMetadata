@@ -129,7 +129,7 @@ export interface User {
      * Opaque per-user UI preferences. Returned only when 'preferences' is included in the
      * fields query parameter.
      */
-    preferences?: any;
+    preferences?: { [key: string]: any };
     /**
      * Profile of the user.
      */
