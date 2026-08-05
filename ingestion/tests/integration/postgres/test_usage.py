@@ -7,9 +7,6 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryUsagePipeline import (
     DatabaseUsageConfigType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 from metadata.workflow.metadata import MetadataWorkflow
@@ -76,37 +73,31 @@ def test_usage_delete_usage(
     run_workflow(UsageWorkflow, usage_config)
 
 
-def test_usage_registers_failing_query_source(postgres_container, workflow_config):
+def test_usage_registers_failing_query_source(postgres_container, metadata):
     """
     When the usage query fails against the source (here the configured query
     source does not exist), the failure must be registered on the source status
     instead of the run reporting Errors: 0 / Success 100% (#17204).
     """
     url = make_url(postgres_container.get_connection_url())
-    config = {
-        "source": {
-            "type": "postgres-usage",
-            "serviceName": "test_usage_17204",
-            "serviceConnection": {
-                "config": {
-                    "type": "Postgres",
-                    "username": url.username,
-                    "authType": {"password": url.password},
-                    "hostPort": f"{url.host}:{url.port}",
-                    "database": url.database,
-                    "queryStatementSource": "nonexistent_query_source_17204",
-                }
-            },
-            "sourceConfig": {"config": {"type": "DatabaseUsage", "queryLogDuration": 1}},
+    source_config = {
+        "type": "postgres-usage",
+        "serviceName": "test_usage_17204",
+        "serviceConnection": {
+            "config": {
+                "type": "Postgres",
+                "username": url.username,
+                "authType": {"password": url.password},
+                "hostPort": f"{url.host}:{url.port}",
+                "database": url.database,
+                "queryStatementSource": "nonexistent_query_source_17204",
+            }
         },
-        "sink": {"type": "metadata-rest", "config": {}},
-        "workflowConfig": workflow_config,
+        "sourceConfig": {"config": {"type": "DatabaseUsage", "queryLogDuration": 1}},
     }
-    parsed = OpenMetadataWorkflowConfig.model_validate(config)
     with patch("metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"):
-        source = PostgresUsageSource.create(config["source"], parsed.workflowConfig.openMetadataServerConfig)
+        source = PostgresUsageSource.create(source_config, metadata)
 
     list(source._iter())
 
-    assert len(source.status.failures) >= 1
-    assert "nonexistent_query_source_17204" in str(source.status.failures[0].error)
+    assert any("nonexistent_query_source_17204" in str(failure.error) for failure in source.status.failures)
