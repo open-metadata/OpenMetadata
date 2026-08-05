@@ -78,6 +78,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     supportsTags = true;
     supportsDomains = true;
     supportsDataProducts = true;
+    supportsDataProductAssetsSearch = false;
     supportsSoftDelete = true;
     supportsPatch = true;
     supportsOwners = true;

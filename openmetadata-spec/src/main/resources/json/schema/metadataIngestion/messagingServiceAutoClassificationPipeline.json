@@ -47,12 +47,15 @@
     "confidence": {
       "description": "Set the Confidence value for which you want the column to be tagged as PII. Confidence value ranges from 0 to 100. A higher number will tag less columns as PII, whereas a lower number will tag more columns as PII.",
       "type": "number",
-      "default": 80
+      "default": 80,
+      "minimum": 0,
+      "maximum": 100
     },
     "sampleDataCount": {
       "description": "No. of messages to fetch during sample data ingestion.",
       "type": "integer",
       "default": 50,
+      "minimum": 1,
       "title": "Sample Data Count"
     },
     "classificationLanguage": {
