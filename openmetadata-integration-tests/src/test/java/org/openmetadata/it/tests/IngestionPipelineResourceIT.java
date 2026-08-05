@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -910,6 +911,69 @@ public class IngestionPipelineResourceIT
     Collections.reverse(expectedNewestFirst);
     List<String> actualRunIds = statuses.stream().map(PipelineStatus::getRunId).toList();
     assertEquals(expectedNewestFirst, actualRunIds);
+  }
+
+  /**
+   * Needs more than one pipeline: the single-entity read above binds a one-element hash list, where
+   * a query ordered only by entity hash still looks correct. Timestamps are interleaved across the
+   * two pipelines so a globally-sorted query fails too.
+   */
+  @Test
+  void test_listWithPipelineStatusesOrdersEachPipelineNewestFirst(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    long base = System.currentTimeMillis() - (48L * 60 * 60 * 1000);
+
+    Map<String, List<String>> expectedNewestFirst = new LinkedHashMap<>();
+    for (int p = 0; p < 2; p++) {
+      CreateIngestionPipeline request =
+          new CreateIngestionPipeline()
+              .withName(ns.prefix("list_statuses_order_" + p))
+              .withPipelineType(PipelineType.METADATA)
+              .withService(service.getEntityReference())
+              .withSourceConfig(
+                  new SourceConfig()
+                      .withConfig(
+                          new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true)))
+              .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+      IngestionPipeline pipeline = createEntity(request);
+      String statusPath =
+          "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+      List<String> runIds = new ArrayList<>();
+      for (int i = 0; i < 3; i++) {
+        String runId = UUID.randomUUID().toString();
+        runIds.add(runId);
+        PipelineStatus status =
+            new PipelineStatus()
+                .withPipelineState(PipelineStatusType.SUCCESS)
+                .withRunId(runId)
+                .withTimestamp(base + (i * 2000L) + (p * 1000L));
+        client.getHttpClient().execute(HttpMethod.PUT, statusPath, status, PipelineStatus.class);
+      }
+      Collections.reverse(runIds);
+      expectedNewestFirst.put(pipeline.getFullyQualifiedName(), runIds);
+    }
+
+    ListResponse<IngestionPipeline> listed =
+        listEntities(
+            new ListParams()
+                .setFields("pipelineStatuses")
+                .setLimit(1000)
+                .setService(service.getFullyQualifiedName()));
+
+    for (Map.Entry<String, List<String>> expected : expectedNewestFirst.entrySet()) {
+      IngestionPipeline pipeline =
+          listed.getData().stream()
+              .filter(candidate -> expected.getKey().equals(candidate.getFullyQualifiedName()))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("pipeline missing from list: " + expected));
+      List<String> actual =
+          pipeline.getPipelineStatuses().stream().map(PipelineStatus::getRunId).toList();
+      assertEquals(
+          expected.getValue(), actual, "runs must be newest-first for " + expected.getKey());
+    }
   }
 
   @Test
