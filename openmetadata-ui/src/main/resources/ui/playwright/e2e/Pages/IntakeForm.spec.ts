@@ -210,7 +210,7 @@ const selectExtensionReference = async ({
     .first();
 
   await expect(input).toBeVisible({ timeout: 15000 });
-  await input.click();
+  await input.focus();
   await input.fill(query);
   await searchResponse;
 

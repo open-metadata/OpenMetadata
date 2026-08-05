@@ -173,7 +173,10 @@ test.describe(
             response.url().includes('/api/v1/dataProducts') &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('save-btn').click();
+        const saveBtn = page.getByTestId('save-btn');
+        await expect(saveBtn).toBeVisible();
+        await saveBtn.focus();
+        await page.keyboard.press('Enter');
         const response = await createResponse;
         expect(response.status()).toBe(201);
       });
@@ -214,7 +217,16 @@ test.describe(
             response.url().includes('/api/v1/domains') &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('save-btn').click();
+        // The drawer's SlideoutMenu couples its footer height to the body, so
+        // the footer (and save-btn) keeps shifting as the form re-renders —
+        // a pointer click() never passes Playwright's "stable" actionability
+        // check under load and the test times out. save-btn is a native
+        // <button>; focus it (which has no stability gate) and activate it with
+        // Enter, which fires the button's native click without a pointer.
+        const saveBtn = page.getByTestId('save-btn');
+        await expect(saveBtn).toBeVisible();
+        await saveBtn.focus();
+        await page.keyboard.press('Enter');
         const response = await createResponse;
         expect(response.status()).toBe(201);
       });
