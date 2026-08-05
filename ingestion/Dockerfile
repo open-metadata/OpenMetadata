@@ -98,7 +98,7 @@ COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 # airflow's /root/bin/pip wrapper, which exits 1 (and for non-root execs ~/.local/bin/pip),
 # and bare `python` resolves to /home/airflow/.local/bin/python. Both would miss the very
 # copy this line exists to fix.
-RUN /usr/local/bin/python -m pip install --no-cache-dir --upgrade "pip==26.2"
+RUN /usr/local/bin/python -m pip install --no-cache-dir --upgrade "pip>=26.2,<27"
 
 USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
@@ -112,7 +112,7 @@ ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade "pip==26.2" "setuptools<81"
+RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.12.txt"
