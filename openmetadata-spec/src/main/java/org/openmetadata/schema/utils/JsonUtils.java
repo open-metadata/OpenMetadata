@@ -172,6 +172,20 @@ public final class JsonUtils {
     }
   }
 
+  /**
+   * Serialize to JSON safe to store in a Postgres {@code jsonb} column. Postgres rejects the Unicode
+   * NUL character (U+0000) that MySQL tolerates, so we strip it: a NUL is never meaningful in stored
+   * text and only leaks in from binary sources such as subprocess or pod diagnostics captured in
+   * ingestion stack traces. Jackson always emits U+0000 as its six-character JSON escape, so a plain
+   * string replace on the serialized output removes it.
+   */
+  public static String pojoToJsonPostgresSafe(Object o) {
+    String json = pojoToJson(o);
+    // A literal backslash-u-0000 already present in source text would lose one backslash here; that
+    // is harmless for the diagnostic strings this guards.
+    return json == null ? null : json.replace("\\u0000", "");
+  }
+
   public static String pojoToJsonIgnoreNull(Object o) {
     if (o == null) {
       return null;

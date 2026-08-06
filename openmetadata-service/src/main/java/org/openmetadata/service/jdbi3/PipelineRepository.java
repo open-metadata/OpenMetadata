@@ -342,14 +342,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           .update(
               pipeline.getFullyQualifiedName(),
               PIPELINE_STATUS_EXTENSION,
-              JsonUtils.pojoToJson(pipelineStatus),
+              JsonUtils.pojoToJsonPostgresSafe(pipelineStatus),
               pipelineStatus.getTimestamp());
     } else {
       storeTimeSeries(
           pipeline.getFullyQualifiedName(),
           PIPELINE_STATUS_EXTENSION,
           "pipelineStatus",
-          JsonUtils.pojoToJson(pipelineStatus));
+          JsonUtils.pojoToJsonPostgresSafe(pipelineStatus));
     }
 
     ChangeDescription change =
@@ -468,7 +468,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                     .bind("entityFQNHash", entityFQNHash)
                     .bind("extension", PIPELINE_STATUS_EXTENSION)
                     .bind("jsonSchema", "pipelineStatus")
-                    .bind("json", JsonUtils.pojoToJson(pipelineStatus))
+                    .bind("json", JsonUtils.pojoToJsonPostgresSafe(pipelineStatus))
                     .add();
               }
               batch.execute();

@@ -15,6 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -209,6 +210,26 @@ class JsonUtilsTest {
     assertEquals(0, actualJson.get("connection").size());
     assertTrue(actualJson.has("deleted"));
     assertFalse(actualJson.get("deleted").asBoolean());
+  }
+
+  /**
+   * A raw NUL character (U+0000) in a string field — as leaks in from ingestion pod/subprocess
+   * diagnostics — is serialized by Jackson as the six-character escape that Postgres {@code jsonb}
+   * refuses to store. The Postgres-safe serializer must strip it while leaving surrounding text
+   * intact.
+   */
+  @Test
+  void testPojoToJsonPostgresSafeStripsNulChar() {
+    Map<String, String> data = Map.of("stackTrace", "before\u0000after");
+
+    assertTrue(
+        JsonUtils.pojoToJson(data).contains("\\u0000"),
+        "plain serialization keeps the NUL escape Postgres rejects");
+
+    String safe = JsonUtils.pojoToJsonPostgresSafe(data);
+    assertFalse(safe.contains("\\u0000"), "Postgres-safe serialization strips the NUL escape");
+    assertTrue(safe.contains("beforeafter"), "surrounding text is preserved");
+    assertNull(JsonUtils.pojoToJsonPostgresSafe(null), "null in, null out");
   }
 
   @Test
