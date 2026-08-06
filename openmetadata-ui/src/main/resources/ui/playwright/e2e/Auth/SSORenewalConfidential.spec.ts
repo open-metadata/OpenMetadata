@@ -20,51 +20,84 @@ import {
   waitForAccessTokenExpiry,
   withShortOidcTokenValidity,
 } from '../../utils/sessionRenewal';
+import { ProviderHelper } from '../../utils/sso-providers';
 import { keycloakOidcConfidentialProviderHelper } from '../../utils/sso-providers/keycloak-oidc';
+import {
+  OKTA_CONFIDENTIAL,
+  oktaConfidentialProviderHelper,
+} from '../../utils/sso-providers/okta';
 import {
   swapSecurityConfig,
 } from '../../utils/ssoAuth';
 import { loginViaSso } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
-// Confidential-client OIDC renewal against the local Keycloak fixture.
-//
-// This is the only confidential coverage that runs anywhere in CI. The Java ITs
-// have confidential backends but nothing sets jpw.auth, and the mock-oidc
-// Playwright suite is referenced by no workflow — so AuthenticationCodeFlowHandler
-// (handleLogin, handleCallback, handleRefresh) is otherwise exercised only by
-// mocked unit tests. Simply reaching the first assertion here walks the whole
-// server-side code flow: authorize, callback, code exchange, session, refresh.
-//
-// Keycloak rather than Okta because the fixture is the tenant: the client secret
-// is a committed throwaway and the realm is ours, so no external app registration
-// has to be provisioned before this can run. clientType: 'confidential' is what
-// makes AuthProvider mount GenericAuthenticator, moving renewal onto
-// GET /api/v1/auth/refresh — the same transport SSORenewal.spec.ts asserts for
-// SAML, but reached through a completely different handler.
-//
-// Tagged @tokenRenewal, which is accurate — it shortens
-// oidcConfiguration.tokenValidity — and lands it on exactly the leg that can run
-// it: the okta leg excludes that tag (no confidential app there) and the
-// -crosssite leg excludes it too, leaving keycloak-azure-saml.
-const CONFIDENTIAL_RENEWAL_TAGS = ['@sso', '@Platform', '@tokenRenewal'];
-
 const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
+// Confidential-client OIDC renewal — the flow most self-hosted deployments run,
+// and the one with no CI coverage at all before this suite. The Java ITs carry
+// confidential backends but nothing sets jpw.auth, and the mock-oidc Playwright
+// suite is referenced by no workflow, so AuthenticationCodeFlowHandler
+// (handleLogin, handleCallback, handleRefresh) is otherwise exercised only by
+// mocked unit tests. Reaching the first assertion here walks the whole
+// server-side code flow: authorize, callback, code exchange, session, refresh.
+//
+// clientType: 'confidential' is what makes AuthProvider mount
+// GenericAuthenticator, moving renewal onto GET /api/v1/auth/refresh — the same
+// transport SSORenewal.spec.ts asserts for SAML, reached through a different
+// handler. So the assertions match that suite; only the IdP differs.
+//
+// Two scenarios, because the tags have to differ and each lands on exactly the
+// leg that can serve it:
+//
+//   Keycloak  @tokenRenewal  runs today. The fixture is the tenant, so its client
+//                            secret is a committed throwaway and no external app
+//                            registration is needed. The okta and -crosssite legs
+//                            both exclude this tag.
+//   Okta      @okta          skips until a Web app registration and
+//                            OKTA_CLIENT_SECRET exist. The keycloak legs exclude
+//                            this tag.
+const CONFIDENTIAL_SCENARIOS: {
+  title: string;
+  tag: string;
+  helper: ProviderHelper;
+  hasCredentials: boolean;
+  skipReason: string;
+}[] = [
+  {
+    title: 'Keycloak',
+    tag: '@tokenRenewal',
+    helper: keycloakOidcConfidentialProviderHelper,
+    hasCredentials: Boolean(username && password),
+    skipReason: `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`,
+  },
+  {
+    title: 'Okta',
+    tag: '@okta',
+    helper: oktaConfidentialProviderHelper,
+    hasCredentials: Boolean(
+      username &&
+        password &&
+        OKTA_CONFIDENTIAL.clientId &&
+        OKTA_CONFIDENTIAL.clientSecret
+    ),
+    skipReason: `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD} plus ${SSO_ENV.OKTA_CONFIDENTIAL_CLIENT_ID}/${SSO_ENV.OKTA_CLIENT_SECRET} for a confidential Okta Web app`,
+  },
+];
+
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Confidential OIDC Session Renewal', {
-  tag: CONFIDENTIAL_RENEWAL_TAGS,
-}, () => {
+for (const scenario of CONFIDENTIAL_SCENARIOS) {
+  test.describe(
+    `Confidential OIDC Session Renewal — ${scenario.title}`,
+    { tag: ['@sso', '@Platform', scenario.tag] },
+    () => {
   test.slow();
   // eslint-disable-next-line playwright/no-skipped-test
-  test.skip(
-    !username || !password,
-    `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
-  );
+  test.skip(!scenario.hasCredentials, scenario.skipReason);
 
-  const helper = keycloakOidcConfidentialProviderHelper;
+  const helper = scenario.helper;
   let restoreSecurity: (() => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
@@ -171,4 +204,6 @@ test.describe('Confidential OIDC Session Renewal', {
     await expect(page.getByText(/session has timed out/i)).toBeVisible();
     await expect(page.locator('button.signin-button')).toBeVisible();
   });
-});
+    }
+  );
+}
