@@ -44,13 +44,13 @@ const CLAIM_SCENARIOS = [
 for (const scenario of CLAIM_SCENARIOS) {
   test.describe(
     `Okta self-signup username resolution — ${scenario.title} (issue #26591)`,
-    { tag: ['@sso', '@Platform'] },
+    { tag: ['@sso', '@Platform', '@okta'] },
     () => {
       test.slow();
       // eslint-disable-next-line playwright/no-skipped-test
       test.skip(
-        providerType !== 'okta' || !username || !password,
-        `Requires ${SSO_ENV.PROVIDER_TYPE}=okta with ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
+        !username || !password,
+        `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
       );
 
       test.describe.configure({ mode: 'serial' });
