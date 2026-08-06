@@ -1779,16 +1779,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         term.getUpdatedBy());
   }
 
-  /**
-   * A term with no reviewers of its own is still governed by its parent term's — or its glossary's —
-   * reviewers, so approval gates must resolve the chain explicitly instead of trusting the read-time
-   * {@code reviewers} field.
-   */
-  @Override
-  public List<EntityReference> getEffectiveReviewers(GlossaryTerm glossaryTerm) {
-    return resolveEffectiveReviewers(glossaryTerm);
-  }
-
   private List<EntityReference> resolveEffectiveReviewers(GlossaryTerm term) {
     if (!nullOrEmpty(term.getReviewers())) {
       return term.getReviewers();

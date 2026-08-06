@@ -20,7 +20,6 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
@@ -248,23 +247,6 @@ public class TagRepository extends EntityRepository<Tag> {
           tag.getId(),
           e.getMessage());
     }
-  }
-
-  /**
-   * A tag with no reviewers of its own is still governed by its classification's, so approval gates
-   * must resolve the chain explicitly rather than trust the read-time {@code reviewers} field —
-   * {@link #setInheritedFields(Tag, Fields)} silently skips inheritance when the classification
-   * cannot be loaded.
-   */
-  @Override
-  public List<EntityReference> getEffectiveReviewers(Tag tag) {
-    List<EntityReference> reviewers = listOrEmpty(tag.getReviewers());
-    if (reviewers.isEmpty() && tag.getClassification() != null) {
-      Classification classification =
-          Entity.getEntity(tag.getClassification(), FIELD_REVIEWERS, NON_DELETED);
-      reviewers = listOrEmpty(classification.getReviewers());
-    }
-    return reviewers;
   }
 
   @Override

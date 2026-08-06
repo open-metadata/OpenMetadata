@@ -7866,16 +7866,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Reviewers that govern this entity's approval: those set directly on it, or — when it has none —
-   * those it inherits from its parent. Approval decisions must use this rather than the raw {@code
+   * those of its inheritance parent. Approval decisions must use this rather than the raw {@code
    * reviewers} field, which carries inherited entries only when the read that produced the entity
-   * both requested and applied inheritance. Subclasses whose entities inherit reviewers override it.
+   * both requested and applied inheritance.
+   *
+   * <p>Resolution goes through {@link #getParentEntity}, the same hook the inheritance path uses, so
+   * any entity declaring an inheritance parent participates without type-specific code. Reading the
+   * parent applies the parent's own inheritance, so a grandparent's reviewers (a glossary's, for a
+   * term nested under another term) surface through the single hop. A parent that is missing or
+   * concurrently deleted degrades to "no reviewers" instead of failing the caller.
    */
-  public List<EntityReference> getEffectiveReviewers(T entity) {
-    return listOrEmpty(entity.getReviewers());
+  public final List<EntityReference> getEffectiveReviewers(T entity) {
+    List<EntityReference> reviewers = listOrEmpty(entity.getReviewers());
+    if (reviewers.isEmpty() && supportsReviewers) {
+      EntityInterface parent = resolveInheritanceParentLeniently(entity, FIELD_REVIEWERS);
+      if (parent != null) {
+        reviewers = listOrEmpty(parent.getReviewers());
+      }
+    }
+    return reviewers;
   }
 
   @SuppressWarnings("unchecked")
-  public List<EntityReference> getEffectiveReviewersUntyped(EntityInterface entity) {
+  public final List<EntityReference> getEffectiveReviewersUntyped(EntityInterface entity) {
     return getEffectiveReviewers((T) entity);
   }
 

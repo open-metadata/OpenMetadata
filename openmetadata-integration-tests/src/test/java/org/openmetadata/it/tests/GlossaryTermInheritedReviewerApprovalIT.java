@@ -167,6 +167,26 @@ public class GlossaryTermInheritedReviewerApprovalIT {
   }
 
   /**
+   * Grandparent inheritance: the GLOSSARY holds the reviewer, an intermediate term holds none, and
+   * the leaf holds none. Effective-reviewer resolution takes a single hop to the parent term, so this
+   * only succeeds if reading that parent applies its own inheritance and surfaces the glossary's
+   * reviewer — the assumption the generic resolution rests on.
+   */
+  @Test
+  void test_inheritedReviewerFromGrandparentGlossary_createsOpenApprovalTask(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = createGlossary(ns, /* withReviewer */ true);
+    GlossaryTerm middle = createTerm(glossary, "middle_no_reviewer", false);
+    GlossaryTerm leaf = createChildTerm(glossary, middle, "leaf_inherits_from_glossary");
+
+    assertTermInheritsReviewer(leaf.getId());
+
+    Task task = awaitOpenApprovalTask(leaf.getId(), leaf.getFullyQualifiedName());
+    assertAssigneeIsReviewer(task);
+    waitForTermStatus(leaf.getId(), EntityStatus.IN_REVIEW);
+  }
+
+  /**
    * Faithful shape of the reported "hello world" term: an OWNER and a description are set, and the
    * reviewer is inherited from the glossary (none on the term). This isolates whether an owner on the
    * term suppresses inherited-reviewer resolution at the approval gate (it must not).
