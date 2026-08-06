@@ -299,11 +299,22 @@ const ExplorePageV1: FC<unknown> = () => {
 
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
-    const items = generateTabItems(tabsInfo, searchHitCounts, searchIndex);
+    const items = generateTabItems(
+      tabsInfo,
+      searchHitCounts,
+      searchIndex,
+      searchResults?.hits?.total?.value
+    );
 
     return searchQueryParam
       ? items.filter((tabItem) => {
-          return tabItem.count > 0 || tabItem.key === searchCriteria;
+          // Keep the active tab even when its own results total is 0, so the
+          // tab you are viewing never disappears out from under you.
+          return (
+            tabItem.count > 0 ||
+            tabItem.key === searchCriteria ||
+            tabItem.key === searchIndex
+          );
         })
       : items;
   }, [
@@ -312,6 +323,7 @@ const ExplorePageV1: FC<unknown> = () => {
     searchIndex,
     searchQueryParam,
     searchCriteria,
+    searchResults,
   ]);
 
   const getAdvancedSearchQuickFilters = useCallback(() => {

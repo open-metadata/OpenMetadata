@@ -103,10 +103,20 @@ export const getAggregationOptions = async (
 export const generateTabItems = (
   tabsInfo: Record<string, TabsInfoData>,
   searchHitCounts: SearchHitCounts | undefined,
-  searchIndex: ExploreSearchIndex
+  searchIndex: ExploreSearchIndex,
+  activeIndexTotalHits?: number
 ) => {
   return Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => {
     const Icon = tabDetail.icon as React.FC<{ className?: string }>;
+    const isActiveTab = tabSearchIndex === searchIndex;
+    // Badge counts come from a cross-index dataAsset aggregation, which can
+    // diverge from the active tab's own index total (ancestral matches inflate
+    // the aggregate). For the tab in view, use its results total so the badge
+    // matches the list the user is actually looking at.
+    const tabCount =
+      isActiveTab && !isNil(activeIndexTotalHits)
+        ? activeIndexTotalHits
+        : searchHitCounts?.[tabSearchIndex as ExploreSearchIndex];
 
     return {
       key: tabSearchIndex,
@@ -134,18 +144,12 @@ export const generateTabItems = (
           </div>
           <span>
             {!isNil(searchHitCounts)
-              ? getCountBadge(
-                  searchHitCounts[tabSearchIndex as ExploreSearchIndex],
-                  '',
-                  tabSearchIndex === searchIndex
-                )
+              ? getCountBadge(tabCount, '', isActiveTab)
               : getCountBadge()}
           </span>
         </div>
       ),
-      count: searchHitCounts
-        ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
-        : 0,
+      count: tabCount ?? 0,
     };
   });
 };

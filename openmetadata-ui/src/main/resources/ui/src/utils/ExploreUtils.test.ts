@@ -27,7 +27,11 @@ import {
   getSubLevelHierarchyKey,
   updateTreeData,
 } from './ExplorePureUtils';
-import { fetchEntityData, getAggregationOptions } from './ExploreUtils';
+import {
+  fetchEntityData,
+  generateTabItems,
+  getAggregationOptions,
+} from './ExploreUtils';
 
 jest.mock('../rest/searchAPI');
 jest.mock('./ToastUtils');
@@ -940,5 +944,45 @@ describe('fetchEntityData', () => {
     expect(params.setSearchHitCounts).toHaveBeenCalledWith({
       [SearchIndex.TABLE]: 42,
     });
+  });
+});
+
+describe('generateTabItems', () => {
+  const mockTab = (label: string) => ({ label, icon: () => null });
+  const tabsInfo = {
+    [SearchIndex.TABLE]: mockTab('Tables'),
+    [SearchIndex.DASHBOARD]: mockTab('Dashboards'),
+  } as unknown as Parameters<typeof generateTabItems>[0];
+  const aggregateHitCounts = {
+    [SearchIndex.TABLE]: 1,
+    [SearchIndex.DASHBOARD]: 5,
+  } as unknown as Parameters<typeof generateTabItems>[1];
+
+  it('uses the active tab own results total, not the cross-index aggregate', () => {
+    const items = generateTabItems(
+      tabsInfo,
+      aggregateHitCounts,
+      SearchIndex.TABLE,
+      7381
+    );
+
+    // Active tab (TABLE) shows its own index total, not the aggregate 1
+    expect(items.find((item) => item.key === SearchIndex.TABLE)?.count).toBe(
+      7381
+    );
+    // Inactive tab keeps the aggregate bucket count
+    expect(
+      items.find((item) => item.key === SearchIndex.DASHBOARD)?.count
+    ).toBe(5);
+  });
+
+  it('falls back to the aggregate count when no active total is provided', () => {
+    const items = generateTabItems(
+      tabsInfo,
+      aggregateHitCounts,
+      SearchIndex.TABLE
+    );
+
+    expect(items.find((item) => item.key === SearchIndex.TABLE)?.count).toBe(1);
   });
 });
