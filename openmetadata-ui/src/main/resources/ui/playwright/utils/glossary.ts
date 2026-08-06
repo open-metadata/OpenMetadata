@@ -57,6 +57,116 @@ type TaskEntity = {
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
+const GLOSSARY_TERM_APPROVAL_WORKFLOW = 'GlossaryTermApprovalWorkflow';
+const AUTO_APPROVED_BY_REVIEWER_STAGE = 'Auto-Approved by Reviewer';
+
+// The approval workflow itself finishes in tens of milliseconds, but the change event that triggers
+// it is only consumed once a second (WorkflowEvents.json pollInterval), so the first sample almost
+// always misses. A coarse interval therefore charges a whole interval per miss against the caller's
+// budget, and every caller here is a `test.slow()` (180s) or `test.setTimeout(5m)` test that polls
+// up to twice - which is how waiting for a one-second event produced a 180s test timeout.
+const WORKFLOW_POLL = {
+  timeout: 60_000,
+  intervals: [1_000, 2_000, 5_000],
+};
+
+type WorkflowInstanceStateRow = {
+  stage?: { name?: string; displayName?: string };
+};
+
+type GlossaryApprovalInstance = {
+  id: string;
+  status?: string;
+  statesHttpStatus: number;
+  stages: string[];
+};
+
+type GlossaryApprovalSnapshot = {
+  instancesHttpStatus: number;
+  instances: GlossaryApprovalInstance[];
+};
+
+// A term gets one instance per Created/Updated event, so a handful at most in these tests. The cap
+// keeps the per-poll fan-out bounded; instances come back newest first, so the ones that matter are
+// never the ones dropped.
+const APPROVAL_INSTANCE_LIMIT = 10;
+
+/**
+ * Read the most recent GlossaryTermApprovalWorkflow instances for a term - newest first, at most
+ * APPROVAL_INSTANCE_LIMIT of them - together with every stage of each, so callers can assert
+ * against the whole set instead of a single row.
+ */
+export const getGlossaryApprovalWorkflowSnapshot = async (
+  apiContext: APIRequestContext,
+  glossaryTermFqn: string
+): Promise<GlossaryApprovalSnapshot> => {
+  const entityLink = encodeURIComponent(
+    `<#E::glossaryTerm::${glossaryTermFqn}>`
+  );
+  const endTs = Date.now();
+  const startTs = endTs - 24 * 60 * 60 * 1000;
+
+  // `workflowDefinitionName` is the only definition filter WorkflowInstanceResource#list declares.
+  // Any other name is dropped silently, which widens the result to every workflow anchored to this
+  // term - task workflows included - whose states live under a different definition hash and so
+  // read back empty.
+  const instancesResponse = await apiContext.get(
+    `/api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowDefinitionName=${GLOSSARY_TERM_APPROVAL_WORKFLOW}&limit=${APPROVAL_INSTANCE_LIMIT}`
+  );
+
+  if (!instancesResponse.ok()) {
+    return { instancesHttpStatus: instancesResponse.status(), instances: [] };
+  }
+
+  const instancesBody = await instancesResponse.json();
+  const instances: GlossaryApprovalInstance[] = [];
+
+  for (const instance of instancesBody?.data ?? []) {
+    if (!instance?.id) {
+      continue;
+    }
+
+    const statesResponse = await apiContext.get(
+      `/api/v1/governance/workflowInstanceStates/${GLOSSARY_TERM_APPROVAL_WORKFLOW}/${instance.id}?startTs=${startTs}&endTs=${endTs}&limit=100`
+    );
+    const statesBody = statesResponse.ok()
+      ? await statesResponse.json()
+      : undefined;
+
+    instances.push({
+      id: instance.id,
+      status: instance.status,
+      statesHttpStatus: statesResponse.status(),
+      // Stage rows come back ordered by timestamp DESC with no tie-break, and the auto-approve path
+      // writes several stages inside the same millisecond, so never trust the first row alone.
+      stages: ((statesBody?.data ?? []) as WorkflowInstanceStateRow[])
+        .map((state) => state.stage?.displayName ?? state.stage?.name)
+        .filter((stage): stage is string => Boolean(stage)),
+    });
+  }
+
+  return { instancesHttpStatus: instancesResponse.status(), instances };
+};
+
+const describeGlossaryApprovalSnapshot = (
+  snapshot: GlossaryApprovalSnapshot
+): string => {
+  if (snapshot.instances.length === 0) {
+    return `workflowInstances HTTP ${snapshot.instancesHttpStatus}, 0 ${GLOSSARY_TERM_APPROVAL_WORKFLOW} instance(s) found`;
+  }
+
+  const detail = snapshot.instances
+    .map(
+      (instance, index) =>
+        `[${index}] ${instance.id} status=${instance.status} statesHTTP=${
+          instance.statesHttpStatus
+        } stages=[${instance.stages.join(' | ')}]`
+    )
+    .join('; ');
+
+  return `workflowInstances HTTP ${snapshot.instancesHttpStatus}, ${snapshot.instances.length} instance(s): ${detail}`;
+};
+
 export const checkName = async (page: Page, name: string) => {
   await expect(page.getByTestId('entity-header-name')).toHaveText(name);
 };
@@ -534,10 +644,8 @@ export const verifyTaskCreated = async (
         return arr;
       },
       {
-        // Custom expect message for reporting, optional.
-        message: 'To get the last run execution status as success',
-        timeout: 350_000,
-        intervals: [40_000, 30_000],
+        message: `an Open Approval task for "${glossaryTermData}" on ${glossaryFqn}`,
+        ...WORKFLOW_POLL,
       }
     )
     .toContain(glossaryTermData);
@@ -548,31 +656,39 @@ export const verifyWorkflowInstanceExists = async (
   glossaryTermFqn: string
 ) => {
   const { apiContext } = await getApiContext(page);
-  const entityLink = encodeURIComponent(
-    `<#E::glossaryTerm::${glossaryTermFqn}>`
-  );
 
-  await expect
-    .poll(
-      async () => {
-        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
-        const endTs = new Date().getTime();
+  try {
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+            apiContext,
+            glossaryTermFqn
+          );
 
-        const workflowInstanceResponse = await apiContext
-          .get(
-            `api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
-          )
-          .then((res) => res.json());
+          return snapshot.instances.length;
+        },
+        {
+          message: `a ${GLOSSARY_TERM_APPROVAL_WORKFLOW} instance to exist for ${glossaryTermFqn}`,
+          ...WORKFLOW_POLL,
+        }
+      )
+      .toBeGreaterThan(0);
+  } catch (error) {
+    // Re-read at failure time and surface it: a bare poll timeout cannot tell "the workflow never
+    // ran" apart from "we stopped waiting too early", and that ambiguity is what kept this test
+    // mislabelled as flaky.
+    const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+      apiContext,
+      glossaryTermFqn
+    );
 
-        return workflowInstanceResponse?.data?.length > 0;
-      },
-      {
-        message: 'To verify workflow instance exists',
-        timeout: 200_000,
-        intervals: [50_000],
-      }
-    )
-    .toBe(true);
+    throw new Error(
+      `No ${GLOSSARY_TERM_APPROVAL_WORKFLOW} instance for ${glossaryTermFqn}. ${describeGlossaryApprovalSnapshot(
+        snapshot
+      )}. Original error: ${(error as Error).message}`
+    );
+  }
 };
 
 export const verifyGlossaryWorkflowReviewerCase = async (
@@ -580,47 +696,40 @@ export const verifyGlossaryWorkflowReviewerCase = async (
   glossaryTermFqn: string
 ) => {
   const { apiContext } = await getApiContext(page);
-  const entityLink = encodeURIComponent(
-    `<#E::glossaryTerm::${glossaryTermFqn}>`
-  );
 
-  await expect
-    .poll(
-      async () => {
-        const startTs = new Date(Date.now() - 24 * 60 * 60 * 1000).getTime();
-        const endTs = new Date().getTime();
+  try {
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+            apiContext,
+            glossaryTermFqn
+          );
 
-        const workflowInstanceResponse = await apiContext
-          .get(
-            `api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
-          )
-          .then((res) => res.json());
-
-        if (workflowInstanceResponse?.data?.length === 0) {
-          return '';
+          // The newest instance is the reviewer's edit, matching what the Workflow History widget
+          // reads; the trigger excludes entityStatus so the workflow's own write spawns no newer run.
+          return snapshot.instances[0]?.stages ?? [];
+        },
+        {
+          message: `the newest ${GLOSSARY_TERM_APPROVAL_WORKFLOW} run to record "${AUTO_APPROVED_BY_REVIEWER_STAGE}" for ${glossaryTermFqn}`,
+          ...WORKFLOW_POLL,
         }
+      )
+      .toContain(AUTO_APPROVED_BY_REVIEWER_STAGE);
+  } catch (error) {
+    const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+      apiContext,
+      glossaryTermFqn
+    );
 
-        const workflowInstanceId = workflowInstanceResponse?.data[0]?.id;
-
-        if (!workflowInstanceId) {
-          return '';
-        }
-
-        const workflowInstanceState = await apiContext
-          .get(
-            `api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${workflowInstanceId}?startTs=${startTs}&endTs=${endTs}`
-          )
-          .then((res) => res.json());
-
-        return workflowInstanceState?.data[0]?.stage?.displayName ?? '';
-      },
-      {
-        message: 'To verify workflow instance exists',
-        timeout: 200_000,
-        intervals: [50_000],
-      }
-    )
-    .toEqual('Auto-Approved by Reviewer');
+    throw new Error(
+      `Glossary term ${glossaryTermFqn} never reached "${AUTO_APPROVED_BY_REVIEWER_STAGE}". ${describeGlossaryApprovalSnapshot(
+        snapshot
+      )}. A newest run still parked on an approval task means the reviewer's edit did not take the CheckIfGlossaryTermUpdatedByIsReviewer=true branch. Original error: ${
+        (error as Error).message
+      }`
+    );
+  }
 };
 
 export const validateGlossaryTermTask = async (
