@@ -10,12 +10,15 @@
 #  limitations under the License.
 """Tests for the Confluent Cloud Snowflake Sink dataset resolver."""
 
+import json
 import logging
 import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -33,6 +36,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.type.schema import FieldModel, SchemaType
+from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     CONNECTOR_CLASS_TO_SERVICE_TYPE,
@@ -52,6 +57,7 @@ from metadata.ingestion.source.pipeline.kafkaconnect.sinks.snowflake import (
     java_string_hashcode,
     snowflake_table_name,
 )
+from metadata.parsers.avro_parser import parse_avro_schema
 
 
 class TestJavaStringHashcode:
@@ -527,3 +533,113 @@ class TestConfluentCloudConfigShape:
         config = REAL_CONFLUENT_CLOUD_RESPONSE["config"]
         assert "snowflake.enable.schematization" not in config
         assert "snowflake.ingestion.method" not in config
+
+
+# The Avro schema registered for order_events_nested in the live simulation.
+NESTED_AVRO = json.dumps(
+    {
+        "type": "record",
+        "name": "OrderEvent",
+        "namespace": "com.example.events",
+        "fields": [
+            {"name": "order_id", "type": "string"},
+            {"name": "customer_name", "type": "string"},
+            {"name": "order_total", "type": "double"},
+            {
+                "name": "address",
+                "type": {
+                    "type": "record",
+                    "name": "Address",
+                    "fields": [
+                        {"name": "street", "type": "string"},
+                        {"name": "city", "type": "string"},
+                        {"name": "zipcode", "type": "int"},
+                    ],
+                },
+            },
+        ],
+    }
+)
+
+# Verbatim from DESC TABLE TEST_DB.MAYUR_SCHEMA.ORDER_EVENTS_NESTED
+REAL_SNOWFLAKE_COLUMNS = [
+    ("RECORD_METADATA", DataType.JSON),
+    ("CUSTOMER_NAME", DataType.VARCHAR),
+    ("ORDER_ID", DataType.VARCHAR),
+    ("ORDER_TOTAL", DataType.FLOAT),
+    ("ADDRESS", DataType.JSON),
+]
+
+
+def _nested_topic() -> Topic:
+    return Topic(
+        id=uuid.uuid4(),
+        name="order_events_nested",
+        partitions=1,
+        service={"id": uuid.uuid4(), "type": "messagingService"},
+        messageSchema=TopicSchema(
+            schemaText=NESTED_AVRO,
+            schemaType=SchemaType.Avro,
+            schemaFields=parse_avro_schema(NESTED_AVRO, cls=FieldModel),
+        ),
+    )
+
+
+def _nested_table() -> Table:
+    return Table(
+        id=uuid.uuid4(),
+        name="ORDER_EVENTS_NESTED",
+        columns=[Column(name=n, dataType=t) for n, t in REAL_SNOWFLAKE_COLUMNS],
+        databaseSchema={"id": uuid.uuid4(), "type": "databaseSchema"},
+    )
+
+
+class TestObservedColumnShape:
+    """Locks in the shapes measured against live Confluent Cloud + Snowflake on 2026-08-05:
+    Snowflake schematization creates one column per top-level Avro field, uppercased, and a
+    nested record becomes a single VARIANT column rather than being flattened."""
+
+    def test_topic_exposes_only_top_level_avro_fields(self):
+        columns = _new_source()._extract_columns_from_entity(_nested_topic())
+        assert columns == ["order_id", "customer_name", "order_total", "address"]
+
+    def test_nested_record_maps_to_one_variant_column(self):
+        """Snowflake does not flatten nested records; ADDRESS is a single VARIANT."""
+        source = _new_source()._extract_columns_from_entity(_nested_topic())
+        target = _new_source()._extract_columns_from_entity(_nested_table())
+        target_map = {c.lower(): c for c in target}
+        matched = {s: target_map[s.lower()] for s in source if s.lower() in target_map}
+        assert matched == {
+            "order_id": "ORDER_ID",
+            "customer_name": "CUSTOMER_NAME",
+            "order_total": "ORDER_TOTAL",
+            "address": "ADDRESS",
+        }
+
+    def test_record_metadata_produces_no_edge(self):
+        """RECORD_METADATA has no source-side counterpart, so it must yield no edge."""
+        source = _new_source()._extract_columns_from_entity(_nested_topic())
+        assert "record_metadata" not in {s.lower() for s in source}
+
+    def test_every_topic_field_finds_a_column(self):
+        source = _new_source()._extract_columns_from_entity(_nested_topic())
+        target = {c.lower() for c in _new_source()._extract_columns_from_entity(_nested_table())}
+        assert [s for s in source if s.lower() not in target] == []
+
+
+class TestEndToEndDatasetResolution:
+    def test_real_connector_config_resolves_one_dataset_per_topic(self):
+        config = dict(
+            REAL_CONFLUENT_CLOUD_RESPONSE["config"],
+            topics="order_events_flat,order_events_nested,om-lineage-test",
+        )
+        details = KafkaConnectPipelineDetails(name="s", type="sink", config=config)
+        resolver = _new_source()._resolver_for(details)
+        datasets = resolver.resolve_datasets(config, [])
+        assert [d.table for d in datasets] == [
+            "ORDER_EVENTS_FLAT",
+            "ORDER_EVENTS_NESTED",
+            "OM_LINEAGE_TEST_702890019",
+        ]
+        assert all(d.database == "TEST_DB" and d.schema == "MAYUR_SCHEMA" for d in datasets)
+        assert all(d.fully_qualified for d in datasets)
