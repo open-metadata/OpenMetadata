@@ -8,3 +8,19 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+"""Sink dataset resolvers, keyed by Kafka Connect connector class."""
+
+from metadata.ingestion.source.pipeline.kafkaconnect.sinks.base import (
+    DefaultResolver,
+    SinkDatasetResolver,
+    get_resolver,
+    sink_resolver_registry,
+)
+
+__all__ = [
+    "DefaultResolver",
+    "SinkDatasetResolver",
+    "get_resolver",
+    "sink_resolver_registry",
+]
