@@ -274,6 +274,32 @@ describe('useTestSuitesData', () => {
     );
   });
 
+  it('should escape Lucene reserved characters in the searchValue before wrapping it in wildcards', async () => {
+    renderData(buildProps({ searchValue: 'https://example.com/path?x=1' }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalled()
+    );
+
+    expect(mockGetListTestSuitesBySearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        q: String.raw`*https\:\/\/example.com\/path\?x\=1*`,
+      })
+    );
+  });
+
+  it('should escape a user typed wildcard so only the surrounding wildcards stay active', async () => {
+    renderData(buildProps({ searchValue: 'foo*bar' }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalled()
+    );
+
+    expect(mockGetListTestSuitesBySearch).toHaveBeenCalledWith(
+      expect.objectContaining({ q: String.raw`*foo\*bar*` })
+    );
+  });
+
   it('should refetch when an injected filter changes (driving effect)', async () => {
     const { rerender } = renderData(buildProps());
 
