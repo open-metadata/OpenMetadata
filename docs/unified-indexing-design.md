@@ -147,6 +147,16 @@ actually happened to each finding, because several turned out to differ from the
 | 13 | deleted | 225 lines across six files, not the single stray method the audit implied. No caller in Collate either. |
 | 14 | fixed | CSV import queues the batch for retry instead of clearing it after a log that promised a retry it never performed. |
 
+**New finding #15, surfaced by building phase 3.** A cascade that changes a child's `tags` leaves
+that child's `tagSources` / `tierSources` stale. The cascade runs painless over child aliases;
+`TAG_RESEPARATION_SCRIPT` recomputes `tier` / `classificationTags` / `glossaryTags` but not the
+label-type counts, and as established above it *cannot* — they are computed from per-column tag lists
+the document does not carry. This is pre-existing and independent of anything on this branch; it is
+listed here because the projection work is what made it visible. It is sized rather than fixed: the
+honest fix is to reproject affected children, which for a tag rename can be a very large number of
+documents, so the decision needs the drift numbers (§11.7) to justify the cost. `requiresReprojection()`
+is the declaration that stops phase 5 from generating a cascade that silently gets this wrong.
+
 **On `votes`.** The audit and the tolerated-divergence note both read this as a semantic disagreement
 needing a product decision. It is not: `SearchIndex.populateCommonFields` already omits `votes` when
 `entity.getVotes()` is null, and **both paths run it**. They differ because reindex hydrates from the
