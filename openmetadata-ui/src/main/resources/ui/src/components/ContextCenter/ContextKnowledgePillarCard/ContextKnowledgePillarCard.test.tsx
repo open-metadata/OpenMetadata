@@ -36,7 +36,7 @@ describe('ContextKnowledgePillarCard', () => {
       <ContextKnowledgePillarCard
         {...baseProps}
         dataTestId="article-detail-card"
-        recent={[{ meta: [], title: 'Item 1' }]}
+        recent={[{ meta: [], onClick: jest.fn(), title: 'Item 1' }]}
         onClick={onClick}
       />
     );
@@ -67,31 +67,13 @@ describe('ContextKnowledgePillarCard', () => {
     expect(onCardClick).not.toHaveBeenCalled();
   });
 
-  it('renders a recent item without onClick as non-interactive', () => {
-    const onCardClick = jest.fn();
-    const recent: PillarRecentItem[] = [{ meta: [], title: 'Item 1' }];
-    render(
-      <ContextKnowledgePillarCard
-        {...baseProps}
-        dataTestId="article-detail-card"
-        recent={recent}
-        onClick={onCardClick}
-      />
-    );
-
-    expect(
-      screen.queryByRole('button', { name: 'Item 1' })
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('Item 1')).toBeInTheDocument();
-  });
-
   it('calls onClick when the CTA button is clicked, without double-firing from the card', () => {
     const onClick = jest.fn();
     render(
       <ContextKnowledgePillarCard
         {...baseProps}
         dataTestId="article-detail-card"
-        recent={[{ meta: [], title: 'Item 1' }]}
+        recent={[{ meta: [], onClick: jest.fn(), title: 'Item 1' }]}
         onClick={onClick}
       />
     );

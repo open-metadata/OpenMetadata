@@ -35,10 +35,9 @@ function RecentItem({
   readonly Icon: FC<{ className?: string }>;
   readonly item: PillarRecentItem;
 }) {
-
   const handleClick = (e: MouseEvent) => {
     e.stopPropagation();
-    item?.onClick();
+    item.onClick();
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,10 +51,9 @@ function RecentItem({
   return (
     <Box
       align="center"
-      className=
-        'tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover'
+      className="tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
       gap={2}
-      role={'button'}
+      role="button"
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}>
