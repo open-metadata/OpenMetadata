@@ -34,6 +34,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.LuceneReservedQueries;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -2411,6 +2412,53 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               assertNotNull(results);
               assertTrue(results.getData().size() >= 5, "Should have at least 5 test cases");
             });
+  }
+
+  /** Regression for #31077: Lucene reserved characters in {@code q} produced a query_shard_exception. */
+  @Test
+  void test_searchListWithLuceneReservedCharactersInQuery(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String testCaseName = ns.prefix("lucene_reserved_search");
+
+    TestCaseBuilder.create(client)
+        .name(testCaseName)
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+
+    Awaitility.await("wildcard search finds the created test case")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestCaseNames("*" + testCaseName + "*").contains(testCaseName),
+                    "Wildcards must keep matching after reserved characters are escaped"));
+
+    for (String reservedQuery : LuceneReservedQueries.WILDCARD_WRAPPED) {
+      assertNotNull(
+          searchTestCaseNames(reservedQuery),
+          "search/list must not fail for the query " + reservedQuery);
+    }
+  }
+
+  private List<String> searchTestCaseNames(String query) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/search/list",
+                null,
+                RequestOptions.builder().queryParam("q", query).queryParam("limit", "50").build());
+    org.openmetadata.schema.utils.ResultList<TestCase> results =
+        JsonUtils.readValue(
+            response,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                org.openmetadata.schema.utils.ResultList<TestCase>>() {});
+    return results.getData().stream().map(TestCase::getName).toList();
   }
 
   @Test

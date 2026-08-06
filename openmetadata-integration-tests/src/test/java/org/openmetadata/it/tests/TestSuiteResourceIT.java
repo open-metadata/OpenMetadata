@@ -27,6 +27,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.LuceneReservedQueries;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -416,6 +417,47 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
         filtered.contains(doomed.getId()),
         "getByName must hide the soft-deleted owner when includeRelations=owners:non-deleted");
     assertTrue(filtered.contains(active.getId()), "the active owner must remain");
+  }
+
+  /** Regression for #31077: Lucene reserved characters in {@code q} produced a query_shard_exception. */
+  @Test
+  void test_searchListWithLuceneReservedCharactersInQuery(TestNamespace ns) {
+    CreateTestSuite request = new CreateTestSuite();
+    String suiteName = ns.prefix("lucene_reserved_search");
+    request.setName(suiteName);
+    request.setDescription("Test suite for Lucene reserved character search");
+    createEntity(request);
+
+    Awaitility.await("wildcard search finds the created test suite")
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestSuiteNames("*" + suiteName + "*").contains(suiteName),
+                    "Wildcards must keep matching after reserved characters are escaped"));
+
+    for (String reservedQuery : LuceneReservedQueries.WILDCARD_WRAPPED) {
+      assertNotNull(
+          searchTestSuiteNames(reservedQuery),
+          "search/list must not fail for the query " + reservedQuery);
+    }
+  }
+
+  private List<String> searchTestSuiteNames(String query) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/search/list",
+                null,
+                RequestOptions.builder().queryParam("q", query).queryParam("limit", "50").build());
+    List<String> names = new ArrayList<>();
+    for (JsonNode suite : JsonUtils.readTree(response).path("data")) {
+      names.add(suite.path("name").asText());
+    }
+    return names;
   }
 
   private List<UUID> ownerIdsByName(String fqn, String extraQuery) {
