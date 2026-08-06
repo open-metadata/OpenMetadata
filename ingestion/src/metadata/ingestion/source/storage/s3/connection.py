@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 from botocore.exceptions import EndpointConnectionError
 
-from metadata.clients.aws_client import AWSClient
+from metadata.clients.aws_client import BOTO_CONFIG, AWSClient
 from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
 from metadata.core.connections.test_connection.aws import AWS_ERRORS, aws_code
 from metadata.core.connections.test_connection.checks.storage import (
@@ -85,8 +85,8 @@ def get_connection(connection: S3ConnectionConfig) -> S3ObjectStoreClient:
     endpoint_url = str(connection.awsConfig.endPointURL) if connection.awsConfig.endPointURL else None
     kwargs = {"endpoint_url": endpoint_url} if endpoint_url else {}
     return S3ObjectStoreClient(
-        s3_client=session.client(service_name="s3", **kwargs),
-        cloudwatch_client=session.client(service_name="cloudwatch", **kwargs),
+        s3_client=session.client(service_name="s3", config=BOTO_CONFIG, **kwargs),
+        cloudwatch_client=session.client(service_name="cloudwatch", config=BOTO_CONFIG, **kwargs),
         session=session,
     )
 
