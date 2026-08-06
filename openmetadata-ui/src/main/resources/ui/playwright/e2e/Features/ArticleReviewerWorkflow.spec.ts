@@ -38,7 +38,7 @@ test.beforeAll('Setup workflow and article', async ({ browser }) => {
 
 test.describe(
   'User Approval Workflow - Context Center Article',
-  { tag: ['@Governance'] },
+  { tag: ['@Governance', '@workflow'] },
   () => {
     test('Context Center article reviewer approval flow', async ({
       page,
