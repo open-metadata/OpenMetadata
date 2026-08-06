@@ -97,7 +97,8 @@ jobs:
             npx playwright test \
               --project=setup \
               --project=DataAssetRulesEnabled \
-              --project=DataAssetRulesDisabled
+              --project=DataAssetRulesDisabled \
+              --project=IntakeForm
 
           elif [ "${{ matrix.shardIndex }}" = "2" ]; then
             echo "🔹 Running search relevance tests on shard 2"
@@ -119,6 +120,7 @@ jobs:
 
         env:
           PLAYWRIGHT_IS_OSS: true
+          PW_ISOLATED_ENV: "true"
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
           PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
