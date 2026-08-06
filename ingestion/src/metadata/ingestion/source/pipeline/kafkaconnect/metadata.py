@@ -1047,15 +1047,12 @@ class KafkaconnectSource(PipelineServiceSource):
         Match a dataset to its corresponding topic entity.
 
         For CDC sources: Match by parsing topic names (format: {server}.{schema}.{table})
-        For sinks: Match by name equality (topic.name == dataset.table)
+        For sinks: Match via the connector's registered dataset resolver
         """
         matched_topic = None
 
         if pipeline_details.conn_type == ConnectorType.SINK.value:
-            # Call via the class, not `self.`: unit tests exercise this method
-            # unbound (self=None) to avoid instantiating the full pipeline source,
-            # and `_resolver_for` never reads `self`, so this stays equivalent.
-            return KafkaconnectSource._resolver_for(self, pipeline_details).match_topic(
+            return self._resolver_for(pipeline_details).match_topic(
                 dataset_details, topic_entities_map, pipeline_details.config or {}
             )
 
@@ -1436,8 +1433,6 @@ class KafkaconnectSource(PipelineServiceSource):
 
             pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
-            # Parse datasets from connector config
-            # This supports single values, comma-separated lists, and mapping configs
             datasets_to_process = []
             if pipeline_details.config:
                 datasets_to_process = self._resolver_for(pipeline_details).resolve_datasets(
