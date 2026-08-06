@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -52,13 +53,29 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class AlertsRuleEvaluator {
-  private static final String FIELD_TEST_SUITES = "testSuites";
   private static final String FIELD_TEST_SUITES_AND_OWNERS =
-      FIELD_TEST_SUITES + "," + Entity.FIELD_OWNERS;
+      Entity.FIELD_TEST_SUITES + "," + Entity.FIELD_OWNERS;
+
+  /**
+   * Resolves the change-event entity itself even once it is soft-deleted — a delete event must still
+   * be able to match on its domains, owners and test suites — while pinning its relationship fields
+   * to live targets. Widening the subject include alone must not widen which alerts fire, and
+   * {@link Include#NON_DELETED} is also the only include for which
+   * {@code EntityRepository.getOwners}/{@code getDomains} consult and populate the relationship
+   * cache, which this evaluator runs against on the change-event hot path.
+   */
+  private static final RelationIncludes DELETED_TOLERANT_SUBJECT =
+      new RelationIncludes(
+          Include.ALL,
+          Map.of(
+              Entity.FIELD_OWNERS, Include.NON_DELETED,
+              Entity.FIELD_DOMAINS, Include.NON_DELETED,
+              Entity.FIELD_TEST_SUITES, Include.NON_DELETED));
 
   private final ChangeEvent changeEvent;
 
@@ -121,7 +138,7 @@ public class AlertsRuleEvaluator {
       // check if the match happens on the test suite owner name
       matched =
           testSuiteOwnerMatcher(
-              resolveTestSuites(entity, FIELD_TEST_SUITES_AND_OWNERS), ownerNameList);
+              resolveTestSuites((TestCase) entity, FIELD_TEST_SUITES_AND_OWNERS), ownerNameList);
     }
     return matched;
   }
@@ -129,7 +146,7 @@ public class AlertsRuleEvaluator {
   private List<EntityReference> resolveOwners(EntityInterface entity) {
     List<EntityReference> ownerReferences = entity.getOwners();
     if (nullOrEmpty(ownerReferences)) {
-      EntityInterface storedEntity = readStoredEntity(entity, Entity.FIELD_OWNERS);
+      EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_OWNERS);
       ownerReferences = storedEntity == null ? ownerReferences : storedEntity.getOwners();
     }
     return ownerReferences;
@@ -330,7 +347,8 @@ public class AlertsRuleEvaluator {
     if (changeEvent != null
         && changeEvent.getChangeDescription() != null
         && TEST_CASE.equals(changeEvent.getEntityType())) {
-      List<TestSuite> testSuites = resolveTestSuites(getEntity(changeEvent), FIELD_TEST_SUITES);
+      List<TestSuite> testSuites =
+          resolveTestSuites((TestCase) getEntity(changeEvent), Entity.FIELD_TEST_SUITES);
       matched = matchesAnyTestSuiteFqn(testSuites, testSuiteList) && matchTestResult(testResults);
     }
     return matched;
@@ -481,7 +499,7 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean matchesEntityOrTestSuiteDomain(EntityInterface entity, List<String> domainFqns) {
-    EntityInterface storedEntity = readStoredEntity(entity, Entity.FIELD_DOMAINS);
+    EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_DOMAINS);
     List<EntityReference> domains =
         storedEntity == null ? entity.getDomains() : storedEntity.getDomains();
     boolean matched = matchesAnyDomainFqn(domains, domainFqns);
@@ -509,19 +527,17 @@ public class AlertsRuleEvaluator {
    * not carry, yielding {@code null} once the entity has been hard-deleted. Alerts are evaluated
    * asynchronously, so a delete event routinely reaches the evaluator after its entity is gone; the
    * lookup must not abort the whole subscription then (issue #29674) and callers fall back to the
-   * payload instead. {@link Include#ALL} keeps soft-deleted entities resolvable, since their
-   * domains, owners and test suites are still the ones the alert should be filtered on.
+   * payload instead.
    */
-  private <T extends EntityInterface> T readStoredEntity(EntityInterface entity, String fields) {
-    return Entity.getEntityOrNull(changeEvent.getEntityType(), entity.getId(), fields, Include.ALL);
+  private <T extends EntityInterface> T readStoredEntity(UUID entityId, String fields) {
+    return Entity.getEntityOrNull(
+        changeEvent.getEntityType(), entityId, fields, DELETED_TOLERANT_SUBJECT);
   }
 
-  private List<TestSuite> resolveTestSuites(EntityInterface entity, String fields) {
-    TestCase storedTestCase = readStoredEntity(entity, fields);
+  private List<TestSuite> resolveTestSuites(TestCase testCase, String fields) {
+    TestCase storedTestCase = readStoredEntity(testCase.getId(), fields);
     List<TestSuite> testSuites =
-        storedTestCase == null
-            ? ((TestCase) entity).getTestSuites()
-            : storedTestCase.getTestSuites();
+        storedTestCase == null ? testCase.getTestSuites() : storedTestCase.getTestSuites();
     return listOrEmpty(testSuites);
   }
 

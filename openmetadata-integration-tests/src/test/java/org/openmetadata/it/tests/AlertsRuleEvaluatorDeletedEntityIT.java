@@ -16,8 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -37,6 +40,10 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -51,6 +58,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
@@ -115,6 +123,54 @@ public class AlertsRuleEvaluatorDeletedEntityIT {
         contextFor(updateEvent(Entity.TABLE, payloadWithoutRelationships(table)));
     assertTrue(evaluate("matchAnyDomain({'" + domain.getFullyQualifiedName() + "'})", context));
     assertFalse(evaluate("matchAnyDomain({'" + UNRELATED_FQN + "'})", context));
+  }
+
+  /**
+   * The observable the ticket is actually about: one un-evaluatable event must not take the rest of
+   * the batch with it. {@code AlertUtil.getFilteredEvents} streams every event through
+   * {@code checkIfChangeEventIsAllowed}, so a throw anywhere in the stream drops the whole batch —
+   * which is what {@code AbstractEventConsumer.publishEvents} hands to the destinations.
+   */
+  @Test
+  void getFilteredEvents_deletedEntityInBatch_stillDeliversTheLiveEvent(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain = createDomain(ns);
+    Table liveTable = createTable(ns, createDomainAssignment(domain), null);
+    Table deletedTable = createTable(ns, createDomainAssignment(domain), null);
+
+    ChangeEvent liveEvent =
+        updateEvent(Entity.TABLE, payloadWithoutRelationships(liveTable)).withId(UUID.randomUUID());
+    ChangeEvent deletedEvent =
+        deleteEvent(Entity.TABLE, payloadWithoutRelationships(deletedTable))
+            .withId(UUID.randomUUID());
+    client.tables().delete(deletedTable.getId().toString(), HARD_DELETE);
+
+    Map<ChangeEvent, Set<UUID>> batch = new LinkedHashMap<>();
+    batch.put(deletedEvent, Set.of(UUID.randomUUID()));
+    batch.put(liveEvent, Set.of(UUID.randomUUID()));
+
+    Map<ChangeEvent, Set<UUID>> delivered =
+        AlertUtil.getFilteredEvents(
+            subscriptionFilteringOnDomain(domain.getFullyQualifiedName()), batch);
+
+    assertTrue(
+        delivered.containsKey(liveEvent),
+        "the live event must survive a batch that also contains a hard-deleted entity");
+    assertFalse(
+        delivered.containsKey(deletedEvent),
+        "the hard-deleted entity no longer resolves a domain, so its event must not match");
+  }
+
+  private EventSubscription subscriptionFilteringOnDomain(String domainFqn) {
+    EventFilterRule rule =
+        new EventFilterRule()
+            .withName("matchAnyDomain")
+            .withEffect(ArgumentsInput.Effect.INCLUDE)
+            .withCondition("matchAnyDomain({'" + domainFqn + "'})");
+    return new EventSubscription()
+        .withName("alertDomainSubscription")
+        .withFilteringRules(
+            new FilteringRules().withResources(List.of(Entity.TABLE)).withRules(List.of(rule)));
   }
 
   @Test

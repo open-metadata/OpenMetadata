@@ -84,6 +84,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -654,9 +655,24 @@ public final class Entity {
    * expected outcome rather than an error.
    */
   public static <T> T getEntityOrNull(String entityType, UUID id, String fields, Include include) {
+    return getEntityOrNull(entityType, id, fields, RelationIncludes.fromInclude(include));
+  }
+
+  /**
+   * Same as {@link #getEntityOrNull(String, UUID, String, Include)} but with per-relation include
+   * control, so a caller can tolerate a deleted subject entity without also widening which related
+   * entities its relationship fields resolve to.
+   */
+  @SuppressWarnings("unchecked")
+  public static <T> T getEntityOrNull(
+      String entityType, UUID id, String fields, RelationIncludes relationIncludes) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     T entity;
     try {
-      entity = getEntity(entityType, id, fields, include);
+      entity =
+          (T)
+              entityRepository.get(
+                  null, id, entityRepository.getFields(fields), relationIncludes, true);
     } catch (EntityNotFoundException e) {
       LOG.debug("{} {} not found while reading fields '{}'", entityType, id, fields);
       entity = null;
