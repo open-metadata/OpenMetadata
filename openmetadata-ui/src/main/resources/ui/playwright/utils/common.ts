@@ -903,7 +903,16 @@ export const verifyDomainPropagation = async (
 ) => {
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   const domainLink = entityCard.getByTestId('domain-link').first();
-  const tabSelector = page.getByRole('menuitem', { name: exploreTabName });
+  // Only build the tab locator when a tab name was actually given. `{ name:
+  // undefined }` does not filter, so an unconditional locator matches every
+  // menuitem on the page — including the whole left sidebar — and the click in
+  // waitForSearchResult then fails strict mode. The `tabSelector?.` there
+  // cannot guard against it either: a Locator is a lazy handle, so it is always
+  // truthy even when it matches nothing (or everything). Only ApiEndpoint sets
+  // exploreTabName, so every other entity type hits this path.
+  const tabSelector = exploreTabName
+    ? page.getByRole('menuitem', { name: exploreTabName })
+    : undefined;
 
   await waitForSearchResult(page, childFqnSearchTerm, domainLink, tabSelector);
   await expect(entityCard).toBeVisible();
