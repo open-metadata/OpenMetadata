@@ -65,7 +65,7 @@ jest.mock('../../../hooks/currentUserStore/useCurrentUserStore', () => ({
   useCurrentUserPreferences: jest.fn(() => mockUseCurrentUserPreferences),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => mockUseGenericContext),
 }));
 
