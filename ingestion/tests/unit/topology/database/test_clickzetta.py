@@ -37,6 +37,9 @@ except ModuleNotFoundError:
     sys.modules[_CLICKZETTA_CONFIG_MODULE] = generated_module
 
 # The read-only overlay extends the installed package path before these imports.
+from metadata.data_quality.interface.sqlalchemy.clickzetta.test_suite_interface import (  # noqa: E402
+    ClickzettaTestSuiteInterface,
+)
 from metadata.ingestion.source.database.clickzetta.connection import (  # noqa: E402
     ClickzettaConnection,
     get_clickzetta_connection_url,
@@ -50,6 +53,10 @@ from metadata.ingestion.source.database.clickzetta.service_spec import (  # noqa
 from metadata.ingestion.source.database.clickzetta.url import (  # noqa: E402
     build_clickzetta_url,
 )
+from metadata.profiler.interface.sqlalchemy.clickzetta.profiler_interface import (  # noqa: E402
+    ClickzettaProfilerInterface,
+)
+from metadata.sampler.sqlalchemy.clickzetta.sampler import ClickzettaSampler  # noqa: E402
 from metadata.utils.importer import get_class_path  # noqa: E402
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.clickzetta.connection"
@@ -93,10 +100,10 @@ def _connection_config(connection_options=None):
     )
 
 
-def test_service_spec_registers_only_the_validated_data_diff_capability():
-    assert ServiceSpec.profiler_class is None
-    assert ServiceSpec.sampler_class is None
-    assert ServiceSpec.test_suite_class is None
+def test_service_spec_registers_guarded_data_capabilities():
+    assert ServiceSpec.profiler_class == get_class_path(ClickzettaProfilerInterface)
+    assert ServiceSpec.sampler_class == get_class_path(ClickzettaSampler)
+    assert ServiceSpec.test_suite_class == get_class_path(ClickzettaTestSuiteInterface)
     assert ServiceSpec.data_diff == get_class_path(ClickzettaTableParameter)
 
 

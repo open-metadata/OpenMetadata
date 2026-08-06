@@ -1,7 +1,10 @@
 """Offline safety and SQL compilation tests for ClickZetta sampling."""
 
+from types import MethodType, SimpleNamespace
+
 import pytest
-from sqlalchemy import Column, Integer, MetaData, String, Table
+from sqlalchemy import Column, Integer, MetaData, String, Table, select
+from sqlalchemy.orm import declarative_base
 
 from metadata.sampler.sqlalchemy.clickzetta.sampler import (
     ClickzettaSampler,
@@ -49,6 +52,34 @@ def test_bounded_sample_query_preserves_identifiers_and_limit():
     assert "order_id" in sql
     assert "customer_name" in sql
     assert "LIMIT 25" in sql
+
+
+def test_bounded_sample_query_inlines_limit_for_clickzetta_execution():
+    table = Table("orders", MetaData(), Column("order_id", Integer), schema="seller_center")
+
+    statement = build_bounded_sample_query(table, ["order_id"], 25)
+    sql = str(statement.compile())
+
+    assert "POSTCOMPILE" in sql
+
+
+def test_clickzetta_sampler_applies_literal_execution_limit_to_profile_cte():
+    base = declarative_base()
+
+    class Orders(base):
+        __tablename__ = "orders"
+        order_id = Column(Integer, primary_key=True)
+
+    sampler = object.__new__(ClickzettaSampler)
+    sampler._table = Orders
+    sampler.sample_config = SimpleNamespace(randomizedSample=False)
+    sampler.set_tablesample = lambda _static, selectable: selectable
+    sampler.get_sampler_table_name = lambda: "orders_sample"
+    sampler._base_sample_query = MethodType(lambda _self, selectable, _column: select(selectable), sampler)
+
+    sample = sampler.get_sample_query(SimpleNamespace(profileSample=25, profileSampleType="ROWS"))
+
+    assert "POSTCOMPILE" in str(sample.compile())
 
 
 def test_clickzetta_sqlalchemy_dialect_compiles_bounded_query():

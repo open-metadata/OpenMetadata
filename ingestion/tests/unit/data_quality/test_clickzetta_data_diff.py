@@ -107,3 +107,12 @@ def test_clickzetta_data_diff_rejects_data_queries_without_explicit_opt_in():
 
     with pytest.raises(RuntimeError, match="allowFullTableScan"):
         database._query("SELECT * FROM `seller_center`.`orders`")
+
+
+def test_clickzetta_data_diff_does_not_treat_metadata_text_as_a_schema_query():
+    database = object.__new__(ClickzettaDatabase)
+    database.allow_full_table_scan = False
+    database._conn = None
+
+    with pytest.raises(RuntimeError, match="allowFullTableScan"):
+        database._query("SELECT 'sys.information_schema.columns' AS marker")
