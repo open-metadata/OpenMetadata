@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -75,6 +76,9 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite> {
+  // Search converges synchronously post-commit, but a transient ES write failure falls back to the
+  // async retry queue — allow generous headroom so heavy parallel runs don't trip the happy path.
+  private static final Duration SEARCH_CONVERGENCE_TIMEOUT = Duration.ofSeconds(120);
 
   // Disable tests that don't apply to TestSuite
   {
@@ -419,29 +423,43 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     assertTrue(filtered.contains(active.getId()), "the active owner must remain");
   }
 
-  /** Regression for #31077: Lucene reserved characters in {@code q} produced a query_shard_exception. */
+  /**
+   * Regression for #31077: Lucene reserved characters in {@code q} produced a
+   * query_shard_exception. The display name deliberately carries reserved characters so the test
+   * proves the escaped term still <em>matches</em>, not merely that the request stopped throwing.
+   */
   @Test
   void test_searchListWithLuceneReservedCharactersInQuery(TestNamespace ns) {
-    CreateTestSuite request = new CreateTestSuite();
-    String suiteName = ns.prefix("lucene_reserved_search");
-    request.setName(suiteName);
-    request.setDescription("Test suite for Lucene reserved character search");
-    createEntity(request);
+    // A single lowercase alphanumeric token plus reserved characters. Because the reserved
+    // characters are the only thing separating the token from "v2", a sanitiser that stripped them
+    // instead of escaping them would search for `*<token>v2*` and stop matching this entity.
+    String reservedDisplayName = "dq" + ns.uniqueShortId() + "(v2)";
+    String reservedSuite = ns.prefix("reserved_hit");
 
-    Awaitility.await("wildcard search finds the created test suite")
-        .atMost(Duration.ofSeconds(120))
+    createTestSuiteWithDisplayName(reservedSuite, reservedDisplayName);
+
+    Awaitility.await("search matches a display name containing reserved characters")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () ->
                 assertTrue(
-                    searchTestSuiteNames("*" + suiteName + "*").contains(suiteName),
-                    "Wildcards must keep matching after reserved characters are escaped"));
+                    searchTestSuiteNames("*" + reservedDisplayName + "*").contains(reservedSuite),
+                    "An escaped reserved-character term must still match, not just avoid a 500"));
 
     for (String reservedQuery : LuceneReservedQueries.WILDCARD_WRAPPED) {
-      assertNotNull(
-          searchTestSuiteNames(reservedQuery),
+      assertDoesNotThrow(
+          () -> searchTestSuiteNames(reservedQuery),
           "search/list must not fail for the query " + reservedQuery);
     }
+  }
+
+  private void createTestSuiteWithDisplayName(String name, String displayName) {
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(name);
+    request.setDisplayName(displayName);
+    request.setDescription("Test suite for Lucene reserved character search");
+    createEntity(request);
   }
 
   private List<String> searchTestSuiteNames(String query) {

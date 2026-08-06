@@ -356,55 +356,38 @@ public class SearchSourceBuilderFactoryTest {
     return writer.toString();
   }
 
+  /**
+   * The data quality builders also serve {@code /v1/search/query} and {@code /v1/search/export},
+   * whose {@code q} is a documented Lucene expression. Escaping belongs at the free-text resource
+   * endpoints, never here — see {@code SearchUtils.escapeQueryStringSyntax}.
+   */
   @Test
-  public void testDataQualitySearchEscapesLuceneSyntaxInFreeText() {
+  public void testDataQualitySearchPreservesLuceneSyntaxForSearchQueryEndpoint() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
 
-    String pastedUrl = "*https://localhost:8585/table/orders*";
+    String luceneExpression = "testSuite.name.keyword:my_suite AND NOT entityFQN:archived";
 
     String osQuery =
         osFactory
-            .getSearchSourceBuilderV2("test_case_search_index", pastedUrl, 0, 10)
+            .getSearchSourceBuilderV2("test_case_search_index", luceneExpression, 0, 10)
             .query()
             .toJsonString();
     String esQuery =
         esFactory
-            .getSearchSourceBuilderV2("test_suite_search_index", pastedUrl, 0, 10)
+            .getSearchSourceBuilderV2("test_suite_search_index", luceneExpression, 0, 10)
             .query()
             .toString();
 
     for (String builtQuery : List.of(osQuery, esQuery)) {
-      assertFalse(
-          builtQuery.contains("https://localhost:8585/table/orders"),
-          "Unescaped Lucene syntax must not reach the search engine: " + builtQuery);
       assertTrue(
-          builtQuery.contains("*https\\\\:\\\\/\\\\/localhost\\\\:8585\\\\/table\\\\/orders*"),
-          "Reserved characters must be escaped while the wildcards stay active: " + builtQuery);
+          builtQuery.contains(luceneExpression),
+          "Lucene syntax must reach the engine verbatim for /v1/search/query: " + builtQuery);
+      assertFalse(
+          builtQuery.contains("my_suite\\\\"),
+          "The builder must not escape the query itself: " + builtQuery);
     }
-  }
-
-  @Test
-  public void testEscapeQueryStringSyntaxKeepsWildcardsAndExistingEscapes() {
-    assertEquals(
-        "*orders*",
-        SearchSourceBuilderFactory.escapeQueryStringSyntax("*orders*"),
-        "Wildcards are how callers ask for substring matching and must stay active");
-    assertEquals(
-        "*foo\\*bar*",
-        SearchSourceBuilderFactory.escapeQueryStringSyntax("*foo\\*bar*"),
-        "A caller that escaped its own input must not be double escaped");
-    assertEquals(
-        "orders\\(v2\\)",
-        SearchSourceBuilderFactory.escapeQueryStringSyntax("orders(v2)"),
-        "Unbalanced or literal parentheses must be escaped");
-    assertEquals(
-        "name\\\\",
-        SearchSourceBuilderFactory.escapeQueryStringSyntax("name\\"),
-        "A dangling trailing backslash must be escaped so the query still parses");
-    assertNull(SearchSourceBuilderFactory.escapeQueryStringSyntax(null));
-    assertEquals("", SearchSourceBuilderFactory.escapeQueryStringSyntax(""));
   }
 
   @Test

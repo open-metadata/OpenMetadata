@@ -60,6 +60,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
@@ -317,7 +318,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         limit,
         offset,
         searchSortFilter,
-        q,
+        // `q` is documented as a free-text term here, so Lucene syntax in it is user data.
+        SearchUtils.escapeQueryStringSyntax(q),
         queryString,
         securityContext);
   }

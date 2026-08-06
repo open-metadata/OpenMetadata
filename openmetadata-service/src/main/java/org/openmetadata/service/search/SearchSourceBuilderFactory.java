@@ -1,6 +1,5 @@
 package org.openmetadata.service.search;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
@@ -142,56 +141,20 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     };
   }
 
+  /**
+   * Deliberately passes {@code query} through unescaped: this builder also serves {@code
+   * /v1/search/query} and {@code /v1/search/export}, whose {@code q} is a documented Lucene
+   * expression. Endpoints that document {@code q} as free text escape it themselves at the resource
+   * layer with {@link SearchUtils#escapeQueryStringSyntax(String)}.
+   */
   default S buildDataQualitySearchBuilderV2(String indexName, String query, int from, int size) {
     return switch (indexName) {
       case "test_case_search_index",
           "testCase",
           "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(escapeQueryStringSyntax(query), from, size);
+          "testSuite" -> buildTestCaseSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
-  }
-
-  /**
-   * Lucene syntax characters that make a {@code query_string} query unparseable when they appear in
-   * free text. {@code *} and {@code ?} are deliberately absent: callers pass them as wildcards to
-   * ask for prefix/substring matching, so escaping them would turn every wildcard search into a
-   * literal one.
-   */
-  String QUERY_STRING_SYNTAX_CHARACTERS = "+-=&|><!(){}[]^\"~:/";
-
-  /**
-   * Escape the Lucene syntax characters the caller left unescaped so that free-text input (a pasted
-   * URL, a name with parentheses) cannot produce an unparseable {@code query_string} and a
-   * {@code query_shard_exception}. Characters the caller already escaped are left as they are, which
-   * keeps the result stable for clients that escape their own input.
-   */
-  static String escapeQueryStringSyntax(String query) {
-    String escaped = query;
-    if (!nullOrEmpty(query)) {
-      escaped = escapeUnescapedSyntaxCharacters(query);
-    }
-    return escaped;
-  }
-
-  private static String escapeUnescapedSyntaxCharacters(String query) {
-    StringBuilder escaped = new StringBuilder(query.length() * 2);
-    boolean previousCharacterEscaped = false;
-    for (int index = 0; index < query.length(); index++) {
-      char current = query.charAt(index);
-      if (!previousCharacterEscaped && isUnparseableWithoutEscaping(query, index)) {
-        escaped.append('\\');
-      }
-      escaped.append(current);
-      previousCharacterEscaped = !previousCharacterEscaped && current == '\\';
-    }
-    return escaped.toString();
-  }
-
-  private static boolean isUnparseableWithoutEscaping(String query, int index) {
-    char current = query.charAt(index);
-    boolean danglingEscape = current == '\\' && index == query.length() - 1;
-    return danglingEscape || QUERY_STRING_SYNTAX_CHARACTERS.indexOf(current) >= 0;
   }
 
   S buildTestCaseSearchV2(String query, int from, int size);

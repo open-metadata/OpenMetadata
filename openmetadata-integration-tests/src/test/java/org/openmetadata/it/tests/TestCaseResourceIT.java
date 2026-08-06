@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -18,6 +19,7 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -2414,12 +2416,60 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             });
   }
 
-  /** Regression for #31077: Lucene reserved characters in {@code q} produced a query_shard_exception. */
+  /**
+   * Regression for #31077: Lucene reserved characters in {@code q} produced a
+   * query_shard_exception. The display name deliberately carries reserved characters so the test
+   * proves the escaped term still <em>matches</em>, not merely that the request stopped throwing.
+   */
   @Test
   void test_searchListWithLuceneReservedCharactersInQuery(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
-    String testCaseName = ns.prefix("lucene_reserved_search");
+    // A single lowercase alphanumeric token plus reserved characters. Because the reserved
+    // characters are the only thing separating the token from "v2", a sanitiser that stripped them
+    // instead of escaping them would search for `*<token>v2*` and stop matching this entity.
+    String reservedDisplayName = "dq" + ns.uniqueShortId() + "(v2)";
+    String reservedTestCase = ns.prefix("reserved_hit");
+
+    createTestCaseWithDisplayName(client, table, reservedTestCase, reservedDisplayName);
+
+    Awaitility.await("search matches a display name containing reserved characters")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestCaseNames("*" + reservedDisplayName + "*").contains(reservedTestCase),
+                    "An escaped reserved-character term must still match, not just avoid a 500"));
+
+    for (String reservedQuery : LuceneReservedQueries.WILDCARD_WRAPPED) {
+      assertDoesNotThrow(
+          () -> searchTestCaseNames(reservedQuery),
+          "search/list must not fail for the query " + reservedQuery);
+    }
+  }
+
+  private void createTestCaseWithDisplayName(
+      OpenMetadataClient client, Table table, String name, String displayName) {
+    TestCaseBuilder.create(client)
+        .name(name)
+        .displayName(displayName)
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+  }
+
+  /**
+   * Pins the {@code /v1/search/query} contract on a data quality index: its {@code q} is documented
+   * Lucene syntax (see SearchResource), so it must reach the engine unescaped. Escaping it at the
+   * search-builder layer would silently turn field queries into literal text and return 0 hits.
+   */
+  @Test
+  void test_searchQueryEndpointHonoursLuceneSyntaxOnDataQualityIndex(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String testCaseName = ns.prefix("lucene_syntax_pin");
 
     TestCaseBuilder.create(client)
         .name(testCaseName)
@@ -2428,20 +2478,19 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .parameter("value", "100")
         .create();
 
-    Awaitility.await("wildcard search finds the created test case")
+    String fieldQuery = "name.keyword:" + testCaseName;
+    Awaitility.await("/v1/search/query honours a field-scoped Lucene query")
         .atMost(SEARCH_CONVERGENCE_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () ->
                 assertTrue(
-                    searchTestCaseNames("*" + testCaseName + "*").contains(testCaseName),
-                    "Wildcards must keep matching after reserved characters are escaped"));
+                    searchQueryNames(fieldQuery).contains(testCaseName),
+                    "`field:value` must stay a field query on /v1/search/query"));
 
-    for (String reservedQuery : LuceneReservedQueries.WILDCARD_WRAPPED) {
-      assertNotNull(
-          searchTestCaseNames(reservedQuery),
-          "search/list must not fail for the query " + reservedQuery);
-    }
+    assertTrue(
+        searchQueryNames(fieldQuery + " AND NOT " + fieldQuery).isEmpty(),
+        "AND/NOT must be honoured as Lucene operators, not matched as literal text");
   }
 
   private List<String> searchTestCaseNames(String query) {
@@ -2453,12 +2502,35 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 "/v1/dataQuality/testCases/search/list",
                 null,
                 RequestOptions.builder().queryParam("q", query).queryParam("limit", "50").build());
-    org.openmetadata.schema.utils.ResultList<TestCase> results =
-        JsonUtils.readValue(
-            response,
-            new com.fasterxml.jackson.core.type.TypeReference<
-                org.openmetadata.schema.utils.ResultList<TestCase>>() {});
-    return results.getData().stream().map(TestCase::getName).toList();
+    return namesUnder(JsonUtils.readTree(response).path("data"));
+  }
+
+  private List<String> searchQueryNames(String query) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/search/query",
+                null,
+                RequestOptions.builder()
+                    .queryParam("q", query)
+                    .queryParam("index", "testCase")
+                    .queryParam("size", "50")
+                    .build());
+    List<String> names = new ArrayList<>();
+    for (JsonNode hit : JsonUtils.readTree(response).path("hits").path("hits")) {
+      names.add(hit.path("_source").path("name").asText());
+    }
+    return names;
+  }
+
+  private static List<String> namesUnder(JsonNode container) {
+    List<String> names = new ArrayList<>();
+    for (JsonNode element : container) {
+      names.add(element.path("name").asText());
+    }
+    return names;
   }
 
   @Test
