@@ -19,6 +19,7 @@ import {
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+import { useAppModeConfig } from './currentUserStore/useAppModeConfig';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 
 /**
@@ -262,6 +263,16 @@ export const writeAppMode = (
   mode: string,
   personaAppMode?: string | null
 ): void => {
+  // Tenant-level force (see useAppModeConfig / hydrateAppModeConfig) hard-
+  // locks the runtime mode: once active, neither the switcher nor the
+  // resolver may move it. `hydrateAppModeConfig` itself calls this
+  // function to perform the INITIAL pin before flipping `isForced`, so
+  // this guard never blocks that first write — only writes that happen
+  // after the force is already active.
+  if (useAppModeConfig.getState().isForced) {
+    return;
+  }
+
   const nextPersonaAppMode =
     personaAppMode === undefined
       ? readSession()?.personaAppMode ?? null

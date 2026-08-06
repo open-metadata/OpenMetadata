@@ -17,6 +17,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { useApplicationStore } from '../useApplicationStore';
+import { useAppModeConfig } from './useAppModeConfig';
 
 export interface MarketplaceRecentSearchEntry {
   term: string;
@@ -116,9 +117,20 @@ export const useCurrentUserPreferences = () => {
   // identity would recreate those callbacks and cancel debounced work.
   const setPreference = useCallback(
     (newPreferences: Partial<UserPreferences>) => {
-      if (userName) {
-        setUserPreference(userName, newPreferences);
+      if (!userName) {
+        return;
       }
+      const guarded = { ...newPreferences };
+      // Per-key guard: a tenant-level appMode force (see useAppModeConfig)
+      // makes the appMode key read-only from the user's side. Every other
+      // key still writes through — this is not a whole-hook lockout.
+      if (useAppModeConfig.getState().isForced && 'appMode' in guarded) {
+        delete guarded.appMode;
+      }
+      if (Object.keys(guarded).length === 0) {
+        return;
+      }
+      setUserPreference(userName, guarded);
     },
     [userName, setUserPreference]
   );

@@ -19,6 +19,7 @@ import {
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+import { useAppModeConfig } from './currentUserStore/useAppModeConfig';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import {
   clearAppMode,
@@ -171,6 +172,37 @@ describe('writeAppMode', () => {
     const parsed = JSON.parse(raw ?? '') as { mode: string; ts: number };
 
     expect(parsed.mode).toBe(DEFAULT_APP_MODE);
+  });
+});
+
+describe('writeAppMode guard (tenant appMode force)', () => {
+  beforeEach(resetStore);
+
+  afterEach(() => {
+    useAppModeConfig.getState().setForced(null);
+  });
+
+  it('is a no-op when appModeConfig.isForced is true', () => {
+    useAppModeConfig.getState().setForced('ai');
+
+    writeAppMode('classic');
+
+    // The force flag alone (set directly, bypassing hydrateAppModeConfig)
+    // does not pin the runtime store — only writeAppMode does that, and
+    // it is exactly what this call is asserting stays blocked. So the
+    // store must still read its resetStore baseline, not the rejected
+    // 'classic' write.
+    expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('does not block writes once the force is cleared', () => {
+    useAppModeConfig.getState().setForced('ai');
+    writeAppMode('classic');
+    useAppModeConfig.getState().setForced(null);
+
+    writeAppMode('classic');
+
+    expect(useAppModeStore.getState().currentMode).toBe('classic');
   });
 });
 

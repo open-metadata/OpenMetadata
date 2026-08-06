@@ -12,6 +12,7 @@
  */
 import { renderHook, waitFor } from '@testing-library/react';
 import { useApplicationStore } from '../useApplicationStore';
+import { useAppModeConfig } from './useAppModeConfig';
 import {
   useCurrentUserPreferences,
   usePersistentStorage,
@@ -207,6 +208,56 @@ describe('useCurrentUserStore', () => {
       rerender();
 
       expect(result.current.setPreference).toBe(firstSetPreference);
+    });
+
+    // Regression guard: a tenant-level appMode force (useAppModeConfig)
+    // must lock out only the `appMode` key of setPreference, not the
+    // whole hook — see useAppModeConfig.ts / hydrateAppModeConfig.
+    describe('with a tenant appMode force active', () => {
+      afterEach(() => {
+        useAppModeConfig.getState().setForced(null);
+      });
+
+      it('setPreference({ appMode }) is a no-op', () => {
+        mockUseApplicationStore.mockImplementation((selector) => {
+          const mockState = {
+            currentUser: { name: 'alice' },
+          } as any;
+
+          return selector(mockState);
+        });
+        usePersistentStorage.setState({
+          preferences: {
+            alice: { ...defaultPreferences, appMode: 'classic' },
+          },
+        });
+        useAppModeConfig.getState().setForced('ai');
+
+        const { result } = renderHook(() => useCurrentUserPreferences());
+        result.current.setPreference({ appMode: 'ai' });
+
+        expect(
+          usePersistentStorage.getState().preferences.alice.appMode
+        ).toBe('classic');
+      });
+
+      it('setPreference({ isSidebarCollapsed }) still writes (per-key guard)', () => {
+        mockUseApplicationStore.mockImplementation((selector) => {
+          const mockState = {
+            currentUser: { name: 'alice' },
+          } as any;
+
+          return selector(mockState);
+        });
+        useAppModeConfig.getState().setForced('ai');
+
+        const { result } = renderHook(() => useCurrentUserPreferences());
+        result.current.setPreference({ isSidebarCollapsed: true });
+
+        expect(
+          usePersistentStorage.getState().preferences.alice.isSidebarCollapsed
+        ).toBe(true);
+      });
     });
   });
 });

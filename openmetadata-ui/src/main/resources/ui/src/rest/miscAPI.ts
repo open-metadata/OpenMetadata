@@ -19,6 +19,7 @@ import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { PAGE_SIZE } from '../constants/constants';
 import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { SearchIndex } from '../enums/search.enum';
+import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { AggregationRequest } from '../generated/search/aggregationRequest';
@@ -118,6 +119,14 @@ export const fetchAuthenticationConfig = async () => {
 export const fetchAuthorizerConfig = async () => {
   const response = await APIClient.get<AuthorizerConfiguration>(
     '/system/config/authorizer'
+  );
+
+  return response.data;
+};
+
+export const getAppConfig = async (): Promise<AppConfiguration> => {
+  const response = await APIClient.get<AppConfiguration>(
+    '/system/config/appConfig'
   );
 
   return response.data;

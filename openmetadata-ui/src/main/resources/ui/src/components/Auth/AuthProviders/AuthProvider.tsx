@@ -54,6 +54,7 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
+import { hydrateAppModeConfig } from '../../../hooks/currentUserStore/useAppModeConfig';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { clearAppMode, resolveInitialAppMode } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -64,6 +65,7 @@ import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
+  getAppConfig,
 } from '../../../rest/miscAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
@@ -127,6 +129,13 @@ let pendingRequests: {
   reject: (reason?: unknown) => void;
   config: InternalAxiosRequestConfig<unknown>;
 }[] = [];
+
+// The tenant app-mode force is a nice-to-have overlay on top of login —
+// an older server without the endpoint (404) or any other fetch failure
+// should not block or fail authentication. Callers treat a caught
+// failure the same as an explicit "no force configured" response.
+const fetchAppConfigSafe = () =>
+  getAppConfig().catch(() => ({ defaultAppMode: null }));
 
 type AuthContextType = {
   onLoginHandler: () => void;
@@ -329,10 +338,14 @@ export const AuthProvider = ({
   const getLoggedInUserDetails = async () => {
     setApplicationLoading(true);
     try {
-      const res = await getLoggedInUser({ fields: userAPIQueryFields });
+      const [res, appConfig] = await Promise.all([
+        getLoggedInUser({ fields: userAPIQueryFields }),
+        fetchAppConfigSafe(),
+      ]);
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
+        hydrateAppModeConfig(appConfig);
       } else {
         resetUserDetails();
       }
@@ -469,10 +482,14 @@ export const AuthProvider = ({
           clientType,
         });
 
-        const res = await getLoggedInUser({ fields });
+        const [res, appConfig] = await Promise.all([
+          getLoggedInUser({ fields }),
+          fetchAppConfigSafe(),
+        ]);
         if (res) {
           const userDetails = await checkIfUpdateRequired(res, newUser);
           setCurrentUser(userDetails);
+          hydrateAppModeConfig(appConfig);
 
           handledVerifiedUser();
           // Start expiry timer on successful login
