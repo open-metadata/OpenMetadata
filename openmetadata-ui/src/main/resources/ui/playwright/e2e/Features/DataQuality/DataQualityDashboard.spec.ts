@@ -14,7 +14,6 @@
 import test, { expect, Page } from '@playwright/test';
 import { TestCaseResolutionStatusTypes } from '../../../../src/generated/tests/testCaseResolutionStatus';
 import { DataQualityDimensions } from '../../../../src/generated/tests/testDefinition';
-import { getCurrentMillis } from '../../../../src/utils/date-time/DateTimeUtils';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
@@ -41,6 +40,7 @@ import {
   TEST_CASE_STATUS_PIE_CHART_TEST_ID,
   waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
+import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 
