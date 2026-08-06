@@ -637,7 +637,9 @@ export const AuthProvider = ({
               };
 
               tokenService.current
-                .refreshToken()
+                // Force: a 401 means the server rejected the token, so refresh
+                // regardless of the locally-computed expiry.
+                .refreshToken(true)
                 .then(async (token) => {
                   if (token) {
                     await initializeAxiosInterceptors();

@@ -83,7 +83,7 @@ final class MultiUrlJwkProvider implements JwkProvider {
     Throwable cause =
         cacheException.getCause() != null ? cacheException.getCause() : cacheException;
     RuntimeException result;
-    if (cause instanceof SigningKeyNotFoundException) {
+    if (cause instanceof SigningKeyNotFoundException signingKeyNotFound) {
       // Unknown key id means the token was signed by a key we do not trust (IdP
       // key rotation, wrong issuer, a stale token). That is an authentication
       // failure (401), not a server error (500) — returning 500 makes the client
@@ -91,9 +91,11 @@ final class MultiUrlJwkProvider implements JwkProvider {
       // refreshing or redirecting to login.
       result =
           AuthenticationException.getInvalidTokenException(
-              "Token signing key not found in configured public keys");
+              "Token signing key not found in configured public keys", signingKeyNotFound);
     } else {
-      result = new UnhandledServerException(cacheException.getMessage());
+      // Genuine server-side failure (e.g. a JWKS endpoint fetch error); keep the
+      // cause chained so production logs show the real reason.
+      result = new UnhandledServerException("JWKS key resolution failed", cause);
     }
     return result;
   }

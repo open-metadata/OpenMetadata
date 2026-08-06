@@ -80,15 +80,15 @@ class TokenService {
     });
   }
 
-  // Refresh the token if it is expired. Concurrent callers in this tab (the
-  // proactive expiry timer, the visibility handler and the 401 interceptor can
-  // all fire together) share a single in-flight refresh so every caller awaits
-  // the SAME result. Returning `undefined` to the losers previously made the
-  // 401 interceptor treat an in-progress refresh as a failure — and, when the
-  // cross-tab flag was set, leave the request parked forever (the spinner).
-  async refreshToken() {
+  // Refresh the token when it is expired, or unconditionally when `force` is set
+  // (the 401 path — the server has rejected the token regardless of local expiry
+  // math). Concurrent callers in this tab share a single in-flight refresh so
+  // every caller awaits the SAME result. Returning `undefined` to the losers
+  // previously made the 401 interceptor treat an in-progress refresh as a
+  // failure — and, with the cross-tab flag set, park the request forever.
+  async refreshToken(force = false) {
     if (!this.inFlightRefresh) {
-      this.inFlightRefresh = this.performRefresh().finally(() => {
+      this.inFlightRefresh = this.performRefresh(force).finally(() => {
         this.inFlightRefresh = null;
       });
     }
@@ -96,7 +96,7 @@ class TokenService {
     return this.inFlightRefresh;
   }
 
-  private async performRefresh() {
+  private async performRefresh(force: boolean) {
     const oldToken = await getOidcToken();
 
     // Another tab is already refreshing: wait for it to broadcast a new token
@@ -111,26 +111,36 @@ class TokenService {
       return persisted ? getOidcToken() : null;
     }
 
-    const { isExpired, timeoutExpiry } = extractDetailsFromToken(oldToken);
-    if (!isExpired && timeoutExpiry > 0) {
-      return null;
+    // A 401 (`force`) must always refresh: the server has rejected the token, so
+    // a "still valid locally" check (clock skew / server-side revocation) would
+    // otherwise short-circuit to null and log the user out spuriously.
+    if (!force) {
+      const { isExpired, timeoutExpiry } = extractDetailsFromToken(oldToken);
+      if (!isExpired && timeoutExpiry > 0) {
+        return null;
+      }
     }
 
     this.setRefreshInProgress();
-    const newToken = await this.fetchNewToken();
-    if (newToken) {
-      // Wait for the new token to be persisted in SW+IndexedDB before notifying.
-      const persisted = await this.waitForTokenPersistence(oldToken);
-      if (!persisted) {
-        // eslint-disable-next-line no-console
-        console.warn('Token persistence timed out, proceeding with callback');
-      }
-      this.refreshSuccessCallback?.();
-      // Notify all tabs that the token has been refreshed.
-      localStorage.setItem(REFRESHED_KEY, 'true');
+    const renewResult = await this.fetchNewToken();
+    if (renewResult === null) {
+      // Explicit failure: the renewer threw, or none is configured.
+      return null;
     }
 
-    return newToken;
+    // Success is defined by a new token actually landing in storage, NOT by the
+    // renewer's return value: OIDC silent renew resolves `void` and writes the
+    // token via an iframe side effect, so keying on the return value would
+    // mistake a successful renew for a failure and log the user out.
+    const persisted = await this.waitForTokenPersistence(oldToken);
+    if (!persisted) {
+      return null;
+    }
+    this.refreshSuccessCallback?.();
+    // Notify all tabs that the token has been refreshed.
+    localStorage.setItem(REFRESHED_KEY, 'true');
+
+    return getOidcToken();
   }
 
   // Call renewal method according to the provider
