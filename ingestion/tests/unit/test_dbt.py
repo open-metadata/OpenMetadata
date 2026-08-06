@@ -75,6 +75,68 @@ logger = ingestion_logger()
 DBT_TEST_UNIQUE_ID = "test.jaffle_shop.not_null_orders_order_id.cf6c17daed"
 DBT_TEST_TABLE_FQN = "snowflake.jaffle_shop.public.orders"
 
+
+def _run_result_payload(status, message, completed_at, unique_id=DBT_TEST_UNIQUE_ID, failures=None):
+    """
+    Build a run_results.json payload shaped like a real dbt artifact, including
+    the ``failures`` key that dbt emits but OpenMetadata strips before parsing.
+
+    ``completed_at=None`` drops the timing block, which is how a result with no
+    usable ``execute`` timestamp reaches the timestamp fallback path.
+    """
+    timing = (
+        [
+            {
+                "name": "compile",
+                "started_at": completed_at,
+                "completed_at": completed_at,
+            },
+            {
+                "name": "execute",
+                "started_at": completed_at,
+                "completed_at": completed_at,
+            },
+        ]
+        if completed_at
+        else []
+    )
+    return {
+        "metadata": {
+            "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+            "dbt_version": "1.11.0",
+            "generated_at": completed_at or "2026-07-24T09:00:00.000000Z",
+            "invocation_id": str(uuid.uuid4()),
+            "env": {},
+        },
+        "results": [
+            {
+                "status": status,
+                "timing": timing,
+                "thread_id": "Thread-1",
+                "execution_time": 0.42,
+                "adapter_response": {},
+                "message": message,
+                "failures": failures,
+                "unique_id": unique_id,
+            }
+        ],
+        "elapsed_time": 1.5,
+        "args": {"which": "test"},
+    }
+
+
+def _parse_run_results_like_production(payload):
+    """
+    Run a raw run_results.json payload through the exact pre-processing the
+    connector applies (``remove_run_result_non_required_keys``) before parsing,
+    so tests see the same attributes production code sees.
+    """
+    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceSource
+
+    DbtServiceSource.remove_run_result_non_required_keys(MagicMock(spec=DbtServiceSource), run_results=[payload])
+    return parse_run_results(payload)
+
+
 mock_dbt_config = {
     "source": {
         "type": "dbt",
@@ -3130,6 +3192,108 @@ class TestGetLatestResult(TestCase):
         self.assertIs(got, new_result)
 
 
+class TestGetLatestResultPrefersExecutedResults:
+    """
+    Regression coverage for the second half of issue #29824.
+
+    A project that keeps both a ``dbt test`` artifact and a later
+    ``dbt docs generate`` artifact has the same test unique_id in both files.
+    Picking purely by ``execute.completed_at`` hands back the compile-only stub
+    from the docs run, and the real pass/fail result is discarded before
+    add_dbt_test_result() ever sees it.
+    """
+
+    @staticmethod
+    def _dbt_objects(*results_specs):
+        run_results = [
+            _parse_run_results_like_production(
+                _run_result_payload(status=status, message=message, completed_at=completed_at)
+            )
+            for status, message, completed_at in results_specs
+        ]
+        return DbtObjects(dbt_manifest=None, dbt_run_results=run_results)
+
+    def test_executed_result_wins_over_later_compile_only_stub(self):
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "pass"
+
+    def test_executed_result_wins_when_stub_is_listed_first(self):
+        dbt_objects = self._dbt_objects(
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+            ("fail", "Got 3 results, configured to fail if != 0", "2026-07-24T07:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_latest_still_wins_among_executed_results(self):
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("fail", "Got 3 results, configured to fail if != 0", "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_latest_stub_is_still_returned_when_nothing_was_executed(self):
+        dbt_objects = self._dbt_objects(
+            ("success", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.timing[1].completed_at == datetime.fromisoformat("2026-07-24T09:00:00+00:00")
+
+    def test_no_match_returns_none(self):
+        dbt_objects = self._dbt_objects(("pass", None, "2026-07-24T07:00:00.000000Z"))
+
+        assert DbtSource._get_latest_result(dbt_objects, "test.jaffle_shop.does_not_exist") is None
+
+    def test_executed_result_wins_when_no_timestamp_is_usable(self):
+        """
+        With no ``execute`` timing to rank by, selection falls back to the first
+        candidate. That fallback must run over executed results only, otherwise a
+        stub listed first still wins.
+        """
+        dbt_objects = self._dbt_objects(
+            ("success", None, None),
+            ("fail", "Got 3 results, configured to fail if != 0", None),
+        )
+
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        assert selected.status.value == "fail"
+
+    def test_result_survives_end_to_end_through_add_dbt_test_result(self):
+        """
+        The user-visible symptom: with a later docs-generate artifact present,
+        no test case result reaches OpenMetadata at all.
+        """
+        dbt_objects = self._dbt_objects(
+            ("pass", None, "2026-07-24T07:00:00.000000Z"),
+            ("success", None, "2026-07-24T09:00:00.000000Z"),
+        )
+        selected = DbtSource._get_latest_result(dbt_objects, DBT_TEST_UNIQUE_ID)
+
+        source = TestAddDbtTestResultNullMessage._make_source()
+        source.add_dbt_test_result(TestAddDbtTestResultNullMessage._make_dbt_test(selected))
+
+        kwargs = TestAddDbtTestResultNullMessage._sent_call(source)
+        assert kwargs["test_results"].testCaseStatus == TestCaseStatus.Success
+        assert kwargs["test_results"].timestamp.root == datetime_to_timestamp(
+            datetime(2026, 7, 24, 7, 0, 0), milliseconds=True
+        )
+
+
 class TestGetBlobsGroupedByDir(TestCase):
     """
     Test cases for get_blobs_grouped_by_dir to verify streaming support,
@@ -3735,59 +3899,6 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             source.add_dbt_test_result(dbt_test)
 
         source.metadata.add_test_case_results.assert_called_once()
-
-
-def _run_result_payload(status, message, completed_at, unique_id=DBT_TEST_UNIQUE_ID, failures=None):
-    """
-    Build a run_results.json payload shaped like a real dbt artifact, including
-    the ``failures`` key that dbt emits but OpenMetadata strips before parsing.
-    """
-    return {
-        "metadata": {
-            "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
-            "dbt_version": "1.11.0",
-            "generated_at": completed_at,
-            "invocation_id": str(uuid.uuid4()),
-            "env": {},
-        },
-        "results": [
-            {
-                "status": status,
-                "timing": [
-                    {
-                        "name": "compile",
-                        "started_at": completed_at,
-                        "completed_at": completed_at,
-                    },
-                    {
-                        "name": "execute",
-                        "started_at": completed_at,
-                        "completed_at": completed_at,
-                    },
-                ],
-                "thread_id": "Thread-1",
-                "execution_time": 0.42,
-                "adapter_response": {},
-                "message": message,
-                "failures": failures,
-                "unique_id": unique_id,
-            }
-        ],
-        "elapsed_time": 1.5,
-        "args": {"which": "test"},
-    }
-
-
-def _parse_run_results_like_production(payload):
-    """
-    Run a raw run_results.json payload through the exact pre-processing the
-    connector applies (``remove_run_result_non_required_keys``) before parsing,
-    so tests see the same attributes production code sees.
-    """
-    from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceSource
-
-    DbtServiceSource.remove_run_result_non_required_keys(MagicMock(spec=DbtServiceSource), run_results=[payload])
-    return parse_run_results(payload)
 
 
 class TestAddDbtTestResultNullMessage:

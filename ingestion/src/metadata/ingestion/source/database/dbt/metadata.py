@@ -631,12 +631,18 @@ class DbtSource(DbtServiceSource):
         the same unique_id may appear in more than one file.  Return the
         result with the most recent ``execute`` completed_at timestamp so
         that OpenMetadata always reflects the latest test state.
+
+        Compile-only entries are only considered when nothing else matched: a
+        ``dbt docs generate`` artifact produced after a ``dbt test`` one carries
+        the newer timestamp, and preferring it would discard the real result
+        before add_dbt_test_result() could ingest it (issue #29824).
         """
         matches = [
             item for run_result in dbt_objects.dbt_run_results for item in run_result.results if item.unique_id == key
         ]
         if not matches:
             return None
+        matches = [item for item in matches if not is_compiled_only_result(item)] or matches
         if len(matches) == 1:
             return matches[0]
 
