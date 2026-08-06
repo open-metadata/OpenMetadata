@@ -506,7 +506,9 @@ export const PaginationCardWithControls = ({
       onPageChange={handlePageChange}>
       <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-5 tw:gap-y-3">
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>{t('label.page', 'Page')}</span>
+          <span className={compactTextClassName}>
+            {t('label.page', 'Page')}
+          </span>
           <input
             aria-label={t('label.current-page', 'Current page')}
             className={compactPageInputClassName}
@@ -568,7 +570,9 @@ export const PaginationCardWithControls = ({
         </div>
 
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>{t('label.records', 'Records')}</span>
+          <span className={compactTextClassName}>
+            {t('label.records', 'Records')}
+          </span>
           <Select
             aria-label={t('label.records', 'Records')}
             className={compactRowsPerPageSelectClassName}
