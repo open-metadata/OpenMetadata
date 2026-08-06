@@ -13,6 +13,7 @@ Fivetran source to extract metadata
 """
 
 import traceback
+from collections import Counter
 from datetime import datetime
 from typing import Iterable, List, Optional, Union, cast  # noqa: UP035
 
@@ -350,6 +351,8 @@ class FivetranSource(PipelineServiceSource):
         destination_database_name = self._get_database_name(pipeline_details.destination)
 
         pipeline_entity = None
+        edge_count = 0
+        skip_reasons: Counter = Counter()
 
         for (
             schema_name,
@@ -359,6 +362,7 @@ class FivetranSource(PipelineServiceSource):
                 logger.debug(
                     f"Skipping schema [{schema_name}] for pipeline [{pipeline_name}] lineage - schema is disabled"
                 )
+                skip_reasons["schema disabled in Fivetran"] += 1
                 continue
 
             destination_schema_name = schema_data.get("name_in_destination")
@@ -369,6 +373,7 @@ class FivetranSource(PipelineServiceSource):
                         f"Skipping table [{schema_name}].[{table_name}] for pipeline"
                         f" [{pipeline_name}] lineage - table is disabled"
                     )
+                    skip_reasons["table disabled in Fivetran"] += 1
                     continue
 
                 destination_table_name = table_data.get("name_in_destination")
@@ -386,6 +391,7 @@ class FivetranSource(PipelineServiceSource):
                         f"Lineage skipped for pipeline [{pipeline_name}]"
                         f" since source entity [{schema_name}.{table_name}] not found."
                     )
+                    skip_reasons["source entity not found"] += 1
                     continue
 
                 if is_messaging_destination:
@@ -402,12 +408,14 @@ class FivetranSource(PipelineServiceSource):
                         f" since destination entity [{destination_schema_name}."
                         f"{destination_table_name}] not found."
                     )
+                    skip_reasons["destination entity not found"] += 1
                     continue
 
                 if from_entity.id == to_entity.id:
                     logger.debug(
                         f"Lineage skipped for pipeline [{pipeline_name}] - self-referencing lineage is not allowed."
                     )
+                    skip_reasons["self-referencing edge"] += 1
                     continue
 
                 col_lineage = self._fetch_column_lineage(
@@ -425,6 +433,7 @@ class FivetranSource(PipelineServiceSource):
                         logger.warning(f"Pipeline entity not found for [{pipeline_name}], skipping lineage.")
                         return
 
+                edge_count += 1
                 yield Either(
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
@@ -444,6 +453,15 @@ class FivetranSource(PipelineServiceSource):
                         )
                     )
                 )  # type: ignore
+
+        if not edge_count and skip_reasons:
+            reason, count = skip_reasons.most_common(1)[0]
+            logger.warning(
+                f"Pipeline [{pipeline_name}] produced no lineage."
+                f" Most common reason: {reason} ({count} of {sum(skip_reasons.values())} candidates)."
+                " If dbServiceNames/messagingServiceNames are unset, entities are matched across all"
+                " services; if they are set, verify the names match the services holding these entities."
+            )
 
     def _resolve_table(
         self,

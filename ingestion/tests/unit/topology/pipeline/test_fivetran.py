@@ -13,6 +13,7 @@ Test fivetran using the topology
 """
 
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -791,6 +792,26 @@ class TestFivetranLineage:
         assert len(result) == 1
         assert result[0].right.edge.fromEntity.type == "table"
         assert result[0].right.edge.toEntity.type == "topic"
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_warns_when_lineage_enabled_but_no_edges(self, mock_get_services, fivetran_source, caplog):
+        source, client = fivetran_source
+        mock_get_services.return_value = ["pg"]
+        client.get_connector_schema_details.return_value = {
+            "public": {
+                "enabled": True,
+                "name_in_destination": "pub",
+                "tables": {"users": {"enabled": True, "name_in_destination": "users"}},
+            }
+        }
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(return_value=None)
+            with caplog.at_level(logging.WARNING):
+                result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
+
+        assert result == []
+        assert "produced no lineage" in caplog.text
+        assert "source entity not found" in caplog.text
 
 
 class TestFivetranColumnLineage:
