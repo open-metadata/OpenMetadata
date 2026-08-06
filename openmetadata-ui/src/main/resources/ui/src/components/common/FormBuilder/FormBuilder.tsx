@@ -47,6 +47,14 @@ export interface Props extends FormProps {
   capitalizeOptionLabel?: boolean;
 }
 
+const createSelectWidget = (capitalizeOptionLabel?: boolean) => {
+  const CapitalizedSelectWidget = (props: WidgetProps) => (
+    <SelectWidget {...props} capitalizeOptionLabel={capitalizeOptionLabel} />
+  );
+
+  return CapitalizedSelectWidget;
+};
+
 const FormBuilder = forwardRef<Form, Props>(
   (
     {
@@ -85,18 +93,18 @@ const FormBuilder = forwardRef<Form, Props>(
       setLocalFormData(formatFormDataForRender(formData ?? {}));
     }, [formData]);
 
+    const selectWidget = useMemo(
+      () => createSelectWidget(capitalizeOptionLabel),
+      [capitalizeOptionLabel]
+    );
+
     const widgets = {
       PasswordWidget: PasswordWidget,
       autoComplete: AsyncSelectWidget,
       queryBuilder: QueryBuilderWidget,
       code: CodeWidget,
       ...(useSelectWidget && {
-        SelectWidget: (props: WidgetProps) => (
-          <SelectWidget
-            {...props}
-            capitalizeOptionLabel={capitalizeOptionLabel}
-          />
-        ),
+        SelectWidget: selectWidget,
       }),
       ...widgetsOverride,
     };
