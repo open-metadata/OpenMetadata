@@ -15,6 +15,7 @@ import { KPI_DATA } from '../../constant/dataInsight';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -267,7 +268,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     await redirectToHomePage(page);
 
-    await expect(page.getByTestId('kpi-widget')).toBeVisible();
+    await waitForLandingPageWidget(page, 'kpi-widget');
   });
 
   test('Delete Kpi', async ({ page }) => {
