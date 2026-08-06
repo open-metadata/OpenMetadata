@@ -254,11 +254,17 @@ class SearchMetadataAggregationTest {
 
     @SuppressWarnings("unchecked")
     List<Map<String, Object>> results = (List<Map<String, Object>>) result.get("results");
-    assertTrue(results.size() < 50, "Results should be trimmed below requested 50");
-    assertEquals(true, result.get("hasMore"), "hasMore must be true when trimmed by size cap");
+    assertTrue(results.size() < 50, "Results should be reduced below requested 50");
+    assertEquals(true, result.get("hasMore"), "hasMore must be true when reduced by size cap");
     assertEquals(results.size(), result.get("returnedCount"));
     String message = (String) result.get("message");
-    assertTrue(message.contains("trimmed"), "Message should mention trimming");
+    assertTrue(
+        message.contains("response size budget"),
+        "Message should explain the response was reduced to fit the size budget");
+    assertTrue(
+        org.openmetadata.schema.utils.JsonUtils.pojoToJson(result).length()
+            < org.openmetadata.mcp.util.McpResponseTrim.MAX_RESPONSE_CHARS,
+        "reduced response must be under the dispatch cap so it never nukes to an empty stub");
   }
 
   @Test

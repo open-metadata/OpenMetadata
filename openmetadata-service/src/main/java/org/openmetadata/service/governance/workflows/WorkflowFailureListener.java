@@ -8,6 +8,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAME
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
@@ -20,6 +21,7 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.delegate.event.FlowableCancelledEvent;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -27,34 +29,40 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.util.EntityUtil;
 
+/**
+ * Records workflow failures in the WorkflowInstance / WorkflowInstanceState time-series tables.
+ * Workflow failures are business events (task threw, cancelled by supersede), not code bugs, so
+ * this listener logs at WARN/DEBUG and never at ERROR. Real code bugs still surface as exceptions
+ * from callers into their own error paths.
+ */
 @Slf4j
 public class WorkflowFailureListener implements FlowableEventListener {
 
   public static final String WORKFLOW_FAILURE_LISTENER_STAGE = "workflowFailureListener";
+  private static final String STATUS_VARIABLE_KEY = "status";
+
+  private static final Set<String> INTENTIONAL_CANCELLATION_CAUSES =
+      Set.of(
+          "Cleanup before redeployment",
+          "Cleanup old workflow version",
+          "Terminated due to conflicting workflow instance",
+          Workflow.SUPERSEDED_BY_NEWER_RUN);
+
+  private static final String DRAFT_TASK_CANCEL_CAUSE_PREFIX = "Workflow-managed draft task ";
 
   @Override
   public void onEvent(FlowableEvent event) {
     switch (event.getType()) {
       case JOB_EXECUTION_FAILURE:
-        LOG.error("[WorkflowFailure] JOB_EXECUTION_FAILURE: {}", event);
+        LOG.warn("[WorkflowFailure] JOB_EXECUTION_FAILURE: {}", event);
         storeFailureInDatabase(event, "JOB_EXECUTION_FAILURE");
         break;
       case PROCESS_COMPLETED_WITH_ERROR_END_EVENT:
-        LOG.error("[WorkflowFailure] PROCESS_COMPLETED_WITH_ERROR: {}", event);
+        LOG.warn("[WorkflowFailure] PROCESS_COMPLETED_WITH_ERROR: {}", event);
         storeFailureInDatabase(event, "PROCESS_ERROR");
         break;
       case PROCESS_CANCELLED:
-        if (event instanceof FlowableCancelledEvent cancelledEvent
-            && ("Cleanup before redeployment".equals(cancelledEvent.getCause())
-                || "Terminated due to conflicting workflow instance"
-                    .equals(cancelledEvent.getCause()))) {
-          LOG.debug(
-              "[WorkflowFailure] Ignoring expected PROCESS_CANCELLED: {}",
-              cancelledEvent.getCause());
-          break;
-        }
-        LOG.error("[WorkflowFailure] PROCESS_CANCELLED: {}", event);
-        storeFailureInDatabase(event, "PROCESS_CANCELLED");
+        handleProcessCancelled(event);
         break;
       default:
         if (event instanceof FlowableExceptionEvent exceptionEvent) {
@@ -64,23 +72,40 @@ public class WorkflowFailureListener implements FlowableEventListener {
     }
   }
 
+  private void handleProcessCancelled(FlowableEvent event) {
+    // FlowableCancelledEvent carries the reason string passed to deleteProcessInstance. A
+    // whitelisted cause means the cancel was intentional (supersede / redeployment cleanup).
+    String cause =
+        event instanceof FlowableCancelledEvent cancelled && cancelled.getCause() != null
+            ? cancelled.getCause().toString()
+            : null;
+    if (cause != null
+        && (INTENTIONAL_CANCELLATION_CAUSES.contains(cause)
+            || cause.startsWith(DRAFT_TASK_CANCEL_CAUSE_PREFIX))) {
+      LOG.debug("[WorkflowFailure] Ignoring expected PROCESS_CANCELLED: {}", cause);
+    } else {
+      LOG.warn("[WorkflowFailure] PROCESS_CANCELLED: {}", event);
+      storeFailureInDatabase(event, "PROCESS_CANCELLED");
+    }
+  }
+
   private void handleFlowableException(FlowableExceptionEvent exceptionEvent) {
     Throwable cause = exceptionEvent.getCause();
     String errorMessage = cause != null ? cause.getMessage() : "Unknown Flowable exception";
 
     String processInstanceId = null;
+    // FlowableExceptionEvent may or may not carry entity context; pattern-match to reach it.
     if (exceptionEvent instanceof FlowableEngineEntityEvent entityEvent) {
       processInstanceId = entityEvent.getProcessInstanceId();
     }
 
-    LOG.error(
+    LOG.warn(
         "[WorkflowFailure] FLOWABLE_EXCEPTION: processInstanceId={}, error={}",
         processInstanceId,
-        errorMessage,
-        cause);
+        errorMessage);
 
     if (errorMessage.contains("No outgoing sequence flow")) {
-      LOG.error("[WorkflowFailure] DESIGN_ERROR: Missing conditional sequence flows detected");
+      LOG.warn("[WorkflowFailure] DESIGN_ERROR: Missing conditional sequence flows detected");
       storeFailureInDatabase((FlowableEvent) exceptionEvent, "DESIGN_ERROR");
       terminateStuckProcess(processInstanceId, errorMessage);
     } else {
@@ -92,7 +117,7 @@ public class WorkflowFailureListener implements FlowableEventListener {
     try {
       String processInstanceId = getProcessInstanceId(event);
       if (processInstanceId == null) {
-        LOG.warn(
+        LOG.debug(
             "[WorkflowFailure] Cannot store failure - missing processInstanceId for failureType: {}",
             failureType);
         return;
@@ -108,14 +133,14 @@ public class WorkflowFailureListener implements FlowableEventListener {
               .singleResult();
 
       if (processInstance == null) {
-        LOG.error(
+        LOG.debug(
             "[WorkflowFailure] ProcessInstance not found: processInstanceId={}", processInstanceId);
         return;
       }
 
       String businessKey = processInstance.getBusinessKey();
       if (businessKey == null || businessKey.isEmpty()) {
-        LOG.error(
+        LOG.debug(
             "[WorkflowFailure] Missing businessKey for processInstance: {}", processInstanceId);
         return;
       }
@@ -138,34 +163,36 @@ public class WorkflowFailureListener implements FlowableEventListener {
             workflowInstanceId, processInstanceId, workflowName, failureType, errorMessage);
       }
 
-      LOG.warn(
-          "[WorkflowFailure] FAILURE_STORED: workflowInstanceId={}, processInstanceId={}, failureType={}",
+      LOG.debug(
+          "[WorkflowFailure] FAILURE_STORED: workflowInstanceId={}, failureType={}",
           workflowInstanceId,
-          processInstanceId,
           failureType);
 
     } catch (Exception e) {
-      LOG.error(
-          "[WorkflowFailure] Failed to store workflow failure in database: error={}",
-          e.getMessage(),
-          e);
+      LOG.warn(
+          "[WorkflowFailure] Failed to store workflow failure in database: {}", e.getMessage());
     }
   }
 
   private String getProcessInstanceId(FlowableEvent event) {
+    String processInstanceId = null;
+    // Flowable delivers event bodies via the FlowableEngineEntityEvent interface.
     if (event instanceof FlowableEngineEntityEvent entityEvent) {
-      return entityEvent.getProcessInstanceId();
+      processInstanceId = entityEvent.getProcessInstanceId();
     }
-    return null;
+    return processInstanceId;
   }
 
   private String getErrorMessage(FlowableEvent event) {
+    String message = "Workflow failure: " + event.getType().name();
+    // Exception events carry the underlying Throwable; extract its message when present.
     if (event instanceof FlowableExceptionEvent exceptionEvent) {
-      return exceptionEvent.getCause() != null
-          ? exceptionEvent.getCause().getMessage()
-          : "Unknown Flowable exception";
+      message =
+          exceptionEvent.getCause() != null
+              ? exceptionEvent.getCause().getMessage()
+              : "Unknown Flowable exception";
     }
-    return "Workflow failure: " + event.getType().name();
+    return message;
   }
 
   private void markWorkflowInstanceAsFailed(
@@ -176,7 +203,7 @@ public class WorkflowFailureListener implements FlowableEventListener {
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
 
       Map<String, Object> failureVariables = new HashMap<>();
-      failureVariables.put("status", "EXCEPTION");
+      failureVariables.put(STATUS_VARIABLE_KEY, WorkflowInstance.WorkflowStatus.EXCEPTION.value());
       failureVariables.put("failureType", failureType);
       failureVariables.put("error", errorMessage);
       failureVariables.put("processInstanceId", processInstanceId);
@@ -185,16 +212,14 @@ public class WorkflowFailureListener implements FlowableEventListener {
       workflowInstanceRepository.updateWorkflowInstance(
           workflowInstanceId, System.currentTimeMillis(), failureVariables);
 
-      LOG.info(
-          "[WorkflowFailure] INSTANCE_MARKED_FAILED: workflowInstanceId={}, status=EXCEPTION",
-          workflowInstanceId);
+      LOG.debug(
+          "[WorkflowFailure] INSTANCE_MARKED_FAILED: workflowInstanceId={}", workflowInstanceId);
 
     } catch (Exception e) {
-      LOG.error(
-          "[WorkflowFailure] Failed to mark workflow instance as failed: workflowInstanceId={}, error={}",
+      LOG.warn(
+          "[WorkflowFailure] Failed to mark workflow instance as failed (workflowInstanceId={}): {}",
           workflowInstanceId,
-          e.getMessage(),
-          e);
+          e.getMessage());
     }
   }
 
@@ -220,28 +245,28 @@ public class WorkflowFailureListener implements FlowableEventListener {
               System.currentTimeMillis());
 
       Map<String, Object> stageData = new HashMap<>();
-      stageData.put("status", "FAILED");
+      stageData.put(STATUS_VARIABLE_KEY, "FAILED");
       stageData.put("failureType", failureType);
       stageData.put("processInstanceId", processInstanceId);
       stageData.put("exception", errorMessage);
 
       stateRepository.updateStage(stageId, System.currentTimeMillis(), stageData);
 
-      LOG.info(
+      LOG.debug(
           "[WorkflowFailure] FAILURE_STAGE_ADDED: workflowInstanceId={}, stageId={}",
           workflowInstanceId,
           stageId);
 
     } catch (Exception e) {
-      LOG.error(
-          "[WorkflowFailure] Failed to add failure stage: workflowInstanceId={}, error={}",
+      LOG.warn(
+          "[WorkflowFailure] Failed to add failure stage (workflowInstanceId={}): {}",
           workflowInstanceId,
-          e.getMessage(),
-          e);
+          e.getMessage());
     }
   }
 
   private boolean isStageStatusEnabled(String workflowDefinitionKey) {
+    boolean enabled = false;
     try {
       WorkflowDefinitionRepository workflowDefRepository =
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
@@ -251,32 +276,26 @@ public class WorkflowFailureListener implements FlowableEventListener {
               null, workflowDefinitionKey, EntityUtil.Fields.EMPTY_FIELDS);
 
       if (workflowDef != null && workflowDef.getConfig() != null) {
-        boolean storeStageStatus = workflowDef.getConfig().getStoreStageStatus();
-        LOG.debug(
-            "[WorkflowFailure] Retrieved config for '{}': storeStageStatus={}",
-            workflowDefinitionKey,
-            storeStageStatus);
-        return storeStageStatus;
+        enabled = workflowDef.getConfig().getStoreStageStatus();
       } else {
-        LOG.warn(
-            "[WorkflowFailure] WorkflowDefinition '{}' not found or has no config, defaulting to false",
+        LOG.debug(
+            "[WorkflowFailure] WorkflowDefinition '{}' not found or has no config",
             workflowDefinitionKey);
-        return false;
       }
 
     } catch (Exception e) {
-      LOG.error(
-          "[WorkflowFailure] Failed to retrieve WorkflowDefinition '{}', defaulting to false: {}",
+      LOG.debug(
+          "[WorkflowFailure] Failed to retrieve WorkflowDefinition '{}': {}",
           workflowDefinitionKey,
           e.getMessage());
-      return false;
     }
+    return enabled;
   }
 
   private void terminateStuckProcess(String processInstanceId, String errorMessage) {
     try {
       if (processInstanceId == null) {
-        LOG.warn("[WorkflowFailure] Cannot terminate process - missing processInstanceId");
+        LOG.debug("[WorkflowFailure] Cannot terminate process - missing processInstanceId");
         return;
       }
 
@@ -297,20 +316,18 @@ public class WorkflowFailureListener implements FlowableEventListener {
         runtimeService.deleteProcessInstance(
             processInstanceId, "Terminated due to workflow design error: " + errorMessage);
 
-        LOG.info("[WorkflowFailure] PROCESS_TERMINATED: processInstanceId={}", processInstanceId);
+        LOG.debug("[WorkflowFailure] PROCESS_TERMINATED: processInstanceId={}", processInstanceId);
       }
     } catch (Exception e) {
-      LOG.error(
-          "[WorkflowFailure] TERMINATION_FAILED: processInstanceId={}, error={}",
+      LOG.warn(
+          "[WorkflowFailure] TERMINATION_FAILED: processInstanceId={}: {}",
           processInstanceId,
-          e.getMessage(),
-          e);
+          e.getMessage());
     }
   }
 
   @Override
   public boolean isFailOnException() {
-    // Return true if the listener should fail the operation on an exception
     return false;
   }
 

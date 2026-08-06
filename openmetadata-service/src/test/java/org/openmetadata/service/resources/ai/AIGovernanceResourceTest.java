@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.ai;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.GovernanceMetadata;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -95,6 +98,44 @@ class AIGovernanceResourceTest {
               any(OperationContext.class),
               any(ResourceContextInterface.class));
       inOrder.verify(repository).patch(any(), eq(id), eq("alice"), any(JsonPatch.class));
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void approvePreservesExistingApprovalMilestones() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      UUID id = UUID.randomUUID();
+      EntityRepository<AIApplication> repository = mock(EntityRepository.class);
+      Authorizer authorizer = mock(Authorizer.class);
+      SecurityContext securityContext = securityContext("bob");
+      AIApplication application =
+          new AIApplication()
+              .withId(id)
+              .withName("churnRisk")
+              .withFullyQualifiedName("churnRisk")
+              .withGovernanceMetadata(
+                  new GovernanceMetadata().withApprovedBy("alice").withApprovedAt(123L));
+
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.AI_APPLICATION))
+          .thenReturn(repository);
+      when(repository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+      when(repository.get(any(), eq(id), any())).thenReturn(application);
+      when(repository.patch(any(), eq(id), eq("bob"), any(JsonPatch.class)))
+          .thenReturn(
+              new RestUtil.PatchResponse<>(
+                  Response.Status.OK, application, EventType.ENTITY_UPDATED));
+
+      AIGovernanceResource resource = new AIGovernanceResource(authorizer, mock(Limits.class));
+      resource.approve(null, securityContext, Entity.AI_APPLICATION, id.toString(), null);
+
+      assertEquals(EntityStatus.APPROVED, application.getEntityStatus());
+      assertEquals(
+          GovernanceMetadata.RegistrationStatus.APPROVED,
+          application.getGovernanceMetadata().getRegistrationStatus());
+      assertEquals("alice", application.getGovernanceMetadata().getApprovedBy());
+      assertEquals(123L, application.getGovernanceMetadata().getApprovedAt());
     }
   }
 

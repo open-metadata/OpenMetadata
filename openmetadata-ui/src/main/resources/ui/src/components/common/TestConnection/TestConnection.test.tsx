@@ -180,6 +180,14 @@ describe('Test Connection Component', () => {
     ).toBeInTheDocument();
   });
 
+  it('Should disable test connection while form validation is pending', async () => {
+    await act(async () => {
+      render(<TestConnection {...mockProps} isFormValidationPending />);
+    });
+
+    expect(screen.getByTestId('test-connection-btn')).toBeDisabled();
+  });
+
   it('Should render the button only is showDetails is false', async () => {
     await act(async () => {
       render(<TestConnection {...mockProps} showDetails={false} />);

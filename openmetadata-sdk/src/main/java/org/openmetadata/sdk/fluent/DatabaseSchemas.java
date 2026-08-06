@@ -437,4 +437,14 @@ public final class DatabaseSchemas {
       return client.databaseSchemas().importCsvAsync(databaseSchemaName, csvData, dryRun);
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().databaseSchemas().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().databaseSchemas().getContextByName(fqn);
+  }
 }

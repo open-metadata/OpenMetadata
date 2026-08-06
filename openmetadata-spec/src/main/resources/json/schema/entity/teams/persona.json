@@ -46,6 +46,10 @@
       "description": "Reference to the UI customization configuration.",
       "$ref": "../../type/entityReference.json"
     },
+    "contextDefinition": {
+      "description": "Rules and settings used to materialize the shared AI context for this persona.",
+      "$ref": "../../type/personaContextDefinition.json"
+    },
     "users": {
       "description": "Users that are assigned a persona.",
       "$ref": "../../type/entityReferenceList.json",

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FieldProp } from '@openmetadata/ui-core-components';
 import { createElement } from 'react';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
@@ -262,6 +263,10 @@ class DomainClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getDomainWidgetsFromKey(widgetConfig);
+  }
+
+  public getCoverImageField(): FieldProp | null {
+    return null;
   }
 
   public getWidgetHeight(widgetName: string) {

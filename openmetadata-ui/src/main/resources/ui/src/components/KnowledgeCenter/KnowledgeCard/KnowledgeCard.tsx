@@ -55,6 +55,7 @@ import {
 
 import { Trash01 } from '@untitledui/icons';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -96,6 +97,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   const {
     preferences: { recentlyViewedQuickLinks },
   } = useCurrentUserPreferences();
+  const { removeDraft } = useArticleDraftStore();
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
@@ -351,6 +353,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           setIsDeleting(true);
           try {
             await deleteKnowledgePage(knowledgePage.id, false, true);
+            removeDraft(knowledgePage.id);
             afterDeleteAction(false);
           } catch (error) {
             showErrorToast(error as AxiosError);

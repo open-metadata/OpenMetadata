@@ -257,6 +257,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             TabSpecificField.TEST_DEFINITION,
             TabSpecificField.TESTSUITE,
             TabSpecificField.INCIDENT_ID,
+            TabSpecificField.INCIDENT_STATUS,
           ],
           testSuiteId,
           ...sortOptions,

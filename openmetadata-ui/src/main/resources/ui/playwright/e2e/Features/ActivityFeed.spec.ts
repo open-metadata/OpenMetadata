@@ -37,6 +37,7 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { editDisplayName } from '../../utils/user';
 
 const test = base;
+test.use({ storageState: undefined });
 
 const adminUser = new UserClass();
 
@@ -110,7 +111,7 @@ test.describe('FeedWidget on landing page', () => {
         await testPersona.create(apiContext, [adminUser.responseData.id]);
 
         // Set up widget in a separate page context
-        const adminPage = await browser.newPage();
+        const adminPage = await browser.newPage({ storageState: undefined });
         await adminUser.login(adminPage);
 
         try {
@@ -465,13 +466,13 @@ test.describe('Mention notifications in Notification Box', () => {
     user1Page: Page;
   }>({
     adminPage: async ({ browser }, use) => {
-      const page = await browser.newPage();
+      const page = await browser.newPage({ storageState: undefined });
       await adminUser.login(page);
       await use(page);
       await page.close();
     },
     user1Page: async ({ browser }, use) => {
-      const page = await browser.newPage();
+      const page = await browser.newPage({ storageState: undefined });
       await user1.login(page);
       await use(page);
       await page.close();

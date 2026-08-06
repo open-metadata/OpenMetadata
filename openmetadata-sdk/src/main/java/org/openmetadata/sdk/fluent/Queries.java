@@ -296,4 +296,14 @@ public final class Queries {
       return new QueryDeleter(client, query.getId().toString());
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().queries().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().queries().getContextByName(fqn);
+  }
 }

@@ -171,8 +171,8 @@ const EntityVersionPage: FunctionComponent = () => {
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const backHandler = useCallback(
-    () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
-    [entityType, decodedEntityFQN, tab]
+    () => navigate(getEntityDetailsPath(entityType, decodedEntityFQN)),
+    [entityType, decodedEntityFQN]
   );
 
   const versionHandler = useCallback(

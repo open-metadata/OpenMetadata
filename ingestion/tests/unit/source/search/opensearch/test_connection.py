@@ -22,13 +22,14 @@ def test_opensearch_connection_is_base_connection():
     assert issubclass(OpenSearchConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = OpenSearchConnection(MagicMock())
-        client = conn.client
+def test_get_client_builds_opensearch_client():
+    config = MagicMock()
+    config.connectionArguments = None
+    config.sslConfig = None
+    with patch(f"{CONNECTION_MODULE}.OpenSearch") as mock_os:
+        client = OpenSearchConnection(config).client
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    assert client is mock_os.return_value
 
 
 def test_test_connection_runs_steps():

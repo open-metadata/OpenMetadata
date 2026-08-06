@@ -54,7 +54,7 @@ a `follow` prop (auto-tail) without implementing any streaming itself.
   (dark surface, light monospace text, line-number gutter, bottom search bar).
 - Reuse the existing `LazyLog` library — no custom log renderer.
 - Use Untitled UI / Tailwind (`tw:`) styling and the `ui-core-components` modal
-  primitives. No MUI.
+  primitives. No Ant Design.
 - Be a "pure" presentational component: stateless beyond `LazyLog`'s internals,
   controlled open/close, no API calls.
 - Be live-log ready (future scope) through a single `follow` prop.

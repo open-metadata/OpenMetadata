@@ -42,6 +42,14 @@ class TestBurstIQClient(TestCase):
             "token_type": "Bearer",
         }
 
+    def test_session_retry_ignores_server_retry_after(self):
+        """Retry-After from the server is ignored so one call can't hang for hours."""
+        client = BurstIQClient(self.config)
+
+        retry = client.session.get_adapter("https://api.burstiq.com").max_retries
+        self.assertFalse(retry.respect_retry_after_header)
+        self.assertEqual(retry.total, 3)
+
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
     def test_authentication_success(self, mock_post):
         """Test successful authentication with BurstIQ"""
@@ -87,7 +95,7 @@ class TestBurstIQClient(TestCase):
         self.assertIn("Failed to authenticate with BurstIQ", str(context.exception))
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_get_dictionaries_success(self, mock_request, mock_post):
         """Test successful fetching of dictionaries"""
         # Mock authentication
@@ -133,7 +141,7 @@ class TestBurstIQClient(TestCase):
         self.assertIn("/api/metadata/dictionary", call_args[0][1])
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_get_dictionaries_with_limit(self, mock_request, mock_post):
         """Test fetching dictionaries with limit"""
         # Mock authentication
@@ -158,7 +166,7 @@ class TestBurstIQClient(TestCase):
         self.assertEqual(call_args[1]["params"]["limit"], 1)
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_get_edges_success(self, mock_request, mock_post):
         """Test successful fetching of edges for lineage"""
         # Mock authentication
@@ -202,7 +210,7 @@ class TestBurstIQClient(TestCase):
         self.assertIn("/api/metadata/edge", call_args[0][1])
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_get_edges_with_filters(self, mock_request, mock_post):
         """Test fetching edges with filter parameters"""
         # Mock authentication
@@ -231,7 +239,7 @@ class TestBurstIQClient(TestCase):
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
     @patch("metadata.ingestion.source.database.burstiq.client.datetime")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_token_refresh(self, mock_request, mock_datetime, mock_post):
         """Test automatic token refresh when expired"""
         # Mock current time
@@ -265,7 +273,7 @@ class TestBurstIQClient(TestCase):
         self.assertEqual(mock_post.call_count, 2)
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_connection_error_handling(self, mock_request, mock_post):
         """Test handling of connection errors"""
         # Mock authentication
@@ -287,7 +295,7 @@ class TestBurstIQClient(TestCase):
         self.assertIn("Failed to connect to BurstIQ API", str(context.exception))
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_timeout_error_handling(self, mock_request, mock_post):
         """Test handling of timeout errors"""
         # Mock authentication
@@ -309,7 +317,7 @@ class TestBurstIQClient(TestCase):
         self.assertIn("BurstIQ API request timed out", str(context.exception))
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
     def test_get_dictionary_by_name(self, mock_request, mock_post):
         """Test fetching a specific dictionary by name"""
         # Mock authentication

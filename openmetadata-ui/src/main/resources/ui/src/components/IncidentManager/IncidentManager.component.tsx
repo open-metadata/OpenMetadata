@@ -20,8 +20,8 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
+import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import MuiDatePickerMenu from '../common/MuiDatePickerMenu/MuiDatePickerMenu';
 import { IncidentManagerProps } from './IncidentManager.interface';
 import IncidentManagerTable from './IncidentManagerTable.component';
 import { useIncidentManagerListPage } from './useIncidentManagerListPage';
@@ -59,7 +59,6 @@ const IncidentManager = ({
     handleStatusSubmit,
     searchTestCases,
   } = useIncidentManagerListPage({ isIncidentPage, tableDetails });
-
   if (
     !commonTestCasePermission?.ViewAll &&
     !commonTestCasePermission?.ViewBasic
@@ -163,11 +162,14 @@ const IncidentManager = ({
                   </Dropdown.Menu>
                 </Dropdown.Popover>
               </Dropdown.Root>
-              <MuiDatePickerMenu
+              <DatePickerMenu
                 allowClear
                 showSelectedCustomRange
                 defaultDateRange={dateRangeKey}
                 handleDateRangeChange={handleDateRangeChange}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.date'),
+                })}
                 size="small"
                 onClear={handleDateRangeClear}
               />

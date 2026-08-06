@@ -39,7 +39,6 @@ import SelectServiceType from '../../components/Settings/Services/AddService/Ste
 import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
 import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
@@ -57,10 +56,8 @@ import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getEntityTypeFromServiceCategory,
-  getServiceRouteFromServiceType,
   getServiceType,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -199,7 +196,7 @@ const AddServicePage = () => {
   };
 
   const handleServiceCategoryChange = (category: ServiceCategory) => {
-    setShowErrorMessage({ ...showErrorMessage, serviceType: false });
+    setShowErrorMessage((prev) => ({ ...prev, serviceType: false }));
     setServiceConfig((prev) => ({
       ...prev,
       serviceType: '',
@@ -329,10 +326,7 @@ const AddServicePage = () => {
         }
       } else if (id === 'category') {
         navigate(
-          getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory)
-          )
+          connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
         );
       }
     },
@@ -376,7 +370,7 @@ const AddServicePage = () => {
   // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
   // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
       <div className="tw:flex-1">
         <Breadcrumbs
           items={serviceBreadcrumb}
@@ -451,6 +445,7 @@ const AddServicePage = () => {
                           : 0
                       }
                       data={serviceConfig as ServicesType}
+                      isAdditionalValidationPending={isServiceNameChecking}
                       isSubmitDisabled={isStep2NextDisabled}
                       ref={connectionFormRef}
                       serviceCategory={serviceCategory}
@@ -560,7 +555,7 @@ const AddServicePage = () => {
           pageTitle={t('label.add-entity', { entity: t('label.service') })}
           secondPanel={{
             children: (
-              <Suspense fallback={<Loader />}>
+              <Suspense fallback={null}>
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}

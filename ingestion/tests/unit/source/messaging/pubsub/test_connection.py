@@ -22,13 +22,19 @@ def test_pubsub_connection_is_base_connection():
     assert issubclass(PubSubConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = PubSubConnection(MagicMock())
-        client = conn.client
+def test_get_client_builds_pubsub_client():
+    connection = MagicMock()
+    connection.useEmulator = True
+    connection.hostPort = "localhost:8085"
+    connection.schemaRegistryEnabled = False
+    connection.projectId = "test-project"
+    with (
+        patch(f"{CONNECTION_MODULE}.pubsub_v1.PublisherClient"),
+        patch(f"{CONNECTION_MODULE}.pubsub_v1.SubscriberClient"),
+    ):
+        client = PubSubConnection(connection).client
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    assert client.project_id == "test-project"
 
 
 def test_test_connection_runs_steps():

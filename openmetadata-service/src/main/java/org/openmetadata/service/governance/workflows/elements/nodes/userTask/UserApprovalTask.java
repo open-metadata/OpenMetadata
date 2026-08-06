@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.ArrayList;
@@ -338,21 +339,30 @@ public class UserApprovalTask implements NodeInterface {
       return;
     }
     String durationVariable = expiryTimer.getDurationVariable();
+    String dateVariable = expiryTimer.getDateVariable();
     String transitionId = expiryTimer.getTransitionId();
     // Fail fast on a broken workflow definition: silently skipping the timer would strand
     // instances in the parent user task forever with no visible cause. Force the workflow author
     // to fix the JSON at deploy time instead of debugging a stuck task at runtime.
-    if (durationVariable == null || durationVariable.isBlank()) {
+    boolean hasDurationVariable = hasTimerVariable(durationVariable);
+    boolean hasDateVariable = hasTimerVariable(dateVariable);
+    if (hasDurationVariable == hasDateVariable) {
       throw new IllegalArgumentException(
-          "expiryTimer.durationVariable is required on node '" + nodeDefinition.getName() + "'");
+          "expiryTimer requires exactly one of durationVariable or dateVariable on node '"
+              + nodeDefinition.getName()
+              + "'");
     }
-    if (transitionId == null || transitionId.isBlank()) {
+    if (!hasTimerVariable(transitionId)) {
       throw new IllegalArgumentException(
           "expiryTimer.transitionId is required on node '" + nodeDefinition.getName() + "'");
     }
 
     TimerEventDefinition timerDef = new TimerEventDefinition();
-    timerDef.setTimeDuration("${" + durationVariable + "}");
+    if (hasDateVariable) {
+      timerDef.setTimeDate("${" + dateVariable + "}");
+    } else {
+      timerDef.setTimeDuration("${" + durationVariable + "}");
+    }
 
     BoundaryEvent expiryBoundary = new BoundaryEvent();
     expiryBoundary.setId(getFlowableElementId(subProcessId, "expiryTimerBoundary"));
@@ -384,6 +394,10 @@ public class UserApprovalTask implements NodeInterface {
     subProcess.addFlowElement(expireOnTimer);
     subProcess.addFlowElement(new SequenceFlow(expiryBoundary.getId(), expireOnTimer.getId()));
     subProcess.addFlowElement(new SequenceFlow(expireOnTimer.getId(), endEvent.getId()));
+  }
+
+  private boolean hasTimerVariable(String value) {
+    return !nullOrEmpty(value) && !value.isBlank();
   }
 
   private BoundaryEvent getTerminationEvent(String subProcessId) {

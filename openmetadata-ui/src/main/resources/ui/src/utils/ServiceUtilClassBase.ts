@@ -57,6 +57,7 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
+import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../interface/knowledge-center.interface';
 import { KnowledgePageSearchSource } from '../interface/search.interface';
 import {
@@ -64,24 +65,24 @@ import {
   ExtraInfoType,
   ServicesType,
 } from '../interface/service.interface';
-import { getAPIConfig } from './APIServiceUtils';
-import { getDashboardConfig } from './DashboardServiceUtils';
-import { getDatabaseConfig } from './DatabaseServicePureUtils';
-import { getDriveConfig } from './DriveServiceUtils';
-import { getMessagingConfig } from './MessagingServiceUtils';
-import { getMetadataConfig } from './MetadataServiceUtils';
-import { getMlmodelConfig } from './MlmodelServiceUtils';
-import { getPipelineConfig } from './PipelineServiceUtils';
-import { getSearchServiceConfig } from './SearchServiceUtils';
-import { getSecurityConfig } from './SecurityServiceUtils';
 import { getServiceIcon } from './ServiceIconUtils';
 import { getDefaultInsightsTabWidgets } from './ServiceInsightsWidgets';
 import {
   getSearchIndexFromService,
   getTestConnectionName,
 } from './ServicePureUtils';
-import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringUtils';
+
+type ServiceLogoStyle = {
+  iconURL?: string;
+};
+
+type ServiceLogoSource = {
+  serviceType?: string;
+  entityType?: string;
+  style?: ServiceLogoStyle;
+  service?: Partial<EntityReference> & { style?: ServiceLogoStyle };
+};
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -365,10 +366,7 @@ class ServiceUtilClassBase {
     return getServiceIcon(type) ?? this.getDefaultLogoForServiceType(type);
   }
 
-  public getServiceTypeLogo(searchSource: {
-    serviceType?: string;
-    entityType?: string;
-  }): string {
+  public getServiceTypeLogo(searchSource?: ServiceLogoSource): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
@@ -378,6 +376,16 @@ class ServiceUtilClassBase {
         PageType.QUICK_LINK;
 
       return isQuickLink ? QuickLinkIcon : KnowledgeCenterIcon;
+    }
+
+    const ownIcon = searchSource?.style?.iconURL;
+    if (ownIcon) {
+      return ownIcon;
+    }
+
+    const serviceIcon = searchSource?.service?.style?.iconURL;
+    if (serviceIcon) {
+      return serviceIcon;
     }
 
     // Handle entities that don't have serviceType by using entity-specific icons
@@ -463,46 +471,69 @@ class ServiceUtilClassBase {
     }
   }
 
-  public getPipelineServiceConfig(type: PipelineServiceType) {
+  public async getPipelineServiceConfig(type: PipelineServiceType) {
+    const { getPipelineConfig } = await import('./PipelineServiceUtils');
+
     return getPipelineConfig(type);
   }
 
-  public getDatabaseServiceConfig(type: DatabaseServiceType) {
+  public async getDatabaseServiceConfig(type: DatabaseServiceType) {
+    const { getDatabaseConfig } = await import('./DatabaseServicePureUtils');
+
     return getDatabaseConfig(type);
   }
 
-  public getDashboardServiceConfig(type: DashboardServiceType) {
+  public async getDashboardServiceConfig(type: DashboardServiceType) {
+    const { getDashboardConfig } = await import('./DashboardServiceUtils');
+
     return getDashboardConfig(type);
   }
 
-  public getMessagingServiceConfig(type: MessagingServiceType) {
+  public async getMessagingServiceConfig(type: MessagingServiceType) {
+    const { getMessagingConfig } = await import('./MessagingServiceUtils');
+
     return getMessagingConfig(type);
   }
 
-  public getMlModelServiceConfig(type: MlModelServiceType) {
+  public async getMlModelServiceConfig(type: MlModelServiceType) {
+    const { getMlmodelConfig } = await import('./MlmodelServiceUtils');
+
     return getMlmodelConfig(type);
   }
 
-  public getSearchServiceConfig(type: SearchServiceType) {
+  public async getSearchServiceConfig(type: SearchServiceType) {
+    const { getSearchServiceConfig } = await import('./SearchServiceUtils');
+
     return getSearchServiceConfig(type);
   }
 
-  public getStorageServiceConfig(type: StorageServiceType) {
+  public async getStorageServiceConfig(type: StorageServiceType) {
+    const { getStorageConfig } = await import('./StorageServiceUtils');
+
     return getStorageConfig(type);
   }
 
-  public getMetadataServiceConfig(type: MetadataServiceType) {
+  public async getMetadataServiceConfig(type: MetadataServiceType) {
+    const { getMetadataConfig } = await import('./MetadataServiceUtils');
+
     return getMetadataConfig(type);
   }
 
-  public getAPIServiceConfig(type: APIServiceType) {
+  public async getAPIServiceConfig(type: APIServiceType) {
+    const { getAPIConfig } = await import('./APIServiceUtils');
+
     return getAPIConfig(type);
   }
 
-  public getSecurityServiceConfig(type: SecurityServiceType) {
+  public async getSecurityServiceConfig(type: SecurityServiceType) {
+    const { getSecurityConfig } = await import('./SecurityServiceUtils');
+
     return getSecurityConfig(type);
   }
-  public getDriveServiceConfig(type: DriveServiceType) {
+
+  public async getDriveServiceConfig(type: DriveServiceType) {
+    const { getDriveConfig } = await import('./DriveServiceUtils');
+
     return getDriveConfig(type);
   }
 

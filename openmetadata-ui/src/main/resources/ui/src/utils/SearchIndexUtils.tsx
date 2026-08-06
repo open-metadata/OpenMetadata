@@ -14,13 +14,15 @@
 import { get, uniqueId } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../components/common/Loader/Loader';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -63,7 +65,8 @@ const ContractTab = withSuspenseFallback(
   )
 );
 const QueryViewer = withSuspenseFallback(
-  lazy(() => import('../components/common/QueryViewer/QueryViewer.component'))
+  lazy(() => import('../components/common/QueryViewer/QueryViewer.component')),
+  TAB_CONTENT_FALLBACK
 );
 const SampleDataWithMessages = withSuspenseFallback(
   lazy(
@@ -79,7 +82,8 @@ const SearchIndexFieldsTab = withSuspenseFallback(
       import(
         '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab'
       )
-  )
+  ),
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -186,7 +190,7 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <EntityLineageTab
             deleted={Boolean(deleted)}
             entity={searchIndexDetails as SourceType}

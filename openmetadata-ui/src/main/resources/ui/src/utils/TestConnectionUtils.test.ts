@@ -38,12 +38,24 @@ describe('partitionConnectionSteps', () => {
     ]);
   });
 
-  it('falls back to the first step when no step is tagged (legacy definitions)', () => {
-    const steps = [step('CheckAccess'), step('GetSchemas'), step('GetTables')];
+  it('falls back to the CheckAccess step when no step is tagged (legacy definitions)', () => {
+    const steps = [step('GetSchemas'), step('CheckAccess'), step('GetTables')];
 
     const { gateStep, capabilitySteps } = partitionConnectionSteps(steps);
 
     expect(gateStep?.name).toBe('CheckAccess');
+    expect(capabilitySteps.map((s) => s.name)).toEqual([
+      'GetSchemas',
+      'GetTables',
+    ]);
+  });
+
+  it('returns no gate when no step is tagged and none is named CheckAccess', () => {
+    const steps = [step('GetSchemas'), step('GetTables')];
+
+    const { gateStep, capabilitySteps } = partitionConnectionSteps(steps);
+
+    expect(gateStep).toBeUndefined();
     expect(capabilitySteps.map((s) => s.name)).toEqual([
       'GetSchemas',
       'GetTables',

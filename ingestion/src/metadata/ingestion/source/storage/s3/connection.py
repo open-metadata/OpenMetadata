@@ -9,32 +9,64 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Source connection handler for S3 object store. For this to work, it requires the following S3 permissions for all
-the buckets which require ingestion: s3:ListBucket, s3:GetObject and s3:GetBucketLocation
-The cloudwatch client is used to fetch the total size in bytes for a bucket, and the total nr of files. This requires
-the cloudwatch:GetMetricData permissions
+Source connection handler for S3 object store.
+
+Ingestion requires these permissions for every bucket to be ingested:
+s3:ListBucket, s3:GetObject and s3:GetBucketLocation. The cloudwatch client
+fetches each bucket's total size in bytes and object count, which needs
+cloudwatch:GetMetricData.
+
+The test-connection steps exercise a narrower set: ListBuckets needs
+s3:ListAllMyBuckets when no bucketNames are configured (or s3:ListBucket on each
+configured bucket otherwise), and GetMetrics needs cloudwatch:ListMetrics.
 """
 
-from dataclasses import dataclass
-from functools import partial
-from typing import Any, Optional
+from __future__ import annotations
 
-from botocore.client import BaseClient
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+from botocore.exceptions import EndpointConnectionError
 
 from metadata.clients.aws_client import AWSClient
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
+from metadata.core.connections.test_connection.aws import AWS_ERRORS, aws_code
+from metadata.core.connections.test_connection.checks.storage import (
+    StorageStep,
+    list_buckets,
+    list_metrics,
+    probe_buckets,
 )
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
     S3Connection as S3ConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
+
+if TYPE_CHECKING:
+    from botocore.client import BaseClient
+
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.records import Evidence
+
+
+# Only what is specific to S3; the rest comes from AWS_ERRORS.
+S3_ERRORS = ErrorPack(
+    when(aws_code("NoSuchBucket")).diagnose(
+        "Bucket not found",
+        fix="Verify the configured bucketNames exist in this AWS account and region.",
+    ),
+    when(aws_code("AccessDenied", "AccessDeniedException")).diagnose(
+        "Not authorized",
+        fix="Grant s3:ListAllMyBuckets (or s3:ListBucket on the configured buckets) "
+        "and cloudwatch:ListMetrics to the identity used.",
+    ),
+    when(Matchers.exception(EndpointConnectionError)).diagnose(
+        "Cannot reach the AWS endpoint",
+        fix="Check awsRegion (and endPointURL for S3-compatible services), and that the "
+        "network allows access to it from where ingestion runs.",
+    ),
+).including(AWS_ERRORS)
 
 
 @dataclass
@@ -59,39 +91,36 @@ def get_connection(connection: S3ConnectionConfig) -> S3ObjectStoreClient:
     )
 
 
+class S3Checks:
+    """Test-connection checks for S3.
+
+    Reading the borrowed store is what builds it, so an assume-role config's STS
+    handshake stays behind the runner's gate.
+    """
+
+    errors = S3_ERRORS
+
+    def __init__(self, store: Borrowed[S3ObjectStoreClient], bucket_names: list[str] | None) -> None:
+        self._store = store
+        self.bucket_names = bucket_names
+
+    @check(StorageStep.ListBuckets)
+    def check_buckets(self) -> Evidence:
+        if self.bucket_names:
+            return probe_buckets(self._store.client.s3_client, self.bucket_names)
+        return list_buckets(self._store.client.s3_client)
+
+    @check(StorageStep.GetMetrics)
+    def get_metrics(self) -> Evidence:
+        return list_metrics(self._store.client.cloudwatch_client, "AWS/S3")
+
+
 class S3Connection(BaseConnection[S3ConnectionConfig, S3ObjectStoreClient]):
     def _get_client(self) -> S3ObjectStoreClient:
         return get_connection(self.service_connection)
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        client = self.client
-        service_connection = self.service_connection
-
-        def test_buckets(connection: S3ConnectionConfig, client: S3ObjectStoreClient):
-            if connection.bucketNames:
-                for bucket_name in connection.bucketNames:
-                    client.s3_client.list_objects(Bucket=bucket_name)  # pyright: ignore[reportAttributeAccessIssue]
-                return
-            client.s3_client.list_buckets()  # pyright: ignore[reportAttributeAccessIssue]
-
-        test_fn = {
-            "ListBuckets": partial(test_buckets, client=client, connection=service_connection),
-            "GetMetrics": partial(client.cloudwatch_client.list_metrics, Namespace="AWS/S3"),  # pyright: ignore[reportAttributeAccessIssue]
-        }
-
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
+    def checks(self) -> ChecksProvider:
+        return S3Checks(
+            store=self.borrow(),
+            bucket_names=self.service_connection.bucketNames,
         )

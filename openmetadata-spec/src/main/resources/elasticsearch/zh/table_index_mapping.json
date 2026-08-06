@@ -1069,6 +1069,13 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiContext": {
+        "type": "object",
+        "enabled": false
+      },
+      "aiContextForeignKeyTargets": {
+        "type": "keyword"
       }
     }
   }

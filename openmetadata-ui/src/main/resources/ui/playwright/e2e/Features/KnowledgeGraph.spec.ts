@@ -14,36 +14,109 @@
 import test, { expect, Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../utils/common';
 import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
-// The Knowledge Graph tab is a WebGL (react-force-graph-3d) scene, so the graph
-// nodes/edges are drawn on a canvas and are not addressable in the DOM. These
-// E2E tests therefore exercise what IS observable in the DOM and independent of
-// WebGL availability (the controls toolbar and caption render above the scene,
-// outside its error boundary): the RDF /graph/explore integration (initial +
-// depth changes), the level/relationship-lens controls, and the reset/export
-// buttons. Node selection and panel rendering are covered by the component's
-// Jest tests.
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   let table: TableClass;
 
-  const openKnowledgeGraph = async (page: Page): Promise<void> => {
+  const renderedPixelCount = async (page: Page): Promise<number> => {
+    const canvas = page.getByTestId('knowledge-graph-3d').locator('canvas');
+
+    return canvas.evaluate((element) => {
+      if (!(element instanceof HTMLCanvasElement)) {
+        return 0;
+      }
+
+      const context =
+        element.getContext('webgl2') ?? element.getContext('webgl');
+      if (!context || context.isContextLost()) {
+        return 0;
+      }
+
+      const pixels = new Uint8Array(
+        context.drawingBufferWidth * context.drawingBufferHeight * 4
+      );
+      context.readPixels(
+        0,
+        0,
+        context.drawingBufferWidth,
+        context.drawingBufferHeight,
+        context.RGBA,
+        context.UNSIGNED_BYTE,
+        pixels
+      );
+
+      let count = 0;
+      for (let offset = 3; offset < pixels.length; offset += 4) {
+        if (pixels[offset] > 0) {
+          count += 1;
+        }
+      }
+
+      return count;
+    });
+  };
+
+  const expectRendererHealthy = async (
+    page: Page,
+    pageErrors: string[]
+  ): Promise<void> => {
+    const canvas = page.getByTestId('knowledge-graph-3d').locator('canvas');
+
+    await expect(canvas).toBeVisible();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        )
+    );
+
+    expect(
+      pageErrors,
+      `Knowledge Graph emitted page errors:\n${pageErrors.join('\n')}`
+    ).toEqual([]);
+    await expect
+      .poll(() => renderedPixelCount(page), {
+        message: 'Knowledge Graph should render non-transparent pixels',
+        timeout: 15_000,
+      })
+      .toBeGreaterThan(0);
+
+    expect(
+      pageErrors,
+      `Knowledge Graph emitted page errors:\n${pageErrors.join('\n')}`
+    ).toEqual([]);
+  };
+
+  const openKnowledgeGraph = async (
+    page: Page,
+    focusTable = table
+  ): Promise<string[]> => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) =>
+      pageErrors.push(error.stack ?? error.message)
+    );
+
     const graphResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`) &&
+        response
+          .url()
+          .includes(`entityId=${focusTable.entityResponseData.id}`) &&
         response.url().includes('depth=1')
     );
 
     await page.goto(
       `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
+        focusTable.entityResponseData.fullyQualifiedName ?? ''
       )}/knowledge_graph`
     );
 
@@ -54,6 +127,39 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('knowledge-graph-3d-controls')).toBeVisible();
+    await expect(page.getByTestId('knowledge-graph-3d-node-count')).toHaveText(
+      /[1-9]\d* nodes/
+    );
+    await expectRendererHealthy(page, pageErrors);
+
+    return pageErrors;
+  };
+
+  const selectDepth = async (
+    page: Page,
+    depth: number,
+    focusTable = table
+  ): Promise<void> => {
+    const depthResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/rdf/graph/explore') &&
+        response
+          .url()
+          .includes(`entityId=${focusTable.entityResponseData.id}`) &&
+        response.url().includes(`depth=${depth}`)
+    );
+
+    await page.getByTestId('kg3d-depth-control').getByRole('button').click();
+    await page
+      .getByRole('option', { name: String(depth), exact: true })
+      .click();
+
+    const response = await depthResponse;
+
+    expect(response.url()).toContain(`depth=${depth}`);
+    expect(response.status()).toBe(200);
+
+    await waitForAllLoadersToDisappear(page);
   };
 
   test.beforeAll(async ({ browser }) => {
@@ -110,50 +216,92 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   test('Verify changing the depth refetches the graph at the new depth', async ({
     page,
   }) => {
-    await openKnowledgeGraph(page);
+    const pageErrors = await openKnowledgeGraph(page);
 
-    const depth2Response = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes('depth=2')
-    );
-
-    // The depth control is an Untitled-UI Select: click its trigger to open the
-    // listbox, then pick option "2".
-    await page.getByTestId('kg3d-depth-control').getByRole('button').click();
-    await page.getByRole('option', { name: '2', exact: true }).click();
-
-    const response = await depth2Response;
-
-    expect(response.url()).toContain('depth=2');
-    expect(response.status()).toBe(200);
-
-    await waitForAllLoadersToDisappear(page);
+    await selectDepth(page, 2);
+    await expectRendererHealthy(page, pageErrors);
   });
 
   test('Verify the relationship lens can be switched to Ontology', async ({
+    browser,
     page,
   }) => {
-    await openKnowledgeGraph(page);
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const ontologyTable = new TableClass();
+    const relatedTable = new TableClass();
 
-    const controls = page.getByTestId('knowledge-graph-3d-controls');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await ontologyTable.create(apiContext);
+      await relatedTable.create(apiContext);
 
-    // Ontology mode is a client-side derivation; the caption switches to the
-    // "Ontology applied" copy. This does not depend on the WebGL scene.
-    await controls.getByText('Ontology', { exact: true }).click();
+      const glossaryTag = {
+        tagFQN: glossaryTerm.responseData.fullyQualifiedName,
+        labelType: 'Manual',
+        state: 'Confirmed',
+        source: 'Glossary',
+      };
+      await ontologyTable.patch({
+        apiContext,
+        patchData: [{ op: 'add', path: '/tags/-', value: glossaryTag }],
+      });
+      await relatedTable.patch({
+        apiContext,
+        patchData: [{ op: 'add', path: '/tags/-', value: glossaryTag }],
+      });
 
-    await expect(
-      page.getByTestId('knowledge-graph-3d-caption-desc')
-    ).toContainText('blueprint');
-    await expect(
-      page.getByTestId('knowledge-graph-3d-node-count')
-    ).toContainText('derived relationships');
+      await expect(async () => {
+        const response = await apiContext.post('/api/v1/rdf/sparql', {
+          data: {
+            query: `
+              PREFIX om: <https://open-metadata.org/ontology/>
+              ASK {
+                GRAPH ?g {
+                  <https://open-metadata.org/entity/table/${ontologyTable.entityResponseData.id}> om:hasGlossaryTerm <https://open-metadata.org/entity/glossaryTerm/${glossaryTerm.responseData.id}> .
+                  <https://open-metadata.org/entity/table/${relatedTable.entityResponseData.id}> om:hasGlossaryTerm <https://open-metadata.org/entity/glossaryTerm/${glossaryTerm.responseData.id}> .
+                }
+              }
+            `,
+            format: 'json',
+          },
+        });
+        const result = (await response.json()) as { boolean?: boolean };
+
+        expect(response.ok()).toBe(true);
+        expect(result.boolean).toBe(true);
+      }).toPass({ intervals: [500, 1_000], timeout: 30_000 });
+
+      const pageErrors = await openKnowledgeGraph(page, ontologyTable);
+      await selectDepth(page, 2, ontologyTable);
+
+      const controls = page.getByTestId('knowledge-graph-3d-controls');
+
+      await controls.getByText('Ontology', { exact: true }).click();
+
+      await expect(
+        page.getByTestId('knowledge-graph-3d-caption-desc')
+      ).toContainText('blueprint');
+      await expect(
+        page.getByTestId('knowledge-graph-3d-node-count')
+      ).toHaveText(/[1-9]\d* linked assets · [1-9]\d* derived relationships/);
+      await expectRendererHealthy(page, pageErrors);
+    } finally {
+      await Promise.allSettled([
+        ontologyTable.delete(apiContext),
+        relatedTable.delete(apiContext),
+        glossary.delete(apiContext),
+      ]);
+      await afterAction();
+    }
   });
 
   test('Verify the graph can be expanded to fullscreen and restored', async ({
     page,
   }) => {
-    await openKnowledgeGraph(page);
+    const pageErrors = await openKnowledgeGraph(page);
 
     const container = page.getByTestId('knowledge-graph-3d');
 
@@ -168,12 +316,13 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
 
     await expect(container).not.toHaveClass(/full-screen-knowledge-graph-3d/);
     await expect(page.getByTestId('full-screen')).toBeVisible();
+    await expectRendererHealthy(page, pageErrors);
   });
 
   test('Verify reset-view and export controls are available once the graph loads', async ({
     page,
   }) => {
-    await openKnowledgeGraph(page);
+    const pageErrors = await openKnowledgeGraph(page);
 
     const controls = page.getByTestId('knowledge-graph-3d-controls');
 
@@ -183,12 +332,15 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(
       controls.getByRole('button', { name: 'Export' })
     ).toBeEnabled();
+
+    await controls.getByRole('button', { name: 'Reset view' }).click();
+    await expectRendererHealthy(page, pageErrors);
   });
 
   test('Verify switching the level updates the caption to the domain view', async ({
     page,
   }) => {
-    await openKnowledgeGraph(page);
+    const pageErrors = await openKnowledgeGraph(page);
 
     const controls = page.getByTestId('knowledge-graph-3d-controls');
 
@@ -199,5 +351,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(
       page.getByTestId('knowledge-graph-3d-caption-desc')
     ).toContainText('Domains and how they relate');
+    await expectRendererHealthy(page, pageErrors);
   });
 });

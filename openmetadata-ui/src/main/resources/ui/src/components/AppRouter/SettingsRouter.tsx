@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -23,6 +23,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -30,19 +31,19 @@ import {
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
-import withSuspenseFallback from './withSuspenseFallback';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const AddNotificationPage = withSuspenseFallback(
+const AddNotificationPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddNotificationPage/AddNotificationPage')
   )
 );
 
-const AlertDetailsPage = withSuspenseFallback(
+const AlertDetailsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
 );
 
-const AppearanceConfigSettingsPage = withSuspenseFallback(
+const AppearanceConfigSettingsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -51,32 +52,32 @@ const AppearanceConfigSettingsPage = withSuspenseFallback(
   )
 );
 
-const ApplicationPage = withSuspenseFallback(
+const ApplicationPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/Application/ApplicationPage'))
 );
 
-const AuditLogsPage = withSuspenseFallback(
+const AuditLogsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/AuditLogsPage/AuditLogsPage'))
 );
 
-const BotsPageV1 = withSuspenseFallback(
+const BotsPageV1 = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/BotsPageV1/BotsPageV1.component'))
 );
 
-const ColumnBulkOperations = withSuspenseFallback(
+const ColumnBulkOperations = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
   )
 );
 
-const DataAssetRulesPage = withSuspenseFallback(
+const DataAssetRulesPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/Configuration/DataAssetRules/DataAssetRulesPage')
   )
 );
 
-const EditLoginConfiguration = withSuspenseFallback(
+const EditLoginConfiguration = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -85,7 +86,7 @@ const EditLoginConfiguration = withSuspenseFallback(
   )
 );
 
-const EditUrlConfigurationPage = withSuspenseFallback(
+const EditUrlConfigurationPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -94,7 +95,7 @@ const EditUrlConfigurationPage = withSuspenseFallback(
   )
 );
 
-const LoginConfigurationPage = withSuspenseFallback(
+const LoginConfigurationPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -103,27 +104,27 @@ const LoginConfigurationPage = withSuspenseFallback(
   )
 );
 
-const UrlConfigurationPage = withSuspenseFallback(
+const UrlConfigurationPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/Configuration/UrlConfiguration/UrlConfigurationPage')
   )
 );
 
-const CustomPropertiesPageV1 = withSuspenseFallback(
+const CustomPropertiesPageV1 = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
 
-const EditEmailConfigPage = withSuspenseFallback(
+const EditEmailConfigPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/EditEmailConfigPage/EditEmailConfigPage.component')
   )
 );
 
-const EmailConfigSettingsPage = withSuspenseFallback(
+const EmailConfigSettingsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -132,7 +133,7 @@ const EmailConfigSettingsPage = withSuspenseFallback(
   )
 );
 
-const GlobalSettingCategoryPage = withSuspenseFallback(
+const GlobalSettingCategoryPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -141,11 +142,11 @@ const GlobalSettingCategoryPage = withSuspenseFallback(
   )
 );
 
-const GlobalSettingPage = withSuspenseFallback(
+const GlobalSettingPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/GlobalSettingPage/GlobalSettingPage'))
 );
 
-const GlossaryTermRelationSettingsPage = withSuspenseFallback(
+const GlossaryTermRelationSettingsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -154,7 +155,7 @@ const GlossaryTermRelationSettingsPage = withSuspenseFallback(
   )
 );
 
-const LearningResourcesPage = withSuspenseFallback(
+const LearningResourcesPage = withPageSuspenseFallback(
   React.lazy(() =>
     import('../../pages/LearningResourcesPage/LearningResourcesPage').then(
       (m) => ({ default: m.LearningResourcesPage })
@@ -162,25 +163,25 @@ const LearningResourcesPage = withSuspenseFallback(
   )
 );
 
-const LineageConfigPage = withSuspenseFallback(
+const LineageConfigPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/LineageConfigPage/LineageConfigPage'))
 );
 
-const NotificationListPage = withSuspenseFallback(
+const NotificationListPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/NotificationListPage/NotificationListPage')
   )
 );
 
-const OmHealthPage = withSuspenseFallback(
+const OmHealthPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/OmHealth/OmHealthPage'))
 );
 
-const OnlineUsersPage = withSuspenseFallback(
+const OnlineUsersPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/OnlineUsersPage/OnlineUsersPage'))
 );
 
-const PersonaDetailsPage = withSuspenseFallback(
+const PersonaDetailsPage = withPageSuspenseFallback(
   React.lazy(() =>
     import('../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage').then(
       (m) => ({ default: m.PersonaDetailsPage })
@@ -188,7 +189,7 @@ const PersonaDetailsPage = withSuspenseFallback(
   )
 );
 
-const PersonaPage = withSuspenseFallback(
+const PersonaPage = withPageSuspenseFallback(
   React.lazy(() =>
     import('../../pages/Persona/PersonaListPage/PersonaPage').then((m) => ({
       default: m.PersonaPage,
@@ -196,129 +197,116 @@ const PersonaPage = withSuspenseFallback(
   )
 );
 
-const AddPolicyPage = withSuspenseFallback(
+const AddPolicyPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage')
   )
 );
 
-const AddRulePage = withSuspenseFallback(
+const AddRulePage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage')
   )
 );
 
-const EditRulePage = withSuspenseFallback(
+const EditRulePage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
   )
 );
 
-const PoliciesDetailPage = withSuspenseFallback(
+const PoliciesDetailPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
   )
 );
 
-const PoliciesListPage = withSuspenseFallback(
+const PoliciesListPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
   )
 );
 
-const ProfilerConfigurationPage = withSuspenseFallback(
+const ProfilerConfigurationPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/ProfilerConfigurationPage/ProfilerConfigurationPage')
   )
 );
 
-const AddRolePage = withSuspenseFallback(
+const AddRolePage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/AddRolePage/AddRolePage'))
 );
 
-const RolesDetailPage = withSuspenseFallback(
+const RolesDetailPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/RolesPage/RolesDetailPage/RolesDetailPage')
   )
 );
 
-const RolesListPage = withSuspenseFallback(
+const RolesListPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
 );
 
-const AISettingsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AISettingsPage/AISettingsPage'))
-);
-
-const SearchIndexMappingsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        '../../pages/SearchIndexMappingsPage/SearchIndexMappingsPage.component'
-      )
-  )
-);
-
-const SearchSettingsPage = withSuspenseFallback(
+const SearchSettingsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/SearchSettingsPage/SearchSettingsPage'))
 );
 
-const ServicesPage = withSuspenseFallback(
+const ServicesPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/ServicesPage/ServicesPage'))
 );
 
-const TaskFormSettingsPage = withSuspenseFallback(
+const TaskFormSettingsPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/TaskFormSettingsPage/TaskFormSettingsPage')
   )
 );
 
-const IntakeFormsPage = withSuspenseFallback(
+const IntakeFormsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/IntakeForms/IntakeFormsPage'))
 );
 
-const ImportTeamsPage = withSuspenseFallback(
+const ImportTeamsPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage')
   )
 );
 
-const TeamsPage = withSuspenseFallback(
+const TeamsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/TeamsPage/TeamsPage'))
 );
 
-const UserListPageV1 = withSuspenseFallback(
+const UserListPageV1 = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/UserListPage/UserListPageV1'))
 );
 
-const WorkflowBuilderPage = withSuspenseFallback(
+const WorkflowBuilderPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import('../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder')
   )
 );
 
-const WorkflowsListPage = withSuspenseFallback(
+const WorkflowsListPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
   )
 );
 
-const EntitySearchSettings = withSuspenseFallback(
+const EntitySearchSettings = withPageSuspenseFallback(
   React.lazy(
     () => import('../SearchSettings/EntitySeachSettings/EntitySearchSettings')
   )
 );
 
-const AppDetails = withSuspenseFallback(
+const AppDetails = withPageSuspenseFallback(
   React.lazy(
     () => import('../Settings/Applications/AppDetails/AppDetails.component')
   )
 );
 
-const AdminPermissionDebugger = withSuspenseFallback(
+const AdminPermissionDebugger = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -327,13 +315,32 @@ const AdminPermissionDebugger = withSuspenseFallback(
   )
 );
 
-const SettingsSso = withSuspenseFallback(
+const SettingsSso = withPageSuspenseFallback(
   React.lazy(() => import('../SettingsSso/SettingsSso'))
 );
 
 const NotificationAlertDetailsPage = () => (
   <AlertDetailsPage isNotificationAlert />
 );
+
+/**
+ * The bare `/settings/services` path is served by this generic category route, so the services
+ * guard has to live inside it. Matching a literal `services` path instead looks equivalent and is
+ * not: `GlobalSettingCategoryPage` resolves its content from the `:settingCategory` route param, so
+ * a literal path leaves it undefined and the page renders empty.
+ */
+const SettingCategoryRoute = () => {
+  const { settingCategory } = useParams<{ settingCategory: string }>();
+
+  if (
+    settingCategory === GlobalSettingsMenuCategory.SERVICES &&
+    connectionsRouterClassBase.isServicesSettingsRouteDisabled()
+  ) {
+    return <Navigate replace to={ROUTES.NOT_FOUND} />;
+  }
+
+  return <GlobalSettingCategoryPage />;
+};
 
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -561,7 +568,7 @@ const SettingsRouter = () => {
       />
 
       <Route
-        element={<GlobalSettingCategoryPage />}
+        element={<SettingCategoryRoute />}
         path={ROUTES.SETTINGS_WITH_CATEGORY.replace(ROUTES.SETTINGS, '')}
       />
 
@@ -679,18 +686,6 @@ const SettingsRouter = () => {
       <Route
         element={
           <AdminProtectedRoute>
-            <AISettingsPage />
-          </AdminProtectedRoute>
-        }
-        path={getSettingPathRelative(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.AI_SETTINGS
-        )}
-      />
-
-      <Route
-        element={
-          <AdminProtectedRoute>
             <SearchSettingsPage />
           </AdminProtectedRoute>
         }
@@ -710,18 +705,6 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.SEARCH_SETTINGS,
           true
-        )}
-      />
-
-      <Route
-        element={
-          <AdminProtectedRoute>
-            <SearchIndexMappingsPage />
-          </AdminProtectedRoute>
-        }
-        path={getSettingPathRelative(
-          GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.SEARCH_MAPPINGS
         )}
       />
 
@@ -886,8 +869,23 @@ const SettingsRouter = () => {
         )}
       />
 
+      {/* An app mode that replaces the service listing outright makes these two routes a second,
+          divergent way to reach it. Everything that used to link here now goes through
+          connectionsRouterClassBase.getSettingsServicesPath(), which that mode overrides — so the
+          paths are unreachable from inside the app and are treated as not found rather than
+          rendering a competing page.
+
+          Gated on isServicesSettingsRouteDisabled() and NOT on isEmbeddedMode(): the latter is
+          also true while Classic merely displays an embedded experience, which 404'd Classic's own
+          Settings > Services for the rest of the browser session. */}
       <Route
-        element={<ServicesPage />}
+        element={
+          connectionsRouterClassBase.isServicesSettingsRouteDisabled() ? (
+            <Navigate replace to={ROUTES.NOT_FOUND} />
+          ) : (
+            <ServicesPage />
+          )
+        }
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.SERVICES
         ).replace(ROUTES.SETTINGS, '')}

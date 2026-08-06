@@ -49,10 +49,10 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
-import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 import './ingestion-list-table.less';
@@ -426,7 +426,8 @@ function IngestionListTable({
                 ingestionData.length,
                 isPlatFormDisabled,
                 theme,
-                pipelineType
+                pipelineType,
+                'tw:relative tw:py-8'
               ),
           }}
           pagination={false}
@@ -437,13 +438,13 @@ function IngestionListTable({
         />
       </div>
 
-      <EntityDeleteModal
-        bodyText={ingestionDeleteMessage}
-        entityName={getEntityName(deleteSelection)}
-        entityType={t('label.ingestion-lowercase')}
-        visible={isConfirmationModalOpen}
+      <DeleteModal
+        entityTitle={getEntityName(deleteSelection)}
+        isDeleting={deleteSelection.state === 'waiting'}
+        message={ingestionDeleteMessage}
+        open={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
-        onConfirm={handleDeleteConfirm}
+        onDelete={handleDeleteConfirm}
       />
     </>
   );

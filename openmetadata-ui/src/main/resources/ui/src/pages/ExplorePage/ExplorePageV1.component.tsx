@@ -116,8 +116,11 @@ const ExplorePageV1: FC<unknown> = () => {
     useState<QueryFilterInterface>();
 
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
+  const [autoSelectedSearchIndex, setAutoSelectedSearchIndex] =
+    useState<ExploreSearchIndex>();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [showRankingDetails, setShowRankingDetails] = useState(false);
 
   const { queryFilter } = useAdvanceSearch();
 
@@ -278,7 +281,11 @@ const ExplorePageV1: FC<unknown> = () => {
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (searchHitCounts && isNil(tabInfo)) {
-      const activeKey = findActiveSearchIndex(searchHitCounts, tabsInfo);
+      const activeKey = findActiveSearchIndex(
+        searchHitCounts,
+        tabsInfo,
+        autoSelectedSearchIndex
+      );
 
       return (
         activeKey ?? (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex)
@@ -288,7 +295,7 @@ const ExplorePageV1: FC<unknown> = () => {
     return !isNil(tabInfo)
       ? (tabInfo[0] as ExploreSearchIndex)
       : (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex);
-  }, [tab, searchHitCounts, searchQueryParam]);
+  }, [autoSelectedSearchIndex, tab, searchHitCounts, searchQueryParam]);
 
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
@@ -351,7 +358,10 @@ const ExplorePageV1: FC<unknown> = () => {
       showDeleted,
       page: currentPage,
       size: currentPageSize,
-      searchIndex,
+      searchIndex: tab
+        ? searchIndex
+        : (SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex),
+      showRankingDetails,
     });
   }, [
     parsedSearch.quickFilter,
@@ -364,6 +374,8 @@ const ExplorePageV1: FC<unknown> = () => {
     currentPage,
     currentPageSize,
     searchIndex,
+    tab,
+    showRankingDetails,
   ]);
 
   // Latest-key ref drives the stale-response guard below. The cache-hit path fires a
@@ -385,6 +397,7 @@ const ExplorePageV1: FC<unknown> = () => {
       searchResults: SearchResponse<ExploreSearchIndex> | undefined;
       aggregations: Aggregations | undefined;
       hitCounts: SearchHitCounts | undefined;
+      autoSelectedSearchIndex: ExploreSearchIndex | undefined;
       indexNotFound: boolean;
     };
     const cacheKey = fetchDependencies;
@@ -406,6 +419,7 @@ const ExplorePageV1: FC<unknown> = () => {
       searchResults?: typeof searchResults;
       aggregations?: Aggregations;
       hitCounts?: SearchHitCounts;
+      autoSelectedSearchIndex?: ExploreSearchIndex;
       indexNotFound?: boolean;
     } = {};
     const isStale = () => latestFetchDepsRef.current !== cacheKey;
@@ -448,6 +462,17 @@ const ExplorePageV1: FC<unknown> = () => {
         typeof value === 'function' ? value(captured.hitCounts) : value;
       setSearchHitCounts(value);
     };
+    const captureSetAutoSelectedSearchIndex: typeof setAutoSelectedSearchIndex =
+      (value) => {
+        if (isStale()) {
+          return;
+        }
+        captured.autoSelectedSearchIndex =
+          typeof value === 'function'
+            ? value(captured.autoSelectedSearchIndex)
+            : value;
+        setAutoSelectedSearchIndex(value);
+      };
     const captureSetShowIndexNotFoundAlert: typeof setShowIndexNotFoundAlert = (
       value
     ) => {
@@ -473,6 +498,7 @@ const ExplorePageV1: FC<unknown> = () => {
         searchResults: captured.searchResults,
         aggregations: captured.aggregations,
         hitCounts: captured.hitCounts,
+        autoSelectedSearchIndex: captured.autoSelectedSearchIndex,
         indexNotFound: captured.indexNotFound ?? false,
       });
     };
@@ -483,6 +509,7 @@ const ExplorePageV1: FC<unknown> = () => {
       setSearchResults(cached.data.searchResults);
       setUpdatedAggregations(cached.data.aggregations);
       setSearchHitCounts(cached.data.hitCounts);
+      setAutoSelectedSearchIndex(cached.data.autoSelectedSearchIndex);
       setShowIndexNotFoundAlert(cached.data.indexNotFound);
       setIsLoading(false);
       // Background refresh — fire-and-forget. Errors fall through to the existing toast layer
@@ -507,10 +534,12 @@ const ExplorePageV1: FC<unknown> = () => {
           ExploreSearchIndex
         >,
         setSearchHitCounts: captureSetSearchHitCounts,
+        setAutoSelectedSearchIndex: captureSetAutoSelectedSearchIndex,
         setSearchResults: captureSetSearchResults,
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        showRankingDetails,
       }).then(commitCacheIfFresh);
 
       return;
@@ -537,10 +566,12 @@ const ExplorePageV1: FC<unknown> = () => {
           ExploreSearchIndex
         >,
         setSearchHitCounts: captureSetSearchHitCounts,
+        setAutoSelectedSearchIndex: captureSetAutoSelectedSearchIndex,
         setSearchResults: captureSetSearchResults,
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        showRankingDetails,
       });
       commitCacheIfFresh();
     } finally {
@@ -578,6 +609,7 @@ const ExplorePageV1: FC<unknown> = () => {
       searchIndex={searchIndex}
       searchResults={isTourOpen ? tourMockSearchResults : searchResults}
       showDeleted={showDeleted}
+      showRankingDetails={showRankingDetails}
       sortOrder={sortOrder}
       sortValue={sortValue}
       tabItems={tabItems}
@@ -586,6 +618,7 @@ const ExplorePageV1: FC<unknown> = () => {
       onChangePageSize={handlePageSizeChange}
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}
+      onChangeShowRankingDetails={setShowRankingDetails}
       onChangeSortOder={(sortOrderVal) => {
         handleSortOrderChange(sortOrderVal);
       }}

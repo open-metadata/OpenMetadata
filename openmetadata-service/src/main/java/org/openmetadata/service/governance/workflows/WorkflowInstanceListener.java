@@ -6,11 +6,15 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
 @Slf4j
 public class WorkflowInstanceListener implements JavaDelegate {
+
+  private static final String STATUS_VARIABLE_KEY = "status";
+
   @Override
   public void execute(DelegateExecution execution) {
     String workflowName = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
@@ -45,44 +49,41 @@ public class WorkflowInstanceListener implements JavaDelegate {
             eventName);
       }
     } catch (Exception exc) {
-      LOG.error(
-          "[WORKFLOW_INSTANCE_ERROR] Workflow: {}, ProcessInstance: {}, Event: {} - Failed to process workflow instance. Error: {}",
+      LOG.warn(
+          "[WORKFLOW_INSTANCE_ERROR] Workflow: {}, ProcessInstance: {}, Event: {}: {}",
           workflowName,
           processInstanceId,
           eventName,
-          exc.getMessage(),
-          exc);
+          exc.getMessage());
 
-      // CRITICAL: Even on failure, we must record the state in the database
       if ("end".equals(eventName) && workflowInstanceRepository != null) {
         try {
           String businessKey = execution.getProcessInstanceBusinessKey();
           if (businessKey != null && !businessKey.isEmpty()) {
             UUID workflowInstanceId = UUID.fromString(businessKey);
             java.util.Map<String, Object> errorVariables = new java.util.HashMap<>();
-            errorVariables.put("status", "FAILURE");
+            errorVariables.put(
+                STATUS_VARIABLE_KEY, WorkflowInstance.WorkflowStatus.FAILURE.value());
             errorVariables.put("error", exc.getMessage());
             errorVariables.put("errorClass", exc.getClass().getSimpleName());
             workflowInstanceRepository.updateWorkflowInstance(
                 workflowInstanceId, System.currentTimeMillis(), errorVariables);
-            LOG.warn(
-                "[WORKFLOW_INSTANCE_FAILED] Workflow: {}, ProcessInstance: {}, InstanceId: {} - Workflow marked as FAILED in database",
+            LOG.debug(
+                "[WORKFLOW_INSTANCE_FAILED] Workflow: {}, InstanceId: {}",
                 workflowName,
-                processInstanceId,
                 workflowInstanceId);
           } else {
-            LOG.error(
-                "[WORKFLOW_INSTANCE_NO_KEY] Workflow: {}, ProcessInstance: {} - Cannot update workflow status, business key is missing",
+            LOG.warn(
+                "[WORKFLOW_INSTANCE_NO_KEY] Workflow: {}, ProcessInstance: {}",
                 workflowName,
                 processInstanceId);
           }
         } catch (Exception updateExc) {
-          LOG.error(
-              "[WORKFLOW_INSTANCE_DB_ERROR] Workflow: {}, ProcessInstance: {} - Failed to record workflow failure in database. Error: {}",
+          LOG.warn(
+              "[WORKFLOW_INSTANCE_DB_ERROR] Workflow: {}, ProcessInstance: {}: {}",
               workflowName,
               processInstanceId,
-              updateExc.getMessage(),
-              updateExc);
+              updateExc.getMessage());
         }
       }
     }
@@ -135,32 +136,27 @@ public class WorkflowInstanceListener implements JavaDelegate {
     // Capture all variables including any failure indicators
     java.util.Map<String, Object> variables = new java.util.HashMap<>(execution.getVariables());
 
-    // Determine final status based on what happened during execution
-    String status = "FINISHED"; // Default
-    if (Boolean.TRUE.equals(variables.get(Workflow.FAILURE_VARIABLE))) {
-      status = "FAILURE";
-    } else if (variables.containsKey(Workflow.EXCEPTION_VARIABLE)
-        && variables.get(Workflow.EXCEPTION_VARIABLE) != null) {
-      status = "EXCEPTION";
-    }
-    variables.put("status", status);
-
+    WorkflowInstance.WorkflowStatus status = computeFinalStatus(variables);
+    variables.put(STATUS_VARIABLE_KEY, status.value());
     workflowInstanceRepository.updateWorkflowInstance(
         workflowInstanceId, System.currentTimeMillis(), variables);
+    LOG.debug(
+        "[WORKFLOW_INSTANCE_COMPLETED] Workflow: {}, InstanceId: {}, Status: {}",
+        workflowDefinitionName,
+        workflowInstanceId,
+        status);
+  }
 
-    if ("FAILURE".equals(status) || "EXCEPTION".equals(status)) {
-      LOG.warn(
-          "[WORKFLOW_INSTANCE_COMPLETED_WITH_ERRORS] Workflow: {}, InstanceId: {}, Status: {} - Workflow completed with errors",
-          workflowDefinitionName,
-          workflowInstanceId,
-          status);
-    } else {
-      LOG.debug(
-          "[WORKFLOW_INSTANCE_COMPLETED] Workflow: {}, InstanceId: {}, Status: {} - Workflow completed successfully",
-          workflowDefinitionName,
-          workflowInstanceId,
-          status);
+  private WorkflowInstance.WorkflowStatus computeFinalStatus(
+      java.util.Map<String, Object> variables) {
+    WorkflowInstance.WorkflowStatus status = WorkflowInstance.WorkflowStatus.FINISHED;
+    if (Boolean.TRUE.equals(variables.get(Workflow.FAILURE_VARIABLE))) {
+      status = WorkflowInstance.WorkflowStatus.FAILURE;
+    } else if (variables.containsKey(Workflow.EXCEPTION_VARIABLE)
+        && variables.get(Workflow.EXCEPTION_VARIABLE) != null) {
+      status = WorkflowInstance.WorkflowStatus.EXCEPTION;
     }
+    return status;
   }
 
   private String getMainWorkflowDefinitionNameFromTrigger(String triggerWorkflowDefinitionName) {

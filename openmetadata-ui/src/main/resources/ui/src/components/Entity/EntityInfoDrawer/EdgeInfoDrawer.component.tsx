@@ -13,7 +13,7 @@
 
 import { GitMerge, X } from '@untitledui/icons';
 import { Button, Tooltip, Typography } from 'antd';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import DescriptionSection from '../../../components/common/DescriptionSection/DescriptionSection';
@@ -83,8 +83,14 @@ const EdgeInfoDrawer = ({
   const [showSqlQueryModal, setShowSqlQueryModal] = useState(false);
   const [showSqlFunctionModal, setShowSqlFunctionModal] = useState(false);
   const [sqlFunction, setSqlFunction] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
+
+  const getModalContainer = useCallback(
+    () => containerRef.current ?? document.body,
+    []
+  );
 
   const edgeEntity = useMemo(() => {
     return edge.data.edge;
@@ -384,7 +390,7 @@ const EdgeInfoDrawer = ({
   return (
     <>
       {visible && (
-        <div className="edge-info-drawer-container">
+        <div className="edge-info-drawer-container" ref={containerRef}>
           <div className="d-flex items-center justify-between">
             <div className="title-section drawer-title-section">
               <div className="title-container">
@@ -448,6 +454,7 @@ const EdgeInfoDrawer = ({
       )}
       {showSqlQueryModal && (
         <ModalWithQueryEditor
+          getContainer={getModalContainer}
           header={t('label.edit-entity', {
             entity: t('label.sql-uppercase-query'),
           })}
@@ -459,6 +466,7 @@ const EdgeInfoDrawer = ({
       )}
       {showSqlFunctionModal && (
         <ModalWithFunctionEditor
+          getContainer={getModalContainer}
           header={t('label.edit-entity', {
             entity: t('label.sql-function'),
           })}

@@ -50,6 +50,9 @@ export const Colors: StoryObj = {
 export const Sizes: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <Button color="primary" size="xxs">
+        XXSmall
+      </Button>
       <Button color="primary" size="xs">
         XSmall
       </Button>

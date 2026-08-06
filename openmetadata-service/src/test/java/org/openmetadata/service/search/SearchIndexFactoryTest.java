@@ -232,6 +232,16 @@ class SearchIndexFactoryTest {
   }
 
   @Test
+  void storedProcedureReindexFieldsIncludeService() {
+    // service is stripped from storage JSON (StoredProcedureRepository
+    // .getFieldsStrippedFromStorageJson returns ["service"]) and re-derived from the parent schema
+    // by setFieldsInBulk only when requested. Without it in the reindex field set the
+    // ServiceBackedIndex mixin sees a null service and the stored_procedure_search_index doc loses
+    // its service, breaking service-scoped Explore filters and aggregations for stored procedures.
+    assertReindexFields(Entity.STORED_PROCEDURE, Entity.FIELD_SERVICE);
+  }
+
+  @Test
   void glossaryTermReindexFieldsIncludeRelatedTerms() {
     assertReindexFields(Entity.GLOSSARY_TERM, "relatedTerms");
   }
@@ -273,16 +283,15 @@ class SearchIndexFactoryTest {
 
   @Test
   void testCaseReindexFieldsIncludeSuiteDefinitionAndResult() {
-    // testCaseResult/incidentId are stripped from storage JSON and only fetched by setFieldsInBulk
-    // when requested. Reindex without them produces docs missing testCaseStatus, blanking statuses
-    // in the UI.
+    // testCaseResult is stripped from storage JSON and only fetched by setFieldsInBulk when
+    // requested. Reindex without it produces docs missing testCaseStatus, blanking statuses in
+    // the UI. incidentId is no longer required here: it is derived at index time.
     assertReindexFields(
         Entity.TEST_CASE,
         TestCaseRepository.TEST_SUITE_FIELD,
         Entity.FIELD_TEST_SUITES,
         TestCaseRepository.TEST_DEFINITION_FIELD,
-        Entity.TEST_CASE_RESULT,
-        TestCaseRepository.INCIDENTS_FIELD);
+        Entity.TEST_CASE_RESULT);
   }
 
   @Test

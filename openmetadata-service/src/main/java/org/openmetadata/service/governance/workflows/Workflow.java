@@ -27,6 +27,14 @@ public class Workflow {
   public static final String GLOBAL_NAMESPACE = "global";
   public static final String SUCCESSFUL_RESULT = "success";
   public static final String FAILURE_RESULT = "failure";
+  // Cause string passed to deleteProcessInstance when a newer approval run replaces an older one.
+  // Whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays silent for supersede.
+  public static final String SUPERSEDED_BY_NEWER_RUN =
+      "Superseded by a newer approval workflow run for the same entity";
+  public static final String APPROVE_CONDITION = "approve";
+  public static final String REJECT_CONDITION = "reject";
+  public static final String LEGACY_APPROVE_CONDITION = "true";
+  public static final String LEGACY_REJECT_CONDITION = "false";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
   private final WorkflowDefinition workflowDefinition;

@@ -33,20 +33,14 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateAIGovernanceFramework;
-import org.openmetadata.schema.entity.ai.AIFrameworkControl;
+import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkRequest;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.AIFrameworkControlRepository;
 import org.openmetadata.service.jdbi3.AIGovernanceFrameworkRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -67,7 +61,6 @@ public class AIGovernanceFrameworkResource
   public static final String COLLECTION_PATH = "/v1/aiGovernanceFrameworks/";
   private final AIGovernanceFrameworkMapper mapper = new AIGovernanceFrameworkMapper();
   static final String FIELDS = "owners,tags,extension,domains,stewards,autoApply";
-  private static final int CONTROL_PAGE_SIZE = 1000;
 
   public AIGovernanceFrameworkResource(Authorizer authorizer, Limits limits) {
     super(Entity.AI_GOVERNANCE_FRAMEWORK, authorizer, limits);
@@ -171,22 +164,7 @@ public class AIGovernanceFrameworkResource
       @PathParam("id") UUID id) {
     AIGovernanceFramework framework =
         getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
-    AIFrameworkControlRepository controlRepo =
-        (AIFrameworkControlRepository) Entity.getEntityRepository(Entity.AI_FRAMEWORK_CONTROL);
-    ListFilter filter = new ListFilter(Include.NON_DELETED);
-    List<AIFrameworkControl> allControls = listControls(uriInfo, controlRepo, "", filter);
-    String frameworkName = framework.getName();
-    List<AIFrameworkControl> controls = new ArrayList<>();
-    for (AIFrameworkControl control : allControls) {
-      if (control.getFramework() != null
-          && frameworkName.equals(control.getFramework().getName())) {
-        controls.add(control);
-      }
-    }
-
-    Map<String, Object> response = FrameworkCoverageComputer.compute(framework, controls);
-
-    return Response.ok(response).build();
+    return Response.ok(repository.getCoverage(uriInfo, framework)).build();
   }
 
   @POST
@@ -200,101 +178,12 @@ public class AIGovernanceFrameworkResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
-      ForkRequest request) {
+      @Valid ForkAIGovernanceFrameworkRequest request) {
     AIGovernanceFramework source =
         getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED, null);
-    String user = securityContext.getUserPrincipal().getName();
-    String newName =
-        request != null && request.getName() != null && !request.getName().isBlank()
-            ? request.getName()
-            : source.getName() + "_fork";
-
-    AIGovernanceFramework copy = new AIGovernanceFramework();
-    copy.setId(UUID.randomUUID());
-    copy.setName(newName);
-    copy.setDisplayName(
-        request != null && request.getDisplayName() != null
-            ? request.getDisplayName()
-            : "Fork of "
-                + (source.getDisplayName() == null ? source.getName() : source.getDisplayName()));
-    copy.setDescription(source.getDescription());
-    copy.setReference(source.getReference());
-    copy.setRegion(source.getRegion());
-    copy.setSource(org.openmetadata.schema.entity.ai.FrameworkSource.ForkedFrom);
-    copy.setForkedFrom(source.getEntityReference());
-    copy.setEnabled(false);
-    copy.setAssessmentCadence(source.getAssessmentCadence());
-    copy.setAutoApply(source.getAutoApply());
-    copy.setUpdatedAt(System.currentTimeMillis());
-    copy.setUpdatedBy(user);
-    AIGovernanceFramework created = repository.create(uriInfo, copy);
-
-    AIFrameworkControlRepository controlRepo =
-        (AIFrameworkControlRepository) Entity.getEntityRepository(Entity.AI_FRAMEWORK_CONTROL);
-    ListFilter controlFilter = new ListFilter(Include.NON_DELETED);
-    if (source.getFullyQualifiedName() != null) {
-      controlFilter.addQueryParam("framework", source.getFullyQualifiedName());
-    }
-    List<AIFrameworkControl> sourceControls =
-        listControls(uriInfo, controlRepo, FIELDS, controlFilter);
-
-    List<Map<String, Object>> copiedControls = new ArrayList<>();
-    for (AIFrameworkControl original : sourceControls) {
-      AIFrameworkControl childCopy = JsonUtils.deepCopy(original, AIFrameworkControl.class);
-      childCopy.setId(UUID.randomUUID());
-      childCopy.setFullyQualifiedName(null);
-      childCopy.setVersion(null);
-      childCopy.setFramework(created.getEntityReference());
-      childCopy.setUpdatedAt(System.currentTimeMillis());
-      childCopy.setUpdatedBy(user);
-      controlRepo.create(uriInfo, childCopy);
-      Map<String, Object> entry = new LinkedHashMap<>();
-      entry.put("code", childCopy.getCode());
-      entry.put("name", childCopy.getName());
-      copiedControls.add(entry);
-    }
-
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("framework", created);
-    response.put("copiedControlsCount", copiedControls.size());
-
-    return Response.ok(response).build();
-  }
-
-  private List<AIFrameworkControl> listControls(
-      UriInfo uriInfo, AIFrameworkControlRepository controlRepo, String fields, ListFilter filter) {
-    List<AIFrameworkControl> result = new ArrayList<>();
-    String after = null;
-    do {
-      ResultList<AIFrameworkControl> page =
-          controlRepo.listAfter(
-              uriInfo, controlRepo.getFields(fields), filter, CONTROL_PAGE_SIZE, after);
-      result.addAll(page.getData());
-      after = page.getPaging() == null ? null : page.getPaging().getAfter();
-    } while (after != null);
-
-    return result;
-  }
-
-  public static class ForkRequest {
-    private String name;
-    private String displayName;
-
-    public String getName() {
-      return name;
-    }
-
-    public void setName(String name) {
-      this.name = name;
-    }
-
-    public String getDisplayName() {
-      return displayName;
-    }
-
-    public void setDisplayName(String displayName) {
-      this.displayName = displayName;
-    }
+    return Response.ok(
+            repository.fork(uriInfo, source, request, securityContext.getUserPrincipal().getName()))
+        .build();
   }
 
   @DELETE

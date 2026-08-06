@@ -238,6 +238,12 @@ const isLandingPageWidgetVisible = async (
   return false;
 };
 
+const isLandingPageWidgetLoading = async (widget: Locator) =>
+  widget
+    .getByTestId('entity-list-skeleton')
+    .isVisible()
+    .catch(() => false);
+
 export const waitForLandingPageWidget = async (
   page: Page,
   widgetKey: string
@@ -671,7 +677,8 @@ export const verifyWidgetHeaderNavigation = async (
   page: Page,
   widgetKey: string,
   expectedTitle: string,
-  navigationUrl: string
+  navigationUrl: string,
+  destinationTestId?: string
 ) => {
   const widget = await waitForLandingPageWidget(page, widgetKey);
 
@@ -692,10 +699,16 @@ export const verifyWidgetHeaderNavigation = async (
   // Click header title to navigate
   await headerTitle.click();
 
-  const currentUrl = page.url();
+  // Poll instead of reading page.url() once: the click starts a client-side
+  // navigation, so a single read can still observe the landing page URL.
+  await expect.poll(() => page.url()).toContain(navigationUrl);
 
-  // Wait for navigation
-  expect(currentUrl).toContain(navigationUrl);
+  // Optionally prove the destination rendered. A URL check alone cannot tell a
+  // working page from one stuck on its loader. Must run before the redirect
+  // below, which takes the browser back to the landing page.
+  if (destinationTestId) {
+    await expect(page.getByTestId(destinationTestId)).toBeVisible();
+  }
 
   // Home keeps background requests alive on some persona routes; use the lighter
   // redirect path and wait on rendered state instead of networkidle.
@@ -730,6 +743,10 @@ export const verifyDomainCountInDomainWidget = async (
         }
 
         const domainWidget = page.getByTestId('KnowledgePanel.Domains');
+        if (await isLandingPageWidgetLoading(domainWidget)) {
+          return null;
+        }
+
         const card = domainWidget.locator(widgetCardSelector).first();
         const isCardVisible = await card.isVisible().catch(() => false);
 
@@ -771,6 +788,10 @@ export const verifyDataProductCountInDataProductWidget = async (
         const dataProductWidget = page.getByTestId(
           'KnowledgePanel.DataProducts'
         );
+        if (await isLandingPageWidgetLoading(dataProductWidget)) {
+          return null;
+        }
+
         const card = dataProductWidget.locator(widgetCardSelector).first();
         const isCardVisible = await card.isVisible().catch(() => false);
 
@@ -798,6 +819,10 @@ export const verifyWidgetCountOnCurrentPage = async (
   await expect
     .poll(
       async () => {
+        if (await isLandingPageWidgetLoading(widget)) {
+          return null;
+        }
+
         const element = widget.locator(selector).first();
         const isVisible = await element.isVisible().catch(() => false);
 

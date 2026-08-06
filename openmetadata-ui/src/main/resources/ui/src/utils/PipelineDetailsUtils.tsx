@@ -17,7 +17,9 @@ import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
@@ -75,7 +77,8 @@ const EntityLineageTab = withSuspenseFallback(
 );
 
 const ExecutionsTab = withSuspenseFallback(
-  lazy(() => import('../components/Pipeline/Execution/Execution.component'))
+  lazy(() => import('../components/Pipeline/Execution/Execution.component')),
+  TAB_CONTENT_FALLBACK
 );
 
 const PipelineTaskTab = withSuspenseFallback(

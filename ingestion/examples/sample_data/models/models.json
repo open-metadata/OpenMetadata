@@ -135,5 +135,75 @@
         "value": "42"
       }
     ]
+  },
+  {
+    "name": "provider_address_texas_model",
+    "displayName": "Provider Address Texas Model",
+    "description": "Search relevancy fixture model for scoring provider address Texas coverage.",
+    "algorithm": "mlmodel",
+    "dashboard": "sample_superset.provider_address_texas_dashboard",
+    "mlStore": {
+      "storage": "mlflow-artifacts:/4/provider-address-texas/artifacts/model"
+    },
+    "sourceUrl": "http://localhost:8088/#/models/provider_address_texas_model",
+    "mlFeatures": [
+      {
+        "name": "provider_address_quality",
+        "dataType": "numerical"
+      },
+      {
+        "name": "texas_region",
+        "dataType": "categorical"
+      },
+      {
+        "name": "network_status",
+        "dataType": "categorical"
+      }
+    ],
+    "mlHyperParameters": [
+      {
+        "name": "max_depth",
+        "value": "6"
+      },
+      {
+        "name": "learning_rate",
+        "value": "0.05"
+      }
+    ]
+  },
+  {
+    "name": "customer_profiles_model",
+    "displayName": "Customer Profiles Model",
+    "description": "Search relevancy fixture model for scoring customer profiles quality.",
+    "algorithm": "mlmodel",
+    "dashboard": "sample_superset.customer_profiles_dashboard",
+    "mlStore": {
+      "storage": "mlflow-artifacts:/5/customer-profiles/artifacts/model"
+    },
+    "sourceUrl": "http://localhost:8088/#/models/customer_profiles_model",
+    "mlFeatures": [
+      {
+        "name": "customer_profile_score",
+        "dataType": "numerical"
+      },
+      {
+        "name": "profile_status",
+        "dataType": "categorical"
+      },
+      {
+        "name": "loyalty_segment",
+        "dataType": "categorical"
+      }
+    ],
+    "mlHyperParameters": [
+      {
+        "name": "max_depth",
+        "value": "6"
+      },
+      {
+        "name": "learning_rate",
+        "value": "0.05"
+      }
+    ]
   }
 ]

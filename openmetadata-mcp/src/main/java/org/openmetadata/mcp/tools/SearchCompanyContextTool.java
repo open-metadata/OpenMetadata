@@ -11,6 +11,8 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
@@ -63,11 +65,14 @@ public class SearchCompanyContextTool implements McpTool {
       result = errorResponse("Vector search service is not initialized");
     } else {
       int size = Math.min(Math.max(McpParams.getInt(params, "size", DEFAULT_SIZE), 1), MAX_SIZE);
+      int from =
+          VectorPagingContract.cursorOffsetOrDefault(
+              params, Math.max(McpParams.getInt(params, "from", 0), 0));
       try {
         VectorSearchResponse response =
             vectorService.search(
-                query, companyContextFilters(), size, 0, DEFAULT_K, DEFAULT_THRESHOLD);
-        result = buildResponse(query, response);
+                query, companyContextFilters(), size, from, DEFAULT_K, DEFAULT_THRESHOLD);
+        result = buildResponse(query, response, size, from);
       } catch (Exception e) {
         LOG.error("Company context search failed: {}", e.getMessage(), e);
         result = errorResponse("Company context search failed: " + McpResponseTrim.safeMessage(e));
@@ -84,7 +89,8 @@ public class SearchCompanyContextTool implements McpTool {
     return filters;
   }
 
-  private Map<String, Object> buildResponse(String query, VectorSearchResponse response) {
+  private Map<String, Object> buildResponse(
+      String query, VectorSearchResponse response, int requestedSize, int from) {
     List<Map<String, Object>> pills = new ArrayList<>();
     if (response.getHits() != null) {
       for (Map<String, Object> hit : response.getHits()) {
@@ -95,7 +101,46 @@ public class SearchCompanyContextTool implements McpTool {
     result.put("query", query);
     result.put("results", pills);
     result.put("returnedCount", pills.size());
+    int rawCount = pills.size();
+    fitResultsToBudget(result, pills);
+    VectorPagingContract.attach(
+        result,
+        from,
+        rawCount,
+        requestedSize,
+        response,
+        "Showing %d knowledge pills. Pass 'nextCursor' to fetch the next page.");
     return result;
+  }
+
+  /**
+   * Keeps the response under the dispatch-level size cap by returning fewer <em>pills</em> (never
+   * mangling the content of the ones kept), so the tool never falls through to the empty-stub nuke.
+   * Uses {@link ResponseBudget} to fit pills by measuring each pill's real serialized size.
+   */
+  private static void fitResultsToBudget(
+      Map<String, Object> result, List<Map<String, Object>> pills) {
+    long overhead = overheadWithoutResults(result);
+    int fit = ResponseBudget.fitCount(pills, overhead);
+    if (fit < pills.size()) {
+      List<Map<String, Object>> trimmed = new ArrayList<>(pills.subList(0, fit));
+      result.put("results", trimmed);
+      result.put("returnedCount", trimmed.size());
+      result.put("hasMore", true);
+      result.put(
+          "message",
+          String.format(
+              "Returning %d of %d knowledge pills to stay within the response size budget. "
+                  + "Refine the query or lower 'size' for a smaller response.",
+              trimmed.size(), pills.size()));
+    }
+  }
+
+  private static long overheadWithoutResults(Map<String, Object> result) {
+    Object savedResults = result.remove("results");
+    long overhead = McpResponseTrim.serializedLength(result);
+    result.put("results", savedResults);
+    return overhead;
   }
 
   private Map<String, Object> projectPill(Map<String, Object> hit) {

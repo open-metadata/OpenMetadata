@@ -218,6 +218,10 @@
           "items": { "$ref": "#/definitions/fieldValueBoost" },
           "description": "List of numeric field-based boosts that apply only to this asset."
         },
+        "ranking": {
+          "$ref": "#/definitions/rankingConfiguration",
+          "description": "High-level ranking algorithm for this asset. Defines lexical ranking stages first, then bounded metadata signals."
+        },
         "scoreMode": {
           "type": "string",
           "enum": ["multiply", "sum", "avg", "first", "max", "min"],
@@ -257,6 +261,135 @@
         }
       },
       "required": ["assetType"],
+      "additionalProperties": false
+    },
+    "rankingConfiguration": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.RankingConfiguration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether to use staged ranking for this asset. When disabled, legacy searchFields scoring is used.",
+          "default": true
+        },
+        "algorithm": {
+          "type": "string",
+          "description": "Human-readable ranking algorithm identifier.",
+          "default": "nameFirstLexicalThenSignals"
+        },
+        "stages": {
+          "type": "array",
+          "description": "Ordered lexical ranking stages. Earlier stages should represent stronger relevance signals.",
+          "items": {
+            "$ref": "#/definitions/rankingStage"
+          }
+        },
+        "stopWords": {
+          "type": "array",
+          "description": "Language-neutral query words ignored by token-coverage ranking stages. These are unioned with stopWordsByLanguage.",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "stopWordsByLanguage": {
+          "type": "object",
+          "description": "Language-keyed query words ignored by token-coverage ranking stages. Keys should match search index mapping languages such as en, ru, zh, jp, or ja. Values are whole query tokens only; language analyzers still perform the actual index/query tokenization.",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "en": ["a", "an", "and", "are", "as", "at", "by", "for", "from", "in", "into", "is", "of", "on", "or", "the", "to", "with"]
+          }
+        },
+        "disMaxTieBreaker": {
+          "type": "number",
+          "description": "DisMax tie breaker used between ranking stages. Keep low so broad context matches do not overpower stronger name stages.",
+          "default": 0.05
+        },
+        "signals": {
+          "$ref": "#/definitions/rankingSignals",
+          "description": "Bounded metadata signals used after lexical relevance."
+        }
+      },
+      "additionalProperties": false
+    },
+    "rankingStage": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.RankingStage",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Stable stage name used in ranking debug output."
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Human-readable explanation of what this ranking stage is intended to do."
+        },
+        "fields": {
+          "type": "array",
+          "description": "Fields queried by this stage.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "matchType": {
+          "type": "string",
+          "enum": ["exact", "phrase", "tokenCoverage", "standard", "fuzzy"],
+          "description": "Query strategy for this ranking stage.",
+          "default": "standard"
+        },
+        "weight": {
+          "type": "number",
+          "description": "Stage-level score band. Higher stages should use materially higher weights than later stages.",
+          "default": 1.0
+        },
+        "minimumShouldMatch": {
+          "type": "string",
+          "description": "Minimum significant-token coverage for tokenCoverage or fuzzy stages.",
+          "default": "2<70%"
+        }
+      },
+      "required": ["name", "fields"],
+      "additionalProperties": false
+    },
+    "rankingSignals": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.RankingSignals",
+      "properties": {
+        "purpose": {
+          "type": "string",
+          "description": "Human-readable explanation of how metadata signals should affect ranking."
+        },
+        "fields": {
+          "type": "array",
+          "description": "Metadata fields expected to contribute to signal scoring.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "scoreMode": {
+          "type": "string",
+          "enum": ["multiply", "sum", "avg", "first", "max", "min"],
+          "description": "How to combine metadata signal functions.",
+          "default": "sum"
+        },
+        "boostMode": {
+          "type": "string",
+          "enum": ["multiply", "replace", "sum", "avg", "max", "min"],
+          "description": "How metadata signals combine with the lexical score.",
+          "default": "sum"
+        },
+        "maxBoost": {
+          "type": "number",
+          "description": "Maximum signal score added to lexical relevance. Keeps Tier and Usage as tie-breakers.",
+          "exclusiveMinimum": 0.0,
+          "default": 2.0
+        }
+      },
       "additionalProperties": false
     },
     "fieldBoost": {

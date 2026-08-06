@@ -23,7 +23,7 @@ import {
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
-test.describe.skip(
+test.describe(
   'Explore Sort Order Filter',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
@@ -31,7 +31,9 @@ test.describe.skip(
       test(`${name}`, async ({ browser }) => {
         test.slow(true);
 
-        const { page, afterAction } = await performAdminLogin(browser);
+        const { page, afterAction } = await performAdminLogin(browser, {
+          navigate: true,
+        });
 
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.EXPLORE);

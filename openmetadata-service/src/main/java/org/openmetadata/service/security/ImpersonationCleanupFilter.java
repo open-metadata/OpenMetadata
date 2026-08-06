@@ -38,6 +38,7 @@ public class ImpersonationCleanupFilter implements ContainerResponseFilter {
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     // Always clear ThreadLocal after request completes (success or failure)
     ImpersonationContext.clear();
+    ActivePersonaContext.clear();
     ETagRequestFilter.clearIfMatchHeader();
     RequestEntityCache.clear();
     ReadBundleContext.clear();

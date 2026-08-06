@@ -120,6 +120,7 @@
     "governanceMetadata": {
       "type": "object",
       "javaType": "org.openmetadata.schema.entity.ai.GovernanceMetadata",
+      "javaInterfaces": ["org.openmetadata.schema.entity.ai.AIGovernanceRegistration"],
       "description": "AI governance metadata for compliance and risk management",
       "additionalProperties": false,
       "properties": {
@@ -415,8 +416,7 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/modelConfiguration"
-      },
-      "minItems": 1
+      }
     },
     "primaryModel": {
       "description": "Primary/default LLM model used by this application",

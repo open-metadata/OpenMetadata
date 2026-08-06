@@ -133,6 +133,21 @@ public abstract class EntityServiceBase<T> {
     return result;
   }
 
+  /**
+   * Retrieve the entity's AI Context (Context Profile) by id as an OKF-style markdown document: its
+   * attached business knowledge (glossary terms, articles, applied metrics), type-specific
+   * structural context, and depth-1 lineage, assembled for LLM consumption.
+   */
+  public String getContext(String id) throws OpenMetadataException {
+    return httpClient.executeForString(HttpMethod.GET, basePath + "/" + id + "/context", null);
+  }
+
+  /** Retrieve the entity's AI Context by fully qualified name. See {@link #getContext(String)}. */
+  public String getContextByName(String fqn) throws OpenMetadataException {
+    return httpClient.executeForString(
+        HttpMethod.GET, buildPathWithEncodedName(fqn) + "/context", null);
+  }
+
   public T getByName(String name) throws OpenMetadataException {
     return getByName(name, null);
   }

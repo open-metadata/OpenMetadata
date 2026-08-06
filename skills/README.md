@@ -4,6 +4,12 @@ Complete AI development workflow for OpenMetadata. Provides structured planning,
 
 Inspired by [obra/superpowers](https://github.com/obra/superpowers) and [everything-claude-code](https://github.com/affaan-m/everything-claude-code), tailored for OpenMetadata's multi-language, schema-first architecture.
 
+### Vendored third-party skills
+
+`skills/vendor/` holds skills copied verbatim from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (MIT) — `react-best-practices`, `web-design-guidelines`, and `composition-patterns` — so every contributor has them with no install or network step. Each records its upstream commit in a `VENDORED.md`. **Do not edit them**: local changes are lost on the next refresh, and repo-specific guidance belongs in `.claude/rules/`, which auto-loads by path glob and takes precedence. See [`skills/vendor/README.md`](vendor/README.md).
+
+They are authoring-time aids, not gates — a skill only fires if an agent reads it. Enforcement is deterministic and lives in `ui-checkstyle`; see [`docs/ui-code-quality-gate.md`](../docs/ui-code-quality-gate.md).
+
 ## Installation
 
 ### Claude Code (Plugin)
@@ -75,7 +81,7 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 |-------|---------|
 | [java-reviewer](agents/java-reviewer.md) | Review Java code — Dropwizard, Flyway, JUnit 5, spotless, 90% coverage |
 | [python-reviewer](agents/python-reviewer.md) | Review Python code — Pydantic 2.x, pytest, connector architecture, 90% coverage |
-| [frontend-reviewer](agents/frontend-reviewer.md) | Review TypeScript/React — core components, `tw:` prefix, i18n, no MUI, Jest/Playwright |
+| [frontend-reviewer](agents/frontend-reviewer.md) | Review TypeScript/React — core components, `tw:` prefix, i18n, Jest/Playwright |
 
 ### Connector Agents
 
@@ -97,7 +103,6 @@ The plugin includes hooks (`hooks/hooks.json`) that fire automatically:
 | Schema regeneration | PostToolUse | Reminds to run `make generate` after JSON schema edits |
 
 Additional hooks in `.claude/settings.json` (in-repo, no plugin needed):
-- Block MUI imports
 - Remind `yarn parse-schema` after connection schema edits
 - Warn about `any` type in TypeScript
 

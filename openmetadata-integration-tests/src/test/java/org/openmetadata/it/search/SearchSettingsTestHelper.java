@@ -207,6 +207,28 @@ public final class SearchSettingsTestHelper {
     assetConfig(settings, assetType).setBoostMode(boostMode);
   }
 
+  public static SearchSettings withRankingDisabled(
+      final SearchSettings settings, final String assetType) {
+    final SearchSettings copy = copyOf(settings);
+    disableRanking(copy.getDefaultConfiguration());
+
+    if (copy.getAssetTypeConfigurations() != null) {
+      for (AssetTypeConfiguration config : copy.getAssetTypeConfigurations()) {
+        if (assetType.equalsIgnoreCase(config.getAssetType())) {
+          disableRanking(config);
+        }
+      }
+    }
+
+    return copy;
+  }
+
+  private static void disableRanking(final AssetTypeConfiguration config) {
+    if (config != null && config.getRanking() != null) {
+      config.getRanking().setEnabled(false);
+    }
+  }
+
   /**
    * Clears all global and per-asset term/field-value boosts so a scoring test starts from a clean
    * function-score baseline and only the boosts it adds will fire.

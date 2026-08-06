@@ -36,6 +36,7 @@ import {
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
 import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTermQuery } from '../SearchPureUtils';
 import {
@@ -83,6 +84,10 @@ jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
 
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../../rest/contractAPI', () => ({
+  searchContracts: jest.fn(),
 }));
 
 jest.mock('../ToastUtils', () => ({
@@ -359,6 +364,34 @@ describe('getFieldByArgumentType tests', () => {
         SearchIndex.DATABASE_SCHEMA,
       ],
     });
+  });
+
+  it('should use the Data Contract API for a dataContract fqnList', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+    (searchContracts as jest.Mock).mockResolvedValue([
+      {
+        fullyQualifiedName: 'service.database.schema.table.dataContract_test',
+      },
+    ]);
+
+    render(getFieldByArgumentType(0, 'fqnList', 0, 'dataContract'));
+
+    const api = MockedAsyncSelect.mock.calls[0][0].api as (
+      query: string
+    ) => Promise<unknown>;
+
+    await expect(api('test')).resolves.toEqual([
+      {
+        label: 'service.database.schema.table.dataContract_test',
+        value: 'service.database.schema.table.dataContract_test',
+      },
+    ]);
+    expect(searchContracts).toHaveBeenCalledWith('test', 50);
+    expect(searchQuery).not.toHaveBeenCalled();
   });
 
   it('should return correct fields for argumentType domainList', async () => {

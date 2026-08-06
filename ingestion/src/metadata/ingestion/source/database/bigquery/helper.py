@@ -92,6 +92,16 @@ def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dic
     return kwargs
 
 
+def get_bigquery_client_for_project(database_name: str, service_connection: BigQueryConnection):
+    """Build a project-scoped ``bigquery.Client`` (no engine/inspector), shared by
+    the inspector setup and the progress-totals dataset listing."""
+    new_service_connection = clone_connection_for_project(database_name, service_connection)
+    kwargs = get_impersonate_client_kwargs(new_service_connection)
+    if new_service_connection.usageLocation:
+        kwargs["location"] = new_service_connection.usageLocation
+    return get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
+
+
 def get_inspector_details(database_name: str, service_connection: BigQueryConnection) -> InspectorWrapper:
     """
     Method to get the bigquery inspector details
@@ -99,12 +109,7 @@ def get_inspector_details(database_name: str, service_connection: BigQueryConnec
     # TODO support location property in JSON Schema
     # TODO support OAuth 2.0 scopes
     new_service_connection = clone_connection_for_project(database_name, service_connection)
-    kwargs = get_impersonate_client_kwargs(new_service_connection)
-
-    if new_service_connection.usageLocation:
-        kwargs["location"] = new_service_connection.usageLocation
-
-    client = get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
+    client = get_bigquery_client_for_project(database_name, service_connection)
     engine = get_connection(new_service_connection)
     inspector = inspect(engine)
 

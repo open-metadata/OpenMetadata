@@ -33,6 +33,8 @@ import {
   getExploreQueryFilterMust,
 } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import searchClassBase from '../../utils/SearchClassBase';
+import { EntityIconSize } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -60,6 +62,26 @@ const getOptionLabelFormatter = (
     ? formatEntityTypeLabel
     : undefined;
 
+const addEntityTypeIcons = (
+  key: string,
+  opts: SearchDropdownOption[]
+): SearchDropdownOption[] => {
+  if (!ENTITY_TYPE_FILTER_KEYS.has(key)) {
+    return opts;
+  }
+
+  return opts.map((opt) => ({
+    ...opt,
+    icon:
+      searchClassBase.getEntityIcon(
+        getCanonicalEntityType(opt.key),
+        'tw:text-quaternary',
+        {},
+        EntityIconSize.Size16
+      ) ?? undefined,
+  }));
+};
+
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
   index,
@@ -83,6 +105,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const getStaticOptions = useCallback(
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
+  );
+  const getExploreDropdownPopupContainer = useCallback(
+    // Keep legacy Explore filter overlays tied to the trigger subtree so they
+    // are removed with the page during route changes.
+    (triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body,
+    []
   );
 
   const { showDeleted, searchText } = useMemo(() => {
@@ -148,7 +176,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(staticOptions);
+      setOptions(addEntityTypeIcons(key, staticOptions));
 
       return;
     }
@@ -186,12 +214,15 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     }
 
     setOptions(
-      uniqWith(
-        getOptionsFromAggregationBucket(
-          buckets,
-          getOptionLabelFormatter(key, untitledDropdown)
-        ),
-        isEqual
+      addEntityTypeIcons(
+        key,
+        uniqWith(
+          getOptionsFromAggregationBucket(
+            buckets,
+            getOptionLabelFormatter(key, untitledDropdown)
+          ),
+          isEqual
+        )
       )
     );
   };
@@ -203,7 +234,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(staticOptions);
+      setOptions(addEntityTypeIcons(key, staticOptions));
 
       return;
     }
@@ -232,7 +263,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             option.label.toLowerCase().includes(value.toLowerCase())
           )
         : staticOptions;
-      setOptions(filteredOptions);
+      setOptions(addEntityTypeIcons(key, filteredOptions));
 
       return;
     }
@@ -264,12 +295,15 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       const buckets =
         res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
       setOptions(
-        uniqWith(
-          getOptionsFromAggregationBucket(
-            buckets,
-            getOptionLabelFormatter(key, untitledDropdown)
-          ),
-          isEqual
+        addEntityTypeIcons(
+          key,
+          uniqWith(
+            getOptionsFromAggregationBucket(
+              buckets,
+              getOptionLabelFormatter(key, untitledDropdown)
+            ),
+            isEqual
+          )
         )
       );
     } catch (error) {
@@ -315,6 +349,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           <SearchDropdown
             highlight
             dropdownClassName={field.dropdownClassName}
+            getPopupContainer={getExploreDropdownPopupContainer}
             hasNullOption={hasNullOption}
             helperText={helperText}
             hideCounts={field.hideCounts ?? false}

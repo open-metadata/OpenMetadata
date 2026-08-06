@@ -51,10 +51,10 @@ export interface NodeConfiguration {
      */
     assigneeStrategy?: string;
     /**
-     * Auto-fires after the ISO 8601 duration in the named process variable elapses. The
-     * boundary timer interrupts the user task and exits the subprocess with the configured
-     * transitionId as the node's result, so an outgoing edge with that condition routes the
-     * workflow downstream (e.g. to auto-revoke or auto-close).
+     * Auto-fires from either a relative ISO 8601 duration variable or an absolute ISO 8601 date
+     * variable. The boundary timer interrupts the user task and exits the subprocess with the
+     * configured transitionId as the node's result, so an outgoing edge with that condition
+     * routes the workflow downstream (e.g. to auto-revoke or auto-close).
      */
     expiryTimer?: ExpiryTimer;
     /**
@@ -167,10 +167,10 @@ export enum EmptyAssigneeStrategy {
 }
 
 /**
- * Auto-fires after the ISO 8601 duration in the named process variable elapses. The
- * boundary timer interrupts the user task and exits the subprocess with the configured
- * transitionId as the node's result, so an outgoing edge with that condition routes the
- * workflow downstream (e.g. to auto-revoke or auto-close).
+ * Auto-fires from either a relative ISO 8601 duration variable or an absolute ISO 8601 date
+ * variable. The boundary timer interrupts the user task and exits the subprocess with the
+ * configured transitionId as the node's result, so an outgoing edge with that condition
+ * routes the workflow downstream (e.g. to auto-revoke or auto-close).
  */
 export interface ExpiryTimer {
     /**
@@ -181,10 +181,15 @@ export interface ExpiryTimer {
      */
     closeAsResolution?: ResolutionType;
     /**
+     * Name of the process variable holding the absolute ISO 8601 date/time when the timer
+     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z').
+     */
+    dateVariable?: string;
+    /**
      * Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' →
      * 'P14D').
      */
-    durationVariable: string;
+    durationVariable?: string;
     /**
      * Result value emitted when the timer fires. Must match an outgoing edge condition from
      * this node.

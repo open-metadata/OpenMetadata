@@ -64,7 +64,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(ROLES_LIST_WITH_PAGING)),
 }));
-jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('../../../components/common/DeleteWidget/DeleteEntityModal', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="delete-modal">DeletWdigetModal</div>)
