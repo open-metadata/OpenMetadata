@@ -32,6 +32,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
@@ -66,6 +67,9 @@ public class TestDefinitionResource
   private final TestDefinitionMapper mapper = new TestDefinitionMapper();
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions/";
   static final String FIELDS = "owners";
+
+  private static final List<String> ENTITY_TYPE_VALUES =
+      Stream.of(TestDefinitionEntityType.values()).map(TestDefinitionEntityType::value).toList();
 
   public TestDefinitionResource(Authorizer authorizer, Limits limits) {
     super(Entity.TEST_DEFINITION, authorizer, limits);
@@ -164,7 +168,7 @@ public class TestDefinitionResource
           Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
-      filter.addQueryParam("entityType", entityType);
+      filter.addQueryParam("entityType", parseEntityType(entityType).value());
     }
     if (testPlatformParam != null) {
       filter.addQueryParam("testPlatform", testPlatformParam);
@@ -509,5 +513,24 @@ public class TestDefinitionResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  /**
+   * Canonicalizes the {@code entityType} filter before it reaches the query. The listing compares it
+   * against the {@code test_definition.entityType} generated column with {@code =}, which PostgreSQL
+   * evaluates byte-exactly, so an un-normalized {@code Column} silently matched nothing while MySQL's
+   * case-insensitive collation matched it — see issue #29542. Normalizing here keeps both engines
+   * identical and turns an unknown value into a 400 instead of an empty page.
+   */
+  private static TestDefinitionEntityType parseEntityType(String entityType) {
+    return Stream.of(TestDefinitionEntityType.values())
+        .filter(candidate -> candidate.value().equalsIgnoreCase(entityType))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format(
+                        "Invalid entityType '%s'. Must be one of %s",
+                        entityType, ENTITY_TYPE_VALUES)));
   }
 }
