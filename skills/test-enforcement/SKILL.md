@@ -231,7 +231,7 @@ Use the `/playwright` skill to generate tests. At minimum, verify:
 
 4. **Run the linter:**
    ```bash
-   yarn lint:playwright
+   yarn lint:playwright:suppressions
    ```
 
 ### Step 5: Check Jest Unit Tests for Frontend

@@ -90,14 +90,16 @@ Reference the **Common Test Patterns** section for:
 
 ### Step 4: Run ESLint Check
 
-Before returning the generated test, run the Playwright linter to catch anti-patterns automatically:
+Before returning the generated test, run the full Playwright lint gate — the same one CI runs:
 
 ```bash
 cd openmetadata-ui/src/main/resources/ui
-yarn lint:playwright
+yarn lint:playwright:suppressions
 ```
 
-Error-level rules (`no-networkidle`, `no-page-pause`, `no-focused-test`) will block CI. Fix any errors before finalizing. See the handbook's **ESLint Enforcement** section for the full rule reference.
+Every Playwright rule runs at `error`; there is no warn tier. Fix any errors before finalizing —
+never add a new entry to `eslint-suppressions.json` to make this pass. See the handbook's
+**ESLint Enforcement** section for the full, generated rule reference.
 
 ### Step 5: Validate Against Handbook Checklist
 
@@ -107,7 +109,7 @@ Before returning the generated test, verify ALL items from the handbook's **Vali
 - ✅ Anti-Flakiness (no waitForTimeout, no networkidle, no force: true, no positional selectors, no stored :visible locators)
 - ✅ API & Network (waitForResponse before actions, status code validation)
 - ✅ Waits & Assertions (waitForAllLoadersToDisappear, semantic locators, proper assertions)
-- ✅ ESLint (`yarn lint:playwright` passes with zero errors)
+- ✅ ESLint (`yarn lint:playwright:suppressions` passes with zero errors)
 - ✅ Coverage & Roles (multi-role tests, data persistence, error handling)
 
 ---
@@ -120,7 +122,7 @@ Read and apply the handbook sections in order:
 1. **Anti-Flakiness Patterns** (CRITICAL - #1 cause of flaky tests)
 2. **Test File Structure Template** (for proper test structure)
 3. **Common Test Patterns** (for specific scenarios)
-4. **ESLint Enforcement** (run `yarn lint:playwright` — errors block CI)
+4. **ESLint Enforcement** (run `yarn lint:playwright:suppressions` — every rule is `error`)
 5. **Validation Checklist** (before returning generated test)
 
 ---
@@ -134,3 +136,36 @@ Read and apply the handbook sections in order:
 - Reference examples: `playwright/e2e/Pages/DataContractInheritance.spec.ts`, `playwright/e2e/Features/Table.spec.ts`
 
 **Generate tests that are production-ready, maintainable, and zero-flakiness by following the handbook patterns exactly.**
+
+---
+
+## Writing Playwright Tests (merged from the former `writing-playwright-tests` skill)
+
+**Reference**: `openmetadata-ui/src/main/resources/ui/playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md`
+
+### ESLint Enforcement
+
+All Playwright tests are linted with `eslint-plugin-playwright` plus this repo's local
+`om-playwright` rules. Run before submitting:
+
+```bash
+cd openmetadata-ui/src/main/resources/ui
+yarn lint:playwright:suppressions
+```
+
+Every rule runs at `error` — there is no warn tier, and none of them are merely advisory. The
+generated rule table (per-rule severity and description) lives in the handbook's **ESLint
+Enforcement** section; it's produced by `yarn generate:playwright-rules` from `eslint.config.mjs`,
+so it can't drift from what actually blocks CI. Pre-existing violations are tracked in
+`eslint-suppressions.json` — that ledger may shrink as violations are fixed, never grow.
+
+## Mandatory verification
+
+Before reporting the work complete, run:
+
+```bash
+cd openmetadata-ui/src/main/resources/ui && yarn lint:playwright:suppressions
+```
+
+This must exit 0. Do not suppress a new violation to make it pass — suppressions are a record of
+pre-existing debt, and adding to them is a plan failure. Fix the test instead.
