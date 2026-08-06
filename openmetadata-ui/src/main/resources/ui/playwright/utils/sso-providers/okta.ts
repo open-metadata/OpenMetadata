@@ -27,9 +27,12 @@ const OKTA_TENANT = {
 } as const;
 
 // Confidential-client credentials. These identify a *different* Okta app (type
-// Web) from the public/SPA one above, so the client id is its own value. The
-// secret has no committed default on purpose — it is a real tenant credential
-// and must arrive as a GitHub secret.
+// Web) from the public/SPA one above, which is PKCE-only and cannot serve this
+// flow at all.
+//
+// Neither value is committed. Both come from the `test` GitHub environment, so
+// the tenant's confidential app registration stays out of a public repo, and
+// the confidential Okta scenario skips when either is absent.
 export const OKTA_CONFIDENTIAL = {
   clientId: process.env[SSO_ENV.OKTA_CONFIDENTIAL_CLIENT_ID] ?? '',
   clientSecret: process.env[SSO_ENV.OKTA_CLIENT_SECRET] ?? '',

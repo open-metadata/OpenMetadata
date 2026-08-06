@@ -11,6 +11,22 @@ services:
       KC_HEALTH_ENABLED: 'true'
       KC_HTTP_ENABLED: 'true'
       KC_HTTP_PORT: '8080'
+      # Split-horizon hostnames, needed only by the confidential OIDC leg.
+      #
+      # SAML needs nothing here: every SAML URL is browser-facing, and the one
+      # server-side fetch (the IdP descriptor) runs in the Playwright process on
+      # the host. Confidential OIDC is different — the OpenMetadata *container*
+      # fetches discovery and performs the code exchange, and from inside that
+      # container `localhost:8080` is its own loopback, not this Keycloak.
+      #
+      # KC_HOSTNAME pins the frontchannel URLs and, critically, the `issuer` to
+      # the address the browser uses, so the id_token issuer matches whatever OM
+      # validates against. BACKCHANNEL_DYNAMIC then lets the token and JWKS
+      # endpoints follow the requesting host, so OM can reach them by container
+      # name. Without the pin the issuer would differ between the two paths and
+      # id_token validation would fail.
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://localhost:8080}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: 'true'
     ports:
       - '${KEYCLOAK_SAML_PORT:-8080}:8080'
     volumes:

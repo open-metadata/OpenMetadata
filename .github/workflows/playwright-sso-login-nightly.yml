@@ -117,6 +117,14 @@ jobs:
         if: startsWith(matrix.provider.name, 'keycloak-')
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml up -d
+          # Join the OpenMetadata compose network so the OM *container* can reach
+          # Keycloak by name. SAML never needed this (all its URLs are
+          # browser-facing, and the descriptor fetch runs on the host), but the
+          # confidential OIDC leg has OM fetch discovery and exchange the code
+          # itself, and from inside that container localhost:8080 is its own
+          # loopback. Tolerant of both the network being absent and the container
+          # already being attached.
+          docker network connect ometa_network openmetadata-keycloak-saml || true
           timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
 
       - name: Run SSO Login Spec
@@ -131,6 +139,12 @@ jobs:
           # drops the SameSite=Lax OM_SESSION cookie. This reproduces the production "No pending session"
           # failure that the localhost-only job cannot, guarding the SAML RelayState fix.
           KEYCLOAK_SAML_BASE_URL: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
+          # Confidential-client credentials for the Okta leg. These name a second
+          # Okta app of type Web; the public/SPA app in OKTA_CLIENT_ID is
+          # PKCE-only and cannot serve a confidential flow. Absent them, the
+          # confidential Okta scenario skips rather than fails.
+          OKTA_CONFIDENTIAL_CLIENT_ID: ${{ vars.OKTA_CONFIDENTIAL_CLIENT_ID }}
+          OKTA_CLIENT_SECRET: ${{ secrets.OKTA_CLIENT_SECRET }}
           PLAYWRIGHT_IS_OSS: true
         run: npx playwright test --project=sso-auth --workers=1 --grep-invert "${{ matrix.provider.excluded_tags }}"
 

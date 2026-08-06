@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OM_BASE_URL } from '../../constant/ssoAuth';
+import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
 import { ProviderConfigOverride } from '../ssoAuth';
 import { ProviderHelper } from './index';
 import {
@@ -34,6 +34,17 @@ const KEYCLOAK_OIDC_CLIENT = {
   secret: 'openmetadata-oidc-secret',
 } as const;
 
+// The OpenMetadata *server* fetches discovery and exchanges the code, and it
+// runs in a container — so `localhost:8080` resolves to its own loopback, not
+// Keycloak. Server-side URLs therefore go by container name over the shared
+// ometa_network, while `authority` stays on localhost because the browser uses
+// it and Keycloak pins the issuer to it (see KC_HOSTNAME in the fixture
+// compose). This mirrors how mock-oidc-provider splits ISSUER from
+// INTERNAL_BASE_URL in docker/development/docker-compose.yml.
+const KEYCLOAK_INTERNAL_BASE_URL =
+  process.env[SSO_ENV.KEYCLOAK_INTERNAL_BASE_URL] ??
+  'http://openmetadata-keycloak-saml:8080';
+
 /**
  * Points OpenMetadata at the Keycloak realm as a confidential OIDC client.
  *
@@ -50,6 +61,7 @@ export const buildKeycloakConfidentialConfigPayload =
     assertSupportedBaseUrl();
 
     const authority = `${KEYCLOAK_SAML.baseUrl}/realms/${KEYCLOAK_SAML.azureRealm}`;
+    const internalAuthority = `${KEYCLOAK_INTERNAL_BASE_URL}/realms/${KEYCLOAK_SAML.azureRealm}`;
 
     return {
       authenticationConfiguration: {
@@ -58,7 +70,7 @@ export const buildKeycloakConfidentialConfigPayload =
         providerName: 'Keycloak',
         publicKeyUrls: [
           `${OM_BASE_URL}/api/v1/system/config/jwks`,
-          `${authority}/protocol/openid-connect/certs`,
+          `${internalAuthority}/protocol/openid-connect/certs`,
         ],
         tokenValidationAlgorithm: 'RS256',
         authority,
@@ -71,7 +83,7 @@ export const buildKeycloakConfidentialConfigPayload =
           type: 'custom-oidc',
           secret: KEYCLOAK_OIDC_CLIENT.secret,
           scope: 'openid email profile',
-          discoveryUri: `${authority}/.well-known/openid-configuration`,
+          discoveryUri: `${internalAuthority}/.well-known/openid-configuration`,
           tenant: KEYCLOAK_SAML.azureRealm,
           callbackUrl: `${OM_BASE_URL}/callback`,
           serverUrl: OM_BASE_URL,
