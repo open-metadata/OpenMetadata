@@ -29,8 +29,8 @@ export const runWithConcurrencyLimit = async <T, R>(
   limit: number,
   worker: (item: T, index: number) => Promise<R>,
   shouldStop?: () => boolean
-): Promise<R[]> => {
-  const results = new Array<R>(items.length);
+): Promise<(R | undefined)[]> => {
+  const results = new Array<R | undefined>(items.length);
   let next = 0;
 
   const runNext = async (): Promise<void> => {
