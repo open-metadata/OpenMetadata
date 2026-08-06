@@ -39,6 +39,15 @@ public interface SearchClient
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
   String TABLE_SEARCH_INDEX = "table_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
+  // Comma-separated list of indices that store upstreamLineage.columns (column-level lineage).
+  // Used by updateColumnsInUpstreamLineage / deleteColumnsInUpstreamLineage to avoid scanning
+  // the entire cluster via GLOBAL_SEARCH_ALIAS when only these indices can contain column lineage.
+  // Entity types that support column-level children: Table, Topic, Container, DashboardDataModel,
+  // SearchIndex, APIEndpoint, MlModel, Dashboard.
+  String COLUMN_LINEAGE_SEARCH_INDICES =
+      "table_search_index,topic_search_index,container_search_index,"
+          + "dashboard_data_model_search_index,search_entity_search_index,"
+          + "api_endpoint_search_index,mlmodel_search_index,dashboard_search_index";
   String DEFAULT_UPDATE_SCRIPT =
       """
       for (k in params.keySet()) {
