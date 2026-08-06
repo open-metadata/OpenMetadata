@@ -428,58 +428,66 @@ class FivetranSource(PipelineServiceSource):
                     )
                 )  # type: ignore
 
-    def _resolve_source_entity(
+    def _resolve_table(
         self,
-        is_messaging_source: bool,
-        table_name: str,
-        schema_name: str,
-        database_name: Optional[str],  # noqa: UP045
-    ) -> Optional[Union[Table, Topic]]:  # noqa: UP007, UP045
-        if is_messaging_source:
-            for svc_name in self.get_messaging_service_names() or []:
-                entity_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Topic,
-                    service_name=svc_name,
-                    topic_name=table_name,
-                )
-                entity = self.metadata.get_by_name(entity=Topic, fqn=entity_fqn)
-                if entity:
-                    return entity
-        else:
-            for db_service_name in self.get_db_service_names() or []:
-                entity_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    table_name=table_name,
-                    database_name=database_name,
-                    schema_name=schema_name,
-                    service_name=db_service_name,
-                )
-                entity = self.metadata.get_by_name(entity=Table, fqn=entity_fqn)
-                if entity:
-                    return entity
-        return None
-
-    def _resolve_destination_table(
-        self,
+        *,
         table_name: str,
         schema_name: Optional[str],  # noqa: UP045
         database_name: Optional[str],  # noqa: UP045
     ) -> Optional[Table]:  # noqa: UP045
-        for db_service_name in self.get_db_service_names() or []:
+        service_names = self.get_db_service_names()
+        for service_name in service_names or []:
             entity_fqn = fqn.build(
-                self.metadata,
-                Table,
-                table_name=table_name,
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=service_name,
                 database_name=database_name,
                 schema_name=schema_name,
-                service_name=db_service_name,
+                table_name=table_name,
             )
             entity = self.metadata.get_by_name(entity=Table, fqn=entity_fqn)
             if entity:
                 return entity
-        return None
+        if service_names:
+            return None
+        return self._search_any_service(Table, [database_name, schema_name, table_name])
+
+    def _resolve_topic(self, *, topic_name: str) -> Optional[Topic]:  # noqa: UP045
+        service_names = self.get_messaging_service_names()
+        for service_name in service_names or []:
+            entity_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Topic,
+                service_name=service_name,
+                topic_name=topic_name,
+            )
+            entity = self.metadata.get_by_name(entity=Topic, fqn=entity_fqn)
+            if entity:
+                return entity
+        if service_names:
+            return None
+        return self._search_any_service(Topic, [topic_name])
+
+    def _search_any_service(
+        self,
+        entity_type: type,
+        parts: List[Optional[str]],  # noqa: UP006, UP045
+    ) -> Optional[Union[Table, Topic]]:  # noqa: UP007, UP045
+        # search_in_any_service pads missing parent levels with `*`, so pass only
+        # known parts. Quoting matters: a dotted topic name would otherwise be
+        # split into service.topic instead of being treated as one FQN part.
+        search_string = fqn.FQN_SEPARATOR.join(fqn.quote_name(part) for part in parts if part)
+        entity = self.metadata.search_in_any_service(
+            entity_type=entity_type,
+            fqn_search_string=search_string,
+        )
+        if entity:
+            service_name = entity.service.name if getattr(entity, "service", None) else "unknown"
+            logger.debug(
+                f"Resolved {entity_type.__name__} [{search_string}] via cross-service search"
+                f" in service [{service_name}]"
+            )
+        return entity
 
     def _get_pipeline_entity(self) -> Optional[Pipeline]:  # noqa: UP045
         pipeline_fqn = fqn.build(

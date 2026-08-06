@@ -680,6 +680,64 @@ class TestFivetranLineage:
             assert len(result) == 1
             assert result[0].right.edge.fromEntity.type == "topic"
 
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_falls_back_to_cross_service_search_when_unconfigured(self, mock_get_services, fivetran_source):
+        source, _ = fivetran_source
+        mock_get_services.return_value = []
+        found = Mock()
+        found.service = Mock(name="svc")
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.search_in_any_service = Mock(return_value=found)
+            result = source._resolve_table(table_name="action", schema_name="cxcases", database_name=None)
+
+        assert result is found
+        assert mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"] == "cxcases.action"
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_configured_services_do_not_use_fallback(self, mock_get_services, fivetran_source):
+        source, _ = fivetran_source
+        mock_get_services.return_value = ["pg"]
+        found = Mock()
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(return_value=found)
+            mock_metadata.search_in_any_service = Mock()
+            result = source._resolve_table(table_name="action", schema_name="cxcases", database_name="db")
+
+        assert result is found
+        mock_metadata.search_in_any_service.assert_not_called()
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    def test_configured_but_not_found_still_skips(self, mock_get_services, fivetran_source):
+        source, _ = fivetran_source
+        mock_get_services.return_value = ["pg"]
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(return_value=None)
+            mock_metadata.search_in_any_service = Mock()
+            result = source._resolve_table(table_name="action", schema_name="cxcases", database_name="db")
+
+        assert result is None
+        mock_metadata.search_in_any_service.assert_not_called()
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
+    def test_topic_search_string_quotes_dotted_name(self, mock_get_services, fivetran_source):
+        source, _ = fivetran_source
+        mock_get_services.return_value = []
+        found = Mock()
+        found.service = Mock(name="kafka")
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.search_in_any_service = Mock(return_value=found)
+            source._resolve_topic(topic_name="fivetran_dex.employee_paystub")
+
+        # Topic FQNs have 2 slots; an unquoted dotted name would be read as service.topic
+        assert (
+            mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"]
+            == '"fivetran_dex.employee_paystub"'
+        )
+
 
 class TestFivetranColumnLineage:
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
