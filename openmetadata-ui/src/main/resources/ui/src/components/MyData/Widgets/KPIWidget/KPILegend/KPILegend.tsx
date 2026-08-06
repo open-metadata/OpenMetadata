@@ -28,30 +28,34 @@ interface KPILegendProps {
   isFullSize: boolean;
 }
 
+const GoalCompleted = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="goal-completed-container">
+      <CheckIcon />
+      <Typography.Text>{t('label.goal-completed')}</Typography.Text>
+    </div>
+  );
+};
+
+const GoalMissed = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="goal-missed-container">
+      <WarningOutlined />
+      <Typography.Text>{t('label.goal-missed')}</Typography.Text>
+    </div>
+  );
+};
+
 const KPILegend: React.FC<KPILegendProps> = ({
   kpiLatestResultsRecord,
   isFullSize,
 }) => {
   const { t } = useTranslation();
   const entries = Object.entries(kpiLatestResultsRecord);
-
-  const GoalCompleted = () => {
-    return (
-      <div className="goal-completed-container">
-        <CheckIcon />
-        <Typography.Text>{t('label.goal-completed')}</Typography.Text>
-      </div>
-    );
-  };
-
-  const GoalMissed = () => {
-    return (
-      <div className="goal-missed-container">
-        <WarningOutlined />
-        <Typography.Text>{t('label.goal-missed')}</Typography.Text>
-      </div>
-    );
-  };
 
   return (
     <div className="w-full h-full kpi-legend d-flex flex-column p-sm">
