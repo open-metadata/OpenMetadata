@@ -51,6 +51,10 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Guards the version search pagination loop against a backend that keeps
+# handing back a page token, which would otherwise spin forever.
+MAX_VERSION_PAGES = 100
+
 
 class MlflowSource(MlModelServiceSource):
     """
@@ -82,22 +86,97 @@ class MlflowSource(MlModelServiceSource):
                 )
                 continue
 
-            latest_version: ModelVersion | None = max(
-                model.latest_versions,
-                key=lambda ver: int(ver.version),
-                default=None,
-            )
+            latest_version = self._get_latest_version(model)
             if not latest_version:
                 self.status.failed(
                     StackTraceError(
                         name=model.name,
                         error="Version not found",
-                        stackTrace=f"Unable to ingest model {model.name} due to missing version from version list {model.latest_versions}",  # pylint: disable=line-too-long
+                        stackTrace=f"Unable to ingest model {model.name}: no version could be resolved from "
+                        "`latest_versions` nor from searching the model versions.",
+                    )
+                )
+                continue
+
+            # yield_mlmodel resolves the run from this ID, so an unset one would
+            # only blow up later, mid-topology.
+            if not latest_version.run_id:
+                self.status.failed(
+                    StackTraceError(
+                        name=model.name,
+                        error="Run ID not found",
+                        stackTrace=f"Unable to ingest model {model.name}: version {latest_version.version} "
+                        "has no associated run_id.",
                     )
                 )
                 continue
 
             yield model, latest_version
+
+    def _get_latest_version(self, model: RegisteredModel) -> ModelVersion | None:
+        """
+        Resolve the newest version of a registered model.
+
+        `latest_versions` is a stage-era field that registries without stages —
+        Unity Catalog among them — leave unset, so fall back to searching the
+        model's versions when it is missing.
+
+        Empty is treated the same as unset on purpose: stage-based backends
+        return [] when every version sits outside the requested stages, so an
+        empty list is not evidence that the model has no versions.
+        """
+        return self._pick_newest(model.latest_versions or self._search_versions(model.name))
+
+    def _search_versions(self, model_name: str) -> list[ModelVersion]:
+        """
+        List every version of a model, following pagination.
+
+        Returns the complete list or nothing at all. A partial list is worse
+        than none here: `_pick_newest` would resolve an arbitrary version as
+        the latest, which is precisely what paginating is meant to prevent.
+
+        Note the ordering is deliberately left to `_pick_newest`: Unity Catalog
+        rejects `order_by` on this call outright.
+        """
+        versions: list[ModelVersion] = []
+        page_token = None
+
+        # MLflow only bars `/` and `:` from model names, so a name may well contain
+        # a quote. Double quotes are the only delimiter the filter parser round-trips
+        # a single quote through: the SQL-style `''` escape parses, but yields the
+        # doubled quote verbatim and would silently match nothing.
+        filter_string = f'name="{model_name}"'
+
+        try:
+            for _ in range(MAX_VERSION_PAGES):
+                page = self.client.search_model_versions(filter_string=filter_string, page_token=page_token)
+                versions.extend(page)
+
+                page_token = getattr(page, "token", None)
+                if not page_token:
+                    return versions
+
+            logger.warning(
+                f"Gave up paginating versions of {model_name} after {MAX_VERSION_PAGES} pages "
+                "with more still pending; skipping the model rather than risking a stale version."
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error searching for versions of model {model_name} - {err}")
+
+        return []
+
+    @staticmethod
+    def _pick_newest(versions: Iterable[ModelVersion]) -> ModelVersion | None:
+        """Pick the highest-numbered version, ignoring any non-numeric ones."""
+        numbered = []
+        for version in versions:
+            try:
+                numbered.append((int(version.version), version))
+            except (TypeError, ValueError):
+                logger.warning(f"Skipping version with non-numeric identifier: {version.version}")
+
+        return max(numbered, key=lambda pair: pair[0], default=(None, None))[1]
 
     def _get_algorithm(self) -> str:  # pylint: disable=arguments-differ
         logger.info("Setting algorithm with default value `mlmodel` for Mlflow")
