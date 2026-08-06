@@ -1220,18 +1220,7 @@ public class OpenSearchBulkSink implements BulkSink {
    * for that entity.
    */
   private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
-    if (cached == null || !cached.isObject()) {
-      return false;
-    }
-    JsonNode embedding = cached.path("embedding");
-    if (!embedding.isArray() || embedding.isEmpty()) {
-      return false;
-    }
-    if (expectedDimension > 0 && embedding.size() != expectedDimension) {
-      return false;
-    }
-    JsonNode fingerprint = cached.path("fingerprint");
-    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
+    return BulkSinkSupport.canReuseCachedEmbedding(cached, expectedDimension);
   }
 
   @Override
@@ -1854,38 +1843,11 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     private String extractEntityTypeFromIndex(String indexName) {
-      if (indexName == null || indexName.isEmpty()) {
-        return "unknown";
-      }
-      // Index names may be like "table_search_index" or "mlmodel_search_index_rebuild_123456"
-      // Remove "_search_index" suffix and any rebuild timestamp
-      String searchIndexSuffix = "_search_index";
-      int searchIndexPos = indexName.indexOf(searchIndexSuffix);
-      if (searchIndexPos > 0) {
-        return indexName.substring(0, searchIndexPos);
-      }
-      return indexName;
+      return BulkSinkSupport.extractEntityTypeFromIndex(indexName);
     }
 
     private boolean shouldRetry(int attemptNumber, Throwable error) {
-      if (attemptNumber >= maxRetries) {
-        return false;
-      }
-      String errorMessage = error.getMessage();
-      if (errorMessage == null) {
-        return true;
-      }
-      String lowerCaseMessage = errorMessage.toLowerCase();
-      return lowerCaseMessage.contains("rejected_execution_exception")
-          || lowerCaseMessage.contains("esrejectedexecutionexception")
-          || lowerCaseMessage.contains("remotetransportexception")
-          || lowerCaseMessage.contains("connectexception")
-          || lowerCaseMessage.contains("timeout")
-          || lowerCaseMessage.contains("request entity too large")
-          || lowerCaseMessage.contains("content too long")
-          || lowerCaseMessage.contains("413")
-          || lowerCaseMessage.contains("circuit_breaking_exception")
-          || lowerCaseMessage.contains("too_many_requests");
+      return BulkSinkSupport.shouldRetry(attemptNumber, error, maxRetries);
     }
 
     boolean isPayloadTooLargeError(Throwable error) {
@@ -1899,7 +1861,7 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     private long calculateBackoff(int attemptNumber) {
-      return initialBackoffMillis * (long) Math.pow(2, attemptNumber);
+      return BulkSinkSupport.calculateBackoff(attemptNumber, initialBackoffMillis);
     }
 
     boolean awaitClose(long timeout, TimeUnit unit) throws InterruptedException {
