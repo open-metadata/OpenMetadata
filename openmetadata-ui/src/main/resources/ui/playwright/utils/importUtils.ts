@@ -76,7 +76,7 @@ const scrollIntoViewCenter = async (locator: Locator) => {
 // moment during a test (mid-fill, mid-modal, mid-drag) as background jobs
 // complete. Injecting pointer-events:none once disables click interception for
 // the entire page session — no need to poll or dismiss at every step.
-const disableCsvJobsTrayInterception = async (page: Page) => {
+export const disableCsvJobsTrayInterception = async (page: Page) => {
   await page.addStyleTag({
     content:
       '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }',
