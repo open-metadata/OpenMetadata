@@ -39,7 +39,6 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
 import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
 import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
   STEPS_FOR_EDIT_SERVICE,
@@ -56,11 +55,7 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getSettingPath } from '../../utils/RouterUtils';
-import {
-  getServiceRouteFromServiceType,
-  getServiceType,
-} from '../../utils/ServicePureUtils';
+import { getServiceType } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -224,10 +219,7 @@ function EditConnectionFormPage() {
     (id: React.Key) => {
       if (id === 'service-category') {
         navigate(
-          getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory)
-          )
+          connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
         );
       } else if (id === 'service-name') {
         navigate(
