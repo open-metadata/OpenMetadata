@@ -13,7 +13,7 @@
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Box, Typography as MuiTypography, useTheme } from '@mui/material';
 import { Avatar } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Form, Space, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -84,6 +84,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
+import { getFeedCounts } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
@@ -103,6 +104,9 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { useFormDrawerWithRef } from '../../common/atoms/drawer';
+import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
+import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
