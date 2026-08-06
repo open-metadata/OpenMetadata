@@ -158,6 +158,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     if (columnFqn && extractedColumns.length > 0) {
       const col = findFieldByFQN(extractedColumns as Column[], columnFqn);
       if (col) {
+        // Seed the panel navigation list on the deep-link path too — the child's
+        // ref write is dropped here because the panel-open gate is still null.
+        setPanelColumns(
+          displayedColumnsRef.current.length > 0
+            ? displayedColumnsRef.current
+            : extractedColumns
+        );
         setSelectedColumn(cleanColumn(col));
       }
     }
