@@ -111,5 +111,18 @@ ESLint blocks these zero-backlog invariants:
 - `openmetadata-performance/no-unbounded-module-cache` for module-level cache-like `Map` and `Set`
   bindings.
 
+ESLint also reports these backlog-bearing invariants as non-blocking warnings:
+
+- Pure utilities cannot contain JSX or depend on React, UI/state layers, pages, hooks, or REST.
+- Lower layers cannot import pages; page features cannot import other page features; REST and hooks
+  cannot depend upward on UI layers.
+- Runtime circular imports and app-internal barrel imports are reported; type-only imports do not
+  create runtime cycle/barrel findings.
+- Lodash default/namespace imports, REST calls inside iteration, and potentially sequential REST
+  calls are reported for direct-import, bulk-fetch, or parallelization review.
+
+The exact rule names, measured baselines, and CI visibility are documented in
+`docs/ui-code-quality-gate.md`.
+
 Use a narrow `eslint-disable-next-line` only when a test deliberately exercises the boundary helper
 itself and therefore owns the fallback in the test case. Include the reason beside the suppression.
