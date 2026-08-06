@@ -19,9 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -218,6 +220,79 @@ public class IngestionPipelineSortIT {
     createPipeline(service, ns.prefix("pipeline-a"), "aaa-" + ns.prefix("first"));
 
     ListParams params = sortParams(service, "descending", 50);
+
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().ingestionPipelines().list(params));
+  }
+
+  /**
+   * The sort column is deliberately not case-folded, so ordering and the cursor comparison both
+   * inherit the column's own collation. MySQL's {@code utf8mb4_0900_ai_ci} makes {@code 'apple'} and
+   * {@code 'Apple'} compare <em>equal</em>, while PostgreSQL's default collation keeps them
+   * distinct — so on MySQL a whole group of rows shares one sort key and only the {@code id}
+   * tiebreak separates them.
+   *
+   * <p>That is exactly where a keyset walk loses rows. Paging one row at a time across case
+   * variants has to visit every one of them, on either engine, which also pins the reason the cursor
+   * value is carried verbatim: normalising it in Java would make the comparison disagree with the
+   * ORDER BY that produced it.
+   */
+  @Test
+  void test_listSortedByDisplayName_pagesThroughKeysTheCollationTreatsAsEqual(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    // Distinct strings that differ only in case, so a case-insensitive collation collapses them to
+    // one sort key and the id tiebreak is the only thing keeping the order total.
+    String shared = "-" + ns.prefix("case-probe");
+    List<String> caseVariants = List.of("aa" + shared, "AA" + shared, "Aa" + shared);
+    for (int i = 0; i < caseVariants.size(); i++) {
+      createPipeline(service, ns.prefix("pipeline-" + i), caseVariants.get(i));
+    }
+
+    List<String> walked = new ArrayList<>();
+    String after = null;
+    for (int page = 0; page <= caseVariants.size(); page++) {
+      ListParams params = sortParams(service, "asc", 1);
+      if (after != null) {
+        params.setAfter(after);
+      }
+      ListResponse<IngestionPipeline> result =
+          SdkClients.adminClient().ingestionPipelines().list(params);
+      walked.addAll(displayNamesOf(result));
+      after = result.getPaging().getAfter();
+      if (after == null) {
+        break;
+      }
+    }
+
+    assertNull(after, "keyset walk did not terminate");
+    assertEquals(caseVariants.size(), walked.size(), "keyset walk skipped or repeated a row");
+    assertEquals(Set.copyOf(caseVariants), Set.copyOf(walked));
+  }
+
+  /**
+   * The two listings issue different cursors — {@code (name, id)} unsorted, {@code
+   * (displayNameSort, id)} sorted — and a caller that keeps the cursor across requests can outlive
+   * the sort order that produced it. Feeding one listing the other's cursor has to fail loudly:
+   * both are keyset predicates, so a cursor the query cannot read matches no row and returns an
+   * empty page, which is indistinguishable from having reached the end of the list.
+   */
+  @Test
+  void test_listSortedByDisplayName_rejectsCursorFromTheDefaultListing(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    createPipeline(service, ns.prefix("pipeline-a"), "zzz-" + ns.prefix("last"));
+    createPipeline(service, ns.prefix("pipeline-z"), "aaa-" + ns.prefix("first"));
+
+    ListResponse<IngestionPipeline> defaultFirstPage =
+        SdkClients.adminClient()
+            .ingestionPipelines()
+            .list(new ListParams().setService(service.getName()).setLimit(1));
+    String defaultCursor = defaultFirstPage.getPaging().getAfter();
+    assertNotNull(defaultCursor);
+
+    ListParams params = sortParams(service, "asc", 1).setAfter(defaultCursor);
 
     assertThrows(
         OpenMetadataException.class,

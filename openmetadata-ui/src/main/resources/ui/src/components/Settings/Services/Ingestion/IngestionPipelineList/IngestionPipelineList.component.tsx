@@ -32,6 +32,7 @@ import {
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../../generated/type/paging';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
+import { useTableFilters } from '../../../../../hooks/useTableFilters';
 import {
   deployIngestionPipelineById,
   getIngestionPipelines,
@@ -47,6 +48,14 @@ import Loader from '../../../../common/Loader/Loader';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import IngestionListTable from '../IngestionListTable/IngestionListTable';
+
+/**
+ * The listing endpoint rejects any `sortOrder` other than `asc`/`desc`, so a value that did not come
+ * from the Name column — a hand-edited URL, or a repeated query param that `qs` parses as an array —
+ * falls back to the unsorted listing instead of being forwarded and 400ing.
+ */
+const toSortOrder = (value?: string): SORT_ORDER | undefined =>
+  Object.values(SORT_ORDER).find((order) => order === value);
 
 export const IngestionPipelineList = ({
   serviceName,
@@ -66,7 +75,20 @@ export const IngestionPipelineList = ({
   const [loading, setLoading] = useState(false);
   const [pipelineTypeFilter, setPipelineTypeFilter] =
     useState<PipelineType[]>();
-  const [sortOrder, setSortOrder] = useState<SORT_ORDER>();
+
+  // The sort order lives in the URL rather than in component state because the cursor it produces
+  // already does: usePaging persists cursorType/cursorValue as query params, and a sorted cursor is
+  // a (displayNameSort, id) tuple that only the sorted listing can read. Keeping the order in state
+  // meant a reload of page 2 replayed that cursor down the default name-ordered path, which matches
+  // no row and renders an empty page. Same reason back/forward and a shared link now work.
+  const { filters: sortFilters, setFilters: setSortFilters } = useTableFilters<{
+    sortOrder?: string;
+  }>({ sortOrder: undefined });
+
+  const sortOrder = useMemo(
+    () => toSortOrder(sortFilters.sortOrder),
+    [sortFilters.sortOrder]
+  );
 
   const pagingInfo = usePaging();
 
@@ -246,10 +268,12 @@ export const IngestionPipelineList = ({
 
   const handleSortChange = useCallback(
     (updatedSortOrder?: SORT_ORDER) => {
-      setSortOrder(updatedSortOrder);
+      // Written before resetToFirstPage, not after: both merge into the same query string off the
+      // live URL, and the cursor must be dropped by the later of the two writes.
+      setSortFilters({ sortOrder: updatedSortOrder ?? null });
       resetToFirstPage();
     },
-    [resetToFirstPage]
+    [resetToFirstPage, setSortFilters]
   );
 
   const handleRowChange = useCallback(

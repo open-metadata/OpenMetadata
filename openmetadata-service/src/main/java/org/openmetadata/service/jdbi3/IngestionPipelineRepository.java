@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
@@ -248,7 +249,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return entities;
   }
 
-  private DisplayNameCursor parseDisplayNameCursor(String cursor) {
+  @VisibleForTesting
+  DisplayNameCursor parseDisplayNameCursor(String cursor) {
     Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(cursor));
     String displayName = cursorMap.get("displayNameSort");
     String id = cursorMap.get("id");
@@ -263,7 +265,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * LEFT(COALESCE(NULLIF(displayName,''), name), 256)}. The column is deliberately not case-folded,
    * so the value is carried verbatim and comparison semantics stay entirely inside the database.
    */
-  private String displayNameCursorValue(IngestionPipeline pipeline) {
+  @VisibleForTesting
+  String displayNameCursorValue(IngestionPipeline pipeline) {
     String displayName = pipeline.getDisplayName();
     String sortKey = nullOrEmpty(displayName) ? pipeline.getName() : displayName;
     return JsonUtils.pojoToJson(
@@ -279,7 +282,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * {@link String#substring} on a surrogate pair would produce a cursor the database disagrees with
    * and silently skip a row at the page boundary.
    */
-  private String truncateToSortWidth(String sortKey) {
+  @VisibleForTesting
+  String truncateToSortWidth(String sortKey) {
     String truncated = sortKey;
     if (sortKey.codePointCount(0, sortKey.length()) > DISPLAY_NAME_SORT_MAX_CHARS) {
       truncated = sortKey.substring(0, sortKey.offsetByCodePoints(0, DISPLAY_NAME_SORT_MAX_CHARS));
@@ -287,7 +291,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return truncated;
   }
 
-  private record DisplayNameCursor(String displayName, String id) {}
+  @VisibleForTesting
+  record DisplayNameCursor(String displayName, String id) {}
 
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {

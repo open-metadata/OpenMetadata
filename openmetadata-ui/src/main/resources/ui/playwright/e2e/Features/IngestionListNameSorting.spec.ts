@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page, test } from '@playwright/test';
-import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { SORT_ORDER } from '../../../src/enums/common.enum';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -64,6 +64,22 @@ const seededRowOrder = async (page: Page) => {
     .filter((name) => name.endsWith(token));
 };
 
+// The Name column renders `displayName ?? name`, so the listing response is what the cells should
+// show — and in the order the response returned them.
+const renderedNames = (body: {
+  data?: { displayName?: string; name: string }[];
+}): string[] =>
+  (body.data ?? []).map((pipeline) => pipeline.displayName ?? pipeline.name);
+
+const waitForSortedListing = (page: Page, { cursored = false } = {}) =>
+  page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/services/ingestionPipelines?') &&
+      response.url().includes('sortField=displayName') &&
+      (!cursored || response.url().includes('after=')) &&
+      response.status() === 200
+  );
+
 /**
  * The Name column's job is to hand ordering to the server and render whatever comes back — sorting
  * in the browser can only ever reorder the loaded page. So assert both halves of that contract:
@@ -86,13 +102,9 @@ const expectSortDelegatedToServer = async (
 
   await nameHeader.click();
 
-  const body = await (await sortedResponse).json();
-  const serverOrder: string[] = (body.data ?? [])
-    .map(
-      (pipeline: { displayName?: string; name: string }) =>
-        pipeline.displayName ?? pipeline.name
-    )
-    .filter((name: string) => name.endsWith(token));
+  const serverOrder = renderedNames(await (await sortedResponse).json()).filter(
+    (name) => name.endsWith(token)
+  );
 
   expect(serverOrder).toHaveLength(agents.length);
 
@@ -173,5 +185,51 @@ test.describe('Ingestion agent list Name column sorting', () => {
     await test.step('Sort descending on Name', async () => {
       await expectSortDelegatedToServer(page, nameHeader, SORT_ORDER.DESC);
     });
+  });
+
+  /**
+   * A sorted cursor is a `(displayNameSort, id)` tuple that only the sorted listing can read, and
+   * the cursor outlives a reload because usePaging keeps it in the URL. So the sort order has to
+   * outlive the reload too — replaying that cursor down the default `name`-ordered path matches no
+   * row and renders an empty page.
+   *
+   * `pageSize=1` rather than seeding a full page of agents: the tab lists every database agent, so
+   * the number of rows is not this spec's to control, but the page size is.
+   */
+  test('should keep a sorted page addressable across a reload', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await stubIngestionSchedulerStatus(page);
+
+    await page.goto('/settings/services/databases?tab=pipelines&pageSize=1');
+    await waitForAllLoadersToDisappear(page);
+
+    const sortedFirstPage = waitForSortedListing(page);
+
+    await page.locator('th:has-text("Name")').first().click();
+    await sortedFirstPage;
+    await waitForAllLoadersToDisappear(page);
+
+    const secondPage = waitForSortedListing(page, { cursored: true });
+
+    await page.getByTestId('next').click();
+
+    // Taken from the response rather than the rendered cell: the row this cursor addresses is the
+    // server's answer, and it is what the page after the reload has to agree with.
+    const [rowOnSecondPage] = renderedNames(await (await secondPage).json());
+
+    expect(rowOnSecondPage).toBeTruthy();
+
+    const restoredPage = waitForSortedListing(page, { cursored: true });
+
+    await page.reload();
+    await restoredPage;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('pipeline-name').first()).toHaveText(
+      rowOnSecondPage
+    );
   });
 });
