@@ -670,7 +670,7 @@ traitlets==5.15.0
 trino==0.337.0
 typer==0.25.1
 types-protobuf==7.34.1.20260518
-types-requests==2.33.0.20260518
+types-requests==2.33.0.20260712
 typing-inspect==0.9.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
