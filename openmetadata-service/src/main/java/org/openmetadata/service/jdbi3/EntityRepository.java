@@ -2359,8 +2359,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Whether a single entity instance should be embedded into the vector/semantic index. Defaults to
    * {@link #isSearchIndexable}; override when an instance may be keyword-searchable but must not be
-   * reachable through the vector path (e.g. {@link ContextMemoryRepository} keeps non-org-wide
-   * memories out because vector chunks carry no visibility fields to filter on).
+   * reachable through the vector path — for instance when its chunk documents cannot carry the
+   * fields its privacy model needs the vector query to filter on.
    */
   public boolean isVectorEmbeddable(EntityInterface entity) {
     return isSearchIndexable(entity);
