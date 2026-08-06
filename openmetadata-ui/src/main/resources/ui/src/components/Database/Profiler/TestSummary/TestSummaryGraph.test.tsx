@@ -69,6 +69,7 @@ const ACTIVE_ATTRIBUTE = 'data-active';
 const ACTIVE_VALUE = 'true';
 const INACTIVE_VALUE = 'false';
 const TOOLTIP_CONTENT_TEST_ID = 'test-summary-custom-tooltip';
+const TOOLTIP_TRANSFORM_ATTRIBUTE = 'data-transform';
 const TOOLTIP_X_ATTRIBUTE = 'data-x';
 const TOOLTIP_Y_ATTRIBUTE = 'data-y';
 const POINT_TEST_ID = 'test-summary-point-min';
@@ -443,7 +444,7 @@ describe('TestSummaryGraph', () => {
 
     expect(tooltip).toHaveAttribute(ACTIVE_ATTRIBUTE, ACTIVE_VALUE);
     expect(tooltip).toHaveAttribute(
-      'data-transform',
+      TOOLTIP_TRANSFORM_ATTRIBUTE,
       'translate(324px, 124px)'
     );
     expect(tooltip).toHaveAttribute(TOOLTIP_X_ATTRIBUTE, '324');
@@ -505,6 +506,35 @@ describe('TestSummaryGraph', () => {
     jest.useRealTimers();
   });
 
+  it('should keep the seeded tooltip visible when its content has no size', () => {
+    (HTMLElement.prototype.getBoundingClientRect as jest.Mock).mockReturnValue({
+      bottom: 0,
+      height: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      width: 0,
+      x: 0,
+      y: 0,
+      toJSON: jest.fn(),
+    });
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const point = screen.getByTestId(POINT_TEST_ID);
+    const tooltip = screen.getByTestId(TOOLTIP_TEST_ID);
+
+    fireEvent.mouseEnter(point);
+
+    expect(tooltip).toHaveAttribute(ACTIVE_ATTRIBUTE, ACTIVE_VALUE);
+    expect(tooltip).toHaveAttribute('data-visibility', 'visible');
+    expect(tooltip).toHaveAttribute(
+      TOOLTIP_TRANSFORM_ATTRIBUTE,
+      'translate(324px, 124px)'
+    );
+    expect(tooltip).toHaveAttribute(TOOLTIP_X_ATTRIBUTE, '324');
+    expect(tooltip).toHaveAttribute(TOOLTIP_Y_ATTRIBUTE, '124');
+  });
+
   it('should flip the fixed tooltip position when the chart edges would overflow', () => {
     mockPointCoordinate = { x: 760, y: 360 };
     render(<TestSummaryGraph {...mockProps} />);
@@ -515,7 +545,7 @@ describe('TestSummaryGraph', () => {
     fireEvent.mouseEnter(point);
 
     expect(tooltip).toHaveAttribute(
-      'data-transform',
+      TOOLTIP_TRANSFORM_ATTRIBUTE,
       'translate(516px, 196px)'
     );
     expect(tooltip).toHaveAttribute(TOOLTIP_X_ATTRIBUTE, '516');

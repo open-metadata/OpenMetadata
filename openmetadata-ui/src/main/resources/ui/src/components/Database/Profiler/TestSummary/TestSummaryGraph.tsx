@@ -83,7 +83,6 @@ interface ActiveTooltip {
   anchor: Coordinate;
   payload: Record<string, unknown>;
   position: Coordinate;
-  positioned: boolean;
 }
 
 interface TooltipSize {
@@ -180,7 +179,6 @@ function TestSummaryGraph({
         anchor: { x, y },
         payload,
         position: { x: x + TOOLTIP_GAP, y: y + TOOLTIP_GAP },
-        positioned: false,
       });
     },
     [cancelTooltipClose]
@@ -201,14 +199,13 @@ function TestSummaryGraph({
         });
 
         if (
-          currentTooltip.positioned &&
           currentTooltip.position.x === position.x &&
           currentTooltip.position.y === position.y
         ) {
           return currentTooltip;
         }
 
-        return { ...currentTooltip, position, positioned: true };
+        return { ...currentTooltip, position };
       });
     },
     []
@@ -431,7 +428,7 @@ function TestSummaryGraph({
           position={activeTooltip?.position}
           wrapperStyle={{
             pointerEvents: 'auto',
-            visibility: activeTooltip?.positioned ? 'visible' : 'hidden',
+            visibility: activeTooltip ? 'visible' : 'hidden',
             // Recharts exposes the active wrapper before measuring its content.
             // Seed its transform so the first frame does not render at the origin.
             transform: activeTooltip
