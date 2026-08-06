@@ -1494,3 +1494,68 @@ class TestCdcFieldResolutionIsUnchanged:
         topic = _debezium_envelope_topic()
         assert _new_source()._get_topic_field_fqn(topic, "before.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.before.id"
         assert _new_source()._get_topic_field_fqn(topic, "after.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.after.id"
+
+
+class TestDebugHostnameDiagnostic:
+    """Task 10: the NOT FOUND summary line hardcoded three CDC/JDBC-style config keys and
+    never consulted SERVICE_TYPE_HOSTNAME_KEYS, so a managed Snowflake sink -- whose host
+    lives under `snowflake.url.name` -- always reported 'hostname: NOT SET' even though the
+    connector plainly declared one (observed live, with a leading space from the Confluent
+    UI). That misleads support triage into thinking the connector never set a host."""
+
+    def test_snowflake_sink_not_found_summary_reports_real_hostname(self):
+        """End-to-end through yield_pipeline_lineage_details with the table intentionally
+        unresolvable, exercising the exact summary line a support engineer would read."""
+        source = _new_source()
+        source._topics_cache = {}
+        source.lineage_results = []
+        source._database_services_cache = []  # no service can match -> "no service matched" branch
+        source._messaging_services_cache = []
+        source.context = MagicMock()
+        source.context.get.return_value = SimpleNamespace(
+            pipeline_service="KafkaConnectSvc", pipeline="SnowflakeSinkConnector_0"
+        )
+        source._resolve_messaging_service = lambda pipeline_details: None
+        source.get_dataset_entity = lambda **kwargs: None  # table never resolves
+
+        pipeline_entity = SimpleNamespace(id=SimpleNamespace(root=uuid.uuid4()))
+
+        def _get_by_name(entity=None, fqn=None, **kwargs):
+            return pipeline_entity if getattr(entity, "__name__", "") == "Pipeline" else None
+
+        source.metadata = MagicMock()
+        source.metadata.get_by_name.side_effect = _get_by_name
+        source.metadata.search_in_any_service.return_value = None
+
+        details = KafkaConnectPipelineDetails(
+            name="SnowflakeSinkConnector_0",
+            type="sink",
+            config=REAL_CONFLUENT_CLOUD_RESPONSE["config"],
+        )
+
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
+            return_value=None,
+        ):
+            list(source.yield_pipeline_lineage_details(details))
+
+        assert source.lineage_results, "expected at least one lineage result entry"
+        table_fqn = source.lineage_results[0]["table_fqn"]
+        assert "NOT SET" not in table_fqn
+        assert "hostname: FMFAHQK-GI58232.snowflakecomputing.com" in table_fqn
+
+    def test_cdc_style_connector_falls_back_to_database_hostname(self):
+        """A connector class absent from CONNECTOR_CLASS_TO_SERVICE_TYPE (or a service type
+        absent from SERVICE_TYPE_HOSTNAME_KEYS) must still surface its host via the legacy
+        `database.hostname`/`database.server`/`connection.host` keys -- the fix must not
+        regress connectors that are only ever matched by those."""
+        details = KafkaConnectPipelineDetails(
+            name="cdc",
+            type="source",
+            config={
+                "connector.class": "SomeUnmappedCdcSource",
+                "database.hostname": "cdc.example.com",
+                "table.name.format": "orders",
+            },
+        )
+        assert _new_source()._debug_hostname(details) == "cdc.example.com"

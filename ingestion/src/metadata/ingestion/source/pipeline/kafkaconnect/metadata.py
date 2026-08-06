@@ -358,6 +358,38 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.warning(f"Unable to extract service names from connector config: {exc}")
             return ServiceResolutionResult(database_service_name=None, messaging_service_name=None)
 
+    def _debug_hostname(self, pipeline_details: KafkaConnectPipelineDetails) -> str:
+        """
+        Best-effort hostname for diagnostic/summary messages only -- never used to make a
+        resolution decision. Mirrors the key lookup get_service_from_connector_config uses
+        (service-type-derived keys from SERVICE_TYPE_HOSTNAME_KEYS first) so the message
+        shows the value the real resolution path actually read, instead of always assuming
+        CDC/JDBC-style keys -- some registered service types expose their host under a
+        connector-specific key those three don't cover. Falls back to those legacy keys for
+        connectors matched by them but absent from CONNECTOR_CLASS_TO_SERVICE_TYPE.
+        """
+        if not pipeline_details.config:
+            return "NOT SET"
+
+        hostname_value = None
+        connector_class = pipeline_details.config.get("connector.class", "")
+        class_name = connector_class.split(".")[-1] if connector_class else ""
+        service_type = CONNECTOR_CLASS_TO_SERVICE_TYPE.get(class_name)
+        if service_type:
+            for key in SERVICE_TYPE_HOSTNAME_KEYS.get(service_type, []):
+                hostname_value = pipeline_details.config.get(key)
+                if hostname_value:
+                    break
+
+        hostname_value = (
+            hostname_value
+            or pipeline_details.config.get("database.hostname")
+            or pipeline_details.config.get("database.server")
+            or pipeline_details.config.get("connection.host")
+        )
+
+        return self._extract_hostname(hostname_value) if hostname_value else "NOT SET"
+
     def _resolve_messaging_service(self, pipeline_details: KafkaConnectPipelineDetails) -> Optional[str]:  # noqa: UP045
         """
         Resolve messaging service name from connector config or service connection.
@@ -1735,15 +1767,8 @@ class KafkaconnectSource(PipelineServiceSource):
                         # Get matched database service name and hostname
                         result = self.get_service_from_connector_config(pipeline_details)
 
-                        # Extract hostname from connector config
-                        db_hostname_for_debug = "NOT SET"
-                        if pipeline_details.config:
-                            db_hostname_for_debug = (
-                                pipeline_details.config.get("database.hostname")
-                                or pipeline_details.config.get("database.server")
-                                or pipeline_details.config.get("connection.host")
-                                or "NOT SET"
-                            )
+                        # Extract hostname from connector config (diagnostic only)
+                        db_hostname_for_debug = self._debug_hostname(pipeline_details)
 
                         # Build debug message with what we searched for
                         if dataset_details.table:
