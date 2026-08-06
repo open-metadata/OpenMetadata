@@ -41,12 +41,16 @@ from metadata.ingestion.source.database.clickzetta.connection import (  # noqa: 
     ClickzettaConnection,
     get_clickzetta_connection_url,
 )
+from metadata.ingestion.source.database.clickzetta.data_diff.table_parameter import (  # noqa: E402
+    ClickzettaTableParameter,
+)
 from metadata.ingestion.source.database.clickzetta.service_spec import (  # noqa: E402
     ServiceSpec,
 )
 from metadata.ingestion.source.database.clickzetta.url import (  # noqa: E402
     build_clickzetta_url,
 )
+from metadata.utils.importer import get_class_path  # noqa: E402
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.clickzetta.connection"
 
@@ -89,11 +93,11 @@ def _connection_config(connection_options=None):
     )
 
 
-def test_service_spec_disables_non_metadata_capabilities():
+def test_service_spec_registers_only_the_validated_data_diff_capability():
     assert ServiceSpec.profiler_class is None
     assert ServiceSpec.sampler_class is None
     assert ServiceSpec.test_suite_class is None
-    assert ServiceSpec.data_diff is None
+    assert ServiceSpec.data_diff == get_class_path(ClickzettaTableParameter)
 
 
 def test_clickzetta_connection_uses_common_builder():

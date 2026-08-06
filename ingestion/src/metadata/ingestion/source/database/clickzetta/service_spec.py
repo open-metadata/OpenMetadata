@@ -3,6 +3,9 @@
 from metadata.ingestion.source.database.clickzetta.connection import (
     ClickzettaConnection,
 )
+from metadata.ingestion.source.database.clickzetta.data_diff.table_parameter import (
+    ClickzettaTableParameter,
+)
 from metadata.ingestion.source.database.clickzetta.lineage import (
     ClickzettaLineageSource,
 )
@@ -23,5 +26,5 @@ ServiceSpec = DefaultDatabaseSpec(
     profiler_class=None,
     sampler_class=None,
     test_suite_class=None,
-    data_diff=None,
+    data_diff=ClickzettaTableParameter,
 )
