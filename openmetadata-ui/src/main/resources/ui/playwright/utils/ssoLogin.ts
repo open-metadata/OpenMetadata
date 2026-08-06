@@ -15,6 +15,18 @@ import { ProviderHelper } from './sso-providers';
 import { ProviderCredentials } from './ssoAuth';
 
 /**
+ * Hook budget for a suite whose beforeAll calls loginViaSso.
+ *
+ * A beforeAll gets the plain test timeout (60s) and, unlike a test body, is not
+ * tripled by test.slow(). loginViaSso alone can legitimately spend 45s reaching
+ * the IdP plus 60s returning plus 60s on self-signup, so the hook expires before
+ * its own waits do and the failure surfaces as a bare "hook timeout exceeded"
+ * that hides whatever the login was actually stuck on. Suites that log in during
+ * beforeAll must raise it explicitly.
+ */
+export const SSO_LOGIN_HOOK_TIMEOUT_MS = 240_000;
+
+/**
  * Drives a full interactive SSO sign-in: OpenMetadata's /signin -> the IdP ->
  * back to OpenMetadata, completing self-signup when the IdP user has no
  * OpenMetadata account yet.

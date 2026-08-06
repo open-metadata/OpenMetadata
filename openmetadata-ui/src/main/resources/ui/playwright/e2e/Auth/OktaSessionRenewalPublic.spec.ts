@@ -23,7 +23,10 @@ import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import {
   swapSecurityConfig,
 } from '../../utils/ssoAuth';
-import { loginViaSso } from '../../utils/ssoLogin';
+import {
+  loginViaSso,
+  SSO_LOGIN_HOOK_TIMEOUT_MS,
+} from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
 // Renewal coverage for the Okta tenant, which SSORenewal.spec.ts cannot serve:
@@ -72,6 +75,8 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
   test.beforeAll(
     'Swap server to Okta and establish a user session',
     async ({ browser }) => {
+      test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
       helper = getProviderHelper(providerType);
       restoreSecurity = await swapSecurityConfig(
         browser,

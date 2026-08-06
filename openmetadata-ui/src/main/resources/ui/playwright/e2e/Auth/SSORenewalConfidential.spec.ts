@@ -29,7 +29,10 @@ import {
 import {
   swapSecurityConfig,
 } from '../../utils/ssoAuth';
-import { loginViaSso } from '../../utils/ssoLogin';
+import {
+  loginViaSso,
+  SSO_LOGIN_HOOK_TIMEOUT_MS,
+} from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -105,6 +108,8 @@ for (const scenario of CONFIDENTIAL_SCENARIOS) {
   test.beforeAll(
     'Swap server to confidential OIDC with a short JWT TTL and sign in',
     async ({ browser }) => {
+      test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
       restoreSecurity = await swapSecurityConfig(
         browser,
         withShortOidcTokenValidity(await helper.buildConfigPayload())

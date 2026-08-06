@@ -24,7 +24,10 @@ import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import {
   swapSecurityConfig,
 } from '../../utils/ssoAuth';
-import { loginViaSso } from '../../utils/ssoLogin';
+import {
+  loginViaSso,
+  SSO_LOGIN_HOOK_TIMEOUT_MS,
+} from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
@@ -51,6 +54,8 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
   test.beforeAll(
     'Swap server to SAML with short JWT TTL and establish user session',
     async ({ browser }) => {
+      test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
       helper = getProviderHelper(providerType);
       restoreSecurity = await swapSecurityConfig(
         browser,
