@@ -62,7 +62,7 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
       result =
           (boolean)
               RuleEngine.getInstance()
-                  .apply(rules, buildRuleData(entityLink.getEntityType(), entity));
+                  .apply(rules, buildRuleContext(entityLink.getEntityType(), entity));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -75,9 +75,13 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
    * must answer yes, otherwise no approval task is ever created and the term settles in Draft. The
    * raw {@code reviewers} field carries inherited entries only when the read that produced the entity
    * applied inheritance, so resolve them explicitly here, the same way the approval-task assignee node
-   * does. The entity is left untouched because it may be request-cached; only the rule input changes.
+   * does.
+   *
+   * <p>The override is applied to the rule context rather than to the entity: {@link
+   * JsonUtils#getMap} already returns a detached copy, so overriding a key on it is free, whereas the
+   * entity may be request-cached and mutating it would leak into other reads in the same request.
    */
-  private Map<String, Object> buildRuleData(String entityType, EntityInterface entity) {
+  private Map<String, Object> buildRuleContext(String entityType, EntityInterface entity) {
     Map<String, Object> ruleData = JsonUtils.getMap(entity);
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
     if (repository.isSupportsReviewers() && nullOrEmpty(entity.getReviewers())) {
