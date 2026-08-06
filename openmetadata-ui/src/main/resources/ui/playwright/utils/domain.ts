@@ -1686,6 +1686,39 @@ export const navigateToPortsTab = async (page: Page) => {
 };
 
 /**
+ * Waits for a port row to appear in the ports list, reloading if it does not.
+ *
+ * The ports endpoint sources its rows and its total from two separate queries
+ * and drops records whose entity cannot be resolved without adjusting the
+ * total, so it can answer with no rows next to a non-zero total. The list
+ * fetches only on mount, so that empty result is held until the component
+ * remounts — waiting alone can never recover, but a reload can.
+ */
+export const waitForPortRow = async (page: Page, portId: string) => {
+  const portRow = page.getByTestId(`port-actions-${portId}`);
+
+  await expect
+    .poll(
+      async () => {
+        if (await portRow.isVisible()) {
+          return true;
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+
+        if (!(await page.getByTestId('input-output-ports-tab').isVisible())) {
+          await navigateToPortsTab(page);
+        }
+
+        return portRow.isVisible();
+      },
+      { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
+};
+
+/**
  * Expands the lineage section in the InputOutputPortsTab.
  * No-op when the section is already expanded.
  */
