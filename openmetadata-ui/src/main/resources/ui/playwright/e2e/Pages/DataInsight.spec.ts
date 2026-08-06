@@ -16,7 +16,6 @@ import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -266,20 +265,9 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
-    const kpiResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/kpi') &&
-        response.url().includes('fields=dataInsightChart')
-    );
+    await redirectToHomePage(page);
 
-    // Pass false to skip waiting for network idle, allowing us to catch the KPI API response
-    await redirectToHomePage(page, false);
-
-    await kpiResponse;
-
-    await waitForAllLoadersToDisappear(page);
-
-    await expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
+    await expect(page.getByTestId('kpi-widget')).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {
