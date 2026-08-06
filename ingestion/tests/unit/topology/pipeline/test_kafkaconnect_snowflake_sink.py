@@ -13,6 +13,7 @@
 import json
 import logging
 import uuid
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -47,6 +48,7 @@ from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.metadata import KafkaconnectSource
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
+    KafkaConnectColumnMapping,
     KafkaConnectDatasetDetails,
     KafkaConnectPipelineDetails,
     KafkaConnectTopics,
@@ -823,3 +825,310 @@ class TestEndToEndDatasetResolution:
             "order_events_nested",
             "om-lineage-test",
         ]
+
+
+FLATTEN_CONFIG = dict(
+    BASE_SNOWFLAKE_CONFIG,
+    topics="order_events_nested",
+    transforms="flatten",
+    **{
+        "transforms.flatten.type": "io.confluent.connect.transforms.Flatten$Value",
+        "transforms.flatten.delimiter": "_",
+    },
+)
+
+
+class TestFlattenSmtColumnMappings:
+    def test_no_smt_returns_empty_so_one_to_one_inference_applies(self):
+        resolver = get_resolver("SnowflakeSink")
+        assert resolver.column_mappings(BASE_SNOWFLAKE_CONFIG, _nested_topic()) == []
+
+    def test_flatten_joins_nested_paths_with_the_configured_delimiter(self):
+        mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, _nested_topic())
+        pairs = {(m.source_column, m.target_column) for m in mappings}
+        assert ("street", "ADDRESS_STREET") in pairs
+        assert ("city", "ADDRESS_CITY") in pairs
+        assert ("zipcode", "ADDRESS_ZIPCODE") in pairs
+
+    def test_flatten_leaves_top_level_fields_untouched(self):
+        mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, _nested_topic())
+        pairs = {(m.source_column, m.target_column) for m in mappings}
+        assert ("order_id", "ORDER_ID") in pairs
+
+    def test_default_delimiter_is_a_dot(self):
+        config = {k: v for k, v in FLATTEN_CONFIG.items() if k != "transforms.flatten.delimiter"}
+        mappings = get_resolver("SnowflakeSink").column_mappings(config, _nested_topic())
+        assert any(m.target_column == "ADDRESS.STREET" for m in mappings)
+
+    def test_every_leaf_is_mapped_exactly_once_and_no_type_level_leaks_in(self):
+        """The Avro parser puts a type-named level (OrderEvent, Address) between a record
+        and its fields; leaking one in would produce ORDEREVENT_* / ADDRESS_ADDRESS_* targets
+        that match no Snowflake column."""
+        mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, _nested_topic())
+        assert [m.target_column for m in mappings] == [
+            "ORDER_ID",
+            "CUSTOMER_NAME",
+            "ORDER_TOTAL",
+            "ADDRESS_STREET",
+            "ADDRESS_CITY",
+            "ADDRESS_ZIPCODE",
+        ]
+
+    def test_a_non_flatten_transform_is_not_mistaken_for_flatten(self):
+        config = dict(
+            BASE_SNOWFLAKE_CONFIG,
+            transforms="router",
+            **{"transforms.router.type": "io.debezium.transforms.outbox.EventRouter"},
+        )
+        assert get_resolver("SnowflakeSink").column_mappings(config, _nested_topic()) == []
+
+    def test_flatten_is_found_among_several_chained_transforms(self):
+        config = dict(
+            BASE_SNOWFLAKE_CONFIG,
+            transforms=" router , flatten ",
+            **{
+                "transforms.router.type": "io.debezium.transforms.outbox.EventRouter",
+                "transforms.flatten.type": "org.apache.kafka.connect.transforms.Flatten$Value",
+                "transforms.flatten.delimiter": "_",
+            },
+        )
+        mappings = get_resolver("SnowflakeSink").column_mappings(config, _nested_topic())
+        assert ("street", "ADDRESS_STREET") in {(m.source_column, m.target_column) for m in mappings}
+
+    def test_topic_without_a_schema_yields_no_mappings(self):
+        """A topic ingested without Schema Registry credentials carries no schemaFields;
+        that must degrade to [] rather than raise inside the lineage loop."""
+        topic = Topic(
+            id=uuid.uuid4(),
+            name="order_events_nested",
+            partitions=1,
+            service={"id": uuid.uuid4(), "type": "messagingService"},
+        )
+        assert get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, topic) == []
+
+    def test_defaulted_schematization_properties_do_not_gate_mappings(self):
+        """Confluent Cloud omits defaulted properties, so absence must not mean "off"."""
+        assert "snowflake.enable.schematization" not in FLATTEN_CONFIG
+        assert "snowflake.ingestion.method" not in FLATTEN_CONFIG
+        assert get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, _nested_topic())
+
+
+def _with_nested_field_fqns(topic: Topic, prefix: str) -> Topic:
+    """Populate field FQNs at every depth, the way ``TopicRepository.setFieldFQN`` does
+    server-side (parentFQN + name, type-named levels included). ``_with_field_fqns`` stops at
+    direct children, which covers the 1:1 path but leaves nested leaves unresolvable."""
+
+    def descend(fields, parent_fqn):
+        for field in fields or []:
+            field_fqn = f"{parent_fqn}.{model_str(field.name)}"
+            field.fullyQualifiedName = FullyQualifiedEntityName(field_fqn)
+            descend(field.children, field_fqn)
+
+    descend(topic.messageSchema.schemaFields, prefix)
+    return topic
+
+
+# What DESC TABLE returns once a Flatten SMT with delimiter "_" is in the connector chain:
+# the nested record becomes three scalar columns instead of one VARIANT.
+FLATTENED_SNOWFLAKE_COLUMNS = [
+    ("RECORD_METADATA", DataType.JSON),
+    ("ORDER_ID", DataType.VARCHAR),
+    ("CUSTOMER_NAME", DataType.VARCHAR),
+    ("ORDER_TOTAL", DataType.FLOAT),
+    ("ADDRESS_STREET", DataType.VARCHAR),
+    ("ADDRESS_CITY", DataType.VARCHAR),
+    ("ADDRESS_ZIPCODE", DataType.NUMBER),
+]
+
+
+def _flattened_table_with_column_fqns() -> Table:
+    table = Table(
+        id=uuid.uuid4(),
+        name="ORDER_EVENTS_NESTED",
+        columns=[Column(name=n, dataType=t) for n, t in FLATTENED_SNOWFLAKE_COLUMNS],
+        databaseSchema={"id": uuid.uuid4(), "type": "databaseSchema"},
+    )
+    for column in table.columns:
+        column.fullyQualifiedName = FullyQualifiedEntityName(f"{TABLE_COLUMN_FQN_PREFIX}.{model_str(column.name)}")
+    return table
+
+
+def _flatten_dataset_details(column_mappings) -> KafkaConnectDatasetDetails:
+    return KafkaConnectDatasetDetails(
+        table="ORDER_EVENTS_NESTED",
+        database="TEST_DB",
+        schema="MAYUR_SCHEMA",
+        source_topic="order_events_nested",
+        fully_qualified=True,
+        column_mappings=column_mappings,
+    )
+
+
+class TestExplicitColumnMappingBranch:
+    """The explicit-mapping branch of ``build_column_lineage`` had never executed because
+    nothing populated ``column_mappings``; it resolved topic fields through
+    ``get_column_fqn(table_entity=topic)``, which cannot work because ``Topic`` has no
+    ``.columns``."""
+
+    def _edges(self, dataset_details) -> set:
+        topic = _with_nested_field_fqns(_nested_topic(), TOPIC_FIELD_FQN_PREFIX)
+        lineage = _new_source().build_column_lineage(
+            from_entity=topic,
+            to_entity=_flattened_table_with_column_fqns(),
+            topic_entity=topic,
+            pipeline_details=SNOWFLAKE_SINK_DETAILS,
+            dataset_details=dataset_details,
+        )
+        assert lineage is not None, "explicit column mappings produced no edges at all"
+        return {(model_str(edge.fromColumns[0]), model_str(edge.toColumn)) for edge in lineage}
+
+    def test_explicit_mappings_reach_flattened_columns(self):
+        details = _flatten_dataset_details(
+            get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, _nested_topic())
+        )
+        assert self._edges(details) == {
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.order_id",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ORDER_ID",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.customer_name",
+                f"{TABLE_COLUMN_FQN_PREFIX}.CUSTOMER_NAME",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.order_total",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ORDER_TOTAL",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.address.Address.street",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ADDRESS_STREET",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.address.Address.city",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ADDRESS_CITY",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.address.Address.zipcode",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ADDRESS_ZIPCODE",
+            ),
+        }
+
+    def test_record_metadata_is_never_a_lineage_target(self):
+        details = _flatten_dataset_details(
+            get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, _nested_topic())
+        )
+        targets = {target for _, target in self._edges(details)}
+        assert f"{TABLE_COLUMN_FQN_PREFIX}.RECORD_METADATA" not in targets
+
+    def test_a_mapping_onto_a_missing_column_is_dropped_not_fatal(self):
+        details = _flatten_dataset_details(
+            [
+                KafkaConnectColumnMapping(source_column="order_id", target_column="ORDER_ID"),
+                KafkaConnectColumnMapping(source_column="ghost", target_column="GHOST"),
+            ]
+        )
+        assert self._edges(details) == {
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.order_id",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ORDER_ID",
+            )
+        }
+
+
+def _run_sink_lineage(config, topic, table, topic_name="order_events_nested"):
+    """Drive ``yield_pipeline_lineage_details`` with only the OpenMetadata REST client and
+    ingestion context mocked, so dataset resolution, topic matching, ``column_mappings``
+    population and edge construction all run for real."""
+    source = _new_source()
+    source._topics_cache = {}
+    source.lineage_results = []
+    source.context = MagicMock()
+    source.context.get.return_value = SimpleNamespace(pipeline_service="KafkaConnectSvc", pipeline="snowflake-landing")
+    source._resolve_messaging_service = lambda pipeline_details: "confluent_kafka"
+    source.get_dataset_entity = lambda **kwargs: table
+
+    pipeline_entity = SimpleNamespace(id=SimpleNamespace(root=uuid.uuid4()))
+
+    def _get_by_name(entity=None, fqn=None, **kwargs):
+        entity_name = getattr(entity, "__name__", "")
+        if entity_name == "Pipeline":
+            return pipeline_entity
+        if entity_name == "Topic":
+            return topic
+        return None
+
+    source.metadata = MagicMock()
+    source.metadata.get_by_name.side_effect = _get_by_name
+
+    details = KafkaConnectPipelineDetails(
+        name="snowflake-landing",
+        type="sink",
+        config=config,
+        topics=[KafkaConnectTopics(name=topic_name)],
+    )
+
+    with patch(
+        "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
+        side_effect=lambda **kwargs: "confluent_kafka.order_events_nested",
+    ):
+        results = list(source.yield_pipeline_lineage_details(details))
+
+    errors = [r.left for r in results if r.left is not None]
+    assert not errors, f"lineage yielded errors: {errors}"
+    return details, [r.right for r in results if r.right is not None]
+
+
+class TestFlattenColumnMappingsAtTheCallSite:
+    """Step 6 wiring: the lineage loop must ask the resolver for column mappings and the
+    resulting edges must land on the flattened columns."""
+
+    def _column_edges(self, config, topic, table):
+        _, requests = _run_sink_lineage(config, topic, table)
+        assert len(requests) == 1, f"expected one entity edge, got {len(requests)}"
+        columns_lineage = requests[0].edge.lineageDetails.columnsLineage or []
+        return {(model_str(c.fromColumns[0]), model_str(c.toColumn)) for c in columns_lineage}
+
+    def test_flatten_config_produces_edges_onto_the_flattened_columns(self):
+        edges = self._column_edges(
+            FLATTEN_CONFIG,
+            _with_nested_field_fqns(_nested_topic(), TOPIC_FIELD_FQN_PREFIX),
+            _flattened_table_with_column_fqns(),
+        )
+        assert (
+            f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.address.Address.street",
+            f"{TABLE_COLUMN_FQN_PREFIX}.ADDRESS_STREET",
+        ) in edges
+        assert len(edges) == 6
+
+    def test_no_smt_still_uses_the_live_verified_one_to_one_path(self):
+        """Regression guard for the shipped behaviour: without Flatten the four top-level
+        fields map 1:1 and `address` lands on the single VARIANT column."""
+        edges = self._column_edges(
+            dict(BASE_SNOWFLAKE_CONFIG, topics="order_events_nested"),
+            _nested_topic_with_field_fqns(),
+            _nested_table_with_column_fqns(),
+        )
+        assert edges == {
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.order_id",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ORDER_ID",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.customer_name",
+                f"{TABLE_COLUMN_FQN_PREFIX}.CUSTOMER_NAME",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.order_total",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ORDER_TOTAL",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.address",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ADDRESS",
+            ),
+        }
+
+    def test_a_missing_topic_warns_instead_of_raising(self):
+        """`column_mappings` reads messageSchema off the matched topic, so an unguarded call
+        would turn a missing-topic warning into a failed connector run."""
+        _, requests = _run_sink_lineage(FLATTEN_CONFIG, None, _flattened_table_with_column_fqns())
+        assert requests == []

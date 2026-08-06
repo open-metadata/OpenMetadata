@@ -53,6 +53,7 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.schema import FieldModel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
@@ -833,6 +834,13 @@ class KafkaconnectSource(PipelineServiceSource):
                             if model_str(grandchild.name) == field_name:
                                 return grandchild.fullyQualifiedName.root if grandchild.fullyQualifiedName else None
 
+        # Fields deeper than a grandchild -- a record inside a record, plus the type-named
+        # level the Avro parser inserts under each of them -- are out of reach of the
+        # explicit levels searched above, so fall back to a full descent.
+        deep_fqn = self._find_field_fqn_at_any_depth(topic_entity.messageSchema.schemaFields, field_name)
+        if deep_fqn:
+            return deep_fqn
+
         # For Debezium CDC topics, columns might only exist in schemaText (not as field objects)
         # Manually construct FQN: topicFQN.Envelope.columnName
         for field in topic_entity.messageSchema.schemaFields:
@@ -844,6 +852,23 @@ class KafkaconnectSource(PipelineServiceSource):
                 return f"{envelope_fqn}.{field_name}"
 
         logger.debug(f"Field {field_name} not found in topic {model_str(topic_entity.name)} schema")
+        return None
+
+    @staticmethod
+    def _find_field_fqn_at_any_depth(fields: Optional[List[FieldModel]], field_name: str) -> Optional[str]:  # noqa: UP006, UP045
+        """
+        Breadth-first search for a schema field's FQN at arbitrary depth.
+
+        Searching level by level keeps the shallowest match winning, so this cannot
+        reorder the CDC after/before preference the caller already applied to the levels
+        it walks explicitly.
+        """
+        queue = list(fields or [])
+        while queue:
+            field = queue.pop(0)
+            if model_str(field.name) == field_name:
+                return model_str(field.fullyQualifiedName) if field.fullyQualifiedName else None
+            queue.extend(field.children or [])
         return None
 
     def build_column_lineage(
@@ -867,11 +892,11 @@ class KafkaconnectSource(PipelineServiceSource):
                 # Use explicit column mappings from connector config
                 for mapping in dataset_details.column_mappings:
                     if pipeline_details.conn_type == ConnectorType.SINK.value:
-                        from_col = get_column_fqn(table_entity=topic_entity, column=mapping.source_column)
-                        to_col = get_column_fqn(table_entity=to_entity, column=mapping.target_column)
+                        from_col = self._get_entity_column_fqn(topic_entity, mapping.source_column)
+                        to_col = self._get_entity_column_fqn(to_entity, mapping.target_column)
                     else:
-                        from_col = get_column_fqn(table_entity=from_entity, column=mapping.source_column)
-                        to_col = get_column_fqn(table_entity=topic_entity, column=mapping.target_column)
+                        from_col = self._get_entity_column_fqn(from_entity, mapping.source_column)
+                        to_col = self._get_entity_column_fqn(topic_entity, mapping.target_column)
 
                     if from_col and to_col:
                         column_lineages.append(
@@ -1664,6 +1689,15 @@ class KafkaconnectSource(PipelineServiceSource):
                     pipeline_details=pipeline_details,
                     database_server_name=database_server_name,
                 )
+
+                # Only the resolver knows whether the connector renames fields on the way in
+                # (a Flatten SMT, for one), and it needs the matched topic's schema to say so.
+                # Guarding on the topic keeps a missing-topic warning from becoming a failure,
+                # and on the existing mappings keeps an explicit config from being overwritten.
+                if matched_topic_entity is not None and not dataset_details.column_mappings:
+                    dataset_details.column_mappings = self._resolver_for(pipeline_details).column_mappings(
+                        pipeline_details.config or {}, matched_topic_entity
+                    )
 
                 # Lineage must always be between data assets (Table/Container ↔ Topic)
                 if current_dataset_entity is None or matched_topic_entity is None:

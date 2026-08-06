@@ -15,7 +15,9 @@ Dataset resolution for the Snowflake Sink connector (managed and self-managed).
 import re
 from typing import Any, Dict, List, Optional  # noqa: UP035
 
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
+    KafkaConnectColumnMapping,
     KafkaConnectDatasetDetails,
     KafkaConnectTopics,
 )
@@ -104,6 +106,73 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
                 f"'{dataset.table}' was not found in OpenMetadata"
             )
         return topic_entity
+
+    def column_mappings(self, config: dict, topic_entity: Any) -> List[KafkaConnectColumnMapping]:  # noqa: UP006
+        """
+        Map topic fields to columns when a Flatten SMT rewrites nested paths.
+
+        Without Flatten the connector writes one column per top-level field and a nested
+        record becomes a single VARIANT, which the caller's 1:1 name inference already
+        handles -- so returning [] here is the correct answer, not a gap.
+        """
+        delimiter = self._flatten_delimiter(config)
+        if delimiter is None:
+            return []
+
+        return [
+            KafkaConnectColumnMapping(
+                source_column=path[-1],
+                target_column=delimiter.join(path).upper(),
+            )
+            for path in self._leaf_paths(topic_entity)
+        ]
+
+    @staticmethod
+    def _flatten_delimiter(config: dict) -> Optional[str]:  # noqa: UP045
+        """
+        The delimiter of the chain's Flatten transform, or None when it has none.
+
+        Only a transform's own `type` may be consulted: Confluent Cloud omits defaulted
+        properties from the config it returns, so the absence of
+        snowflake.enable.schematization or snowflake.ingestion.method says nothing about
+        whether flattening happens.
+        """
+        for name in (entry.strip() for entry in (config.get("transforms") or "").split(",")):
+            if name and "Flatten" in (config.get(f"transforms.{name}.type") or ""):
+                return config.get(f"transforms.{name}.delimiter") or "."
+        return None
+
+    @staticmethod
+    def _leaf_paths(topic_entity: Any) -> List[List[str]]:  # noqa: UP006
+        """
+        Field-name paths to every leaf of the topic schema, with Avro type levels dropped.
+
+        The Avro parser names the level below a record-typed field after the record *type*
+        rather than the field, so `address` (RECORD) holds a single child `Address` whose
+        children are street/city/zipcode. Flatten joins field names only, so each type
+        level is stepped over instead of becoming a path segment. The schemaFields roots
+        are themselves type levels (the top-level record name), hence their children --
+        not the roots -- are the top-level fields.
+        """
+        schema = getattr(topic_entity, "messageSchema", None)
+        roots = getattr(schema, "schemaFields", None) or []
+
+        paths: List[List[str]] = []  # noqa: UP006
+
+        def walk(field: Any, prefix: List[str]) -> None:  # noqa: UP006
+            path = [*prefix, model_str(field.name)]
+            type_levels = field.children or []
+            if not type_levels:
+                paths.append(path)
+                return
+            for type_level in type_levels:
+                for nested_field in type_level.children or []:
+                    walk(nested_field, path)
+
+        for root in roots:
+            for field in root.children or []:
+                walk(field, [])
+        return paths
 
     @staticmethod
     def _topic2table_map(config: dict) -> Dict[str, str]:  # noqa: UP006
