@@ -185,9 +185,8 @@ class SampleTest(TestCase):
             return TableData(columns=[], rows=[])
 
         with (
-            patch.object(
-                sampler,
-                "_get_temporal_column_names",
+            patch(
+                "metadata.sampler.sqlalchemy.azuresql.sampler.get_temporal_column_names",
                 return_value=frozenset({"ValidFrom", "ValidTo"}),
             ),
             patch.object(
@@ -236,9 +235,8 @@ class SampleTest(TestCase):
             return TableData(columns=[], rows=[])
 
         with (
-            patch.object(
-                sampler,
-                "_get_temporal_column_names",
+            patch(
+                "metadata.sampler.sqlalchemy.azuresql.sampler.get_temporal_column_names",
                 return_value=frozenset({"ValidFrom", "ValidTo"}),
             ),
             patch.object(
