@@ -86,6 +86,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  includePermissions?: boolean;
 };
 
 export type ListTestDefinitionsParams = ListParams & {

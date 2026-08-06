@@ -3,12 +3,17 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -356,6 +361,97 @@ public class PermissionsResourceIT {
     assertNotNull(debugInfo.getSummary());
   }
 
+  @Test
+  void testListEntitiesWithPermissions_adminGetsInlinePermissions() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace ns = new TestNamespace("PermissionsResourceIT");
+
+    DatabaseSchema schema = createTestSchema(ns);
+    Table table1 = createTableInSchema(client, ns, schema, "perm_list_admin_1");
+    Table table2 = createTableInSchema(client, ns, schema, "perm_list_admin_2");
+
+    // Opting in returns each listed entity's permissions inline, keyed by entity id.
+    TableListWrapper withPermissions = listTables(client, schema.getFullyQualifiedName(), true);
+    assertNotNull(
+        withPermissions.entityPermissions,
+        "entityPermissions must be present when includePermissions=true");
+    assertEquals(2, withPermissions.data.size());
+    for (Table table : withPermissions.data) {
+      ResourcePermission permission =
+          withPermissions.entityPermissions.get(table.getId().toString());
+      assertNotNull(permission, "each listed table carries inline permissions");
+      assertEquals("table", permission.getResource());
+      assertTrue(
+          hasAllow(permission, MetadataOperation.EDIT_ALL),
+          "admin has EDIT_ALL inline for a listed table");
+    }
+
+    // Default listing carries no permissions, so existing endpoints pay nothing.
+    TableListWrapper withoutPermissions = listTables(client, schema.getFullyQualifiedName(), false);
+    assertNull(
+        withoutPermissions.entityPermissions,
+        "entityPermissions is omitted unless the request opts in");
+
+    cleanupTable(client, table1);
+    cleanupTable(client, table2);
+  }
+
+  @Test
+  void testListEntitiesWithPermissions_nonAdminGetsReducedPermissions() throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    OpenMetadataClient nonAdminClient = SdkClients.user2Client();
+    TestNamespace ns = new TestNamespace("PermissionsResourceIT");
+
+    DatabaseSchema schema = createTestSchema(ns);
+    Table table = createTableInSchema(adminClient, ns, schema, "perm_list_non_admin");
+
+    TableListWrapper listed = listTables(nonAdminClient, schema.getFullyQualifiedName(), true);
+    assertNotNull(listed.entityPermissions);
+    ResourcePermission permission = listed.entityPermissions.get(table.getId().toString());
+    assertNotNull(permission, "non-admin still gets inline permissions for entities it can view");
+    assertFalse(
+        hasAllow(permission, MetadataOperation.EDIT_ALL),
+        "non-admin has no EDIT_ALL on an admin-owned table");
+    assertFalse(
+        hasAllow(permission, MetadataOperation.DELETE),
+        "non-admin has no DELETE on an admin-owned table");
+
+    cleanupTable(adminClient, table);
+  }
+
+  private boolean hasAllow(ResourcePermission permission, MetadataOperation operation) {
+    return permission.getPermissions().stream()
+        .anyMatch(p -> p.getOperation() == operation && p.getAccess() == Permission.Access.ALLOW);
+  }
+
+  private DatabaseSchema createTestSchema(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    return DatabaseSchemaTestFactory.createSimple(ns, service);
+  }
+
+  private Table createTableInSchema(
+      OpenMetadataClient client, TestNamespace ns, DatabaseSchema schema, String tableName)
+      throws Exception {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(ns.prefix(tableName));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    return client.tables().create(createTable);
+  }
+
+  private TableListWrapper listTables(
+      OpenMetadataClient client, String schemaFqn, boolean includePermissions) throws Exception {
+    String path =
+        "/v1/tables?limit=50&databaseSchema="
+            + URLEncoder.encode(schemaFqn, StandardCharsets.UTF_8);
+    if (includePermissions) {
+      path += "&includePermissions=true";
+    }
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+    return OBJECT_MAPPER.readValue(response, TableListWrapper.class);
+  }
+
   private List<ResourcePermission> getPermissions(OpenMetadataClient client) throws Exception {
     String response =
         client.getHttpClient().executeForString(HttpMethod.GET, "/v1/permissions", null);
@@ -528,5 +624,11 @@ public class PermissionsResourceIT {
     public void setData(List<ResourcePermission> data) {
       this.data = data;
     }
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  private static class TableListWrapper {
+    public List<Table> data;
+    public Map<String, ResourcePermission> entityPermissions;
   }
 }

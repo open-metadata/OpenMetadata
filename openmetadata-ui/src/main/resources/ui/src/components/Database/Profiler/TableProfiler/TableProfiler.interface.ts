@@ -21,6 +21,7 @@ import {
   Table,
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
@@ -45,6 +46,7 @@ export interface TableProfilerContextInterface {
   tableProfiler?: Table;
   customMetric?: Table;
   allTestCases: TestCase[];
+  allTestCasesPermissions?: Record<string, ResourcePermission>;
   overallSummary: OverallTableSummaryType[];
   onTestCaseUpdate: (testCase?: TestCase) => void;
   onSettingButtonClick: () => void;

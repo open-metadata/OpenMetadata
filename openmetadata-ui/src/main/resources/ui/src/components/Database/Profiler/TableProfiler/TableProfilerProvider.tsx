@@ -33,6 +33,7 @@ import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { Include } from '../../../../generated/type/include';
@@ -93,6 +94,10 @@ export const TableProfilerProvider = ({
   const [isTestsLoading, setIsTestsLoading] = useState(true);
   const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(true);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
+  // Left undefined when the list API doesn't return inline permissions so the
+  // DataQualityTab falls back to its own per-row permission fetch.
+  const [allTestCasesPermissions, setAllTestCasesPermissions] =
+    useState<Record<string, ResourcePermission>>();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
   const [testLevel, setTestLevel] = useState<TestLevel>();
@@ -265,22 +270,26 @@ export const TableProfilerProvider = ({
   const fetchAllTests = async (params?: ListTestCaseParamsBySearch) => {
     setIsTestsLoading(true);
     try {
-      const { data, paging } = await getListTestCaseBySearch({
-        ...DEFAULT_SORT_ORDER,
-        ...params,
-        fields: [
-          TabSpecificField.TEST_CASE_RESULT,
-          TabSpecificField.INCIDENT_ID,
-          TabSpecificField.INCIDENT_STATUS,
-        ],
+      const { data, paging, entityPermissions } = await getListTestCaseBySearch(
+        {
+          ...DEFAULT_SORT_ORDER,
+          ...params,
+          fields: [
+            TabSpecificField.TEST_CASE_RESULT,
+            TabSpecificField.INCIDENT_ID,
+            TabSpecificField.INCIDENT_STATUS,
+          ],
 
-        entityLink: generateEntityLink(datasetFQN ?? ''),
-        includeAllTests: true,
-        limit: testCasePaging.pageSize,
-        include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
-      });
+          entityLink: generateEntityLink(datasetFQN ?? ''),
+          includeAllTests: true,
+          includePermissions: true,
+          limit: testCasePaging.pageSize,
+          include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
+        }
+      );
 
       setAllTestCases(data);
+      setAllTestCasesPermissions(entityPermissions);
       testCasePaging.handlePagingChange(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -356,6 +365,7 @@ export const TableProfilerProvider = ({
       isProfilerDataLoading,
       tableProfiler,
       allTestCases,
+      allTestCasesPermissions,
       permissions,
       isTableDeleted,
       overallSummary,
@@ -376,6 +386,7 @@ export const TableProfilerProvider = ({
     isProfilerDataLoading,
     tableProfiler,
     allTestCases,
+    allTestCasesPermissions,
     permissions,
     isTableDeleted,
     overallSummary,
