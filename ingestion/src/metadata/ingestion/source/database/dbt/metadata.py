@@ -126,6 +126,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
+    is_compiled_only_result,
     map_dbt_metric_type,
     order_metrics_by_dependency,
     validate_custom_property_value,
@@ -1980,12 +1981,9 @@ class DbtSource(DbtServiceSource):
                     logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")
                     return
 
-                # Skip compiled-only entries: `dbt run` includes test nodes in
-                # run_results.json with status="success" but message=null since
-                # no test SQL was executed. Real results always have a message.
-                if not dbt_test_result.message:
+                if is_compiled_only_result(dbt_test_result):
                     logger.debug(
-                        "Skipping compiled-only test result for '%s' (message is null).",
+                        "Skipping compiled-only test result for '%s' (status is success and message is null).",
                         manifest_node.name,
                     )
                     return
