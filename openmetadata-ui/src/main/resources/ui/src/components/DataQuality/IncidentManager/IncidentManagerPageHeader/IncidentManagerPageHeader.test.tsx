@@ -15,9 +15,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React, { act } from 'react';
 import * as reactRouterDom from 'react-router-dom';
 import {
+  TestCaseStatus,
   type TestCase,
   type TestCaseResult,
-  TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {

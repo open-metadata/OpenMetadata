@@ -766,9 +766,7 @@ test.describe(
         const waitForTestCaseDetails = () =>
           page.waitForResponse(
             (response) =>
-              response
-                .url()
-                .includes('/api/v1/dataQuality/testCases/name/') &&
+              response.url().includes('/api/v1/dataQuality/testCases/name/') &&
               response.status() === 200
           );
 

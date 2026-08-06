@@ -13,8 +13,8 @@
 
 import {
   Alert,
-  type AlertVariant,
   Button,
+  type AlertVariant,
 } from '@openmetadata/ui-core-components';
 import { Minus } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
