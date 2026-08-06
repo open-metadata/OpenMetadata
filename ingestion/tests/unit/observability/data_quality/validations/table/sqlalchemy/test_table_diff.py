@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 import dsnparse
 import pytest
 from data_diff.databases._connect import CustomParseResult
+from data_diff.diff_tables import DiffResultWrapper
 from dirty_equals import Contains, DirtyEquals, HasAttributes, IsList
 
 from metadata.data_quality.validations.models import (
@@ -281,124 +282,122 @@ class TestServiceUrlHandedToDataDiff:
 
 
 class TestDuplicateKeyErrorMessage:
-    """The message is the whole point of the check: it must name the table, the column and the values."""
+    """The message is the whole point: it names the key columns the user has to change."""
 
-    def test_it_names_a_single_key_column_and_its_duplicates(self) -> None:
-        error = DuplicateKeyError(
-            "mssql.SalesDB.dbo.OrderEvents_Source", ["OrderRef"], 69, 60, ["ORD-0003 (x2)", "ORD-0007 (x3)"]
-        )
+    def test_it_names_a_single_key_column_and_the_table(self) -> None:
+        error = DuplicateKeyError(["OrderRef"], "mssql.SalesDB.dbo.OrderEvents_Source")
 
         assert str(error) == (
-            "Key column 'OrderRef' is not unique in mssql.SalesDB.dbo.OrderEvents_Source: "
-            "69 rows over 60 distinct key values. Duplicated: ORD-0003 (x2), ORD-0007 (x3). "
+            "Key column 'OrderRef' is not unique in mssql.SalesDB.dbo.OrderEvents_Source. "
             "A row-level diff needs a unique key: pick a unique column, or add more columns to the key."
         )
 
     def test_it_pluralises_for_a_composite_key(self) -> None:
-        error = DuplicateKeyError("db.schema.tbl", ["OrderRef", "Region"], 10, 8, [])
+        error = DuplicateKeyError(["OrderRef", "Region"], "db.schema.tbl")
 
         assert "Key columns ('OrderRef', 'Region') are not unique in db.schema.tbl" in str(error)
 
-    def test_it_omits_the_sample_clause_when_sampling_failed(self) -> None:
-        error = DuplicateKeyError("db.schema.tbl", ["id"], 10, 8, [])
+    def test_it_hedges_when_the_table_is_unknown(self) -> None:
+        """joindiff validates both tables at once and does not say which one failed."""
+        error = DuplicateKeyError(["id"])
 
-        assert "Duplicated:" not in str(error)
-        assert "10 rows over 8 distinct key values." in str(error)
+        assert "Key column 'id' is not unique in one of the compared tables." in str(error)
 
 
-class TestValidateKeyUniqueness:
-    """data-diff's own errors name neither the table nor the column, so we check first.
+def build_duplicate_key_validator() -> TableDiffValidator:
+    validator = TableDiffValidator(
+        runner=[],
+        test_case=TestCase.model_construct(parameterValues=[]),
+        execution_date=Timestamp(root=int(datetime.datetime.now().timestamp())),
+    )
+    table1 = build_table_parameter(
+        build_column("id", constraint=Constraint.PRIMARY_KEY), key_columns=["id"], extra_columns=["name"]
+    )
+    table1.fullyQualifiedName = "pg.db.schema.table1"
+    table2 = build_table_parameter(
+        build_column("id", constraint=Constraint.PRIMARY_KEY), key_columns=["id"], extra_columns=["name"]
+    )
+    table2.fullyQualifiedName = "pg.db.schema.table2"
+    validator.runtime_params = TableDiffRuntimeParameters(
+        table1=table1,
+        table2=table2,
+        table_profile_config=None,
+        whereClause=None,
+        keyColumns=["id"],
+        extraColumns=["name"],
+    )
+    return validator
 
-    See the duplicate-key notes in tableDiff._validate_key_uniqueness.
+
+def build_diff_result(*rows: tuple[str, tuple[str, ...]]) -> DiffResultWrapper:
+    """A wrapper whose rows are already materialised, as they are when `_get_stats` fails."""
+    return DiffResultWrapper(diff=iter(()), info_tree=None, stats={}, result_list=list(rows))
+
+
+class TestDuplicateKeysNamed:
+    """data-diff reports a non-unique key opaquely, and only after the diff has already failed.
+
+    See the notes in tableDiff.TableDiffValidator._duplicate_keys_named.
     """
 
-    @staticmethod
-    def build_validator(counts_by_path: dict[str, tuple[int, int] | None]) -> TableDiffValidator:
-        validator = TableDiffValidator(
-            runner=[],
-            test_case=TestCase.model_construct(parameterValues=[]),
-            execution_date=Timestamp(root=int(datetime.datetime.now().timestamp())),
-        )
-        validator.runtime_params = TableDiffRuntimeParameters(
-            table1=build_table_parameter(
-                build_column("id", constraint=Constraint.PRIMARY_KEY), key_columns=["id"], extra_columns=[]
-            ),
-            table2=build_table_parameter(
-                build_column("id", constraint=Constraint.PRIMARY_KEY), key_columns=["id"], extra_columns=[]
-            ),
-            table_profile_config=None,
-            whereClause=None,
-            keyColumns=["id"],
-            extraColumns=[],
-        )
-        validator.runtime_params.table1.path = "schema.table1"
-        validator.runtime_params.table2.path = "schema.table2"
-        validator._count_keys = lambda table_param: counts_by_path[table_param.path]  # type: ignore[method-assign]
-        validator._sample_duplicate_keys = lambda table_param: ["a (x2)"]  # type: ignore[method-assign]
-        return validator
+    def test_it_names_the_key_when_joindiff_rejects_it(self) -> None:
+        validator = build_duplicate_key_validator()
 
-    def test_it_passes_when_every_key_is_unique(self) -> None:
-        validator = self.build_validator({"schema.table1": (100, 100), "schema.table2": (99, 99)})
+        with pytest.raises(DuplicateKeyError) as excinfo, validator._duplicate_keys_named(build_diff_result()):
+            raise ValueError("Duplicate primary keys")
 
-        validator._validate_key_uniqueness()
+        assert "Key column 'id' is not unique in one of the compared tables" in str(excinfo.value)
 
-    def test_it_raises_naming_the_offending_table(self) -> None:
-        validator = self.build_validator({"schema.table1": (100, 100), "schema.table2": (100, 97)})
+    def test_it_leaves_an_unrelated_value_error_alone(self) -> None:
+        validator = build_duplicate_key_validator()
 
-        with pytest.raises(DuplicateKeyError) as excinfo:
-            validator._validate_key_uniqueness()
-
-        assert "schema.table2" in str(excinfo.value)
-        assert "100 rows over 97 distinct key values" in str(excinfo.value)
-
-    def test_it_checks_table1_before_table2(self) -> None:
-        validator = self.build_validator({"schema.table1": (10, 8), "schema.table2": (10, 7)})
-
-        with pytest.raises(DuplicateKeyError) as excinfo:
-            validator._validate_key_uniqueness()
-
-        assert "schema.table1" in str(excinfo.value)
-
-    def test_it_does_not_fail_the_test_when_the_check_could_not_run(self) -> None:
-        """A degraded check must not abort a diff that data-diff would still guard itself."""
-        validator = self.build_validator({"schema.table1": None, "schema.table2": None})
-
-        validator._validate_key_uniqueness()
-
-    def test_it_skips_tables_without_key_columns(self) -> None:
-        validator = self.build_validator({"schema.table1": (10, 8), "schema.table2": (10, 8)})
-        validator.runtime_params.table1.key_columns = []
-        validator.runtime_params.table2.key_columns = None
-
-        validator._validate_key_uniqueness()
-
-
-class TestCountKeysFailsOpen:
-    def test_it_returns_none_and_warns_when_the_query_raises(self, caplog: pytest.LogCaptureFixture) -> None:
-        validator = TableDiffValidator(
-            runner=[],
-            test_case=TestCase.model_construct(parameterValues=[]),
-            execution_date=Timestamp(root=int(datetime.datetime.now().timestamp())),
-        )
-        table_param = build_table_parameter(
-            build_column("id", constraint=Constraint.PRIMARY_KEY), key_columns=["id"], extra_columns=[]
-        )
         with (
-            patch.object(TableDiffValidator, "_key_check_segment", side_effect=OSError("no route to host")),
-            caplog.at_level("WARNING"),
+            pytest.raises(ValueError, match="Cannot apply key types") as excinfo,
+            validator._duplicate_keys_named(build_diff_result()),
         ):
-            assert validator._count_keys(table_param) is None
+            raise ValueError("Cannot apply key types")
 
-        assert "Could not validate key uniqueness" in caplog.text
+        assert not isinstance(excinfo.value, DuplicateKeyError)
 
-    def test_sampling_failure_degrades_to_an_empty_list(self) -> None:
-        validator = TableDiffValidator(
-            runner=[],
-            test_case=TestCase.model_construct(parameterValues=[]),
-            execution_date=Timestamp(root=int(datetime.datetime.now().timestamp())),
-        )
-        table_param = build_table_parameter(
-            build_column("id", constraint=Constraint.PRIMARY_KEY), key_columns=["id"], extra_columns=[]
-        )
-        with patch.object(TableDiffValidator, "_key_check_segment", side_effect=OSError("no route to host")):
-            assert validator._sample_duplicate_keys(table_param) == []
+    def test_it_blames_table1_for_a_repeated_left_row(self) -> None:
+        """hashdiff only trips on the duplicate in `_get_stats`; the rows are already in memory."""
+        validator = build_duplicate_key_validator()
+        diff_result = build_diff_result(("-", ("7", "alice")), ("+", ("7", "alicia")), ("-", ("7", "alice")))
+
+        with pytest.raises(DuplicateKeyError) as excinfo, validator._duplicate_keys_named(diff_result):
+            raise AssertionError
+
+        assert "Key column 'id' is not unique in pg.db.schema.table1" in str(excinfo.value)
+
+    def test_it_blames_table2_for_a_repeated_right_row(self) -> None:
+        validator = build_duplicate_key_validator()
+        diff_result = build_diff_result(("+", ("7", "alicia")), ("+", ("7", "alicia")))
+
+        with pytest.raises(DuplicateKeyError) as excinfo, validator._duplicate_keys_named(diff_result):
+            raise AssertionError
+
+        assert "in pg.db.schema.table2" in str(excinfo.value)
+
+    def test_it_re_raises_an_assertion_that_is_not_about_duplicate_keys(self) -> None:
+        """Other data-diff invariants assert too; we must not mislabel them."""
+        validator = build_duplicate_key_validator()
+        diff_result = build_diff_result(("-", ("7", "alice")), ("+", ("8", "bob")))
+
+        with pytest.raises(AssertionError) as excinfo, validator._duplicate_keys_named(diff_result):
+            raise AssertionError("table1.is_bounded")
+
+        assert not isinstance(excinfo.value, DuplicateKeyError)
+
+    def test_the_same_key_on_both_sides_is_an_ordinary_diff(self) -> None:
+        """One '-' and one '+' for a key is how every changed row is reported."""
+        validator = build_duplicate_key_validator()
+        diff_result = build_diff_result(("-", ("7", "alice")), ("+", ("7", "alicia")))
+
+        with pytest.raises(AssertionError), validator._duplicate_keys_named(diff_result):
+            raise AssertionError
+
+    def test_it_passes_a_successful_diff_through(self) -> None:
+        validator = build_duplicate_key_validator()
+
+        with validator._duplicate_keys_named(build_diff_result()):
+            pass
