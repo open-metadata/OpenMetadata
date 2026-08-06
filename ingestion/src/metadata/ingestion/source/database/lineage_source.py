@@ -337,9 +337,9 @@ class LineageSource(QueryParserSource, ABC):
                 logger.info(f"Processed {row_count} query log entries for lineage")
                 result_limit = getattr(self.source_config, "resultLimit", None)
                 if isinstance(result_limit, int) and row_count >= result_limit:
-                    logger.debug(
+                    logger.warning(
                         f"Reached the configured resultLimit of {result_limit} query log entries; "
-                        f"if more queries exist they were truncated and lineage may be incomplete. "
+                        f"the query log may have been truncated and lineage may be incomplete. "
                         f"Consider increasing resultLimit."
                     )
 
