@@ -54,8 +54,11 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
+import {
+  hydrateBackendSyncedPreferences,
+  resetBackendSyncState,
+} from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { hydrateBackendSyncedPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { clearAppMode, resolveInitialAppMode } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
@@ -216,6 +219,13 @@ export const AuthProvider = ({
     await authenticatorRef.current?.invokeLogout();
 
     setIsAuthenticated(false);
+
+    // Drop the module-level backend-sync bookkeeping (pending patch, rollback
+    // snapshots, debounce timer, last-known server state) before clearing the
+    // current user, so a stale in-flight/queued PATCH from this user cannot
+    // fire against — or get coalesced with — the next user's writes after
+    // they sign in within this same SPA session.
+    resetBackendSyncState();
 
     // reset the user details on logout
     setCurrentUser({} as User);

@@ -189,7 +189,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences,preferences";
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -542,9 +542,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           String fieldsParam) {
     CatalogSecurityContext catalogSecurityContext =
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
-    // Always hydrate preferences on bootstrap so the UI can restore user settings (e.g. appMode)
-    // regardless of the fields the caller explicitly requested.
-    Fields fields = getFields(EntityUtil.addField(fieldsParam, "preferences"));
+    Fields fields = getFields(fieldsParam);
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
     User user =
         repository.getLoggedInUserByNameAndEmail(

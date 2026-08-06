@@ -2214,30 +2214,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             patchJson,
             RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
 
-    User result = Users.get(user.getId().toString(), "preferences");
+    User result = Users.get(user.getId().toString());
     assertEquals("ai", result.getPreferences().get("appMode"));
-  }
-
-  @Test
-  void get_user_without_fields_omitsPreferences(TestNamespace ns) {
-    String name = ns.prefix("prefsGating");
-    User user = createEntity(new CreateUser().withName(name).withEmail(toValidEmail(name)));
-    String patchJson = "[{\"op\":\"add\",\"path\":\"/preferences/appMode\",\"value\":\"ai\"}]";
-    SdkClients.adminClient()
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PATCH,
-            "/v1/users/" + user.getId(),
-            patchJson,
-            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
-
-    // Without fields=preferences, the response must not carry it.
-    User noFields = Users.get(user.getId().toString());
-    assertNull(noFields.getPreferences());
-
-    // With fields=preferences, the response carries it.
-    User withFields = Users.get(user.getId().toString(), "preferences");
-    assertEquals("ai", withFields.getPreferences().get("appMode"));
   }
 
   @Test
@@ -2265,7 +2243,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             replaceJson,
             RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
 
-    User result = Users.get(user.getId().toString(), "preferences");
+    User result = Users.get(user.getId().toString());
     assertEquals("ai", result.getPreferences().get("appMode"));
   }
 
@@ -2292,32 +2270,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             removeJson,
             RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
 
-    User result = Users.get(user.getId().toString(), "preferences");
+    User result = Users.get(user.getId().toString());
     // preferences map should either be null/empty, or should not contain "appMode".
     assertTrue(result.getPreferences() == null || !result.getPreferences().containsKey("appMode"));
-  }
-
-  @Test
-  void list_users_omitsPreferencesForAllEntries(TestNamespace ns) {
-    String name = ns.prefix("prefsListOmit");
-    User user = createEntity(new CreateUser().withName(name).withEmail(toValidEmail(name)));
-    String patchJson = "[{\"op\":\"add\",\"path\":\"/preferences/appMode\",\"value\":\"ai\"}]";
-    SdkClients.adminClient()
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PATCH,
-            "/v1/users/" + user.getId(),
-            patchJson,
-            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
-
-    ListParams params = new ListParams();
-    params.setLimit(100);
-    ListResponse<User> page = listEntities(params);
-
-    assertNotNull(page.getData());
-    assertTrue(
-        page.getData().stream().noneMatch(u -> u.getPreferences() != null),
-        "No entry in a list response should carry preferences");
   }
 
   private static class UserResultList extends ResultList<User> {}

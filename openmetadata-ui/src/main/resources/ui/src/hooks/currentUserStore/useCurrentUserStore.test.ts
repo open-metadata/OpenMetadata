@@ -392,7 +392,9 @@ describe('useCurrentUserStore', () => {
       usePersistentStorage
         .getState()
         .setUserPreference('alice', { appMode: 'ai' });
-      updateUserDetailMock.mockResolvedValue({ preferences: { appMode: 'ai' } });
+      updateUserDetailMock.mockResolvedValue({
+        preferences: { appMode: 'ai' },
+      });
 
       hydrateBackendSyncedPreferences({
         id: 'u1',
@@ -425,6 +427,76 @@ describe('useCurrentUserStore', () => {
       expect(usePersistentStorage.getState().preferences.alice.appMode).toBe(
         'classic'
       );
+    });
+
+    it('resetBackendSyncState clears pending patch state so a re-login with different user does not leak', async () => {
+      jest.useFakeTimers();
+      seedCurrentUser({ id: 'u1', name: 'alice' });
+      const { setPreference } = renderUseCurrentUserPreferences();
+      setPreference({ appMode: 'ai' });
+
+      // Simulate logout before the debounce fires.
+      resetBackendSyncState();
+
+      // Re-login as a different user; their write should get its own PATCH.
+      seedCurrentUser({ id: 'u2', name: 'bob' });
+      const bobHook = renderUseCurrentUserPreferences();
+      bobHook.setPreference({ appMode: 'classic' });
+
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(updateUserDetailMock).toHaveBeenCalledTimes(1);
+      expect(updateUserDetailMock).toHaveBeenCalledWith('u2', [
+        { op: 'add', path: '/preferences/appMode', value: 'classic' },
+      ]);
+    });
+
+    it('does not roll back a key whose local value has changed since the failed attempt', async () => {
+      jest.useFakeTimers();
+      seedCurrentUser({
+        id: 'u1',
+        name: 'alice',
+        preferences: { appMode: 'classic' },
+      });
+
+      // First PATCH will hang; capture its resolver so we can reject after a newer write.
+      let rejectFirst: (e: Error) => void = () => {};
+      updateUserDetailMock.mockImplementationOnce(
+        () =>
+          new Promise((_res, rej) => {
+            rejectFirst = rej;
+          })
+      );
+
+      const { setPreference } = renderUseCurrentUserPreferences();
+      setPreference({ appMode: 'ai' }); // triggers first flush at t=300ms
+      jest.advanceTimersByTime(300);
+      await Promise.resolve(); // let the flush await hit await
+
+      expect(updateUserDetailMock).toHaveBeenCalledTimes(1);
+
+      // Newer optimistic write while the earlier PATCH is still in flight.
+      // Deliberately distinct from both the original seed ('classic') and the
+      // in-flight attempt ('ai') so a naive rollback-to-pre-attempt-value is
+      // observably wrong: it would clobber 'auto' with 'classic'.
+      setPreference({ appMode: 'auto' });
+
+      expect(usePersistentStorage.getState().preferences.alice.appMode).toBe(
+        'auto'
+      );
+
+      // Now the earlier PATCH rejects; rollback must NOT restore the
+      // pre-attempt value ('classic') because the local value has diverged
+      // from what we tried to write ('ai') — a newer write ('auto') landed.
+      rejectFirst(new Error('boom'));
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(usePersistentStorage.getState().preferences.alice.appMode).toBe(
+        'auto'
+      );
+      expect(showErrorToastMock).toHaveBeenCalledTimes(1);
     });
   });
 });

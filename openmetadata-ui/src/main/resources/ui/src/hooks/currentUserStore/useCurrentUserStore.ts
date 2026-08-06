@@ -166,12 +166,26 @@ async function flushPendingPatch(
       }
     }
   } catch (error) {
+    // A newer write may have landed locally while this PATCH was in flight
+    // (e.g. the user changed the same key again before the rejected request
+    // settled). Only roll back keys whose local value still equals what we
+    // attempted to persist — if it has diverged, a subsequent write already
+    // superseded this attempt and clobbering it with the pre-attempt value
+    // would silently discard that newer write.
+    const currentSlice = (usePersistentStorage.getState().preferences[
+      userName
+    ] ?? {}) as unknown as Record<string, unknown>;
     const rollback: Partial<UserPreferences> = {};
-    for (const [key] of attempted) {
+    for (const [key, attemptedValue] of attempted) {
+      if (currentSlice[key] !== attemptedValue) {
+        continue;
+      }
       (rollback as Record<string, unknown>)[key] =
         attemptedPrevious.get(key) ?? null;
     }
-    usePersistentStorage.getState().setUserPreference(userName, rollback);
+    if (Object.keys(rollback).length > 0) {
+      usePersistentStorage.getState().setUserPreference(userName, rollback);
+    }
     showErrorToast(error as AxiosError);
   }
 }
@@ -246,9 +260,7 @@ export function hydrateBackendSyncedPreferences(user: {
 
   for (const key of BACKEND_SYNCED_KEYS) {
     const serverValue = server[key];
-    const localValue = (localSlice as unknown as Record<string, unknown>)[
-      key
-    ];
+    const localValue = (localSlice as unknown as Record<string, unknown>)[key];
 
     if (serverValue !== undefined) {
       // Server wins.
