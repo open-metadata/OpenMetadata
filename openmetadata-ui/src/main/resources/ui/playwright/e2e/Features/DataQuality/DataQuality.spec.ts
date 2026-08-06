@@ -892,6 +892,26 @@ test.describe(
         await page.getByTestId('searchbar-component').locator('input').clear();
         await getTestCaseResponse;
 
+        // Issue #31077: a pasted URL is full of Lucene reserved characters. The UI must escape
+        // them and the API must answer 200 - unescaped it returned 500 query_shard_exception.
+        const reservedCharSearchResponse = page.waitForResponse((url) =>
+          url.url().includes('/api/v1/dataQuality/testCases/search/list')
+        );
+        await page
+          .getByTestId('searchbar-component')
+          .locator('input')
+          .fill('https://localhost:8585/table/orders');
+        const reservedCharSearch = await reservedCharSearchResponse;
+
+        expect(reservedCharSearch.status()).toBe(200);
+
+        // clear the reserved-character search
+        const clearReservedCharSearch = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await page.getByTestId('searchbar-component').locator('input').clear();
+        await clearReservedCharSearch;
+
         // Test case filter by service name
         const serviceResponse = page.waitForResponse(
           '/api/v1/search/query?q=*index=databaseService*'
