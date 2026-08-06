@@ -869,6 +869,7 @@ export const waitForSearchResult = async (
         if (hasSubmittedSearch) {
           await Promise.all([searchResponse, page.reload()]);
         } else {
+          await page.getByTestId('searchBox').clear();
           await page.getByTestId('searchBox').fill(searchTerm);
           await Promise.all([
             searchResponse,
@@ -890,12 +891,14 @@ export const waitForSearchResult = async (
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
-  childFqnSearchTerm: string
+  childFqnSearchTerm: string,
+  exploreTabName?: string
 ) => {
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   const domainLink = entityCard.getByTestId('domain-link').first();
+  const tabSelector = page.getByRole('menuitem', { name: exploreTabName });
 
-  await waitForSearchResult(page, childFqnSearchTerm, domainLink);
+  await waitForSearchResult(page, childFqnSearchTerm, domainLink, tabSelector);
   await expect(entityCard).toBeVisible();
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
