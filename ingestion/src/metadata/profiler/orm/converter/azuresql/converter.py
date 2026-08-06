@@ -13,7 +13,7 @@
 Map Types to convert/cast azuresql related data types to relevant data types
 """
 
-from typing import Dict, Set  # noqa: UP035
+from typing import Any, Dict, Set  # noqa: UP035
 
 import sqlalchemy
 from sqlalchemy import NVARCHAR, TEXT
@@ -48,9 +48,8 @@ class AzureSqlMapTypes(CommonMapTypes):
     @staticmethod
     def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
         """returns an ORM type"""
-        common = CommonMapTypes.map_sqa_to_om_types()
-        return {
-            **common,
-            sqlalchemy.NUMERIC: common[sqlalchemy.NUMERIC] | {DataType.MONEY},
-            sqlalchemy.BOOLEAN: common[sqlalchemy.BOOLEAN] | {DataType.BIT},
-        }
+        # Derived from _TYPE_MAP_OVERRIDE so the forward and reverse maps cannot drift.
+        mapping: Dict[Any, Set[DataType]] = dict(CommonMapTypes.map_sqa_to_om_types())  # noqa: UP006
+        for om_type, sqa_type in AzureSqlMapTypes._TYPE_MAP_OVERRIDE.items():
+            mapping[sqa_type] = mapping.get(sqa_type, set()) | {om_type}
+        return mapping
