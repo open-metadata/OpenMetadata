@@ -55,6 +55,18 @@ public final class SearchUtils {
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
+  /**
+   * Lucene syntax characters that make a {@code query_string} query unparseable when they appear in
+   * free text. {@code *} and {@code ?} are deliberately absent: callers pass them as wildcards to
+   * ask for prefix/substring matching, so escaping them would turn every wildcard search literal.
+   *
+   * <p>Note the asymmetry with the UI helper {@code escapeESReservedCharacters}, which <em>does</em>
+   * escape {@code *} and {@code ?}: the UI escapes the user's text and then adds its own wrapping
+   * wildcards, so only the wrapping ones stay active. Harmonising the two sets would break wildcard
+   * search — the server must leave the wildcards its callers supply intact.
+   */
+  public static final String QUERY_STRING_SYNTAX_CHARACTERS = "+-=&|><!(){}[]^\"~:/";
+
   private static final String EXACT_AGG_SUFFIX = "__exact";
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
@@ -824,18 +836,6 @@ public final class SearchUtils {
     }
     return analyzedSubTokenCount(query) > 2 ? 1 : 10;
   }
-
-  /**
-   * Lucene syntax characters that make a {@code query_string} query unparseable when they appear in
-   * free text. {@code *} and {@code ?} are deliberately absent: callers pass them as wildcards to
-   * ask for prefix/substring matching, so escaping them would turn every wildcard search literal.
-   *
-   * <p>Note the asymmetry with the UI helper {@code escapeESReservedCharacters}, which <em>does</em>
-   * escape {@code *} and {@code ?}: the UI escapes the user's text and then adds its own wrapping
-   * wildcards, so only the wrapping ones stay active. Harmonising the two sets would break wildcard
-   * search — the server must leave the wildcards its callers supply intact.
-   */
-  public static final String QUERY_STRING_SYNTAX_CHARACTERS = "+-=&|><!(){}[]^\"~:/";
 
   /**
    * Escape the Lucene syntax characters the caller left unescaped so that free-text input (a pasted

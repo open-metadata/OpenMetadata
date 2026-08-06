@@ -896,12 +896,14 @@ test.describe(
         // the UI escapes them, and the server accepts the escaped query instead of returning a
         // 500 query_shard_exception. Checking only the status would still pass if the UI stopped
         // escaping but the server escaper covered for it.
+        // Matches on the unescaped host so that a UI escaping regression fails on the explicit
+        // assertion below rather than as an opaque waitForResponse timeout.
         const reservedCharSearchResponse = page.waitForResponse(
           (response) =>
             response
               .url()
               .includes('/api/v1/dataQuality/testCases/search/list') &&
-            response.url().includes('localhost%5C%3A8585')
+            response.url().includes('8585')
         );
         await page
           .getByTestId('searchbar-component')

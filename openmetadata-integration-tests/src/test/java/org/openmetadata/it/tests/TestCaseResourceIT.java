@@ -56,6 +56,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -2517,6 +2518,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .testDefinition("columnValuesToBeNotNull")
         .create();
 
+    // A second table's test case must never appear: without it the scoping assertions would still
+    // be satisfiable if the server ignored `entityLink` altogether.
+    Table otherTable = createTable(ns);
+    String otherTableTest = ns.prefix("picker_other_table_test");
+    TestCaseBuilder.create(client)
+        .name(otherTableTest)
+        .forTable(otherTable)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
+
     TestCase fetched =
         client.testCases().getByName(createdTableTest.getFullyQualifiedName(), "testSuite");
     String suiteFqn = fetched.getTestSuite().getFullyQualifiedName();
@@ -2532,6 +2544,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   scoped.contains(tableTest), "table-level test must be listed, got: " + scoped);
               assertTrue(
                   scoped.contains(columnTest), "column-level test must be listed, got: " + scoped);
+              assertFalse(
+                  scoped.contains(otherTableTest),
+                  "another table's test must be scoped out, got: " + scoped);
             });
 
     // Free text still narrows within the suite scope.
@@ -2545,6 +2560,49 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertTrue(
         searchTestCaseNames("* && testSuite.fullyQualifiedName:\"" + suiteFqn + "\"").isEmpty(),
         "a Lucene expression in `q` must not silently behave like a filter on this endpoint");
+  }
+
+  /**
+   * {@code TestCaseResultResource} documents its two {@code q} params identically to the test case
+   * endpoints ("search query term to use in list") and reached {@code query_string} unescaped too.
+   * Smoke-covers both so the escaping convention is not silently applied unevenly.
+   */
+  @Test
+  void test_testCaseResultSearchWithLuceneReservedCharactersInQuery(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_reserved_search"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestCaseResult result = new CreateTestCaseResult();
+    result.setTimestamp(System.currentTimeMillis());
+    result.setTestCaseStatus(TestCaseStatus.Success);
+    result.setResult("passed");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    for (String reservedQuery : WILDCARD_WRAPPED_RESERVED_QUERIES) {
+      assertDoesNotThrow(
+          () -> searchTestCaseResults("/search/list", reservedQuery),
+          "testCaseResults/search/list must not fail for the query " + reservedQuery);
+      assertDoesNotThrow(
+          () -> searchTestCaseResults("/search/latest", reservedQuery),
+          "testCaseResults/search/latest must not fail for the query " + reservedQuery);
+    }
+  }
+
+  private String searchTestCaseResults(String path, String query) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/dataQuality/testCases/testCaseResults" + path,
+            null,
+            RequestOptions.builder().queryParam("q", query).queryParam("limit", "10").build());
   }
 
   private List<String> searchTestCasesForSuite(String query, String entityLink) {
