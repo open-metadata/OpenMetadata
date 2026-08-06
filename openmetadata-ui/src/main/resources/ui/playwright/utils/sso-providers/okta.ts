@@ -26,18 +26,6 @@ const OKTA_TENANT = {
     process.env[SSO_ENV.OKTA_PRINCIPAL_DOMAIN] ?? 'getcollate.io',
 } as const;
 
-// Confidential-client credentials. These identify a *different* Okta app (type
-// Web) from the public/SPA one above, which is PKCE-only and cannot serve this
-// flow at all.
-//
-// Neither value is committed. Both come from the `test` GitHub environment, so
-// the tenant's confidential app registration stays out of a public repo, and
-// the confidential Okta scenario skips when either is absent.
-export const OKTA_CONFIDENTIAL = {
-  clientId: process.env[SSO_ENV.OKTA_CONFIDENTIAL_CLIENT_ID] ?? '',
-  clientSecret: process.env[SSO_ENV.OKTA_CLIENT_SECRET] ?? '',
-} as const;
-
 const buildConfigPayload = (): ProviderConfigOverride => {
   const authority = `https://${OKTA_TENANT.domain}/oauth2/default`;
 
@@ -56,65 +44,6 @@ const buildConfigPayload = (): ProviderConfigOverride => {
       callbackUrl: `${OM_BASE_URL}/callback`,
       jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
       enableSelfSignup: true,
-    },
-    authorizerConfiguration: {
-      principalDomain: OKTA_TENANT.principalDomain,
-    },
-  };
-};
-
-/**
- * Confidential-client variant of the payload above.
- *
- * `clientType: 'confidential'` is what makes AuthProvider mount
- * GenericAuthenticator instead of OktaAuthenticator, moving renewal off
- * @okta/okta-auth-js and onto OpenMetadata's own GET /api/v1/auth/refresh.
- *
- * Needs a *separate* Okta app registration of type Web — the public/SPA app in
- * OKTA_TENANT above has no client secret and cannot serve this flow. Hence the
- * dedicated client id, and a secret with no committed default: unlike the
- * Keycloak fixture, this is a real tenant credential and must come from a
- * GitHub secret. The suite skips rather than fails when either is absent.
- *
- * The oidcConfiguration block is mandatory: authenticationConfiguration.json
- * requires it for confidential OIDC providers, and oidcClientConfig.json requires
- * id/secret/discoveryUri/tenant within it — `tenant` included, despite being
- * documented as Azure-only. Bean validation on PUT rejects the payload otherwise.
- */
-const buildConfidentialConfigPayload = (): ProviderConfigOverride => {
-  const authority = `https://${OKTA_TENANT.domain}/oauth2/default`;
-
-  return {
-    authenticationConfiguration: {
-      clientType: 'confidential',
-      provider: 'okta',
-      providerName: '',
-      publicKeyUrls: [
-        `${OM_BASE_URL}/api/v1/system/config/jwks`,
-        `${authority}/v1/keys`,
-      ],
-      tokenValidationAlgorithm: 'RS256',
-      authority,
-      clientId: OKTA_CONFIDENTIAL.clientId,
-      callbackUrl: `${OM_BASE_URL}/callback`,
-      jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
-      enableSelfSignup: true,
-      oidcConfiguration: {
-        id: OKTA_CONFIDENTIAL.clientId,
-        type: 'okta',
-        secret: OKTA_CONFIDENTIAL.clientSecret,
-        scope: 'openid email profile',
-        discoveryUri: `${authority}/.well-known/openid-configuration`,
-        tenant: OKTA_TENANT.domain,
-        callbackUrl: `${OM_BASE_URL}/callback`,
-        serverUrl: OM_BASE_URL,
-        responseType: 'code',
-        clientAuthenticationMethod: 'client_secret_basic',
-        preferredJwsAlgorithm: 'RS256',
-        // Mirrors conf/openmetadata.yaml's OIDC_DISABLE_PKCE default so the
-        // suite exercises what a self-hosted deployment gets out of the box.
-        disablePkce: true,
-      },
     },
     authorizerConfiguration: {
       principalDomain: OKTA_TENANT.principalDomain,
@@ -151,12 +80,5 @@ export const oktaProviderHelper: ProviderHelper = {
   expectedButtonText: 'Sign in with Okta',
   loginUrlPattern: /\.okta\.com/,
   buildConfigPayload,
-  performProviderLogin,
-};
-
-export const oktaConfidentialProviderHelper: ProviderHelper = {
-  expectedButtonText: 'Sign in with Okta',
-  loginUrlPattern: /\.okta\.com/,
-  buildConfigPayload: buildConfidentialConfigPayload,
   performProviderLogin,
 };

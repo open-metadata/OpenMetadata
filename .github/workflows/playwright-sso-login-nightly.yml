@@ -139,12 +139,6 @@ jobs:
           # drops the SameSite=Lax OM_SESSION cookie. This reproduces the production "No pending session"
           # failure that the localhost-only job cannot, guarding the SAML RelayState fix.
           KEYCLOAK_SAML_BASE_URL: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
-          # Confidential-client credentials for the Okta leg. These name a second
-          # Okta app of type Web; the public/SPA app in OKTA_CLIENT_ID is
-          # PKCE-only and cannot serve a confidential flow. Absent them, the
-          # confidential Okta scenario skips rather than fails.
-          OKTA_CONFIDENTIAL_CLIENT_ID: ${{ vars.OKTA_CONFIDENTIAL_CLIENT_ID }}
-          OKTA_CLIENT_SECRET: ${{ secrets.OKTA_CLIENT_SECRET }}
           PLAYWRIGHT_IS_OSS: true
         run: npx playwright test --project=sso-auth --workers=1 --grep-invert "${{ matrix.provider.excluded_tags }}"
 

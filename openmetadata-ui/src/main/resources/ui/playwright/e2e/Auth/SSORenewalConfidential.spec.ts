@@ -20,12 +20,7 @@ import {
   waitForAccessTokenExpiry,
   withShortOidcTokenValidity,
 } from '../../utils/sessionRenewal';
-import { ProviderHelper } from '../../utils/sso-providers';
 import { keycloakOidcConfidentialProviderHelper } from '../../utils/sso-providers/keycloak-oidc';
-import {
-  OKTA_CONFIDENTIAL,
-  oktaConfidentialProviderHelper,
-} from '../../utils/sso-providers/okta';
 import {
   swapSecurityConfig,
 } from '../../utils/ssoAuth';
@@ -51,56 +46,34 @@ const password = process.env[SSO_ENV.PASSWORD] ?? '';
 // transport SSORenewal.spec.ts asserts for SAML, reached through a different
 // handler. So the assertions match that suite; only the IdP differs.
 //
-// Two scenarios, because the tags have to differ and each lands on exactly the
-// leg that can serve it:
+// Keycloak rather than Okta, and deliberately only Keycloak. AuthProvider
+// branches on clientType rather than provider, so either IdP exercises the exact
+// same OpenMetadata code — and only the Keycloak fixture can actually run it. A
+// confidential Okta app is governed by an authentication policy that requires
+// Okta Verify enrollment, which parks the login on Okta's "Set up security
+// methods" screen and never returns to OpenMetadata (see run 31092281732). The
+// fixture is the tenant here, so its client secret is a committed throwaway and
+// there is no external registration or enrollment policy in the way.
 //
-//   Keycloak  @tokenRenewal  runs today. The fixture is the tenant, so its client
-//                            secret is a committed throwaway and no external app
-//                            registration is needed. The okta and -crosssite legs
-//                            both exclude this tag.
-//   Okta      @okta          skips until a Web app registration and
-//                            OKTA_CLIENT_SECRET exist. The keycloak legs exclude
-//                            this tag.
-const CONFIDENTIAL_SCENARIOS: {
-  title: string;
-  tag: string;
-  helper: ProviderHelper;
-  hasCredentials: boolean;
-  skipReason: string;
-}[] = [
-  {
-    title: 'Keycloak',
-    tag: '@tokenRenewal',
-    helper: keycloakOidcConfidentialProviderHelper,
-    hasCredentials: Boolean(username && password),
-    skipReason: `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`,
-  },
-  {
-    title: 'Okta',
-    tag: '@okta',
-    helper: oktaConfidentialProviderHelper,
-    hasCredentials: Boolean(
-      username &&
-        password &&
-        OKTA_CONFIDENTIAL.clientId &&
-        OKTA_CONFIDENTIAL.clientSecret
-    ),
-    skipReason: `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD} plus ${SSO_ENV.OKTA_CONFIDENTIAL_CLIENT_ID}/${SSO_ENV.OKTA_CLIENT_SECRET} for a confidential Okta Web app`,
-  },
-];
+// Tagged @tokenRenewal: accurate, since it shortens
+// oidcConfiguration.tokenValidity, and it lands the suite on the one leg that can
+// serve it — the okta and -crosssite legs both exclude that tag.
+const CONFIDENTIAL_RENEWAL_TAGS = ['@sso', '@Platform', '@tokenRenewal'];
 
 test.describe.configure({ mode: 'serial' });
 
-for (const scenario of CONFIDENTIAL_SCENARIOS) {
-  test.describe(
-    `Confidential OIDC Session Renewal — ${scenario.title}`,
-    { tag: ['@sso', '@Platform', scenario.tag] },
-    () => {
+test.describe(
+  'Confidential OIDC Session Renewal',
+  { tag: CONFIDENTIAL_RENEWAL_TAGS },
+  () => {
   test.slow();
   // eslint-disable-next-line playwright/no-skipped-test
-  test.skip(!scenario.hasCredentials, scenario.skipReason);
+  test.skip(
+    !username || !password,
+    `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
+  );
 
-  const helper = scenario.helper;
+  const helper = keycloakOidcConfidentialProviderHelper;
   let restoreSecurity: (() => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
@@ -209,6 +182,5 @@ for (const scenario of CONFIDENTIAL_SCENARIOS) {
     await expect(page.getByText(/session has timed out/i)).toBeVisible();
     await expect(page.locator('button.signin-button')).toBeVisible();
   });
-    }
-  );
-}
+  }
+);
