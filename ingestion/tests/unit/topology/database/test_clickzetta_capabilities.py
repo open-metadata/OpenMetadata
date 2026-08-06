@@ -27,15 +27,19 @@ except ModuleNotFoundError:
 from metadata.generated.schema.entity.services.connections.database.clickzettaConnection import (  # noqa: E402
     ClickzettaConnection,
 )
+from metadata.ingestion.source.database.clickzetta.data_diff.table_parameter import (  # noqa: E402
+    ClickzettaTableParameter,
+)
 from metadata.ingestion.source.database.clickzetta.service_spec import ServiceSpec  # noqa: E402
+from metadata.utils.importer import get_class_path  # noqa: E402
 
 
-def test_clickzetta_keeps_unvalidated_data_capabilities_disabled():
-    """Generic SQLAlchemy data-reading implementations must not be inherited accidentally."""
+def test_clickzetta_registers_the_validated_data_diff_adapter():
+    """Data diff uses the ClickZetta adapter instead of a generic SQLAlchemy fallback."""
     assert ServiceSpec.profiler_class is None
     assert ServiceSpec.sampler_class is None
     assert ServiceSpec.test_suite_class is None
-    assert ServiceSpec.data_diff is None
+    assert ServiceSpec.data_diff == get_class_path(ClickzettaTableParameter)
 
 
 def test_clickzetta_dbt_flag_defaults_to_disabled():
@@ -47,7 +51,7 @@ def test_clickzetta_dbt_flag_defaults_to_disabled():
     schema = json.loads(schema_path.read_text())
     assert schema["properties"]["supportsDBTExtraction"]["default"] is False
     assert schema["properties"]["supportsProfiler"]["default"] is False
-    assert schema["properties"]["supportsDataDiff"]["default"] is False
+    assert schema["properties"]["supportsDataDiff"]["default"] is True
 
     if not hasattr(ClickzettaConnection, "model_validate"):
         return
@@ -70,4 +74,4 @@ def test_clickzetta_dbt_flag_defaults_to_disabled():
     if hasattr(config, "supportsProfiler"):
         assert config.supportsProfiler is False
     if hasattr(config, "supportsDataDiff"):
-        assert config.supportsDataDiff is False
+        assert config.supportsDataDiff is True

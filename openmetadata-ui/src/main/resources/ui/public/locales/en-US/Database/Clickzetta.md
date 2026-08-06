@@ -9,9 +9,10 @@ Create a ClickZetta user with read access to the workspace, virtual cluster,
 schemas, and tables that OpenMetadata should catalog. Metadata extraction is
 supported directly. Usage and query-lineage extraction additionally require a
 read-only query-history table or view configured below. Connector-specific
-profiling, bounded sampling, native tests, and data diff adapters are
-implemented in the contribution branch, but remain disabled in the service spec
-until a bounded seller-center smoke test is approved. DBT artifacts are ingested
+profiling, bounded sampling, and native test adapters are implemented in the
+contribution branch but remain disabled in the service spec. The data diff
+adapter is registered with an explicit full-scan guard and has passed a bounded
+typed-table smoke test. DBT artifacts are ingested
 by the separate DBT source (for example, from S3); this database connector does
 not run DBT models or read DBT artifacts itself.
 

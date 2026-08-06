@@ -14,6 +14,7 @@ from typing import Any, ClassVar
 import attrs
 from data_diff.abcs.database_types import (
     Boolean,
+    Date,
     Decimal,
     Float,
     Integer,
@@ -28,6 +29,7 @@ from data_diff.databases.base import (
     Database,
 )
 from data_diff.databases.presto import Dialect as PrestoDialect
+from data_diff.schema import RawColumnInfo
 
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 
@@ -39,7 +41,9 @@ class ClickzettaDialect(PrestoDialect):
     ROUNDS_ON_PREC_LOSS = True
     TYPE_CLASSES: ClassVar[dict[str, type]] = {
         "TIMESTAMP": Timestamp,
+        "TIMESTAMP_NTZ": Timestamp,
         "TIMESTAMP_TZ": TimestampTZ,
+        "DATE": Date,
         "INT8": Integer,
         "INT16": Integer,
         "INT32": Integer,
@@ -57,6 +61,7 @@ class ClickzettaDialect(PrestoDialect):
         "BOOL": Boolean,
         "DECIMAL": Decimal,
     }
+    TYPE_CLASSES.update({key.lower(): value for key, value in TYPE_CLASSES.items()})
 
     def quote(self, s: str):
         if not isinstance(s, str) or not _IDENTIFIER.fullmatch(s):
@@ -65,6 +70,23 @@ class ClickzettaDialect(PrestoDialect):
 
     def to_string(self, s: str):
         return f"CAST({s} AS STRING)"
+
+    def parse_type(self, table_path, info: RawColumnInfo):
+        """Parse ClickZetta's case-insensitive DESCRIBE type names."""
+
+        data_type = info.data_type.strip().lower()
+        if data_type == "timestamp_ntz":
+            data_type = "timestamp"
+        elif data_type in {"timestamp_tz", "timestamp_ltz"}:
+            data_type = "timestamp_tz"
+
+        normalized_info = attrs.evolve(info, data_type=data_type)
+        if data_type == "date":
+            return Date(
+                precision=normalized_info.datetime_precision or 0,
+                rounds=self.ROUNDS_ON_PREC_LOSS,
+            )
+        return super().parse_type(table_path, normalized_info)
 
     def md5_as_hex(self, s: str) -> str:
         return f"MD5(CAST({s} AS STRING))"
@@ -143,14 +165,15 @@ class ClickzettaDatabase(Database):
 
     def _query(self, sql_code: str) -> list:
         normalized_sql = sql_code.lower()
-        if "information_schema.columns" not in normalized_sql and not self.allow_full_table_scan:
+        is_schema_query = "information_schema.columns" in normalized_sql or normalized_sql.lstrip().startswith("describe ")
+        if not is_schema_query and not self.allow_full_table_scan:
             raise RuntimeError(
                 "ClickZetta data diff is disabled for data queries unless "
                 "allowFullTableScan=true is explicitly configured"
             )
         cursor = self._conn.cursor()
         cursor.execute(sql_code)
-        if sql_code.lstrip().lower().startswith(("select", "show", "explain")):
+        if sql_code.lstrip().lower().startswith(("select", "show", "describe", "explain")):
             return cursor.fetchall()
         return cursor.fetchone()
 
@@ -160,20 +183,62 @@ class ClickzettaDatabase(Database):
 
     def select_table_schema(self, path):
         schema, table = self._normalize_table_path(path)
-        # ClickZetta's information schema is exposed beneath sys, like the
-        # native job-history view used by the usage/lineage source.
-        return (
-            "SELECT column_name, data_type, datetime_precision, numeric_precision, numeric_scale "
-            "FROM sys.information_schema.columns "
-            f"WHERE table_name = '{self._quote_literal(table)}' "
-            f"AND table_schema = '{self._quote_literal(schema)}'"
-        )
+        return f"DESCRIBE {self._quote_identifier(schema)}.{self._quote_identifier(table)}"
 
     @staticmethod
-    def _quote_literal(value: str) -> str:
+    def _quote_identifier(value: str) -> str:
         if not isinstance(value, str) or not _IDENTIFIER.fullmatch(value):
-            raise ValueError(f"Invalid ClickZetta schema/table name: {value!r}")
-        return value.replace("'", "''")
+            raise ValueError(f"Invalid ClickZetta identifier: {value!r}")
+        return f"`{value}`"
+
+    @staticmethod
+    def _parse_describe_type(data_type: str) -> tuple[str, int | None, int | None, int | None]:
+        """Normalize a ClickZetta DESCRIBE type into data-diff metadata."""
+
+        match = re.fullmatch(r"\s*([A-Za-z_][A-Za-z0-9_]*)(?:\(([^)]*)\))?\s*", data_type)
+        if not match:
+            return data_type.strip().upper(), None, None, None
+
+        base_type = match.group(1).upper()
+        args = []
+        if match.group(2):
+            for value in match.group(2).split(","):
+                try:
+                    args.append(int(value.strip()))
+                except ValueError:
+                    args = []
+                    break
+
+        datetime_precision = args[0] if args and base_type.startswith("TIMESTAMP") else None
+        numeric_precision = args[0] if args and base_type in {"DECIMAL", "NUMERIC"} else None
+        numeric_scale = args[1] if len(args) > 1 and base_type in {"DECIMAL", "NUMERIC"} else None
+        if base_type == "NUMERIC":
+            base_type = "DECIMAL"
+        return base_type, datetime_precision, numeric_precision, numeric_scale
+
+    def query_table_schema(self, path):
+        """Read ClickZetta's accessible DESCRIBE result instead of information_schema."""
+
+        rows = self._query(self.select_table_schema(path))
+        if not rows:
+            raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
+
+        schema = {}
+        for row in rows:
+            if len(row) < 2 or not row[0] or not row[1]:
+                continue
+            data_type, datetime_precision, numeric_precision, numeric_scale = self._parse_describe_type(str(row[1]))
+            schema[row[0]] = RawColumnInfo(
+                column_name=row[0],
+                data_type=data_type,
+                datetime_precision=datetime_precision,
+                numeric_precision=numeric_precision,
+                numeric_scale=numeric_scale,
+            )
+
+        if not schema:
+            raise RuntimeError(f"{self.name}: Table '{'.'.join(path)}' does not exist, or has no columns")
+        return schema
 
     @property
     def is_autocommit(self) -> bool:
