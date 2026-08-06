@@ -63,19 +63,23 @@ public class AlertsRuleEvaluator {
 
   /**
    * Resolves the change-event entity itself even once it is soft-deleted — a delete event must still
-   * be able to match on its domains, owners and test suites — while pinning its relationship fields
-   * to live targets. Widening the subject include alone must not widen which alerts fire, and
+   * be able to match on its domains, owners and test suites — while pinning owners and domains to
+   * live targets. Widening the subject include alone must not widen which alerts fire, and
    * {@link Include#NON_DELETED} is also the only include for which
    * {@code EntityRepository.getOwners}/{@code getDomains} consult and populate the relationship
    * cache, which this evaluator runs against on the change-event hot path.
+   *
+   * <p>Test suites are deliberately absent: {@code TestCaseRepository.getTestSuites} hardcodes
+   * {@link Include#ALL} and never consults {@link RelationIncludes}, so a soft-deleted test suite
+   * resolves either way and an entry here would be inert. Making that path include-aware is a
+   * separate change.
    */
   private static final RelationIncludes DELETED_TOLERANT_SUBJECT =
       new RelationIncludes(
           Include.ALL,
           Map.of(
               Entity.FIELD_OWNERS, Include.NON_DELETED,
-              Entity.FIELD_DOMAINS, Include.NON_DELETED,
-              Entity.FIELD_TEST_SUITES, Include.NON_DELETED));
+              Entity.FIELD_DOMAINS, Include.NON_DELETED));
 
   private final ChangeEvent changeEvent;
 
