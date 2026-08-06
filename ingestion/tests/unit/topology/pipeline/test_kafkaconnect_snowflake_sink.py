@@ -10,8 +10,14 @@
 #  limitations under the License.
 """Tests for the Confluent Cloud Snowflake Sink dataset resolver."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
+from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
+    CONNECTOR_CLASS_TO_SERVICE_TYPE,
+    SERVICE_TYPE_HOSTNAME_KEYS,
+)
 from metadata.ingestion.source.pipeline.kafkaconnect.metadata import KafkaconnectSource
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectDatasetDetails,
@@ -243,3 +249,121 @@ class TestSourceDelegatesToResolver:
         dataset = next(d for d in resolver.resolve_datasets(config, []) if d.source_topic == "order_events_flat")
         matched = _new_source()._match_topic_to_dataset(dataset, {"order_events_flat": "<topic>"}, details, None)
         assert matched == "<topic>"
+
+
+class TestSnowflakeServiceResolution:
+    def test_managed_plugin_name_maps_to_snowflake(self):
+        assert CONNECTOR_CLASS_TO_SERVICE_TYPE["SnowflakeSink"] == "Snowflake"
+
+    def test_self_managed_class_maps_to_snowflake(self):
+        assert CONNECTOR_CLASS_TO_SERVICE_TYPE["SnowflakeSinkConnector"] == "Snowflake"
+
+    def test_snowflake_hostname_key_is_url_name(self):
+        assert "snowflake.url.name" in SERVICE_TYPE_HOSTNAME_KEYS["Snowflake"]
+
+    def test_url_with_leading_whitespace_is_stripped(self):
+        """Observed live: the UI stored ' FMFAHQK-GI58232.snowflakecomputing.com'."""
+        extracted = KafkaconnectSource._extract_hostname(None, " FMFAHQK-GI58232.snowflakecomputing.com")
+        assert extracted == "FMFAHQK-GI58232.snowflakecomputing.com"
+
+
+class TestDatasetFqnConstruction:
+    def _source_with_captured_fqn(self, captured):
+        source = MagicMock(spec=KafkaconnectSource)
+        source.metadata = MagicMock()
+        source.metadata.get_by_name.side_effect = lambda entity, fqn: captured.append(fqn)
+        source.get_service_from_connector_config.return_value = MagicMock(database_service_name="snowflake_prod")
+        source.get_db_service_names.return_value = []
+        return source
+
+    def test_qualified_dataset_builds_four_part_fqn(self):
+        captured = []
+        source = self._source_with_captured_fqn(captured)
+        dataset = KafkaConnectDatasetDetails(
+            table="ORDER_EVENTS_FLAT",
+            database="EVENT_LANDING",
+            schema="PUBLIC",
+            source_topic="order_events_flat",
+            fully_qualified=True,
+        )
+        KafkaconnectSource.get_dataset_entity(
+            source,
+            KafkaConnectPipelineDetails(name="s", type="sink", config=BASE_SNOWFLAKE_CONFIG),
+            dataset,
+        )
+        assert captured, "expected at least one FQN lookup"
+        assert "EVENT_LANDING" in captured[0] and "PUBLIC" in captured[0]
+
+    def test_unqualified_cdc_dataset_keeps_three_part_fqn(self):
+        """Debezium's 'database' is a logical server name, not a real database.
+
+        Real fqn.build() only returns a raw-built string when database_name,
+        schema_name AND service_name are all truthy (metadata.utils.fqn: Table
+        builder); for CDC, database_name is intentionally None, so production
+        resolution comes from an ES lookup a bare MagicMock can't simulate.
+        We patch fqn.build itself (the same technique test_kafkaconnect.py already
+        uses via its `_fqn_build` helper) so this test verifies the *arguments*
+        get_dataset_entity passes to fqn.build, not ES's independent behaviour.
+        """
+        captured = []
+        source = self._source_with_captured_fqn(captured)
+        dataset = KafkaConnectDatasetDetails(table="orders", database="inventory", fully_qualified=False)
+
+        def fake_fqn_build(
+            metadata,
+            entity_type=None,
+            service_name=None,
+            database_name=None,
+            schema_name=None,
+            table_name=None,
+            **kwargs,
+        ):
+            parts = [part for part in (service_name, database_name, schema_name, table_name) if part]
+            return ".".join(parts) if parts else None
+
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
+            side_effect=fake_fqn_build,
+        ):
+            KafkaconnectSource.get_dataset_entity(
+                source,
+                KafkaConnectPipelineDetails(
+                    name="dbz",
+                    type="source",
+                    config={"connector.class": "MySqlCdcSource", "topic.prefix": "inventory"},
+                ),
+                dataset,
+            )
+        assert captured
+        # 'inventory' occupies the schema slot exactly as before this change
+        assert captured[0].count("inventory") == 1
+
+
+class TestUnresolvableTableDiagnostics:
+    def test_warning_names_db_service_names_setting(self, caplog):
+        import logging
+
+        source = MagicMock(spec=KafkaconnectSource)
+        source.metadata = MagicMock()
+        source.metadata.get_by_name.return_value = None
+        source.metadata.search_in_any_service.return_value = None
+        source.get_service_from_connector_config.return_value = MagicMock(database_service_name=None)
+        source.get_db_service_names.return_value = []
+
+        dataset = KafkaConnectDatasetDetails(
+            table="ORDER_EVENTS_FLAT",
+            database="TEST_DB",
+            schema="MAYUR_SCHEMA",
+            source_topic="order_events_flat",
+            fully_qualified=True,
+        )
+        with caplog.at_level(logging.WARNING):
+            KafkaconnectSource.get_dataset_entity(
+                source,
+                KafkaConnectPipelineDetails(name="s", type="sink", config=BASE_SNOWFLAKE_CONFIG),
+                dataset,
+            )
+
+        combined = " ".join(record.message for record in caplog.records)
+        assert "dbServiceNames" in combined
+        assert "ORDER_EVENTS_FLAT" in combined

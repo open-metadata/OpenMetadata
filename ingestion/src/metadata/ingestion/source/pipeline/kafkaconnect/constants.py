@@ -115,6 +115,9 @@ CONNECTOR_CLASS_TO_SERVICE_TYPE = {
     "MongoDbCdcSource": "MongoDB",
     "OracleCdcSource": "Oracle",
     "Db2CdcSource": "Db2",
+    # Confluent Cloud reports the short plugin name; self-managed Connect reports the Java class.
+    "SnowflakeSink": "Snowflake",
+    "SnowflakeSinkConnector": "Snowflake",
 }
 
 # Map service types to hostname config keys
@@ -124,6 +127,7 @@ SERVICE_TYPE_HOSTNAME_KEYS = {
     "Mssql": ["database.hostname"],
     "MongoDB": ["mongodb.connection.uri", "connection.uri"],
     "Oracle": ["database.hostname"],
+    "Snowflake": ["snowflake.url.name"],
 }
 
 # Map service types to broker/endpoint config keys for messaging services

@@ -503,8 +503,12 @@ class KafkaconnectSource(PipelineServiceSource):
                                 metadata=self.metadata,
                                 entity_type=dataset_details.dataset_type,
                                 table_name=dataset_details.table,
-                                database_name=None,
-                                schema_name=dataset_details.database,
+                                database_name=(dataset_details.database if dataset_details.fully_qualified else None),
+                                schema_name=(
+                                    dataset_details.schema
+                                    if dataset_details.fully_qualified
+                                    else dataset_details.database
+                                ),
                                 service_name=result.database_service_name,
                             ),
                         )
@@ -533,11 +537,15 @@ class KafkaconnectSource(PipelineServiceSource):
                         f"No service match found - searching all database services for table {dataset_details.table}"
                     )
                     # Build search string: schema.table format (with proper quoting for special chars)
-                    search_string = (
-                        f"{fqn.quote_name(dataset_details.database)}.{fqn.quote_name(dataset_details.table)}"
-                        if dataset_details.database
-                        else fqn.quote_name(dataset_details.table)
-                    )
+                    search_parts = [
+                        part
+                        for part in (
+                            dataset_details.schema if dataset_details.fully_qualified else dataset_details.database,
+                            dataset_details.table,
+                        )
+                        if part
+                    ]
+                    search_string = ".".join(fqn.quote_name(part) for part in search_parts)
                     dataset_entity = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=search_string,
@@ -547,6 +555,14 @@ class KafkaconnectSource(PipelineServiceSource):
                             f"Found table {dataset_details.table} via search in service {dataset_entity.service.name if dataset_entity.service else 'unknown'}"
                         )
                         return dataset_entity
+
+                    logger.warning(
+                        f"Table '{dataset_details.table}' not found in OpenMetadata "
+                        f"(database={dataset_details.database}, schema={dataset_details.schema}). "
+                        f"Tried services: {self.get_db_service_names() or 'none configured'}. "
+                        f"If the table exists, set lineageInformation.dbServiceNames on this "
+                        f"pipeline service to the database service holding it."
+                    )
 
                 if dataset_details.dataset_type == Container:
                     # If storageServiceNames is configured, use it to build FQN directly
