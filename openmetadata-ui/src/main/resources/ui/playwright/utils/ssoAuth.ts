@@ -27,10 +27,17 @@ export interface ProviderConfigOverride {
 
 const SECURITY_CONFIG_ENDPOINT = '/api/v1/system/security/config';
 
-// Round-trippable = can be GET'd and PUT back unchanged. These two aren't:
-// GET returns empty-string placeholders that the PUT validator rejects.
+// Round-trippable = can be GET'd and PUT back unchanged. These three aren't.
+// ldap/saml: GET returns empty-string placeholders that the PUT validator
+// rejects. oidc: SystemResource.getSecurityConfig masks
+// oidcConfiguration.secret to PasswordEntityMasker.PASSWORD_MASK for every
+// non-bot caller and nothing unmasks it on the way back in, so restoring a
+// snapshot verbatim persists the literal mask with a 200 and silently breaks
+// every later code exchange. auth.setup.ts nulls the same three fields before
+// its PUT for this reason.
 const NON_ROUND_TRIPPABLE_AUTH_FIELDS = [
   'ldapConfiguration',
+  'oidcConfiguration',
   'samlConfiguration',
 ] as const;
 

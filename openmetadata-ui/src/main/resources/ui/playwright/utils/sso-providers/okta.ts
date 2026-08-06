@@ -51,6 +51,70 @@ const buildConfigPayload = (): ProviderConfigOverride => {
   };
 };
 
+/**
+ * Confidential-client variant of the payload above.
+ *
+ * `clientType: 'confidential'` is what makes AuthProvider mount
+ * GenericAuthenticator instead of OktaAuthenticator, moving renewal off
+ * @okta/okta-auth-js and onto OpenMetadata's own GET /api/v1/auth/refresh.
+ *
+ * The oidcConfiguration block is mandatory here: authenticationConfiguration.json
+ * requires it for confidential OIDC providers, and oidcClientConfig.json requires
+ * id/secret/discoveryUri/tenant within it — `tenant` included, despite being
+ * described as Azure-only. Bean validation on PUT rejects the payload otherwise.
+ *
+ * `tokenValidity` is the confidential analogue of SAML's
+ * samlConfiguration.security.tokenValidity: it sets the lifetime, in seconds, of
+ * the OpenMetadata JWT minted on callback and on every refresh. Unlike
+ * authenticationConfiguration.sessionExpiry it has no schema minimum, so a
+ * renewal suite can push it down to a few seconds.
+ */
+export const buildOktaConfidentialConfigPayload = (
+  clientId: string,
+  clientSecret: string
+): ProviderConfigOverride => {
+  const authority = `https://${OKTA_TENANT.domain}/oauth2/default`;
+
+  return {
+    authenticationConfiguration: {
+      clientType: 'confidential',
+      provider: 'okta',
+      providerName: '',
+      publicKeyUrls: [
+        `${OM_BASE_URL}/api/v1/system/config/jwks`,
+        `${authority}/v1/keys`,
+      ],
+      tokenValidationAlgorithm: 'RS256',
+      authority,
+      clientId,
+      callbackUrl: `${OM_BASE_URL}/callback`,
+      jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
+      enableSelfSignup: true,
+      oidcConfiguration: {
+        id: clientId,
+        type: 'okta',
+        secret: clientSecret,
+        scope: 'openid email profile',
+        discoveryUri: `${authority}/.well-known/openid-configuration`,
+        tenant: OKTA_TENANT.domain,
+        callbackUrl: `${OM_BASE_URL}/callback`,
+        serverUrl: OM_BASE_URL,
+        responseType: 'code',
+        clientAuthenticationMethod: 'client_secret_basic',
+        preferredJwsAlgorithm: 'RS256',
+        // Mirrors conf/openmetadata.yaml's OIDC_DISABLE_PKCE default so the
+        // suite exercises the configuration a self-hosted deployment gets out
+        // of the box. useNonce and sessionExpiry are left off for the same
+        // reason — their schema defaults are what ships.
+        disablePkce: true,
+      },
+    },
+    authorizerConfiguration: {
+      principalDomain: OKTA_TENANT.principalDomain,
+    },
+  };
+};
+
 const performProviderLogin = async (
   page: Page,
   { username, password }: ProviderCredentials

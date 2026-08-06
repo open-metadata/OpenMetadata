@@ -20,9 +20,10 @@ import {
   decodeJwtExp,
   SHORT_ACCESS_TTL_SECONDS,
   waitForAccessTokenExpiry,
-  withShortSamlTokenValidity,
+  withShortOidcTokenValidity,
 } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
+import { buildOktaConfidentialConfigPayload } from '../../utils/sso-providers/okta';
 import {
   applyProviderConfig,
   fetchSecurityConfig,
@@ -32,20 +33,39 @@ import {
 import { loginViaSso } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
+// The confidential counterpart to OktaPublicSessionRenewal.spec.ts, and the
+// shape most self-hosted Okta deployments actually run.
+//
+// clientType: 'confidential' makes AuthProvider mount GenericAuthenticator
+// rather than OktaAuthenticator, so renewal stops going to the Okta tenant and
+// becomes GET /api/v1/auth/refresh against OpenMetadata, backed by the
+// server-side OM_SESSION. That makes this suite a near-copy of
+// SSORenewal.spec.ts, with oidcConfiguration.tokenValidity standing in for
+// samlConfiguration.security.tokenValidity as the TTL knob.
+//
+// Tagged @okta, deliberately not @tokenRenewal. It does shorten a TTL, but
+// tokenValidity governs OpenMetadata's own JWT rather than anything the Okta
+// tenant issues, so the reason @tokenRenewal is excluded from the okta leg does
+// not apply — and carrying that tag would leave this spec running nowhere.
+const OKTA_CONFIDENTIAL_TAGS = ['@sso', '@Platform', '@okta'];
+
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
-
-const SESSION_RENEWAL_TAGS = ['@sso', '@Platform', '@tokenRenewal'];
+const confidentialClientId =
+  process.env[SSO_ENV.OKTA_CONFIDENTIAL_CLIENT_ID] ?? '';
+const clientSecret = process.env[SSO_ENV.OKTA_CLIENT_SECRET] ?? '';
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
+test.describe('Okta Confidential Session Renewal', {
+  tag: OKTA_CONFIDENTIAL_TAGS,
+}, () => {
   test.slow();
   // eslint-disable-next-line playwright/no-skipped-test
   test.skip(
-    !username || !password,
-    `${SSO_ENV.USERNAME} + ${SSO_ENV.PASSWORD} must be set`
+    !username || !password || !confidentialClientId || !clientSecret,
+    `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD} plus ${SSO_ENV.OKTA_CONFIDENTIAL_CLIENT_ID}/${SSO_ENV.OKTA_CLIENT_SECRET} for a confidential Okta app registration`
   );
 
   let helper: ProviderHelper;
@@ -55,7 +75,7 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
   let userPage: Page | undefined;
 
   test.beforeAll(
-    'Swap server to SAML with short JWT TTL and establish user session',
+    'Swap server to confidential Okta with a short JWT TTL and sign in',
     async ({ browser }) => {
       helper = getProviderHelper(providerType);
       const { apiContext, afterAction, token } = await performAdminLogin(
@@ -72,14 +92,16 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
         }
 
         originalSecurityConfig = await fetchSecurityConfig(apiContext);
-        const providerConfig = withShortSamlTokenValidity(
-          await helper.buildConfigPayload()
-        );
 
         await applyProviderConfig(
           apiContext,
           originalSecurityConfig,
-          providerConfig
+          withShortOidcTokenValidity(
+            buildOktaConfidentialConfigPayload(
+              confidentialClientId,
+              clientSecret
+            )
+          )
         );
       } finally {
         await afterAction();
@@ -108,8 +130,9 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
     }
   });
 
-  test('should silently refresh the access token after expiry', async () => {
+  test('should silently refresh the OpenMetadata token after expiry', async () => {
     const page = userPage!;
+
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
     const initialAccessToken = await getToken(page);
@@ -117,6 +140,8 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
 
     await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
+    // 200 specifically: handleRefresh answers a concurrent refresh with 503 +
+    // Retry-After, which must not satisfy the wait.
     const refreshResponsePromise = page.waitForResponse(
       (r) => r.url().includes(AUTH_REFRESH_PATH) && r.status() === 200,
       { timeout: 15_000 }
@@ -138,6 +163,7 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
 
   test('should queue concurrent 401s behind a single refresh call', async () => {
     const page = userPage!;
+
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
     await page.getByTestId('app-bar-item-my-data').click();
@@ -171,9 +197,12 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
     expect(page.url()).not.toContain('/signin');
   });
 
-  test('should force re-login when the SAML session is gone', async () => {
+  test('should force re-login when the OpenMetadata session is gone', async () => {
     const page = userPage!;
 
+    // Without OM_SESSION, acquireRefreshLease finds nothing and handleRefresh
+    // answers 401 {"error":"No active session"} — the confidential-client
+    // equivalent of the IdP refusing a silent renewal.
     await clearServerSessionCookie(userContext!);
     await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 

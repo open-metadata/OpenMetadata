@@ -40,7 +40,7 @@ import { getToken } from '../../utils/tokenStorage';
 // Tagged @okta so the keycloak legs drop it at collection time. It must NOT
 // carry @tokenRenewal: the Okta leg excludes that tag, which would leave this
 // spec running nowhere.
-const OKTA_RENEWAL_TAGS = ['@sso', '@Platform', '@okta'];
+const OKTA_PUBLIC_TAGS = ['@sso', '@Platform', '@okta'];
 
 // Renewal endpoints on the Okta authorization server. Matched on path only so
 // the globs hold for any tenant domain.
@@ -53,7 +53,7 @@ const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Okta Session Renewal', { tag: OKTA_RENEWAL_TAGS }, () => {
+test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
   test.slow();
   // eslint-disable-next-line playwright/no-skipped-test
   test.skip(

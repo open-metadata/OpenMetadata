@@ -21,6 +21,13 @@ export const SSO_ENV = {
   OKTA_CLIENT_ID: 'OKTA_CLIENT_ID',
   OKTA_DOMAIN: 'OKTA_DOMAIN',
   OKTA_PRINCIPAL_DOMAIN: 'OKTA_PRINCIPAL_DOMAIN',
+  // Confidential-client credentials. A confidential flow needs its own Okta
+  // *Web* app registration, separate from the public/SPA app above, so it
+  // carries its own client id. The secret deliberately has no committed
+  // default — it must arrive as a GitHub secret, and the confidential renewal
+  // suite skips without it rather than failing.
+  OKTA_CONFIDENTIAL_CLIENT_ID: 'OKTA_CONFIDENTIAL_CLIENT_ID',
+  OKTA_CLIENT_SECRET: 'OKTA_CLIENT_SECRET',
   KEYCLOAK_SAML_BASE_URL: 'KEYCLOAK_SAML_BASE_URL',
   KEYCLOAK_SAML_AZURE_REALM: 'KEYCLOAK_SAML_AZURE_REALM',
   KEYCLOAK_SAML_PRINCIPAL_DOMAIN: 'KEYCLOAK_SAML_PRINCIPAL_DOMAIN',
