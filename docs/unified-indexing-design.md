@@ -596,6 +596,37 @@ app-level scheduling, and repair writes to the index, so both want the detection
 
 ---
 
+## 11.8 Phases 5 and 6, first slices (landed 2026-08-04)
+
+Both remaining phases are rewrites of live write paths with no inert-by-default form, so each was
+opened with the slice that is provably behaviour-preserving and leaves the seam the rest grows from.
+
+**Phase 6 — `BulkSinkSupport`.** Measured first: the two sinks are 1,767 and 1,928 lines and 31 of
+their 47 methods are byte-identical, 395 lines per copy. Most cannot move, because they read
+`BulkOperation`, a different type per engine. What moved is the subset touching no engine type: retry
+classification, backoff, entity-type-from-index-name, and the cached-embedding reuse check. The retry
+list is the one that mattered — ten substrings deciding which cluster failures are transient, held in
+two copies with **no test on either**, which is how two engines quietly diverge on what they retry.
+`canReuseCachedEmbedding` is `CARRIED` implemented ad hoc, and its dimension guard is what stops a
+vector from a different model being spliced into a rebuilt document.
+
+**Phase 5 — `PainlessComposer`.** The three runtime-built tag cascade scripts in `SearchRepository` no
+longer append `TAG_RESEPARATION_SCRIPT` by hand; they declare that they write `tags` and the postlude
+follows. Byte-equality with the previous hand-appended string is the safety argument, and it is
+asserted. This is §6.4's "applied structurally, never by hand" for the sites where it is currently
+possible.
+
+The five constant sites in `SearchClient` are deliberately untouched: they are compile-time strings and
+`TagDocInvariant.painlessPostlude()` reads `SearchClient.TAG_RESEPARATION_SCRIPT`, so composing them
+would make the class initialise against itself. Moving the canonical script text out of `SearchClient`
+and into the invariant is what unblocks them, and that belongs with phase 5 proper rather than bolted
+on ahead of it.
+
+`PainlessComposer.unmaintainablePaths` is the guard rail for the rest of phase 5: given the paths a
+cascade writes, it names the ones no generated painless can keep correct.
+
+---
+
 ## 12. Collate extension contract
 
 The redesign must preserve or deliberately replace these seams — Collate's entire search surface is 9

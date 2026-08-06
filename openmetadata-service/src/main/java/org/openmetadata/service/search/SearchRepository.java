@@ -164,6 +164,7 @@ import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.projection.DefaultProjectionSpec;
 import org.openmetadata.service.search.projection.MutationPlanner;
+import org.openmetadata.service.search.projection.PainlessComposer;
 import org.openmetadata.service.search.projection.ProjectionRollout;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
@@ -3428,7 +3429,8 @@ public class SearchRepository {
   }
 
   private String generateAddTagLabelListScript() {
-    return """
+    return PainlessComposer.composeForTagWrite(
+        """
         if (ctx._source.tags == null) {
           ctx._source.tags = [];
         }
@@ -3447,12 +3449,12 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        """);
   }
 
   private String generateDeleteTagLabelListScript() {
-    return """
+    return PainlessComposer.composeForTagWrite(
+        """
         if (ctx._source.tags != null && params.tagDeleted != null) {
           for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
             for (int j = 0; j < params.tagDeleted.size(); j++) {
@@ -3463,12 +3465,12 @@ public class SearchRepository {
             }
           }
         }
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        """);
   }
 
   private String generateUpdateTagLabelListScript() {
-    return """
+    return PainlessComposer.composeForTagWrite(
+        """
         if (ctx._source.tags != null && params.tagDeleted != null) {
           for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
             for (int j = 0; j < params.tagDeleted.size(); j++) {
@@ -3497,8 +3499,7 @@ public class SearchRepository {
           }
         }
         Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
-        + SearchClient.TAG_RESEPARATION_SCRIPT;
+        """);
   }
 
   public void deleteByScript(String entityType, String scriptTxt, Map<String, Object> params) {
