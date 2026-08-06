@@ -22,8 +22,11 @@ import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
@@ -32,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class CommonUtilTest {
 
@@ -61,6 +65,35 @@ class CommonUtilTest {
     List<String> resourcesFromCache = CommonUtil.getResources(COMMON_UTIL_CLASS_PATTERN);
     assertEquals(expectedResources, resourcesFromCache);
     assertFalse(resourcesFromCache.contains("caller-owned-resource"));
+  }
+
+  @Test
+  void toClasspathNameRewritesPlatformSeparators() {
+    assertEquals(
+        "json/data/aiGovernance/frameworks/nist.json",
+        CommonUtil.toClasspathName("json\\data\\aiGovernance\\frameworks\\nist.json", '\\'),
+        "a Windows-walked seed file must still be resolvable through the classloader");
+  }
+
+  @Test
+  void toClasspathNameLeavesNamesOnSlashPlatformsUntouched() {
+    String resourceName = "json/data/aiGovernance/frameworks/nist.json";
+
+    assertEquals(resourceName, CommonUtil.toClasspathName(resourceName, '/'));
+  }
+
+  @Test
+  void getResourcesFromDirectoryReturnsClasspathStyleNames(@TempDir Path directory)
+      throws IOException {
+    Path seedFile = directory.resolve("json").resolve("data").resolve("seed.json");
+    Files.createDirectories(seedFile.getParent());
+    Files.writeString(seedFile, "{}");
+
+    Collection<String> resources =
+        CommonUtil.getResourcesFromDirectory(
+            directory.toFile(), Pattern.compile(".*json/data/.*\\.json$"));
+
+    assertEquals(Set.of("json/data/seed.json"), Set.copyOf(resources));
   }
 
   @Test

@@ -134,9 +134,27 @@ public final class CommonUtil {
     try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
       return paths
           .filter(Files::isRegularFile)
-          .map(path -> new ClasspathResource(path.toString(), root.relativize(path).toString()))
+          .map(path -> toClasspathResource(root, path))
           .toList();
     }
+  }
+
+  private static ClasspathResource toClasspathResource(Path root, Path path) {
+    final char separator = File.separatorChar;
+    return new ClasspathResource(
+        toClasspathName(path.toString(), separator),
+        toClasspathName(root.relativize(path).toString(), separator));
+  }
+
+  /**
+   * Classpath resource names are always '/'-separated — jar entry names are, and {@link
+   * ClassLoader#getResourceAsStream(String)} demands it — but {@link Path#toString()} emits the
+   * platform separator. Left unnormalized, a directory classpath element (an exploded
+   * {@code target/classes} rather than a shaded jar) matches no '/'-anchored pattern on Windows and
+   * hands callers a name no classloader can resolve, so startup seeding silently finds nothing.
+   */
+  static String toClasspathName(String path, char separator) {
+    return path.replace(separator, '/');
   }
 
   private record ClasspathResource(String matchingPath, String resourceName) {}
