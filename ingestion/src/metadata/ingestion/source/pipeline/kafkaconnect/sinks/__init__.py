@@ -11,6 +11,8 @@
 
 """Sink dataset resolvers, keyed by Kafka Connect connector class."""
 
+# Imported for its registration side effect; keep before __all__.
+from metadata.ingestion.source.pipeline.kafkaconnect.sinks import snowflake
 from metadata.ingestion.source.pipeline.kafkaconnect.sinks.base import (
     DefaultResolver,
     SinkDatasetResolver,

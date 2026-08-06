@@ -14,6 +14,7 @@ import pytest
 
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectDatasetDetails,
+    KafkaConnectTopics,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.sinks import (
     DefaultResolver,
@@ -125,3 +126,80 @@ class TestDefaultResolverUnchanged:
 
     def test_column_mappings_default_to_empty(self):
         assert DefaultResolver().column_mappings({}, None) == []
+
+
+BASE_SNOWFLAKE_CONFIG = {
+    "connector.class": "SnowflakeSink",
+    "name": "snowflake-landing",
+    "topics": "order_events_flat,om-lineage-test",
+    "input.data.format": "AVRO",
+    "snowflake.url.name": "abc12345.snowflakecomputing.com",
+    "snowflake.database.name": "EVENT_LANDING",
+    "snowflake.schema.name": "PUBLIC",
+    "tasks.max": "1",
+}
+
+
+class TestSnowflakeSinkResolver:
+    def test_registered_under_managed_plugin_name(self):
+        from metadata.ingestion.source.pipeline.kafkaconnect.sinks.snowflake import (
+            SnowflakeSinkResolver,
+        )
+
+        assert isinstance(get_resolver("SnowflakeSink"), SnowflakeSinkResolver)
+
+    def test_registered_under_self_managed_fqcn(self):
+        from metadata.ingestion.source.pipeline.kafkaconnect.sinks.snowflake import (
+            SnowflakeSinkResolver,
+        )
+
+        resolver = get_resolver("com.snowflake.kafka.connector.SnowflakeSinkConnector")
+        assert isinstance(resolver, SnowflakeSinkResolver)
+
+    def test_no_topic2table_map_derives_tables_from_topics(self):
+        """The HDI case: 1:1 topic->table with no explicit mapping."""
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(BASE_SNOWFLAKE_CONFIG, [])
+        assert [d.table for d in datasets] == ["ORDER_EVENTS_FLAT", "OM_LINEAGE_TEST_702890019"]
+        assert [d.source_topic for d in datasets] == ["order_events_flat", "om-lineage-test"]
+
+    def test_database_and_schema_are_populated_and_qualified(self):
+        dataset = get_resolver("SnowflakeSink").resolve_datasets(BASE_SNOWFLAKE_CONFIG, [])[0]
+        assert dataset.database == "EVENT_LANDING"
+        assert dataset.schema == "PUBLIC"
+        assert dataset.fully_qualified is True
+
+    def test_topic2table_map_overrides_derivation(self):
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "order_events_flat:ORDERS"})
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        by_topic = {d.source_topic: d.table for d in datasets}
+        assert by_topic["order_events_flat"] == "ORDERS"
+        # unmapped topic still derives
+        assert by_topic["om-lineage-test"] == "OM_LINEAGE_TEST_702890019"
+
+    def test_topic2table_map_tolerates_whitespace(self):
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": " order_events_flat : ORDERS "})
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert {d.source_topic: d.table for d in datasets}["order_events_flat"] == "ORDERS"
+
+    def test_topics_come_from_discovered_list_when_present(self):
+        topics = [KafkaConnectTopics(name="discovered_topic")]
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(BASE_SNOWFLAKE_CONFIG, topics)
+        assert [d.source_topic for d in datasets] == ["discovered_topic"]
+
+    def test_match_topic_is_an_exact_lookup_on_source_topic(self):
+        """Renaming maps used to break matching because it re-derived by name."""
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "order_events_flat:ORDERS"})
+        resolver = get_resolver("SnowflakeSink")
+        dataset = next(d for d in resolver.resolve_datasets(config, []) if d.source_topic == "order_events_flat")
+        topic_map = {"order_events_flat": "<topic>", "om-lineage-test": "<other>"}
+        assert resolver.match_topic(dataset, topic_map, config) == "<topic>"
+
+    def test_match_topic_returns_none_when_topic_absent(self):
+        resolver = get_resolver("SnowflakeSink")
+        dataset = resolver.resolve_datasets(BASE_SNOWFLAKE_CONFIG, [])[0]
+        assert resolver.match_topic(dataset, {}, BASE_SNOWFLAKE_CONFIG) is None
+
+    def test_missing_database_leaves_dataset_unqualified(self):
+        config = {k: v for k, v in BASE_SNOWFLAKE_CONFIG.items() if k != "snowflake.database.name"}
+        dataset = get_resolver("SnowflakeSink").resolve_datasets(config, [])[0]
+        assert dataset.fully_qualified is False
