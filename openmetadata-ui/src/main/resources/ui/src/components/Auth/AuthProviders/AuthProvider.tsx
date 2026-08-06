@@ -38,7 +38,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
-import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
+import {
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
+} from '../../../constants/Auth.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
   REDIRECT_PATHNAME,
@@ -599,7 +602,9 @@ export const AuthProvider = ({
             if (
               UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
               (error.config.url === '/users/loggedInUser' &&
-                !error.response.data?.message?.includes('Expired token!'))
+                !REFRESHABLE_AUTH_ERRORS.some((authError) =>
+                  (error.response.data?.message ?? '').includes(authError)
+                ))
             ) {
               throw error;
             }
@@ -637,9 +642,7 @@ export const AuthProvider = ({
               };
 
               tokenService.current
-                // Force: a 401 means the server rejected the token, so refresh
-                // regardless of the locally-computed expiry.
-                .refreshToken(true)
+                .refreshToken()
                 .then(async (token) => {
                   if (token) {
                     await initializeAxiosInterceptors();

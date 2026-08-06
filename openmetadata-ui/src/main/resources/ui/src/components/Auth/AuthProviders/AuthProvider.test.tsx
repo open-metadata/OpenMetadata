@@ -527,4 +527,40 @@ describe('Test axios response interceptor', () => {
     expect(mockAxios).toHaveBeenCalledWith(mockError.config);
     expect(result).toEqual({ data: 'retried' });
   });
+
+  it('should refresh loggedInUser on an unknown signing-key 401, not only on expiry', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'ok' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    mockRefreshToken.mockReset();
+    mockRefreshToken.mockResolvedValue('newToken');
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: {
+          message:
+            'Not Authorized! Token signing key not found in configured public keys',
+        },
+      },
+      config: {
+        url: '/users/loggedInUser',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    const result = await errorHandler?.(mockError);
+
+    // IdP key-rotation 401 on the polled endpoint must refresh + retry, not log out.
+    expect(mockRefreshToken).toHaveBeenCalled();
+    expect(mockAxios).toHaveBeenCalledWith(mockError.config);
+    expect(result).toEqual({ data: 'ok' });
+  });
 });

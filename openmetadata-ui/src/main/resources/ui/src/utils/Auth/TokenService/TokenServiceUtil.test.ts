@@ -180,22 +180,36 @@ describe('TokenService', () => {
       jest.useFakeTimers();
     });
 
-    it('should refresh on a forced (401) call even when the token looks valid locally', async () => {
+    it('should refresh even when the token still looks valid locally', async () => {
+      // A 401 can arrive on a token that is not yet expired locally (clock skew /
+      // server-side revocation); there is no "skip if valid" fast path to block it.
       jest.useRealTimers();
       (getOidcToken as jest.Mock)
         .mockResolvedValueOnce('old-token')
         .mockResolvedValue('new-token');
-      (extractDetailsFromToken as jest.Mock).mockReturnValue({
-        isExpired: false,
-        timeoutExpiry: 100000,
-      });
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockResolvedValue('new-token');
 
-      const result = await tokenService.refreshToken(true);
+      const result = await tokenService.refreshToken();
 
       expect(mockRenewToken).toHaveBeenCalledTimes(1);
       expect(result).toBe('new-token');
+
+      jest.useFakeTimers();
+    });
+
+    it('should treat a re-issued identical token as success, not a logout', async () => {
+      // MSAL/Okta/Auth0 silent renew can return the same id_token (forceRefresh
+      // only refreshes the access token); storage is unchanged but the renewer
+      // resolving is still success — must NOT return null (which logs the user out).
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock).mockResolvedValue('same-token');
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue('same-token');
+
+      const result = await tokenService.refreshToken();
+
+      expect(result).toBe('same-token');
 
       jest.useFakeTimers();
     });
@@ -221,12 +235,8 @@ describe('TokenService', () => {
       jest.useFakeTimers();
     });
 
-    it('should not refresh if token is valid', async () => {
+    it('should return null and clear the flag when no renewer is configured', async () => {
       (getOidcToken as jest.Mock).mockResolvedValue('valid-token');
-      (extractDetailsFromToken as jest.Mock).mockReturnValue({
-        isExpired: false,
-        timeoutExpiry: 1000,
-      });
 
       const result = await tokenService.refreshToken();
 

@@ -1,6 +1,7 @@
 package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -84,8 +85,11 @@ class MultiUrlJwkProviderTest {
       when(mockGenerator.getJWKSResponse()).thenReturn(jwksResponse);
       mockedStatic.when(JWTTokenGenerator::getInstance).thenReturn(mockGenerator);
       MultiUrlJwkProvider provider = new MultiUrlJwkProvider(List.of());
-      // An unknown key id is an authentication failure (401), not a 500.
-      assertThrows(AuthenticationException.class, () -> provider.get(UNKNOWN_KID));
+      // An unknown key id is an authentication failure (401), not a 500, and it
+      // must chain the underlying cause so server logs keep the real reason.
+      AuthenticationException ex =
+          assertThrows(AuthenticationException.class, () -> provider.get(UNKNOWN_KID));
+      assertInstanceOf(SigningKeyNotFoundException.class, ex.getCause());
     }
   }
 
