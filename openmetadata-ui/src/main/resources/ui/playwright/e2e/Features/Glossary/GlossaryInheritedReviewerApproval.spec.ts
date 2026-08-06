@@ -62,9 +62,13 @@ const createTermWithoutReviewers = async (
 };
 
 /**
- * Polls the term until the workflow has settled it. The workflow runs asynchronously, so the term is
- * briefly `Unprocessed`/`Draft` before the gate resolves; we wait for a status the workflow actually
- * commits to rather than sampling once and racing it.
+ * Polls the term until the approval workflow has committed a status.
+ *
+ * <p>`Draft` is deliberately NOT a settled status. A term under a reviewed parent is written as
+ * `Draft` at creation, before the workflow runs, so accepting it here would return on the very first
+ * sample and every assertion would read the pre-workflow value. Waiting for a status the workflow
+ * itself sets means a term that never leaves `Draft` — the bug under test — times out with the
+ * message below rather than being misreported as a wrong-status failure.
  */
 const waitForSettledStatus = async (
   apiContext: APIRequestContext,
@@ -84,11 +88,13 @@ const waitForSettledStatus = async (
         return status;
       },
       {
-        message: `Glossary term ${termId} never reached a settled workflow status`,
+        message:
+          `Glossary term ${termId} never left Draft — the approval workflow did not commit a ` +
+          `status. For a term inheriting a reviewer this is the inherited-reviewer bug.`,
         timeout: STATUS_TIMEOUT,
       }
     )
-    .toMatch(/In Review|Approved|Rejected|Draft/);
+    .toMatch(/In Review|Approved|Rejected/);
 
   return status;
 };

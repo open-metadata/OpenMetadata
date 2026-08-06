@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.governance.workflows;
 
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
 import org.openmetadata.service.util.PerRequestContextCleaner;
@@ -34,12 +35,12 @@ public class WorkflowThreadCleanupListener implements FlowableEventListener {
 
   @Override
   public void onEvent(FlowableEvent event) {
-    // Registered engine-wide, so every event lands here: keep the check cheap and first.
-    switch (event.getType().name()) {
-      case "JOB_EXECUTION_SUCCESS", "JOB_EXECUTION_FAILURE" -> PerRequestContextCleaner.clear();
-      default -> {
-        /* not a job boundary */
-      }
+    // Registered engine-wide, so every event lands here: keep the check cheap and first. Compare
+    // against the enum constants rather than their names so that if Flowable renames an event type,
+    // this fails to compile instead of silently never clearing again.
+    if (event.getType() == FlowableEngineEventType.JOB_EXECUTION_SUCCESS
+        || event.getType() == FlowableEngineEventType.JOB_EXECUTION_FAILURE) {
+      PerRequestContextCleaner.clear();
     }
   }
 
