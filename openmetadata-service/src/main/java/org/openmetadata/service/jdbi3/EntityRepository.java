@@ -7864,6 +7864,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Reviewers that govern this entity's approval: those set directly on it, or — when it has none —
+   * those it inherits from its parent. Approval decisions must use this rather than the raw {@code
+   * reviewers} field, which carries inherited entries only when the read that produced the entity
+   * both requested and applied inheritance. Subclasses whose entities inherit reviewers override it.
+   */
+  public List<EntityReference> getEffectiveReviewers(T entity) {
+    return listOrEmpty(entity.getReviewers());
+  }
+
+  @SuppressWarnings("unchecked")
+  public List<EntityReference> getEffectiveReviewersUntyped(EntityInterface entity) {
+    return getEffectiveReviewers((T) entity);
+  }
+
   private List<EntityReference> inheritedEntityReferences(List<EntityReference> references) {
     if (nullOrEmpty(references)) {
       return Collections.emptyList();
