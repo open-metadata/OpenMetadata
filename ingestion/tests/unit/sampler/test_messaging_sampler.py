@@ -25,6 +25,11 @@ from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel
 from metadata.generated.schema.type.schema import Topic as MessageSchema
 from metadata.sampler.messaging.sampler import MessagingSampler
 
+# Mirrors what metadata.parsers.avro_parser actually emits: every RECORD level
+# contributes the record *type* name as its own path segment -- ``Order`` at the
+# root, ``Address`` under the ``shipping`` field -- and none of those segments
+# exist in the message on the wire. An earlier version of this fixture omitted
+# the nested type name, so no test ever walked a path deeper than the root.
 NESTED_FIELDS = [
     FieldModel(
         name="Order",
@@ -36,8 +41,14 @@ NESTED_FIELDS = [
                 name="shipping",
                 dataType=DataTypeTopic.RECORD,
                 children=[
-                    FieldModel(name="city", dataType=DataTypeTopic.STRING),
-                    FieldModel(name="country", dataType=DataTypeTopic.STRING),
+                    FieldModel(
+                        name="Address",
+                        dataType=DataTypeTopic.RECORD,
+                        children=[
+                            FieldModel(name="city", dataType=DataTypeTopic.STRING),
+                            FieldModel(name="country", dataType=DataTypeTopic.STRING),
+                        ],
+                    )
                 ],
             ),
         ],
@@ -82,8 +93,8 @@ def test_column_names_keep_the_schema_root_prefix() -> None:
     assert [col.name for col in sampler.get_columns()] == [
         "Order.order_id",
         "Order.email",
-        "Order.shipping.city",
-        "Order.shipping.country",
+        "Order.shipping.Address.city",
+        "Order.shipping.Address.country",
     ]
 
 
@@ -99,8 +110,30 @@ def test_unwrapped_message_resolves_against_a_nested_schema() -> None:
 
     assert row["Order.order_id"] == "o-1"
     assert row["Order.email"] == "user@example.com"
-    assert row["Order.shipping.city"] == "Springfield"
-    assert row["Order.shipping.country"] == "US"
+    assert row["Order.shipping.Address.city"] == "Springfield"
+    assert row["Order.shipping.Address.country"] == "US"
+
+
+def test_wrapped_message_resolves_past_a_nested_record_type_name() -> None:
+    message = {"Order": {"shipping": {"city": "Springfield"}}}
+    sampler = _StubSampler(_topic(NESTED_FIELDS), [message])
+
+    assert _row(sampler)["Order.shipping.Address.city"] == "Springfield"
+
+
+def test_nested_record_carrying_its_type_name_still_resolves() -> None:
+    """A producer that does emit the type name must keep working."""
+    message = {"shipping": {"Address": {"city": "Shelbyville"}}}
+    sampler = _StubSampler(_topic(NESTED_FIELDS), [message])
+
+    assert _row(sampler)["Order.shipping.Address.city"] == "Shelbyville"
+
+
+def test_absent_nested_leaf_is_none_not_its_container() -> None:
+    """Skipping absent segments must never let a leaf resolve to the dict above it."""
+    sampler = _StubSampler(_topic(NESTED_FIELDS), [{"shipping": {"country": "US"}}])
+
+    assert _row(sampler)["Order.shipping.Address.city"] is None
 
 
 def test_wrapped_message_still_resolves_on_the_full_path() -> None:
