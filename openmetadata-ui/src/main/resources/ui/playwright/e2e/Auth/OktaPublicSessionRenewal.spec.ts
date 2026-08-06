@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, expect, Page, test } from '@playwright/test';
+import {
+  BrowserContext,
+  expect,
+  Page,
+  Request,
+  test,
+} from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
 import { performAdminLogin } from '../../utils/admin';
 import { getAuthContext } from '../../utils/common';
@@ -43,9 +49,11 @@ import { getToken } from '../../utils/tokenStorage';
 const OKTA_PUBLIC_TAGS = ['@sso', '@Platform', '@okta'];
 
 // Renewal endpoints on the Okta authorization server. Matched on path only so
-// the globs hold for any tenant domain.
-const OKTA_TOKEN_ENDPOINT = '**/oauth2/default/v1/token*';
-const OKTA_AUTHORIZE_ENDPOINT = '**/oauth2/default/v1/authorize*';
+// they hold for any tenant domain.
+const OKTA_TOKEN_PATH = '/oauth2/default/v1/token';
+const OKTA_AUTHORIZE_PATH = '/oauth2/default/v1/authorize';
+const OKTA_TOKEN_ENDPOINT = `**${OKTA_TOKEN_PATH}*`;
+const OKTA_AUTHORIZE_ENDPOINT = `**${OKTA_AUTHORIZE_PATH}*`;
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -123,39 +131,63 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
 
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
-    const expiredJwt = await expireStoredToken(page, {
-      sub: username,
-      email: username,
-    });
+    // "Stored token became valid again" on its own is not enough: the app could
+    // simply re-write okta-auth-js's cached token without ever renewing, and the
+    // assertion would pass against a broken renewal path. Counting requests to
+    // the Okta authorization server is what makes the renewal observable —
+    // token.renewTokens() always goes to the network.
+    const renewalRequests: string[] = [];
+    const trackRenewal = (request: Request): void => {
+      const url = request.url();
 
-    // Renewal is driven by a 401 from a genuine API call, so this has to be a
-    // real navigation — a no-op click observes nothing.
-    await page.getByTestId('app-bar-item-explore').click();
+      if (
+        url.includes(OKTA_TOKEN_PATH) ||
+        url.includes(OKTA_AUTHORIZE_PATH)
+      ) {
+        renewalRequests.push(url);
+      }
+    };
 
-    // Polls the decoded expiry rather than "token changed": a failed renewal
-    // stores an empty string, which would satisfy "changed" and then blow up in
-    // decodeJwtExp. Asserted against "now" rather than the pre-expiry token
-    // because renewal may hand back okta-auth-js's still-valid cached ID token
-    // instead of a brand new one — either outcome is a usable session.
-    await expect
-      .poll(
-        async () => {
-          const token = await getToken(page);
+    page.on('request', trackRenewal);
 
-          if (!token || token === expiredJwt) {
-            return 0;
-          }
+    try {
+      const expiredJwt = await expireStoredToken(page, {
+        sub: username,
+        email: username,
+      });
 
-          try {
-            return decodeJwtExp(token);
-          } catch {
-            return 0;
-          }
-        },
-        { timeout: 60_000 }
-      )
-      .toBeGreaterThan(Math.floor(Date.now() / 1000));
+      // Renewal is driven by a 401 from a genuine API call, so this has to be a
+      // real navigation — a no-op click observes nothing.
+      await page.getByTestId('app-bar-item-explore').click();
 
+      // Polls the decoded expiry rather than "token changed": a failed renewal
+      // stores an empty string, which would satisfy "changed" and then blow up
+      // in decodeJwtExp. Compared against "now" rather than the pre-expiry
+      // token because renewal may hand back okta-auth-js's still-valid cached
+      // ID token instead of a brand new one — either is a usable session.
+      await expect
+        .poll(
+          async () => {
+            const token = await getToken(page);
+
+            if (!token || token === expiredJwt) {
+              return 0;
+            }
+
+            try {
+              return decodeJwtExp(token);
+            } catch {
+              return 0;
+            }
+          },
+          { timeout: 60_000 }
+        )
+        .toBeGreaterThan(Math.floor(Date.now() / 1000));
+    } finally {
+      page.off('request', trackRenewal);
+    }
+
+    expect(renewalRequests.length).toBeGreaterThan(0);
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
     expect(page.url()).not.toContain('/signin');
   });
@@ -165,12 +197,23 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
 
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
+    // Ordered log of what the app asked Okta for. OktaAuthenticator.renewToken
+    // has two routes to signInWithRedirect(): the catch around renewTokens()
+    // (the fallback under test) and an early return when okta-auth-js holds no
+    // tokens at all. Both produce an interactive request, so asserting only
+    // "an interactive request happened" would pass on the early return without
+    // any silent renewal having been attempted. Recording order lets the test
+    // require that the silent attempt came first.
+    const renewalEvents: string[] = [];
+
     // Okta answers a prompt=none authorization request with login_required when
     // the tenant needs a fresh interaction (WebAuthn/MFA, or no IdP session).
-    // Stubbing the response is what makes that deterministic — blocking cookies
+    // Stubbing the response is what makes that deterministic — dropping cookies
     // instead would not work if the tenant issues refresh tokens.
-    await page.route(OKTA_TOKEN_ENDPOINT, (route) =>
-      route.fulfill({
+    await page.route(OKTA_TOKEN_ENDPOINT, (route) => {
+      renewalEvents.push('silent-token');
+
+      return route.fulfill({
         status: 400,
         contentType: 'application/json',
         body: JSON.stringify({
@@ -178,16 +221,16 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
           error_description:
             'The client specified not to prompt, but the user is not logged in.',
         }),
-      })
-    );
+      });
+    });
 
     // Only the silent (prompt=none) authorization request is failed. The
     // interactive redirect that the fallback is expected to perform carries no
     // prompt=none and must reach Okta untouched.
-    const interactiveAuthorizeRequests: string[] = [];
-
     await page.route(OKTA_AUTHORIZE_ENDPOINT, (route) => {
       if (route.request().url().includes('prompt=none')) {
+        renewalEvents.push('silent-authorize');
+
         return route.fulfill({
           status: 400,
           contentType: 'application/json',
@@ -195,7 +238,7 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
         });
       }
 
-      interactiveAuthorizeRequests.push(route.request().url());
+      renewalEvents.push('interactive-authorize');
 
       return route.continue();
     });
@@ -211,9 +254,20 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
     // If the app looped on the silent request rather than falling back, no
     // interactive request is ever issued and this poll times out.
     await expect
-      .poll(() => interactiveAuthorizeRequests.length, { timeout: 60_000 })
+      .poll(
+        () => renewalEvents.filter((e) => e === 'interactive-authorize').length,
+        { timeout: 60_000 }
+      )
       .toBeGreaterThan(0);
 
     await page.unrouteAll({ behavior: 'ignoreErrors' });
+
+    // The refused silent renewal must be what triggered it. Without this the
+    // test would also pass on renewToken()'s no-tokens early return, which
+    // redirects without ever attempting a silent renewal — i.e. it would prove
+    // nothing about login_required handling.
+    expect(renewalEvents.length).toBeGreaterThan(1);
+    expect(renewalEvents[0]).toMatch(/^silent-/);
+    expect(renewalEvents).toContain('interactive-authorize');
   });
 });
