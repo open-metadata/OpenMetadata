@@ -91,9 +91,10 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           if [ "${{ matrix.shardIndex }}" = "1" ]; then
-            echo "🔹 Running DataAssetRules-only tests on shard 1"
+            echo "🔹 Running DataAssetRules + IntakeForm tests on shard 1"
 
-            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
+            # Each project's testMatch scopes it to its own spec files:
+            # DataAssetRules*.spec.ts and the IntakeForm serialized lane.
             npx playwright test \
               --project=setup \
               --project=DataAssetRulesEnabled \
