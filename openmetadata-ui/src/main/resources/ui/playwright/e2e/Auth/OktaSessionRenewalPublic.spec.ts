@@ -29,21 +29,12 @@ import {
 } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
-// Renewal coverage for the Okta tenant, which SSORenewal.spec.ts cannot serve:
+// Public-client Okta renews through @okta/okta-auth-js against the tenant, so
+// AUTH_REFRESH_PATH is not observable here. Okta fixes the ID token at 60min and
+// SSORenewal's TTL override has no equivalent, so expiry is induced client-side.
 //
-//   1. SSORenewal is tagged @tokenRenewal because it shortens the global access
-//      token TTL, and the Okta matrix leg grep-inverts that tag away. Token
-//      lifetimes live in the Okta tenant's access policy rather than in
-//      OpenMetadata's config, so there is nothing to shorten here anyway —
-//      expiry is induced on the client with expireStoredToken() instead.
-//   2. The Okta app is a *public* client (see utils/sso-providers/okta.ts), so
-//      AuthProvider mounts OktaAuthenticator and renewal goes through
-//      @okta/okta-auth-js to the Okta tenant — never GET /api/v1/auth/refresh.
-//      AUTH_REFRESH_PATH is therefore not observable here.
-//
-// Tagged @okta so the keycloak legs drop it at collection time. It must NOT
-// carry @tokenRenewal: the Okta leg excludes that tag, which would leave this
-// spec running nowhere.
+// @okta, deliberately not @tokenRenewal — the okta leg excludes that tag, which
+// would leave this spec running nowhere.
 const OKTA_PUBLIC_TAGS = ['@sso', '@Platform', '@okta'];
 
 // Renewal endpoints on the Okta authorization server. Matched on path only so
@@ -100,11 +91,8 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
 
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
-    // "Stored token became valid again" on its own is not enough: the app could
-    // simply re-write okta-auth-js's cached token without ever renewing, and the
-    // assertion would pass against a broken renewal path. Counting requests to
-    // the Okta authorization server is what makes the renewal observable —
-    // token.renewTokens() always goes to the network.
+    // "Token became valid again" alone would pass if the app merely re-wrote
+    // okta-auth-js's cached copy, so also require a network renewal.
     const renewalRequests: string[] = [];
     const trackRenewal = (request: Request): void => {
       const url = request.url();
@@ -129,11 +117,8 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
       // real navigation — a no-op click observes nothing.
       await page.getByTestId('app-bar-item-explore').click();
 
-      // Polls the decoded expiry rather than "token changed": a failed renewal
-      // stores an empty string, which would satisfy "changed" and then blow up
-      // in decodeJwtExp. Compared against "now" rather than the pre-expiry
-      // token because renewal may hand back okta-auth-js's still-valid cached
-      // ID token instead of a brand new one — either is a usable session.
+      // Polls the decoded expiry, not "changed": a failed renewal stores '' which
+      // would satisfy "changed" and then throw in decodeJwtExp.
       await expect
         .poll(
           async () => {
@@ -166,19 +151,13 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
 
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
-    // Ordered log of what the app asked Okta for. OktaAuthenticator.renewToken
-    // has two routes to signInWithRedirect(): the catch around renewTokens()
-    // (the fallback under test) and an early return when okta-auth-js holds no
-    // tokens at all. Both produce an interactive request, so asserting only
-    // "an interactive request happened" would pass on the early return without
-    // any silent renewal having been attempted. Recording order lets the test
-    // require that the silent attempt came first.
+    // renewToken reaches signInWithRedirect() both from the catch around
+    // renewTokens() and from an early return when okta-auth-js holds no tokens.
+    // Ordering is what distinguishes them.
     const renewalEvents: string[] = [];
 
-    // Okta answers a prompt=none authorization request with login_required when
-    // the tenant needs a fresh interaction (WebAuthn/MFA, or no IdP session).
-    // Stubbing the response is what makes that deterministic — dropping cookies
-    // instead would not work if the tenant issues refresh tokens.
+    // Stubbed rather than achieved by dropping cookies, which a tenant issuing
+    // refresh tokens would renew straight through.
     await page.route(OKTA_TOKEN_ENDPOINT, (route) => {
       renewalEvents.push('silent-token');
 
@@ -216,12 +195,8 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
 
     await page.getByTestId('app-bar-item-explore').click();
 
-    // The observable fallback is an authorization request *without*
-    // prompt=none. Asserting the hosted sign-in form instead would be wrong:
-    // the tenant session is still live here, so Okta may answer the interactive
-    // request straight away and bounce the user back already authenticated.
-    // If the app looped on the silent request rather than falling back, no
-    // interactive request is ever issued and this poll times out.
+    // Asserting the hosted sign-in form would be wrong: the tenant session is
+    // still live, so Okta may answer immediately and bounce back authenticated.
     await expect
       .poll(
         () => renewalEvents.filter((e) => e === 'interactive-authorize').length,
@@ -231,10 +206,7 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
 
     await page.unrouteAll({ behavior: 'ignoreErrors' });
 
-    // The refused silent renewal must be what triggered it. Without this the
-    // test would also pass on renewToken()'s no-tokens early return, which
-    // redirects without ever attempting a silent renewal — i.e. it would prove
-    // nothing about login_required handling.
+    // The refused silent renewal must be what triggered it.
     expect(renewalEvents.length).toBeGreaterThan(1);
     expect(renewalEvents[0]).toMatch(/^silent-/);
     expect(renewalEvents).toContain('interactive-authorize');

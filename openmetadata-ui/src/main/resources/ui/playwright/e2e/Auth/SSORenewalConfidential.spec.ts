@@ -33,31 +33,14 @@ import { getToken } from '../../utils/tokenStorage';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
-// Confidential-client OIDC renewal — the flow most self-hosted deployments run,
-// and the one with no CI coverage at all before this suite. The Java ITs carry
-// confidential backends but nothing sets jpw.auth, and the mock-oidc Playwright
-// suite is referenced by no workflow, so AuthenticationCodeFlowHandler
-// (handleLogin, handleCallback, handleRefresh) is otherwise exercised only by
-// mocked unit tests. Reaching the first assertion here walks the whole
-// server-side code flow: authorize, callback, code exchange, session, refresh.
+// Confidential OIDC renewal: clientType 'confidential' mounts
+// GenericAuthenticator, so renewal goes to GET /api/v1/auth/refresh through
+// AuthenticationCodeFlowHandler — the same transport SSORenewal asserts for SAML,
+// via a different handler. Keycloak rather than Okta because the fixture is the
+// tenant; a confidential Okta app is blocked by its Okta Verify enrollment policy.
 //
-// clientType: 'confidential' is what makes AuthProvider mount
-// GenericAuthenticator, moving renewal onto GET /api/v1/auth/refresh — the same
-// transport SSORenewal.spec.ts asserts for SAML, reached through a different
-// handler. So the assertions match that suite; only the IdP differs.
-//
-// Keycloak rather than Okta, and deliberately only Keycloak. AuthProvider
-// branches on clientType rather than provider, so either IdP exercises the exact
-// same OpenMetadata code — and only the Keycloak fixture can actually run it. A
-// confidential Okta app is governed by an authentication policy that requires
-// Okta Verify enrollment, which parks the login on Okta's "Set up security
-// methods" screen and never returns to OpenMetadata (see run 31092281732). The
-// fixture is the tenant here, so its client secret is a committed throwaway and
-// there is no external registration or enrollment policy in the way.
-//
-// Tagged @tokenRenewal: accurate, since it shortens
-// oidcConfiguration.tokenValidity, and it lands the suite on the one leg that can
-// serve it — the okta and -crosssite legs both exclude that tag.
+// @tokenRenewal lands it on the one leg that can serve it: okta and -crosssite
+// both exclude that tag.
 const CONFIDENTIAL_RENEWAL_TAGS = ['@sso', '@Platform', '@tokenRenewal'];
 
 test.describe.configure({ mode: 'serial' });
@@ -110,8 +93,7 @@ test.describe(
 
     await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
-    // 200 specifically: handleRefresh answers a concurrent refresh with 503 +
-    // Retry-After, which must not satisfy the wait.
+    // 200 only: a concurrent refresh answers 503 + Retry-After.
     const refreshResponsePromise = page.waitForResponse(
       (r) => r.url().includes(AUTH_REFRESH_PATH) && r.status() === 200,
       { timeout: 15_000 }
@@ -170,9 +152,6 @@ test.describe(
   test('should force re-login when the OpenMetadata session is gone', async () => {
     const page = userPage!;
 
-    // Without OM_SESSION, acquireRefreshLease finds nothing and handleRefresh
-    // answers 401 {"error":"No active session"} — the confidential-client
-    // equivalent of the IdP refusing a silent renewal.
     await clearServerSessionCookie(userContext!);
     await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 

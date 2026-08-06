@@ -20,93 +20,68 @@ import {
   performProviderLogin,
 } from './keycloak-saml';
 
-// Confidential OIDC against the local Keycloak fixture, which already backs the
-// SAML legs. Keycloak hosts saml and openid-connect clients side by side in one
-// realm, so this reuses the same container, realm and user — see
-// docker/local-sso/keycloak-saml/realms/om-azure-saml-realm.json.
-//
-// Unlike Okta, the fixture *is* the tenant: the client secret is a committed
-// throwaway rather than a GitHub secret, exactly as the fixture user's password
-// is. That is what makes a confidential leg testable at all — no external app
-// registration to provision.
-const KEYCLOAK_OIDC_CLIENT = {
+// Throwaway fixture credentials, committed like the realm user's password.
+const CLIENT = {
   id: 'openmetadata-oidc-confidential',
   secret: 'openmetadata-oidc-secret',
 } as const;
 
-// The OpenMetadata *server* fetches discovery and exchanges the code, and it
-// runs in a container — so `localhost:8080` resolves to its own loopback, not
-// Keycloak. Server-side URLs therefore go by container name over the shared
-// ometa_network, while `authority` stays on localhost because the browser uses
-// it and Keycloak pins the issuer to it (see KC_HOSTNAME in the fixture
-// compose). This mirrors how mock-oidc-provider splits ISSUER from
-// INTERNAL_BASE_URL in docker/development/docker-compose.yml.
-const KEYCLOAK_INTERNAL_BASE_URL =
+// OM fetches discovery and exchanges the code from inside its container, where
+// localhost is its own loopback. Same split as mock-oidc-provider's
+// ISSUER vs INTERNAL_BASE_URL.
+const INTERNAL_BASE_URL =
   process.env[SSO_ENV.KEYCLOAK_INTERNAL_BASE_URL] ??
   'http://openmetadata-keycloak-saml:8080';
 
-/**
- * Points OpenMetadata at the Keycloak realm as a confidential OIDC client.
- *
- * `clientType: 'confidential'` is what moves renewal off the browser and onto
- * OpenMetadata's own GET /api/v1/auth/refresh, via AuthenticationCodeFlowHandler.
- *
- * The oidcConfiguration block is mandatory: authenticationConfiguration.json
- * requires it for confidential OIDC providers, and oidcClientConfig.json requires
- * id/secret/discoveryUri/tenant within it — `tenant` included, despite being
- * documented as Azure-only. Bean validation on PUT rejects the payload otherwise.
- */
-export const buildKeycloakConfidentialConfigPayload =
-  (): ProviderConfigOverride => {
-    assertSupportedBaseUrl();
+const buildConfigPayload = (): ProviderConfigOverride => {
+  assertSupportedBaseUrl();
 
-    const authority = `${KEYCLOAK_SAML.baseUrl}/realms/${KEYCLOAK_SAML.azureRealm}`;
-    const internalAuthority = `${KEYCLOAK_INTERNAL_BASE_URL}/realms/${KEYCLOAK_SAML.azureRealm}`;
+  const realm = KEYCLOAK_SAML.azureRealm;
+  const authority = `${KEYCLOAK_SAML.baseUrl}/realms/${realm}`;
+  const internal = `${INTERNAL_BASE_URL}/realms/${realm}`;
 
-    return {
-      authenticationConfiguration: {
-        clientType: 'confidential',
-        provider: 'custom-oidc',
-        providerName: 'Keycloak',
-        publicKeyUrls: [
-          `${OM_BASE_URL}/api/v1/system/config/jwks`,
-          `${internalAuthority}/protocol/openid-connect/certs`,
-        ],
-        tokenValidationAlgorithm: 'RS256',
-        authority,
-        clientId: KEYCLOAK_OIDC_CLIENT.id,
+  return {
+    authenticationConfiguration: {
+      clientType: 'confidential',
+      provider: 'custom-oidc',
+      providerName: 'Keycloak',
+      publicKeyUrls: [
+        `${OM_BASE_URL}/api/v1/system/config/jwks`,
+        `${internal}/protocol/openid-connect/certs`,
+      ],
+      tokenValidationAlgorithm: 'RS256',
+      authority,
+      clientId: CLIENT.id,
+      callbackUrl: `${OM_BASE_URL}/callback`,
+      jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
+      enableSelfSignup: true,
+      oidcConfiguration: {
+        id: CLIENT.id,
+        type: 'custom-oidc',
+        secret: CLIENT.secret,
+        scope: 'openid email profile',
+        discoveryUri: `${internal}/.well-known/openid-configuration`,
+        // Required by oidcClientConfig.json despite reading as Azure-only.
+        tenant: realm,
         callbackUrl: `${OM_BASE_URL}/callback`,
-        jwtPrincipalClaims: ['email', 'preferred_username', 'sub'],
-        enableSelfSignup: true,
-        oidcConfiguration: {
-          id: KEYCLOAK_OIDC_CLIENT.id,
-          type: 'custom-oidc',
-          secret: KEYCLOAK_OIDC_CLIENT.secret,
-          scope: 'openid email profile',
-          discoveryUri: `${internalAuthority}/.well-known/openid-configuration`,
-          tenant: KEYCLOAK_SAML.azureRealm,
-          callbackUrl: `${OM_BASE_URL}/callback`,
-          serverUrl: OM_BASE_URL,
-          responseType: 'code',
-          clientAuthenticationMethod: 'client_secret_basic',
-          preferredJwsAlgorithm: 'RS256',
-          // Mirrors conf/openmetadata.yaml's OIDC_DISABLE_PKCE default so the
-          // suite exercises what a self-hosted deployment gets out of the box.
-          disablePkce: true,
-        },
+        serverUrl: OM_BASE_URL,
+        responseType: 'code',
+        clientAuthenticationMethod: 'client_secret_basic',
+        preferredJwsAlgorithm: 'RS256',
+        disablePkce: true,
       },
-      authorizerConfiguration: {
-        principalDomain: KEYCLOAK_SAML.principalDomain,
-      },
-    };
+    },
+    authorizerConfiguration: {
+      principalDomain: KEYCLOAK_SAML.principalDomain,
+    },
   };
+};
 
 export const keycloakOidcConfidentialProviderHelper: ProviderHelper = {
   expectedButtonText: 'Sign in with Keycloak',
-  // Matches both the authorize redirect and the login-actions form URL.
   loginUrlPattern: new RegExp(
     `/realms/${escapeRegExp(KEYCLOAK_SAML.azureRealm)}/`
   ),
-  buildConfigPayload: buildKeycloakConfidentialConfigPayload,
+  buildConfigPayload,
   performProviderLogin,
 };

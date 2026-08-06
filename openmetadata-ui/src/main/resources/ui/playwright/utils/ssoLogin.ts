@@ -14,27 +14,12 @@ import { expect, Page } from '@playwright/test';
 import { ProviderHelper } from './sso-providers';
 import { ProviderCredentials } from './ssoAuth';
 
-/**
- * Hook budget for a suite whose beforeAll calls loginViaSso.
- *
- * A beforeAll gets the plain test timeout (60s) and, unlike a test body, is not
- * tripled by test.slow(). loginViaSso alone can legitimately spend 45s reaching
- * the IdP plus 60s returning plus 60s on self-signup, so the hook expires before
- * its own waits do and the failure surfaces as a bare "hook timeout exceeded"
- * that hides whatever the login was actually stuck on. Suites that log in during
- * beforeAll must raise it explicitly.
- */
+// A beforeAll gets the plain 60s test timeout and is not tripled by test.slow(),
+// but the waits below can add up to 165s. Callers must raise it or the hook
+// expires first and hides what the login was stuck on.
 export const SSO_LOGIN_HOOK_TIMEOUT_MS = 240_000;
 
-/**
- * Drives a full interactive SSO sign-in: OpenMetadata's /signin -> the IdP ->
- * back to OpenMetadata, completing self-signup when the IdP user has no
- * OpenMetadata account yet.
- *
- * SSOLogin.spec.ts keeps its own step-by-step version on purpose — there the
- * individual steps *are* the assertions. Suites that only need an authenticated
- * page to test something else use this helper.
- */
+/** Signs in through the IdP, completing self-signup on first login. */
 export const loginViaSso = async (
   page: Page,
   helper: ProviderHelper,

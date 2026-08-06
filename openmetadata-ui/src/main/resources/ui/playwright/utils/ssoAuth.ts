@@ -28,14 +28,8 @@ export interface ProviderConfigOverride {
 
 const SECURITY_CONFIG_ENDPOINT = '/api/v1/system/security/config';
 
-// Round-trippable = can be GET'd and PUT back unchanged. These three aren't.
-// ldap/saml: GET returns empty-string placeholders that the PUT validator
-// rejects. oidc: SystemResource.getSecurityConfig masks
-// oidcConfiguration.secret to PasswordEntityMasker.PASSWORD_MASK for every
-// non-bot caller and nothing unmasks it on the way back in, so restoring a
-// snapshot verbatim persists the literal mask with a 200 and silently breaks
-// every later code exchange. auth.setup.ts nulls the same three fields before
-// its PUT for this reason.
+// GET returns these unusable for a PUT: ldap/saml as empty-string stubs the
+// validator rejects, oidc with its secret masked and nothing to unmask it.
 const NON_ROUND_TRIPPABLE_AUTH_FIELDS = [
   'ldapConfiguration',
   'oidcConfiguration',
@@ -122,13 +116,9 @@ export const restoreSecurityConfig = async (
 };
 
 /**
- * Points the server at `override` for the lifetime of a suite and returns the
- * teardown that puts the original configuration back.
- *
- * Every SSO suite needs the same five steps — admin login, capture the JWT
- * before the swap (afterwards the admin can no longer authenticate), snapshot,
- * apply, and later restore through a context built from that captured JWT — so
- * they live here rather than being restated in each `beforeAll`/`afterAll`.
+ * Applies `override` for the lifetime of a suite; returns the restore function.
+ * The admin JWT must be captured before the swap — afterwards the admin can no
+ * longer authenticate.
  */
 export const swapSecurityConfig = async (
   browser: Browser,

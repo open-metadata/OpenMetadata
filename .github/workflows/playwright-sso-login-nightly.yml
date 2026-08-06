@@ -116,22 +116,13 @@ jobs:
       - name: Start Keycloak SAML IdP
         if: startsWith(matrix.provider.name, 'keycloak-')
         env:
-          # KC_HOSTNAME pins Keycloak's frontchannel URLs, so it has to name the
-          # host *this leg's browser* uses or Keycloak answers "Invalid Request".
-          # The '-crosssite' leg deliberately fronts the IdP on 127.0.0.1 — that
-          # different-site placement is the whole point of the variant — so a
-          # hardcoded localhost pin breaks exactly the case it exists to guard.
-          # Mirrors the KEYCLOAK_SAML_BASE_URL expression below.
+          # Must name the host this leg's browser uses, or Keycloak answers
+          # "Invalid Request". The '-crosssite' leg fronts the IdP on 127.0.0.1.
           KEYCLOAK_HOSTNAME: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
         run: |
           docker compose -f docker/local-sso/keycloak-saml/docker-compose.yml up -d
-          # Join the OpenMetadata compose network so the OM *container* can reach
-          # Keycloak by name. SAML never needed this (all its URLs are
-          # browser-facing, and the descriptor fetch runs on the host), but the
-          # confidential OIDC leg has OM fetch discovery and exchange the code
-          # itself, and from inside that container localhost:8080 is its own
-          # loopback. Tolerant of both the network being absent and the container
-          # already being attached.
+          # The OM container needs to reach Keycloak by name; localhost:8080 is
+          # its own loopback. Tolerates a missing network and a repeat attach.
           docker network connect ometa_network openmetadata-keycloak-saml || true
           timeout 180 bash -c 'until curl -fsS http://localhost:8080/realms/om-azure-saml >/dev/null; do sleep 2; done'
 

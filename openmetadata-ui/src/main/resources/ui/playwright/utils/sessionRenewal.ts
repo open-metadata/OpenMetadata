@@ -16,20 +16,10 @@ import { APP_STATE_KEY, OIDC_TOKEN_KEY } from './tokenStorage';
 
 export const SHORT_ACCESS_TTL_SECONDS = 30;
 
-// OpenMetadata's server-side session cookie (SessionCookieUtil.COOKIE_NAME).
-// Both refresh handlers — SamlAuthServletHandler.handleRefresh and
-// AuthenticationCodeFlowHandler.handleRefresh — resolve the session through
-// SessionService.acquireRefreshLease, which reads OM_SESSION. Clearing it makes
-// refresh return 401 {"error":"No active session"}.
-//
-// This was previously JSESSIONID, which is the Jetty HttpSession the OneLogin
-// SAML library needs on the *login* leg and is not consulted on refresh at all,
-// so clearing it did not force the 401 the renewal suite intends.
+// Both refresh handlers resolve the session via acquireRefreshLease, which reads
+// OM_SESSION; JSESSIONID is only the Jetty session used on the login leg.
 export const SESSION_COOKIE_NAME = 'OM_SESSION';
 
-// The /auth/refresh endpoint is auth-provider-agnostic on the server —
-// AuthServeletHandlerRegistry dispatches to SamlAuthServletHandler for SAML,
-// BasicAuthServletHandler for basic, etc. The UI always calls this path.
 export const AUTH_REFRESH_PATH = '/api/v1/auth/refresh';
 
 export const withShortSamlTokenValidity = (
@@ -58,14 +48,7 @@ export const withShortSamlTokenValidity = (
   };
 };
 
-/**
- * Confidential-OIDC analogue of `withShortSamlTokenValidity`.
- *
- * `oidcConfiguration.tokenValidity` (seconds, schema default 3600, no minimum)
- * is what AuthenticationCodeFlowHandler passes to JWTTokenGenerator for every
- * OpenMetadata JWT it mints — on callback and on refresh. Shortening it is
- * tenant-safe: it governs OpenMetadata's own token, not anything the IdP issues.
- */
+/** Seconds, no schema minimum, and governs OM's own JWT rather than the IdP's. */
 export const withShortOidcTokenValidity = (
   base: ProviderConfigOverride,
   tokenValiditySeconds: number = SHORT_ACCESS_TTL_SECONDS
@@ -113,11 +96,7 @@ export const waitForAccessTokenExpiry = async (
   );
 };
 
-/**
- * Drops OpenMetadata's server-side session cookie so the next refresh cannot
- * resolve a session. Applies to any provider whose refresh goes through
- * OpenMetadata (SAML and confidential OIDC alike), not just SAML.
- */
+/** Makes the next refresh fail with 401 "No active session". */
 export const clearServerSessionCookie = async (
   context: BrowserContext
 ): Promise<void> => {
@@ -125,28 +104,15 @@ export const clearServerSessionCookie = async (
 };
 
 /**
- * Replaces OpenMetadata's stored access token with a well-formed but
- * already-expired JWT, so the app's renewal path runs immediately instead of
- * waiting for the real token to age out.
- *
- * Needed for providers whose token lifetime OpenMetadata cannot shorten — a
- * public-client Okta tenant sets its own ID/access token TTLs, so
- * `withShortSamlTokenValidity` + `waitForAccessTokenExpiry` have no equivalent.
- *
- * The write goes through the Service Worker rather than IndexedDB directly:
- * `getOidcToken()` reads the SW's in-memory cache, so a direct IndexedDB write
- * would leave the running app still holding the live token.
- *
- * Returns the forged JWT so callers can assert that it was replaced.
+ * Expires OM's stored token in place, for providers whose real token lifetime we
+ * cannot shorten. Writes through the Service Worker because getOidcToken() reads
+ * the SW's in-memory cache, so an IndexedDB write alone would not be seen.
  */
 export const expireStoredToken = async (
   page: Page,
   claims: Record<string, unknown> = {}
 ): Promise<string> => {
-  // app-worker.js calls skipWaiting() + clients.claim(), but claiming is still
-  // async — on a freshly created context the worker can be installed while
-  // navigator.serviceWorker.controller is briefly null, which would make the
-  // write below reject outright.
+  // clients.claim() is async, so controller can still be null right after load.
   await page.waitForFunction(
     () => Boolean(navigator.serviceWorker?.controller),
     undefined,
