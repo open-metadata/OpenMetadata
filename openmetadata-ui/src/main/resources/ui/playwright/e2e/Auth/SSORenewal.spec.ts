@@ -12,8 +12,6 @@
  */
 import { BrowserContext, expect, Page, Response, test } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
-import { performAdminLogin } from '../../utils/admin';
-import { getAuthContext } from '../../utils/common';
 import {
   AUTH_REFRESH_PATH,
   clearServerSessionCookie,
@@ -24,10 +22,7 @@ import {
 } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  restoreSecurityConfig,
-  SecurityConfigSnapshot,
+  swapSecurityConfig,
 } from '../../utils/ssoAuth';
 import { loginViaSso } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
@@ -49,8 +44,7 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
   );
 
   let helper: ProviderHelper;
-  let adminJwt: string | undefined;
-  let originalSecurityConfig: SecurityConfigSnapshot | undefined;
+  let restoreSecurity: (() => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
 
@@ -58,32 +52,10 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
     'Swap server to SAML with short JWT TTL and establish user session',
     async ({ browser }) => {
       helper = getProviderHelper(providerType);
-      const { apiContext, afterAction, token } = await performAdminLogin(
-        browser
+      restoreSecurity = await swapSecurityConfig(
+        browser,
+        withShortSamlTokenValidity(await helper.buildConfigPayload())
       );
-
-      try {
-        adminJwt = token;
-
-        if (!adminJwt) {
-          throw new Error(
-            'Failed to capture admin JWT before SSO swap — aborting to avoid leaving server in SSO mode'
-          );
-        }
-
-        originalSecurityConfig = await fetchSecurityConfig(apiContext);
-        const providerConfig = withShortSamlTokenValidity(
-          await helper.buildConfigPayload()
-        );
-
-        await applyProviderConfig(
-          apiContext,
-          originalSecurityConfig,
-          providerConfig
-        );
-      } finally {
-        await afterAction();
-      }
 
       userContext = await browser.newContext();
       userPage = await userContext.newPage();
@@ -94,18 +66,7 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
   test.afterAll('Restore original security configuration', async () => {
     await userPage?.close();
     await userContext?.close();
-
-    if (!adminJwt || !originalSecurityConfig) {
-      return;
-    }
-
-    const adminContext = await getAuthContext(adminJwt);
-
-    try {
-      await restoreSecurityConfig(adminContext, originalSecurityConfig);
-    } finally {
-      await adminContext.dispose();
-    }
+    await restoreSecurity?.();
   });
 
   test('should silently refresh the access token after expiry', async () => {

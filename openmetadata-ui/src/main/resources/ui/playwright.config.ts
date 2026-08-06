@@ -239,9 +239,9 @@ export default defineConfig({
     {
       name: 'sso-auth',
       testMatch: [
-        '**/OktaConfidentialSessionRenewal.spec.ts',
-        '**/OktaPublicSessionRenewal.spec.ts',
         '**/OktaSelfSignupClaims.spec.ts',
+        '**/OktaSessionRenewalConfidential.spec.ts',
+        '**/OktaSessionRenewalPublic.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/SSORenewal.spec.ts',
       ],

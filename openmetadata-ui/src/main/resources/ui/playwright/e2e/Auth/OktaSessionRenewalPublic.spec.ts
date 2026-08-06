@@ -18,15 +18,10 @@ import {
   test,
 } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
-import { performAdminLogin } from '../../utils/admin';
-import { getAuthContext } from '../../utils/common';
 import { decodeJwtExp, expireStoredToken } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  restoreSecurityConfig,
-  SecurityConfigSnapshot,
+  swapSecurityConfig,
 } from '../../utils/ssoAuth';
 import { loginViaSso } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
@@ -70,8 +65,7 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
   );
 
   let helper: ProviderHelper;
-  let adminJwt: string | undefined;
-  let originalSecurityConfig: SecurityConfigSnapshot | undefined;
+  let restoreSecurity: (() => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
 
@@ -79,29 +73,10 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
     'Swap server to Okta and establish a user session',
     async ({ browser }) => {
       helper = getProviderHelper(providerType);
-      const { apiContext, afterAction, token } = await performAdminLogin(
-        browser
+      restoreSecurity = await swapSecurityConfig(
+        browser,
+        await helper.buildConfigPayload()
       );
-
-      try {
-        adminJwt = token;
-
-        if (!adminJwt) {
-          throw new Error(
-            'Failed to capture admin JWT before SSO swap — aborting to avoid leaving server in SSO mode'
-          );
-        }
-
-        originalSecurityConfig = await fetchSecurityConfig(apiContext);
-
-        await applyProviderConfig(
-          apiContext,
-          originalSecurityConfig,
-          await helper.buildConfigPayload()
-        );
-      } finally {
-        await afterAction();
-      }
 
       userContext = await browser.newContext();
       userPage = await userContext.newPage();
@@ -112,18 +87,7 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
   test.afterAll('Restore original security configuration', async () => {
     await userPage?.close();
     await userContext?.close();
-
-    if (!adminJwt || !originalSecurityConfig) {
-      return;
-    }
-
-    const adminContext = await getAuthContext(adminJwt);
-
-    try {
-      await restoreSecurityConfig(adminContext, originalSecurityConfig);
-    } finally {
-      await adminContext.dispose();
-    }
+    await restoreSecurity?.();
   });
 
   test('should silently renew the token once the stored token has expired', async () => {

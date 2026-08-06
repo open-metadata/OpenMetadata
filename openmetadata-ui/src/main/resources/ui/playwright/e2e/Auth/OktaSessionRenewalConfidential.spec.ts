@@ -12,8 +12,6 @@
  */
 import { BrowserContext, expect, Page, Response, test } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
-import { performAdminLogin } from '../../utils/admin';
-import { getAuthContext } from '../../utils/common';
 import {
   AUTH_REFRESH_PATH,
   clearServerSessionCookie,
@@ -25,15 +23,12 @@ import {
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import { buildOktaConfidentialConfigPayload } from '../../utils/sso-providers/okta';
 import {
-  applyProviderConfig,
-  fetchSecurityConfig,
-  restoreSecurityConfig,
-  SecurityConfigSnapshot,
+  swapSecurityConfig,
 } from '../../utils/ssoAuth';
 import { loginViaSso } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
-// The confidential counterpart to OktaPublicSessionRenewal.spec.ts, and the
+// The confidential counterpart to OktaSessionRenewalPublic.spec.ts, and the
 // shape most self-hosted Okta deployments actually run.
 //
 // clientType: 'confidential' makes AuthProvider mount GenericAuthenticator
@@ -69,8 +64,7 @@ test.describe('Okta Confidential Session Renewal', {
   );
 
   let helper: ProviderHelper;
-  let adminJwt: string | undefined;
-  let originalSecurityConfig: SecurityConfigSnapshot | undefined;
+  let restoreSecurity: (() => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
 
@@ -78,34 +72,12 @@ test.describe('Okta Confidential Session Renewal', {
     'Swap server to confidential Okta with a short JWT TTL and sign in',
     async ({ browser }) => {
       helper = getProviderHelper(providerType);
-      const { apiContext, afterAction, token } = await performAdminLogin(
-        browser
+      restoreSecurity = await swapSecurityConfig(
+        browser,
+        withShortOidcTokenValidity(
+          buildOktaConfidentialConfigPayload(confidentialClientId, clientSecret)
+        )
       );
-
-      try {
-        adminJwt = token;
-
-        if (!adminJwt) {
-          throw new Error(
-            'Failed to capture admin JWT before SSO swap — aborting to avoid leaving server in SSO mode'
-          );
-        }
-
-        originalSecurityConfig = await fetchSecurityConfig(apiContext);
-
-        await applyProviderConfig(
-          apiContext,
-          originalSecurityConfig,
-          withShortOidcTokenValidity(
-            buildOktaConfidentialConfigPayload(
-              confidentialClientId,
-              clientSecret
-            )
-          )
-        );
-      } finally {
-        await afterAction();
-      }
 
       userContext = await browser.newContext();
       userPage = await userContext.newPage();
@@ -116,18 +88,7 @@ test.describe('Okta Confidential Session Renewal', {
   test.afterAll('Restore original security configuration', async () => {
     await userPage?.close();
     await userContext?.close();
-
-    if (!adminJwt || !originalSecurityConfig) {
-      return;
-    }
-
-    const adminContext = await getAuthContext(adminJwt);
-
-    try {
-      await restoreSecurityConfig(adminContext, originalSecurityConfig);
-    } finally {
-      await adminContext.dispose();
-    }
+    await restoreSecurity?.();
   });
 
   test('should silently refresh the OpenMetadata token after expiry', async () => {

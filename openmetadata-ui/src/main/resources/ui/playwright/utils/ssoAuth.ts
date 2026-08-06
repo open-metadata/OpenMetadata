@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
-import { getApiContext } from './common';
+import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import { performAdminLogin } from './admin';
+import { getApiContext, getAuthContext } from './common';
 
 export interface ProviderCredentials {
   username: string;
@@ -118,6 +119,49 @@ export const restoreSecurityConfig = async (
   });
 
   expect(response.status()).toBe(200);
+};
+
+/**
+ * Points the server at `override` for the lifetime of a suite and returns the
+ * teardown that puts the original configuration back.
+ *
+ * Every SSO suite needs the same five steps — admin login, capture the JWT
+ * before the swap (afterwards the admin can no longer authenticate), snapshot,
+ * apply, and later restore through a context built from that captured JWT — so
+ * they live here rather than being restated in each `beforeAll`/`afterAll`.
+ */
+export const swapSecurityConfig = async (
+  browser: Browser,
+  override: ProviderConfigOverride
+): Promise<() => Promise<void>> => {
+  const { apiContext, afterAction, token } = await performAdminLogin(browser);
+  let snapshot: SecurityConfigSnapshot | undefined;
+
+  try {
+    if (!token) {
+      throw new Error(
+        'Failed to capture admin JWT before SSO swap — aborting to avoid leaving server in SSO mode'
+      );
+    }
+
+    snapshot = await fetchSecurityConfig(apiContext);
+
+    await applyProviderConfig(apiContext, snapshot, override);
+  } finally {
+    await afterAction();
+  }
+
+  const capturedSnapshot = snapshot;
+
+  return async () => {
+    const adminContext = await getAuthContext(token);
+
+    try {
+      await restoreSecurityConfig(adminContext, capturedSnapshot);
+    } finally {
+      await adminContext.dispose();
+    }
+  };
 };
 
 export const verifyLoggedInUserMatches = async (
