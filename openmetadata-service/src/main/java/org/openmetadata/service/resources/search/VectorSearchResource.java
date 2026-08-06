@@ -96,7 +96,8 @@ public class VectorSearchResource {
               effectiveFrom,
               effectiveK,
               request.threshold,
-              SearchUtils.searchPreferenceFor(subjectContext));
+              SearchUtils.searchPreferenceFor(subjectContext),
+              subjectContext);
       return Response.ok(response).build();
     } catch (Exception e) {
       LOG.error("Vector search failed: {}", e.getMessage(), e);

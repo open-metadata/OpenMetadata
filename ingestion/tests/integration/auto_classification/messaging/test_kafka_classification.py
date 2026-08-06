@@ -25,6 +25,8 @@ pytest.importorskip("confluent_kafka", reason="confluent_kafka not installed; sk
 from ingestion.tests.integration.auto_classification.messaging.conftest import (
     NON_PII_TOPIC_NAME,
     PII_TOPIC_NAME,
+    find_schema_field,
+    iter_leaf_fields,
 )
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -53,7 +55,7 @@ class TestKafkaAutoClassification:
         )
         assert topic.messageSchema is not None
         fields = topic.messageSchema.schemaFields
-        email_field = next((f for f in fields if f.name.root == "email"), None)
+        email_field = find_schema_field(fields, "email")
         assert email_field is not None
         assert email_field.tags is not None
         assert any(tag.tagFQN.root == "PII.Sensitive" for tag in email_field.tags), (
@@ -72,7 +74,7 @@ class TestKafkaAutoClassification:
             fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
-        ssn_field = next((f for f in fields if f.name.root == "ssn"), None)
+        ssn_field = find_schema_field(fields, "ssn")
         assert ssn_field is not None
         assert ssn_field.tags is not None
         assert any(tag.tagFQN.root == "PII.Sensitive" for tag in ssn_field.tags)
@@ -89,7 +91,7 @@ class TestKafkaAutoClassification:
             fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
-        cc_field = next((f for f in fields if f.name.root == "credit_card"), None)
+        cc_field = find_schema_field(fields, "credit_card")
         assert cc_field is not None
         assert cc_field.tags is not None
         assert any(tag.tagFQN.root == "PII.Sensitive" for tag in cc_field.tags)
@@ -106,7 +108,7 @@ class TestKafkaAutoClassification:
             fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
-        id_field = next((f for f in fields if f.name.root == "customer_id"), None)
+        id_field = find_schema_field(fields, "customer_id")
         assert id_field is not None
         assert id_field.tags is None or len(id_field.tags) == 0, "customer_id should not have PII tags"
 
@@ -122,7 +124,7 @@ class TestKafkaAutoClassification:
             fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
-        for field in fields:
+        for field in iter_leaf_fields(fields):
             assert field.tags is None or len(field.tags) == 0, (
                 f"Non-PII field {field.name.root} should not have PII tags"
             )

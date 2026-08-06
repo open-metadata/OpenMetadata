@@ -27,6 +27,7 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -394,12 +395,22 @@ public class OpenSearchVectorService implements VectorIndexService {
    * representative — the mechanism that lets a get_asset_context bundle carry only excerpts.
    */
   public List<String> searchChunksByParent(String parentId, String query, int k) {
+    return searchChunksByParent(parentId, query, k, null);
+  }
+
+  /**
+   * As above, resolving context memory visibility for {@code subjectContext}. Needed even though the
+   * parent is known: a parent may be a restricted memory, which yields no passages without it.
+   */
+  public List<String> searchChunksByParent(
+      String parentId, String query, int k, SubjectContext subjectContext) {
     List<String> passages = new ArrayList<>();
     try {
       ensureChunkIndex();
       float[] vector = embeddingClient.embedQuery(query);
       Map<String, List<String>> filters = Map.of("parentId", List.of(parentId));
-      String queryJson = VectorSearchQueryBuilder.build(vector, k, 0, k, filters, 0.0);
+      String queryJson =
+          VectorSearchQueryBuilder.build(vector, k, 0, k, filters, 0.0, subjectContext);
       String response =
           executeGenericRequest("POST", "/" + getChunkIndexName() + "/_search", queryJson);
       JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
@@ -872,8 +883,15 @@ public class OpenSearchVectorService implements VectorIndexService {
    * fields unmapped (on a {@code dynamic:false} index) while docs are still stamped with the new
    * {@code docVersion} — defeating the rollout. Omitting the unchanged vector avoids that
    * all-or-nothing failure; the remaining fields are additive (new fields) or legal no-ops
-   * (unchanged keyword/text/integer). Absent-on-old-docs fields simply do not match until a Search
-   * Reindex backfills them, so there is zero regression before the backfill runs.
+   * (unchanged keyword/text/integer).
+   *
+   * <p>Absent-on-old-docs fields are inert for anything that merely scores or widens on them, so
+   * those upgrades carry no regression before the backfill runs. That is <b>not</b> true of a field a
+   * filter restricts on: {@code visibility} is required by the context memory clause in {@link
+   * VectorSearchQueryBuilder}, where absence means exclusion rather than indifference. Memory chunks
+   * written before it was stamped therefore stay out of every KNN result until a Search Reindex
+   * restamps them — deliberately, since an unstamped document may be a Private memory. Weigh that
+   * before making any future field a filter depends on.
    */
   private String buildChunkMappingUpgradeBody() {
     ObjectNode properties = buildChunkProperties();
@@ -904,8 +922,24 @@ public class OpenSearchVectorService implements VectorIndexService {
             .set("method", method);
     var properties = MAPPER.createObjectNode();
     properties.set("embedding", embedding);
+    // The three metric enums are mapped as real keywords, not source-only: they are cheap to index
+    // and are the natural facets to filter a metric search on (granularity DAY vs MONTH).
+    // visibility/sharedWithIds carry context memory privacy onto the chunk
+    // docs: the memory visibility filter is applied to every vector query, so a chunk that does not
+    // index these is either unfilterable or invisible to its own owner.
     for (String keyword :
-        List.of("parentId", "fingerprint", "entityType", "fullyQualifiedName", "serviceType")) {
+        List.of(
+            "parentId",
+            "fingerprint",
+            "entityType",
+            "fullyQualifiedName",
+            "serviceType",
+            "metricType",
+            "granularity",
+            "unitOfMeasurement",
+            "customUnitOfMeasurement",
+            "visibility",
+            "sharedWithIds")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -928,8 +962,9 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("domains", objectKeyword("name"));
     properties.set("tier", objectKeyword("tagFQN"));
     properties.set("certification", certificationMapping());
-    // owners is a `nested` type: NLQ owner filters run a nested query over owners.name.
-    properties.set("owners", nestedNameKeyword());
+    // owners is a `nested` type: NLQ owner filters run a nested query over owners.name, and the
+    // context memory visibility filter runs one over owners.id.
+    properties.set("owners", nestedOwnersMapping());
     properties.set("service", nameDisplayNameObject());
     properties.set("database", nameDisplayNameObject());
     // Map name+displayName like service/database: buildDenormalizedFields copies both onto the
@@ -939,6 +974,11 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("columns", columnsMapping());
     properties.set(
         "relatedTerms", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
+    // Display-only: semantic_search returns a metric's expression, nothing filters or scores on it,
+    // and the code is already searchable through textToEmbed. `enabled: false` keeps it in _source
+    // without paying to index it on a dynamic:false index.
+    properties.set(
+        "metricExpression", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
     return properties;
   }
 
@@ -965,16 +1005,12 @@ public class OpenSearchVectorService implements VectorIndexService {
                     .set(field, MAPPER.createObjectNode().put("type", "keyword")));
   }
 
-  private ObjectNode nestedNameKeyword() {
+  private ObjectNode nestedOwnersMapping() {
+    var properties = MAPPER.createObjectNode();
+    properties.set("name", MAPPER.createObjectNode().put("type", "keyword"));
+    properties.set("id", MAPPER.createObjectNode().put("type", "keyword"));
     return (ObjectNode)
-        MAPPER
-            .createObjectNode()
-            .put("type", "nested")
-            .set(
-                "properties",
-                MAPPER
-                    .createObjectNode()
-                    .set("name", MAPPER.createObjectNode().put("type", "keyword")));
+        MAPPER.createObjectNode().put("type", "nested").set("properties", properties);
   }
 
   private ObjectNode nameDisplayNameObject() {
@@ -1325,7 +1361,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       int from,
       int k,
       double threshold,
-      String preference) {
+      String preference,
+      SubjectContext subjectContext) {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embedQuery(query);
@@ -1343,7 +1380,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector, overFetchSize, rawOffset, k, filters, threshold);
+                queryVector, overFetchSize, rawOffset, k, filters, threshold, subjectContext);
         String endpoint =
             SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", preference);
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
@@ -1406,6 +1443,9 @@ public class OpenSearchVectorService implements VectorIndexService {
       hitMap.put("_score", score);
 
       String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      // Persist the fallback into the result map so consumers (e.g. SemanticSearchTool collapsing
+      // chunks by entity) see the same parentId this grouping used, matching the ES service.
+      hitMap.put("parentId", parentId);
       List<Map<String, Object>> group =
           byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>());
       // During chunk-index migration the same chunk can surface twice — once from the legacy

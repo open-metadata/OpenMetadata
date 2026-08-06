@@ -65,6 +65,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   {
     supportsFollowers = false; // Tags don't support followers
     supportsTags = false; // Tags don't support tags on themselves
+    supportsDataProductAssetsSearch = false;
     supportsListHistoryByTimestamp = true;
   }
 
@@ -208,6 +209,85 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         Exception.class,
         () -> createEntity(request),
         "Creating tag without classification should fail");
+  }
+
+  @Test
+  void patch_tagWhileClassificationDisabled_doesNotStrandTag(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+    Tag tag = createTagUnder(classification, ns, "tag_disable_inheritance");
+
+    setClassificationDisabled(classification.getId().toString(), true);
+
+    // While the parent Classification is disabled the Tag reports disabled by inheritance
+    Tag disabledTag = getEntityByName(tag.getFullyQualifiedName());
+    assertTrue(
+        Boolean.TRUE.equals(disabledTag.getDisabled()),
+        "Tag should report disabled while its Classification is disabled");
+
+    // Any unrelated write to the Tag must not persist that inherited value
+    disabledTag.setDescription("Updated while the parent Classification was disabled");
+    patchEntity(disabledTag.getId().toString(), disabledTag);
+
+    setClassificationDisabled(classification.getId().toString(), false);
+
+    // Assert the precondition separately from the behaviour under test. If the re-enable did
+    // not take effect the Tag is correctly still inheriting disabled, and conflating the two
+    // makes the failure look like the fix regressed when it did not.
+    Classification parentAfter =
+        SdkClients.adminClient().classifications().get(classification.getId().toString());
+    assertFalse(
+        Boolean.TRUE.equals(parentAfter.getDisabled()),
+        "precondition: Classification should be re-enabled, but disabled="
+            + parentAfter.getDisabled());
+
+    Tag reEnabledTag = getEntityByName(tag.getFullyQualifiedName());
+    assertFalse(
+        Boolean.TRUE.equals(reEnabledTag.getDisabled()),
+        "Tag must be usable again once its Classification is re-enabled."
+            + " If this fails the Tag was written while the parent was disabled by something"
+            + " other than this test - the details below identify the writer."
+            + " tag.version="
+            + reEnabledTag.getVersion()
+            + " tag.updatedBy="
+            + reEnabledTag.getUpdatedBy()
+            + " tag.changeDescription="
+            + reEnabledTag.getChangeDescription());
+  }
+
+  @Test
+  void patch_tagDisabledIndividually_survivesClassificationDisableCycle(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+    Tag tag = createTagUnder(classification, ns, "tag_own_disable");
+
+    // Disable the Tag on its own, while its Classification is enabled
+    tag.setDisabled(true);
+    patchEntity(tag.getId().toString(), tag);
+
+    setClassificationDisabled(classification.getId().toString(), true);
+    Tag disabledTag = getEntityByName(tag.getFullyQualifiedName());
+    disabledTag.setDescription("Updated while the parent Classification was disabled");
+    patchEntity(disabledTag.getId().toString(), disabledTag);
+    setClassificationDisabled(classification.getId().toString(), false);
+
+    Tag afterCycle = getEntityByName(tag.getFullyQualifiedName());
+    assertTrue(
+        Boolean.TRUE.equals(afterCycle.getDisabled()),
+        "A Tag disabled on its own must stay disabled after a Classification disable cycle");
+  }
+
+  private Tag createTagUnder(Classification classification, TestNamespace ns, String name) {
+    CreateTag request = new CreateTag();
+    request.setName(ns.shortPrefix(name));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag used to verify disabled inheritance handling");
+    return createEntity(request);
+  }
+
+  private void setClassificationDisabled(String classificationId, boolean disabled) {
+    Classification classification =
+        SdkClients.adminClient().classifications().get(classificationId);
+    classification.setDisabled(disabled);
+    SdkClients.adminClient().classifications().update(classificationId, classification);
   }
 
   @Test
