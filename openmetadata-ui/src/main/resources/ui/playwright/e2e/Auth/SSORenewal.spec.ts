@@ -21,13 +21,8 @@ import {
   withShortSamlTokenValidity,
 } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
-import {
-  swapSecurityConfig,
-} from '../../utils/ssoAuth';
-import {
-  loginViaSso,
-  SSO_LOGIN_HOOK_TIMEOUT_MS,
-} from '../../utils/ssoLogin';
+import { swapSecurityConfig } from '../../utils/ssoAuth';
+import { loginViaSso, SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';

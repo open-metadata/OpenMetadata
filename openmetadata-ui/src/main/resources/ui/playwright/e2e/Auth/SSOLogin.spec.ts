@@ -15,8 +15,8 @@ import { SSO_ENV } from '../../constant/ssoAuth';
 import { redirectToHomePage } from '../../utils/common';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import {
-  verifyLoggedInUserMatches,
   swapSecurityConfig,
+  verifyLoggedInUserMatches,
 } from '../../utils/ssoAuth';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';

@@ -21,13 +21,8 @@ import {
   withShortOidcTokenValidity,
 } from '../../utils/sessionRenewal';
 import { keycloakOidcConfidentialProviderHelper } from '../../utils/sso-providers/keycloak-oidc';
-import {
-  swapSecurityConfig,
-} from '../../utils/ssoAuth';
-import {
-  loginViaSso,
-  SSO_LOGIN_HOOK_TIMEOUT_MS,
-} from '../../utils/ssoLogin';
+import { swapSecurityConfig } from '../../utils/ssoAuth';
+import { loginViaSso, SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -49,117 +44,117 @@ test.describe(
   'Confidential OIDC Session Renewal',
   { tag: CONFIDENTIAL_RENEWAL_TAGS },
   () => {
-  test.slow();
-  // eslint-disable-next-line playwright/no-skipped-test
-  test.skip(
-    !username || !password,
-    `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
-  );
-
-  const helper = keycloakOidcConfidentialProviderHelper;
-  let restoreSecurity: (() => Promise<void>) | undefined;
-  let userContext: BrowserContext | undefined;
-  let userPage: Page | undefined;
-
-  test.beforeAll(
-    'Swap server to confidential OIDC with a short JWT TTL and sign in',
-    async ({ browser }) => {
-      test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
-
-      restoreSecurity = await swapSecurityConfig(
-        browser,
-        withShortOidcTokenValidity(await helper.buildConfigPayload())
-      );
-
-      userContext = await browser.newContext();
-      userPage = await userContext.newPage();
-      await loginViaSso(userPage, helper, { username, password });
-    }
-  );
-
-  test.afterAll('Restore original security configuration', async () => {
-    await userPage?.close();
-    await userContext?.close();
-    await restoreSecurity?.();
-  });
-
-  test('should silently refresh the OpenMetadata token after expiry', async () => {
-    const page = userPage!;
-
-    await expect(page.getByTestId('dropdown-profile')).toBeVisible();
-
-    const initialAccessToken = await getToken(page);
-    const initialExp = decodeJwtExp(initialAccessToken);
-
-    await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
-
-    // 200 only: a concurrent refresh answers 503 + Retry-After.
-    const refreshResponsePromise = page.waitForResponse(
-      (r) => r.url().includes(AUTH_REFRESH_PATH) && r.status() === 200,
-      { timeout: 15_000 }
+    test.slow();
+    // eslint-disable-next-line playwright/no-skipped-test
+    test.skip(
+      !username || !password,
+      `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
     );
 
-    await page.getByTestId('app-bar-item-explore').click();
+    const helper = keycloakOidcConfidentialProviderHelper;
+    let restoreSecurity: (() => Promise<void>) | undefined;
+    let userContext: BrowserContext | undefined;
+    let userPage: Page | undefined;
 
-    const refreshResponse = await refreshResponsePromise;
+    test.beforeAll(
+      'Swap server to confidential OIDC with a short JWT TTL and sign in',
+      async ({ browser }) => {
+        test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
 
-    await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+        restoreSecurity = await swapSecurityConfig(
+          browser,
+          withShortOidcTokenValidity(await helper.buildConfigPayload())
+        );
 
-    const newAccessToken = await getToken(page);
-
-    expect(refreshResponse.status()).toBe(200);
-    expect(newAccessToken).not.toBe(initialAccessToken);
-    expect(decodeJwtExp(newAccessToken)).toBeGreaterThan(initialExp);
-    expect(page.url()).not.toContain('/signin');
-  });
-
-  test('should queue concurrent 401s behind a single refresh call', async () => {
-    const page = userPage!;
-
-    await expect(page.getByTestId('dropdown-profile')).toBeVisible();
-
-    await page.getByTestId('app-bar-item-my-data').click();
-    await page.waitForURL('**/my-data');
-
-    await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
-
-    const refreshCalls: string[] = [];
-    const trackRefresh = (response: Response): void => {
-      if (response.url().includes(AUTH_REFRESH_PATH)) {
-        refreshCalls.push(response.url());
+        userContext = await browser.newContext();
+        userPage = await userContext.newPage();
+        await loginViaSso(userPage, helper, { username, password });
       }
-    };
+    );
 
-    page.on('response', trackRefresh);
+    test.afterAll('Restore original security configuration', async () => {
+      await userPage?.close();
+      await userContext?.close();
+      await restoreSecurity?.();
+    });
 
-    try {
+    test('should silently refresh the OpenMetadata token after expiry', async () => {
+      const page = userPage!;
+
+      await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+
+      const initialAccessToken = await getToken(page);
+      const initialExp = decodeJwtExp(initialAccessToken);
+
+      await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
+
+      // 200 only: a concurrent refresh answers 503 + Retry-After.
       const refreshResponsePromise = page.waitForResponse(
         (r) => r.url().includes(AUTH_REFRESH_PATH) && r.status() === 200,
         { timeout: 15_000 }
       );
 
       await page.getByTestId('app-bar-item-explore').click();
-      await refreshResponsePromise;
+
+      const refreshResponse = await refreshResponsePromise;
+
       await expect(page.getByTestId('dropdown-profile')).toBeVisible();
-    } finally {
-      page.off('response', trackRefresh);
-    }
 
-    expect(refreshCalls).toHaveLength(1);
-    expect(page.url()).not.toContain('/signin');
-  });
+      const newAccessToken = await getToken(page);
 
-  test('should force re-login when the OpenMetadata session is gone', async () => {
-    const page = userPage!;
+      expect(refreshResponse.status()).toBe(200);
+      expect(newAccessToken).not.toBe(initialAccessToken);
+      expect(decodeJwtExp(newAccessToken)).toBeGreaterThan(initialExp);
+      expect(page.url()).not.toContain('/signin');
+    });
 
-    await clearServerSessionCookie(userContext!);
-    await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
+    test('should queue concurrent 401s behind a single refresh call', async () => {
+      const page = userPage!;
 
-    await page.reload();
+      await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
-    await page.waitForURL('**/signin', { timeout: 30_000 });
-    await expect(page.getByText(/session has timed out/i)).toBeVisible();
-    await expect(page.locator('button.signin-button')).toBeVisible();
-  });
+      await page.getByTestId('app-bar-item-my-data').click();
+      await page.waitForURL('**/my-data');
+
+      await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
+
+      const refreshCalls: string[] = [];
+      const trackRefresh = (response: Response): void => {
+        if (response.url().includes(AUTH_REFRESH_PATH)) {
+          refreshCalls.push(response.url());
+        }
+      };
+
+      page.on('response', trackRefresh);
+
+      try {
+        const refreshResponsePromise = page.waitForResponse(
+          (r) => r.url().includes(AUTH_REFRESH_PATH) && r.status() === 200,
+          { timeout: 15_000 }
+        );
+
+        await page.getByTestId('app-bar-item-explore').click();
+        await refreshResponsePromise;
+        await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+      } finally {
+        page.off('response', trackRefresh);
+      }
+
+      expect(refreshCalls).toHaveLength(1);
+      expect(page.url()).not.toContain('/signin');
+    });
+
+    test('should force re-login when the OpenMetadata session is gone', async () => {
+      const page = userPage!;
+
+      await clearServerSessionCookie(userContext!);
+      await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
+
+      await page.reload();
+
+      await page.waitForURL('**/signin', { timeout: 30_000 });
+      await expect(page.getByText(/session has timed out/i)).toBeVisible();
+      await expect(page.locator('button.signin-button')).toBeVisible();
+    });
   }
 );

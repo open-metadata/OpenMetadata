@@ -10,23 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  BrowserContext,
-  expect,
-  Page,
-  Request,
-  test,
-} from '@playwright/test';
+import { BrowserContext, expect, Page, Request, test } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
 import { decodeJwtExp, expireStoredToken } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
-import {
-  swapSecurityConfig,
-} from '../../utils/ssoAuth';
-import {
-  loginViaSso,
-  SSO_LOGIN_HOOK_TIMEOUT_MS,
-} from '../../utils/ssoLogin';
+import { swapSecurityConfig } from '../../utils/ssoAuth';
+import { loginViaSso, SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
 // Public-client Okta renews through @okta/okta-auth-js against the tenant, so
@@ -97,10 +86,7 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
     const trackRenewal = (request: Request): void => {
       const url = request.url();
 
-      if (
-        url.includes(OKTA_TOKEN_PATH) ||
-        url.includes(OKTA_AUTHORIZE_PATH)
-      ) {
+      if (url.includes(OKTA_TOKEN_PATH) || url.includes(OKTA_AUTHORIZE_PATH)) {
         renewalRequests.push(url);
       }
     };
