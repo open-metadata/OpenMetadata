@@ -19,10 +19,13 @@ from itertools import islice
 from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 from urllib.parse import urlparse
 
+import attrs
 import data_diff
 import sqlalchemy.types
 from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
+from data_diff.queries.api import Concat, Count, this
+from data_diff.queries.ast_classes import BinBoolOp
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from pydantic import BaseModel, Field
 from sqlalchemy import Column as SAColumn
@@ -77,6 +80,8 @@ SUPPORTED_DIALECTS = [
     Dialects.Databricks,
     Dialects.UnityCatalog,
 ]
+
+MAX_DUPLICATE_KEY_SAMPLES = 5
 
 
 class SchemaDiffResult(BaseModel):
@@ -164,6 +169,28 @@ class UnsupportedDialectError(Exception):
         super().__init__(f"Unsupported dialect in param {param}: {dialect}")
 
 
+class DuplicateKeyError(Exception):
+    """A diff key column is not unique, which makes a row-level diff undefined."""
+
+    def __init__(
+        self,
+        table: str,
+        key_columns: List[str],  # noqa: UP006
+        total_rows: int,
+        distinct_keys: int,
+        samples: List[str],  # noqa: UP006
+    ):
+        if len(key_columns) == 1:
+            subject = f"Key column '{key_columns[0]}' is"
+        else:
+            subject = f"Key columns ({', '.join(repr(c) for c in key_columns)}) are"
+        message = f"{subject} not unique in {table}: {total_rows} rows over {distinct_keys} distinct key values."
+        if samples:
+            message += f" Duplicated: {', '.join(samples)}."
+        message += " A row-level diff needs a unique key: pick a unique column, or add more columns to the key."
+        super().__init__(message)
+
+
 def masked(s: str, mask: bool = True) -> str:
     """Mask a string if masked is True otherwise return the string.
     Only for development purposes, do not use in production.
@@ -203,7 +230,16 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         self.runtime_params = self.get_runtime_parameters(TableDiffRuntimeParameters)
         try:
             self._validate_dialects()
+            self._validate_key_uniqueness()
             return self._run()
+        except DuplicateKeyError as e:
+            logger.error(f"[Data Diff]: {e}")
+            result = TestCaseResult(
+                timestamp=self.execution_date,  # type: ignore
+                testCaseStatus=TestCaseStatus.Aborted,
+                result=str(e),
+            )
+            return result  # noqa: RET504
         except DataDiffMismatchingKeyTypesError as e:
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
@@ -300,7 +336,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         """
 
         table1 = data_diff.connect_to_table(
-            self.runtime_params.table1.serviceUrl,
+            self.runtime_params.table1.data_diff_service_url,
             self.runtime_params.table1.path,
             self.runtime_params.table1.key_columns,
             extra_columns=self.runtime_params.extraColumns,
@@ -313,7 +349,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             else None,
         ).with_schema()
         table2 = data_diff.connect_to_table(
-            self.runtime_params.table2.serviceUrl,
+            self.runtime_params.table2.data_diff_service_url,
             self.runtime_params.table2.path,
             self.runtime_params.table2.key_columns,
             extra_columns=self.runtime_params.extraColumns,
@@ -377,7 +413,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         """Calls data_diff.diff_tables with the parameters from the test case."""
         left_where, right_where = self.sample_where_clause()
         table1 = data_diff.connect_to_table(
-            self.runtime_params.table1.serviceUrl,
+            self.runtime_params.table1.data_diff_service_url,
             self.runtime_params.table1.path,
             self.runtime_params.table1.key_columns,  # type: ignore
             extra_columns=self.runtime_params.table1.extra_columns,
@@ -391,7 +427,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             else None,
         )
         table2 = data_diff.connect_to_table(
-            self.runtime_params.table2.serviceUrl,
+            self.runtime_params.table2.data_diff_service_url,
             self.runtime_params.table2.path,
             self.runtime_params.table2.key_columns,  # type: ignore
             extra_columns=self.runtime_params.table2.extra_columns,
@@ -585,6 +621,98 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 dialect = urlparse(param).scheme
             if dialect not in SUPPORTED_DIALECTS:
                 raise UnsupportedDialectError(name, dialect)
+
+    def _validate_key_uniqueness(self) -> None:
+        """Refuse to diff on a key that is not unique, naming the column and the offending values.
+
+        data-diff's result model is key-unique: `_get_stats` folds rows into a `{key: sign}` map
+        and asserts each key appears at most twice. Duplicates therefore either raise deep inside
+        the library - `ValueError: Duplicate primary keys` when both tables share a connection and
+        joindiff is chosen, or a bare `AssertionError` when they do not and hashdiff is - or, with
+        that validation disabled, silently inflate the counts through the join fan-out. None of
+        those tell the user which column is at fault, so we check first.
+
+        The test's where clause is applied, since it may itself make the key unique. Sampling is
+        deliberately not: it draws a random subset per run, and a key that is only unique inside
+        one sample is not a key.
+        """
+        for table_param in (self.runtime_params.table1, self.runtime_params.table2):
+            if not table_param.key_columns:
+                continue
+            counts = self._count_keys(table_param)
+            if counts is None:
+                continue
+            total_rows, distinct_keys = counts
+            if total_rows == distinct_keys:
+                continue
+            raise DuplicateKeyError(
+                table_param.fullyQualifiedName or table_param.path,
+                list(table_param.key_columns),
+                total_rows,
+                distinct_keys,
+                self._sample_duplicate_keys(table_param),
+            )
+
+    def _key_check_segment(self, table_param: TableParameter):
+        """A data-diff segment for `table_param`, used only to inspect its key columns."""
+        return data_diff.connect_to_table(
+            table_param.data_diff_service_url,
+            table_param.path,
+            table_param.key_columns,
+            case_sensitive=self.get_case_sensitive(),
+            where=self.get_where(),
+            key_content=normalize_pem_string(table_param.privateKey.get_secret_value())
+            if table_param.privateKey
+            else None,
+            private_key_passphrase=table_param.passPhrase.get_secret_value() if table_param.passPhrase else None,
+        )
+
+    def _count_keys(self, table_param: TableParameter) -> Optional[Tuple[int, int]]:  # noqa: UP006, UP045
+        """Return (total rows, distinct key values), or None if the check could not run.
+
+        Failing to run the check must not fail the test: data-diff still refuses to produce
+        wrong numbers on its own, so a degraded check is worse than no check but better than
+        an aborted run.
+        """
+        try:
+            segment = self._key_check_segment(table_param)
+            query = segment.make_select().select(
+                total=Count(),
+                total_distinct=Count(Concat(this[list(segment.key_columns)]), distinct=True),
+            )
+            return segment.database.query(query, tuple)
+        except Exception:
+            logger.warning(
+                "[Data Diff]: Could not validate key uniqueness for %s. Continuing with the diff.",
+                table_param.path,
+                exc_info=True,
+            )
+            return None
+
+    def _sample_duplicate_keys(self, table_param: TableParameter) -> List[str]:  # noqa: UP006
+        """A few duplicated key values with their row counts, best-effort, for the error message."""
+        try:
+            segment = self._key_check_segment(table_param)
+            key_expressions = [this[column] for column in segment.key_columns]
+            # `.select()` resolves the column names in place. The GROUP BY is then set
+            # explicitly because data-diff's own `.group_by()` renders it positionally
+            # ("GROUP BY 1"), which MSSQL and Oracle reject.
+            query = segment.make_select().select(*key_expressions, Count())
+            query = attrs.evolve(
+                query,
+                group_by_exprs=key_expressions,
+                having_exprs=[BinBoolOp(">", [Count(), 1])],
+                # ordered so the same duplicates produce the same message on every run
+                order_by_exprs=key_expressions,
+                limit_expr=MAX_DUPLICATE_KEY_SAMPLES,
+            )
+            return [
+                f"{', '.join(str(value) for value in row[:-1])} (x{row[-1]})"
+                for row in segment.database.query(query, list)
+            ]
+        except Exception:
+            logger.debug("[Data Diff]: Could not sample duplicate keys for %s", table_param.path, exc_info=True)
+            return []
 
     def get_column_diff(self) -> Optional[ColumnDiffResult]:  # noqa: UP045
         """Get the column diff between the two tables. If there are no differences, return None."""
