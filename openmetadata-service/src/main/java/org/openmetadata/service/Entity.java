@@ -647,6 +647,23 @@ public final class Entity {
     }
   }
 
+  /**
+   * Same as {@link #getEntity(String, UUID, String, Include)} but yields {@code null} instead of
+   * throwing when the entity is gone. Use it on best-effort paths that run after the entity may have
+   * been deleted — asynchronous alert filtering, for instance — where a missing entity is an
+   * expected outcome rather than an error.
+   */
+  public static <T> T getEntityOrNull(String entityType, UUID id, String fields, Include include) {
+    T entity;
+    try {
+      entity = getEntity(entityType, id, fields, include);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("{} {} not found while reading fields '{}'", entityType, id, fields);
+      entity = null;
+    }
+    return entity;
+  }
+
   public static <T> T getEntity(EntityLink link, String fields, Include include) {
     return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
