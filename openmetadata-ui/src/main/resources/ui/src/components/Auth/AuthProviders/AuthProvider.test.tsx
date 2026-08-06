@@ -13,10 +13,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
 import { act } from 'react-test-renderer';
-import { NON_SESSION_AUTH_ERROR } from '../../../constants/Auth.constants';
+import {
+  NON_SESSION_AUTH_ERROR,
+  STALE_TOKEN_RETRIED,
+} from '../../../constants/Auth.constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import axiosClient from '../../../rest';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { getOidcToken } from '../../../utils/SwTokenStorageUtils';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 
 const localStorageMock = {
@@ -71,6 +75,17 @@ const mockRefreshToken = jest
 const mockIsSessionExpired = jest
   .fn()
   .mockImplementation(() => Promise.resolve(true));
+
+// Defaults to no stored token, so the interceptor's stale-token comparison is inert unless a
+// test opts into it. Declared inside the factory because this module is required transitively
+// before the test file's own bindings initialise.
+jest.mock('../../../utils/SwTokenStorageUtils', () => ({
+  getOidcToken: jest.fn().mockResolvedValue(''),
+  clearOidcToken: jest.fn().mockResolvedValue(undefined),
+  getRefreshToken: jest.fn().mockResolvedValue(''),
+}));
+
+const mockGetOidcToken = getOidcToken as jest.Mock;
 
 jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => {
   return {
@@ -541,6 +556,52 @@ describe('Test axios response interceptor', () => {
 
     beforeEach(() => {
       mockRefreshToken.mockClear();
+      mockGetOidcToken.mockResolvedValue('');
+    });
+
+    it('should replay the request once when it carried a token since refreshed', async () => {
+      // Another tab (or the pre-expiry timer) swapped the token while this request was in
+      // flight, so its 401 is about a token we no longer hold — replay, don't classify.
+      mockIsSessionExpired.mockImplementationOnce(() => Promise.resolve(false));
+      mockGetOidcToken.mockResolvedValue('freshToken');
+
+      const { errorHandler, mockAxios } = await setUpInterceptor();
+      const mockError = {
+        ...unauthorizedError(),
+        config: {
+          url: '/services/ingestionPipelines/deploy/1',
+          headers: { Authorization: 'Bearer staleToken' },
+        },
+      };
+
+      await expect(errorHandler?.(mockError)).resolves.toEqual({
+        data: 'success',
+      });
+
+      expect(mockAxios).toHaveBeenCalledWith(mockError.config);
+      expect(mockError.config).toHaveProperty(STALE_TOKEN_RETRIED, true);
+    });
+
+    it('should replay a stale request at most once', async () => {
+      mockIsSessionExpired.mockImplementationOnce(() => Promise.resolve(false));
+      mockGetOidcToken.mockResolvedValue('freshToken');
+
+      const { errorHandler, mockAxios } = await setUpInterceptor();
+      const mockError = {
+        ...unauthorizedError(),
+        config: {
+          url: '/services/ingestionPipelines/deploy/1',
+          headers: { Authorization: 'Bearer staleToken' },
+          [STALE_TOKEN_RETRIED]: true,
+        },
+      };
+
+      // The replay already happened and still 401'd, so the endpoint is the problem.
+      await expect(errorHandler?.(mockError)).rejects.toEqual(
+        expect.objectContaining({ [NON_SESSION_AUTH_ERROR]: true })
+      );
+
+      expect(mockAxios).not.toHaveBeenCalled();
     });
 
     it('should reject with the original error instead of logging out', async () => {

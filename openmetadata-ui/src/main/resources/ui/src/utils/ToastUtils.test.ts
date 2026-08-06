@@ -13,10 +13,11 @@
 import { toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { NON_SESSION_AUTH_ERROR } from '../constants/Auth.constants';
-import { showErrorToast } from './ToastUtils';
 
-// setupTests.js stubs this module globally for every other suite; here we need the real thing.
-jest.unmock('./ToastUtils');
+// setupTests.js stubs this module globally for every other suite; pull the real implementation
+// rather than relying on a static import surviving an unmock.
+const { showErrorToast } =
+  jest.requireActual<typeof import('./ToastUtils')>('./ToastUtils');
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   toast: {

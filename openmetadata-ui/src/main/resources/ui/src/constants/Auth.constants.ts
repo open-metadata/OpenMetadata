@@ -49,3 +49,10 @@ export const UN_AUTHORIZED_EXCLUDED_PATHS = [
  * no such message behind it and must be shown.
  */
 export const NON_SESSION_AUTH_ERROR = 'nonSessionAuthError';
+
+/**
+ * Flag the auth interceptor sets on a request config it has already replayed once because the
+ * token was refreshed while that request was in flight. Bounds the replay to a single attempt so
+ * an endpoint answering 401 for its own reasons cannot loop.
+ */
+export const STALE_TOKEN_RETRIED = 'staleTokenRetried';

@@ -40,6 +40,7 @@ import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import {
   NON_SESSION_AUTH_ERROR,
+  STALE_TOKEN_RETRIED,
   UN_AUTHORIZED_EXCLUDED_PATHS,
 } from '../../../constants/Auth.constants';
 import {
@@ -121,6 +122,15 @@ const userAPIQueryFields = [
 ];
 
 const isEmailVerifyField = 'isEmailVerified';
+
+/** The bearer token a request actually went out with, per its own config. */
+const getRequestBearerToken = (
+  config?: InternalAxiosRequestConfig<unknown>
+): string => {
+  const header = config?.headers?.Authorization;
+
+  return typeof header === 'string' ? header.replace(/^Bearer\s+/i, '') : '';
+};
 
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
@@ -601,13 +611,30 @@ export const AuthProvider = ({
               throw error;
             }
 
-            // A 401 that arrives while our own token is still valid did not come from our
-            // session — it came from the endpoint, e.g. a service the API depends on rejecting
-            // *its* credentials. refreshToken() already refuses to renew a valid token, so this
-            // branch could only ever end in a forced logout that replaces the real error with
-            // "session expired". Surface it to the caller instead.
-            // See https://github.com/open-metadata/openmetadata-collate/issues/4647
             if (!(await tokenService.current.isSessionExpired())) {
+              // The stored token is healthy, so refreshing cannot help — but the request may
+              // have gone out with an older token that another tab or the pre-expiry timer has
+              // since replaced. Replay it once with the current token before concluding anything.
+              const currentToken = await getOidcToken();
+              const requestToken = getRequestBearerToken(error.config);
+              const isStaleRequest =
+                Boolean(requestToken) &&
+                Boolean(currentToken) &&
+                requestToken !== currentToken;
+
+              if (isStaleRequest && !error.config[STALE_TOKEN_RETRIED]) {
+                error.config[STALE_TOKEN_RETRIED] = true;
+
+                // The request interceptor re-reads storage, so the replay carries the new token.
+                return axiosClient.request(error.config);
+              }
+
+              // A 401 that arrives while our own token is still valid did not come from our
+              // session — it came from the endpoint, e.g. a service the API depends on rejecting
+              // *its* credentials. refreshToken() already refuses to renew a valid token, so this
+              // branch could only ever end in a forced logout that replaces the real error with
+              // "session expired". Surface it to the caller instead.
+              // See https://github.com/open-metadata/openmetadata-collate/issues/4647
               error[NON_SESSION_AUTH_ERROR] = true;
 
               throw error;

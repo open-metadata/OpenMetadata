@@ -204,7 +204,9 @@ export const getToken = async (page: Page): Promise<string> => {
  * the worker keeps handing the old token to `getOidcToken()`. Writing through the worker updates
  * both its cache and IndexedDB, and is exactly what the app itself does.
  *
- * Falls back to the direct IndexedDB write when no worker is controlling the page.
+ * Falls back to the direct IndexedDB write when no worker is controlling the page, or when the
+ * worker exchange fails — hence the catch: an unhandled rejection here would abandon the write
+ * rather than fall through.
  */
 export const setToken = async (page: Page, token: string): Promise<void> => {
   const wroteViaServiceWorker = await page.evaluate(
@@ -229,20 +231,24 @@ export const setToken = async (page: Page, token: string): Promise<void> => {
           controller.postMessage(message, [channel.port2]);
         });
 
-      const current = (await request({
-        type: 'get',
-        key: appStateKey,
-      })) as string | null;
-      const state = current ? JSON.parse(current) : {};
-      state[oidcTokenKey] = token;
+      try {
+        const current = (await request({
+          type: 'get',
+          key: appStateKey,
+        })) as string | null;
+        const state = current ? JSON.parse(current) : {};
+        state[oidcTokenKey] = token;
 
-      await request({
-        type: 'set',
-        key: appStateKey,
-        value: JSON.stringify(state),
-      });
+        await request({
+          type: 'set',
+          key: appStateKey,
+          value: JSON.stringify(state),
+        });
 
-      return true;
+        return true;
+      } catch {
+        return false;
+      }
     },
     { appStateKey: APP_STATE_KEY, oidcTokenKey: OIDC_TOKEN_KEY, token }
   );
