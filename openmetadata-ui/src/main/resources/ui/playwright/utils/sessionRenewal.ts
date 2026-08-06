@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext } from '@playwright/test';
+import { BrowserContext, Page } from '@playwright/test';
 import { ProviderConfigOverride } from './ssoAuth';
+import { APP_STATE_KEY, OIDC_TOKEN_KEY } from './tokenStorage';
 
 export const SHORT_ACCESS_TTL_SECONDS = 30;
 
@@ -82,4 +83,75 @@ export const clearSamlSessionCookie = async (
   context: BrowserContext
 ): Promise<void> => {
   await context.clearCookies({ name: SESSION_COOKIE_NAME });
+};
+
+/**
+ * Replaces OpenMetadata's stored access token with a well-formed but
+ * already-expired JWT, so the app's renewal path runs immediately instead of
+ * waiting for the real token to age out.
+ *
+ * Needed for providers whose token lifetime OpenMetadata cannot shorten — a
+ * public-client Okta tenant sets its own ID/access token TTLs, so
+ * `withShortSamlTokenValidity` + `waitForAccessTokenExpiry` have no equivalent.
+ *
+ * The write goes through the Service Worker rather than IndexedDB directly:
+ * `getOidcToken()` reads the SW's in-memory cache, so a direct IndexedDB write
+ * would leave the running app still holding the live token.
+ *
+ * Returns the forged JWT so callers can assert that it was replaced.
+ */
+export const expireStoredToken = async (
+  page: Page,
+  claims: Record<string, unknown> = {}
+): Promise<string> => {
+  return page.evaluate(
+    ({ appStateKey, oidcTokenKey, tokenClaims }) =>
+      new Promise<string>((resolve, reject) => {
+        const toBase64Url = (payload: Record<string, unknown>) =>
+          btoa(JSON.stringify(payload))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+        const expiredJwt = [
+          toBase64Url({ alg: 'RS256', typ: 'JWT' }),
+          toBase64Url({
+            ...tokenClaims,
+            exp: Math.floor(Date.now() / 1000) - 3600,
+          }),
+          'expired-by-playwright',
+        ].join('.');
+
+        const controller = navigator.serviceWorker.controller;
+
+        if (!controller) {
+          reject(new Error('No active Service Worker controller'));
+
+          return;
+        }
+
+        const readChannel = new MessageChannel();
+
+        readChannel.port1.onmessage = (event) => {
+          const state = event.data.result ? JSON.parse(event.data.result) : {};
+
+          state[oidcTokenKey] = expiredJwt;
+
+          const writeChannel = new MessageChannel();
+
+          writeChannel.port1.onmessage = () => resolve(expiredJwt);
+          controller.postMessage(
+            { type: 'set', key: appStateKey, value: JSON.stringify(state) },
+            [writeChannel.port2]
+          );
+        };
+        controller.postMessage({ type: 'get', key: appStateKey }, [
+          readChannel.port2,
+        ]);
+      }),
+    {
+      appStateKey: APP_STATE_KEY,
+      oidcTokenKey: OIDC_TOKEN_KEY,
+      tokenClaims: claims,
+    }
+  );
 };

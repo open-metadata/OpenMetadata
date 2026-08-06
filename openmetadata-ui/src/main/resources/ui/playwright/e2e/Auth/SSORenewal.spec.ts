@@ -29,6 +29,7 @@ import {
   restoreSecurityConfig,
   SecurityConfigSnapshot,
 } from '../../utils/ssoAuth';
+import { loginViaSso } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
@@ -52,33 +53,6 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
   let originalSecurityConfig: SecurityConfigSnapshot | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
-
-  const loginViaSaml = async (page: Page): Promise<void> => {
-    await page.goto('/signin');
-    const signInButton = page.locator('button.signin-button');
-
-    await expect(signInButton).toBeVisible();
-    await signInButton.click();
-    await page.waitForURL(helper.loginUrlPattern, { timeout: 45_000 });
-    await helper.performProviderLogin(page, { username, password });
-    await page.waitForURL(
-      (url) =>
-        url.pathname.endsWith('/signup') || url.pathname.endsWith('/my-data'),
-      { timeout: 60_000 }
-    );
-
-    if (page.url().includes('/signup')) {
-      const createButton = page.getByRole('button', { name: /create/i });
-
-      await expect(createButton).toBeEnabled();
-      await createButton.click();
-      await page.waitForURL('**/my-data', { timeout: 60_000 });
-    }
-
-    await expect(page.getByTestId('dropdown-profile')).toBeVisible({
-      timeout: 60_000,
-    });
-  };
 
   test.beforeAll(
     'Swap server to SAML with short JWT TTL and establish user session',
@@ -113,7 +87,7 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
 
       userContext = await browser.newContext();
       userPage = await userContext.newPage();
-      await loginViaSaml(userPage);
+      await loginViaSso(userPage, helper, { username, password });
     }
   );
 
