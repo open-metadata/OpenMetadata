@@ -38,7 +38,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.schema import FieldModel, SchemaType
+from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel, SchemaType
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
@@ -58,6 +58,7 @@ from metadata.ingestion.source.pipeline.kafkaconnect.sinks import (
     get_resolver,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.sinks.snowflake import (
+    SnowflakeSinkResolver,
     java_string_hashcode,
     snowflake_table_name,
 )
@@ -846,9 +847,11 @@ class TestFlattenSmtColumnMappings:
     def test_flatten_joins_nested_paths_with_the_configured_delimiter(self):
         mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, _nested_topic())
         pairs = {(m.source_column, m.target_column) for m in mappings}
-        assert ("street", "ADDRESS_STREET") in pairs
-        assert ("city", "ADDRESS_CITY") in pairs
-        assert ("zipcode", "ADDRESS_ZIPCODE") in pairs
+        # source_column is the dotted source path, not the bare leaf: see
+        # TestSameNamedLeavesResolveDistinctly for why the bare name is not usable.
+        assert ("address.street", "ADDRESS_STREET") in pairs
+        assert ("address.city", "ADDRESS_CITY") in pairs
+        assert ("address.zipcode", "ADDRESS_ZIPCODE") in pairs
 
     def test_flatten_leaves_top_level_fields_untouched(self):
         mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, _nested_topic())
@@ -893,7 +896,7 @@ class TestFlattenSmtColumnMappings:
             },
         )
         mappings = get_resolver("SnowflakeSink").column_mappings(config, _nested_topic())
-        assert ("street", "ADDRESS_STREET") in {(m.source_column, m.target_column) for m in mappings}
+        assert ("address.street", "ADDRESS_STREET") in {(m.source_column, m.target_column) for m in mappings}
 
     def test_topic_without_a_schema_yields_no_mappings(self):
         """A topic ingested without Schema Registry credentials carries no schemaFields;
@@ -1127,8 +1130,367 @@ class TestFlattenColumnMappingsAtTheCallSite:
             ),
         }
 
-    def test_a_missing_topic_warns_instead_of_raising(self):
-        """`column_mappings` reads messageSchema off the matched topic, so an unguarded call
-        would turn a missing-topic warning into a failed connector run."""
-        _, requests = _run_sink_lineage(FLATTEN_CONFIG, None, _flattened_table_with_column_fqns())
+    def test_a_missing_topic_yields_no_lineage_and_never_asks_the_resolver(self):
+        """What the `matched_topic_entity is not None` half of the call-site guard actually
+        buys: not crash avoidance (`column_mappings` reads messageSchema through getattr and
+        answers [] for None) but not interrogating a topic that was never found, on a dataset
+        whose edge is about to be skipped anyway."""
+        with patch.object(SnowflakeSinkResolver, "column_mappings", autospec=True, return_value=[]) as mapper:
+            _, requests = _run_sink_lineage(FLATTEN_CONFIG, None, _flattened_table_with_column_fqns())
         assert requests == []
+        assert mapper.call_count == 0
+
+    def test_an_explicit_mapping_is_not_overwritten_by_the_resolver(self):
+        """The `not dataset_details.column_mappings` half of the guard. A mapping that arrived
+        with the dataset is deliberate; dropping the condition lets the Flatten resolver
+        replace that one edge with its own six."""
+        preset = _flatten_dataset_details(
+            [KafkaConnectColumnMapping(source_column="order_id", target_column="ORDER_ID")]
+        )
+        with patch.object(SnowflakeSinkResolver, "resolve_datasets", autospec=True, return_value=[preset]):
+            edges = self._column_edges(
+                FLATTEN_CONFIG,
+                _with_nested_field_fqns(_nested_topic(), TOPIC_FIELD_FQN_PREFIX),
+                _flattened_table_with_column_fqns(),
+            )
+        assert edges == {
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.order_id",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ORDER_ID",
+            )
+        }
+
+
+def _avro_topic(topic_name: str, avro: str, prefix: str) -> Topic:
+    """A Topic carrying `avro`, with field FQNs populated at every depth."""
+    return _with_nested_field_fqns(
+        Topic(
+            id=uuid.uuid4(),
+            name=topic_name,
+            partitions=1,
+            service={"id": uuid.uuid4(), "type": "messagingService"},
+            messageSchema=TopicSchema(
+                schemaText=avro,
+                schemaType=SchemaType.Avro,
+                schemaFields=parse_avro_schema(avro, cls=FieldModel),
+            ),
+        ),
+        prefix,
+    )
+
+
+def _table_with_columns(table_name: str, column_names: list, prefix: str) -> Table:
+    return Table(
+        id=uuid.uuid4(),
+        name=table_name,
+        columns=[
+            Column(
+                name=name,
+                dataType=DataType.VARCHAR,
+                fullyQualifiedName=FullyQualifiedEntityName(f"{prefix}.{name}"),
+            )
+            for name in column_names
+        ],
+        databaseSchema={"id": uuid.uuid4(), "type": "databaseSchema"},
+    )
+
+
+def _flatten_edges(topic: Topic, table: Table) -> set:
+    """column_mappings under the Flatten config, then straight through build_column_lineage."""
+    mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, topic)
+    lineage = _new_source().build_column_lineage(
+        from_entity=topic,
+        to_entity=table,
+        topic_entity=topic,
+        pipeline_details=SNOWFLAKE_SINK_DETAILS,
+        dataset_details=_flatten_dataset_details(mappings),
+    )
+    assert lineage is not None, "flattened mappings produced no edges at all"
+    return {(model_str(edge.fromColumns[0]), model_str(edge.toColumn)) for edge in lineage}
+
+
+# Two records under one root, each with a `city` leaf. A bare leaf name cannot distinguish
+# them, so any by-name topic-field lookup hands one field to both target columns.
+SIBLING_RECORDS_AVRO = json.dumps(
+    {
+        "type": "record",
+        "name": "Root3",
+        "fields": [
+            {
+                "name": "shipping",
+                "type": {
+                    "type": "record",
+                    "name": "ShipAddr",
+                    "fields": [{"name": "city", "type": "string"}],
+                },
+            },
+            {
+                "name": "billing",
+                "type": {
+                    "type": "record",
+                    "name": "BillAddr",
+                    "fields": [{"name": "city", "type": "string"}],
+                },
+            },
+        ],
+    }
+)
+
+# A nested leaf shadowing a top-level field of the same name.
+SHADOWED_LEAF_AVRO = json.dumps(
+    {
+        "type": "record",
+        "name": "Root7",
+        "fields": [
+            {"name": "city", "type": "string"},
+            {
+                "name": "address",
+                "type": {
+                    "type": "record",
+                    "name": "Addr7",
+                    "fields": [{"name": "city", "type": "string"}],
+                },
+            },
+        ],
+    }
+)
+
+SIBLING_TOPIC_PREFIX = "confluent_kafka.sibling_events"
+SIBLING_TABLE_PREFIX = "snowflake.TEST_DB.MAYUR_SCHEMA.SIBLING_EVENTS"
+
+
+class TestSameNamedLeavesResolveDistinctly:
+    """Leaf names are not unique. `source_column` therefore carries the dotted source path and
+    the topic-field lookup walks it, because a by-name search over either schema below has to
+    pick one field and would publish it as the upstream of every column sharing the name --
+    a wrong edge, which is worse than no edge."""
+
+    def test_sibling_records_keep_their_own_city(self):
+        topic = _avro_topic("sibling_events", SIBLING_RECORDS_AVRO, SIBLING_TOPIC_PREFIX)
+        mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, topic)
+        assert [(m.source_column, m.target_column) for m in mappings] == [
+            ("shipping.city", "SHIPPING_CITY"),
+            ("billing.city", "BILLING_CITY"),
+        ]
+        table = _table_with_columns("SIBLING_EVENTS", ["SHIPPING_CITY", "BILLING_CITY"], SIBLING_TABLE_PREFIX)
+        assert _flatten_edges(topic, table) == {
+            (
+                f"{SIBLING_TOPIC_PREFIX}.Root3.shipping.ShipAddr.city",
+                f"{SIBLING_TABLE_PREFIX}.SHIPPING_CITY",
+            ),
+            (
+                f"{SIBLING_TOPIC_PREFIX}.Root3.billing.BillAddr.city",
+                f"{SIBLING_TABLE_PREFIX}.BILLING_CITY",
+            ),
+        }
+
+    def test_a_nested_leaf_does_not_borrow_the_top_level_field_of_the_same_name(self):
+        topic = _avro_topic("shadow_events", SHADOWED_LEAF_AVRO, SIBLING_TOPIC_PREFIX)
+        mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, topic)
+        assert [(m.source_column, m.target_column) for m in mappings] == [
+            ("city", "CITY"),
+            ("address.city", "ADDRESS_CITY"),
+        ]
+        table = _table_with_columns("SHADOW_EVENTS", ["CITY", "ADDRESS_CITY"], SIBLING_TABLE_PREFIX)
+        assert _flatten_edges(topic, table) == {
+            (
+                f"{SIBLING_TOPIC_PREFIX}.Root7.city",
+                f"{SIBLING_TABLE_PREFIX}.CITY",
+            ),
+            (
+                f"{SIBLING_TOPIC_PREFIX}.Root7.address.Addr7.city",
+                f"{SIBLING_TABLE_PREFIX}.ADDRESS_CITY",
+            ),
+        }
+
+
+# Flatten recurses into STRUCT only. `items` is copied through whole and lands as one VARIANT
+# column; `tags` (MAP) likewise. `maybe` is a nullable record -- a STRUCT at runtime -- so it
+# does flatten.
+COLLECTIONS_AVRO = json.dumps(
+    {
+        "type": "record",
+        "name": "Order",
+        "fields": [
+            {"name": "order_id", "type": "string"},
+            {
+                "name": "items",
+                "type": {
+                    "type": "array",
+                    "items": {
+                        "type": "record",
+                        "name": "Item",
+                        "fields": [{"name": "sku", "type": "string"}],
+                    },
+                },
+            },
+            {"name": "tags", "type": {"type": "map", "values": "string"}},
+            {
+                "name": "maybe",
+                "type": [
+                    "null",
+                    {
+                        "type": "record",
+                        "name": "Maybe",
+                        "fields": [{"name": "m", "type": "string"}],
+                    },
+                ],
+            },
+        ],
+    }
+)
+
+
+class TestFlattenMatchesKafkaFlattenSemantics:
+    def test_an_array_of_records_is_one_column_and_is_not_descended_into(self):
+        """Descending would emit ITEMS_SKU, which matches no Snowflake column, and would omit
+        ITEMS -- losing a real edge, because a non-empty mapping list switches off the 1:1
+        inference that would otherwise have covered it."""
+        topic = _avro_topic("collection_events", COLLECTIONS_AVRO, SIBLING_TOPIC_PREFIX)
+        targets = [m.target_column for m in get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, topic)]
+        assert "ITEMS" in targets
+        assert "ITEMS_SKU" not in targets
+
+    def test_map_stays_one_column_and_nullable_records_still_flatten(self):
+        topic = _avro_topic("collection_events", COLLECTIONS_AVRO, SIBLING_TOPIC_PREFIX)
+        mappings = get_resolver("SnowflakeSink").column_mappings(FLATTEN_CONFIG, topic)
+        assert [(m.source_column, m.target_column) for m in mappings] == [
+            ("order_id", "ORDER_ID"),
+            ("items", "ITEMS"),
+            ("tags", "TAGS"),
+            ("maybe.m", "MAYBE_M"),
+        ]
+
+    def test_the_array_column_keeps_its_lineage_edge(self):
+        topic = _avro_topic("collection_events", COLLECTIONS_AVRO, SIBLING_TOPIC_PREFIX)
+        table = _table_with_columns("COLLECTION_EVENTS", ["ORDER_ID", "ITEMS", "TAGS", "MAYBE_M"], SIBLING_TABLE_PREFIX)
+        assert (
+            f"{SIBLING_TOPIC_PREFIX}.Order.items",
+            f"{SIBLING_TABLE_PREFIX}.ITEMS",
+        ) in _flatten_edges(topic, table)
+
+
+CDC_TOPIC_FQN_PREFIX = "confluent_kafka.inventory.public.orders"
+
+
+def _debezium_envelope_topic() -> Topic:
+    """A Debezium envelope with `before` AND `after` both populated, `before` declared first so
+    declaration order is adversarial. The legacy CDC fixture leaves both `children = None`, so
+    the after-over-before preference in `_get_topic_field_fqn` has no other coverage."""
+
+    def column(name: str, parent_fqn: str) -> FieldModel:
+        return FieldModel(
+            name=name,
+            dataType=DataTypeTopic.STRING,
+            fullyQualifiedName=FullyQualifiedEntityName(f"{parent_fqn}.{name}"),
+        )
+
+    envelope_fqn = f"{CDC_TOPIC_FQN_PREFIX}.Envelope"
+    before_fqn = f"{envelope_fqn}.before"
+    after_fqn = f"{envelope_fqn}.after"
+    envelope = FieldModel(
+        name="Envelope",
+        dataType=DataTypeTopic.RECORD,
+        fullyQualifiedName=FullyQualifiedEntityName(envelope_fqn),
+        children=[
+            FieldModel(
+                name="before",
+                dataType=DataTypeTopic.RECORD,
+                fullyQualifiedName=FullyQualifiedEntityName(before_fqn),
+                children=[column("id", before_fqn), column("name", before_fqn)],
+            ),
+            FieldModel(
+                name="after",
+                dataType=DataTypeTopic.RECORD,
+                fullyQualifiedName=FullyQualifiedEntityName(after_fqn),
+                children=[column("id", after_fqn), column("name", after_fqn)],
+            ),
+            FieldModel(
+                name="op",
+                dataType=DataTypeTopic.STRING,
+                fullyQualifiedName=FullyQualifiedEntityName(f"{envelope_fqn}.op"),
+            ),
+        ],
+    )
+    return Topic(
+        id=uuid.uuid4(),
+        name="inventory.public.orders",
+        partitions=1,
+        service={"id": uuid.uuid4(), "type": "messagingService"},
+        messageSchema=TopicSchema(schemaType=SchemaType.Avro, schemaFields=[envelope]),
+    )
+
+
+def _debezium_envelope_topic_with_type_levels() -> Topic:
+    """The same envelope as the Avro parser really emits it: a type-named level (`Value`) sits
+    between before/after and the row's columns, putting the columns at depth four. `before`
+    comes first, so any name-only descent that does not encode the after preference reports the
+    pre-image as the upstream of every column."""
+
+    def value_level(parent_fqn: str) -> FieldModel:
+        value_fqn = f"{parent_fqn}.Value"
+        return FieldModel(
+            name="Value",
+            dataType=DataTypeTopic.RECORD,
+            fullyQualifiedName=FullyQualifiedEntityName(value_fqn),
+            children=[
+                FieldModel(
+                    name=name,
+                    dataType=DataTypeTopic.STRING,
+                    fullyQualifiedName=FullyQualifiedEntityName(f"{value_fqn}.{name}"),
+                )
+                for name in ("id", "name")
+            ],
+        )
+
+    envelope_fqn = f"{CDC_TOPIC_FQN_PREFIX}.Envelope"
+    envelope = FieldModel(
+        name="Envelope",
+        dataType=DataTypeTopic.RECORD,
+        fullyQualifiedName=FullyQualifiedEntityName(envelope_fqn),
+        children=[
+            FieldModel(
+                name=image,
+                dataType=DataTypeTopic.RECORD,
+                fullyQualifiedName=FullyQualifiedEntityName(f"{envelope_fqn}.{image}"),
+                children=[value_level(f"{envelope_fqn}.{image}")],
+            )
+            for image in ("before", "after")
+        ],
+    )
+    return Topic(
+        id=uuid.uuid4(),
+        name="inventory.public.orders",
+        partitions=1,
+        service={"id": uuid.uuid4(), "type": "messagingService"},
+        messageSchema=TopicSchema(schemaType=SchemaType.Avro, schemaFields=[envelope]),
+    )
+
+
+class TestCdcFieldResolutionIsUnchanged:
+    """`_get_topic_field_fqn` prefers the post-image when a Debezium envelope carries both."""
+
+    def test_a_bare_name_never_resolves_to_the_pre_image(self):
+        """With the columns at depth four a bare name is genuinely ambiguous between the two
+        images, so the only acceptable answers are the post-image or nothing resolvable. Naming
+        the pre-image as a column's upstream would invert the direction of the change."""
+        topic = _debezium_envelope_topic_with_type_levels()
+        resolved = _new_source()._get_topic_field_fqn(topic, "id")
+        assert resolved != f"{CDC_TOPIC_FQN_PREFIX}.Envelope.before.Value.id"
+
+    def test_a_path_addresses_either_image_exactly_at_depth_four(self):
+        topic = _debezium_envelope_topic_with_type_levels()
+        source = _new_source()
+        assert source._get_topic_field_fqn(topic, "after.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.after.Value.id"
+        assert source._get_topic_field_fqn(topic, "before.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.before.Value.id"
+
+    def test_a_bare_column_name_resolves_to_the_after_image(self):
+        topic = _debezium_envelope_topic()
+        assert _new_source()._get_topic_field_fqn(topic, "id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.after.id"
+
+    def test_an_explicit_path_can_still_address_the_before_image(self):
+        """The dotted-path form is exact, so it reaches either image on request rather than
+        depending on the after-over-before default."""
+        topic = _debezium_envelope_topic()
+        assert _new_source()._get_topic_field_fqn(topic, "before.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.before.id"
+        assert _new_source()._get_topic_field_fqn(topic, "after.id") == f"{CDC_TOPIC_FQN_PREFIX}.Envelope.after.id"

@@ -790,11 +790,23 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         Get the fully qualified name for a field in a Topic's schema.
         Handles nested structures where fields may be children of a parent RECORD.
+        Accepts either a bare field name or a dotted path to a nested field.
         For Debezium CDC topics, searches for fields inside after/before envelope children.
         """
         if not topic_entity.messageSchema or not topic_entity.messageSchema.schemaFields:
             logger.debug(f"Topic {model_str(topic_entity.name)} has no message schema")
             return None
+
+        # Avro and JSON-schema field names cannot contain dots, so a dotted name is a path to
+        # a nested field, not a field literally called "address.street". Resolving the whole
+        # path is the only way to keep same-named leaves in sibling records apart. Falling
+        # through on a miss costs nothing: the searches below need an exact full-string match.
+        if "." in field_name:
+            nested_field = self._resolve_schema_field_by_path(
+                topic_entity.messageSchema.schemaFields, field_name.split(".")
+            )
+            if nested_field is not None and nested_field.fullyQualifiedName:
+                return model_str(nested_field.fullyQualifiedName)
 
         # Search for the field in the schema (including nested fields)
         for field in topic_entity.messageSchema.schemaFields:
@@ -834,13 +846,6 @@ class KafkaconnectSource(PipelineServiceSource):
                             if model_str(grandchild.name) == field_name:
                                 return grandchild.fullyQualifiedName.root if grandchild.fullyQualifiedName else None
 
-        # Fields deeper than a grandchild -- a record inside a record, plus the type-named
-        # level the Avro parser inserts under each of them -- are out of reach of the
-        # explicit levels searched above, so fall back to a full descent.
-        deep_fqn = self._find_field_fqn_at_any_depth(topic_entity.messageSchema.schemaFields, field_name)
-        if deep_fqn:
-            return deep_fqn
-
         # For Debezium CDC topics, columns might only exist in schemaText (not as field objects)
         # Manually construct FQN: topicFQN.Envelope.columnName
         for field in topic_entity.messageSchema.schemaFields:
@@ -855,21 +860,37 @@ class KafkaconnectSource(PipelineServiceSource):
         return None
 
     @staticmethod
-    def _find_field_fqn_at_any_depth(fields: Optional[List[FieldModel]], field_name: str) -> Optional[str]:  # noqa: UP006, UP045
+    def _resolve_schema_field_by_path(
+        fields: list[FieldModel] | None,
+        field_path: list[str],
+    ) -> FieldModel | None:
         """
-        Breadth-first search for a schema field's FQN at arbitrary depth.
+        Walk a field-name path through a topic schema and return the field it names.
 
-        Searching level by level keeps the shallowest match winning, so this cannot
-        reorder the CDC after/before preference the caller already applied to the levels
-        it walks explicitly.
+        A path is required rather than a name because names are not unique: sibling records
+        reuse leaf names freely (shipping.city and billing.city), and a nested leaf can share
+        a name with a top-level field. Any by-name search over such a schema has to pick one
+        and would silently hand it to every column that shares the name -- a wrong upstream
+        edge, which is worse than no edge.
+
+        Each segment is looked for among the current level's fields first and, failing that,
+        among their children, because the Avro parser inserts a level named after the record
+        *type* under every record-typed field (address -> Address -> street). Trying the
+        direct level first keeps this correct for parsers that do not add that level.
         """
-        queue = list(fields or [])
-        while queue:
-            field = queue.pop(0)
-            if model_str(field.name) == field_name:
-                return model_str(field.fullyQualifiedName) if field.fullyQualifiedName else None
-            queue.extend(field.children or [])
-        return None
+        current = list(fields or [])
+        resolved = None
+
+        for segment in field_path:
+            resolved = next((field for field in current if model_str(field.name) == segment), None)
+            if resolved is None:
+                type_level_fields = [child for field in current for child in (field.children or [])]
+                resolved = next((field for field in type_level_fields if model_str(field.name) == segment), None)
+            if resolved is None:
+                return None
+            current = resolved.children or []
+
+        return resolved
 
     def build_column_lineage(
         self,
@@ -1692,8 +1713,11 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 # Only the resolver knows whether the connector renames fields on the way in
                 # (a Flatten SMT, for one), and it needs the matched topic's schema to say so.
-                # Guarding on the topic keeps a missing-topic warning from becoming a failure,
-                # and on the existing mappings keeps an explicit config from being overwritten.
+                # Skipping a missing topic is housekeeping, not crash avoidance -- the resolver
+                # tolerates None and answers []; there is just nothing to describe, and the
+                # edge is about to be skipped anyway. The column_mappings half does carry
+                # weight: without it the resolver would overwrite mappings that arrived with
+                # the dataset from the connector config.
                 if matched_topic_entity is not None and not dataset_details.column_mappings:
                     dataset_details.column_mappings = self._resolver_for(pipeline_details).column_mappings(
                         pipeline_details.config or {}, matched_topic_entity

@@ -15,6 +15,7 @@ Dataset resolution for the Snowflake Sink connector (managed and self-managed).
 import re
 from typing import Any, Dict, List, Optional  # noqa: UP035
 
+from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
@@ -121,7 +122,10 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
 
         return [
             KafkaConnectColumnMapping(
-                source_column=path[-1],
+                # The dotted path, not the bare leaf name: sibling records routinely reuse
+                # leaf names (shipping.city and billing.city), and a bare "city" cannot tell
+                # the resolver's consumer which of the two is the upstream of which column.
+                source_column=".".join(path),
                 target_column=delimiter.join(path).upper(),
             )
             for path in self._leaf_paths(topic_entity)
@@ -161,6 +165,14 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
 
         def walk(field: Any, prefix: List[str]) -> None:  # noqa: UP006
             path = [*prefix, model_str(field.name)]
+            # Flatten recurses into STRUCT only. An array is copied through whole, so an
+            # array of records is one VARIANT column named after the array field -- descending
+            # into it would invent columns that do not exist and, worse, suppress the real
+            # one, since a non-empty mapping list turns off 1:1 inference for every column.
+            # MAP needs no such guard: the parser already gives it no children.
+            if field.dataType is DataTypeTopic.ARRAY:
+                paths.append(path)
+                return
             type_levels = field.children or []
             if not type_levels:
                 paths.append(path)
