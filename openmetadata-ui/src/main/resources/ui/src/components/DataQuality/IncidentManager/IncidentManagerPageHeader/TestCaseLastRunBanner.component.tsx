@@ -26,11 +26,14 @@ import {
   XClose,
 } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import {
   TestCaseResolutionStatusTypes,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import type { TestCaseLastRunBannerProps } from './TestCaseLastRunBanner.interface';
 import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
@@ -150,7 +153,7 @@ const getMetricSummary = (
 };
 
 const getIncidentMetadata = (
-  incidentTask: TestCaseLastRunBannerProps['incidentTask'],
+  incidentTitle: string | undefined,
   testCaseStatusData: TestCaseLastRunBannerProps['testCaseStatusData'],
   result: string | undefined,
   incidentLink: TaskLinkInfo | null
@@ -158,8 +161,7 @@ const getIncidentMetadata = (
   const incidentStatus = testCaseStatusData?.testCaseResolutionStatusType;
 
   return {
-    description:
-      incidentTask?.description ?? testCaseStatusData?.failureSummary ?? result,
+    description: incidentTitle ?? testCaseStatusData?.failureSummary ?? result,
     id: incidentLink
       ? `INC–${incidentLink.label.replace(/^#/, '')}`
       : undefined,
@@ -167,6 +169,22 @@ const getIncidentMetadata = (
       ? INCIDENT_STATUS_CONFIG[incidentStatus]
       : undefined,
   };
+};
+
+const getIncidentTitle = (
+  incidentTask: NonNullable<TestCaseLastRunBannerProps['incidentTask']>,
+  taskTypeLabel: string
+) => {
+  const entityFQN = incidentTask.about?.fullyQualifiedName;
+  const entityName = entityFQN
+    ? getNameFromFQN(entityFQN)
+    : incidentTask.about?.name;
+  const entityType = incidentTask.about?.type;
+
+  return [taskTypeLabel, entityName, entityType ? `(${entityType})` : undefined]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
 };
 
 const RunDescription = ({ description }: { description?: string }) =>
@@ -314,6 +332,7 @@ const IncidentDetails = ({
   statusConfig?: IncidentStatusConfig;
 }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   if (!incidentLink) {
     return null;
@@ -345,9 +364,9 @@ const IncidentDetails = ({
         className="tw:ml-auto"
         color="primary"
         data-testid="view-incident-button"
-        href={incidentLink.path}
         iconTrailing={ArrowUpRight}
-        size="sm">
+        size="sm"
+        onClick={() => navigate(incidentLink.path)}>
         {t('label.view-entity', { entity: t('label.incident') })}
       </Button>
     </div>
@@ -384,8 +403,14 @@ const TestCaseLastRunBanner = ({
   );
   const incidentLink = getIncidentLink(taskLinkInfo, testCaseStatus);
   const metricSummary = getMetricSummary(testResultValue, testCaseStatus);
+  const incidentTitle = incidentTask
+    ? getIncidentTitle(
+        incidentTask,
+        t(TASK_ENTITY_TYPES[incidentTask.type] ?? 'label.task')
+      )
+    : undefined;
   const incidentMetadata = getIncidentMetadata(
-    incidentTask,
+    incidentTitle,
     testCaseStatusData,
     result,
     incidentLink

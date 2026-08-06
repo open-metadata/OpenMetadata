@@ -54,6 +54,7 @@ const mockUseActivityFeedProviderValue = {
 
 const mockOnOwnerUpdate = jest.fn();
 const mockFetchTaskCount = jest.fn();
+const mockNavigate = jest.fn();
 const LAST_RUN_BANNER_TEST_ID = 'test-case-last-run-banner';
 const LAST_RUN_INCIDENT_TEST_ID = 'test-case-last-run-incident';
 const OWNER_COMPONENT_TEST_ID = 'owner-component';
@@ -69,6 +70,7 @@ const mockProps: IncidentManagerPageHeaderProps = {
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getIncidentTaskByStateId: jest.fn().mockResolvedValue({
     ...MOCK_TASK_DATA[1],
+    description: 'New incident for test case: generic description',
     payload: {
       testCaseResolutionStatusId: '65f7a1d2-ee28-4b43-b504-4be90c689f4d',
     },
@@ -101,6 +103,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({
     fqn: 'fqn',
   })),
+  useNavigate: jest.fn(),
 }));
 
 jest.mock('.../../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -217,6 +220,8 @@ jest.mock('../../../../hooks/useEntityRules', () => ({
 
 describe('Incident Manager Page Header component', () => {
   beforeEach(() => {
+    mockNavigate.mockClear();
+    jest.mocked(reactRouterDom.useNavigate).mockReturnValue(mockNavigate);
     mockUseTestCaseStore.testCase = {
       ...MOCK_TEST_CASE_DATA,
       incidentId: '123',
@@ -415,10 +420,23 @@ describe('Incident Manager Page Header component', () => {
         );
 
         expect(incidentRow).toHaveTextContent('INC–9');
-        expect(incidentRow).toHaveTextContent(result);
+        expect(incidentRow).toHaveTextContent(
+          'message.request-test-case-failure-resolution-message getNameFromFQN (testCase)'
+        );
+        expect(incidentRow).not.toHaveTextContent(
+          'New incident for test case: generic description'
+        );
         expect(incidentRow).toHaveTextContent('label.acknowledged');
-        expect(screen.getByTestId('view-incident-button')).toHaveTextContent(
-          'label.view-entity'
+
+        const viewIncidentButton = screen.getByTestId('view-incident-button');
+
+        expect(viewIncidentButton).toHaveTextContent('label.view-entity');
+        expect(viewIncidentButton).not.toHaveAttribute('href');
+
+        fireEvent.click(viewIncidentButton);
+
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/test-case/sample_data.ecommerce_db.shopify.dim_address.table_column_count_between/issues'
         );
       } else {
         expect(
