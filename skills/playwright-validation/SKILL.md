@@ -116,9 +116,9 @@ This skill guides you through validating UI changes and ensuring comprehensive P
 
 4. **Run Playwright lint check:**
    ```bash
-   yarn lint:playwright
+   yarn lint:playwright:suppressions
    ```
-   Error-level rules (`no-networkidle`, `no-page-pause`, `no-focused-test`) will block CI. See the handbook's **ESLint Enforcement** section for the full rule reference.
+   Every guardrail rule is `error` severity — there is no warn tier. See the handbook's **ESLint Enforcement** section for the full rule reference.
 
 ## Common Test Utilities
 
@@ -158,7 +158,7 @@ await expect(page.locator('.class')).not.toBeVisible();
 - [ ] Tests cover both positive and negative scenarios
 - [ ] Tests verify visual indicators (icons, badges, states)
 - [ ] Tests validate API interactions
-- [ ] `yarn lint:playwright` passes with zero errors
+- [ ] `yarn lint:playwright:suppressions` passes with zero errors
 - [ ] No `networkidle`, `page.pause()`, or `test.only()` usage (blocked by ESLint)
 - [ ] Test fixtures are properly created and cleaned up
 - [ ] Test timeouts use `test.slow()` (preferred) or `test.setTimeout()`

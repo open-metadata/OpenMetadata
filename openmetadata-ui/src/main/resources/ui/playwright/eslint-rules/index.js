@@ -1,0 +1,31 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+'use strict';
+
+const requireResponseListenerBeforeAction = require('./require-response-listener-before-action.js');
+const noBlanketTestSlow = require('./no-blanket-test-slow.js');
+const requireAssertionPerTest = require('./require-assertion-per-test.js');
+const noPositionalLocator = require('./no-positional-locator.js');
+const justifiedRuleDisable = require('./justified-rule-disable.js');
+
+module.exports = {
+  rules: {
+    'require-response-listener-before-action':
+      requireResponseListenerBeforeAction,
+    'no-blanket-test-slow': noBlanketTestSlow,
+    'require-assertion-per-test': requireAssertionPerTest,
+    'no-positional-locator': noPositionalLocator,
+    'justified-rule-disable': justifiedRuleDisable,
+  },
+};

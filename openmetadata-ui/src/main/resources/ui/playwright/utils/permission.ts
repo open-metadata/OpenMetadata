@@ -140,7 +140,9 @@ export const validateViewPermissions = async (
     const editDisplayNameButton = page.locator(
       '[data-testid="edit-displayName-button"]'
     );
-    await expect(editDisplayNameButton.first()).toBeVisible({
+    // Renders once per column row (SchemaTable), so this asserts "at least
+    // one edit button is present" rather than targeting a specific row.
+    await expect(editDisplayNameButton).not.toHaveCount(0, {
       timeout: 30_000,
     });
   } else {

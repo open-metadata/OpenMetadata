@@ -177,7 +177,7 @@ export const deleteEdge = async (
 
   await page.getByTestId('add-pipeline').dispatchEvent('click');
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  await expect(page.getByRole('dialog')).not.toHaveCount(0);
 
   await page
     .locator(
@@ -185,7 +185,7 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(page.locator('[role="dialog"]')).not.toHaveCount(0);
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
@@ -488,8 +488,13 @@ export const editPipelineEdgeDescription = async (
   await page.locator('.edge-info-drawer').isVisible();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
+  // The lineage graph can render other nodes' description editors elsewhere on
+  // the page, so `.ProseMirror` is not necessarily a page-wide singleton.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- other lineage nodes can mount their own ProseMirror instance elsewhere on the page
   await page.locator('.ProseMirror').first().click();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- other lineage nodes can mount their own ProseMirror instance elsewhere on the page
   await page.locator('.ProseMirror').first().clear();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- other lineage nodes can mount their own ProseMirror instance elsewhere on the page
   await page.locator('.ProseMirror').first().fill(description);
   const descRes = page.waitForResponse('/api/v1/lineage');
   await page.getByTestId('save').click();
@@ -643,7 +648,11 @@ export const visitLineageTab = async (page: Page) => {
   await page.click('[data-testid="lineage"]');
   await lineageRes;
   await waitForAllLoadersToDisappear(page);
-  // Go to full screen to get nodes to view
+  // Go to full screen to get nodes to view. Two separate lineage control
+  // implementations (CustomControls and LineageControlButtons) both use this
+  // same "Full Screen View" label, so the accessible name alone can match more
+  // than one button.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- two separate lineage control components share this same accessible name
   await page.getByRole('button', { name: 'Full Screen View' }).first().click();
   const pane = page.locator('.react-flow__pane');
   await pane.click({ position: { x: 0, y: 0 } });

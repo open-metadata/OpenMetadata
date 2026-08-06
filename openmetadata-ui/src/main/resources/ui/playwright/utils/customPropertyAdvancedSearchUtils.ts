@@ -441,7 +441,6 @@ const handlePropertyValueInput = async (
     if (isEntityRefProperty) {
       await page
         .locator(`.ant-select-dropdown:visible [title*="${value as string}"]`)
-        .first()
         .click();
     }
   }
@@ -455,7 +454,7 @@ export const applyCustomPropertyFilter = async (
   entityType: string = 'Dashboard',
   propertyType?: string
 ) => {
-  const ruleLocator = page.locator('.rule').nth(0);
+  const ruleLocator = page.locator('.rule');
 
   await selectOption(
     page,
@@ -491,7 +490,12 @@ export const applyCustomPropertyFilter = async (
         start: string | number;
         end: string | number;
       };
+      // react-awesome-query-builder's "between" widget renders two plain,
+      // testid-less inputs in a fixed start/end DOM order — position is the
+      // only way to distinguish them.
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the between-operator widget's start input renders first, by the third-party library's design
       const startInput = ruleLocator.locator('.rule--value input').first();
+      // eslint-disable-next-line om-playwright/no-positional-locator -- the between-operator widget's end input renders last, by the third-party library's design
       const endInput = ruleLocator.locator('.rule--value input').last();
 
       await startInput.click();

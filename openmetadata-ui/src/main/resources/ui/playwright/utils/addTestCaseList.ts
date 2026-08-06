@@ -114,6 +114,7 @@ export async function addTestCaseListFilterByTable(
 export async function addTestCaseListFilterByFirstColumn(page: Page) {
   await page.getByTestId('search-dropdown-Column').click();
 
+  // eslint-disable-next-line om-playwright/no-positional-locator -- this helper's whole purpose (see its name) is to pick whichever column renders first
   const firstColumnOption = page
     .getByTestId('drop-down-menu')
     .getByRole('menuitem')
@@ -148,6 +149,7 @@ export async function addTestCaseListResetFilters(
     '/api/v1/dataQuality/testCases/search/list*'
   );
   await page.getByTestId('search-dropdown-Column').click();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- clears the column filter by picking whichever column renders first, mirroring addTestCaseListFilterByFirstColumn
   await page
     .getByTestId('drop-down-menu')
     .getByRole('menuitem')

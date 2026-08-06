@@ -77,6 +77,7 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
+  // eslint-disable-next-line om-playwright/no-positional-locator -- callers fill this row-grid one newly-added row at a time; the last matching cell is always the row just appended
   await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
 
   const isInputVisible = await page
@@ -84,6 +85,7 @@ export const fillTableColumnInputDetails = async (
     .isVisible();
 
   if (!isInputVisible) {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- retry of the same double-click on the most recently appended row
     await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
   }
   await page
@@ -91,6 +93,7 @@ export const fillTableColumnInputDetails = async (
     .getByRole('textbox')
     .fill(text);
 
+  // eslint-disable-next-line om-playwright/no-positional-locator -- commits the value into the most recently appended row of this column
   await page
     .locator(`div.rdg-cell-${columnName}`)
     .last()
@@ -100,7 +103,9 @@ export const fillTableColumnInputDetails = async (
 const addTablePropertyRow = async (page: Page) => {
   const modal = page.getByTestId('edit-table-type-property-modal');
   const addRowButton = modal.getByTestId('add-new-row');
+  // eslint-disable-next-line om-playwright/no-positional-locator -- waits for the row grid to render the newly appended row, always the last cell of its column
   const firstColumnCell = modal.locator('div.rdg-cell-pw-column1').last();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- same as firstColumnCell, paired column of the newly appended row
   const secondColumnCell = modal.locator('div.rdg-cell-pw-column2').last();
 
   await expect(async () => {
@@ -177,6 +182,7 @@ export const setValueForProperty = async (data: {
       break;
 
     case 'sqlQuery':
+      // eslint-disable-next-line om-playwright/no-positional-locator -- CodeMirror renders one `pre[role="presentation"]` per line; clicking the last one positions the cursor at the end of the existing content before appending text
       await container.locator("pre[role='presentation']").last().click();
       await page.keyboard.type(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
@@ -337,7 +343,7 @@ export const validateValueForProperty = async (data: {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+      page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
   } else if (propertyType === 'hyperlink-cp') {
     // Value format: "url,displayText" or just "url"
@@ -354,9 +360,9 @@ export const validateValueForProperty = async (data: {
     }
   } else if (propertyType === 'markdown') {
     // For markdown, remove * and _ as they are formatting characters
-    await expect(
-      container.locator(descriptionBoxReadOnly).last()
-    ).toContainText(value.replace(/\*|_/gi, ''));
+    await expect(container.locator(descriptionBoxReadOnly)).toContainText(
+      value.replace(/\*|_/gi, '')
+    );
   } else if (
     ![
       'entityReference',
@@ -939,6 +945,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   // Open advanced search dialog
   await showAdvancedSearchDialog(page);
 
+  // eslint-disable-next-line om-playwright/no-positional-locator -- advanced-search rule rows are structurally identical; this is the first (only) rule row right after the dialog opens
   const ruleLocator = page.locator('.rule').nth(0);
 
   // Select "Custom Properties" from the field dropdown
@@ -1042,6 +1049,7 @@ export const editColumnCustomProperty = async (
     await addTablePropertyRow(page);
 
     // Fill Row
+    // eslint-disable-next-line om-playwright/no-positional-locator -- addTablePropertyRow just appended one row; the last matching cell is that new row
     await page.locator('div.rdg-cell-pw-column1').last().dblclick();
     await page
       .getByTestId('edit-table-type-property-modal')
@@ -1049,6 +1057,7 @@ export const editColumnCustomProperty = async (
       .fill(testValue);
     await page.keyboard.press('Enter', { delay: 100 });
 
+    // eslint-disable-next-line om-playwright/no-positional-locator -- same newly appended row, paired column
     await page.locator('div.rdg-cell-pw-column2').last().dblclick();
     await page
       .getByTestId('edit-table-type-property-modal')
@@ -1063,12 +1072,13 @@ export const editColumnCustomProperty = async (
     const [value] = testValue.split(',');
     const input = page.getByTestId('asset-select-list').getByRole('combobox');
     await input.click();
-    await input.fill(value);
-    await page.waitForResponse(
+    const assetSearchResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
         response.status() === 200
     );
+    await input.fill(value);
+    await assetSearchResponse;
     await page.getByTestId(value).click();
 
     // Verify selection is applied before saving
@@ -1350,6 +1360,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
       while (
         (await page.locator('.ant-select-selection-item-remove').count()) > 0
       ) {
+        // eslint-disable-next-line om-playwright/no-positional-locator -- loop removes all selected tags one at a time; .first() always targets the next remaining tag until count reaches 0
         await page.locator('.ant-select-selection-item-remove').first().click();
       }
       await page.fill('#enumValues', value);
@@ -1418,6 +1429,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
       while (
         (await page.locator('.ant-select-selection-item-remove').count()) > 0
       ) {
+        // eslint-disable-next-line om-playwright/no-positional-locator -- loop removes all selected tags one at a time; .first() always targets the next remaining tag until count reaches 0
         await page.locator('.ant-select-selection-item-remove').first().click();
       }
       const refValues = value.split(',');
@@ -1461,6 +1473,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
     }
 
     case 'sqlQuery':
+      // eslint-disable-next-line om-playwright/no-positional-locator -- CodeMirror renders one `pre[role="presentation"]` per line; clicking the last one positions the cursor at the end of the existing content before appending text
       await page.locator("pre[role='presentation']").last().click();
       await page.keyboard.type(value);
       await container.locator('[data-testid="inline-save-btn"]').click();
@@ -1505,13 +1518,13 @@ export const updateCustomPropertyInRightPanel = async (data: {
     const values = value.split(',');
 
     await expect(
-      page.getByRole('row', { name: `${values[0]} ${values[1]}` }).first()
+      page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
     // For markdown, remove * and _ as they are formatting characters
-    await expect(
-      container.locator(descriptionBoxReadOnly).last()
-    ).toContainText(value.replaceAll(/[*_]/gi, ''));
+    await expect(container.locator(descriptionBoxReadOnly)).toContainText(
+      value.replaceAll(/[*_]/gi, '')
+    );
   } else if (propertyType === 'hyperlink-cp') {
     const displayText = value.split(',');
     await expect(page.getByTestId('hyperlink-value')).toContainText(

@@ -18,8 +18,14 @@ export const redirectToUserPage = async (page: Page) => {
 
   await page.getByTestId('dropdown-profile').click();
 
-  // Hover on the profile avatar to close the name tooltip
-  await page.getByTestId('profile-avatar').first().hover();
+  // Hover on the profile avatar to close the name tooltip. Scope to the
+  // navbar trigger button — ProfilePicture (which owns the "profile-avatar"
+  // testid) is a widely reused component, so an unscoped lookup can match
+  // other avatars rendered elsewhere on the home page.
+  await page
+    .getByTestId('dropdown-profile')
+    .getByTestId('profile-avatar')
+    .hover();
 
   await page.locator('.profile-dropdown').waitFor({ state: 'visible' });
 
@@ -46,13 +52,13 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   await expect(teamSelect).toBeVisible();
   await teamSelect.click();
 
+  // eslint-disable-next-line om-playwright/no-positional-locator -- antd leaves closed tree-select dropdowns mounted (hidden), so .last() targets the one just opened
   const teamDropdown = page.locator('.ant-tree-select-dropdown').last();
   await expect(teamDropdown).toBeVisible({ timeout: 30000 });
 
   const directTeamOption = teamDropdown
     .locator('.ant-select-tree-title')
-    .filter({ hasText: new RegExp(`^${teamName}$`) })
-    .first();
+    .filter({ hasText: new RegExp(`^${teamName}$`) });
 
   if (await directTeamOption.isVisible().catch(() => false)) {
     // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
@@ -61,7 +67,7 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
     return;
   }
 
-  await teamSelect.locator('input:not([disabled])').first().click();
+  await teamSelect.locator('input:not([disabled])').click();
   await page.keyboard.type(teamName);
 
   await expect(teamDropdown).toContainText(teamName, { timeout: 30000 });

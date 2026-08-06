@@ -50,6 +50,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from './entity';
+import { getRowByName } from './scopedLocators';
 import { sidebarClick } from './sidebar';
 import {
   TaskDetails,
@@ -69,7 +70,7 @@ export const selectActiveGlossary = async (
   bWaitForResponse = true
 ) => {
   const sidebar = page.getByTestId('glossary-left-panel');
-  await sidebar.locator('[role="menuitem"]').first().waitFor();
+  await expect(sidebar.locator('[role="menuitem"]')).not.toHaveCount(0);
 
   const menuItem = sidebar.getByRole('menuitem', {
     name: glossaryLabel,
@@ -97,7 +98,7 @@ export const selectActiveGlossaryTerm = async (
   page: Page,
   glossaryTermName: string
 ) => {
-  const glossaryTermEntry = page.getByTestId(glossaryTermName).first();
+  const glossaryTermEntry = page.getByTestId(glossaryTermName);
 
   await expect(glossaryTermEntry).toBeVisible();
   await glossaryTermEntry.scrollIntoViewIfNeeded().catch(() => undefined);
@@ -860,6 +861,9 @@ const testFilterWithFirstOption = async (
 
   const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
   await waitForAllLoadersToDisappear(page);
+  // testFilterWithFirstOption deliberately exercises the filter flow with
+  // whichever option happens to be first — which option is irrelevant here.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- arbitrary option pick, order is not under test
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
   if (await noDataPlaceholder.isVisible()) {
@@ -1005,16 +1009,13 @@ export const dragAndDropTerm = async (
   dropTarget: string
 ) => {
   // Find the row containing the drag element text
-  const dragLocator = page
-    .locator('tr')
-    .filter({ hasText: dragElement })
-    .first();
+  const dragLocator = getRowByName(page, dragElement);
 
   // Find the row containing the drop target text (or the header if dropTarget is "Terms")
   const dropLocator =
     dropTarget === 'Terms'
-      ? page.locator('th:has-text("Terms")').first()
-      : page.locator('tr').filter({ hasText: dropTarget }).first();
+      ? page.locator('th:has-text("Terms")')
+      : getRowByName(page, dropTarget);
 
   await dragLocator.dragTo(dropLocator, {
     force: true, // eslint-disable-line playwright/no-force-option -- drag-and-drop requires force due to row hover overlays
@@ -1167,9 +1168,9 @@ export const addRelatedTerms = async (
 ) => {
   await page.getByTestId('related-term-add-button').click();
 
+  // This flow never clicks "add row", so exactly one term-autocomplete row exists.
   const autocompleteInput = page
     .locator('[data-testid^="term-autocomplete-"]')
-    .first()
     .locator('input');
 
   for (const term of relatedTerms) {
@@ -1197,6 +1198,12 @@ export const addRelatedTermsByRelationType = async (
 ) => {
   await page.getByTestId('related-term-add-button').click();
 
+  // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow).
+  // Capture each row's own testid the moment it's uniquely resolvable
+  // (excluding previously-captured rows) and address it by that identity
+  // from then on, instead of by position.
+  const knownRowTestIds: string[] = [];
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
 
@@ -1204,14 +1211,29 @@ export const addRelatedTermsByRelationType = async (
       await page.getByTestId('add-row-button').click();
     }
 
-    // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow),
-    // so identify rows by position — first when i=0, otherwise last.
     const rowLocator =
-      i === 0
-        ? page.locator('[data-testid^="relation-row-"]').first()
-        : page.locator('[data-testid^="relation-row-"]').last();
+      knownRowTestIds.length === 0
+        ? page.locator('[data-testid^="relation-row-"]')
+        : page.locator(
+            `[data-testid^="relation-row-"]${knownRowTestIds
+              .map((testId) => `:not([data-testid="${testId}"])`)
+              .join('')}`
+          );
 
-    await rowLocator.getByRole('button').first().click();
+    const rowTestId = await rowLocator.getAttribute('data-testid');
+    if (!rowTestId) {
+      throw new Error('Expected relation-row to render a data-testid');
+    }
+    knownRowTestIds.push(rowTestId);
+    const rowId = rowTestId.replace('relation-row-', '');
+
+    // The relation-type trigger is the only button in the row besides the
+    // testid-bearing remove button and renders without its own testid, so it
+    // is identified by excluding the (known) remove button, not by position.
+    await rowLocator
+      .getByRole('button')
+      .and(page.locator(`:not([data-testid="remove-row-${rowId}"])`))
+      .click();
     const option = page.getByRole('option', {
       exact: true,
       name: row.relationTypeLabel,
@@ -1426,7 +1448,8 @@ export const approveTagsTask = async (
   await taskFeeds;
 
   const taskResolve = waitForTaskResolveResponse(page);
-  await page.getByTestId('approve-button').first().click();
+  // `entity` is a freshly created glossary/term with exactly one pending tag task.
+  await page.getByTestId('approve-button').click();
   await taskResolve;
 
   await redirectToHomePage(page);
@@ -1581,6 +1604,8 @@ export const filterStatus = async (
   const statusColumnIndex = 2;
 
   for (let i = 0; i < (await rows.count()); i++) {
+    // Iterating every row in table order to verify each one's status column.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- loop-index iteration over every row in the table
     const statusCell = rows
       .nth(i)
       .locator(`td:nth-child(${statusColumnIndex + 1})`);
@@ -1947,8 +1972,9 @@ export const navigateAndSelectGlossaryTermInTree = async (
 ) => {
   // Expand glossary
   const glossaryNode = page.locator(`[data-nodeid="${glossaryName}"]`);
+  const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
   await glossaryNode.click();
-  await page.waitForResponse('/api/v1/glossaryTerms?*');
+  await glossaryTermsResponse;
 
   // Expand parent if provided
   if (parentTermFqn) {
@@ -2029,7 +2055,10 @@ export const expandTreeNodeByName = async (
   await nodeText.scrollIntoViewIfNeeded();
 
   const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
-  const expandButton = treeItem.locator('button').first();
+  // The row's selection control is a radio/checkbox input, not a button, so
+  // the expand chevron is the row's only button — this locator is already
+  // unique without needing a positional pick.
+  const expandButton = treeItem.locator('button');
   await expect(expandButton).toBeVisible({ timeout: 5000 });
   await expandButton.click();
   await waitForAllLoadersToDisappear(page);

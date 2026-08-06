@@ -631,17 +631,18 @@ export const verifyWidgetEntityNavigation = async (
   const hasEntities = (await entityItems.count()) > 0;
 
   if (hasEntities) {
-    await expect(entityItems.first()).toBeVisible();
-
-    // Get the first entity item
+    // Widget order reflects live seeded data, not a test-owned identifier; any
+    // single item exercises the click-through navigation flow being verified.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- arbitrary item pick, order is not under test
     const firstEntity = entityItems.first();
+    await expect(firstEntity).toBeVisible();
 
     // Check if it's a link or button and click appropriately
     const isLink = (await firstEntity.locator('.item-link').count()) > 0;
 
     if (isLink) {
-      // For widgets with links inside (like My Data)
-      const entityLink = firstEntity.locator('.item-link').first();
+      // For widgets with links inside (like My Data): item-link renders once per row
+      const entityLink = firstEntity.locator('.item-link');
       await entityLink.click();
     } else {
       // For widgets with direct clickable cards (like Domains, Data Products)
@@ -747,7 +748,7 @@ export const verifyDomainCountInDomainWidget = async (
           return null;
         }
 
-        const card = domainWidget.locator(widgetCardSelector).first();
+        const card = domainWidget.locator(widgetCardSelector);
         const isCardVisible = await card.isVisible().catch(() => false);
 
         if (!isCardVisible) {
@@ -792,7 +793,7 @@ export const verifyDataProductCountInDataProductWidget = async (
           return null;
         }
 
-        const card = dataProductWidget.locator(widgetCardSelector).first();
+        const card = dataProductWidget.locator(widgetCardSelector);
         const isCardVisible = await card.isVisible().catch(() => false);
 
         if (!isCardVisible) {
@@ -823,7 +824,7 @@ export const verifyWidgetCountOnCurrentPage = async (
           return null;
         }
 
-        const element = widget.locator(selector).first();
+        const element = widget.locator(selector);
         const isVisible = await element.isVisible().catch(() => false);
 
         if (!isVisible) {

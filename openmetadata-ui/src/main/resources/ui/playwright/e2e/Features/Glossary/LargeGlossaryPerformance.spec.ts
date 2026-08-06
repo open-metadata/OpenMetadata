@@ -192,9 +192,11 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should search and filter glossary terms', async ({ page }) => {
     // Type in search box
     const searchInput = page.getByPlaceholder(/search.*term/i);
+    const searchResponse = page.waitForResponse(
+      'api/v1/glossaryTerms/search?*'
+    );
     await searchInput.fill('Term_5');
-
-    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    await searchResponse;
     await waitForAllLoadersToDisappear(page);
     // Verify filtered results
 
@@ -207,8 +209,9 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(page.getByText('Term_5', { exact: true })).toBeVisible();
 
     // Clear search
+    const allTermsResponse = page.waitForResponse('api/v1/glossaryTerms?*');
     await searchInput.clear();
-    await page.waitForResponse('api/v1/glossaryTerms?*');
+    await allTermsResponse;
 
     // Verify all terms are shown again
 

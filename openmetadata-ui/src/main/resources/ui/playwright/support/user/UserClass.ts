@@ -281,14 +281,13 @@ export class UserClass {
     await page.waitForLoadState('domcontentloaded').catch(() => undefined);
     await disableEtagConditionalReads(page);
 
-    const modal = await page
+    const modalCount = await page
       .getByRole('dialog')
-      .locator('div')
-      .filter({ hasText: 'Getting Started' })
-      .nth(1)
-      .isVisible();
+      .getByText('Getting Started')
+      .count();
 
-    if (modal) {
+    if (modalCount > 0) {
+      // eslint-disable-next-line om-playwright/no-positional-locator -- dismisses the onboarding dialog's close icon, which renders first among its images
       await page.getByRole('dialog').getByRole('img').first().click();
     }
 

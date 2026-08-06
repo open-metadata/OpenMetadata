@@ -39,7 +39,7 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
 export const selectTestType = async (page: Page, label: string) => {
   await page.click('[id="root\\/testType"]');
   await page.fill('[id="root\\/testType"]', label);
-  await page.getByRole('option').filter({ hasText: label }).first().click();
+  await page.getByRole('option', { name: label, exact: true }).click();
 };
 
 /**
@@ -115,6 +115,7 @@ export async function clickPieChartSegmentByIndex(
 ): Promise<void> {
   const chart = page.locator(`#${chartTestId}`);
   await expect(chart).toBeVisible();
+  // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied pie segment index, not a UI-derived guess
   const segmentPath = chart
     .locator('.custom-pie-chart-clickable path')
     .nth(segmentIndex);
@@ -260,6 +261,9 @@ export const removeFirstNTestCasesFromLogicalTestSuite = async (
     .locator(`[data-testid^="${ACTION_DROPDOWN_PREFIX}"]`);
 
   for (let i = 0; i < count; i++) {
+    // Removing a row shrinks the live table, so re-reading "first" on every
+    // iteration is the loop's mechanism for walking through N rows, not a guess.
+    // eslint-disable-next-line om-playwright/no-positional-locator -- loop-index iteration: each removal shifts the table, so "first" is always the next row to remove
     const trigger = rowActionDropdown.first();
     await trigger.waitFor({ state: 'visible' });
     const fullTestId = await trigger.getAttribute('data-testid');
@@ -342,9 +346,10 @@ export const selectTestCasesByCheckbox = async (
   const rows = page.locator(
     '[data-testid="test-case-table"] tbody tr[data-key]'
   );
-  await expect(rows.first()).toBeVisible();
+  await expect(rows).not.toHaveCount(0);
 
   for (let i = 0; i < count; i++) {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- caller-supplied selection count, selecting the first N rows by design
     const checkboxLabel = rows.nth(i).locator('label[slot="selection"]');
     await checkboxLabel.click();
   }
@@ -397,7 +402,7 @@ export const selectExistingBundleSuite = async (
 
   await expect(modal).toBeVisible();
 
-  const dropdownInput = modal.getByRole('combobox').first();
+  const dropdownInput = modal.getByRole('combobox');
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
@@ -436,6 +441,9 @@ export const verifyBundleSuitePageLoaded = async (
 
   await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
+  // react-aria-components' Table renders both the header and the body as
+  // `role="rowgroup"`, in that fixed order; the body is always the last one.
+  // eslint-disable-next-line om-playwright/no-positional-locator -- react-aria Table always renders header rowgroup before body rowgroup, in that fixed structural order
   const testCaseRows = page
     .getByTestId('test-case-table')
     .locator('[role="rowgroup"]')

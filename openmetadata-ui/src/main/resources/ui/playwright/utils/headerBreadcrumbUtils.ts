@@ -49,7 +49,7 @@ export const expectBreadcrumbToContainAncestor = async (
   const inlineCrumb = breadcrumb.getByText(name);
 
   if ((await inlineCrumb.count()) > 0) {
-    await expect(inlineCrumb.first()).toBeVisible();
+    await expect(inlineCrumb).toBeVisible();
   } else {
     const menu = await openBreadcrumbOverflowMenu(page);
     await expect(menu).toContainText(name);

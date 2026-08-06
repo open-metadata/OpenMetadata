@@ -182,7 +182,7 @@ export const createTagTask = async (
     await querySearchResponse;
 
     // select value from dropdown
-    const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`).first();
+    const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`);
     await dropdownValue.hover();
     await dropdownValue.click();
     await clickOutside(page);
@@ -200,19 +200,19 @@ export const checkTaskCountInActivityFeed = async (
   openTask = 0,
   closedTask = 0
 ) => {
-  await page.locator('.ant-skeleton-element').first().waitFor({
-    state: 'detached',
-  });
+  await expect(page.locator('.ant-skeleton-element')).toHaveCount(0);
   await page.getByTestId('user-profile-page-task-filter-icon').click();
   const openTaskItem = page
-    .locator('.task-tab-custom-dropdown .task-count-text')
-    .first();
+    .locator('.task-tab-custom-dropdown')
+    .getByTestId('open-tasks')
+    .locator('.task-count-text');
 
   await expect(openTaskItem).toHaveText(String(openTask));
 
   const closedTaskItem = page
-    .locator('.task-tab-custom-dropdown .task-count-text')
-    .last();
+    .locator('.task-tab-custom-dropdown')
+    .getByTestId('closed-tasks')
+    .locator('.task-count-text');
 
   await expect(closedTaskItem).toHaveText(String(closedTask));
 };

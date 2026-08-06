@@ -117,6 +117,7 @@ export const updateExpression = async (
   await page.locator('[id="root\\/language"]').fill(language);
   await page.getByTitle(`${language}`, { exact: true }).click();
 
+  // eslint-disable-next-line om-playwright/no-positional-locator -- CodeMirror renders one presentation line per code line; .last() positions the cursor at the end of the existing expression
   await page.locator("pre[role='presentation']").last().click();
   await page.keyboard.type(code);
 
@@ -145,7 +146,7 @@ export const updateRelatedMetric = async (
     (response) => response.request().method() === 'PATCH'
   );
   if (type === 'add') {
-    await page.getByTestId('add-related-metrics-container').first().click();
+    await page.getByTestId('add-related-metrics-container').click();
   } else {
     await page.getByTestId('edit-related-metrics').click();
   }
@@ -287,6 +288,7 @@ export const addMetric = async (page: Page) => {
   );
 
   // Enter the code
+  // eslint-disable-next-line om-playwright/no-positional-locator -- CodeMirror renders one presentation line per code line; .last() positions the cursor at the end of the existing expression
   await page.locator("pre[role='presentation']").last().click();
   await page.keyboard.type(metricData.metricExpression.code);
 

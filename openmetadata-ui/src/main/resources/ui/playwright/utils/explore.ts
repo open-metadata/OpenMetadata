@@ -139,9 +139,6 @@ export const selectDataAssetFilter = async (
   page: Page,
   filterValue: string
 ) => {
-  await page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
-  );
   await page.getByRole('button', { name: 'Data Assets' }).click();
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
@@ -268,23 +265,6 @@ export const expandTableInExploreTree = async (
     .locator('.ant-tree-switcher svg')
     .click();
   await columnRes;
-};
-
-export const verifyColumnSuggestion = async (
-  page: Page,
-  columnName: string,
-  tableName: string
-) => {
-  const suggestionsContainer = page.locator('[data-testid="suggestion-box"]');
-  const columnSuggestion = suggestionsContainer
-    .locator('.suggestion-item')
-    .filter({ hasText: columnName })
-    .filter({ hasText: tableName })
-    .first();
-
-  await expect(columnSuggestion).toBeVisible();
-
-  return columnSuggestion;
 };
 
 export const verifyDatabaseAndSchemaInExploreTree = async (

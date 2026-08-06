@@ -311,7 +311,7 @@ export const checkNotificationAndApproveTask = async (
     .click();
   await taskFeeds;
 
-  const taskCard = dataConsumerPage.getByTestId('task-feed-card').first();
+  const taskCard = dataConsumerPage.getByTestId('task-feed-card');
   await taskCard.waitFor({ state: 'visible', timeout: 15_000 });
   await taskCard.click();
 

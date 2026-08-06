@@ -24,6 +24,7 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import omPlaywright from './playwright/eslint-rules/index.js';
 
 export default [
   // Base recommended configs
@@ -396,6 +397,7 @@ export default [
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
     plugins: {
       playwright,
+      'om-playwright': omPlaywright,
     },
     rules: {
       // TypeScript/base rule overrides for Playwright files
@@ -457,18 +459,53 @@ export default [
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',
       'playwright/no-focused-test': 'error',
+      'playwright/missing-playwright-await': 'error',
+      'playwright/valid-expect': 'error',
+      'playwright/no-element-handle': 'error',
+      'playwright/no-eval': 'error',
+      'playwright/prefer-web-first-assertions': 'error',
+      'playwright/no-useless-await': 'error',
 
-      // Playwright rules — aspirational (warn): existing violations to fix over time
-      'playwright/missing-playwright-await': 'warn',
-      'playwright/valid-expect': 'warn',
-      'playwright/no-wait-for-timeout': 'warn',
-      'playwright/no-force-option': 'warn',
-      'playwright/no-element-handle': 'warn',
-      'playwright/no-eval': 'warn',
-      'playwright/no-skipped-test': 'warn',
-      'playwright/prefer-web-first-assertions': 'warn',
-      'playwright/no-useless-await': 'warn',
-      'playwright/no-wait-for-selector': 'warn',
+      // Playwright rules — promoted to error behind the suppressions ratchet
+      // (see eslint-suppressions.json): existing violations are snapshotted,
+      // new ones fail lint.
+      'playwright/no-wait-for-timeout': 'error',
+      'playwright/no-force-option': 'error',
+      'playwright/no-skipped-test': 'error',
+      'playwright/no-wait-for-selector': 'error',
+
+      // Local OpenMetadata Playwright rules.
+      'om-playwright/require-response-listener-before-action': 'error',
+      'om-playwright/no-blanket-test-slow': 'error',
+      'om-playwright/no-positional-locator': 'error',
+      'om-playwright/justified-rule-disable': 'error',
+    },
+  },
+
+  // Custom rules that only make sense on e2e spec files
+  {
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    plugins: {
+      'om-playwright': omPlaywright,
+    },
+    rules: {
+      'om-playwright/require-assertion-per-test': 'error',
+    },
+  },
+
+  // Local ESLint plugin (playwright/eslint-rules/**): plain CommonJS, not part
+  // of the TypeScript/ESM playwright test sources above — needs `require`/
+  // `module` as known globals and the ESM-oriented `no-require-imports` rule off.
+  {
+    files: ['playwright/eslint-rules/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 

@@ -333,6 +333,7 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
+  // eslint-disable-next-line om-playwright/no-positional-locator -- toasts stack; multiple alert-bars can match the same message simultaneously, and this locator is reused below to inspect the icon of one specific toast
   const toast = page
     .getByTestId('alert-bar')
     .filter({ hasText: message })
@@ -963,6 +964,7 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 // This error toast blocks the buttons at the top
 // Below logic closes the alert if it's present to avoid flakiness in tests
 export const closeFirstPopupAlert = async (page: Page) => {
+  // eslint-disable-next-line om-playwright/no-positional-locator -- alerts can stack; this helper's contract (see comment above) is to dismiss whichever one is topmost/first, not a specific test-owned alert
   const closeIcon = page.getByTestId('alert-icon-close').first();
 
   if (await closeIcon.isVisible()) {
@@ -1137,10 +1139,13 @@ export const testPaginationNavigation = async (
   }
 
   if (page1FirstItemName) {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- verifies pagination changed the displayed page: the row now shown first must differ from page 1's first row, position is the assertion under test
     const firstRow = page.locator('tbody tr').first();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- first table column of the row under test
     await expect(firstRow.locator('td').nth(0)).not.toHaveText(
       page1FirstItemName
     );
+    // eslint-disable-next-line om-playwright/no-positional-locator -- second table column of the row under test
     await expect(firstRow.locator('td').nth(1)).not.toHaveText(
       page1FirstItemName
     );
@@ -1314,6 +1319,7 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
   expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
 
   if (page1FirstItemName) {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- verifies pagination changed the displayed page: the row now shown first must differ from page 1's first row, position is the assertion under test
     await expect(page.locator('tbody tr').first()).not.toContainText(
       page1FirstItemName
     );
@@ -1576,10 +1582,12 @@ export const testTableSorting = async (
 ) => {
   await waitForAllLoadersToDisappear(page);
 
+  // eslint-disable-next-line om-playwright/no-positional-locator -- Ant Design's sticky-header feature can duplicate the `<th>` row; both matches are the same header so .first() is safe and required to avoid a strict-mode failure
   const header = page.locator(`th:has-text("${columnHeader}")`).first();
   const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
 
   const getFirstCellValue = async () => {
+    // eslint-disable-next-line om-playwright/no-positional-locator -- columnIndex is a caller-supplied ordinal parameter identifying which table column to read; position is the intended semantics, not a proxy for row identity
     const firstCell = page.locator(`${visibleRowSelector} td`).nth(columnIndex);
     await firstCell.waitFor({ state: 'visible' });
 
@@ -1621,11 +1629,11 @@ export const testTableSearch = async (
     await waitForSearchResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByText(searchTerm).first()).toBeVisible({
-      timeout: 5_000,
-    });
-    await expect(page.getByText(notVisibleText).first()).not.toBeVisible({
-      timeout: 5_000,
-    });
+    await expect(
+      page.getByText(searchTerm).filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: 5_000 });
+    await expect(
+      page.getByText(notVisibleText).filter({ visible: true })
+    ).toHaveCount(0, { timeout: 5_000 });
   }).toPass({ timeout: 30_000, intervals: [2_000, 5_000] });
 };
