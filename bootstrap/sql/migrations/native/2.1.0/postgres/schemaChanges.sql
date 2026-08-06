@@ -35,7 +35,6 @@ CREATE INDEX IF NOT EXISTS idx_tci_status_fqn ON test_case_incident (testCaseRes
 CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
-
 -- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.1.0
 
 -- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served

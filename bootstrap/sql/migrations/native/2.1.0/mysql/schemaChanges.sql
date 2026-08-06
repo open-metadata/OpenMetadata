@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS test_case_incident (
     INDEX idx_tci_assignee (assignee, testCaseResolutionStatusType),
     INDEX idx_tci_updated (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 -- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.1.0
 
 -- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served
