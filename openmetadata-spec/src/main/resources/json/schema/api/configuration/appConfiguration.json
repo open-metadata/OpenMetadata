@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://open-metadata.org/schema/api/configuration/appConfiguration.json",
+  "title": "AppConfiguration",
+  "description": "App-wide UI configuration set by the deployment operator via yaml/env. Not backed by the database; not mutable at runtime.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.AppConfiguration",
+  "properties": {
+    "defaultAppMode": {
+      "description": "Tenant-wide app-mode force. Non-null pins every user to this mode at boot regardless of their per-user preference; null means user preference wins.",
+      "type": ["string", "null"],
+      "enum": ["ai", "classic", null],
+      "default": null
+    }
+  },
+  "additionalProperties": false
+}

@@ -854,6 +854,13 @@ rdf:
   dataset: ${RDF_DATASET:-"openmetadata"}
   inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
 
+# App Configuration
+# Tenant-wide, yaml/env-only UI configuration. Not backed by the database.
+appConfiguration:
+  # Non-null pins every user to this mode at boot regardless of their per-user
+  # preference (e.g. "ai" or "classic"); null means the user's own preference wins.
+  defaultAppMode: ${APP_DEFAULT_MODE:-null}
+
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
 # Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the

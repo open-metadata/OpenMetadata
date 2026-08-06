@@ -28,6 +28,7 @@ import java.util.Map;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -158,6 +159,26 @@ public class ConfigResource {
       responseAuthorizerConfig.setPrincipalDomain(yamlConfig.getPrincipalDomain());
     }
     return responseAuthorizerConfig;
+  }
+
+  @GET
+  @Path(("/appConfig"))
+  @Operation(
+      operationId = "getAppConfiguration",
+      summary = "Get app-wide UI configuration (yaml-backed)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "App configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppConfiguration.class)))
+      })
+  public AppConfiguration getAppConfig() {
+    return openMetadataApplicationConfig.getAppConfiguration() != null
+        ? openMetadataApplicationConfig.getAppConfiguration()
+        : new AppConfiguration();
   }
 
   @GET
