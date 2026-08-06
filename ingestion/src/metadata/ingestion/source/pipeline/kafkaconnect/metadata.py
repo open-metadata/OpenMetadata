@@ -69,7 +69,6 @@ from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     MESSAGING_ENDPOINT_KEYS,
     SERVICE_TYPE_HOSTNAME_KEYS,
     STORAGE_SINK_CONNECTOR_CLASSES,
-    SUPPORTED_DATASETS,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     ConnectorType,
@@ -78,6 +77,10 @@ from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectTopics,
     ServiceResolutionResult,
     TopicResolutionResult,
+)
+from metadata.ingestion.source.pipeline.kafkaconnect.sinks import (
+    SinkDatasetResolver,
+    get_resolver,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -1028,72 +1031,10 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return topics_found
 
-    def _parse_datasets_from_config(self, connector_config: dict) -> List[KafkaConnectDatasetDetails]:  # noqa: C901, UP006
-        """
-        Parse dataset information from connector config.
-        Handles single values, comma-separated lists, and mapping configs.
-        Supports schema-qualified table names (e.g., "public.orders").
-        """
-
-        datasets_to_process = []
-        found_values = {}
-
-        for dataset_type, key_categories in SUPPORTED_DATASETS.items():
-            for key in key_categories.get("single", []):
-                if key in connector_config:
-                    found_values[dataset_type] = [connector_config[key]]
-                    logger.debug(f"Found single value for {dataset_type} from key '{key}'")
-                    break
-
-            if dataset_type not in found_values:
-                for key in key_categories.get("list", []):
-                    if key in connector_config:
-                        value = connector_config[key]
-                        found_values[dataset_type] = [v.strip() for v in value.split(",") if v.strip()]
-                        logger.debug(
-                            f"Found list values for {dataset_type} from key '{key}': "
-                            f"{len(found_values[dataset_type])} items"
-                        )
-                        break
-
-            if dataset_type not in found_values:
-                for key in key_categories.get("mapping", []):
-                    if key in connector_config:
-                        value = connector_config[key]
-                        mappings = [m.strip() for m in value.split(",")]
-                        found_values[dataset_type] = [m.split(":")[-1].strip() for m in mappings if ":" in m]
-                        logger.debug(
-                            f"Found mapping values for {dataset_type} from key '{key}': "
-                            f"{len(found_values[dataset_type])} items"
-                        )
-                        break
-
-        if not found_values:
-            return []
-
-        max_count = max(len(values) for values in found_values.values())
-        for i in range(max_count):
-            result = {}
-            for dataset_type, values in found_values.items():
-                idx = min(i, len(values) - 1)
-                value = values[idx]
-
-                # Special handling for table values that might be schema-qualified
-                if dataset_type == "table" and "." in value and "schema" not in result:
-                    # Parse schema-qualified table name (e.g., "public.orders")
-                    parts = value.rsplit(".", 1)
-                    if len(parts) == 2:
-                        result["schema"] = parts[0]
-                        result["table"] = parts[1]
-                        logger.debug(f"Parsed schema-qualified table: schema='{parts[0]}', table='{parts[1]}'")
-                        continue
-
-                result[dataset_type] = value
-
-            if result.get("table") or result.get("container_name"):
-                datasets_to_process.append(KafkaConnectDatasetDetails(**result))
-
-        return datasets_to_process
+    def _resolver_for(self, pipeline_details: KafkaConnectPipelineDetails) -> SinkDatasetResolver:
+        """Pick the dataset resolver matching this connector's class."""
+        config = pipeline_details.config or {}
+        return get_resolver(config.get("connector.class", ""))
 
     def _match_topic_to_dataset(
         self,
@@ -1110,48 +1051,16 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         matched_topic = None
 
-        # For JDBC/Generic Sink connectors: match by name equality
         if pipeline_details.conn_type == ConnectorType.SINK.value:
-            if dataset_details.table:
-                # Try exact match first
-                if dataset_details.table in topic_entities_map:
-                    logger.info(
-                        f"Matched sink dataset table '{dataset_details.table}' to topic '{dataset_details.table}' (exact match)"
-                    )
-                    return topic_entities_map[dataset_details.table]
-
-                # 1. Define a list of potential keys used to map Kafka topics to target table names
-                format_keys = ["collection.name.format", "table.name.format"]
-
-                # 2. Extract the first available pattern found in the config
-                pattern = None
-                for key in format_keys:
-                    if key in pipeline_details.config:
-                        pattern = pipeline_details.config[key]
-                        logger.debug(f"Found naming format using key '{key}': {pattern}")
-                        break
-
-                # 3. Fallback logic: if neither key is present, default to just the topic name
-                if not pattern:
-                    pattern = "${topic}"
-                    logger.warning("No naming format key found. Defaulting to '${topic}'.")
-
-                # Try case-insensitive match
-                for topic_name, topic_entity in topic_entities_map.items():
-                    # 4. Use the pattern to resolve the table name
-                    # This logic remains the same regardless of which key provided the pattern
-                    sanitized_topic = topic_name.replace(".", "_")
-                    resolved_table = pattern.replace("${topic}", sanitized_topic).lower()
-                    if resolved_table == dataset_details.table.lower():
-                        logger.info(
-                            f"Matched sink dataset table '{dataset_details.table}' to topic '{topic_name}' (case-insensitive)"
-                        )
-                        return topic_entity
-
-                logger.warning(f"No matching topic found for sink dataset table '{dataset_details.table}'")
+            # Call via the class, not `self.`: unit tests exercise this method
+            # unbound (self=None) to avoid instantiating the full pipeline source,
+            # and `_resolver_for` never reads `self`, so this stays equivalent.
+            return KafkaconnectSource._resolver_for(self, pipeline_details).match_topic(
+                dataset_details, topic_entities_map, pipeline_details.config or {}
+            )
 
         # For CDC Source connectors: match by parsing topic names
-        elif pipeline_details.conn_type == ConnectorType.SOURCE.value and database_server_name:
+        if pipeline_details.conn_type == ConnectorType.SOURCE.value and database_server_name:
             expected_topic = self._expected_source_topic_name(dataset_details, database_server_name, pipeline_details)
             for topic_name, topic_entity in topic_entities_map.items():
                 if self._source_topic_matches(str(topic_name), expected_topic, dataset_details, database_server_name):
@@ -1531,9 +1440,11 @@ class KafkaconnectSource(PipelineServiceSource):
             # This supports single values, comma-separated lists, and mapping configs
             datasets_to_process = []
             if pipeline_details.config:
-                datasets_to_process = self._parse_datasets_from_config(pipeline_details.config)
+                datasets_to_process = self._resolver_for(pipeline_details).resolve_datasets(
+                    pipeline_details.config, pipeline_details.topics
+                )
                 if datasets_to_process:
-                    logger.info(f"Parsed {len(datasets_to_process)} dataset(s) from connector config")
+                    logger.info(f"Resolved {len(datasets_to_process)} dataset(s) from connector config")
 
             # Fallback to datasets field if available (for backward compatibility)
             if not datasets_to_process and pipeline_details.datasets:

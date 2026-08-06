@@ -12,8 +12,10 @@
 
 import pytest
 
+from metadata.ingestion.source.pipeline.kafkaconnect.metadata import KafkaconnectSource
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectDatasetDetails,
+    KafkaConnectPipelineDetails,
     KafkaConnectTopics,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.sinks import (
@@ -203,3 +205,35 @@ class TestSnowflakeSinkResolver:
         config = {k: v for k, v in BASE_SNOWFLAKE_CONFIG.items() if k != "snowflake.database.name"}
         dataset = get_resolver("SnowflakeSink").resolve_datasets(config, [])[0]
         assert dataset.fully_qualified is False
+
+
+class TestSourceDelegatesToResolver:
+    def test_snowflake_config_now_produces_datasets(self):
+        """Regression guard: this returned [] before the resolver registry."""
+        details = KafkaConnectPipelineDetails(name="snowflake-landing", type="sink", config=BASE_SNOWFLAKE_CONFIG)
+        resolver = KafkaconnectSource._resolver_for(None, details)
+        datasets = resolver.resolve_datasets(details.config, details.topics)
+        assert len(datasets) == 2
+
+    def test_non_snowflake_sink_still_uses_default(self):
+        details = KafkaConnectPipelineDetails(
+            name="jdbc",
+            type="sink",
+            config={"connector.class": "JdbcSinkConnector", "table.name.format": "orders"},
+        )
+        resolver = KafkaconnectSource._resolver_for(None, details)
+        assert isinstance(resolver, DefaultResolver)
+
+    def test_missing_config_falls_back_to_default(self):
+        details = KafkaConnectPipelineDetails(name="x", type="sink", config=None)
+        assert isinstance(KafkaconnectSource._resolver_for(None, details), DefaultResolver)
+
+    def test_sink_matching_uses_the_resolver(self):
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "order_events_flat:ORDERS"})
+        details = KafkaConnectPipelineDetails(name="s", type="sink", config=config)
+        resolver = KafkaconnectSource._resolver_for(None, details)
+        dataset = next(d for d in resolver.resolve_datasets(config, []) if d.source_topic == "order_events_flat")
+        matched = KafkaconnectSource._match_topic_to_dataset(
+            None, dataset, {"order_events_flat": "<topic>"}, details, None
+        )
+        assert matched == "<topic>"
