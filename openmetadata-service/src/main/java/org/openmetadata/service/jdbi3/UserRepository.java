@@ -245,6 +245,14 @@ public class UserRepository extends EntityRepository<User> {
   public void prepare(User user, boolean update) {
     validateTeams(user);
     validateRoles(user.getRoles());
+    // Ensure `preferences` is always a valid JSON container so JSON-Patch
+    // ops targeting `/preferences/<key>` find a parent to add into. Without
+    // this a fresh User serializes with `preferences` absent and any client
+    // PATCH like `[{op:add, path:/preferences/foo, value:bar}]` fails with
+    // "contains no mapping for the name 'preferences'".
+    if (user.getPreferences() == null) {
+      user.setPreferences(new HashMap<>());
+    }
   }
 
   @Override
