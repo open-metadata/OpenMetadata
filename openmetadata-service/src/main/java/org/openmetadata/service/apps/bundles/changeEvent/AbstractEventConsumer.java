@@ -491,11 +491,20 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    // Quartz worker threads are long lived and never pass through the JAX-RS response filter, so
-    // per-request ThreadLocal caches would otherwise persist across ticks and serve indefinitely
-    // stale reads. Destinations on this thread read entities (governance workflows resolve
-    // inherited reviewers here), so start each tick from a clean slate.
+    // Quartz worker threads are long lived, shared with every other scheduled job, and never pass
+    // through the JAX-RS response filter. Per-request ThreadLocal caches left behind here would be
+    // served to whatever runs next on this thread — indefinitely stale. Destinations on this thread
+    // read entities (governance workflows resolve inherited reviewers here), so bracket the whole
+    // tick: start clean, and leave clean however this exits.
     PerRequestContextCleaner.clear();
+    try {
+      executeTick(jobExecutionContext);
+    } finally {
+      PerRequestContextCleaner.clear();
+    }
+  }
+
+  private void executeTick(JobExecutionContext jobExecutionContext) {
     this.init(jobExecutionContext);
     if (this.eventSubscription == null) {
       LOG.error("Skipping job execution - EventSubscription could not be loaded");
@@ -526,8 +535,6 @@ public abstract class AbstractEventConsumer
       } else if (gapStateChanged) {
         persistPendingGapState(jobExecutionContext);
       }
-      // Bound retention while this worker sits idle between ticks.
-      PerRequestContextCleaner.clear();
     }
   }
 
