@@ -36,7 +36,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -493,5 +493,38 @@ describe('Test axios response interceptor', () => {
 
       expect(mockRefreshToken).toHaveBeenCalledTimes(0);
     }
+  });
+
+  it('should refresh the token and retry a normal 401 request', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'retried' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    mockRefreshToken.mockReset();
+    mockRefreshToken.mockResolvedValue('newToken');
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: { message: 'Expired token!' },
+      },
+      config: {
+        url: '/tables/name/foo',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    const result = await errorHandler?.(mockError);
+
+    // The queued request is retried with the refreshed token, never left parked.
+    expect(mockRefreshToken).toHaveBeenCalled();
+    expect(mockAxios).toHaveBeenCalledWith(mockError.config);
+    expect(result).toEqual({ data: 'retried' });
   });
 });

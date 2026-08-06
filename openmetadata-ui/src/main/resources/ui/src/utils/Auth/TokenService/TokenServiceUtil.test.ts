@@ -119,11 +119,44 @@ describe('TokenService', () => {
   });
 
   describe('refreshToken', () => {
-    it('should return early if token update is in progress', async () => {
+    it('should wait for a sibling tab refresh and return the new token', async () => {
+      jest.useRealTimers();
       localStorage.setItem('refreshInProgress', 'true');
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
+
       const result = await tokenService.refreshToken();
 
-      expect(result).toBeUndefined();
+      // Must resolve to the sibling's token, never `undefined` (the value that
+      // made the 401 interceptor treat an in-progress refresh as a failure).
+      expect(result).toBe('new-token');
+
+      jest.useFakeTimers();
+    });
+
+    it('should coalesce concurrent refresh calls into a single refresh', async () => {
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: true,
+        timeoutExpiry: -1,
+      });
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue('new-token');
+
+      const [first, second] = await Promise.all([
+        tokenService.refreshToken(),
+        tokenService.refreshToken(),
+      ]);
+
+      expect(mockRenewToken).toHaveBeenCalledTimes(1);
+      expect(first).toBe('new-token');
+      expect(second).toBe('new-token');
+
+      jest.useFakeTimers();
     });
 
     it('should refresh token if expired', async () => {

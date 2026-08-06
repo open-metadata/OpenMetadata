@@ -28,6 +28,9 @@ class TokenService {
   renewToken: RenewTokenCallback | null = null;
   refreshSuccessCallback: (() => void) | null = null;
   private static _instance: TokenService;
+  private inFlightRefresh: Promise<
+    string | AccessTokenResponse | null | void
+  > | null = null;
 
   constructor() {
     this.clearRefreshInProgress();
@@ -77,51 +80,57 @@ class TokenService {
     });
   }
 
-  // Refresh the token if it is expired
+  // Refresh the token if it is expired. Concurrent callers in this tab (the
+  // proactive expiry timer, the visibility handler and the 401 interceptor can
+  // all fire together) share a single in-flight refresh so every caller awaits
+  // the SAME result. Returning `undefined` to the losers previously made the
+  // 401 interceptor treat an in-progress refresh as a failure — and, when the
+  // cross-tab flag was set, leave the request parked forever (the spinner).
   async refreshToken() {
+    if (!this.inFlightRefresh) {
+      this.inFlightRefresh = this.performRefresh().finally(() => {
+        this.inFlightRefresh = null;
+      });
+    }
+
+    return this.inFlightRefresh;
+  }
+
+  private async performRefresh() {
+    const oldToken = await getOidcToken();
+
+    // Another tab is already refreshing: wait for it to broadcast a new token
+    // rather than racing a second /auth/refresh (which would rotate the refresh
+    // token out from under the first request and 401 this tab).
+    // ponytail: waits ~1s for the sibling then returns null so the caller logs
+    // out cleanly — never an unbounded hang. Add cross-tab leader election if
+    // multi-tab refresh churn ever shows up.
     if (this.isTokenUpdateInProgress()) {
-      return;
+      const persisted = await this.waitForTokenPersistence(oldToken);
+
+      return persisted ? getOidcToken() : null;
     }
 
-    // Set refresh in progress immediately to prevent race conditions
+    const { isExpired, timeoutExpiry } = extractDetailsFromToken(oldToken);
+    if (!isExpired && timeoutExpiry > 0) {
+      return null;
+    }
+
     this.setRefreshInProgress();
-
-    try {
-      const oldToken = await getOidcToken();
-      const { isExpired, timeoutExpiry } = extractDetailsFromToken(oldToken);
-
-      // If token is expired or timeoutExpiry is less than 0 then try to silent signIn
-      if (isExpired || timeoutExpiry <= 0) {
-        // Logic to refresh the token
-        const newToken = await this.fetchNewToken();
-        if (newToken) {
-          // Wait for token to be persisted in SW+IndexedDB before notifying
-          const persisted = await this.waitForTokenPersistence(oldToken);
-          if (!persisted) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              'Token persistence timed out, proceeding with callback'
-            );
-          }
-          this.refreshSuccessCallback?.();
-          // To update all the tabs on updating channel token
-          // Notify all tabs that the token has been refreshed
-          localStorage.setItem(REFRESHED_KEY, 'true');
-        }
-
-        return newToken;
-      } else {
-        // Token doesn't need refreshing, clear the flag
-        this.clearRefreshInProgress();
-
-        return null;
+    const newToken = await this.fetchNewToken();
+    if (newToken) {
+      // Wait for the new token to be persisted in SW+IndexedDB before notifying.
+      const persisted = await this.waitForTokenPersistence(oldToken);
+      if (!persisted) {
+        // eslint-disable-next-line no-console
+        console.warn('Token persistence timed out, proceeding with callback');
       }
-    } catch (error) {
-      // Clear refresh flag on error to prevent deadlock
-      this.clearRefreshInProgress();
-
-      throw error;
+      this.refreshSuccessCallback?.();
+      // Notify all tabs that the token has been refreshed.
+      localStorage.setItem(REFRESHED_KEY, 'true');
     }
+
+    return newToken;
   }
 
   // Call renewal method according to the provider

@@ -19,7 +19,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -85,7 +84,8 @@ class MultiUrlJwkProviderTest {
       when(mockGenerator.getJWKSResponse()).thenReturn(jwksResponse);
       mockedStatic.when(JWTTokenGenerator::getInstance).thenReturn(mockGenerator);
       MultiUrlJwkProvider provider = new MultiUrlJwkProvider(List.of());
-      assertThrows(UnhandledServerException.class, () -> provider.get(UNKNOWN_KID));
+      // An unknown key id is an authentication failure (401), not a 500.
+      assertThrows(AuthenticationException.class, () -> provider.get(UNKNOWN_KID));
     }
   }
 
@@ -125,7 +125,7 @@ class MultiUrlJwkProviderTest {
       Jwk externalResult = provider.get(EXTERNAL_KID);
       assertNotNull(externalResult);
       assertEquals(EXTERNAL_KID, externalResult.getId());
-      assertThrows(UnhandledServerException.class, () -> provider.get(UNKNOWN_KID));
+      assertThrows(AuthenticationException.class, () -> provider.get(UNKNOWN_KID));
     }
   }
 
