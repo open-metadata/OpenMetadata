@@ -24,6 +24,7 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
@@ -32,9 +33,11 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeEach;
@@ -128,6 +131,72 @@ class MigrationUtilTest {
   }
 
   @Test
+  void migrateLegacyActivityThreadsPagesPastUserThreadsToReachLaterSystemThreads() {
+    int batchSize = 500;
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+        .thenReturn(Optional.of(1));
+    List<Map<String, Object>> fullPageOfUserThreads = new ArrayList<>();
+    for (int index = 0; index < batchSize; index++) {
+      String id = "00000000-0000-0000-0000-%012d".formatted(index);
+      fullPageOfUserThreads.add(Map.of("id", id, "json", legacyUserThreadJson(id)));
+    }
+    String systemThreadId = "00000000-0000-0000-0000-000000009999";
+    stubActivityThreadBatch(batchSize, "", fullPageOfUserThreads);
+    stubActivityThreadBatch(
+        batchSize,
+        "00000000-0000-0000-0000-%012d".formatted(batchSize - 1),
+        List.of(Map.of("id", systemThreadId, "json", legacySystemThreadJson(systemThreadId))));
+    when(handle
+            .createQuery(
+                "SELECT COUNT(*) FROM activity_stream WHERE id = :id AND timestamp = :timestamp")
+            .bind("id", systemThreadId)
+            .bind("timestamp", 1710000000000L)
+            .mapTo(Long.class)
+            .one())
+        .thenReturn(0L);
+
+    MigrationUtil.migrateLegacyActivityThreadsToActivityStream(handle, MYSQL);
+
+    verify(handle, times(1)).createUpdate(contains("INSERT INTO activity_stream"));
+  }
+
+  private void stubActivityThreadBatch(
+      int batchSize, String afterId, List<Map<String, Object>> rows) {
+    when(handle
+            .createQuery(
+                "SELECT id, json FROM thread_entity"
+                    + " WHERE type = :type AND id > :afterId ORDER BY id LIMIT :limit")
+            .bind("type", "Conversation")
+            .bind("afterId", afterId)
+            .bind("limit", batchSize)
+            .mapToMap()
+            .list())
+        .thenReturn(rows);
+  }
+
+  private String legacyUserThreadJson(String id) {
+    return """
+        {"id": "%s", "type": "Conversation", "generatedBy": "user",
+         "about": "<#E::table::sample.shop.orders>", "message": "a user conversation"}
+        """
+        .formatted(id);
+  }
+
+  private String legacySystemThreadJson(String id) {
+    return """
+        {"id": "%s", "type": "Conversation", "generatedBy": "system",
+         "about": "<#E::table::sample.shop.orders::description>",
+         "entityRef": {"id": "11111111-1111-1111-1111-111111111111", "type": "table",
+                       "fullyQualifiedName": "sample.shop.orders"},
+         "createdBy": "system", "updatedBy": "system", "updatedAt": 1710000000000,
+         "message": "Description updated",
+         "feedInfo": {"fieldName": "description", "headerMessage": "Updated orders description",
+                      "entitySpecificInfo": {"previousDescription": "old", "newDescription": "new"}}}
+        """
+        .formatted(id);
+  }
+
+  @Test
   void insertTaskUsesJsonbCastForPostgres() throws Exception {
     invokePrivateStatic(
         "insertTask",
@@ -161,7 +230,7 @@ class MigrationUtilTest {
     String entityRefId = "5555-6666-7777-8888";
 
     when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
-        .thenReturn(java.util.Optional.of(1));
+        .thenReturn(Optional.of(1));
 
     String threadJson =
         """

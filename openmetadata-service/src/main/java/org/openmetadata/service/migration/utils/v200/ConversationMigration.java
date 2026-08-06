@@ -44,19 +44,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public final class ConversationMigration {
   static final List<String> LEGACY_THREAD_TABLES =
       List.of("thread_entity", "thread_entity_legacy", "thread_entity_archived");
-  private static final int USER_CACHE_MAX_SIZE = 1_000;
+  static final int BATCH_SIZE = 500;
+  private static final int CACHE_MAX_SIZE = 1_000;
   private static final String ROOT_TARGET = "Root";
   private static final String REPLY_TARGET = "Reply";
 
   private final Handle handle;
   private final ConnectionType connectionType;
-  private final Map<String, EntityReference> users =
-      new LinkedHashMap<>(16, 0.75f, true) {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, EntityReference> eldest) {
-          return size() > USER_CACHE_MAX_SIZE;
-        }
-      };
+  private final Map<String, EntityReference> users = boundedCache();
+  private final Map<String, EntityReference> entityReferences = boundedCache();
 
   private ConversationMigration(Handle handle, ConnectionType connectionType) {
     this.handle = handle;
@@ -80,15 +76,21 @@ public final class ConversationMigration {
 
   private MigrationSummary run() {
     String table = findLegacyThreadTable(handle);
+    MigrationSummary summary = MigrationSummary.empty();
     if (table == null) {
       LOG.info("No legacy thread table found, skipping Conversation V2 migration");
-      return MigrationSummary.empty();
+    } else {
+      MigrationCounts counts = new MigrationCounts(table);
+      counts.chatbotsSkipped = countChatbotThreads(table);
+      counts.ownedByDedicatedMigration = countThreadsOwnedByOtherMigrations(table);
+      migrateConversations(table, counts);
+      summary = counts.toSummary();
+      logSummary(summary, table);
     }
-    MigrationCounts counts = new MigrationCounts(table);
-    for (Map<String, Object> row : listRows(table)) {
-      migrateRow(row, counts);
-    }
-    MigrationSummary summary = counts.toSummary();
+    return summary;
+  }
+
+  private void logSummary(MigrationSummary summary, String table) {
     LOG.info("Conversation V2 migration complete: {}", summary);
     if (summary.chatbotsSkipped() > 0) {
       LOG.warn(
@@ -96,24 +98,70 @@ public final class ConversationMigration {
           summary.chatbotsSkipped(),
           table);
     }
-    return summary;
   }
 
-  private List<Map<String, Object>> listRows(String table) {
-    return handle.createQuery("SELECT json FROM " + table).mapToMap().list();
+  private void migrateConversations(String table, MigrationCounts counts) {
+    String afterId = "";
+    boolean hasMore = true;
+    while (hasMore) {
+      List<Map<String, Object>> batch = listConversationBatch(table, afterId);
+      for (Map<String, Object> row : batch) {
+        migrateRow(row, counts);
+      }
+      hasMore = batch.size() == BATCH_SIZE;
+      if (hasMore) {
+        afterId = batch.getLast().get("id").toString();
+      }
+    }
+  }
+
+  /**
+   * Keyset pagination on the primary key: each batch is a single index seek followed by a short
+   * sequential read, so the migration never holds more than {@link #BATCH_SIZE} legacy threads on
+   * the heap and never pays the row-skipping cost that OFFSET charges on later pages. Threads owned
+   * by the task and announcement migrations are excluded through the indexed {@code type} column so
+   * their json is never transferred or parsed.
+   */
+  private List<Map<String, Object>> listConversationBatch(String table, String afterId) {
+    return handle
+        .createQuery(
+            "SELECT id, json FROM "
+                + table
+                + " WHERE (type = :type OR type IS NULL) AND id > :afterId"
+                + " ORDER BY id LIMIT :limit")
+        .bind("type", ThreadType.Conversation.value())
+        .bind("afterId", afterId)
+        .bind("limit", BATCH_SIZE)
+        .mapToMap()
+        .list();
+  }
+
+  private int countChatbotThreads(String table) {
+    return handle
+        .createQuery("SELECT COUNT(*) FROM " + table + " WHERE type = :type")
+        .bind("type", ThreadType.Chatbot.value())
+        .mapTo(Integer.class)
+        .findOne()
+        .orElse(0);
+  }
+
+  private int countThreadsOwnedByOtherMigrations(String table) {
+    return handle
+        .createQuery(
+            "SELECT COUNT(*) FROM "
+                + table
+                + " WHERE type IS NOT NULL AND type NOT IN (:conversationType, :chatbotType)")
+        .bind("conversationType", ThreadType.Conversation.value())
+        .bind("chatbotType", ThreadType.Chatbot.value())
+        .mapTo(Integer.class)
+        .findOne()
+        .orElse(0);
   }
 
   private void migrateRow(Map<String, Object> row, MigrationCounts counts) {
     try {
       Thread thread = JsonUtils.readValue(row.get("json").toString(), Thread.class);
-      ThreadType type = thread.getType() == null ? ThreadType.Conversation : thread.getType();
-      if (type == ThreadType.Conversation) {
-        migrateConversation(thread, counts);
-      } else if (type == ThreadType.Chatbot) {
-        counts.chatbotsSkipped++;
-      } else {
-        counts.ownedByDedicatedMigration++;
-      }
+      migrateConversation(thread, counts);
     } catch (RuntimeException exception) {
       counts.errors++;
       LOG.warn("Could not migrate legacy conversation row: {}", exception.getMessage());
@@ -217,7 +265,7 @@ public final class ConversationMigration {
   }
 
   private void persistConversation(Conversation conversation, List<LegacyReply> replies) {
-    insertRoot(conversation);
+    boolean rootCreated = insertRoot(conversation);
     insertDomains(conversation);
     insertMentions(
         conversation.getId(),
@@ -235,10 +283,14 @@ public final class ConversationMigration {
           reply.getMessage(),
           reply.getCreatedAt());
     }
-    reconcileReplyCount(conversation.getId(), conversation.getUpdatedAt());
+    // A root inserted by this run already carries the reply count computed above, and replies
+    // cannot outlive their root (FK cascade). Only a root left by an earlier run needs a recount.
+    if (!rootCreated) {
+      reconcileReplyCount(conversation.getId(), conversation.getUpdatedAt());
+    }
   }
 
-  private void insertRoot(Conversation conversation) {
+  private boolean insertRoot(Conversation conversation) {
     MessageParser.EntityLink link = MessageParser.EntityLink.parse(conversation.getAbout());
     String fqnHash = FullyQualifiedName.buildHash(link.getEntityFQN());
     String sql =
@@ -247,12 +299,13 @@ public final class ConversationMigration {
                 + "VALUES (:entityFqnHash, :aboutFqnHash, :json::jsonb) ON CONFLICT DO NOTHING"
             : "INSERT IGNORE INTO conversation_entity(entityFqnHash, aboutFqnHash, json) "
                 + "VALUES (:entityFqnHash, :aboutFqnHash, :json)";
-    handle
-        .createUpdate(sql)
-        .bind("entityFqnHash", fqnHash)
-        .bind("aboutFqnHash", fqnHash)
-        .bind("json", JsonUtils.pojoToJson(conversation))
-        .execute();
+    return handle
+            .createUpdate(sql)
+            .bind("entityFqnHash", fqnHash)
+            .bind("aboutFqnHash", fqnHash)
+            .bind("json", JsonUtils.pojoToJson(conversation))
+            .execute()
+        > 0;
   }
 
   private void insertReply(ConversationReply reply) {
@@ -351,14 +404,39 @@ public final class ConversationMigration {
   private EntityReference resolveThreadTarget(Thread thread) {
     EntityReference reference = thread.getEntityRef();
     if (reference == null || reference.getId() == null || reference.getType() == null) {
-      try {
-        MessageParser.EntityLink link = MessageParser.EntityLink.parse(thread.getAbout());
-        reference =
-            Entity.getEntityReferenceByName(link.getEntityType(), link.getEntityFQN(), Include.ALL);
-      } catch (RuntimeException exception) {
-        LOG.warn("Could not resolve target for legacy conversation {}", thread.getId());
-        reference = null;
-      }
+      reference = resolveAboutTarget(thread);
+    }
+    return reference;
+  }
+
+  private EntityReference resolveAboutTarget(Thread thread) {
+    EntityReference reference;
+    try {
+      MessageParser.EntityLink link = MessageParser.EntityLink.parse(thread.getAbout());
+      reference = resolveEntityReference(link.getEntityType(), link.getEntityFQN());
+    } catch (RuntimeException exception) {
+      LOG.warn("Could not resolve target for legacy conversation {}", thread.getId());
+      reference = null;
+    }
+    return reference;
+  }
+
+  /** Legacy threads crowd around the same assets, so cache both hits and misses of the lookup. */
+  private EntityReference resolveEntityReference(String entityType, String entityFqn) {
+    String key = entityType + "::" + entityFqn;
+    if (!entityReferences.containsKey(key)) {
+      entityReferences.put(key, findEntityReference(entityType, entityFqn));
+    }
+    return entityReferences.get(key);
+  }
+
+  private EntityReference findEntityReference(String entityType, String entityFqn) {
+    EntityReference reference;
+    try {
+      reference = Entity.getEntityReferenceByName(entityType, entityFqn, Include.ALL);
+    } catch (RuntimeException exception) {
+      LOG.warn("Could not resolve legacy reference {}::{}", entityType, entityFqn);
+      reference = null;
     }
     return reference;
   }
@@ -398,16 +476,13 @@ public final class ConversationMigration {
   }
 
   private EntityReference resolveMention(MessageParser.EntityLink link) {
+    EntityReference mention;
     if (Entity.USER.equals(link.getEntityType())) {
-      return resolveUser(link.getEntityFQN(), null);
+      mention = resolveUser(link.getEntityFQN(), null);
+    } else {
+      mention = resolveEntityReference(link.getEntityType(), link.getEntityFQN());
     }
-    try {
-      return Entity.getEntityReferenceByName(
-          link.getEntityType(), link.getEntityFQN(), Include.ALL);
-    } catch (RuntimeException exception) {
-      LOG.warn("Could not resolve legacy mention {}", link.getLinkString());
-      return null;
-    }
+    return mention;
   }
 
   private boolean isMigratable(Thread thread, EntityReference target) {
@@ -457,6 +532,15 @@ public final class ConversationMigration {
 
   private <T> List<T> listOrEmpty(List<T> values) {
     return values == null ? List.of() : values;
+  }
+
+  private static <V> Map<String, V> boundedCache() {
+    return new LinkedHashMap<>(16, 0.75f, true) {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<String, V> eldest) {
+        return size() > CACHE_MAX_SIZE;
+      }
+    };
   }
 
   private static boolean tableExists(Handle handle, String table) {

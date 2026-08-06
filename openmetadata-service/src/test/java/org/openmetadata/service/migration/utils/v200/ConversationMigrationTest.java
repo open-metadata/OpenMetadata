@@ -15,6 +15,7 @@ package org.openmetadata.service.migration.utils.v200;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeastOnce;
@@ -24,12 +25,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v200.ConversationMigration.BATCH_SIZE;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.utils.JsonUtils;
 
 class ConversationMigrationTest {
   @Test
@@ -75,17 +79,25 @@ class ConversationMigrationTest {
   }
 
   @Test
-  void mapsEveryThreadTypeAndUsesIdempotentChildWrites() {
+  void countsThreadsOwnedByOtherMigrationsWithoutReadingTheirJson() {
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+    stubLegacyTable(handle);
+    stubConversationBatch(handle, "", List.of(row(userConversation())));
+    when(handle
+            .createQuery("SELECT COUNT(*) FROM thread_entity WHERE type = :type")
+            .bind("type", "Chatbot")
+            .mapTo(Integer.class)
+            .findOne())
         .thenReturn(Optional.of(1));
-    when(handle.createQuery("SELECT json FROM thread_entity").mapToMap().list())
-        .thenReturn(
-            List.of(
-                row(userConversation()),
-                row(threadOfType("Task", "00000000-0000-0000-0000-000000000011")),
-                row(threadOfType("Announcement", "00000000-0000-0000-0000-000000000012")),
-                row(threadOfType("Chatbot", "00000000-0000-0000-0000-000000000013"))));
+    when(handle
+            .createQuery(
+                "SELECT COUNT(*) FROM thread_entity WHERE type IS NOT NULL "
+                    + "AND type NOT IN (:conversationType, :chatbotType)")
+            .bind("conversationType", "Conversation")
+            .bind("chatbotType", "Chatbot")
+            .mapTo(Integer.class)
+            .findOne())
+        .thenReturn(Optional.of(2));
 
     ConversationMigration.MigrationSummary summary = ConversationMigration.migrate(handle, MYSQL);
 
@@ -101,12 +113,31 @@ class ConversationMigrationTest {
   }
 
   @Test
+  void readsLegacyThreadsInKeysetPagedBatches() {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    stubLegacyTable(handle);
+    List<Map<String, Object>> firstBatch = new ArrayList<>();
+    for (int index = 0; index < BATCH_SIZE; index++) {
+      firstBatch.add(row(conversationWithId(threadId(index))));
+    }
+    String lastIdOfFirstBatch = threadId(BATCH_SIZE - 1);
+    stubConversationBatch(handle, "", firstBatch);
+    stubConversationBatch(
+        handle, lastIdOfFirstBatch, List.of(row(conversationWithId(threadId(BATCH_SIZE)))));
+
+    ConversationMigration.MigrationSummary summary = ConversationMigration.migrate(handle, MYSQL);
+
+    assertEquals(BATCH_SIZE + 1, summary.userConversations());
+    assertEquals(0, summary.errors());
+    verify(handle, atLeastOnce())
+        .createQuery(contains("WHERE (type = :type OR type IS NULL) AND id > :afterId"));
+  }
+
+  @Test
   void repeatExecutionUsesConflictSafePostgresWrites() {
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
-        .thenReturn(Optional.of(1));
-    when(handle.createQuery("SELECT json FROM thread_entity").mapToMap().list())
-        .thenReturn(List.of(row(userConversation())));
+    stubLegacyTable(handle);
+    stubConversationBatch(handle, "", List.of(row(userConversation())));
 
     ConversationMigration.migrate(handle, POSTGRES);
     ConversationMigration.migrate(handle, POSTGRES);
@@ -115,13 +146,31 @@ class ConversationMigrationTest {
   }
 
   @Test
+  void recountsRepliesOnlyForConversationsAnEarlierRunLeftBehind() {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    stubLegacyTable(handle);
+    stubConversationBatch(handle, "", List.of(row(userConversation())));
+    when(handle
+            .createUpdate(
+                "INSERT IGNORE INTO conversation_entity(entityFqnHash, aboutFqnHash, json) "
+                    + "VALUES (:entityFqnHash, :aboutFqnHash, :json)")
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyString())
+            .bind(anyString(), anyString())
+            .execute())
+        .thenReturn(1);
+
+    ConversationMigration.migrate(handle, MYSQL);
+
+    verify(handle, never()).createUpdate(contains("UPDATE conversation_entity SET json"));
+  }
+
+  @Test
   void systemConversationUsesSameActivityIdAndMigratesOnlyReplies() {
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     String activityId = "00000000-0000-0000-0000-000000000510";
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
-        .thenReturn(Optional.of(1));
-    when(handle.createQuery("SELECT json FROM thread_entity").mapToMap().list())
-        .thenReturn(List.of(row(systemConversation(activityId))));
+    stubLegacyTable(handle);
+    stubConversationBatch(handle, "", List.of(row(systemConversation(activityId))));
     when(handle
             .createQuery(
                 "SELECT json FROM activity_stream WHERE id = :id ORDER BY timestamp DESC LIMIT 1")
@@ -138,8 +187,36 @@ class ConversationMigrationTest {
     assertEquals(0, summary.errors());
   }
 
+  private void stubLegacyTable(Handle handle) {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+        .thenReturn(Optional.of(1));
+  }
+
+  private void stubConversationBatch(
+      Handle handle, String afterId, List<Map<String, Object>> rows) {
+    when(handle
+            .createQuery(
+                "SELECT id, json FROM thread_entity"
+                    + " WHERE (type = :type OR type IS NULL) AND id > :afterId"
+                    + " ORDER BY id LIMIT :limit")
+            .bind("type", "Conversation")
+            .bind("afterId", afterId)
+            .bind("limit", BATCH_SIZE)
+            .mapToMap()
+            .list())
+        .thenReturn(rows);
+  }
+
+  private String threadId(int index) {
+    return "00000000-0000-0000-0000-%012d".formatted(index + 1000);
+  }
+
   private Map<String, Object> row(String json) {
-    return Map.of("json", json);
+    return Map.of("id", JsonUtils.readTree(json).get("id").asText(), "json", json);
+  }
+
+  private String conversationWithId(String id) {
+    return userConversation().replace("00000000-0000-0000-0000-000000000010", id);
   }
 
   private String userConversation() {
