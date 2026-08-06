@@ -25,11 +25,15 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
+    KafkaConnectConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     CONNECTOR_CLASS_TO_SERVICE_TYPE,
     SERVICE_TYPE_HOSTNAME_KEYS,
@@ -474,3 +478,52 @@ class TestUnresolvableTableDiagnostics:
         combined = " ".join(record.message for record in caplog.records)
         assert "dbServiceNames" in combined
         assert "ORDER_EVENTS_FLAT" in combined
+
+
+# Captured verbatim from GET /connect/v1/environments/env-.../connectors/SnowflakeSinkConnector_0
+REAL_CONFLUENT_CLOUD_RESPONSE = {
+    "name": "SnowflakeSinkConnector_0",
+    "type": "sink",
+    "config": {
+        "connector.class": "SnowflakeSink",
+        "input.data.format": "AVRO",
+        "kafka.api.key": "IWZOEA4Q46ZJDE52",
+        "kafka.api.secret": "****************",
+        "kafka.auth.mode": "KAFKA_API_KEY",
+        "kafka.endpoint": "SASL_SSL://pkc-56d1g.eastus.azure.confluent.cloud:9092",
+        "name": "SnowflakeSinkConnector_0",
+        "snowflake.database.name": "TEST_DB",
+        "snowflake.private.key": "****************",
+        "snowflake.schema.name": "MAYUR_SCHEMA",
+        "snowflake.url.name": " FMFAHQK-GI58232.snowflakecomputing.com",
+        "snowflake.user.name": "MAYUR",
+        "tasks.max": "1",
+        "topics": "order_events_flat",
+    },
+    "tasks": [{"connector": "SnowflakeSinkConnector_0", "task": 0}],
+}
+
+
+def _confluent_cloud_client(monkeypatch):
+    connection = KafkaConnectConnection(
+        hostPort="https://api.confluent.cloud/connect/v1/environments/env-x/clusters/lkc-y"
+    )
+    client = KafkaConnectClient(connection)
+    client.client = MagicMock()
+    client.client.get_connector.return_value = REAL_CONFLUENT_CLOUD_RESPONSE
+    return client
+
+
+class TestConfluentCloudConfigShape:
+    def test_flat_config_map_is_returned(self, monkeypatch):
+        client = _confluent_cloud_client(monkeypatch)
+        assert client.is_confluent_cloud is True
+        config = client.get_connector_config("SnowflakeSinkConnector_0")
+        assert config["connector.class"] == "SnowflakeSink"
+        assert config["snowflake.database.name"] == "TEST_DB"
+
+    def test_defaulted_properties_are_absent_not_false(self):
+        """The API omits defaults, so presence checks are unsafe."""
+        config = REAL_CONFLUENT_CLOUD_RESPONSE["config"]
+        assert "snowflake.enable.schematization" not in config
+        assert "snowflake.ingestion.method" not in config
