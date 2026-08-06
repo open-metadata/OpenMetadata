@@ -10,10 +10,26 @@
 #  limitations under the License.
 """Tests for the Confluent Cloud Snowflake Sink dataset resolver."""
 
+import logging
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     CONNECTOR_CLASS_TO_SERVICE_TYPE,
     SERVICE_TYPE_HOSTNAME_KEYS,
@@ -267,82 +283,173 @@ class TestSnowflakeServiceResolution:
         assert extracted == "FMFAHQK-GI58232.snowflakecomputing.com"
 
 
+# Observed live: Confluent reports "<account>.snowflakecomputing.com" (with a leading
+# space, as the UI stored it) while the OpenMetadata service holds the bare account.
+LIVE_SNOWFLAKE_URL = " FMFAHQK-GI58232.snowflakecomputing.com"
+LIVE_SNOWFLAKE_ACCOUNT = "FMFAHQK-GI58232"
+
+
+def _database_service(name: str, service_type: DatabaseServiceType, config) -> DatabaseService:
+    return DatabaseService(
+        id=uuid.uuid4(),
+        name=name,
+        serviceType=service_type,
+        connection=DatabaseConnection(config=config),
+    )
+
+
+def _snowflake_service(name: str = "snowflake_prod", account: str = LIVE_SNOWFLAKE_ACCOUNT) -> DatabaseService:
+    return _database_service(
+        name,
+        DatabaseServiceType.Snowflake,
+        SnowflakeConnection(username="etl_user", account=account, warehouse="COMPUTE_WH"),
+    )
+
+
+def _source_with_services(services) -> KafkaconnectSource:
+    source = _new_source()
+    source._database_services_cache = services
+    source._messaging_services_cache = []
+    return source
+
+
+class TestSnowflakeHostnameMatching:
+    """SnowflakeConnection has neither hostPort nor host, so hostname matching has to
+    probe `account` and tolerate the .snowflakecomputing.com suffix — otherwise
+    SERVICE_TYPE_HOSTNAME_KEYS["Snowflake"] extracts a value it can never match and
+    dbServiceNames stays mandatory."""
+
+    def test_account_matches_connector_url_with_domain_suffix(self):
+        source = _source_with_services([_snowflake_service()])
+        assert source.find_database_service_by_hostname("Snowflake", LIVE_SNOWFLAKE_URL) == "snowflake_prod"
+
+    def test_account_matching_is_case_insensitive(self):
+        source = _source_with_services([_snowflake_service(account="fmfahqk-gi58232")])
+        assert source.find_database_service_by_hostname("Snowflake", LIVE_SNOWFLAKE_URL) == "snowflake_prod"
+
+    def test_a_different_account_does_not_match(self):
+        source = _source_with_services([_snowflake_service(account="OTHER-ACCOUNT")])
+        assert source.find_database_service_by_hostname("Snowflake", LIVE_SNOWFLAKE_URL) is None
+
+    def test_snowflake_service_resolves_from_connector_config(self):
+        """End to end through the real config-key lookup: a live Confluent Snowflake Sink
+        config must resolve its database service with no dbServiceNames configured."""
+        source = _source_with_services([_snowflake_service()])
+        details = KafkaConnectPipelineDetails(
+            name="snowflake-landing",
+            type="sink",
+            config=dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.url.name": LIVE_SNOWFLAKE_URL}),
+        )
+        assert source.get_service_from_connector_config(details).database_service_name == "snowflake_prod"
+
+    def test_host_port_matching_is_unchanged(self):
+        """Regression guard: services that do expose hostPort must keep matching."""
+        source = _source_with_services(
+            [
+                _database_service(
+                    "mysql_prod",
+                    DatabaseServiceType.Mysql,
+                    MysqlConnection(
+                        username="etl_user",
+                        authType=BasicAuth(password="pwd"),
+                        hostPort="mysql.example.com:3306",
+                    ),
+                )
+            ]
+        )
+        matched = source.find_database_service_by_hostname("Mysql", "jdbc:mysql://mysql.example.com:3306/inventory")
+        assert matched == "mysql_prod"
+
+
+CDC_PIPELINE_DETAILS = KafkaConnectPipelineDetails(
+    name="dbz",
+    type="source",
+    config={"connector.class": "MySqlCdcSource", "topic.prefix": "inventory"},
+)
+
+
 class TestDatasetFqnConstruction:
-    def _source_with_captured_fqn(self, captured):
+    """Pins the *slot* each value lands in by asserting on fqn.build's keyword arguments.
+
+    Real fqn.build() only returns a raw-built string when database_name, schema_name AND
+    service_name are all truthy (metadata.utils.fqn Table builder); for CDC database_name
+    is intentionally None, so production resolution comes from an ES lookup a bare
+    MagicMock can't simulate. Patching fqn.build lets us verify the arguments
+    get_dataset_entity passes rather than ES's independent behaviour — and the arguments
+    are what matter, because a joined FQN string is invariant under any permutation of
+    the database/schema/table slots.
+    """
+
+    def _priority_one_kwargs(self, dataset, pipeline_details) -> dict:
+        captured = []
         source = MagicMock(spec=KafkaconnectSource)
         source.metadata = MagicMock()
-        source.metadata.get_by_name.side_effect = lambda entity, fqn: captured.append(fqn)
-        source.get_service_from_connector_config.return_value = MagicMock(database_service_name="snowflake_prod")
+        # A miss on every lookup keeps all three priorities reachable, so captured[0]
+        # is unambiguously the Priority 1 call.
+        source.metadata.get_by_name.return_value = None
+        source.get_service_from_connector_config.return_value = MagicMock(database_service_name="matched_service")
         source.get_db_service_names.return_value = []
-        return source
 
-    def test_qualified_dataset_builds_four_part_fqn(self):
-        captured = []
-        source = self._source_with_captured_fqn(captured)
-        dataset = KafkaConnectDatasetDetails(
-            table="ORDER_EVENTS_FLAT",
-            database="EVENT_LANDING",
-            schema="PUBLIC",
-            source_topic="order_events_flat",
-            fully_qualified=True,
-        )
-        KafkaconnectSource.get_dataset_entity(
-            source,
-            KafkaConnectPipelineDetails(name="s", type="sink", config=BASE_SNOWFLAKE_CONFIG),
-            dataset,
-        )
-        assert captured, "expected at least one FQN lookup"
-        assert "EVENT_LANDING" in captured[0] and "PUBLIC" in captured[0]
-
-    def test_unqualified_cdc_dataset_keeps_three_part_fqn(self):
-        """Debezium's 'database' is a logical server name, not a real database.
-
-        Real fqn.build() only returns a raw-built string when database_name,
-        schema_name AND service_name are all truthy (metadata.utils.fqn: Table
-        builder); for CDC, database_name is intentionally None, so production
-        resolution comes from an ES lookup a bare MagicMock can't simulate.
-        We patch fqn.build itself (the same technique test_kafkaconnect.py already
-        uses via its `_fqn_build` helper) so this test verifies the *arguments*
-        get_dataset_entity passes to fqn.build, not ES's independent behaviour.
-        """
-        captured = []
-        source = self._source_with_captured_fqn(captured)
-        dataset = KafkaConnectDatasetDetails(table="orders", database="inventory", fully_qualified=False)
-
-        def fake_fqn_build(
-            metadata,
-            entity_type=None,
-            service_name=None,
-            database_name=None,
-            schema_name=None,
-            table_name=None,
-            **kwargs,
-        ):
-            parts = [part for part in (service_name, database_name, schema_name, table_name) if part]
-            return ".".join(parts) if parts else None
+        def fake_fqn_build(metadata=None, entity_type=None, **kwargs):
+            captured.append(kwargs)
+            return
 
         with patch(
             "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
             side_effect=fake_fqn_build,
         ):
-            KafkaconnectSource.get_dataset_entity(
-                source,
-                KafkaConnectPipelineDetails(
-                    name="dbz",
-                    type="source",
-                    config={"connector.class": "MySqlCdcSource", "topic.prefix": "inventory"},
-                ),
-                dataset,
-            )
-        assert captured
-        # 'inventory' occupies the schema slot exactly as before this change
-        assert captured[0].count("inventory") == 1
+            KafkaconnectSource.get_dataset_entity(source, pipeline_details, dataset)
+
+        assert captured, "expected at least one fqn.build call"
+        return captured[0]
+
+    def test_qualified_dataset_builds_four_part_fqn(self):
+        kwargs = self._priority_one_kwargs(
+            KafkaConnectDatasetDetails(
+                table="ORDER_EVENTS_FLAT",
+                database="EVENT_LANDING",
+                schema="PUBLIC",
+                source_topic="order_events_flat",
+                fully_qualified=True,
+            ),
+            KafkaConnectPipelineDetails(name="s", type="sink", config=BASE_SNOWFLAKE_CONFIG),
+        )
+        assert kwargs["service_name"] == "matched_service"
+        assert kwargs["database_name"] == "EVENT_LANDING"
+        assert kwargs["schema_name"] == "PUBLIC"
+        assert kwargs["table_name"] == "ORDER_EVENTS_FLAT"
+
+    def test_unqualified_cdc_dataset_keeps_three_part_fqn(self):
+        """Debezium's 'database' is the logical server name (topic.prefix), not a real
+        database, so it belongs in the schema slot with the database slot left empty."""
+        kwargs = self._priority_one_kwargs(
+            KafkaConnectDatasetDetails(table="orders", database="inventory", fully_qualified=False),
+            CDC_PIPELINE_DETAILS,
+        )
+        assert kwargs["database_name"] is None
+        assert kwargs["schema_name"] == "inventory"
+        assert kwargs["table_name"] == "orders"
+
+    def test_unqualified_cdc_dataset_with_schema_keeps_three_part_fqn(self):
+        """table.include.list = "inventory.orders" populates `schema` while the dataset
+        stays unqualified: the logical server name must still win the schema slot.
+        Gating on `schema` instead of `fully_qualified` breaks exactly here."""
+        kwargs = self._priority_one_kwargs(
+            KafkaConnectDatasetDetails(
+                table="orders",
+                database="inventory",
+                schema="public",
+                fully_qualified=False,
+            ),
+            CDC_PIPELINE_DETAILS,
+        )
+        assert kwargs["database_name"] is None
+        assert kwargs["schema_name"] == "inventory"
+        assert kwargs["table_name"] == "orders"
 
 
 class TestUnresolvableTableDiagnostics:
     def test_warning_names_db_service_names_setting(self, caplog):
-        import logging
-
         source = MagicMock(spec=KafkaconnectSource)
         source.metadata = MagicMock()
         source.metadata.get_by_name.return_value = None

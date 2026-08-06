@@ -130,6 +130,19 @@ SERVICE_TYPE_HOSTNAME_KEYS = {
     "Snowflake": ["snowflake.url.name"],
 }
 
+# Service connection attributes probed, in order, for the host identifying a service.
+# Most connections expose hostPort or host; Snowflake exposes neither and identifies
+# the deployment by `account`.
+SERVICE_CONNECTION_HOST_ATTRIBUTES = ["hostPort", "host", "account"]
+
+# Domain suffixes a connector may append to the host stored on the service connection.
+# Confluent reports "<account>.snowflakecomputing.com" for snowflake.url.name while the
+# OpenMetadata Snowflake service stores the bare "<account>", so the suffix must not
+# defeat the comparison. Values must be lowercase: hosts are lowercased before matching.
+SERVICE_TYPE_HOST_DOMAIN_SUFFIXES = {
+    "Snowflake": [".snowflakecomputing.com"],
+}
+
 # Map service types to broker/endpoint config keys for messaging services
 MESSAGING_ENDPOINT_KEYS = [
     "kafka.endpoint",

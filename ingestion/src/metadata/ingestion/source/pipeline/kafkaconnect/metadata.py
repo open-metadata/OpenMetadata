@@ -67,6 +67,8 @@ from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     CDC_ENVELOPE_FIELDS,
     CONNECTOR_CLASS_TO_SERVICE_TYPE,
     MESSAGING_ENDPOINT_KEYS,
+    SERVICE_CONNECTION_HOST_ATTRIBUTES,
+    SERVICE_TYPE_HOST_DOMAIN_SUFFIXES,
     SERVICE_TYPE_HOSTNAME_KEYS,
     STORAGE_SINK_CONNECTOR_CLASSES,
 )
@@ -161,6 +163,16 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return host_string.strip()
 
+    @staticmethod
+    def _strip_domain_suffix(host: str, domain_suffixes: List[str]) -> str:  # noqa: UP006
+        """
+        Drop a known domain suffix so a bare host and its fully qualified form compare equal.
+        """
+        for suffix in domain_suffixes:
+            if host.endswith(suffix):
+                return host[: -len(suffix)]
+        return host
+
     def find_database_service_by_hostname(self, service_type: str, hostname: str) -> Optional[str]:  # noqa: UP045
         """
         Find database service by matching serviceType and hostname.
@@ -188,6 +200,8 @@ class KafkaconnectSource(PipelineServiceSource):
 
             # Extract just the hostname (no protocol, no port)
             connector_host = self._extract_hostname(hostname).lower()
+            domain_suffixes = SERVICE_TYPE_HOST_DOMAIN_SUFFIXES.get(service_type, [])
+            connector_host_key = self._strip_domain_suffix(connector_host, domain_suffixes)
 
             # Match by hostname in service connection config
             for service in filtered_services:
@@ -196,20 +210,23 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 service_config = service.connection.config
 
-                # Extract hostPort from service config
+                # Extract the host from the service config
                 # Different services use different field names
-                host_port = None
-                if hasattr(service_config, "hostPort") and service_config.hostPort:
-                    host_port = service_config.hostPort
-                elif hasattr(service_config, "host") and service_config.host:  # pyright: ignore[reportAttributeAccessIssue]
-                    host_port = service_config.host  # pyright: ignore[reportAttributeAccessIssue]
+                host_port = next(
+                    (
+                        getattr(service_config, attribute)
+                        for attribute in SERVICE_CONNECTION_HOST_ATTRIBUTES
+                        if getattr(service_config, attribute, None)
+                    ),
+                    None,
+                )
 
                 if host_port:
                     # Extract just the hostname (no protocol, no port)
                     service_host = self._extract_hostname(host_port).lower()
 
-                    # Match hostname (case-insensitive)
-                    if service_host == connector_host:
+                    # Match hostname (case-insensitive, ignoring a known domain suffix)
+                    if self._strip_domain_suffix(service_host, domain_suffixes) == connector_host_key:
                         logger.info(
                             f"Matched database service: {service.name} (type={service_type}, hostname={connector_host})"
                         )
@@ -478,7 +495,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 )
             )
 
-    def get_dataset_entity(
+    def get_dataset_entity(  # noqa: C901
         self,
         pipeline_details: KafkaConnectPipelineDetails,
         dataset_details: KafkaConnectDatasetDetails,
@@ -516,7 +533,8 @@ class KafkaconnectSource(PipelineServiceSource):
                             return dataset_entity
 
                     # Priority 2: Use configured dbServiceNames
-                    for dbservicename in self.get_db_service_names() or ["*"]:
+                    db_service_names = self.get_db_service_names()
+                    for dbservicename in db_service_names or ["*"]:
                         dataset_entity = self.metadata.get_by_name(
                             entity=dataset_details.dataset_type,
                             fqn=fqn.build(
@@ -531,6 +549,11 @@ class KafkaconnectSource(PipelineServiceSource):
 
                         if dataset_entity:
                             return dataset_entity
+
+                    # Without a table name the search would fall back to the database alone and
+                    # could match an unrelated table, emitting wrong lineage.
+                    if not dataset_details.table:
+                        return None
 
                     # Priority 3: Fallback to search across all database services
                     logger.info(
@@ -559,7 +582,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     logger.warning(
                         f"Table '{dataset_details.table}' not found in OpenMetadata "
                         f"(database={dataset_details.database}, schema={dataset_details.schema}). "
-                        f"Tried services: {self.get_db_service_names() or 'none configured'}. "
+                        f"Tried services: {db_service_names or 'none configured'}. "
                         f"If the table exists, set lineageInformation.dbServiceNames on this "
                         f"pipeline service to the database service holding it."
                     )
