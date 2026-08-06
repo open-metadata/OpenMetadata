@@ -1516,6 +1516,10 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
+      compareAndUpdateAny(
+          () -> SubjectCache.invalidateUserContext(updated.getName()),
+          "personas",
+          "defaultPersona");
     }
 
     private void updateAllowImpersonation() {

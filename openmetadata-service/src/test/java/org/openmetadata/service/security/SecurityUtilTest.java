@@ -439,7 +439,67 @@ class SecurityUtilTest {
                     "example.com",
                     Set.of(),
                     true));
-    assertTrue(invalidDomainException.getMessage().contains("principal domain example.com"));
+    assertTrue(invalidDomainException.getMessage().contains("principal domain"));
+    assertTrue(invalidDomainException.getMessage().contains("other.com"));
+    assertTrue(invalidDomainException.getMessage().contains("example.com"));
+  }
+
+  @Test
+  void testValidateDomainEnforcementIsCaseInsensitive() {
+    Map<String, String> mapping = Map.of("username", "preferred_username", "email", "email_claim");
+
+    assertDoesNotThrow(
+        () ->
+            SecurityUtil.validateDomainEnforcement(
+                mapping,
+                List.of("email_claim"),
+                Map.of("email_claim", stringClaim("alice@BCPCorp.OnMicrosoft.com")),
+                "BCPCorp.net",
+                Set.of("bcpcorp.net", "bcpcorp.onmicrosoft.com"),
+                true));
+
+    assertDoesNotThrow(
+        () ->
+            SecurityUtil.validateDomainEnforcement(
+                mapping,
+                List.of("email_claim"),
+                Map.of("email_claim", stringClaim("alice@BCPCorp.net")),
+                "bcpcorp.net",
+                Set.of(),
+                true));
+  }
+
+  @Test
+  void testIsOpenMetadataIssuedTokenRequiresMatchingIssuerAndKeyId() {
+    Map<String, Claim> claims = Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("open-metadata.org"));
+
+    assertTrue(
+        SecurityUtil.isOpenMetadataIssuedToken(claims, "om-key", "open-metadata.org", "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(
+            claims, "attacker-key", "open-metadata.org", "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(
+            Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("evil.com")),
+            "om-key",
+            "open-metadata.org",
+            "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(Map.of(), "om-key", "open-metadata.org", "om-key"));
+  }
+
+  @Test
+  void testIsOpenMetadataIssuedTokenFalseWhenServerHasNoSigningIdentity() {
+    Map<String, Claim> spoofed =
+        Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("open-metadata.org"));
+
+    assertFalse(SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", null, "om-key"));
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", "open-metadata.org", null));
+    assertFalse(SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", "", ""));
   }
 
   @Test

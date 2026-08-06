@@ -42,6 +42,16 @@ describe('IconUtils', () => {
       expect(isImageUrl('image.file.jpeg')).toBe(true);
     });
 
+    it('should return true for relative image paths', () => {
+      expect(isImageUrl('assets/certifications/gold.svg')).toBe(true);
+      expect(isImageUrl('images/icons/bronze.png')).toBe(true);
+    });
+
+    it('should return false for relative paths containing parent directory segments', () => {
+      expect(isImageUrl('../assets/icon.png')).toBe(false);
+      expect(isImageUrl('assets/../icon.png')).toBe(false);
+    });
+
     it('should return true for all supported image extensions', () => {
       const extensions = [
         'png',
@@ -167,6 +177,46 @@ describe('IconUtils', () => {
 
       expect(img).toBeInTheDocument();
       expect(img).toHaveStyle({ width: '48px', height: '48px' });
+    });
+
+    it('should apply custom className to icon component', () => {
+      const { container } = render(
+        <>{renderIcon('Cube01', { className: 'custom-class' })}</>
+      );
+      const svg = container.querySelector('svg');
+
+      expect(svg).toBeInTheDocument();
+      expect(svg).toHaveClass('custom-class');
+    });
+
+    it('should apply custom alt text to img element', () => {
+      const { container } = render(
+        <>{renderIcon('icon.png', { alt: 'certification: Gold' })}</>
+      );
+      const img = container.querySelector('img');
+
+      expect(img).toBeInTheDocument();
+      expect(img).toHaveAttribute('alt', 'certification: Gold');
+    });
+
+    it('should default alt text to icon for img element', () => {
+      const { container } = render(<>{renderIcon('icon.png')}</>);
+      const img = container.querySelector('img');
+
+      expect(img).toBeInTheDocument();
+      expect(img).toHaveAttribute('alt', 'icon');
+    });
+
+    it('should render img element for relative image paths', () => {
+      const { container } = render(
+        <>{renderIcon('assets/certifications/gold.svg')}</>
+      );
+      const img = container.querySelector('img');
+
+      expect(img).toBeInTheDocument();
+      expect(img?.getAttribute('src')).toContain(
+        'assets/certifications/gold.svg'
+      );
     });
 
     it('should apply custom className to img element', () => {

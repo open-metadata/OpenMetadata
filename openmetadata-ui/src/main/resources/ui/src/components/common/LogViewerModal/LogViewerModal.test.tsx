@@ -11,8 +11,22 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { forwardRef, ReactNode, useImperativeHandle } from 'react';
 import LogViewerModal from './LogViewerModal.component';
+
+// Captures the props LazyLog was last rendered with so tests can drive its
+// scroll callback and assert on the imperative jump-to-end handle.
+const mockLazyLog: {
+  onScroll?: (v: {
+    scrollTop: number;
+    scrollHeight: number;
+    clientHeight: number;
+  }) => void;
+  scrollToIndex: jest.Mock;
+} = {
+  onScroll: undefined,
+  scrollToIndex: jest.fn(),
+};
 
 const onCopyToClipBoard = jest.fn();
 
@@ -21,21 +35,40 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@melloware/react-logviewer', () => ({
-  LazyLog: ({
-    text,
-    follow,
-    formatPart,
-  }: {
-    text: string;
-    follow?: boolean;
-    formatPart?: (text: string) => ReactNode;
-  }) => (
-    <pre
-      data-colorized={String(Boolean(formatPart))}
-      data-follow={String(follow)}
-      data-testid="lazy-log">
-      {text}
-    </pre>
+  LazyLog: forwardRef(
+    (
+      {
+        text,
+        follow,
+        formatPart,
+        onScroll,
+      }: {
+        text: string;
+        follow?: boolean;
+        formatPart?: (text: string) => ReactNode;
+        onScroll?: (v: {
+          scrollTop: number;
+          scrollHeight: number;
+          clientHeight: number;
+        }) => void;
+      },
+      ref
+    ) => {
+      mockLazyLog.onScroll = onScroll;
+      useImperativeHandle(ref, () => ({
+        state: { count: 3 },
+        listRef: { current: { scrollToIndex: mockLazyLog.scrollToIndex } },
+      }));
+
+      return (
+        <pre
+          data-colorized={String(Boolean(formatPart))}
+          data-follow={String(follow)}
+          data-testid="lazy-log">
+          {text}
+        </pre>
+      );
+    }
   ),
 }));
 
@@ -61,6 +94,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       close
     </button>
   ),
+  Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({
+    children,
+    onPress,
+    className,
+    'data-testid': testId,
+    'aria-label': ariaLabel,
+    'aria-pressed': ariaPressed,
+  }: {
+    children: ReactNode;
+    onPress?: () => void;
+    className?: string;
+    'data-testid'?: string;
+    'aria-label'?: string;
+    'aria-pressed'?: boolean;
+  }) => (
+    <button
+      aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
+      className={className}
+      data-testid={testId}
+      onClick={onPress}>
+      {children}
+    </button>
+  ),
 }));
 
 jest.mock('react-aria-components', () => ({
@@ -78,9 +136,13 @@ jest.mock('react-aria-components', () => ({
 }));
 
 jest.mock('@untitledui/icons', () => ({
+  AlignLeft: () => <span data-testid="icon-wrap" />,
+  ChevronDownDouble: () => <span data-testid="icon-jump-to-end" />,
   Copy01: () => <span data-testid="icon-copy" />,
   Download01: () => <span data-testid="icon-download" />,
   File02: () => <span data-testid="icon-file" />,
+  Maximize01: () => <span data-testid="icon-maximize" />,
+  Minimize01: () => <span data-testid="icon-minimize" />,
   SearchMd: () => <span data-testid="icon-search" />,
 }));
 
@@ -103,6 +165,8 @@ const defaultProps = {
 describe('LogViewerModal', () => {
   beforeEach(() => {
     onCopyToClipBoard.mockClear();
+    mockLazyLog.scrollToIndex.mockClear();
+    mockLazyLog.onScroll = undefined;
   });
 
   it('renders the title and logs when open', () => {
@@ -151,6 +215,123 @@ describe('LogViewerModal', () => {
     fireEvent.click(screen.getByTestId('log-viewer-download'));
 
     expect(onDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles the wrap button pressed state on click', () => {
+    render(<LogViewerModal {...defaultProps} />);
+    const wrapButton = screen.getByTestId('log-viewer-wrap');
+
+    expect(wrapButton).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(wrapButton);
+
+    expect(wrapButton).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('toggles fullscreen: flips aria-pressed, swaps the icon, and adds the fullscreen class', () => {
+    render(<LogViewerModal {...defaultProps} />);
+    const fullScreenButton = screen.getByTestId('log-viewer-fullscreen');
+
+    expect(fullScreenButton).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByTestId('icon-maximize')).toBeInTheDocument();
+    expect(screen.getByTestId('dialog')).not.toHaveClass('lvm-fullscreen');
+
+    fireEvent.click(fullScreenButton);
+
+    expect(fullScreenButton).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('icon-minimize')).toBeInTheDocument();
+    expect(screen.getByTestId('dialog')).toHaveClass('lvm-fullscreen');
+  });
+
+  it('resets fullscreen when the modal is closed and reopened', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+    fireEvent.click(screen.getByTestId('log-viewer-fullscreen'));
+
+    expect(screen.getByTestId('dialog')).toHaveClass('lvm-fullscreen');
+
+    rerender(<LogViewerModal {...defaultProps} open={false} />);
+    rerender(<LogViewerModal {...defaultProps} open />);
+
+    expect(screen.getByTestId('dialog')).not.toHaveClass('lvm-fullscreen');
+  });
+
+  it('scrolls to the last line when jump-to-end is clicked', () => {
+    render(<LogViewerModal {...defaultProps} />);
+
+    fireEvent.click(screen.getByTestId('log-viewer-jump-to-end'));
+
+    expect(mockLazyLog.scrollToIndex).toHaveBeenCalledWith(2);
+  });
+
+  it('calls onLoadMore when scrolled to the bottom with more pages available', () => {
+    const onLoadMore = jest.fn();
+    render(
+      <LogViewerModal {...defaultProps} hasMore onLoadMore={onLoadMore} />
+    );
+
+    mockLazyLog.onScroll?.({
+      scrollTop: 100,
+      scrollHeight: 100,
+      clientHeight: 0,
+    });
+
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onLoadMore when hasMore is false or a fetch is already running', () => {
+    const onLoadMore = jest.fn();
+    const bottom = { scrollTop: 100, scrollHeight: 100, clientHeight: 0 };
+
+    const { rerender } = render(
+      <LogViewerModal
+        {...defaultProps}
+        hasMore={false}
+        onLoadMore={onLoadMore}
+      />
+    );
+    mockLazyLog.onScroll?.(bottom);
+
+    rerender(
+      <LogViewerModal
+        {...defaultProps}
+        hasMore
+        loadingMore
+        onLoadMore={onLoadMore}
+      />
+    );
+    mockLazyLog.onScroll?.(bottom);
+
+    expect(onLoadMore).not.toHaveBeenCalled();
+  });
+
+  it('suppresses load-more while a search query is active', () => {
+    const onLoadMore = jest.fn();
+    render(
+      <LogViewerModal {...defaultProps} hasMore onLoadMore={onLoadMore} />
+    );
+
+    fireEvent.change(screen.getByTestId('log-viewer-search'), {
+      target: { value: 'INFO' },
+    });
+    mockLazyLog.onScroll?.({
+      scrollTop: 100,
+      scrollHeight: 100,
+      clientHeight: 0,
+    });
+
+    expect(onLoadMore).not.toHaveBeenCalled();
+  });
+
+  it('shows a loader in place of the download button while downloading', () => {
+    const onDownload = jest.fn();
+    render(
+      <LogViewerModal {...defaultProps} downloading onDownload={onDownload} />
+    );
+
+    expect(
+      screen.getByTestId('log-viewer-download-loader')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('log-viewer-download')).not.toBeInTheDocument();
   });
 
   it('shows the loader instead of logs when loading', () => {
@@ -275,6 +456,37 @@ describe('LogViewerModal', () => {
     );
     expect(screen.getByTestId('log-viewer-last-run')).toHaveTextContent(
       '2026-06-22 10:10 UTC'
+    );
+  });
+});
+
+describe('LogViewerModal — live (stream) mode', () => {
+  it('shows the live indicator and forces follow when mode is stream', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    expect(screen.getByTestId('log-viewer-live-indicator')).toBeInTheDocument();
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'true'
+    );
+  });
+
+  it('hides the live indicator and respects the follow prop when static', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(
+      screen.queryByTestId('log-viewer-live-indicator')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'false'
+    );
+
+    rerender(<LogViewerModal {...defaultProps} follow />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'true'
     );
   });
 });

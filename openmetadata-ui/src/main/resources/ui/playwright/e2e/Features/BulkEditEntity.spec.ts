@@ -44,6 +44,7 @@ import {
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 interface GlossaryDetails {
@@ -165,9 +166,11 @@ test.describe('Bulk Edit Entity', () => {
         .first()
         .waitFor({ state: 'visible' });
 
-      // Click on first cell and edit
-
-      await page.click('.rdg-cell[role="gridcell"]');
+      const databaseNameCell = page
+        .locator('.rdg-cell-name')
+        .getByText(table.database.name, { exact: true });
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
+      await databaseNameCell.click({ force: true });
       await fillRowDetails(
         {
           ...databaseDetails,
@@ -181,7 +184,7 @@ test.describe('Bulk Edit Entity', () => {
         },
         page,
         customPropertyRecord,
-        undefined,
+        true,
         true
       );
 
@@ -209,10 +212,13 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="databases"]');
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.database.name}${databaseDetails.displayName}`
-      );
+      // Verify Details updated. Narrow by the entity name so the assertion
+      // resolves to the just-edited row even when the listing renders more
+      // than one row (e.g. sibling entities from earlier steps that share
+      // the parent).
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.database.name })
+      ).toHaveText(`${table.database.name}${databaseDetails.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -355,10 +361,16 @@ test.describe('Bulk Edit Entity', () => {
       await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.schema.name}${databaseSchemaDetails1.displayName}`
+      await waitForSearchIndexed(
+        apiContext,
+        table.schemaResponseData.fullyQualifiedName,
+        'database_schema_search_index'
       );
+
+      // Verify Details updated. See sibling-row note in the Database step.
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.schema.name })
+      ).toHaveText(`${table.schema.name}${databaseSchemaDetails1.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -461,8 +473,11 @@ test.describe('Bulk Edit Entity', () => {
         .first()
         .waitFor({ state: 'visible' });
 
-      // Click on first cell and edit
-      await page.click('.rdg-cell[role="gridcell"]');
+      const tableNameCell = page
+        .locator('.rdg-cell-name')
+        .getByText(table.entity.name, { exact: true });
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
+      await tableNameCell.click({ force: true });
       await fillRowDetails(
         {
           ...tableDetails1,
@@ -475,7 +490,7 @@ test.describe('Bulk Edit Entity', () => {
         },
         page,
         customPropertyRecord,
-        undefined,
+        true,
         true
       );
 
@@ -496,10 +511,18 @@ test.describe('Bulk Edit Entity', () => {
       await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.entity.name}${tableDetails1.displayName}`
+      await waitForSearchIndexed(
+        apiContext,
+        table.entityResponseData.fullyQualifiedName,
+        'table_search_index'
       );
+
+      // Verify Details updated. See sibling-row note in the Database step —
+      // the schema listing can render 15+ table rows on redirect (each with a
+      // column-name span), so this narrows to the just-edited table.
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.entity.name })
+      ).toHaveText(`${table.entity.name}${tableDetails1.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -671,6 +694,18 @@ test.describe('Bulk Edit Entity', () => {
     await glossary.create(apiContext);
     await glossaryTerm.create(apiContext);
 
+    // Wait for the glossary term to be indexed in ES before bulk-edit reads
+    // the glossary's term list. Otherwise the bulk-edit table comes back
+    // empty, the test fills row 1 with the term's name, and the system
+    // creates a new term instead of recognizing the existing one — the
+    // subsequent status assertion gets "Entity created" instead of
+    // "Entity updated".
+    await waitForSearchIndexed(
+      apiContext,
+      glossaryTerm.responseData.fullyQualifiedName,
+      'glossary_term_search_index'
+    );
+
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
         page,
@@ -805,6 +840,14 @@ test.describe('Bulk Edit Entity', () => {
     nestedGlossaryTerm.data.fullyQualifiedName = `${parentGlossaryTerm.responseData.fullyQualifiedName}."${nestedGlossaryTerm.data.name}"`;
     await nestedGlossaryTerm.create(apiContext);
 
+    // Wait for the nested term to be indexed before the bulk-edit reads the
+    // parent's term list, so the exported grid reflects the correct child set.
+    await waitForSearchIndexed(
+      apiContext,
+      nestedGlossaryTerm.responseData.fullyQualifiedName,
+      'glossary_term_search_index'
+    );
+
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
         page,
@@ -819,13 +862,29 @@ test.describe('Bulk Edit Entity', () => {
       // Visit the glossary terms tab
       await page.click('[data-testid="terms"]');
 
-      // Click on bulk edit button for the glossary term
+      // Click on bulk edit button for the glossary term. Wait for the export
+      // scoped to THIS parent term's FQN so the grid can't be populated from a
+      // stale activeGlossary scope (which yields a wrong, larger term set and a
+      // flaky processed-row count).
+      const parentTermFqn = parentGlossaryTerm.responseData.fullyQualifiedName;
+      const bulkEditExportResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/glossaryTerms/name/') &&
+          response.url().includes(encodeURIComponent(parentTermFqn)) &&
+          response.url().includes('exportAsync')
+      );
       await page.click('[data-testid="bulk-edit-table"]');
+      await bulkEditExportResponse;
 
       await waitForAllLoadersToDisappear(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+      // The parent term has exactly one child; a larger count means the export
+      // ran against the wrong scope — fail fast here instead of a confusing
+      // processed-row mismatch later.
+      await expect(page.locator('.rdg-row')).toHaveCount(1);
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })

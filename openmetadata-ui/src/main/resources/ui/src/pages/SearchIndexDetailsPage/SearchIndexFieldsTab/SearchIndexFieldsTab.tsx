@@ -13,6 +13,7 @@
 
 import { lazy, useCallback, useMemo } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
+import { EntityDetailWidgetSkeleton } from '../../../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import {
   SearchIndex,
@@ -22,7 +23,8 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getAllRowKeysByKeyName } from '../../../utils/TablePureUtils';
 
 const SearchIndexFieldsTable = withSuspenseFallback(
-  lazy(() => import('../SearchIndexFieldsTable/SearchIndexFieldsTable'))
+  lazy(() => import('../SearchIndexFieldsTable/SearchIndexFieldsTable')),
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 function SearchIndexFieldsTab() {

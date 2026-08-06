@@ -204,6 +204,17 @@ class TestClientApiVersionDetection:
         assert client.api_version == "v1"
 
 
+# ── Client: Retry Configuration ──────────────────────────────────────────
+
+
+class TestClientRetryCodes:
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_503_and_504_are_retried(self, mock_rest_cls):
+        _make_client(mock_rest_cls)
+        client_config = mock_rest_cls.call_args.args[0]
+        assert client_config.retry_codes == [503, 504]
+
+
 # ── Client: Build DAG Details ────────────────────────────────────────────
 
 
@@ -252,6 +263,78 @@ class TestClientBuildDagDetails:
         assert result.tasks[0].task_id == "extract"
         assert result.tasks[0].downstream_task_ids == ["transform"]
         assert result.tasks[0].class_ref["class_name"] == "PythonOperator"
+
+
+# ── Client: DAG Count ────────────────────────────────────────────────────
+
+
+class TestClientGetDagsCount:
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_total_entries(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": [{"dag_id": "d1"}], "total_entries": 42}
+
+        assert client.get_dags_count() == 42
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_none_when_total_entries_absent(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": []}
+
+        assert client.get_dags_count() is None
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_none_on_request_error(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.side_effect = RequestsConnectionError("boom")
+
+        assert client.get_dags_count() is None
+
+
+# ── Source: Progress Totals ──────────────────────────────────────────────
+
+
+class TestDeclareProgressTotals:
+    def test_sets_pipeline_total_when_count_positive(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = 7
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_called_once_with("Pipeline", 7)
+
+    def test_does_not_declare_when_count_none(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = None
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+
+    def test_does_not_declare_when_count_zero(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = 0
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+
+    def test_does_not_declare_when_pipeline_filter_configured(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = True
+        source.connection.get_dags_count.return_value = 7
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+        source.connection.get_dags_count.assert_not_called()
 
 
 # ── Client: Date Field ───────────────────────────────────────────────────
@@ -865,3 +948,25 @@ class TestClientGetDagRuns:
 
         runs = client.get_dag_runs("my_dag")
         assert runs == []
+
+
+class TestIncludeUnDeployedPipelines:
+    """REST path must honor includeUnDeployedPipelines like the DB path does."""
+
+    def _run(self, include_undeployed):
+        source = MagicMock()
+        source.source_config.includeUnDeployedPipelines = include_undeployed
+        source.connection.get_all_dags.return_value = [
+            {"dag_id": "active_1", "is_paused": False},
+            {"dag_id": "paused_1", "is_paused": True},
+            {"dag_id": "active_2", "is_paused": False},
+        ]
+        source.connection.build_dag_details.side_effect = lambda dag: dag["dag_id"]
+
+        return list(AirflowApiSource.get_pipelines_list(source))
+
+    def test_excludes_paused_when_disabled(self):
+        assert self._run(False) == ["active_1", "active_2"]
+
+    def test_keeps_paused_when_enabled(self):
+        assert self._run(True) == ["active_1", "paused_1", "active_2"]

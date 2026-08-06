@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render } from '@testing-library/react';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';
 
 const mockNavigate = jest.fn();
@@ -37,19 +37,9 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
-jest.mock('../../hooks/useAlertStore', () => ({
-  useAlertStore: jest.fn(() => ({
-    alert: { message: 'Test Alert', type: 'success' },
-    resetAlert: jest.fn(),
-  })),
-}));
-
-jest.mock('../../components/AlertBar/AlertBar', () => {
-  return jest.fn().mockReturnValue(<p data-testid="alert-bar">Alert Bar</p>);
-});
-
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -119,10 +109,8 @@ describe('ForgotPassword', () => {
     expect(errorMessage).toBeInTheDocument();
   });
 
-  it('show alert', async () => {
-    const { getByLabelText, getByText, getByTestId } = render(
-      <ForgotPassword />
-    );
+  it('shows success toast on submit', async () => {
+    const { getByLabelText, getByText } = render(<ForgotPassword />);
     const emailInput = getByLabelText('Email');
     const submitButton = getByText('Send Login Link');
     await act(async () => {
@@ -133,7 +121,7 @@ describe('ForgotPassword', () => {
     });
 
     expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
-    expect(getByTestId('alert-bar')).toBeInTheDocument();
+    expect(showSuccessToast).toHaveBeenCalled();
   });
 
   it('show call push back to login', async () => {
@@ -151,9 +139,7 @@ describe('ForgotPassword', () => {
       handleForgotPassword: mockHandleError,
     });
 
-    const { getByLabelText, getByText, getByTestId } = render(
-      <ForgotPassword />
-    );
+    const { getByLabelText, getByText } = render(<ForgotPassword />);
     const emailInput = getByLabelText('Email');
     const submitButton = getByText('Send Login Link');
     await act(async () => {
@@ -165,6 +151,5 @@ describe('ForgotPassword', () => {
 
     expect(showErrorToast).toHaveBeenCalledWith('Email not found');
     expect(mockHandleError).toHaveBeenCalledWith('test@example.com');
-    expect(getByTestId('alert-bar')).toBeInTheDocument();
   });
 });

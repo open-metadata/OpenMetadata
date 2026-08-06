@@ -170,6 +170,9 @@
           }
         }
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "tableType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -241,7 +244,8 @@
             "type": "integer"
           },
           "extension": {
-            "type": "flattened"
+            "type": "object",
+            "enabled": false
           },
           "customPropertiesTyped": {
             "type": "nested",
@@ -553,7 +557,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "dataProducts": {
         "properties": {
@@ -1093,6 +1098,13 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiContext": {
+        "type": "object",
+        "enabled": false
+      },
+      "aiContextForeignKeyTargets": {
+        "type": "keyword"
       }
     }
   }

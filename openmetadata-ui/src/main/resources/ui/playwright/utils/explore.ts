@@ -195,11 +195,13 @@ export const expandServiceInExploreTree = async (
   serviceExpanded = false
 ) => {
   if (!serviceExpanded) {
-    // Expanding the serviceType groups its services. Tree counts aggregate over
-    // the dataAsset index now, so the request carries the serviceType filter
-    // (it is no longer an index=database lookup).
+    // Expanding the serviceType groups its services. The service drill-down
+    // goes through the aggregate API (POST /search/aggregate) so the buckets
+    // carry service.style top hits for custom service icons.
     const serviceNameRes = page.waitForResponse(
-      '/api/v1/search/query?*index=dataAsset*serviceType*'
+      (response) =>
+        response.url().endsWith('/api/v1/search/aggregate') &&
+        response.request().method() === 'POST'
     );
     // Tree rows carry count badges, so match by testid instead of exact text
     await page

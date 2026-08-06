@@ -18,6 +18,7 @@ import {
   Card as CoreCard,
   Divider,
   Dropdown,
+  PaginationCardWithControls,
   Toggle,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
@@ -25,9 +26,10 @@ import {
   ChevronDown,
   Download01,
   FilterFunnel01,
+  InfoCircle,
   Trash01,
 } from '@untitledui/icons';
-import { Card, Col, Menu, Modal, Radio, Row, Skeleton, Typography } from 'antd';
+import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
@@ -39,6 +41,11 @@ import AppliedFilterText from '../../components/Explore/AppliedFilterText/Applie
 import ExploreQueryFilterChips from '../../components/Explore/ExploreQueryFilterChips/ExploreQueryFilterChips.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
 import {
   entitySortingFields,
   SUPPORTED_EMPTY_FILTER_FIELDS,
@@ -62,10 +69,7 @@ import {
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
-import {
-  CsvJobsTray,
-  CSV_JOBS_REFRESH_EVENT,
-} from '../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
+import { CSV_JOBS_REFRESH_EVENT } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
@@ -91,15 +95,23 @@ const EntitySummaryPanel = withSuspenseFallback(
 );
 
 const EXPORT_ALL_ASSETS_LIMIT = 200000;
+const EXPLORE_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+];
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
   activeTabKey,
   tabItems = [],
   searchResults,
+  showRankingDetails = false,
+  onChangeShowRankingDetails,
   onChangeAdvancedSearchQuickFilters,
   searchIndex,
   sortOrder,
+  currentPage = 1,
   onChangeSortOder,
   sortValue,
   onChangeSortValue,
@@ -107,7 +119,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onChangeSearchIndex,
   showDeleted,
   onChangePage = noop,
+  onChangePageSize = noop,
   loading,
+  pageSize = PAGE_SIZE_BASE,
   quickFilters,
   isElasticSearchIssue,
   browseFields = [],
@@ -122,7 +136,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
     useState<SearchedDataProps['data'][number]['_source']>();
-
   const firstEntity = searchResults?.hits
     ?.hits[0] as SearchedDataProps['data'][number];
 
@@ -140,9 +153,23 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
     [location.search]
   );
+  const totalValue = searchResults?.hits.total.value ?? 0;
+  const totalPages = useMemo(
+    () => Math.max(Math.ceil(totalValue / pageSize), 1),
+    [pageSize, totalValue]
+  );
+  const validCurrentPage = useMemo(
+    () => Math.min(Math.max(currentPage, 1), totalPages),
+    [currentPage, totalPages]
+  );
 
-  const { toggleModal, sqlQuery, queryFilter, onResetAllFilters } =
-    useAdvanceSearch();
+  const {
+    toggleModal,
+    sqlQuery,
+    queryFilter,
+    onResetQueryFilter,
+    onResetAllFilters,
+  } = useAdvanceSearch();
 
   const [showExportScopeModal, setShowExportScopeModal] = useState(false);
   const [exportScope, setExportScope] = useState<'visible' | 'all'>('all');
@@ -155,6 +182,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const isSearchMode = useMemo(
     () => Boolean(searchQueryParam),
     [searchQueryParam]
+  );
+  const hasActiveFilters = useMemo(
+    () => Boolean(queryFilter || quickFilters || sqlQuery || searchQueryParam),
+    [queryFilter, quickFilters, sqlQuery, searchQueryParam]
   );
   const pageResultCount = useMemo(
     () => searchResults?.hits?.hits?.length ?? 0,
@@ -262,14 +293,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
       if (!isVisibleScope || isSearchMode) {
         return undefined;
       }
-      const currentPage = isString(parsedSearch.page)
-        ? Number.parseInt(parsedSearch.page, 10) || 1
-        : 1;
-      const pageSize = isString(parsedSearch.size)
-        ? Number.parseInt(parsedSearch.size, 10) || pageResultCount
-        : pageResultCount;
 
-      return (currentPage - 1) * pageSize;
+      return (validCurrentPage - 1) * pageSize;
     })();
 
     const params: Parameters<typeof exportSearchResultsAsync>[0] = {
@@ -315,7 +340,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
     visibleResultCount,
     isSearchMode,
     pageResultCount,
-    parsedSearch,
+    validCurrentPage,
+    pageSize,
     searchQueryParam,
     sortValue,
     sortOrder,
@@ -360,6 +386,40 @@ const ExploreV1: React.FC<ExploreProps> = ({
     },
     []
   );
+
+  const handleExplorePageChange = useCallback(
+    (updatedPage: number) => {
+      onChangePage(updatedPage);
+    },
+    [onChangePage]
+  );
+
+  const handleExplorePageSizeChange = useCallback(
+    (updatedPageSize: number) => {
+      onChangePageSize(updatedPageSize);
+    },
+    [onChangePageSize]
+  );
+
+  useEffect(() => {
+    if (
+      loading ||
+      isElasticSearchIssue ||
+      !searchResults ||
+      currentPage === validCurrentPage
+    ) {
+      return;
+    }
+
+    onChangePage(validCurrentPage);
+  }, [
+    currentPage,
+    isElasticSearchIssue,
+    loading,
+    onChangePage,
+    searchResults,
+    validCurrentPage,
+  ]);
 
   const clearFilters = () => {
     onResetAllFilters();
@@ -476,6 +536,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => selectedQuickFilters.some((field) => !isEmpty(field.value)),
     [selectedQuickFilters]
   );
+  const hasActiveFilterQuery = useMemo(
+    () => hasQuickFilterValues || !isEmpty(browseFields),
+    [hasQuickFilterValues, browseFields]
+  );
+  const shouldShowQueryFilterChips = useMemo(
+    () => hasActiveFilterQuery || !searchQueryParam,
+    [hasActiveFilterQuery, searchQueryParam]
+  );
 
   const selectedEntityTypes = useMemo(() => {
     const entityTypeField = selectedQuickFilters.find(
@@ -526,6 +594,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
     return (
       <ExploreTree
+        additionalQueryFilter={queryFilter as QueryFilterInterface | undefined}
         selectedEntityTypes={selectedEntityTypes}
         onFieldValueSelect={handleQuickFiltersChange}
         onTreeSelect={handleExploreTreeSelect}
@@ -540,6 +609,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     loading,
     onChangeSearchIndex,
     selectedEntityTypes,
+    queryFilter,
   ]);
 
   useEffect(() => {
@@ -661,7 +731,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </Col>
           <Col className="d-flex items-center justify-end gap-3" flex={410}>
             <Button
-              aria-label="Sort order"
+              aria-label={t('label.sort-order')}
               className="tw:p-0"
               color="tertiary"
               data-testid="sort-order-button"
@@ -680,6 +750,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
               }
             />
 
+            <Divider className="tw:my-2" orientation="vertical" />
+
             <SortingDropDown
               fieldList={translatedSortingFields}
               handleFieldDropDown={onChangeSortValue}
@@ -687,17 +759,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
             />
 
             <Divider className="tw:my-2" orientation="vertical" />
-
-            {(hasQuickFilterValues || !isEmpty(browseFields) || sqlQuery) && (
-              <Typography.Text
-                className="text-primary self-center cursor-pointer font-medium"
-                data-testid="clear-filters"
-                onClick={() => clearFilters()}>
-                {t('label.clear-entity', {
-                  entity: t('label.all'),
-                })}
-              </Typography.Text>
-            )}
 
             <Dropdown.Root>
               <Button
@@ -708,7 +769,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 {t('label.tool-plural')}
               </Button>
               <Dropdown.Popover>
-                <Dropdown.Menu aria-label="Actions">
+                <Dropdown.Menu aria-label={t('label.action-plural')}>
                   <Dropdown.Item
                     icon={Download01}
                     label={t('label.export')}
@@ -720,8 +781,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     id="show-deleted"
                     onPress={() => onChangeShowDeleted(!showDeleted)}>
                     <Box justify="between">
-                      {t('label.deleted')}
-                      <Toggle isSelected={showDeleted} />
+                      {t('label.show-deleted')}
+                      <Toggle
+                        excludeFromTabOrder
+                        isReadOnly
+                        aria-label={t('label.show-deleted')}
+                        className="tw:pointer-events-none"
+                        isSelected={showDeleted}
+                      />
                     </Box>
                   </Dropdown.Item>
 
@@ -730,13 +797,29 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     label={t('label.advanced-search')}
                     onPress={() => toggleModal(true)}
                   />
+
+                  <Dropdown.Item
+                    icon={InfoCircle}
+                    id="show-ranking-details"
+                    onPress={() =>
+                      onChangeShowRankingDetails?.(!showRankingDetails)
+                    }>
+                    <Box justify="between">
+                      {t('label.ranking-detail-plural')}
+                      <Toggle
+                        excludeFromTabOrder
+                        isReadOnly
+                        aria-label={t('label.ranking-detail-plural')}
+                        className="tw:pointer-events-none"
+                        isSelected={showRankingDetails}
+                      />
+                    </Box>
+                  </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
           </Col>
-          {(hasQuickFilterValues ||
-            !isEmpty(browseFields) ||
-            !searchQueryParam) && (
+          {shouldShowQueryFilterChips && (
             <Col span={24}>
               <ExploreQueryFilterChips
                 browseFields={browseFields}
@@ -763,7 +846,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Col span={24}>
               <AppliedFilterText
                 filterText={sqlQuery}
-                onClear={() => onResetAllFilters()}
+                onClear={() => onResetQueryFilter()}
                 onEdit={() => toggleModal(true)}
               />
             </Col>
@@ -787,25 +870,39 @@ const ExploreV1: React.FC<ExploreProps> = ({
           flex: 0.8,
           minWidth: 800,
           children: (
-            <Box className="tw:h-full" colGap={3}>
-              <Card className="h-full tw:flex-1 explore-main-card">
-                {!loading && !isElasticSearchIssue ? (
-                  <SearchedData
-                    isFilterSelected
-                    showResultCount
-                    data={searchResults?.hits.hits ?? []}
-                    filter={parsedSearch}
-                    handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                    isSummaryPanelVisible={showSummaryPanel}
-                    selectedEntityId={entityDetails?.id || ''}
-                    totalValue={searchResults?.hits.total.value ?? 0}
-                    onPaginationChange={onChangePage}
+            <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
+              <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
+                <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
+                  {!loading && !isElasticSearchIssue ? (
+                    <SearchedData
+                      data={searchResults?.hits.hits ?? []}
+                      filter={parsedSearch}
+                      handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                      isFilterSelected={hasActiveFilters}
+                      isSummaryPanelVisible={showSummaryPanel}
+                      selectedEntityId={entityDetails?.id || ''}
+                      showRankingDetails={showRankingDetails}
+                      showResultCount={hasActiveFilters}
+                      totalValue={totalValue}
+                    />
+                  ) : (
+                    <></>
+                  )}
+                  {loading ? <Loader /> : <></>}
+                </Card>
+                {!loading && !isElasticSearchIssue && totalValue > 0 ? (
+                  <PaginationCardWithControls
+                    page={validCurrentPage}
+                    pageSize={pageSize}
+                    pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}
+                    total={totalPages}
+                    onPageChange={handleExplorePageChange}
+                    onPageSizeChange={handleExplorePageSizeChange}
                   />
                 ) : (
                   <></>
                 )}
-                {loading ? <Loader /> : <></>}
-              </Card>
+              </div>
 
               {showSummaryPanel && entityDetails && !loading && (
                 <div className="explore-page-right-panel">
@@ -943,7 +1040,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </CoreCard>
         </Radio.Group>
       </Modal>
-      <CsvJobsTray />
     </div>
   );
 };

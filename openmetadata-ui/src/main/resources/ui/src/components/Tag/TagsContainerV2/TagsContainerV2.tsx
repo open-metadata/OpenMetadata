@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Row, Space, Typography } from 'antd';
+import { Col, Form, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import classNames from 'classnames';
 import { isArray, isEmpty, isEqual } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import {
+  WidgetCommentButton,
+  WidgetEditButton,
+  WidgetPlusButton,
+  WidgetRequestButton,
+} from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
@@ -29,6 +34,10 @@ import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import {
+  activateOnEnterOrSpace,
+  stopPropagationIfInteractive,
+} from '../../../utils/InteractiveTargetUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -37,16 +46,11 @@ import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import {
-  CommentIconButton,
-  EditIconButton,
-  PlusIconButton,
-  RequestIconButton,
-} from '../../common/IconButtons/EditIconButton';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
@@ -217,10 +221,8 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <PlusIconButton
-          className="m-t-xss"
+        <WidgetPlusButton
           data-testid="add-tag"
-          size="small"
           title={t('label.add-entity', {
             entity: isGlossaryType
               ? t('label.glossary-term')
@@ -293,10 +295,8 @@ const TagsContainerV2 = ({
     const hasTags = !isEmpty(tags?.[tagType]);
 
     return (
-      <RequestIconButton
+      <WidgetRequestButton
         data-testid="request-entity-tags"
-        newLook={newLook}
-        size="small"
         title={
           hasTags
             ? t('label.update-request-tag-plural')
@@ -309,10 +309,8 @@ const TagsContainerV2 = ({
 
   const conversationThreadElement = useMemo(
     () => (
-      <CommentIconButton
+      <WidgetCommentButton
         data-testid="tag-thread"
-        newLook={newLook}
-        size="small"
         title={t('label.list-entity', {
           entity: t('label.conversation'),
         })}
@@ -324,38 +322,29 @@ const TagsContainerV2 = ({
     [entityType, entityFqn, onThreadLinkSelect]
   );
 
-  const header = useMemo(() => {
+  const headerExtra = useMemo(() => {
+    if (!permission) {
+      return null;
+    }
+
     return (
       <Space>
-        <Typography.Text
-          className={classNames({
-            'text-sm font-medium': newLook,
-            'right-panel-label': !newLook,
-          })}>
-          {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
-        </Typography.Text>
-        {permission && (
+        {addTagButton ?? (
+          <WidgetEditButton
+            data-testid="edit-button"
+            title={t('label.edit-entity', {
+              entity:
+                tagType === TagSource.Classification
+                  ? t('label.tag-plural')
+                  : t('label.glossary-term'),
+            })}
+            onClick={handleAddClick}
+          />
+        )}
+        {showTaskHandler && (
           <>
-            {addTagButton ?? (
-              <EditIconButton
-                data-testid="edit-button"
-                newLook={newLook}
-                size="small"
-                title={t('label.edit-entity', {
-                  entity:
-                    tagType === TagSource.Classification
-                      ? t('label.tag-plural')
-                      : t('label.glossary-term'),
-                })}
-                onClick={handleAddClick}
-              />
-            )}
-            {showTaskHandler && (
-              <>
-                {tagType === TagSource.Classification && requestTagElement}
-                {conversationThreadElement}
-              </>
-            )}
+            {tagType === TagSource.Classification && requestTagElement}
+            {conversationThreadElement}
           </>
         )}
       </Space>
@@ -366,7 +355,6 @@ const TagsContainerV2 = ({
     isEditTags,
     permission,
     showTaskHandler,
-    isGlossaryType,
     requestTagElement,
     conversationThreadElement,
   ]);
@@ -395,7 +383,11 @@ const TagsContainerV2 = ({
     return (
       <Space>
         {showAddTagButton ? (
-          <div onClick={handleAddClick}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleAddClick}
+            onKeyDown={activateOnEnterOrSpace}>
             <TagsV1
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
@@ -444,7 +436,12 @@ const TagsContainerV2 = ({
     return (
       <Row data-testid="entity-tags">
         {showAddTagButton && (
-          <Col className="m-t-xss" onClick={handleAddClick}>
+          <Col
+            className="m-t-xss"
+            role="button"
+            tabIndex={0}
+            onClick={handleAddClick}
+            onKeyDown={activateOnEnterOrSpace}>
             <TagsV1
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
@@ -499,21 +496,35 @@ const TagsContainerV2 = ({
 
   if (newLook) {
     return (
-      <ExpandableCard
-        cardProps={{
-          title: header,
-        }}
+      <WidgetCard
         dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}
-        isExpandDisabled={isEmpty(tags?.[tagType])}>
-        {suggestionDataRender ?? tagBody}
-      </ExpandableCard>
+        forceExpand={isEditTags}
+        headerExtra={headerExtra}
+        isExpandDisabled={isEmpty(tags?.[tagType]) && !isEditTags}
+        title={
+          isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')
+        }>
+        {/* Since WidgetCard is another component without onClick, wrapping the content in a
+            div to stop propagation */}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+          }}>
+          {suggestionDataRender ?? tagBody}
+        </div>
+      </WidgetCard>
     );
   }
 
   return (
     <div
       className="w-full tags-container"
-      data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
+      data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
+      // Narrowed from an unconditional stopPropagation: the tag links and the add/edit buttons
+      // still keep their clicks to themselves, but the padding and the gaps between chips no
+      // longer swallow them. On a clickable row or card those dead spots made the whole tags
+      // column look unclickable.
+      onClick={stopPropagationIfInteractive}>
       {suggestionDataRender ?? (
         <>
           {tagBody}

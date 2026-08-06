@@ -38,7 +38,13 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
   {} as DataQualityContextInterface
 );
 
-const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
+const DataQualityProvider = ({
+  children,
+  createActions,
+}: {
+  children: React.ReactNode;
+  createActions?: DataQualityContextInterface['createActions'];
+}) => {
   const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
     useRequiredParams<{
       tab: DataQualityPageTabs;
@@ -59,6 +65,7 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       currentPage: _currentPage,
       pageSize: _pageSize,
+      searchValue: _searchValue,
       ...filters
     } = params;
 
@@ -83,8 +90,9 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       testCaseSummary,
       isTestCaseSummaryLoading,
       activeTab,
+      createActions,
     };
-  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab]);
+  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 
   const fetchTestSummary = async (params?: DataQualityPageParams) => {
     const filters = {

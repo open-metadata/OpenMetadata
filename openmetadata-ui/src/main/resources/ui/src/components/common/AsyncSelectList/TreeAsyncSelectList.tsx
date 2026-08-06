@@ -79,6 +79,7 @@ interface TreeAsyncSelectListProps
   onSubmit?: () => void;
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
   dropdownMatchSelectWidth?: boolean | number;
+  getPopupContainer?: TreeSelectProps['getPopupContainer'];
 }
 
 interface ExtendedTreeNode {

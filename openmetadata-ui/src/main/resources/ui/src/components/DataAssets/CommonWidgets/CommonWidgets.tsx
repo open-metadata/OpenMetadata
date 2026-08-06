@@ -51,26 +51,117 @@ import {
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
-import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
-import TierWidget from '../../common/TierWidget/TierWidget';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../../AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
-import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
-import { DomainExpertWidget } from '../../Domain/DomainExpertsWidget/DomainExpertWidget';
-import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
-import { DomainLabelV2 } from '../DomainLabelV2/DomainLabelV2';
-import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
-import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
+
+type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const WIDGET_FALLBACK = <EntityDetailWidgetSkeleton />;
+const LARGE_WIDGET_FALLBACK = <EntityDetailWidgetSkeleton lineCount={5} />;
+
+const CertificationWidget = withSuspenseFallback(
+  lazy(() => import('../../common/CertificationWidget/CertificationWidget')),
+  WIDGET_FALLBACK
+);
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (m) => ({
+        default: m.CustomPropertyTable,
+      })
+    )
+  ),
+  LARGE_WIDGET_FALLBACK
+) as CustomPropertyTableComponent;
+
+const Description = withSuspenseFallback(
+  lazy(() => import('../../common/EntityDescription/Description')),
+  WIDGET_FALLBACK
+);
+
+const TierWidget = withSuspenseFallback(
+  lazy(() => import('../../common/TierWidget/TierWidget')),
+  WIDGET_FALLBACK
+);
+
+const LeftPanelContainer = withSuspenseFallback(
+  lazy(() =>
+    import('../../Customization/GenericTab/LeftPanelContainer').then((m) => ({
+      default: m.LeftPanelContainer,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const DataProductsContainer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
+      )
+  ),
+  WIDGET_FALLBACK
+);
+
+const DomainExpertWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../Domain/DomainExpertsWidget/DomainExpertWidget').then((m) => ({
+      default: m.DomainExpertWidget,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const TagsContainerV2 = withSuspenseFallback(
+  lazy(() => import('../../Tag/TagsContainerV2/TagsContainerV2')),
+  WIDGET_FALLBACK
+);
+
+const DomainLabelV2 = withSuspenseFallback(
+  lazy(() =>
+    import('../DomainLabelV2/DomainLabelV2').then((m) => ({
+      default: m.DomainLabelV2,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const OwnerLabelV2 = withSuspenseFallback(
+  lazy(() =>
+    import('../OwnerLabelV2/OwnerLabelV2').then((m) => ({
+      default: m.OwnerLabelV2,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
+const ReviewerLabelV2 = withSuspenseFallback(
+  lazy(() =>
+    import('../ReviewerLabelV2/ReviewerLabelV2').then((m) => ({
+      default: m.ReviewerLabelV2,
+    }))
+  ),
+  WIDGET_FALLBACK
+);
+
 const GlossaryUpdateConfirmationModal = withSuspenseFallback(
   lazy(() =>
     import(
       '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal'
     ).then((m) => ({ default: m.GlossaryUpdateConfirmationModal }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 interface GenericEntity
@@ -353,7 +444,7 @@ export const CommonWidgets = ({
 
   const descriptionWidget = useMemo(() => {
     return (
-      <DescriptionV1
+      <Description
         showSuggestions
         wrapInCard
         description={description}
@@ -410,11 +501,11 @@ export const CommonWidgets = ({
         />
       );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.OWNERS)) {
-      return <OwnerLabelV2<GenericEntity> />;
+      return <OwnerLabelV2 />;
     } else if (
       widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
     ) {
-      return <ReviewerLabelV2<GenericEntity> />;
+      return <ReviewerLabelV2 />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <DomainExpertWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {

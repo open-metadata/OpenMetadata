@@ -25,7 +25,8 @@ import {
   getCsvAsyncJobResult,
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
-import { CsvJobsTray, CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.component';
+import { CsvJobsTray } from './CsvJobsTray.component';
+import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
@@ -153,12 +154,8 @@ describe('CsvJobsTray', () => {
       await screen.findByText('label.background-job-plural')
     ).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /label.background-job-plural/ })
-    );
-
     expect(
-      screen.getByText('label.exported-entity-plural')
+      await screen.findByText('label.exported-entity-plural')
     ).toBeInTheDocument();
   });
 

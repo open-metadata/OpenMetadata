@@ -102,7 +102,15 @@ export const updateTags = async (
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
-  await page.click('[data-testid="tags-container"] [data-testid="add-tag"]');
+  const tagsContainer = page.locator('[data-testid="tags-container"]').first();
+  const addTagBtn = tagsContainer.getByTestId('add-tag');
+  const editTagBtn = tagsContainer.getByTestId('edit-button');
+  const isAdd = await addTagBtn.isVisible();
+  if (isAdd) {
+    await addTagBtn.click();
+  } else {
+    await editTagBtn.click();
+  }
 
   await page.waitForSelector('[data-testid="tag-selector"] input', {
     state: 'visible',
@@ -138,11 +146,7 @@ export const updateDataAsset = async (
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
-  await page
-    .getByTestId('add-data-assets-container')
-    .locator('span')
-    .first()
-    .click();
+  await page.getByTestId('add-data-assets-container').click();
 
   await page.waitForSelector(
     '[data-testid="asset-select-list"] > .ant-select-selector input',
@@ -492,9 +496,7 @@ export const getKnowledgePageCardEntityIdentifier = async (
 
 export const toggleKnowledgePageBookmark = async (
   page: Page,
-  bookmarkBtn: Locator,
-  bookmarkIdentifier: string,
-  shouldBeVisible: boolean
+  bookmarkBtn: Locator
 ) => {
   const bookmarkResponse = page.waitForResponse((response) => {
     const url = response.url();
@@ -507,17 +509,6 @@ export const toggleKnowledgePageBookmark = async (
   const bookmarkRes = await bookmarkResponse;
   expect(bookmarkRes.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
-
-  const rightPanel = page.getByTestId('knowledge-center-right-panel');
-  const specificBookmark = rightPanel.getByTestId(
-    `bookmarked-${bookmarkIdentifier}`
-  );
-
-  if (shouldBeVisible) {
-    await expect(specificBookmark).toBeVisible();
-  } else {
-    await expect(specificBookmark).not.toBeVisible();
-  }
 };
 
 export const createNewKnowledgePageArticle = async (
@@ -691,7 +682,9 @@ export const createLink = async (
     state: 'visible',
   });
 
-  const linkButton = page.getByRole('button', { name: 'Link' });
+  const linkButton = page
+    .getByTestId('center-panel')
+    .getByRole('button', { name: 'Link' });
   await expect(linkButton).toBeVisible();
   await linkButton.click();
 

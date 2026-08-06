@@ -51,6 +51,63 @@ class WorkflowDefinitionGraphValidationTest {
         () -> validateGraph(workflow), "cycles are valid in workflow state machines");
   }
 
+  /**
+   * A userApprovalTask node with expiryTimer.transitionId set emits an outgoing edge condition
+   * named after that transitionId when the boundary timer fires. The validator must treat that
+   * transitionId as a declared transition so the edge condition doesn't fail the
+   * "conditions not declared in transitionMetadata" check.
+   */
+  @Test
+  void expiryTimerTransitionIdCountsAsDeclaredTransition() throws Exception {
+    WorkflowDefinition workflow =
+        JsonUtils.readValue(EXPIRY_TIMER_WORKFLOW_JSON, WorkflowDefinition.class);
+    assertDoesNotThrow(
+        () -> validateGraph(workflow),
+        "expiryTimer.transitionId should be treated as a declared transition");
+  }
+
+  private static final String EXPIRY_TIMER_WORKFLOW_JSON =
+      """
+      {
+        "name": "ExpiryTimerFixture",
+        "fullyQualifiedName": "ExpiryTimerFixture",
+        "displayName": "Expiry Timer Fixture",
+        "description": "Regression: expiryTimer.transitionId must satisfy validator.",
+        "trigger": {"type": "noOp", "config": {}, "output": ["relatedEntity"]},
+        "nodes": [
+          {"type": "startEvent", "subType": "startEvent",
+           "name": "Start", "displayName": "Start"},
+          {"type": "userTask", "subType": "userApprovalTask",
+           "name": "Review", "displayName": "Review",
+           "config": {
+             "assignees": {"addReviewers": true, "addOwners": false,
+                           "candidates": [], "emptyAssigneeStrategy": "assignAdmins"},
+             "approvalThreshold": 1, "rejectionThreshold": 1,
+             "stageId": "review", "stageDisplayName": "Review", "taskStatus": "Open",
+             "assigneeStrategy": "reviewers-and-assignees",
+             "transitionMetadata": [
+               {"id": "approve", "label": "Approve",
+                "targetStageId": "approved", "targetTaskStatus": "Approved",
+                "requiresComment": false}
+             ],
+             "expiryTimer": {"durationVariable": "reviewDuration",
+                             "transitionId": "expired",
+                             "closeAsResolution": "Expired"}
+           },
+           "inputNamespaceMap": {"relatedEntity": "global"}},
+          {"type": "endEvent", "subType": "endEvent",
+           "name": "ApprovedEnd", "displayName": "Approved"},
+          {"type": "endEvent", "subType": "endEvent",
+           "name": "ExpiredEnd", "displayName": "Expired"}
+        ],
+        "edges": [
+          {"from": "Start", "to": "Review"},
+          {"from": "Review", "to": "ApprovedEnd", "condition": "approve"},
+          {"from": "Review", "to": "ExpiredEnd", "condition": "expired"}
+        ]
+      }
+      """;
+
   private void validateGraph(WorkflowDefinition workflow) throws Throwable {
     try (MockedStatic<Entity> ignored = mockStatic(Entity.class, RETURNS_DEEP_STUBS)) {
       WorkflowDefinitionRepository repository = new WorkflowDefinitionRepository();

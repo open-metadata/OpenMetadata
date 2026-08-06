@@ -26,6 +26,7 @@ from collections.abc import Callable
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, Generic, Optional, TypeVar
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.runner import TestConnectionRunner
 from metadata.generated.schema.entity.automations.workflow import (
@@ -35,6 +36,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 if TYPE_CHECKING:
     from metadata.core.connections.test_connection.check import ChecksProvider
@@ -52,17 +56,41 @@ class BaseConnection(ABC, Generic[S, C]):
     service_connection: S
     _client: Optional[C]  # noqa: UP045
 
+    # Per-step test-connection timeout used when the caller passes none. Connectors
+    # with slower steps override this attribute instead of ``test_connection``.
+    step_timeout_seconds: int = STEP_TIMEOUT_SECONDS
+
     def __init__(self, service_connection: S) -> None:
         self.service_connection = service_connection
         self._client = None
         self._closing = ExitStack()
+        self._was_closed = False
 
     @property
     def client(self) -> C:
-        """The service client, built once on first access and cached."""
+        """The service client, built once on first access and cached. Rebuilt if
+        requested after ``close()``."""
         if self._client is None:
-            self._client = self._get_client()
+            self._client = self._build_client()
         return self._client
+
+    def borrow(self) -> Borrowed[C]:
+        """A read-only reference to this connection's client: readable, not
+        buildable, not closable. The first read is what builds the client."""
+        return Borrowed(lambda: self.client)
+
+    def _build_client(self) -> C:
+        if self._was_closed:
+            logger.info(
+                "Connection client for %s was closed; opening a new client.",
+                type(self).__name__,
+            )
+            self._was_closed = False
+        try:
+            return self._get_client()
+        except Exception:
+            self.close()
+            raise
 
     @abstractmethod
     def _get_client(self) -> C:
@@ -79,22 +107,19 @@ class BaseConnection(ABC, Generic[S, C]):
         self,
         metadata: OpenMetadata,
         automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = STEP_TIMEOUT_SECONDS,  # noqa: UP045
+        timeout_seconds: Optional[int] = None,  # noqa: UP045
     ) -> TestConnectionResult:
         """
-        Test the connection to the service through the test-connection runner.
-        The timeout is applied per step.
+        Test the connection through the runner. The timeout is applied per step,
+        defaulting to the connector's ``step_timeout_seconds`` when not passed.
+        Does not close the connection; the owner controls lifecycle (as a context
+        manager or via ``close()``).
         """
         # Every service connection config carries a `type` enum, but `S` is an
         # unbound TypeVar so the access can't be proven statically.
         service_type = self.service_connection.type.value  # pyright: ignore[reportAttributeAccessIssue]
-        try:
-            result = TestConnectionRunner(self.checks(), service_type, timeout_seconds).run(
-                metadata, automation_workflow
-            )
-        finally:
-            self.close()
-        return result
+        effective_timeout = timeout_seconds if timeout_seconds is not None else self.step_timeout_seconds
+        return TestConnectionRunner(self.checks(), service_type, effective_timeout).run(metadata, automation_workflow)
 
     def _on_close(self, teardown: Callable[[], None]) -> None:
         """Register a teardown to run on ``close()``. ``_get_client`` calls this
@@ -110,6 +135,7 @@ class BaseConnection(ABC, Generic[S, C]):
         self._closing.close()
         self._closing = ExitStack()
         self._client = None
+        self._was_closed = True
 
     def __enter__(self) -> "BaseConnection[S, C]":
         return self

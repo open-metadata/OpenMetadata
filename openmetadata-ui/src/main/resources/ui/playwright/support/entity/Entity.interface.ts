@@ -83,6 +83,10 @@ export enum ENTITY_PATH {
   'tableColumn' = 'tableColumn',
   dataProductsTab = 'dataProductsTab',
   domains = 'domain',
+  'drives/directories' = 'directory',
+  'drives/files' = 'file',
+  'drives/spreadsheets' = 'spreadsheet',
+  'drives/worksheets' = 'worksheet',
 }
 
 export type ResponseDataType = {

@@ -129,6 +129,9 @@ class SourceConnectionTest(TestCase):
         assert expected_result == get_connection_url(databricks_conn_obj)
 
     def test_databricks_pipeline_url(self):
+        from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+            PersonalAccessToken,
+        )
         from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
             DatabricksPipelineConnection,
         )
@@ -138,11 +141,35 @@ class SourceConnectionTest(TestCase):
 
         conn_obj = DatabricksPipelineConnection(
             hostPort="my-workspace.cloud.databricks.com:443",
-            token="dapi1234567890",
+            authType=PersonalAccessToken(token="dapi1234567890"),
         )
         url = get_connection_url(conn_obj)
-        assert url == "databricks://token:dapi1234567890@my-workspace.cloud.databricks.com:443"
+        assert url == "databricks://my-workspace.cloud.databricks.com:443"
         assert "databricks+connector" not in url
+
+    def test_databricks_pipeline_auth_config(self):
+        from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+            DatabricksOauth,
+        )
+        from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+            PersonalAccessToken,
+        )
+        from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+            DatabricksPipelineConnection,
+        )
+        from metadata.ingestion.source.database.databricks.auth import get_auth_config
+
+        pat_conn = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+        )
+        assert get_auth_config(pat_conn) == {"access_token": "dapi1234567890"}
+
+        oauth_conn = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=DatabricksOauth(clientId="client-id", clientSecret="client-secret"),
+        )
+        assert "credentials_provider" in get_auth_config(oauth_conn)
 
     def test_databricks_url_with_special_chars_in_catalog(self):
         from metadata.ingestion.source.database.databricks.connection import (

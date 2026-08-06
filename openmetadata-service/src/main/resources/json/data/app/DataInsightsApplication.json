@@ -18,9 +18,6 @@
       "appAnalytics": {
         "enabled": true
       },
-      "dataQuality": {
-        "enabled": true
-      },
       "costAnalysis": {
         "enabled": true
       }

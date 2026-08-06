@@ -17,7 +17,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   lazy,
@@ -40,7 +39,6 @@ import SelectServiceType from '../../components/Settings/Services/AddService/Ste
 import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
 import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
@@ -49,6 +47,7 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
@@ -57,10 +56,8 @@ import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getEntityTypeFromServiceCategory,
-  getServiceRouteFromServiceType,
   getServiceType,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -107,7 +104,13 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
-  const [activeField, setActiveField] = useState<string>('');
+  const {
+    activeField,
+    activeFieldMeta,
+    handleFieldBlur,
+    handleFieldFocus,
+    resetActiveField,
+  } = useFieldFocusManagement();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
@@ -126,7 +129,7 @@ const AddServicePage = () => {
 
   const handleConnectorChangeClick = useCallback(() => {
     resetNameValidation();
-    setActiveField('');
+    resetActiveField();
     setActiveServiceStep(1);
     setIsConnectionVerified(false);
     setServiceConfig({
@@ -193,7 +196,7 @@ const AddServicePage = () => {
   };
 
   const handleServiceCategoryChange = (category: ServiceCategory) => {
-    setShowErrorMessage({ ...showErrorMessage, serviceType: false });
+    setShowErrorMessage((prev) => ({ ...prev, serviceType: false }));
     setServiceConfig((prev) => ({
       ...prev,
       serviceType: '',
@@ -210,6 +213,7 @@ const AddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
+      document.getElementById('service-name')?.focus();
 
       return;
     }
@@ -296,17 +300,8 @@ const AddServicePage = () => {
     }
   };
 
-  const handleFieldFocus = (fieldName: string) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-    }, 50);
-  };
-
   useEffect(() => {
-    setActiveField('');
+    resetActiveField(activeServiceStep === 2 ? 'serviceName' : '');
   }, [activeServiceStep]);
 
   const hideSecondPanel = useMemo(
@@ -331,10 +326,7 @@ const AddServicePage = () => {
         }
       } else if (id === 'category') {
         navigate(
-          getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory)
-          )
+          connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
         );
       }
     },
@@ -378,7 +370,7 @@ const AddServicePage = () => {
   // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
   // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
       <div className="tw:flex-1">
         <Breadcrumbs
           items={serviceBreadcrumb}
@@ -433,6 +425,7 @@ const AddServicePage = () => {
                       name={serviceConfig.name}
                       nameError={nameError}
                       serviceType={serviceConfig.serviceType}
+                      onBlur={handleFieldBlur}
                       onDescriptionChange={(description) =>
                         setServiceConfig((prev) => ({ ...prev, description }))
                       }
@@ -444,17 +437,46 @@ const AddServicePage = () => {
                     />
                     <ConnectionConfigForm
                       hideFooter
+                      additionalMissingFieldsCount={
+                        !serviceConfig.name.trim() ||
+                        Boolean(nameError) ||
+                        isServiceNameChecking
+                          ? 1
+                          : 0
+                      }
                       data={serviceConfig as ServicesType}
+                      isAdditionalValidationPending={isServiceNameChecking}
                       isSubmitDisabled={isStep2NextDisabled}
                       ref={connectionFormRef}
                       serviceCategory={serviceCategory}
                       serviceType={serviceConfig.serviceType}
                       status={saveServiceState}
+                      onBlur={handleFieldBlur}
                       onFocus={handleFieldFocus}
                       onSave={async (e) => {
                         e.formData && (await handleConfigUpdate(e.formData));
                       }}
                       onTestConnectionStatusChange={setIsConnectionVerified}
+                      onValidateAdditionalRequiredFields={() => {
+                        if (!serviceConfig.name.trim()) {
+                          setNameError(
+                            t('message.field-text-is-required', {
+                              fieldText: t('label.service-name'),
+                            })
+                          );
+                          document.getElementById('service-name')?.focus();
+
+                          return false;
+                        }
+
+                        if (nameError || isServiceNameChecking) {
+                          document.getElementById('service-name')?.focus();
+
+                          return false;
+                        }
+
+                        return true;
+                      }}
                     />
                   </div>
                 )}
@@ -533,10 +555,11 @@ const AddServicePage = () => {
           pageTitle={t('label.add-entity', { entity: t('label.service') })}
           secondPanel={{
             children: (
-              <Suspense fallback={<Loader />}>
+              <Suspense fallback={null}>
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}
+                  activeFieldMeta={activeFieldMeta}
                   serviceName={serviceConfig.serviceType}
                   serviceType={getServiceType(serviceCategory)}
                 />

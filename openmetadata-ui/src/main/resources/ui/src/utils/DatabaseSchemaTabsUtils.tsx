@@ -13,7 +13,9 @@
 import { get } from 'lodash';
 import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
@@ -60,7 +62,8 @@ const SchemaTablesTab = withSuspenseFallback(
 );
 
 const StoredProcedureTab = withSuspenseFallback(
-  lazy(() => import('../pages/StoredProcedure/StoredProcedureTab'))
+  lazy(() => import('../pages/StoredProcedure/StoredProcedureTab')),
+  TAB_CONTENT_FALLBACK
 );
 
 export const getDataBaseSchemaPageBaseTabs = ({

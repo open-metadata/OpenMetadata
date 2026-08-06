@@ -73,7 +73,13 @@ export interface ElasticSearchConfiguration {
      * Index factory name
      */
     searchIndexFactoryClassName?: string;
-    searchIndexMappingLanguage:   SearchIndexMappingLanguage;
+    /**
+     * Limits applied while building search documents so that field values can never be rejected
+     * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+     * to tune without changing infrastructure settings.
+     */
+    searchIndexingLimits?:      SearchIndexingLimits;
+    searchIndexMappingLanguage: SearchIndexMappingLanguage;
     /**
      * This enum defines the search Type elastic/open search.
      */
@@ -134,6 +140,12 @@ export interface NaturalLanguageSearch {
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
+    /**
+     * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
+     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
+     * cost of latency. Defaults to 2.
+     */
+    knnNumCandidatesMultiplier?: number;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */
@@ -217,6 +229,44 @@ export enum SearchIndexMappingLanguage {
     Jp = "JP",
     Ru = "RU",
     Zh = "ZH",
+}
+
+/**
+ * Limits applied while building search documents so that field values can never be rejected
+ * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+ * to tune without changing infrastructure settings.
+ */
+export interface SearchIndexingLimits {
+    /**
+     * Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails
+     * into index mappings at creation time so documents cannot be rejected. When false,
+     * mappings are created as-is.
+     */
+    enableMappingHardening?: boolean;
+    /**
+     * Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe
+     * character count derived from this (value/4). The hard Lucene limit is 32766 bytes.
+     */
+    keywordMaxBytes?: number;
+    /**
+     * Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.
+     */
+    mappingDepthLimit?: number;
+    /**
+     * Maximum number of flattened columns or schema fields indexed for a single data asset.
+     * Items beyond this are dropped from the search document.
+     */
+    maxColumns?: number;
+    /**
+     * Maximum number of nested-type objects allowed in a single document before
+     * Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors
+     * index.mapping.nested_objects.limit.
+     */
+    nestedObjectsLimit?: number;
+    /**
+     * Maximum total fields per index. Mirrors index.mapping.total_fields.limit.
+     */
+    totalFieldsLimit?: number;
 }
 
 /**

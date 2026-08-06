@@ -34,20 +34,13 @@ from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: SigmaConnectionConfig) -> SigmaApiClient:
-    """
-    Create connection
-    """
-    try:
-        return SigmaApiClient(connection)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
 class SigmaConnection(BaseConnection[SigmaConnectionConfig, SigmaApiClient]):
     def _get_client(self) -> SigmaApiClient:
-        return get_connection(self.service_connection)
+        try:
+            return SigmaApiClient(self.service_connection)
+        except Exception as exc:
+            msg = f"Unknown error connecting with {self.service_connection}: {exc}."
+            raise SourceConnectionException(msg) from exc
 
     def test_connection(
         self,

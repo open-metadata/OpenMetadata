@@ -32,7 +32,7 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
-import { getCountBadge } from '../utils/EntityDisplayUtils';
+import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
@@ -112,7 +112,11 @@ export const generateSearchDropdownLabel = (
 
   return (
     <div className="d-flex justify-between">
-      <Space align="start" className="m-x-sm" data-testid={option.key} size={8}>
+      <Space
+        align="center"
+        className="m-x-sm"
+        data-testid={option.key}
+        size={8}>
         <InputComponent
           checked={checked}
           data-testid={`${option.key}-${singleSelect ? 'radio' : 'checkbox'}`}
@@ -124,6 +128,11 @@ export const generateSearchDropdownLabel = (
             name={option.label || ''}
             width="18"
           />
+        )}
+        {option.icon && (
+          <span className="tw:flex tw:items-center flex-none">
+            {option.icon}
+          </span>
         )}
         <div>
           <Typography.Text

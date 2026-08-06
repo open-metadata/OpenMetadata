@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-import { Badge, CloseButton } from '@openmetadata/ui-core-components';
+import { CloseButton } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   LINK_ONTOLOGY_COLOR,
   LINK_TECHNICAL_COLOR,
+  LINK_TECHNICAL_SWATCH,
 } from './KnowledgeGraph3D.constants';
 import { KnowledgeGraph3DEdgePanelProps } from './KnowledgeGraph3D.interface';
 import { TYPE_LABEL_KEY } from './KnowledgeGraph3DPanel';
-import { colorFor } from './nodeCanvas';
+import { colorFor, hexRgba } from './nodeCanvas';
+import { formatDerivedRelation } from './ontologyView';
 import { RELATION_LABEL_KEYS } from './rdfGraphAdapter';
 import { GraphNode3D } from './types';
 
@@ -38,13 +40,58 @@ const EndpointRow: FC<{
       style={{ background: colorFor(node.type) }}
     />
     <span className="tw:min-w-0">
-      <span className="tw:block tw:truncate tw:text-sm tw:font-semibold tw:text-primary">
+      <span className="kg3d-panel-text-primary tw:block tw:truncate tw:text-sm tw:font-semibold">
         {node.name}
       </span>
-      <span className="tw:text-xs tw:text-tertiary">{sublabel}</span>
+      <span className="kg3d-panel-text-subtle tw:text-xs">{sublabel}</span>
     </span>
   </button>
 );
+
+/**
+ * The vertical derivation chain (asset → term → … → asset) shown for a derived
+ * ontology edge. Endpoints are assets, the middle steps are glossary terms.
+ */
+const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-1 tw:rounded-xl tw:border tw:border-white/[0.09] tw:bg-white/[0.04] tw:p-4">
+      {path.map((step, index) => {
+        const isEndpoint = index === 0 || index === path.length - 1;
+        const dotColor = isEndpoint
+          ? LINK_TECHNICAL_SWATCH
+          : LINK_ONTOLOGY_COLOR;
+
+        return (
+          <div key={`${step}-${index}`}>
+            <div className="tw:flex tw:items-center tw:gap-2.5">
+              <span
+                className="tw:size-2 tw:flex-none tw:rounded-full"
+                style={{
+                  background: dotColor,
+                  boxShadow: `0 0 9px ${dotColor}`,
+                }}
+              />
+              <span className="kg3d-panel-text-secondary tw:text-[13px] tw:font-semibold">
+                {step}
+              </span>
+              <span className="kg3d-panel-text-muted tw:ml-auto tw:text-[10px]">
+                {t(isEndpoint ? 'label.asset' : 'label.term')}
+              </span>
+            </div>
+            {index < path.length - 1 && (
+              <div
+                className="tw:my-0.5 tw:ml-1 tw:h-3.5 tw:w-px"
+                style={{ background: hexRgba(LINK_ONTOLOGY_COLOR, 0.5) }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
   link,
@@ -55,55 +102,83 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const isOntology = link.kind === 'ontology';
+  const isDerived = Boolean(link.derived && link.path?.length && link.relation);
   const accent = isOntology ? LINK_ONTOLOGY_COLOR : LINK_TECHNICAL_COLOR;
   const relationLabel = RELATION_LABEL_KEYS[link.label]
     ? t(RELATION_LABEL_KEYS[link.label])
     : link.label;
 
   return (
-    <div className="dark-mode kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
+    <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
       <div className="tw:flex tw:items-start tw:gap-3 tw:border-b tw:border-white/[0.08] tw:p-4">
         <span
           className="tw:mt-1 tw:size-3 tw:flex-none tw:rounded-full"
           style={{ background: accent, boxShadow: `0 0 12px ${accent}` }}
         />
         <div className="tw:min-w-0 tw:flex-1">
-          <div className="tw:text-base tw:font-bold tw:text-primary">
-            {t('label.relationship')}
+          <div className="kg3d-panel-text-primary tw:text-base tw:font-bold">
+            {t(isDerived ? 'label.derived-relationship' : 'label.relationship')}
           </div>
           <div className="tw:mt-1.5">
-            <Badge
-              color={isOntology ? 'warning' : 'blue'}
-              size="sm"
-              type="pill-color">
-              {isOntology ? t('label.ontology') : t('label.knowledge-graph')}
-            </Badge>
+            <span
+              className="kg3d-panel-pill"
+              style={{
+                color: accent,
+                background: hexRgba(accent, 0.14),
+                borderColor: hexRgba(accent, 0.35),
+              }}>
+              {isDerived
+                ? t('label.ontology-inferred')
+                : isOntology
+                ? t('label.ontology')
+                : t('label.knowledge-graph')}
+            </span>
           </div>
         </div>
-        <CloseButton size="sm" onClick={onClose} />
+        <CloseButton
+          className="kg3d-panel-close"
+          label={t('label.close')}
+          size="xs"
+          theme="dark"
+          onClick={onClose}
+        />
       </div>
 
-      <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-1 tw:pb-4">
-        <div className="tw:mt-4 tw:mb-1 tw:flex tw:items-center tw:gap-2">
-          <span
-            className="tw:size-2 tw:rounded-sm"
-            style={{ background: accent }}
-          />
-          <span className="tw:text-xs tw:font-semibold tw:tracking-wide tw:text-quaternary tw:uppercase">
-            {relationLabel}
-          </span>
+      {isDerived && link.relation && link.path ? (
+        <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-4 tw:pb-4">
+          <p className="kg3d-panel-text-subtle tw:mb-3 tw:text-xs tw:leading-relaxed">
+            <span
+              className="tw:font-semibold"
+              style={{ color: LINK_ONTOLOGY_COLOR }}>
+              {formatDerivedRelation(t, link.relation)}.
+            </span>{' '}
+            {t('message.knowledge-graph-ontology-inferred')}
+          </p>
+          <DerivationChain path={link.path} />
         </div>
-        <EndpointRow
-          node={source}
-          sublabel={t(TYPE_LABEL_KEY[source.type])}
-          onSelect={onSelectNode}
-        />
-        <EndpointRow
-          node={target}
-          sublabel={t(TYPE_LABEL_KEY[target.type])}
-          onSelect={onSelectNode}
-        />
-      </div>
+      ) : (
+        <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-1 tw:pb-4">
+          <div className="tw:mt-4 tw:mb-1 tw:flex tw:items-center tw:gap-2">
+            <span
+              className="tw:size-2 tw:rounded-sm"
+              style={{ background: accent }}
+            />
+            <span className="kg3d-panel-text-muted tw:text-xs tw:font-semibold tw:tracking-wide tw:uppercase">
+              {relationLabel}
+            </span>
+          </div>
+          <EndpointRow
+            node={source}
+            sublabel={t(TYPE_LABEL_KEY[source.type])}
+            onSelect={onSelectNode}
+          />
+          <EndpointRow
+            node={target}
+            sublabel={t(TYPE_LABEL_KEY[target.type])}
+            onSelect={onSelectNode}
+          />
+        </div>
+      )}
     </div>
   );
 };

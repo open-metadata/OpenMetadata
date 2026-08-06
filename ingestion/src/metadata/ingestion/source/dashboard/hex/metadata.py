@@ -43,7 +43,6 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.hex.connection import get_connection
 from metadata.ingestion.source.dashboard.hex.models import Project
 from metadata.ingestion.source.dashboard.hex.query_fetcher import (
     HexProjectLineage,
@@ -69,7 +68,6 @@ class HexSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.client = get_connection(self.service_connection)
         self.projects = []  # We will populate this in `prepare`
 
         # Initialize lineage components

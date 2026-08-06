@@ -8,7 +8,7 @@ Shared UI component library for OpenMetadata, built on UntitledUI design system 
 - **Source root**: `src/main/resources/ui/src/`
 - **Build tool**: Vite (library mode) with `vite-plugin-dts` for type declarations
 - **Styling**: Tailwind CSS v4 with `tw:` prefix to avoid conflicts with the main app's Less/Ant Design styles
-- **Component foundation**: `react-aria-components` (NOT MUI or Ant Design)
+- **Component foundation**: `react-aria-components` (NOT Ant Design)
 - **Icons**: `@untitledui/icons`
 
 ## Development Commands
@@ -30,8 +30,7 @@ yarn clean              # Remove dist/
 | --------------------------------------------- | -------------------------------------------- |
 | `@openmetadata/ui-core-components`            | Main entry - re-exports everything           |
 | `@openmetadata/ui-core-components/components` | All UI components                            |
-| `@openmetadata/ui-core-components/theme`      | MUI theme, `createMuiTheme`                  |
-| `@openmetadata/ui-core-components/colors`     | Color utilities, `generateMuiPalettes`       |
+| `@openmetadata/ui-core-components/colors`     | Color utilities                              |
 | `@openmetadata/ui-core-components/utils`      | `cx`, `sortCx`, utilities                    |
 | `@openmetadata/ui-core-components/styles.css` | Compiled CSS (must be imported by consumers) |
 
@@ -69,7 +68,6 @@ src/
 ├── styles/
 │   ├── globals.css        # Shared Tailwind-facing CSS entry (tokens, typography, shared styles)
 │   └── typography.css     # Typography prose rules
-├── theme/                 # MUI theme configuration
 ├── colors/                # Color generation utilities
 ├── utils/                 # cx, sortCx, isReactComponent
 ├── types/                 # Shared TypeScript types
@@ -102,6 +100,57 @@ Theme colors are defined as CSS custom properties in `src/styles/globals.css` wi
 - Use `cx()` (from `tailwind-merge`) to merge class names with conflict resolution
 - Use `isReactComponent()` to type-guard icon props that accept both `FC` and `ReactNode`
 
+### Borders: never use `ring-*` — use `border` or `outline`
+
+`tw:ring-*` compiles to a `box-shadow`, and **WebKit does not pixel-snap box-shadows** — a
+ring used as a border thins out and can vanish entirely in Safari at non-100% zoom. `border`
+and `outline` are snapped and never degrade. The library was migrated off rings; do not
+reintroduce them.
+
+| Situation | Use |
+|---|---|
+| Edge may occupy layout space (static container) | `tw:border tw:border-<token>` |
+| Edge must be layout-neutral and the element's `outline` is free | `tw:outline-1 tw:-outline-offset-1 tw:outline-<token>` |
+| Element's `outline` is already the focus ring (any focusable control) | `borderAfter` from `@/utils/tailwindClasses` |
+
+`border` consumes layout, so on content-sized controls it adds 2px of height and makes them
+grow on focus (1px → 2px). That is why controls use `outline`.
+
+```tsx
+import { borderAfter } from '@/utils/tailwindClasses';
+
+// host needs `tw:relative`; colour via `tw:after:outline-<token>`
+cx('tw:relative', borderAfter, 'tw:after:outline-primary',
+   isDisabled && 'tw:disabled:after:outline-disabled_subtle')
+```
+
+`borderAfter2` is the 2px variant. Note `::before` is already used by `button.tsx` and
+`social-button.tsx` for their inner gradient — hence `::after`.
+
+Converting a ring: `ring-inset` → `-outline-offset-N`; **no** `ring-inset` → offset `0` (a
+non-inset ring draws *outward*). Getting this wrong shifts the edge by 1px.
+
+Gotchas:
+- **`tw:outline-hidden` erases an outline border** — remove it from any element whose border
+  is an outline. Unlayered LESS (`outline: none`) beats Tailwind utilities and will kill it.
+- **`tw:transition-shadow` won't animate an outline** — use
+  `tw:transition-[outline-color,outline-width]`. Plain `tw:transition` covers `outline-color`
+  but not `outline-width`.
+- **Keep `tw:shadow-*`** — a real drop shadow, not the ring.
+- Consumers overriding a border must match where it's drawn: `::after` for
+  Button/ButtonUtility/Tab, the element for Input/Select/Badge/Card.
+
+There are **no** remaining `ring-*` usages and the ESLint rule has **no allow-list**. Even
+`ring-offset-*` halos convert: the offset gap uses `--tw-ring-offset-color` (default `#fff`),
+so when the ring colour is also white the two merge into one `(ring + offset)`px band —
+`ring-2 ring-white ring-offset-2` is exactly `outline-4 outline-white`. Where the colours
+differ, `outline-offset-N` matches the geometry with a transparent gap. Consumer focus rings
+on `Button` are usually pure duplicates of its built-in
+`focus-visible:outline-2 focus-visible:outline-offset-2` — delete rather than convert.
+
+Full rationale, measurements, and the anti-pattern table:
+[`openmetadata-ui/src/main/resources/ui/docs/colors.md`](../openmetadata-ui/src/main/resources/ui/docs/colors.md) §2.3.1.
+
 ### Button Color Variants
 
 The `Button` component supports these `color` values:
@@ -118,9 +167,6 @@ Dark mode uses a custom variant: `@custom-variant dark (&:where(.dark-mode, .dar
 These are externalized in the build and must be provided by the consuming app:
 
 - `react`, `react-dom`, `react/jsx-runtime`
-- `@mui/material`, `@mui/system`, `@mui/material/styles`, `@mui/material/Chip`, `@mui/icons-material`, `@mui/x-date-pickers`
-- `@emotion/react`, `@emotion/styled`
-- `@material/material-color-utilities`
 - `@untitledui/icons`
 - `react-aria`, `react-aria-components`, `react-stately`
 - `react-hook-form`

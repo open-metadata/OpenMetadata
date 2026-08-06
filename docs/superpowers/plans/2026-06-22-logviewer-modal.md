@@ -14,7 +14,7 @@
 - No string literals in the component — use `useTranslation` (`const { t } = useTranslation()`); reuse existing keys: `label.download`, `label.search-entity`, `label.log-plural`. No new i18n keys are required.
 - No `any` in production code (`.component.tsx`, `.interface.ts`). Test mocks may use minimal local typing.
 - Use design tokens only (`bg-primary`, `text-primary`, `border-secondary`, etc.) — never hardcoded colors.
-- Component library is `@openmetadata/ui-core-components` — NOT MUI, NOT Ant Design.
+- Component library is `@openmetadata/ui-core-components` — NOT any other external UI library, NOT Ant Design.
 - Apache 2.0 license header on every new source file (run `yarn license-header-fix <files>`).
 - Run the UI checkstyle sequence (organize-imports → eslint --fix → prettier --write) before finishing (see final task / `ui-checkstyle` skill).
 - Component does NO data fetching; parent owns `open`, `logs`, `loading`, `follow`.

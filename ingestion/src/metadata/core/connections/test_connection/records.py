@@ -9,12 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Pure data records for the test-connection engine.
-
-The step status, skip-reason, and log-entry types live on the generated
-``testConnectionResult`` schema; these are the engine-internal records the schema
-does not model: what a successful check reports (``Evidence``) and a classified
-failure (``Diagnosis``).
+Engine-internal records the ``testConnectionResult`` schema does not model.
 """
 
 from __future__ import annotations
@@ -24,7 +19,10 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Diagnosis:
-    """An actionable explanation of a failure, produced only when a rule matches."""
+    """What a non-green condition is, and how to fix it.
+
+    Produced by the error pack from a failure, or by a check as a caveat.
+    """
 
     title: str
     remediation: str | None = None
@@ -33,7 +31,11 @@ class Diagnosis:
 
 @dataclass(frozen=True)
 class Evidence:
-    """What a check self-reports on success: a summary and the command it ran."""
+    """What a check reports: a summary, the command it ran, and an optional caveat.
+
+    A ``caveat`` makes the step a ``Warning`` while ``passed`` stays ``True``.
+    """
 
     summary: str | None = None
     command: str | None = None
+    caveat: Diagnosis | None = None

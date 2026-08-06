@@ -223,6 +223,7 @@ const mockCurrentHandleSearchChange = jest.fn();
 const mockCurrentOnPageChange = jest.fn();
 
 export const ingestionProps: IngestionProps = {
+  agents: [],
   ingestionPipelineList: mockIngestionWorkFlow.data
     .data as unknown as IngestionPipeline[],
   serviceDetails: mockService,

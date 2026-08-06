@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -51,30 +51,47 @@ const StatusByDimensionCardWidget = ({
     [dqByDimensionData]
   );
 
-  const getStatusByDimension = async () => {
-    setIsDqByDimensionLoading(true);
-    try {
-      const { data } = await fetchTestCaseSummaryByDimension(chartFilter);
-      const { data: noDimensionData } = await fetchTestCaseSummaryByNoDimension(
-        chartFilter
-      );
-
-      setDqByDimensionData([...data, ...noDimensionData]);
-    } catch {
-      setDqByDimensionData(undefined);
-    } finally {
-      setIsDqByDimensionLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let ignore = false;
+
+    const getStatusByDimension = async () => {
+      setIsDqByDimensionLoading(true);
+      try {
+        const { data } = await fetchTestCaseSummaryByDimension(chartFilter);
+        const { data: noDimensionData } =
+          await fetchTestCaseSummaryByNoDimension(chartFilter);
+
+        if (!ignore) {
+          setDqByDimensionData([...data, ...noDimensionData]);
+        }
+      } catch {
+        if (!ignore) {
+          setDqByDimensionData(undefined);
+        }
+      } finally {
+        if (!ignore) {
+          setIsDqByDimensionLoading(false);
+        }
+      }
+    };
+
     getStatusByDimension();
+
+    return () => {
+      ignore = true;
+    };
   }, [chartFilter]);
 
   return (
-    <Row gutter={[24, 40]}>
-      {dqDimensions.map((dimension) => (
-        <Col key={dimension.title} lg={6} md={12} span={24}>
+    <div className="tw:@container">
+      <div
+        className={classNames(
+          'tw:grid tw:grid-cols-[repeat(2,minmax(0,20rem))] tw:justify-start tw:gap-x-6 tw:gap-y-10',
+          'tw:@3xl:grid-cols-[repeat(4,minmax(0,20rem))]',
+          'tw:@8xl:grid-cols-[repeat(8,minmax(0,20rem))]',
+          'tw:@8xl:gap-x-8'
+        )}>
+        {dqDimensions.map((dimension) => (
           <StatusByDimensionWidget
             icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
             isLoading={isDqByDimensionLoading}
@@ -89,9 +106,9 @@ const StatusByDimensionCardWidget = ({
             }}
             statusData={dimension}
           />
-        </Col>
-      ))}
-    </Row>
+        ))}
+      </div>
+    </div>
   );
 };
 

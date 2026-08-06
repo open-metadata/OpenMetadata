@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { ReactElement, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -31,7 +38,7 @@ import {
 } from 'recharts';
 import { CategoricalChartState } from 'recharts/types/chart/generateCategoricalChart';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
-import { ReactComponent as FilterPlaceHolderIcon } from '../../../../assets/svg/no-search-placeholder.svg';
+import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import {
   GREEN_3,
   GREEN_3_OPACITY,
@@ -45,7 +52,6 @@ import {
   TABLE_DATA_TO_BE_FRESH,
   TABLE_FRESHNESS_KEY,
 } from '../../../../constants/TestSuite.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
@@ -58,7 +64,6 @@ import {
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LineChartRef } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import {
@@ -108,13 +113,18 @@ function TestSummaryGraph({
       entityThread,
       testCaseFqn,
     });
-    setShowAILearningBanner(data.showAILearningBanner);
     const isFreshnessTest = data.information.some(
       (value) => value.label === TABLE_FRESHNESS_KEY
     );
 
     return { chartData: data, isFreshnessTest };
   }, [testCaseResults, entityThread, testCaseParameterValue, testCaseFqn]);
+
+  // A store write during render (inside the memo above) triggers React
+  // update-depth loops; it must stay in an effect.
+  useEffect(() => {
+    setShowAILearningBanner(chartData.showAILearningBanner);
+  }, [chartData.showAILearningBanner, setShowAILearningBanner]);
 
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({
@@ -190,24 +200,16 @@ function TestSummaryGraph({
 
   if (isEmpty(testCaseResults)) {
     return (
-      <ErrorPlaceHolder
-        className="m-t-0"
-        icon={
-          <FilterPlaceHolderIcon
-            className="w-24"
-            data-testid="no-search-image"
-          />
-        }
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph style={{ marginBottom: '0' }}>
-          {t('message.no-test-result-for-days', {
+      <Box className="tw:relative tw:min-h-80 tw:w-full">
+        <EmptyPlaceholder
+          description={t('message.try-extending-time-frame')}
+          icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+          title={t('message.no-test-result-for-days', {
             days: selectedTimeRange,
           })}
-        </Typography.Paragraph>
-        <Typography.Paragraph>
-          {t('message.try-extending-time-frame')}
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
+          variant="blank"
+        />
+      </Box>
     );
   }
 

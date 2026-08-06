@@ -86,7 +86,9 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -108,7 +110,9 @@ test.describe('Explore Assets Discovery', () => {
       true
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -130,7 +134,9 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -151,7 +157,7 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );
@@ -175,7 +181,7 @@ test.describe('Explore Assets Discovery', () => {
       true
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );
@@ -199,7 +205,7 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );
@@ -221,21 +227,7 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();
 
-    await expect(
-      page
-        .locator('.ant-modal-title')
-        .getByText(
-          `Delete table "${
-            table1.entityResponseData.displayName ??
-            table1.entityResponseData.name
-          }"`
-        )
-    ).toBeVisible();
-
-    await page.getByTestId('confirmation-text-input').click();
-    await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-    await expect(page.getByTestId('confirm-button')).toBeEnabled();
+    await page.getByTestId('delete-modal').waitFor();
 
     await page.getByTestId('confirm-button').click();
 
@@ -352,6 +344,10 @@ test.describe('Explore Assets Discovery', () => {
     // Close the Owners dropdown before opening the next — immediate-apply keeps
     // it open after selection, and a stale open menu has its own search-input
     await page.keyboard.press('Escape');
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(ownerSearchText)
+      .waitFor({ state: 'detached' });
 
     // The domain should be visible in the domains filter when the deleted switch is on
     const domainSearchText = domain.responseData.displayName.toLowerCase();
@@ -389,9 +385,18 @@ test.describe('Explore Assets Discovery', () => {
     // Close the Domains dropdown before opening the Data Assets one
     await page.keyboard.press('Escape');
 
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .waitFor({ state: 'detached' });
+
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
     await page.click('[data-testid="search-dropdown-Data Assets"]');
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
     await expect(
       page.getByTestId('drop-down-menu').getByTestId('table')

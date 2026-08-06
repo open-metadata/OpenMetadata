@@ -295,7 +295,6 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
 
     for (const data of KPI_DATA) {
       await page.getByTestId(`delete-action-${data.displayName}`).click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
       const deleteResponse = page.waitForResponse(
         `/api/v1/kpi/*?hardDelete=true&recursive=false`
       );

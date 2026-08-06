@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import DashboardDetails from '../../components/Dashboard/DashboardDetails/DashboardDetails.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
@@ -45,7 +45,7 @@ import {
   dashboardQueryKey,
 } from '../../rest/queries/dashboardQuery';
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -369,7 +369,7 @@ const DashboardDetailsPage = () => {
   }, [dashboardFQN]);
 
   if (permissionsLoading || dashboardLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
   if (isError) {
     return (
@@ -390,7 +390,7 @@ const DashboardDetailsPage = () => {
     );
   }
   if (!dashboardDetails) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   return (

@@ -28,7 +28,6 @@ import IconCognito from '../../assets/img/icon-aws-cognito.png';
 import IconAzure from '../../assets/img/icon-azure.png';
 import IconGoogle from '../../assets/img/icon-google.png';
 import IconOkta from '../../assets/img/icon-okta.png';
-import AlertBar from '../../components/AlertBar/AlertBar';
 import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -38,7 +37,6 @@ import { CarouselLayout } from '../../components/Layout/CarouselLayout/CarouselL
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
-import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import './login.style.less';
 
@@ -50,8 +48,6 @@ const SignInPage = () => {
   const navigate = useNavigate();
   const { authConfig, isAuthenticated } = useApplicationStore();
   const { onLoginHandler } = useAuthProvider();
-  const { alert, resetAlert } = useAlertStore();
-
   const { t } = useTranslation();
 
   const brandName = t('label.brand-name');
@@ -186,12 +182,10 @@ const SignInPage = () => {
 
   const onClickSignUp = () => {
     navigate(ROUTES.REGISTER);
-    resetAlert();
   };
 
   const onClickForgotPassword = () => {
     navigate(ROUTES.FORGOT_PASSWORD);
-    resetAlert();
   };
 
   return (
@@ -205,16 +199,6 @@ const SignInPage = () => {
           <Typography.Title className="header-text display-sm" level={3}>
             {t('label.welcome-to')} {brandName}
           </Typography.Title>
-          {alert && (
-            <div className="login-alert">
-              <AlertBar
-                defaultExpand
-                message={alert?.message}
-                type={alert?.type}
-              />
-            </div>
-          )}
-
           {isAuthProviderBasic ? (
             <div className="login-form ">
               <Form

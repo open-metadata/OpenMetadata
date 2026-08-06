@@ -145,4 +145,28 @@ public class ChangeSummarizerTest {
     assertEquals(1, result.size());
     assertEquals("columns.c'_+# 1.description", result.iterator().next());
   }
+
+  @Test
+  public void test_deleteColumnDescription() {
+    FieldChange fieldChange =
+        new FieldChange().withName("columns.column1.description").withOldValue("some description");
+
+    Set<String> result = changeSummarizer.processDeleted(List.of(fieldChange));
+    assertEquals(1, result.size());
+    assertEquals("columns.column1.description", result.iterator().next());
+  }
+
+  @Test
+  public void test_deleteMultiLevelNestedColumnDescription() {
+    ChangeSummarizer<Container> containerChangeSummarizer =
+        new ChangeSummarizer<>(Container.class, Set.of("dataModel.columns.description"));
+    FieldChange fieldChange =
+        new FieldChange()
+            .withName("dataModel.columns.column1.description")
+            .withOldValue("some description");
+
+    Set<String> result = containerChangeSummarizer.processDeleted(List.of(fieldChange));
+    assertEquals(1, result.size());
+    assertEquals("dataModel.columns.column1.description", result.iterator().next());
+  }
 }

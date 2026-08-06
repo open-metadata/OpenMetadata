@@ -194,6 +194,10 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       Map<String, Aggregation> aggregationsMap,
       String parentAggName,
       List<FormulaHolder> formulas) {
+    if (function == null && formula == null) {
+      throw new IllegalArgumentException(
+          "Data Insight chart metric must define either a function or a formula");
+    }
     if (formula != null) {
       if (filter != null && !filter.equals("{}")) {
         try {

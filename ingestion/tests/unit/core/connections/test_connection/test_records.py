@@ -17,6 +17,13 @@ def test_evidence_holds_summary_and_command():
     evidence = Evidence(summary="4 databases enumerated", command="SHOW DATABASES")
     assert evidence.summary == "4 databases enumerated"
     assert evidence.command == "SHOW DATABASES"
+    assert evidence.caveat is None
+
+
+def test_evidence_carries_an_optional_caveat():
+    caveat = Diagnosis(title="No tables visible in schema 'app'")
+    evidence = Evidence(summary="0 tables", caveat=caveat)
+    assert evidence.caveat is caveat
 
 
 def test_diagnosis_holds_remediation_without_doc():

@@ -15,6 +15,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -171,7 +172,7 @@ public class GetLineageTool implements McpTool {
     }
     LineageDetails details = edge.getLineageDetails();
     EntityReference pipeline = details != null ? details.getPipeline() : null;
-    SqlText sql = truncateSqlQuery(details);
+    SqlText sql = fullSqlQuery(details);
     return new SlimEdge(
         refFqn(from),
         refFqn(to),
@@ -181,8 +182,8 @@ public class GetLineageTool implements McpTool {
         refType(to),
         relationshipType(pipeline),
         pipeline != null ? pipeline.getFullyQualifiedName() : null,
-        truncateText(pipeline != null ? pipeline.getDescription() : null),
-        truncateText(details != null ? details.getDescription() : null),
+        pipeline != null ? pipeline.getDescription() : null,
+        details != null ? details.getDescription() : null,
         sourceValue(details),
         details != null ? details.getAssetEdges() : null,
         sql.value(),
@@ -206,23 +207,19 @@ public class GetLineageTool implements McpTool {
     return pipeline != null ? pipeline.getType() + ":" + pipeline.getName() : RELATIONSHIP_SQL;
   }
 
-  private static String truncateText(String text) {
-    return McpResponseTrim.truncate(text, McpResponseTrim.TEXT_MAX_LENGTH);
-  }
-
   private static String sourceValue(LineageDetails details) {
     return details != null && details.getSource() != null ? details.getSource().value() : null;
   }
 
-  private static SqlText truncateSqlQuery(LineageDetails details) {
+  /**
+   * Edge SQL is returned in full. Size is controlled by returning fewer edges (see {@link
+   * #enforceSizeBudget}), never by cutting the transformation SQL, which is exactly the metadata a
+   * lineage caller needs. The {@code sqlTruncated} marker stays in the record for wire compatibility
+   * and is always null now.
+   */
+  private static SqlText fullSqlQuery(LineageDetails details) {
     String sql = details != null ? details.getSqlQuery() : null;
-    SqlText result = new SqlText(null, null);
-    if (sql != null) {
-      boolean tooLong = sql.length() > McpResponseTrim.SQL_MAX_LENGTH;
-      String value = McpResponseTrim.truncate(sql, McpResponseTrim.SQL_MAX_LENGTH);
-      result = new SqlText(value, tooLong ? Boolean.TRUE : null);
-    }
-    return result;
+    return new SqlText(sql, null);
   }
 
   private static String refFqn(EntityReference ref) {
@@ -241,34 +238,70 @@ public class GetLineageTool implements McpTool {
     return name;
   }
 
+  /**
+   * Keeps the response under the dispatch-level cap by returning fewer <em>edges</em>, never by
+   * dropping the whole graph to a bare count or by cutting an edge's SQL. When everything fits (the
+   * common case, including full edge SQL) the complete graph is returned unchanged. When it does not,
+   * the size budget is split fairly between the two directions so both upstream and downstream stay
+   * represented, and per-direction markers tell the caller how many edges were withheld.
+   */
   @VisibleForTesting
   static Map<String, Object> enforceSizeBudget(SlimLineage slim) {
-    Map<String, Object> response = JsonUtils.getMap(slim);
-    int responseSize = McpResponseTrim.serializedLength(response);
-    Map<String, Object> result = response;
-    if (responseSize > McpResponseTrim.MAX_RESPONSE_CHARS) {
-      result = oversizedHint(slim, responseSize);
+    Map<String, Object> full = JsonUtils.getMap(slim);
+    Map<String, Object> result = full;
+    if (McpResponseTrim.serializedLength(full) > McpResponseTrim.MAX_RESPONSE_CHARS) {
+      result = fitGraphToBudget(slim);
     }
     return result;
   }
 
-  private static Map<String, Object> oversizedHint(SlimLineage slim, int size) {
-    Map<String, Object> hint = new HashMap<>();
-    hint.put("root", slim.root());
-    hint.put("upstreamCount", slim.upstream().size());
-    hint.put("downstreamCount", slim.downstream().size());
-    hint.put("responseSizeChars", size);
-    // Machine-detectable marker so a programmatic client can tell a capped graph from a complete
-    // one without parsing the message. Stays on the success path — this is a deliberate cap, not an
-    // error the caller can fix by retrying.
-    hint.put("truncated", Boolean.TRUE);
-    hint.put(
+  private static Map<String, Object> fitGraphToBudget(SlimLineage slim) {
+    long overhead = graphOverheadChars(slim);
+    long available = Math.max(0, ResponseBudget.defaultBudgetChars() - overhead);
+    long halfShare = available / 2;
+    ResponseBudget.Fit up = ResponseBudget.fitWithin(slim.upstream(), halfShare);
+    ResponseBudget.Fit down =
+        ResponseBudget.fitWithin(slim.downstream(), available - up.usedChars());
+    boolean downstreamLeftRoom =
+        down.usedChars() < halfShare && up.count() < slim.upstream().size();
+    if (downstreamLeftRoom) {
+      up = ResponseBudget.fitWithin(slim.upstream(), available - down.usedChars());
+    }
+    return buildFittedGraph(slim, up.count(), down.count());
+  }
+
+  /** Serialized size of the graph shell (root identity + empty edge lists), the fixed overhead. */
+  private static long graphOverheadChars(SlimLineage slim) {
+    SlimLineage shell =
+        new SlimLineage(slim.root(), slim.rootId(), slim.rootType(), List.of(), List.of());
+    return McpResponseTrim.serializedLength(JsonUtils.getMap(shell));
+  }
+
+  private static Map<String, Object> buildFittedGraph(
+      SlimLineage slim, int upCount, int downCount) {
+    List<SlimEdge> up = slim.upstream().subList(0, upCount);
+    List<SlimEdge> down = slim.downstream().subList(0, downCount);
+    Map<String, Object> result =
+        JsonUtils.getMap(
+            new SlimLineage(
+                slim.root(),
+                slim.rootId(),
+                slim.rootType(),
+                new ArrayList<>(up),
+                new ArrayList<>(down)));
+    result.put("truncated", Boolean.TRUE);
+    result.put("upstreamReturned", upCount);
+    result.put("upstreamTotal", slim.upstream().size());
+    result.put("downstreamReturned", downCount);
+    result.put("downstreamTotal", slim.downstream().size());
+    result.put(
         "message",
         String.format(
-            "Lineage response exceeded %d characters (was %d). Reduce upstreamDepth/downstreamDepth,"
-                + " or keep includeColumnLineage disabled, to get a smaller graph.",
-            McpResponseTrim.MAX_RESPONSE_CHARS, size));
-    return hint;
+            "Lineage graph is large: returning %d of %d upstream and %d of %d downstream edges to"
+                + " stay within the response size budget. Reduce upstreamDepth/downstreamDepth to"
+                + " narrow the graph.",
+            upCount, slim.upstream().size(), downCount, slim.downstream().size()));
+    return result;
   }
 
   /**

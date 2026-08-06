@@ -258,6 +258,65 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   @Test
+  void test_subDomainInheritsOwnersExpertsAndChildrenCount(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    EntityReference ownerRef = testUser1().getEntityReference();
+    String expertFqn = testUser2().getFullyQualifiedName();
+
+    Domain parent =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("inheritParent"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withOwners(List.of(ownerRef))
+                .withExperts(List.of(expertFqn))
+                .withDescription("Parent with owner and expert"));
+
+    Domain child =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("inheritChild"))
+                .withDomainType(DomainType.SOURCE_ALIGNED)
+                .withParent(parent.getFullyQualifiedName())
+                .withDescription("Subdomain with no owner or expert"));
+
+    Domain grandChild =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("inheritGrandChild"))
+                .withDomainType(DomainType.SOURCE_ALIGNED)
+                .withParent(child.getFullyQualifiedName())
+                .withDescription("Grand subdomain"));
+
+    Domain fetchedChild = client.domains().get(child.getId().toString(), "owners,experts");
+    assertFalse(fetchedChild.getOwners().isEmpty(), "subdomain must inherit owner from parent");
+    assertEquals(ownerRef.getId(), fetchedChild.getOwners().get(0).getId());
+    assertFalse(fetchedChild.getExperts().isEmpty(), "subdomain must inherit experts from parent");
+
+    Domain fetchedGrandChild =
+        client.domains().get(grandChild.getId().toString(), "owners,experts");
+    assertFalse(
+        fetchedGrandChild.getOwners().isEmpty(),
+        "depth-2 subdomain must inherit owner from ancestor");
+
+    Domain parentWithCount = client.domains().get(parent.getId().toString(), "childrenCount");
+    assertEquals(2, parentWithCount.getChildrenCount().intValue());
+    Domain childWithCount = client.domains().get(child.getId().toString(), "childrenCount");
+    assertEquals(1, childWithCount.getChildrenCount().intValue());
+
+    ListParams params =
+        new ListParams().setFields("owners,experts,childrenCount").withLimit(1000000);
+    Domain listedChild =
+        listEntities(params).getData().stream()
+            .filter(domain -> child.getId().equals(domain.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertFalse(listedChild.getOwners().isEmpty(), "bulk list must inherit owner on subdomain");
+    assertEquals(1, listedChild.getChildrenCount().intValue());
+  }
+
+  @Test
   void test_updateDomainType(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

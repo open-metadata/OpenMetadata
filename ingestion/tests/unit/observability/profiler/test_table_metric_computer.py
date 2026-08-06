@@ -542,7 +542,6 @@ class TestTrinoTableMetricComputer:
     def test_trino_presto_athena_registrations(self):
         assert table_metric_computer_factory._constructs[Dialects.Trino] is TrinoTableMetricComputer
         assert table_metric_computer_factory._constructs[Dialects.Presto] is TrinoTableMetricComputer
-        assert table_metric_computer_factory._constructs[Dialects.Athena] is TrinoTableMetricComputer
 
 
 class TestHiveTableMetricComputer:

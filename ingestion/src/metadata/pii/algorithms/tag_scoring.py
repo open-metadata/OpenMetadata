@@ -87,6 +87,7 @@ class TagScorer:
                         score=analysis.score,
                         reason=analysis.explanation or "",
                         recognizer_metadata=recognizer_metadata,
+                        column_name_matched=analysis.column_name_matched,
                     )
                 )
 

@@ -1,0 +1,90 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/frameworkCoverageResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FrameworkCoverageResponse",
+  "description": "Per-control compliance coverage roll-up for an AI Governance Framework.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.FrameworkCoverageResponse",
+  "definitions": {
+    "frameworkControlCoverage": {
+      "javaType": "org.openmetadata.schema.api.ai.FrameworkControlCoverage",
+      "description": "Coverage status for a single framework control.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Stable short code for the control."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Human-readable control label."
+        },
+        "category": {
+          "$ref": "../../entity/ai/aiFrameworkControl.json#/definitions/controlCategory"
+        },
+        "status": {
+          "type": "string",
+          "description": "Aggregated coverage status for this control.",
+          "enum": ["Met", "Partial", "Gap"]
+        },
+        "affectedAssetCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of in-scope assets that are not fully meeting this control."
+        },
+        "evidenceCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of evidence items found for this control."
+        }
+      },
+      "required": ["code", "status", "affectedAssetCount", "evidenceCount"],
+      "additionalProperties": false
+    },
+    "frameworkCoverageSummary": {
+      "javaType": "org.openmetadata.schema.api.ai.FrameworkCoverageSummary",
+      "description": "Compliance summary across assets in scope for the framework.",
+      "type": "object",
+      "properties": {
+        "compliant": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partial": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nonCompliant": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["compliant", "partial", "nonCompliant"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "frameworkId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "frameworkName": {
+      "type": "string"
+    },
+    "assetsInScope": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/frameworkControlCoverage"
+      },
+      "default": []
+    },
+    "summary": {
+      "$ref": "#/definitions/frameworkCoverageSummary"
+    }
+  },
+  "required": ["frameworkName", "assetsInScope", "controls", "summary"],
+  "additionalProperties": false
+}

@@ -19,8 +19,8 @@ export type CSVExportResponse = {
 
 export type CSVExportWebsocketResponse = {
   jobId: string;
-  status: 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
-  data: string;
+  status: 'CANCELLED' | 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
+  data: string | null;
   error: string | null;
   progress?: number;
   total?: number;
@@ -29,6 +29,7 @@ export type CSVExportWebsocketResponse = {
 
 export type CSVExportJob = {
   fileName: string;
+  statusUnavailable?: boolean;
 } & Partial<CSVExportWebsocketResponse> &
   CSVExportResponse;
 
@@ -70,9 +71,11 @@ export type ExportData = {
       recursive?: boolean;
     }
   ) => Promise<CSVExportResponse | string>;
+  onError?: () => void;
 };
 export interface EntityExportModalContextProps {
   csvExportData?: string;
+  csvExportError?: string;
   clearCSVExportData: () => void;
   showModal: (data: ExportData) => void;
   triggerExportForBulkEdit: (data: ExportData) => void;

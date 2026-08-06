@@ -64,7 +64,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import { getTaskCounts, Task, TaskStatusGroup } from '../../../rest/tasksAPI';
-import { getCountBadge } from '../../../utils/EntityDisplayUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityUserLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getFeedCounts } from '../../../utils/FeedUtilsPure';

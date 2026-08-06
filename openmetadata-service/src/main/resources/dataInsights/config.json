@@ -9,12 +9,15 @@
       "version",
       "owners",
       "tags",
+      "ownerName",
       "extension",
       "votes",
       "fullyQualifiedName",
       "domains",
       "dataProducts",
       "certification",
+      "classificationTags",
+      "glossaryTags",
       "entityStatus"
     ],
     "table": [

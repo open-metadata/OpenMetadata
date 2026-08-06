@@ -15,7 +15,7 @@ import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   navigateToCustomizeLandingPage,
   removeAndCheckWidget,
@@ -50,6 +50,8 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.describe.configure({ mode: 'default' });
+
   test.beforeEach(async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
     await setUserDefaultPersona(adminPage, persona.responseData.displayName);
@@ -216,10 +218,7 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await adminPage.locator('[data-testid="save-button"]').click();
     await saveResponse;
 
-    // Wait for success toast and save button to be disabled
-    await expect(
-      adminPage.locator('[data-testid="alert-message"]')
-    ).toContainText('Page layout created successfully.');
+    await toastNotification(adminPage, /Page layout created successfully/i);
     await expect(
       adminPage.locator('[data-testid="save-button"]')
     ).toBeDisabled();

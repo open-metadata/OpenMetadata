@@ -42,6 +42,9 @@ const CorePasswordWidget = (props: WidgetProps) => {
   const hint = getWidgetHint({ rawErrors, schema, options });
   const isInvalid = !!rawErrors?.length;
 
+  const handleChange = (nextValue: string) =>
+    onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
+
   if (isInputTypeFile || isInputTypeFileOrInput) {
     return (
       <PasswordInput
@@ -60,7 +63,7 @@ const CorePasswordWidget = (props: WidgetProps) => {
         uploadLabel={t('label.upload-key-file')}
         value={value ?? ''}
         onBlur={() => onBlur(id, value)}
-        onChange={onChange}
+        onChange={handleChange}
         onFocus={() => onFocus(id, value)}
       />
     );
@@ -85,7 +88,7 @@ const CorePasswordWidget = (props: WidgetProps) => {
       uploadLabel={t('label.upload-key-file')}
       value={value}
       onBlur={() => onBlur(id, value)}
-      onChange={onChange}
+      onChange={handleChange}
       onFocus={() => onFocus(id, value)}
     />
   );

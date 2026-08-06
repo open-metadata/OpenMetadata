@@ -20,7 +20,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import {
+import type {
   ExploreSearchIndex,
   SearchHitCounts,
 } from '../../components/Explore/ExplorePage.interface';
@@ -28,7 +28,7 @@ import { ROUTES } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { SearchResponse } from '../../interface/search.interface';
+import type { SearchResponse } from '../../interface/search.interface';
 
 interface Props {
   children: ReactNode;
@@ -113,25 +113,41 @@ const TourProvider: FC<Props> = ({ children }) => {
     []
   );
 
+  const contextValue = useMemo(
+    () => ({
+      isTourOpen,
+      isTourPage,
+      currentTourPage,
+      tourSearchValue: searchValue,
+      activeTabForTourDatasetPage,
+      tourMockSearchResults,
+      tourMockSearchHitCounts,
+      tourMockDatasetData,
+      updateActiveTab: handleActiveTabChange,
+      updateIsTourOpen: handleIsTourOpen,
+      updateTourPage: handleTourPageChange,
+      updateTourSearch: handleUpdateTourSearch,
+      updateTourMockData: handleUpdateTourMockData,
+    }),
+    [
+      isTourOpen,
+      isTourPage,
+      currentTourPage,
+      searchValue,
+      activeTabForTourDatasetPage,
+      tourMockSearchResults,
+      tourMockSearchHitCounts,
+      tourMockDatasetData,
+      handleActiveTabChange,
+      handleIsTourOpen,
+      handleTourPageChange,
+      handleUpdateTourSearch,
+      handleUpdateTourMockData,
+    ]
+  );
+
   return (
-    <TourContext.Provider
-      value={{
-        isTourOpen,
-        isTourPage,
-        currentTourPage,
-        tourSearchValue: searchValue,
-        activeTabForTourDatasetPage,
-        tourMockSearchResults,
-        tourMockSearchHitCounts,
-        tourMockDatasetData,
-        updateActiveTab: handleActiveTabChange,
-        updateIsTourOpen: handleIsTourOpen,
-        updateTourPage: handleTourPageChange,
-        updateTourSearch: handleUpdateTourSearch,
-        updateTourMockData: handleUpdateTourMockData,
-      }}>
-      {children}
-    </TourContext.Provider>
+    <TourContext.Provider value={contextValue}>{children}</TourContext.Provider>
   );
 };
 

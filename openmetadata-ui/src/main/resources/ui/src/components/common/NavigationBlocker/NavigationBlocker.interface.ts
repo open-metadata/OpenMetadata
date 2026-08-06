@@ -16,6 +16,9 @@ export interface NavigationBlockerProps {
   enabled?: boolean;
   onConfirm?: () => Promise<void>;
   onCancel?: () => void;
+  // When set, a confirmed browser-back navigation goes to this path instead of
+  // the default `history.go(-2)`.
+  leaveTo?: string;
   renderModal?: (props: {
     isOpen: boolean;
     onLeave: () => void;

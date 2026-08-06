@@ -540,7 +540,7 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
         If no comparison operator is provided, it defaults to less than or equal to comparison.
         Returns False for invalid threshold formats.
     """
-    import operator as op  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    import operator as op  # pylint: disable=import-outside-toplevel
 
     operators = {
         "<": op.lt,
@@ -574,7 +574,7 @@ def can_spawn_child_process() -> bool:
     Check if the current process can spawn a child process
     """
     # pylint: disable=import-outside-toplevel
-    from multiprocessing import Process  # noqa: PLC0415
+    from multiprocessing import Process
 
     process = Process(target=lambda: None)
     return not process.daemon

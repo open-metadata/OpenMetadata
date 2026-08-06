@@ -119,8 +119,19 @@ class SSEClient:
                     response.raise_for_status()
                     self.logger.info("Connected to SSE stream")
 
+                    # SSE payloads are UTF-8. ``requests`` defaults a charset-less
+                    # ``text/event-stream`` response to ISO-8859-1, which corrupts
+                    # multi-byte characters (e.g. emoji in model output) and decodes
+                    # UTF-8 continuation bytes such as 0x85 into codepoints that
+                    # ``str.splitlines()`` treats as line breaks. Forcing UTF-8 plus
+                    # splitting only on ``\n`` keeps a single ``data:`` line intact;
+                    # without this an emoji like ``✅`` (bytes e2 9c 85) truncates
+                    # the JSON mid-string, surfacing as ``Unterminated string``.
+                    response.encoding = "utf-8"
+
                     event_buffer = []
-                    for line in response.iter_lines(decode_unicode=True):
+                    for raw_line in response.iter_lines(decode_unicode=True, delimiter="\n"):
+                        line = raw_line.rstrip("\r")
                         if not line:
                             if event_buffer:
                                 parsed_event = self._parse_sse_event(event_buffer)

@@ -241,6 +241,11 @@
     "status": {
       "$ref": "#/definitions/memoryStatus"
     },
+    "pinned": {
+      "description": "Whether this memory is globally pinned in Context Center.",
+      "type": "boolean",
+      "default": false
+    },
     "shareConfig": {
       "$ref": "#/definitions/shareConfig"
     },

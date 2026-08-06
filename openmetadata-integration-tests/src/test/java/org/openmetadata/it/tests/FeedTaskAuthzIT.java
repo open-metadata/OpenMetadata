@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -100,7 +101,7 @@ public class FeedTaskAuthzIT {
     CreateThread create = taskRequest(about, "should be denied");
 
     assertThrows(
-        Exception.class,
+        ForbiddenException.class,
         () -> denied.getHttpClient().execute(HttpMethod.POST, "/v1/feed", create, Thread.class),
         "User with DENY CreateTask must not create task threads");
   }
@@ -119,7 +120,7 @@ public class FeedTaskAuthzIT {
     JsonNode patch = JsonDiff.asJson(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
 
     assertThrows(
-        Exception.class,
+        ForbiddenException.class,
         () ->
             denied
                 .getHttpClient()

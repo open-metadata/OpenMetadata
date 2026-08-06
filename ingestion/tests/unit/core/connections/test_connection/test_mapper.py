@@ -46,6 +46,16 @@ def test_passed_without_evidence_has_no_command():
     assert result.durationMs == 5
 
 
+def test_passed_with_caveat_is_a_warning_but_still_passed():
+    caveat = Diagnosis(title="No tables visible", remediation="check permissions")
+    result = StepResultBuilder.passed(_Step("GetTables", True), Evidence(summary="0 tables", caveat=caveat), 3)
+    assert result.status.value == "Warning"
+    assert result.passed is True
+    assert result.diagnosis.title == "No tables visible"
+    assert result.diagnosis.remediation == "check permissions"
+    assert result.resultSummary == "0 tables"
+
+
 def test_mandatory_failure_is_failed_and_keeps_raw_error():
     result = StepResultBuilder.failed(_Step("CheckAccess", True), ValueError("boom"))
     assert result.status.value == "Failed"

@@ -60,28 +60,56 @@ class InspectorWrapper(BaseModel):
     inspector: Any
 
 
+def clone_connection_for_project(database_name: str, service_connection: BigQueryConnection) -> BigQueryConnection:
+    """
+    Return a copy of the service connection scoped to a single project, so each
+    project in a multi-project connection can be inspected/tested independently.
+    """
+    new_service_connection = deepcopy(service_connection)
+    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
+        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
+    return new_service_connection
+
+
+def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dict:
+    """
+    Build the impersonation kwargs for ``get_bigquery_client`` when a target
+    service account is configured.
+
+    ``gcpImpersonateServiceAccount`` lives on the parent credentials object and
+    is valid regardless of the selected ``gcpConfig`` type, so it must not be
+    gated on a specific type. A blank or whitespace-only target email is treated
+    as "not configured" and returns an empty dict, leaving the default
+    (non-impersonated) behaviour untouched.
+    """
+    kwargs = {}
+    impersonate = service_connection.credentials.gcpImpersonateServiceAccount
+    if impersonate and impersonate.impersonateServiceAccount:
+        target_service_account = impersonate.impersonateServiceAccount.strip()
+        if target_service_account:
+            kwargs["impersonate_service_account"] = target_service_account
+            kwargs["lifetime"] = impersonate.lifetime
+    return kwargs
+
+
+def get_bigquery_client_for_project(database_name: str, service_connection: BigQueryConnection):
+    """Build a project-scoped ``bigquery.Client`` (no engine/inspector), shared by
+    the inspector setup and the progress-totals dataset listing."""
+    new_service_connection = clone_connection_for_project(database_name, service_connection)
+    kwargs = get_impersonate_client_kwargs(new_service_connection)
+    if new_service_connection.usageLocation:
+        kwargs["location"] = new_service_connection.usageLocation
+    return get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
+
+
 def get_inspector_details(database_name: str, service_connection: BigQueryConnection) -> InspectorWrapper:
     """
     Method to get the bigquery inspector details
     """
     # TODO support location property in JSON Schema
     # TODO support OAuth 2.0 scopes
-    new_service_connection = deepcopy(service_connection)
-    kwargs = {}
-
-    if new_service_connection.usageLocation:
-        kwargs["location"] = new_service_connection.usageLocation
-
-    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
-        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
-        if new_service_connection.credentials.gcpImpersonateServiceAccount:
-            kwargs["impersonate_service_account"] = (
-                new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-            )
-
-            kwargs["lifetime"] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
-
-    client = get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
+    new_service_connection = clone_connection_for_project(database_name, service_connection)
+    client = get_bigquery_client_for_project(database_name, service_connection)
     engine = get_connection(new_service_connection)
     inspector = inspect(engine)
 

@@ -71,6 +71,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
     independent,
     showSelectedCounts,
     singleSelect,
+    getPopupContainer,
     index: dropdownIndex,
   }: SearchDropdownProps) => (
     <div data-testid={`search-dropdown-${searchKey}`} title="search-dropdown">
@@ -90,6 +91,9 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
       </span>
       <span data-testid={`show-selected-counts-${searchKey}`}>
         {showSelectedCounts ? 'true' : 'false'}
+      </span>
+      <span data-testid={`popup-container-${searchKey}`}>
+        {getPopupContainer ? 'true' : 'false'}
       </span>
       <span data-testid={`selected-count-${searchKey}`}>
         {selectedKeys?.length ?? 0}
@@ -218,6 +222,16 @@ describe('ExploreQuickFilters component', () => {
       mockFields.forEach((field) => {
         expect(
           screen.getByTestId(`show-selected-counts-${field.key}`)
+        ).toHaveTextContent('true');
+      });
+    });
+
+    it('should pass popup container override to SearchDropdown', () => {
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      mockFields.forEach((field) => {
+        expect(
+          screen.getByTestId(`popup-container-${field.key}`)
         ).toHaveTextContent('true');
       });
     });

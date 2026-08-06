@@ -54,6 +54,28 @@ If you are running the OpenMetadata ingestion in a docker and your services are 
 $$
 
 $$section
+### Cluster Identifier $(id="clusterIdentifier")
+Redshift cluster identifier. Only used with IAM authentication on provisioned clusters.
+
+For standard Redshift hostnames (`cluster-id.xxxxx.region.redshift.amazonaws.com`) the identifier is derived from the first DNS label of the host, so this field can stay empty. For PrivateLink/VPC endpoint hostnames (`vpce-xxx.vpce-svc-yyy.region.vpce.amazonaws.com`) and custom DNS names the first label is not the cluster identifier. IAM authentication then calls `GetClusterCredentials` with a wrong identifier and fails with `AccessDenied` or `ClusterNotFound`, depending on how the IAM policy is scoped. Set this field to the real cluster identifier to bypass host derivation entirely.
+
+The value is shown in the AWS Console under **Amazon Redshift > Clusters** as "Cluster identifier" (e.g. `analytics-prod`), or via `aws redshift describe-clusters --query 'Clusters[].ClusterIdentifier'`. The IAM principal must be allowed `redshift:GetClusterCredentials` on the `dbuser` and `dbname` ARNs of this cluster.
+
+Mutually exclusive with Workgroup Name: use Cluster Identifier for provisioned clusters, Workgroup Name for Redshift Serverless.
+$$
+
+$$section
+### Workgroup Name $(id="workgroupName")
+Redshift Serverless workgroup name. Only used with IAM authentication on Redshift Serverless.
+
+For standard Serverless hostnames (`workgroup.account-id.region.redshift-serverless.amazonaws.com`) the workgroup is derived from the first DNS label of the host, so this field can stay empty. For PrivateLink/VPC endpoint hostnames (`vpce-...`) and custom DNS names, derivation fails and the connection is additionally misdetected as a provisioned cluster, because Serverless is recognized by the hostname pattern. Setting this field both fixes the workgroup and forces the Serverless credential API (`GetCredentials`).
+
+The value is shown in the AWS Console under **Amazon Redshift > Redshift Serverless > Workgroups** (e.g. `default-workgroup`), or via `aws redshift-serverless list-workgroups --query 'workgroups[].workgroupName'`. The IAM principal must be allowed `redshift-serverless:GetCredentials` on the workgroup.
+
+Mutually exclusive with Cluster Identifier: use Workgroup Name for Redshift Serverless, Cluster Identifier for provisioned clusters.
+$$
+
+$$section
 ### Database $(id="database")
 
 Initial Redshift database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true. This should be specified as a string in the format `hostname:port`. E.g., `localhost:5439`, `host.docker.internal:5439`

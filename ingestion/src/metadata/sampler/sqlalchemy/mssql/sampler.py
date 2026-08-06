@@ -34,7 +34,7 @@ class MssqlSampler(SQASampler):
             static (StaticSamplingConfig): sampling configuration
             selectable (Table): table to sample
         """
-        if self.entity.tableType != TableType.View:
+        if self.entity.tableType != TableType.View:  # pyright: ignore[reportAttributeAccessIssue]
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))
 

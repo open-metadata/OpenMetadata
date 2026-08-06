@@ -47,7 +47,7 @@ import {
   getIngestionPipelineByFqn,
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -69,6 +69,7 @@ const AddIngestionPage = () => {
   const navigate = useNavigate();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
+  const [isStepReady, setIsStepReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -257,7 +258,7 @@ const AddIngestionPage = () => {
   };
 
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
       <div className="tw:flex-1">
         <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
         <div className="tw:mt-4">
@@ -284,6 +285,7 @@ const AddIngestionPage = () => {
             onAddIngestionSave={onAddIngestionSave}
             onFocus={handleFieldFocus}
             onIngestionDeploy={onIngestionDeploy}
+            onStepReadyChange={setIsStepReady}
           />
         </div>
       </div>
@@ -300,6 +302,7 @@ const AddIngestionPage = () => {
           <Button
             color="primary"
             data-testid="next-button"
+            isDisabled={!isStepReady}
             size="sm"
             type="button"
             onPress={handleFooterNext}>
@@ -341,7 +344,7 @@ const AddIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel tw:!bg-transparent"
+      className="content-height-with-resizable-panel tw:bg-transparent"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,

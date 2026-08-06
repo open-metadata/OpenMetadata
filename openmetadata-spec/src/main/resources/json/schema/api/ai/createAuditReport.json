@@ -1,0 +1,60 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/createAuditReport.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAuditReport",
+  "description": "Request an asynchronously-generated audit pack (JSON/PDF bundle) scoped to a framework, domain, or single AI asset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.CreateAuditReport",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "framework": {
+      "description": "Framework to scope the report to (omit for an estate-wide multi-framework pack)",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "scope": {
+      "$ref": "../../entity/ai/auditReport.json#/definitions/reportScope"
+    },
+    "scopeTarget": {
+      "description": "FQN of the domain or AI asset when scope is not Estate",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "format": {
+      "$ref": "../../entity/ai/auditReport.json#/definitions/reportFormat"
+    },
+    "asOfDate": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "includeRedacted": {
+      "type": "boolean"
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      }
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "extension": {
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

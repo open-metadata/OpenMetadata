@@ -44,12 +44,14 @@ class ScoredTag:
         score: Confidence score (0.0-1.0)
         reason: Explanation of why this tag was matched
         recognizer_metadata: Optional metadata about the recognizer that applied this tag
+        column_name_matched: Whether the tag's own column-name recognizer matched the column name
     """
 
     tag: Tag
     score: float
     reason: str
     recognizer_metadata: Optional[TagLabelRecognizerMetadata] = None  # noqa: UP045
+    column_name_matched: bool = False
 
     def __hash__(self) -> int:
         return hash(self.tag.fullyQualifiedName)

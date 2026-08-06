@@ -43,6 +43,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -99,6 +100,10 @@ class SearchDocFieldValidationTest {
     when(relDao.findFrom(any(UUID.class), anyString(), anyInt()))
         .thenReturn(Collections.emptyList());
     entityStaticMock.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    entityStaticMock
+        .when(() -> Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS))
+        .thenReturn(mock(TestCaseResolutionStatusRepository.class));
   }
 
   @AfterAll

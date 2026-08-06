@@ -238,7 +238,7 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../../utils/BlockEditorUtils', () => ({
-  formatContent: jest.fn().mockReturnValue('formatted content'),
+  formatServerContent: jest.fn().mockReturnValue('formatted content'),
 }));
 
 jest.mock('../../../utils/BlockEditorPureUtils', () => ({
@@ -717,6 +717,7 @@ describe('ContractDetail', () => {
 
     it('should validate contract when validate button is clicked', async () => {
       (validateContractById as jest.Mock).mockResolvedValue({});
+      const onContractUpdated = jest.fn();
 
       render(
         <ContractDetail
@@ -724,6 +725,7 @@ describe('ContractDetail', () => {
           contract={mockContract}
           entityId="test-entity-id"
           entityType="table"
+          onContractUpdated={onContractUpdated}
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
@@ -738,6 +740,7 @@ describe('ContractDetail', () => {
       });
 
       expect(validateContractById).toHaveBeenCalledWith('contract-1');
+      expect(onContractUpdated).toHaveBeenCalled();
       expect(showSuccessToast).toHaveBeenCalledWith(
         'message.contract-validation-trigger-successfully'
       );

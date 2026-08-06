@@ -49,7 +49,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import { getCronDefaultValue } from '../../utils/CronExpressionUtils';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
@@ -150,9 +150,7 @@ const AppInstall = () => {
         }
       }
     } catch (_) {
-      showErrorToast(
-        t('message.no-application-schema-found', { appName: fqn })
-      );
+      showErrorToast(t('server.no-application-schema-found', { appName: fqn }));
     } finally {
       setIsLoading(false);
     }

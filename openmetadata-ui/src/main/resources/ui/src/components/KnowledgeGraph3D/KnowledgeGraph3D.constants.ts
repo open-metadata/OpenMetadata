@@ -102,6 +102,8 @@ export const LINK_ONTOLOGY_COLOR = '#F79009';
 export const ONTOLOGY_PARTICLE_COLOR = '#FDB022';
 export const COVERAGE_GAP_COLOR = '#F04438';
 export const LABEL_COLOR = '#EAF0FB';
+/** Dark text drawn on the orange glossary-term pill laid over ontology-mode assets. */
+export const TERM_BADGE_TEXT_COLOR = '#0E1430';
 
 export const STAGE_BACKDROP =
   'radial-gradient(130% 120% at 28% 0%, #182747 0%, #0C1326 52%, #060A16 100%)';
@@ -119,8 +121,10 @@ export const PRIMARY_EMPHASIS = 1.5;
 export const CAMERA_FOCUS_DISTANCE = 110;
 export const CAMERA_FOCUS_DURATION_MS = 900;
 
-/** Charge force keeps clusters separated without exploding the layout. */
-export const CHARGE_STRENGTH = -140;
+/** Force tuning for readable hub-and-spoke and dense multi-hop layouts. */
+export const CHARGE_STRENGTH = -360;
+export const LINK_DISTANCE = 84;
+export const LINK_STRENGTH = 0.18;
 
 /**
  * Bound the force simulation so the render loop settles instead of animating
@@ -137,24 +141,29 @@ export const SIMULATION_COOLDOWN_TIME_MS = 8000;
 export const OPACITY_APPLY_FRAMES = 8;
 
 export const ZOOM_TO_FIT_DURATION_MS = 700;
-export const ZOOM_TO_FIT_PADDING = 90;
+export const ZOOM_TO_FIT_PADDING = 60;
 
 /**
- * `zoomToFit` frames node positions, not the (large) node sprites, so sparse
- * graphs end up too close. Pull the camera back to at least this distance from
- * the graph center after framing.
+ * Prevent an early fit from placing the camera inside a graph whose force
+ * simulation has not spread out yet. The settled layout is fitted again when
+ * the simulation stops, so this only acts as an initial visibility guard.
  */
-export const MIN_CAMERA_DISTANCE = 320;
+export const MIN_CAMERA_DISTANCE = 160;
 
 /** Opacity applied to nodes/links outside the active highlight set. */
 export const DIMMED_NODE_OPACITY = 0.13;
 export const COVERAGE_DIMMED_OPACITY = 0.26;
 
-/**
- * Above this node count, always-on labels are both unreadable and costly to
- * rasterize, so they are suppressed (hover still shows the name tooltip).
- */
-export const LABEL_NODE_LIMIT = 140;
+/** Labels are rendered up to this cap, then progressively disclosed by priority. */
+export const LABEL_RENDER_LIMIT = 140;
+export const ALWAYS_VISIBLE_LABEL_LIMIT = 18;
+export const PRIORITY_LABEL_LIMIT = 18;
+
+/** Dense layouts are widened to use a landscape stage and compressed in depth. */
+export const DENSE_GRAPH_NODE_THRESHOLD = 24;
+export const TARGET_LAYOUT_VIEWPORT_RATIO = 0.76;
+export const MAX_HORIZONTAL_LAYOUT_SCALE = 2.2;
+export const DENSE_GRAPH_DEPTH_SCALE = 0.65;
 
 export const LEGEND_TYPES: NodeType[] = [
   'domain',

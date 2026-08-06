@@ -29,6 +29,8 @@ const CoreSelectWidget = ({
   schema,
   options,
   onChange,
+  onFocus,
+  onBlur,
 }: WidgetProps) => {
   const items = useMemo(
     () =>
@@ -65,6 +67,8 @@ const CoreSelectWidget = ({
       popoverClassName="core-select-widget-popover"
       selectedKey={value === undefined || value === null ? null : String(value)}
       size="sm"
+      onBlur={() => onBlur(id, value)}
+      onFocus={() => onFocus(id, value)}
       onSelectionChange={(key: Key | null) => {
         if (key === null) {
           onChange(options.emptyValue ?? undefined);

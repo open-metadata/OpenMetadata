@@ -35,18 +35,16 @@ const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
 
-// Limited to the local Keycloak SAML fixture because the TTL override mutates
-// shared security config and is too aggressive to point at the Okta tenant.
-const SUPPORTED_PROVIDER = 'keycloak-azure-saml';
+const SESSION_RENEWAL_TAGS = ['@sso', '@Platform', '@tokenRenewal'];
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
+test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
   test.slow();
-  // eslint-disable-next-line playwright/no-skipped-test -- TTL override is unsafe against any provider other than the local Keycloak fixture
+  // eslint-disable-next-line playwright/no-skipped-test
   test.skip(
-    providerType !== SUPPORTED_PROVIDER || !username || !password,
-    `${SSO_ENV.PROVIDER_TYPE}=${SUPPORTED_PROVIDER} + ${SSO_ENV.USERNAME} + ${SSO_ENV.PASSWORD} must be set`
+    !username || !password,
+    `${SSO_ENV.USERNAME} + ${SSO_ENV.PASSWORD} must be set`
   );
 
   let helper: ProviderHelper;
@@ -86,12 +84,12 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
     'Swap server to SAML with short JWT TTL and establish user session',
     async ({ browser }) => {
       helper = getProviderHelper(providerType);
-      const { apiContext, afterAction, page } = await performAdminLogin(
+      const { apiContext, afterAction, token } = await performAdminLogin(
         browser
       );
 
       try {
-        adminJwt = await getToken(page);
+        adminJwt = token;
 
         if (!adminJwt) {
           throw new Error(

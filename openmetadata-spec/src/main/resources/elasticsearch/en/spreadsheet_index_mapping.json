@@ -266,7 +266,8 @@
         "type": "text"
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "directory": {
         "properties": {

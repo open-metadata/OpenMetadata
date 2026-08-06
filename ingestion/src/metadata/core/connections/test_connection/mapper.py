@@ -11,10 +11,9 @@
 """
 Named constructors for a ``TestConnectionStepResult``.
 
-The runner calls one factory per step depending on the outcome. A non-mandatory
-failure becomes a ``Warning`` (the user may just miss some metadata), a mandatory
-one a ``Failed``. A classified ``Diagnosis`` (if any) is carried alongside the raw
-``errorLog``.
+Two axes: ``passed`` (did the check do its job?) and ``status`` (severity).
+``Warning`` covers both a failed non-mandatory step and a passed one carrying a
+caveat; ``passed`` tells them apart. ``errorLog`` is failure-only.
 """
 
 from __future__ import annotations
@@ -49,8 +48,9 @@ class StepResultBuilder:
     ) -> TestConnectionStepResult:
         return cls._result(
             step,
-            Status.Passed,
+            Status.Warning if evidence.caveat else Status.Passed,
             passed=True,
+            diagnosis=_to_result_diagnosis(evidence.caveat),
             duration_ms=duration_ms,
             executed_command=evidence.command,
             result_summary=evidence.summary,

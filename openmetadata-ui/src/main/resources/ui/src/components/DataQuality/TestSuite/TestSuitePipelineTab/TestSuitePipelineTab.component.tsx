@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
+  Box,
+  EmptyPlaceholder,
   Table,
   TableCard,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { HelpCircle } from '@untitledui/icons';
+import { Dataflow03, HelpCircle, Plus } from '@untitledui/icons';
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
@@ -64,12 +65,12 @@ import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../../../utils/RouterUtils';
 import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionStatusCount from '../../../Settings/Services/Ingestion/IngestionListTable/IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from '../../../Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions';
 import { IngestionRecentRuns } from '../../../Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
@@ -354,26 +355,29 @@ const TestSuitePipelineTab = ({
   const emptyPlaceholder = useMemo(
     () =>
       testSuite ? (
-        <ErrorPlaceHolder
-          button={
-            <Button
-              ghost
-              className="p-x-lg"
-              data-testid="add-placeholder-button"
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleAddPipelineRedirection}>
-              {t('label.add')}
-            </Button>
-          }
-          heading={t('label.pipeline')}
-          permission={createPermission}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.test-suite-ingestion'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
-          {t('message.no-table-pipeline')}
-        </ErrorPlaceHolder>
+        <Box className="tw:relative tw:min-h-80 tw:w-full">
+          <EmptyPlaceholder
+            actions={
+              createPermission
+                ? [
+                    {
+                      key: 'add-pipeline',
+                      label: t('label.add-entity', {
+                        entity: t('label.pipeline'),
+                      }),
+                      color: 'primary' as const,
+                      iconLeading: Plus,
+                      onPress: handleAddPipelineRedirection,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('message.no-table-pipeline')}
+            icon={<Dataflow03 className="tw:text-fg-brand-primary" />}
+            title={t('message.no-pipelines-yet')}
+            variant="blank"
+          />
+        </Box>
       ) : (
         <ErrorPlaceHolder
           placeholderText={t('message.no-test-suite-table-pipeline')}
@@ -411,7 +415,9 @@ const TestSuitePipelineTab = ({
   }
 
   return (
-    <Row className="m-l-0 m-r-0 m-t-md m-b-md" gutter={[16, 16]}>
+    <Row
+      className="test-suite-pipeline-tab m-l-0 m-r-0 m-t-md m-b-md"
+      gutter={[16, 16]}>
       {dataSource.length > 0 && (
         <Col className="d-flex justify-end" span={24}>
           <Button
@@ -477,7 +483,7 @@ const TestSuitePipelineTab = ({
                     data-row-key={record.fullyQualifiedName}
                     id={record.id}
                     key={record.id}>
-                    <Table.Cell className="tw:align-middle tw:w-72">
+                    <Table.Cell className="tw:align-middle tw:w-full tw:min-w-56">
                       {renderNameField()(record.name, record)}
                     </Table.Cell>
 
@@ -494,7 +500,7 @@ const TestSuitePipelineTab = ({
                       />
                     </Table.Cell>
 
-                    <Table.Cell className="tw:align-middle tw:w-44">
+                    <Table.Cell className="tw:align-middle tw:w-44 tw:max-w-44">
                       {renderScheduleField(record.name, record)}
                     </Table.Cell>
 
@@ -561,13 +567,13 @@ const TestSuitePipelineTab = ({
         </TableCard.Root>
       </Col>
 
-      <EntityDeleteModal
-        bodyText={ingestionDeleteMessage}
-        entityName={getEntityName(deleteSelection)}
-        entityType={t('label.ingestion-lowercase')}
-        visible={isConfirmationModalOpen}
+      <DeleteModal
+        entityTitle={getEntityName(deleteSelection)}
+        isDeleting={deleteSelection.state === 'waiting'}
+        message={ingestionDeleteMessage}
+        open={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
-        onConfirm={handleDeleteConfirm}
+        onDelete={handleDeleteConfirm}
       />
     </Row>
   );

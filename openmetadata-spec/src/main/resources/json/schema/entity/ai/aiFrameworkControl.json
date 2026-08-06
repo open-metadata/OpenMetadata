@@ -1,0 +1,108 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/aiFrameworkControl.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIFrameworkControl",
+  "$comment": "@om-entity-type",
+  "description": "A single control within an AI Governance Framework (e.g. EU AI Act Article 10). Controls drive per-asset compliance assessments.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.AIFrameworkControl",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "controlCategory": {
+      "type": "string",
+      "enum": ["Risk", "Process", "Data", "Transparency", "Quality", "Governance"],
+      "javaType": "org.openmetadata.schema.entity.ai.ControlCategory",
+      "javaEnums": [
+        {"name": "Risk"},
+        {"name": "Process"},
+        {"name": "Data"},
+        {"name": "Transparency"},
+        {"name": "Quality"},
+        {"name": "Governance"}
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Control name (typically the code, e.g. 'art-10').",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Human-readable label (e.g. 'Article 10 — Data and data governance').",
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "framework": {
+      "description": "Framework this control belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "code": {
+      "description": "Stable short code for the control within its framework (e.g. 'art-10').",
+      "type": "string"
+    },
+    "category": {
+      "$ref": "#/definitions/controlCategory"
+    },
+    "evidenceRequirements": {
+      "description": "What evidence assessors should attach to demonstrate this control is met.",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "type": "string"
+    },
+    "href": {
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "type": "boolean",
+      "default": false
+    },
+    "extension": {
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "lifeCycle": {
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["id", "name", "framework"],
+  "additionalProperties": false
+}

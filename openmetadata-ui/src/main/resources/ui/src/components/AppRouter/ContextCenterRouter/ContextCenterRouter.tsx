@@ -14,9 +14,9 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-import withSuspenseFallback from '../withSuspenseFallback';
+import { withPageSuspenseFallback } from '../withSuspenseFallback';
 
-const ContextCenterDashboardPage = withSuspenseFallback(
+const ContextCenterDashboardPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -25,7 +25,7 @@ const ContextCenterDashboardPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterArticlesPage = withSuspenseFallback(
+const ContextCenterArticlesPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -34,7 +34,7 @@ const ContextCenterArticlesPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterDocumentsPage = withSuspenseFallback(
+const ContextCenterDocumentsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -43,7 +43,7 @@ const ContextCenterDocumentsPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterMemoriesPage = withSuspenseFallback(
+const ContextCenterMemoriesPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -52,7 +52,7 @@ const ContextCenterMemoriesPage = withSuspenseFallback(
   )
 );
 
-const KnowledgeCenterFilterPage = withSuspenseFallback(
+const KnowledgeCenterFilterPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(
@@ -61,7 +61,7 @@ const KnowledgeCenterFilterPage = withSuspenseFallback(
   )
 );
 
-const ContextCenterArchivePage = withSuspenseFallback(
+const ContextCenterArchivePage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(

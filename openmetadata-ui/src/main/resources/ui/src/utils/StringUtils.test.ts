@@ -28,15 +28,20 @@ jest.mock('./i18next/LocalUtil', () => ({
   },
 }));
 
+import { AxiosError } from 'axios';
 import {
+  decodeHtmlEntities,
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
+  getPermissionErrorText,
+  getTrimmedContent,
   jsonToCSV,
   ordinalize,
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
+  stripMarkdown,
 } from './StringUtils';
 
 describe('StringUtils', () => {
@@ -349,6 +354,102 @@ describe('StringUtils', () => {
       const result = removeAttachmentsWithoutUrl(htmlString);
 
       expect(result).toBe('<div class="regular">Keep this</div>');
+    });
+  });
+
+  describe('decodeHtmlEntities', () => {
+    it('should decode numeric HTML entities', () => {
+      expect(decodeHtmlEntities('This is &#98;old text')).toBe(
+        'This is bold text'
+      );
+    });
+
+    it('should decode named HTML entities', () => {
+      expect(decodeHtmlEntities('Tom &amp; Jerry')).toBe('Tom & Jerry');
+    });
+
+    it('should leave plain text unaffected', () => {
+      expect(decodeHtmlEntities('plain text')).toBe('plain text');
+    });
+  });
+
+  describe('stripMarkdown', () => {
+    it('should strip markdown syntax', () => {
+      expect(stripMarkdown('**bold** and `code`')).toBe('bold and code');
+    });
+
+    it('should decode HTML entities left over from markdown stripping', () => {
+      expect(stripMarkdown('This is &#98;old and &amp; italic')).toBe(
+        'This is bold and & italic'
+      );
+    });
+
+    it('should trim surrounding whitespace', () => {
+      expect(stripMarkdown('  **hello world**  ')).toBe('hello world');
+    });
+  });
+
+  describe('getPermissionErrorText', () => {
+    it('should return the friendly permission message for a 403 error', () => {
+      const error = {
+        response: { status: 403, data: { message: 'operations not allowed' } },
+      } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe(
+        'message.operation-forbidden-please-contact-admin'
+      );
+    });
+
+    it('should return the backend message for a non-403 error', () => {
+      const error = {
+        response: { status: 500, data: { message: 'boom' } },
+      } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe('boom');
+    });
+
+    it('should return the fallback text when a non-403 error has no message', () => {
+      const error = { response: { status: 500, data: {} } } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe('fallback');
+    });
+
+    it('should return a plain string error unchanged', () => {
+      expect(getPermissionErrorText('plain error', 'fallback')).toBe(
+        'plain error'
+      );
+    });
+  });
+
+  describe('getTrimmedContent', () => {
+    it('should trim multi-word content to the limit without a broken last word', () => {
+      const content = 'the quick brown fox jumps over the lazy dog';
+
+      const result = getTrimmedContent(content, 20);
+
+      expect(result.length).toBeLessThanOrEqual(20);
+      // last (potentially broken) word is dropped
+      expect(content.startsWith(result)).toBe(true);
+      expect(result).toBe('the quick brown fox');
+    });
+
+    it('should cap a single space-less token to the limit so see-more truncates', () => {
+      const token = 'Please'.repeat(200);
+
+      const result = getTrimmedContent(token, 350);
+
+      expect(result).toHaveLength(350);
+      expect(result).toBe(token.slice(0, 350));
+      // the returned preview must be shorter than the full token
+      expect(result.length).toBeLessThan(token.length);
+    });
+
+    it('should only consider the first three lines', () => {
+      const content = 'line-one\nline-two\nline-three\nline-four';
+
+      const result = getTrimmedContent(content, 1000);
+
+      expect(result).not.toContain('line-four');
     });
   });
 });
