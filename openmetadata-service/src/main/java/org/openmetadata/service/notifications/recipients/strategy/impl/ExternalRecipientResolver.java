@@ -16,6 +16,8 @@ package org.openmetadata.service.notifications.recipients.strategy.impl;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -89,6 +91,7 @@ public class ExternalRecipientResolver implements RecipientResolutionStrategy {
       recipients =
           action.getReceivers().stream()
               .map(receiver -> webhookForReceiver(webhook, receiver))
+              .flatMap(Optional::stream)
               .map(WebhookRecipient::new)
               .collect(Collectors.toUnmodifiableSet());
     }
@@ -101,10 +104,26 @@ public class ExternalRecipientResolver implements RecipientResolutionStrategy {
         : Set.of(new WebhookRecipient(webhook));
   }
 
-  private Webhook webhookForReceiver(Webhook webhook, String receiver) {
-    Webhook configured =
-        webhook == null ? new Webhook() : JsonUtils.convertValue(webhook, Webhook.class);
-    return configured.withEndpoint(URI.create(receiver));
+  /**
+   * Empty for a receiver that is not a usable endpoint. Receivers are admin-typed strings, so one
+   * unsubstituted template or stray space must not discard the valid receivers alongside it.
+   */
+  private Optional<Webhook> webhookForReceiver(Webhook webhook, String receiver) {
+    Optional<Webhook> configured = Optional.empty();
+    try {
+      if (nullOrEmpty(receiver) || receiver.isBlank()) {
+        LOG.warn("Skipping blank webhook receiver");
+      } else {
+        configured = Optional.of(copyOf(webhook).withEndpoint(new URI(receiver)));
+      }
+    } catch (URISyntaxException exception) {
+      LOG.warn("Skipping webhook receiver '{}': {}", receiver, exception.getMessage());
+    }
+    return configured;
+  }
+
+  private Webhook copyOf(Webhook webhook) {
+    return webhook == null ? new Webhook() : JsonUtils.convertValue(webhook, Webhook.class);
   }
 
   @Override
