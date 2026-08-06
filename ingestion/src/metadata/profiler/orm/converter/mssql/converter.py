@@ -13,7 +13,7 @@
 Map Types to convert/cast mssql related data types to relevant data types
 """
 
-from typing import Any, Dict, Set  # noqa: UP035
+from typing import Any
 
 import sqlalchemy
 from sqlalchemy import NVARCHAR, TEXT
@@ -46,10 +46,10 @@ class MssqlMapTypes(CommonMapTypes):
     }
 
     @staticmethod
-    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
+    def map_sqa_to_om_types() -> dict[TypeEngine, set[DataType]]:
         """returns an ORM type"""
         # Derived from _TYPE_MAP_OVERRIDE so the forward and reverse maps cannot drift.
-        mapping: Dict[Any, Set[DataType]] = dict(CommonMapTypes.map_sqa_to_om_types())  # noqa: UP006
+        mapping: dict[Any, set[DataType]] = dict(CommonMapTypes.map_sqa_to_om_types())
         for om_type, sqa_type in MssqlMapTypes._TYPE_MAP_OVERRIDE.items():
             mapping[sqa_type] = mapping.get(sqa_type, set()) | {om_type}
         return mapping
