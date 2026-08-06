@@ -66,6 +66,7 @@ jest.mock('../../../hooks/currentUserStore/useCurrentUserStore', () => ({
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn(() => mockUseGenericContext),
 }));
 

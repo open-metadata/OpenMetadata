@@ -42,7 +42,7 @@ jest.mock('../../../utils/TableUtils', () => ({
   getEntityTypeIcon: jest.fn(() => <div>EntityIcon</div>),
 }));
 
-jest.mock('../../../utils/EntityLineageUtils', () => ({
+jest.mock('../../../utils/EntityLineageNodeUtils', () => ({
   getEntityChildrenAndLabel: jest.fn((node) => {
     const childrenCount = node.columns?.length ?? node.tasks?.length ?? 0;
     const isPlural = childrenCount !== 1;

@@ -11,12 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  getAgentLabelFromType,
-  getAgentStatusLabelFromStatus,
-  getAgentStatusSummary,
-} from './AgentsStatusWidgetPureUtils';
-
 import { ReactComponent as CheckIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as ErrorIcon } from '../assets/svg/ic-close-circle.svg';
 import { ReactComponent as UsageIcon } from '../assets/svg/ic-database.svg';

@@ -23,15 +23,16 @@ import {
   MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_EXTENSION_OBJECT,
 } from '../../mocks/CSV.mock';
 import {
-  convertCustomPropertyStringToEntityExtension,
-  convertEntityExtensionToCustomPropertyString,
   getColumnConfig,
-  getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
   renderColumnDataEditor,
-  splitCSV,
 } from './CSV.utils';
-
+import {
+  convertCustomPropertyStringToEntityExtension,
+  convertEntityExtensionToCustomPropertyString,
+  getCSVStringFromColumnsAndDataSource,
+  splitCSV,
+} from './CSVPureUtils';
 jest.mock('@openmetadata/ui-core-components', () => ({
   Tooltip: jest.fn().mockImplementation(({ children, title }) => (
     <div data-testid="tooltip" title={title}>
@@ -1128,14 +1129,14 @@ describe('CSVUtils', () => {
 
   describe('getCustomPropertyEntityType', () => {
     it('should return GLOSSARY_TERM for GLOSSARY entity type', () => {
-      const { getCustomPropertyEntityType } = require('./CSV.utils');
+      const { getCustomPropertyEntityType } = require('./CSVPureUtils');
       const result = getCustomPropertyEntityType(EntityType.GLOSSARY);
 
       expect(result).toBe(EntityType.GLOSSARY_TERM);
     });
 
     it('should return the same entity type for non-GLOSSARY types', () => {
-      const { getCustomPropertyEntityType } = require('./CSV.utils');
+      const { getCustomPropertyEntityType } = require('./CSVPureUtils');
 
       expect(getCustomPropertyEntityType(EntityType.TABLE)).toBe(
         EntityType.TABLE

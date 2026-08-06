@@ -71,7 +71,6 @@ import {
   AsyncSelectListProps,
   SelectOption,
 } from './AsyncSelectList.interface';
-
 interface TreeAsyncSelectListProps
   extends Omit<AsyncSelectListProps, 'fetchOptions'> {
   isMultiSelect?: boolean;

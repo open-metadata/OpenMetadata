@@ -27,7 +27,6 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import CertificationTag from '../CertificationTag/CertificationTag';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../IconButtons/EditIconButton';
-
 const CertificationWidget = () => {
   const {
     data: entity,
