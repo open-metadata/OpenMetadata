@@ -15,24 +15,24 @@ import classNames from 'classnames';
 import { CSSProperties, ElementType } from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
-import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
 import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
-import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
+import { ReactComponent as ApplicationIcon } from '../assets/svg/common/application.svg';
+import { ReactComponent as EventSubscriptionIcon } from '../assets/svg/common/event-subscription.svg';
+import { ReactComponent as PersonaIcon } from '../assets/svg/common/persona.svg';
+import { ReactComponent as PolicyIcon } from '../assets/svg/common/policy.svg';
+import { ReactComponent as RoleIcon } from '../assets/svg/common/role.svg';
+import { ReactComponent as TeamIcon } from '../assets/svg/common/teams.svg';
+import { ReactComponent as UserIcon } from '../assets/svg/common/user.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/entity/bot.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/entity/kpi.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
-import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
-import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
-import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
-import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
 import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
-import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
-import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -86,9 +86,10 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.PERSONA]: PersonaIcon,
   [EntityType.ROLE]: RoleIcon,
   [EntityType.POLICY]: PolicyIcon,
-  [EntityType.EVENT_SUBSCRIPTION]: AlertIcon,
+  [EntityType.EVENT_SUBSCRIPTION]: EventSubscriptionIcon,
   [EntityType.USER]: UserIcon,
-  [EntityType.INGESTION_PIPELINE]: PipelineIcon,
+  [EntityType.INGESTION_PIPELINE]:
+    ENTITY_ICON_MAPPER[EntityType.INGESTION_PIPELINE].icon,
   [EntityType.ALERT]: AlertIcon,
   [EntityType.KPI]: KPIIcon,
   tagCategory: ClassificationIcon,
@@ -99,6 +100,12 @@ const entityIconMapping: Record<string, ElementType> = {
   services: ServicesIcon,
   automator: AutomatorBotIcon,
   notification: NotificationIcon,
+  [EntityType.LLM_SERVICE]: ENTITY_ICON_MAPPER[EntityType.LLM_SERVICE].icon,
+  [EntityType.MCP_SERVICE]: ENTITY_ICON_MAPPER[EntityType.MCP_SERVICE].icon,
+  aiFrameworkControl: ENTITY_ICON_MAPPER['aiFrameworkControl'].icon,
+  aiGovernancePolicy: ENTITY_ICON_MAPPER['aiGovernancePolicy'].icon,
+  aiGovernanceFramework: ENTITY_ICON_MAPPER['aiGovernanceFramework'].icon,
+  [EntityType.AUDIT_REPORT]: ENTITY_ICON_MAPPER[EntityType.AUDIT_REPORT].icon,
   [EntityType.API_ENDPOINT]: ENTITY_ICON_MAPPER[EntityType.API_ENDPOINT].icon,
   [EntityType.METRIC]: ENTITY_ICON_MAPPER[EntityType.METRIC].icon,
   [EntityType.API_SERVICE]: ENTITY_ICON_MAPPER[EntityType.API_SERVICE].icon,

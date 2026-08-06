@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
@@ -852,6 +853,23 @@ public class AIContextBuilder {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
       context.withTable(buildTableContext(table));
+    }
+    if (entity instanceof Metric metric) {
+      context.withGeneric(buildMetricContext(metric));
+    }
+    return context;
+  }
+
+  /**
+   * A metric's structural context is its expression — the query that defines it. Without this, asking
+   * get_asset_context about a metric returned only its description, while the same expression was
+   * already reachable through get_knowledge_content and as attached knowledge of a table.
+   */
+  private static GenericAssetContext buildMetricContext(Metric metric) {
+    MetricExpression expression = metric.getMetricExpression();
+    GenericAssetContext context = null;
+    if (expression != null && !nullOrEmpty(expression.getCode())) {
+      context = new GenericAssetContext().withDefinition(expression.getCode());
     }
     return context;
   }
