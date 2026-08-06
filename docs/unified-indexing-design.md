@@ -495,6 +495,40 @@ its cost is measured.
 
 ---
 
+## 11.5 Phase 3 status (landed 2026-08-04, unwired)
+
+The §6 components exist as declarations. Nothing calls them from a write path yet, which is what
+§13 intends for this phase — the value is that §11.2 starts reporting before any behaviour changes.
+
+| Component | Where |
+|---|---|
+| `FieldOwnership` | `search/projection/FieldOwnership.java` |
+| `FieldMask` (`All` / `Subset`, top-level keys only) | `search/projection/FieldMask.java` |
+| `ProjectionSpec` + `DefaultProjectionSpec` | `search/projection/` |
+| `DocInvariant` + `TagDocInvariant` | `search/projection/` |
+| `DocumentProjector` | `search/projection/DocumentProjector.java` |
+| `MutationPlanner` | `search/projection/MutationPlanner.java` |
+| §11.2 property test | `ProjectionParityPropertyTest` |
+
+Two things worth recording, both found by building it rather than by reading:
+
+1. **§11.2 paid for itself immediately.** The first run failed: setting `tags` also changes
+   `tagSources` and `tierSources`, which the declared lineage did not list. A partial tag write under
+   that declaration would have left both counting the *previous* tag set — the same shape as
+   catalogue #4 and #6, caught at build time instead of in a cluster.
+2. **The two renderings of the tag invariant are not equivalent, and now it is written down.**
+   `tagSources` / `tierSources` are computed by `populateCommonFields`, so a rebuild gets them right,
+   but `TAG_RESEPARATION_SCRIPT` does not compute them. They are therefore declared in the spec's
+   lineage and deliberately **not** in `TagDocInvariant.produces()`, since claiming them there would
+   assert the painless half maintains them. A live cascade leaning on the postlude alone still leaves
+   them stale — a phase 5 item, now visible instead of latent.
+
+`TaggableIndex.withoutAppliedAt` was widened from private to an interface static so the invariant
+strips `appliedAt` through it rather than copying it. A second copy of that rule is exactly the drift
+this phase exists to remove.
+
+---
+
 ## 12. Collate extension contract
 
 The redesign must preserve or deliberately replace these seams — Collate's entire search surface is 9

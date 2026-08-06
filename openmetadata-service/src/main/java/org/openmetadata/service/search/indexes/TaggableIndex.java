@@ -65,7 +65,12 @@ public interface TaggableIndex extends SearchIndex {
    * appears in no index mapping and in no query or sort. The authoritative value remains in
    * {@code tag_usage}.
    */
-  private static TagLabel withoutAppliedAt(TagLabel label) {
+  // Exposed (interface statics are public) rather than private, so TagDocInvariant — which renders
+  // this same tags -> tier/classificationTags/glossaryTags rule for the projector — strips
+  // appliedAt
+  // through this method instead of copying it. A second copy would be precisely the drift the
+  // projector exists to remove.
+  static TagLabel withoutAppliedAt(TagLabel label) {
     if (label == null || label.getAppliedAt() == null) {
       return label;
     }
@@ -73,7 +78,7 @@ public interface TaggableIndex extends SearchIndex {
     return JsonUtils.deepCopy(label, TagLabel.class).withAppliedAt(null);
   }
 
-  private static List<TagLabel> withoutAppliedAt(List<TagLabel> labels) {
+  static List<TagLabel> withoutAppliedAt(List<TagLabel> labels) {
     if (labels == null || labels.stream().noneMatch(label -> label.getAppliedAt() != null)) {
       return labels;
     }
