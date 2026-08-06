@@ -21,19 +21,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -202,5 +206,134 @@ public class IngestionPipelineSortIT {
     assertThrows(
         OpenMetadataException.class,
         () -> SdkClients.adminClient().ingestionPipelines().list(params));
+  }
+
+  /**
+   * An unsupported sortOrder must be rejected rather than silently treated as ascending — a typo
+   * that quietly returns the opposite page is indistinguishable from a server bug on the client.
+   */
+  @Test
+  void test_listWithUnsupportedSortOrder_isRejected(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    createPipeline(service, ns.prefix("pipeline-a"), "aaa-" + ns.prefix("first"));
+
+    ListParams params = sortParams(service, "descending", 50);
+
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().ingestionPipelines().list(params));
+  }
+
+  /**
+   * {@code serviceType} is the parent service category, which lives in {@code
+   * entity_relationship.fromEntity} rather than on the pipeline row — it is a join, not a plain
+   * condition, so the ordered query has to build it the same way the unordered one does. Without
+   * that the sorted list silently spans every service category while {@code paging.total} stays
+   * filtered. The UI always sends this parameter.
+   */
+  @Test
+  void test_listSortedByDisplayName_honoursServiceTypeFilter(TestNamespace ns) {
+    DatabaseService databaseService = DatabaseServiceTestFactory.createPostgres(ns);
+    DashboardService dashboardService = DashboardServiceTestFactory.createMetabase(ns);
+
+    createPipeline(databaseService, ns.prefix("pipeline-z"), "aaa-" + ns.prefix("db-first"));
+    createPipeline(databaseService, ns.prefix("pipeline-a"), "zzz-" + ns.prefix("db-last"));
+    createDashboardPipeline(dashboardService, ns.prefix("pipeline-m"), ns.prefix("dashboard-one"));
+
+    ListResponse<IngestionPipeline> matching =
+        SdkClients.adminClient()
+            .ingestionPipelines()
+            .list(sortParams(databaseService, "asc", 50).setServiceType("databaseService"));
+
+    assertEquals(
+        List.of("aaa-" + ns.prefix("db-first"), "zzz-" + ns.prefix("db-last")),
+        displayNamesOf(matching));
+    assertEquals(2, matching.getPaging().getTotal());
+
+    // The dashboard service's own pipeline must not leak in under a databaseService filter: the
+    // service name alone matches it, so only an honoured serviceType keeps this empty.
+    ListResponse<IngestionPipeline> contradictory =
+        SdkClients.adminClient()
+            .ingestionPipelines()
+            .list(
+                new ListParams()
+                    .setService(dashboardService.getName())
+                    .setServiceType("databaseService")
+                    .setLimit(50)
+                    .addQueryParam("sortField", "displayName")
+                    .addQueryParam("sortOrder", "asc"));
+
+    assertEquals(List.of(), displayNamesOf(contradictory));
+  }
+
+  /**
+   * {@code displayName} has no maxLength in the schema, so the sort column truncates rather than
+   * rejects. The cursor Java derives has to truncate identically or paging skips a row at the
+   * boundary.
+   */
+  @Test
+  void test_listSortedByDisplayName_handlesDisplayNameLongerThanSortColumn(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    String longPrefix = "zzz-" + "x".repeat(300);
+    createPipeline(service, ns.prefix("pipeline-a"), longPrefix + ns.prefix("-long"));
+    createPipeline(service, ns.prefix("pipeline-b"), "aaa-" + ns.prefix("short"));
+
+    ListResponse<IngestionPipeline> firstPage = listSorted(service, "asc", 1);
+    assertEquals(List.of("aaa-" + ns.prefix("short")), displayNamesOf(firstPage));
+    assertNotNull(firstPage.getPaging().getAfter());
+
+    ListResponse<IngestionPipeline> secondPage =
+        SdkClients.adminClient()
+            .ingestionPipelines()
+            .list(sortParams(service, "asc", 1).setAfter(firstPage.getPaging().getAfter()));
+
+    assertEquals(1, secondPage.getData().size());
+    assertEquals(longPrefix + ns.prefix("-long"), secondPage.getData().get(0).getDisplayName());
+  }
+
+  /**
+   * A page can come back empty when the caller holds a valid cursor but every row past it was
+   * deleted meanwhile. Returning a null before-cursor would read as "first page" and dead-end
+   * backward navigation, so the caller's own cursor is echoed instead.
+   */
+  @Test
+  void test_listSortedByDisplayName_echoesCursorWhenPageIsEmpty(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    createPipeline(service, ns.prefix("pipeline-a"), "aaa-" + ns.prefix("first"));
+    IngestionPipeline second =
+        createPipeline(service, ns.prefix("pipeline-b"), "bbb-" + ns.prefix("second"));
+
+    ListResponse<IngestionPipeline> firstPage = listSorted(service, "asc", 1);
+    String after = firstPage.getPaging().getAfter();
+    assertNotNull(after);
+
+    SdkClients.adminClient()
+        .ingestionPipelines()
+        .delete(second.getId().toString(), Map.of("hardDelete", "true", "recursive", "false"));
+
+    ListResponse<IngestionPipeline> emptyPage =
+        SdkClients.adminClient()
+            .ingestionPipelines()
+            .list(sortParams(service, "asc", 1).setAfter(after));
+
+    assertEquals(List.of(), displayNamesOf(emptyPage));
+    assertEquals(after, emptyPage.getPaging().getBefore());
+  }
+
+  private IngestionPipeline createDashboardPipeline(
+      DashboardService service, String name, String displayName) {
+    return SdkClients.adminClient()
+        .ingestionPipelines()
+        .create(
+            new CreateIngestionPipeline()
+                .withName(name)
+                .withDisplayName(displayName)
+                .withPipelineType(PipelineType.METADATA)
+                .withService(service.getEntityReference())
+                .withSourceConfig(
+                    new SourceConfig().withConfig(new DashboardServiceMetadataPipeline()))
+                .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE)));
   }
 }

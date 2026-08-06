@@ -105,6 +105,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
+
+  /**
+   * Width of the {@code displayNameSort} generated column. {@code displayName} is an unbounded
+   * string in the schema, so the column truncates rather than rejects — keep this in sync with the
+   * {@code LEFT(..., 256)} in the 2.1.0 migration.
+   */
+  private static final int DISPLAY_NAME_SORT_MAX_CHARS = 256;
+
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -162,6 +170,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     String reverseOrder = ascending ? "DESC" : "ASC";
     String forward = ascending ? ">" : "<";
     String backward = ascending ? "<" : ">";
+    // Resolve once: getCondition registers derived bind params on the filter, and the serviceType
+    // variant is a join the plain ListFilter condition cannot express.
+    String condition = pipelineDAO.displayNameSortCondition(filter);
 
     if (!nullOrEmpty(before)) {
       DisplayNameCursor cursor = parseDisplayNameCursor(before);
@@ -169,7 +180,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           hydrateByDisplayName(
               pipelineDAO.listBeforeByDisplayName(
                   filter.getQueryParams(),
-                  filter.getCondition(),
+                  condition,
                   order,
                   reverseOrder,
                   backward,
@@ -180,28 +191,28 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               uriInfo,
               filter);
       String beforeCursor = null;
-      String afterCursor = null;
       if (entities.size() > limitParam) {
         entities.remove(0);
         beforeCursor = displayNameCursorValue(entities.get(0));
       }
-      if (!entities.isEmpty()) {
-        afterCursor = displayNameCursorValue(entities.get(entities.size() - 1));
-      }
+      // An empty page means the cursor was valid but every earlier row was deleted concurrently.
+      // Echo the caller's cursor rather than returning null, which reads as end-of-pagination and
+      // dead-ends forward navigation. Mirrors EntityRepository#listBefore.
+      String afterCursor =
+          entities.isEmpty() ? before : displayNameCursorValue(entities.get(entities.size() - 1));
       return getResultList(entities, beforeCursor, afterCursor, total);
     }
 
     List<String> jsons;
     if (nullOrEmpty(after)) {
       jsons =
-          pipelineDAO.listByDisplayName(
-              filter.getQueryParams(), filter.getCondition(), order, limitParam + 1);
+          pipelineDAO.listByDisplayName(filter.getQueryParams(), condition, order, limitParam + 1);
     } else {
       DisplayNameCursor cursor = parseDisplayNameCursor(after);
       jsons =
           pipelineDAO.listAfterByDisplayName(
               filter.getQueryParams(),
-              filter.getCondition(),
+              condition,
               order,
               forward,
               limitParam + 1,
@@ -210,14 +221,23 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     entities = hydrateByDisplayName(jsons, fields, uriInfo, filter);
-    String beforeCursor =
-        nullOrEmpty(after) || entities.isEmpty() ? null : displayNameCursorValue(entities.get(0));
+    // Same concurrent-deletion guard in the forward direction: a null before reads as "first page"
+    // and dead-ends backward navigation, so echo the caller's cursor instead.
+    String beforeCursor = forwardBeforeCursor(after, entities);
     String afterCursor = null;
     if (entities.size() > limitParam) {
       entities.remove(limitParam);
       afterCursor = displayNameCursorValue(entities.get(limitParam - 1));
     }
     return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private String forwardBeforeCursor(String after, List<IngestionPipeline> entities) {
+    String beforeCursor = null;
+    if (!nullOrEmpty(after)) {
+      beforeCursor = entities.isEmpty() ? after : displayNameCursorValue(entities.get(0));
+    }
+    return beforeCursor;
   }
 
   private List<IngestionPipeline> hydrateByDisplayName(
@@ -239,16 +259,32 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   /**
-   * Must reproduce the {@code displayNameSort} generated column exactly —
-   * {@code COALESCE(NULLIF(displayName,''), name)}. The column is deliberately not case-folded, so
-   * the value is carried verbatim and comparison semantics stay entirely inside the database.
+   * Must reproduce the {@code displayNameSort} generated column exactly — {@code
+   * LEFT(COALESCE(NULLIF(displayName,''), name), 256)}. The column is deliberately not case-folded,
+   * so the value is carried verbatim and comparison semantics stay entirely inside the database.
    */
   private String displayNameCursorValue(IngestionPipeline pipeline) {
     String displayName = pipeline.getDisplayName();
     String sortKey = nullOrEmpty(displayName) ? pipeline.getName() : displayName;
     return JsonUtils.pojoToJson(
         Map.of(
-            "displayNameSort", sortKey == null ? "" : sortKey, "id", pipeline.getId().toString()));
+            "displayNameSort",
+            truncateToSortWidth(sortKey == null ? "" : sortKey),
+            "id",
+            pipeline.getId().toString()));
+  }
+
+  /**
+   * Counts code points, not {@code char}s, because SQL {@code LEFT()} is defined in characters:
+   * {@link String#substring} on a surrogate pair would produce a cursor the database disagrees with
+   * and silently skip a row at the page boundary.
+   */
+  private String truncateToSortWidth(String sortKey) {
+    String truncated = sortKey;
+    if (sortKey.codePointCount(0, sortKey.length()) > DISPLAY_NAME_SORT_MAX_CHARS) {
+      truncated = sortKey.substring(0, sortKey.offsetByCodePoints(0, DISPLAY_NAME_SORT_MAX_CHARS));
+    }
+    return truncated;
   }
 
   private record DisplayNameCursor(String displayName, String id) {}

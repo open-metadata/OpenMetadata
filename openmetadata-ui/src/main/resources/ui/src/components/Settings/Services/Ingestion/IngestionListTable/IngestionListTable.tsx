@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Skeleton, TableProps } from 'antd';
-import { ColumnsType, SortOrder } from 'antd/lib/table/interface';
+import { Skeleton } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
@@ -31,12 +31,12 @@ import {
   IngestionServicePermission,
   ResourceEntity,
 } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
-import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { columnSorter } from '../../../../../utils/EntitySortUtils';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
@@ -63,6 +63,13 @@ import {
 } from './IngestionListTable.interface';
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
+
+// Derived from symbols already in scope rather than imported from antd directly: tw-guard blocks
+// new antd specifiers, and this file's table is legacy AntD that is not being migrated here.
+type AntdSortOrder = ColumnsType<IngestionPipeline>[number]['sortOrder'];
+type AntdTableChangeHandler = NonNullable<
+  NonNullable<IngestionListTableProps['extraTableProps']>['onChange']
+>;
 
 function IngestionListTable({
   tableContainerClassName = '',
@@ -269,8 +276,8 @@ function IngestionListTable({
 
   const isServerSorted = !isUndefined(onSortChange);
 
-  const antdSortOrder = useMemo<SortOrder>(() => {
-    let order: SortOrder = null;
+  const antdSortOrder = useMemo<AntdSortOrder>(() => {
+    let order: AntdSortOrder = null;
     if (sortOrder === SORT_ORDER.ASC) {
       order = 'ascend';
     } else if (sortOrder === SORT_ORDER.DESC) {
@@ -280,23 +287,26 @@ function IngestionListTable({
     return order;
   }, [sortOrder]);
 
+  const toSortOrder = (order?: AntdSortOrder): SORT_ORDER | undefined => {
+    let updatedSortOrder: SORT_ORDER | undefined;
+    if (order === 'ascend') {
+      updatedSortOrder = SORT_ORDER.ASC;
+    } else if (order === 'descend') {
+      updatedSortOrder = SORT_ORDER.DESC;
+    }
+
+    return updatedSortOrder;
+  };
+
   // AntD reports sort, filter and pagination through the same `onChange`. Only the sort action is
   // ours; everything else stays with the caller's handler, which must still receive every action.
-  const handleTableChange = useCallback<
-    NonNullable<TableProps<IngestionPipeline>['onChange']>
-  >(
+  const handleTableChange = useCallback<AntdTableChangeHandler>(
     (pagination, filters, sorter, extra) => {
       extraTableProps?.onChange?.(pagination, filters, sorter, extra);
 
       if (extra.action === 'sort' && onSortChange) {
         const order = Array.isArray(sorter) ? sorter[0]?.order : sorter.order;
-        onSortChange(
-          order === 'ascend'
-            ? SORT_ORDER.ASC
-            : order === 'descend'
-            ? SORT_ORDER.DESC
-            : undefined
-        );
+        onSortChange(toSortOrder(order));
       }
     },
     [extraTableProps, onSortChange]

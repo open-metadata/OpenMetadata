@@ -71,7 +71,10 @@ CREATE INDEX idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(d
 -- own collation (utf8mb4_0900_ai_ci is already case-insensitive), so the cursor value can be
 -- carried verbatim in Java. VIRTUAL is indexable and avoids a table rewrite; Postgres uses STORED
 -- because it has no VIRTUAL.
+-- LEFT(..., 256) is load-bearing, not cosmetic: displayName has no maxLength in the schema, so
+-- without it a pre-existing longer value aborts the CREATE INDEX below on upgrade (ERROR 1406) and
+-- every later write of one fails the same way. Truncating keeps the column total; ties break on id.
 ALTER TABLE ingestion_pipeline_entity
     ADD COLUMN displayNameSort VARCHAR(256)
-    GENERATED ALWAYS AS (COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), ''), JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')))) VIRTUAL;
+    GENERATED ALWAYS AS (LEFT(COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), ''), JSON_UNQUOTE(JSON_EXTRACT(json, '$.name'))), 256)) VIRTUAL;
 CREATE INDEX idx_ingestion_pipeline_display_sort ON ingestion_pipeline_entity (deleted, displayNameSort, id);

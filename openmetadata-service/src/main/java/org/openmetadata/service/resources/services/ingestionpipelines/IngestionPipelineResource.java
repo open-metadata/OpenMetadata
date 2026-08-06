@@ -122,6 +122,7 @@ public class IngestionPipelineResource
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
   static final String SORT_FIELD_DISPLAY_NAME = "displayName";
+  private static final String SORT_ORDER_ASC = "asc";
   private static final String SORT_ORDER_DESC = "desc";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
@@ -257,6 +258,7 @@ public class IngestionPipelineResource
       String sortField,
       String sortOrder) {
     validateSortField(sortField);
+    boolean ascending = isAscending(sortOrder);
     Fields fields = getFields(fieldsParam);
     RestUtil.validateCursors(before, after);
     authorizer.authorize(
@@ -268,13 +270,7 @@ public class IngestionPipelineResource
     return addHref(
         uriInfo,
         repository.listByDisplayName(
-            uriInfo,
-            fields,
-            filter,
-            limitParam,
-            before,
-            after,
-            !SORT_ORDER_DESC.equalsIgnoreCase(sortOrder)));
+            uriInfo, fields, filter, limitParam, before, after, ascending));
   }
 
   private void validateSortField(String sortField) {
@@ -283,6 +279,22 @@ public class IngestionPipelineResource
           String.format(
               "Invalid sortField '%s'. Supported values: %s", sortField, SORT_FIELD_DISPLAY_NAME));
     }
+  }
+
+  /**
+   * Rejects anything other than asc/desc rather than silently falling back to ascending: a
+   * misspelled order that quietly returns the opposite page is indistinguishable from a server bug
+   * on the client side.
+   */
+  private boolean isAscending(String sortOrder) {
+    if (!SORT_ORDER_ASC.equalsIgnoreCase(sortOrder)
+        && !SORT_ORDER_DESC.equalsIgnoreCase(sortOrder)) {
+      throw new BadRequestException(
+          String.format(
+              "Invalid sortOrder '%s'. Supported values: %s, %s",
+              sortOrder, SORT_ORDER_ASC, SORT_ORDER_DESC));
+    }
+    return SORT_ORDER_ASC.equalsIgnoreCase(sortOrder);
   }
 
   @GET

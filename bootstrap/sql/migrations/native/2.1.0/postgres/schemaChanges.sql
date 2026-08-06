@@ -70,7 +70,11 @@ CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_service_type ON mcp_se
 -- Not case-folded on purpose: ORDER BY and the keyset-cursor comparison then share the column's
 -- own collation, so the cursor value can be carried verbatim in Java with no risk of Java and SQL
 -- disagreeing on case-folding at a page boundary. Sort-only column, never rendered.
+-- left(..., 256) is load-bearing, not cosmetic: displayName has no maxLength in the schema, and a
+-- STORED column is materialised for every existing row, so without it a single longer value aborts
+-- this ALTER ("value too long for type character varying(256)") and blocks the whole upgrade.
+-- Truncating keeps the column total; ties break on id.
 ALTER TABLE ingestion_pipeline_entity
     ADD COLUMN IF NOT EXISTS displayNameSort VARCHAR(256)
-    GENERATED ALWAYS AS (COALESCE(NULLIF(json ->> 'displayName', ''), json ->> 'name')) STORED;
+    GENERATED ALWAYS AS (left(COALESCE(NULLIF(json ->> 'displayName', ''), json ->> 'name'), 256)) STORED;
 CREATE INDEX IF NOT EXISTS idx_ingestion_pipeline_display_sort ON ingestion_pipeline_entity (deleted, displayNameSort, id);

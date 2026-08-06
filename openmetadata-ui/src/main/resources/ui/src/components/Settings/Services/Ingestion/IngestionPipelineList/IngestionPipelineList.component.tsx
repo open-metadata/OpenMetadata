@@ -10,17 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SORT_ORDER } from '../../../../../enums/common.enum';
-import { SORT_FIELD_DISPLAY_NAME } from '../../../../../constants/Ingestions.constant';
-import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
-import { Button, Col, Row, TablePaginationConfig } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
-import {
-  FilterValue,
-  SorterResult,
-  TableCurrentDataSource,
-  TableRowSelection,
-} from 'antd/lib/table/interface';
+import { TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import capitalize from 'lodash/capitalize';
 import isNil from 'lodash/isNil';
@@ -28,7 +20,10 @@ import map from 'lodash/map';
 import startCase from 'lodash/startCase';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
+import { SORT_FIELD_DISPLAY_NAME } from '../../../../../constants/Ingestions.constant';
 import { useAirflowStatus } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import {
@@ -183,14 +178,18 @@ export const IngestionPipelineList = ({
     [serviceName]
   );
 
+  // A new sort order or filter invalidates the cursor the current page was reached with, so the
+  // cursor has to be cleared explicitly — handlePageChange only rewrites the ones it is given.
+  const resetToFirstPage = useCallback(() => {
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
+  }, [handlePageChange]);
+
   const handlePipelinePageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        fetchPipelines({
-          paging: { [cursorType]: paging[cursorType] },
-          limit: pageSize,
-          sortOrder,
-        });
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
@@ -198,64 +197,59 @@ export const IngestionPipelineList = ({
         );
       }
     },
-    [fetchPipelines, paging, handlePageChange, sortOrder]
+    [paging, handlePageChange, pageSize]
   );
 
+  // Single fetch path. Every input the request depends on — page size, cursor, sort order and the
+  // pipeline type filter — is state this effect reads, so a change to any one of them produces
+  // exactly one request carrying all of the others. Handlers below only move that state; they must
+  // not fetch as well, or a sort would race a request that has forgotten the active filter.
   useEffect(() => {
     if (isAirflowAvailable) {
       const { cursorType, cursorValue } = pagingCursor ?? {};
 
-      if (cursorType && cursorValue) {
-        fetchPipelines({
-          paging: { [cursorType]: cursorValue },
-          limit: pageSize,
-          sortOrder,
-        });
-      } else {
-        fetchPipelines({ limit: pageSize, sortOrder });
-      }
+      fetchPipelines({
+        paging:
+          cursorType && cursorValue ? { [cursorType]: cursorValue } : undefined,
+        pipelineType: pipelineTypeFilter,
+        limit: pageSize,
+        sortOrder,
+      });
     }
-  }, [serviceName, isAirflowAvailable, pageSize, pagingCursor, sortOrder]);
+  }, [
+    fetchPipelines,
+    serviceName,
+    isAirflowAvailable,
+    pageSize,
+    pagingCursor,
+    sortOrder,
+    pipelineTypeFilter,
+  ]);
 
-  const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
-    useCallback(
-      (
-        _pagination: TablePaginationConfig,
-        filters: Record<string, FilterValue | null>,
-        _sorter:
-          | SorterResult<IngestionPipeline>
-          | SorterResult<IngestionPipeline>[],
-        extra: TableCurrentDataSource<IngestionPipeline>
-      ) => {
-        // AntD reports sort/filter/pagination through one callback. Reading `filters` on a sort
-        // action saw pipelineType as undefined and silently cleared the active filter.
-        if (extra.action !== 'filter') {
-          return;
-        }
+  // Params are inferred from the handler type rather than annotated, so the sorter/extra types do
+  // not have to be imported from antd — tw-guard blocks new antd specifiers.
+  const handleTableChange = useCallback<
+    NonNullable<TableProps<IngestionPipeline>['onChange']>
+  >(
+    (_pagination, filters, _sorter, extra) => {
+      // AntD reports sort/filter/pagination through one callback. Reading `filters` on a sort
+      // action saw pipelineType as undefined and silently cleared the active filter.
+      if (extra.action !== 'filter') {
+        return;
+      }
 
-        const pipelineType = filters.pipelineType as PipelineType[];
-        setPipelineTypeFilter(pipelineType);
-        fetchPipelines({
-          pipelineType,
-          limit: pageSize,
-          sortOrder,
-        });
-      },
-      [fetchPipelines, pageSize, sortOrder]
-    );
+      setPipelineTypeFilter(filters.pipelineType as PipelineType[]);
+      resetToFirstPage();
+    },
+    [resetToFirstPage]
+  );
 
   const handleSortChange = useCallback(
     (updatedSortOrder?: SORT_ORDER) => {
       setSortOrder(updatedSortOrder);
-      // A new order invalidates the current cursor — restart from the first page.
-      handlePageChange(INITIAL_PAGING_VALUE);
-      fetchPipelines({
-        pipelineType: pipelineTypeFilter,
-        limit: pageSize,
-        sortOrder: updatedSortOrder,
-      });
+      resetToFirstPage();
     },
-    [fetchPipelines, handlePageChange, pageSize, pipelineTypeFilter]
+    [resetToFirstPage]
   );
 
   const handleRowChange = useCallback(

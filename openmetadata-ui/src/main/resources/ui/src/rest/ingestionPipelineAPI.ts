@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import {
   CreateIngestionPipeline,
   PipelineType,
@@ -23,7 +24,6 @@ import {
   PipelineStatus,
   ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { SORT_ORDER } from '../enums/common.enum';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
