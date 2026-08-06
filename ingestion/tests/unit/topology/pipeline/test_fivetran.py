@@ -40,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
     FIVETRAN_TASK_EXTRACT,
@@ -820,3 +821,31 @@ class TestFivetranColumnLineage:
         result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), Mock())
         assert result == []
         mock_fqn.assert_not_called()
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_topic_field_fqn")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
+    def test_table_to_topic_uses_topic_field_resolver(self, mock_col_fqn, mock_topic_fqn, fivetran_source):
+        source, client = fivetran_source
+        client.get_connector_column_lineage.return_value = {"src": {"enabled": True, "name_in_destination": "dst"}}
+        mock_col_fqn.return_value = "svc.db.sch.tbl.src"
+        mock_topic_fqn.return_value = "kafka.topic.dst"
+
+        topic = Topic.model_construct(id=uuid4(), name="topic")
+        result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), topic)
+
+        assert len(result) == 1
+        mock_topic_fqn.assert_called_once_with(topic, "dst")
+        assert model_str(result[0].toColumn) == "kafka.topic.dst"
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_topic_field_fqn")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
+    def test_unresolvable_topic_field_is_skipped(self, mock_col_fqn, mock_topic_fqn, fivetran_source):
+        source, client = fivetran_source
+        client.get_connector_column_lineage.return_value = {"src": {"enabled": True, "name_in_destination": "dst"}}
+        mock_col_fqn.return_value = "svc.db.sch.tbl.src"
+        mock_topic_fqn.return_value = None
+
+        topic = Topic.model_construct(id=uuid4(), name="topic")
+        result = source._fetch_column_lineage(EXPECTED_FIVETRAN_DETAILS, "test", "public", "users", Mock(), topic)
+
+        assert result == []

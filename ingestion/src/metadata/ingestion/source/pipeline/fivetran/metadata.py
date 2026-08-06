@@ -53,6 +53,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.lineage.topic_lineage import get_topic_field_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
@@ -89,6 +90,12 @@ HISTORICAL_SYNC_FIELDS = [
     ("succeeded_at", StatusType.Successful),
     ("failed_at", StatusType.Failed),
 ]
+
+
+def _resolve_field_fqn(entity: Union[Table, Topic], name: str) -> Optional[str]:  # noqa: UP007, UP045
+    if isinstance(entity, Topic):
+        return get_topic_field_fqn(entity, name)
+    return get_column_fqn(table_entity=entity, column=name)
 
 
 class FivetranSource(PipelineServiceSource):
@@ -403,16 +410,14 @@ class FivetranSource(PipelineServiceSource):
                     )
                     continue
 
-                col_lineage = []
-                if not is_messaging_source:
-                    col_lineage = self._fetch_column_lineage(
-                        pipeline_details=pipeline_details,
-                        pipeline_name=pipeline_name,
-                        schema_name=schema_name,
-                        table_name=table_name,
-                        from_table_entity=from_entity,
-                        to_table_entity=to_entity,
-                    )
+                col_lineage = self._fetch_column_lineage(
+                    pipeline_details=pipeline_details,
+                    pipeline_name=pipeline_name,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    from_entity=from_entity,
+                    to_entity=to_entity,
+                )
 
                 if pipeline_entity is None:
                     pipeline_entity = self._get_pipeline_entity()
@@ -516,8 +521,8 @@ class FivetranSource(PipelineServiceSource):
         pipeline_name: str,
         schema_name: str,
         table_name: str,
-        from_table_entity: Table,
-        to_table_entity: Table,
+        from_entity: Union[Table, Topic],  # noqa: UP007
+        to_entity: Union[Table, Topic],  # noqa: UP007
     ) -> List[ColumnLineage]:  # noqa: UP006
         col_lineage = []
         for (
@@ -539,8 +544,8 @@ class FivetranSource(PipelineServiceSource):
                 )
                 continue
 
-            from_col = get_column_fqn(table_entity=from_table_entity, column=column_name)
-            to_col = get_column_fqn(table_entity=to_table_entity, column=dest_column_name)
+            from_col = _resolve_field_fqn(from_entity, column_name)
+            to_col = _resolve_field_fqn(to_entity, dest_column_name)
             if not from_col or not to_col:
                 logger.debug(
                     f"Skipping column [{column_name}] -> [{dest_column_name}]"
