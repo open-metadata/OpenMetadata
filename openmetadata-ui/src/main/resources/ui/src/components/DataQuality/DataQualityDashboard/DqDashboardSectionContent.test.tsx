@@ -14,6 +14,8 @@ import { render, screen } from '@testing-library/react';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
 import { DqDashboardSectionContent } from './DqDashboardSectionContent.component';
 
+const mockTestCaseStatusAreaChartWidget = jest.fn();
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const Grid = ({ children }: React.PropsWithChildren) => (
     <div data-testid="grid">{children}</div>
@@ -65,9 +67,14 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(({ name }: { name: string }) => (
-        <div data-testid={`incident-time-widget-${name}`} />
-      ))
+      .mockImplementation(
+        ({ name, height }: { name: string; height?: number }) => (
+          <div
+            data-height={height}
+            data-testid={`incident-time-widget-${name}`}
+          />
+        )
+      )
 );
 
 jest.mock(
@@ -75,9 +82,14 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(({ name }: { name: string }) => (
-        <div data-testid={`incident-type-widget-${name}`} />
-      ))
+      .mockImplementation(
+        ({ name, height }: { name: string; height?: number }) => (
+          <div
+            data-height={height}
+            data-testid={`incident-type-widget-${name}`}
+          />
+        )
+      )
 );
 
 jest.mock(
@@ -95,9 +107,15 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(({ name }: { name: string }) => (
-        <div data-testid={`test-case-status-area-widget-${name}`} />
-      ))
+      .mockImplementation(
+        (props: { name: string; redirectPath?: { search?: string } }) => {
+          mockTestCaseStatusAreaChartWidget(props);
+
+          return (
+            <div data-testid={`test-case-status-area-widget-${props.name}`} />
+          );
+        }
+      )
 );
 
 jest.mock(
@@ -161,23 +179,38 @@ describe('DqDashboardSectionContent component', () => {
     expect(
       screen.getByTestId('test-case-status-area-widget-failed')
     ).toBeInTheDocument();
+    expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'success',
+        redirectPath: expect.objectContaining({
+          search: expect.stringContaining('lastRunRange%5BstartTs%5D=1000'),
+        }),
+      })
+    );
   });
 
   it('should render the incident-metrics section with incident type and time widgets', () => {
-    renderSection('incident-metrics');
+    const { container } = renderSection('incident-metrics');
 
     expect(
       screen.getByTestId('incident-type-widget-open-incident')
-    ).toBeInTheDocument();
+    ).toHaveAttribute('data-height', '60');
     expect(
       screen.getByTestId('incident-type-widget-resolved-incident')
-    ).toBeInTheDocument();
+    ).toHaveAttribute('data-height', '60');
     expect(
       screen.getByTestId('incident-time-widget-response-time')
-    ).toBeInTheDocument();
+    ).toHaveAttribute('data-height', '60');
     expect(
       screen.getByTestId('incident-time-widget-resolution-time')
-    ).toBeInTheDocument();
+    ).toHaveAttribute('data-height', '60');
+    expect(container.firstChild).toHaveClass(
+      'tw:grid',
+      'tw:grid-cols-1',
+      'tw:gap-6',
+      'tw:md:grid-cols-2',
+      'tw:xl:grid-cols-4'
+    );
   });
 
   it('should render nothing for an unknown section key', () => {

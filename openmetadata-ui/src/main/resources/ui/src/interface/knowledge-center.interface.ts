@@ -130,7 +130,6 @@ export interface ArticleTab {
 export interface KnowledgeCenterPageProps {
   title: string;
   rightPanel: React.ReactNode;
-  header: React.ReactNode;
   data?: KnowledgePage;
   activeTab?: string;
   feedCount?: number;

@@ -151,7 +151,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def _process_array_value(self, value):
         """Process array values to convert numpy arrays to Python lists"""
-        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import numpy as np  # pylint: disable=import-outside-toplevel
 
         if isinstance(value, np.ndarray):
             return value.tolist()

@@ -41,10 +41,8 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction, page } = await performAdminLogin(
-        browser
-      );
-      const response = await page.request.get(
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const response = await apiContext.get(
         `/api/v1/users/name/${user.getUserDisplayName()}`
       );
 
@@ -165,90 +163,98 @@ test.describe(
       await page.locator('[data-testid="go-back-button"]').click();
     });
 
-    test('Refresh should work', async ({ page: page1, browser }) => {
-      test.slow();
+    test.describe('Token renewal', () => {
+      test.describe.configure({ retries: 0 });
 
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-        browser
-      );
-      const context = page1.context();
-      const page2 = await context.newPage();
+      test('Refresh should work', async ({ page: page1, browser }) => {
+        test.slow();
 
-      const testUser = new UserClass();
-      await testUser.create(apiContext);
-      await testUser.setAdminRole(apiContext);
-
-      await test.step('Login and wait for refresh call is made', async () => {
-        // User login
-
-        await testUser.login(page1);
-        await redirectToHomePage(page1);
-        await waitForAllLoadersToDisappear(page1);
-        await redirectToHomePage(page2);
-        await waitForAllLoadersToDisappear(page2);
-        await page2.reload();
-
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
-        await page1.waitForTimeout(3 * 60 * 1000);
-
-        await page1.bringToFront();
-        await visitOwnProfilePage(page1);
-        await waitForAllLoadersToDisappear(page1);
-        await expect(page1.getByTestId('user-display-name')).toHaveText(
-          testUser.responseData.displayName ?? testUser.responseData.name
+        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+          browser
         );
+        const context = page1.context();
+        const page2 = await context.newPage();
 
-        await page2.bringToFront();
-        await page2.evaluate(() => {
-          document.dispatchEvent(
-            new Event('visibilitychange', { bubbles: true })
+        const testUser = new UserClass();
+        await testUser.create(apiContext);
+        await testUser.setAdminRole(apiContext);
+
+        await test.step('Login and wait for refresh call is made', async () => {
+          // User login
+
+          await testUser.login(page1);
+          await redirectToHomePage(page1);
+          await waitForAllLoadersToDisappear(page1);
+          await redirectToHomePage(page2);
+          await waitForAllLoadersToDisappear(page2);
+          await page2.reload();
+
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
+          await page1.waitForTimeout(3 * 60 * 1000);
+
+          await page1.bringToFront();
+          await visitOwnProfilePage(page1);
+          await waitForAllLoadersToDisappear(page1);
+          await expect(page1.getByTestId('user-display-name')).toHaveText(
+            testUser.responseData.displayName ?? testUser.responseData.name
           );
+
+          await page2.bringToFront();
+          await page2.evaluate(() => {
+            document.dispatchEvent(
+              new Event('visibilitychange', { bubbles: true })
+            );
+          });
+
+          await visitOwnProfilePage(page2);
+          await waitForAllLoadersToDisappear(page2);
+          await expect(page2.getByTestId('user-display-name')).toHaveText(
+            testUser.responseData.displayName ?? testUser.responseData.name
+          );
+
+          await page1.close();
+          await page2.close();
         });
 
-        await visitOwnProfilePage(page2);
-        await waitForAllLoadersToDisappear(page2);
-        await expect(page2.getByTestId('user-display-name')).toHaveText(
-          testUser.responseData.displayName ?? testUser.responseData.name
+        await afterAction();
+      });
+
+      test('accessing app with expired token should do auto renew token', async ({
+        browser,
+      }) => {
+        const browserContext = await browser.newContext();
+
+        // Create new page and validate access
+        const page1 = await browserContext.newPage();
+        const page2 = await browserContext.newPage();
+
+        const admin = new AdminClass();
+        await admin.login(page1);
+
+        await redirectToHomePage(page1);
+        await page1.getByTestId('dropdown-profile').click();
+        await clickOutside(page1);
+
+        await expect(page1.getByTestId('nav-user-name')).toContainText(
+          /admin/i
+        );
+
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
+        await page2.waitForTimeout(2 * 61 * 1000);
+
+        await redirectToHomePage(page2);
+
+        await page2.getByTestId('dropdown-profile').click();
+        await clickOutside(page2);
+
+        await expect(page2.getByTestId('nav-user-name')).toContainText(
+          /admin/i
         );
 
         await page1.close();
         await page2.close();
+        await browserContext.close();
       });
-
-      await afterAction();
-    });
-
-    test('accessing app with expired token should do auto renew token', async ({
-      browser,
-    }) => {
-      const browserContext = await browser.newContext();
-
-      // Create new page and validate access
-      const page1 = await browserContext.newPage();
-      const page2 = await browserContext.newPage();
-
-      const admin = new AdminClass();
-      await admin.login(page1);
-
-      await redirectToHomePage(page1);
-      await page1.getByTestId('dropdown-profile').click();
-      await clickOutside(page1);
-
-      await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
-
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
-      await page2.waitForTimeout(2 * 61 * 1000);
-
-      await redirectToHomePage(page2);
-
-      await page2.getByTestId('dropdown-profile').click();
-      await clickOutside(page2);
-
-      await expect(page2.getByTestId('nav-user-name')).toContainText(/admin/i);
-
-      await page1.close();
-      await page2.close();
-      await browserContext.close();
     });
   }
 );

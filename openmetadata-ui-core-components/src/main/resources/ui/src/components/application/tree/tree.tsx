@@ -140,12 +140,15 @@ const TreeItemComponent = <T extends object>({
       {...props}
       className={(state) =>
         cx(
-          'tw:group/tree-item tw:outline-hidden tw:rounded-md',
+          // `outline-hidden` removed: the outline now draws the focus/drag indicators
+          // (they replaced rings, which WebKit does not pixel-snap).
+          'tw:group/tree-item tw:rounded-md',
           'tw:cursor-pointer tw:select-none',
           state.isDisabled && 'tw:opacity-50 tw:cursor-not-allowed',
-          state.isFocusVisible && 'tw:ring-2 tw:ring-inset tw:ring-brand-300',
-          'data-[dragging]:tw:opacity-50 data-[dragging]:tw:ring-2 data-[dragging]:tw:ring-inset data-[dragging]:tw:ring-brand-300',
-          'data-[drop-target]:tw:bg-brand-primary_alt data-[drop-target]:tw:ring-2 data-[drop-target]:tw:ring-inset data-[drop-target]:tw:ring-brand-300',
+          state.isFocusVisible &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
+          'data-[dragging]:tw:opacity-50 data-[dragging]:tw:outline-2 data-[dragging]:tw:-outline-offset-2 data-[dragging]:tw:outline-brand-300',
+          'data-[drop-target]:tw:bg-brand-primary_alt data-[drop-target]:tw:outline-2 data-[drop-target]:tw:-outline-offset-2 data-[drop-target]:tw:outline-brand-300',
           typeof className === 'function' ? className(state) : className
         )
       }>
@@ -173,9 +176,10 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
       className={(state) =>
         cx(
           'tw:flex tw:items-center tw:justify-center tw:w-4 tw:h-4 tw:shrink-0',
-          'tw:rounded tw:outline-hidden tw:text-fg-quaternary',
+          // `outline-hidden` removed: the outline now draws the focus indicator.
+          'tw:rounded tw:text-fg-quaternary',
           'tw:transition-transform tw:duration-200 tw:ease-in-out tw:cursor-pointer',
-          state.isFocusVisible && 'tw:ring-2 tw:ring-brand-300',
+          state.isFocusVisible && 'tw:outline-2 tw:outline-brand-300',
           className
         )
       }

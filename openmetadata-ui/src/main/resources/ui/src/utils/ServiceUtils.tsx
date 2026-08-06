@@ -13,7 +13,6 @@
 
 import { startCase } from 'lodash';
 import type { ServiceTypes } from 'Models';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import {
   ADMONITION_BLOCK_REGEX,
   MARKDOWN_MATCH_ID,
@@ -29,16 +28,13 @@ import type { PipelineService } from '../generated/entity/services/pipelineServi
 import type { DatabaseServiceSearchSource } from '../interface/search.interface';
 import type { ServicesType } from '../interface/service.interface';
 import { searchService } from '../rest/serviceAPI';
+import connectionsRouterClassBase from './ConnectionsRouterClassBase';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import { MarkdownToHTMLConverter } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
-import { getSettingPath } from './RouterUtils';
-import {
-  getSearchIndexFromService,
-  getServiceRouteFromServiceType,
-} from './ServicePureUtils';
+import { getSearchIndexFromService } from './ServicePureUtils';
 
 export const getOptionalFields = (
   service: ServicesType,
@@ -156,10 +152,9 @@ export const getAddServiceEntityBreadcrumb = (
   return [
     {
       label: startCase(serviceCategory),
-      href: getSettingPath(
-        GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(serviceCategory)
-      ),
+      // Delegated so an embedded experience that owns the service listing can redirect this
+      // crumb; the base implementation returns the same settings path.
+      href: connectionsRouterClassBase.getSettingsServicesPath(serviceCategory),
       id: 'category',
     },
     {

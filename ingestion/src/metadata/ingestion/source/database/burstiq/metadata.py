@@ -57,7 +57,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.burstiq.models import BurstIQDictionary
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
@@ -87,11 +90,8 @@ class Burstiqsource(DatabaseServiceSource):
 
         self._connection = create_connection(self.service_connection)
         self.client: BurstIQClient = cast("BaseConnection", self._connection).client
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @classmethod
     def create(

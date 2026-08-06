@@ -261,7 +261,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return (
         <div data-testid="content-change-state">
           <Badge
-            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            className="tw:flex tw:items-center tw:gap-2 tw:outline-0"
             color="success"
             size="lg"
             type="color">
@@ -278,7 +278,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return (
         <div data-testid="content-change-state">
           <Badge
-            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            className="tw:flex tw:items-center tw:gap-2 tw:outline-0"
             color="gray"
             size="lg"
             type="color">
@@ -320,7 +320,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   }
 
   const metaEl = (
-    <Box align="center" className="tw:text-sm" gap={3} wrap="wrap">
+    <Box align="center" className="tw:text-sm tw:mt-2" gap={3} wrap="wrap">
       <Box align="center" gap={1}>
         <Tooltip title={t('label.domain')}>
           <TooltipTrigger className="tw:leading-0">

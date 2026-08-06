@@ -44,7 +44,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.drive.drive_service import DriveServiceSource
 from metadata.ingestion.source.drive.googledrive.models import (
     GoogleDriveDirectoryInfo,
@@ -109,11 +112,8 @@ class GoogleDriveSource(DriveServiceSource):
         # Flag to track if root files have been processed
         self._root_files_processed: bool = False
 
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @classmethod
     def create(
@@ -958,9 +958,9 @@ class GoogleDriveSource(DriveServiceSource):
         """
         try:
             # Try pandas-based inference across a capped set of rows to reuse datalake logic.
-            import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            import pandas as pd  # pylint: disable=import-outside-toplevel
 
-            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel
                 DataFrameColumnParser,
             )
 

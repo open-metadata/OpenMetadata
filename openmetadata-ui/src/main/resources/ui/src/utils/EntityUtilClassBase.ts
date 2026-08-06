@@ -703,6 +703,10 @@ class EntityUtilClassBase {
   public shouldShowEntityStatus(_entityType: string): boolean {
     return false;
   }
+
+  public getEntityTypes(): string[] {
+    return Object.values(EntityType);
+  }
 }
 
 const entityUtilClassBase = new EntityUtilClassBase();

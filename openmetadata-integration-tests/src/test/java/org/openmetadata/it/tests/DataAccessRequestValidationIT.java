@@ -74,10 +74,14 @@ public class DataAccessRequestValidationIT {
 
   private static Map<String, Object> dataAccessPayload(String accessType) {
     return Map.of(
-        "accessType", accessType,
-        "requestedAccess", "Read",
-        "reason", "integration-test",
-        "duration", "P14D");
+        "accessType",
+        accessType,
+        "requestedAccess",
+        "Read",
+        "reason",
+        "integration-test",
+        "expirationDate",
+        System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000);
   }
 
   private static Table createTableOnSnowflakeService(

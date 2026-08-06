@@ -23,6 +23,10 @@ export interface RDFConfiguration {
      */
     bulkEntityBatchSize?: number;
     /**
+     * Maximum number of lineage edges written to RDF storage in a single SPARQL update.
+     */
+    bulkLineageEdgeBatchSize?: number;
+    /**
      * Maximum number of source entities reconciled in a single RDF relationship bulk request.
      */
     bulkRelationshipSourceBatchSize?: number;

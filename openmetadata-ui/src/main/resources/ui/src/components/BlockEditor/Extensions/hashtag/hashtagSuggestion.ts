@@ -20,6 +20,7 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { buildMentionLink } from '../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExtensionRef } from '../../BlockEditor.interface';
+import { getDialogContainer } from '../getDialogContainer';
 import HashList from './HashList';
 
 export const hashtagSuggestion = () => ({
@@ -74,7 +75,7 @@ export const hashtagSuggestion = () => ({
         popup = tippy('body', {
           getReferenceClientRect:
             props.clientRect as Props['getReferenceClientRect'],
-          appendTo: () => document.body,
+          appendTo: () => getDialogContainer(props.editor.view),
           content: component.element,
           showOnCreate: true,
           interactive: true,

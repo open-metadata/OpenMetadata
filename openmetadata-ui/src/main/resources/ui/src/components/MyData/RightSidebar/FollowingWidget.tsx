@@ -40,6 +40,7 @@ import {
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
@@ -202,8 +203,8 @@ function FollowingWidget({
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
-                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item)}
+                        <div className="d-flex items-center justify-center flex-shrink">
+                          {getEntityIcon(item, EntityIconSize.Size24)}
                         </div>
                       }
                       type="text">

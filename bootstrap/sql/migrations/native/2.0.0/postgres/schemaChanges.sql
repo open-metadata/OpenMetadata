@@ -317,8 +317,10 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   entityType VARCHAR(128) NOT NULL,
   retryCount INTEGER NOT NULL DEFAULT 0,
   claimedAt TIMESTAMP NULL,
+  claimToken VARCHAR(36) NULL,
   PRIMARY KEY (entityId, entityFqn)
 );
+ALTER TABLE search_index_retry_queue ADD COLUMN IF NOT EXISTS claimToken VARCHAR(36) NULL;
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_status
   ON search_index_retry_queue (status);
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_claimed_at
@@ -440,3 +442,48 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
+
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters).
+CREATE INDEX IF NOT EXISTS idx_wf_instance_state_execution_id
+    ON workflow_instance_state_time_series (workflowInstanceExecutionId);
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+    json #- '{connection,config,token}',
+    '{connection,config,authType}',
+    jsonb_build_object('token', json #> '{connection,config,token}')
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND json #> '{connection,config,token}' IS NOT NULL
+  AND NOT jsonb_exists(json #> '{connection,config}', 'authType');
+
+-- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.0.0
+
+-- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served
+-- index-only. Nine service tables got it in 1.8.2; these four were added later and were missed,
+-- so the overview endpoint's per-type key scan would full-scan them.
+CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_name ON security_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_name ON drive_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_name ON llm_service_entity(deleted, name);
+CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_name ON mcp_service_entity(deleted, name);
+
+-- The overview endpoint derives both the per-entity-type total and the per-connector breakdown
+-- from one `GROUP BY serviceType` per service table. Without a (deleted, serviceType) composite
+-- that grouping reads the table; with it the aggregate is index-only.
+CREATE INDEX IF NOT EXISTS idx_dbservice_entity_deleted_service_type ON dbservice_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_dashboard_service_entity_deleted_service_type ON dashboard_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_messaging_service_entity_deleted_service_type ON messaging_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_metadata_service_entity_deleted_service_type ON metadata_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_mlmodel_service_entity_deleted_service_type ON mlmodel_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_pipeline_service_entity_deleted_service_type ON pipeline_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_search_service_entity_deleted_service_type ON search_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_storage_service_entity_deleted_service_type ON storage_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_api_service_entity_deleted_service_type ON api_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_service_type ON security_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
+CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);

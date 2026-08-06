@@ -50,7 +50,10 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.connection import BaseConnection  # noqa: TC001
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
@@ -81,11 +84,8 @@ class SalesforceSource(DatabaseServiceSource):
             self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
         self._connection = create_connection(self.service_connection)
         self.client = cast("BaseConnection", self._connection).client
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
         self.table_constraints = None
         self.database_source_state = set()
 

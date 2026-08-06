@@ -65,11 +65,13 @@ class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
             """Test authentication with BurstIQ credentials"""
             client.test_authenticate()
 
+        def test_validate_system_wallet():
+            """Validate the configured system wallet before metadata reads"""
+            client.validate_system_wallet()
+
         def test_get_dictionaries():
             """Test fetching dictionaries from BurstIQ"""
-            dictionaries = client.get_dictionaries(limit=1)
-            if not dictionaries:
-                raise ConnectionError("Failed to fetch dictionaries from BurstIQ")
+            client.get_dictionaries(limit=1)
 
         def test_get_edges():
             """Test fetching edges used for lineage"""
@@ -79,6 +81,7 @@ class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
 
         test_fn = {
             "CheckAccess": test_authenticate,
+            "ValidateSystemWallet": test_validate_system_wallet,
             "GetDictionaries": test_get_dictionaries,
             "GetEdges": test_get_edges,
         }

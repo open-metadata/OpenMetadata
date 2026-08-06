@@ -14,14 +14,14 @@
 
 .message-banner-wrapper {
   display: flex;
-  gap: 8px;
+  gap: var(--om-space-8);
   align-items: center;
   backdrop-filter: blur(500px);
-  padding: 8px 16px;
+  padding: var(--om-space-8) var(--om-space-16);
   font-weight: @font-medium;
 
   &.border-radius {
-    border-radius: 4px;
+    border-radius: var(--om-radius-sm);
   }
 
   &.success {
@@ -40,7 +40,7 @@
 
     .info-icon {
       color: @info-color;
-      font-size: 16px;
+      font-size: var(--om-font-size-md);
     }
   }
 

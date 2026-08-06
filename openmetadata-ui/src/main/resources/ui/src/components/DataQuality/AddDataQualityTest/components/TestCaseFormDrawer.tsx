@@ -12,8 +12,8 @@
  */
 import {
   Box,
+  EmptyPlaceholder,
   HookForm,
-  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@untitledui/icons';
@@ -47,6 +47,7 @@ import {
   updateTestCaseById,
 } from '../../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintDocUtils';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
@@ -436,37 +437,34 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   if (isModalVariant) {
     return (
       <AiFormModal
-        headerActions={
-          headerActions ?? (
-            <Box align="center" className="tw:gap-2" direction="row">
-              <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-              <Typography
-                className="tw:text-secondary"
-                size="text-sm"
-                weight="medium">
-                {t('label.show-hint')}
-              </Typography>
-              <Toggle
-                aria-label={t('label.show-hint')}
-                isSelected={showHint}
-                size="sm"
-                onChange={setShowHint}
-              />
-            </Box>
-          )
-        }
+        headerActions={headerActions}
+        hintOpen={showHint}
         isSubmitting={form.formState.isSubmitting}
         open={open}
-        reserveHintSpace={showHint}
         submitLabel={isEditMode ? t('label.update') : undefined}
         subtitle={t('message.page-sub-header-for-data-quality')}
         title={title ?? defaultTitle}
         onClose={handleDrawerDismiss}
+        onHintToggle={setShowHint}
         onSubmit={form.handleSubmit(
           (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
           () => scrollToError()
         )}>
         <HookForm
+          emptyFieldDoc={
+            // width="100%" is required: EmptyPlaceholder's 300px default is
+            // wider than the hint column's 260px minimum and would overflow
+            // once the column shrinks on a narrow viewport.
+            <EmptyPlaceholder
+              description={t('message.form-hint-empty-state')}
+              icon={Lightbulb05}
+              title={t('label.no-entity-selected', {
+                entity: t('label.field'),
+              })}
+              width="100%"
+            />
+          }
+          fieldDocDisplay="panel"
           fieldDocHeader={
             <Box align="center" className="tw:gap-2" direction="row">
               <Lightbulb05 className="tw:size-4 tw:text-secondary" />
@@ -478,16 +476,20 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
               </Typography>
             </Box>
           }
-          fieldDocOffset={56}
           form={form}
+          // min-w-193 (772px) overrides HookForm's 380px default: this form's
+          // test-level cards need ~574px before they clip, so a lower floor
+          // lets the hint steal room the form cannot spare.
+          formClassName="tw:min-w-193 tw:px-7 tw:pt-6 tw:pb-7"
           renderFieldDoc={(markdown) => (
             // Render the full field doc without the "see more" toggle — the
-            // popover shows the whole hint, and toggling it would resize the
-            // popover and make react-aria re-anchor it (flicker).
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant={false}
-              markdown={markdown}
-            />
+            // column scrolls, so the whole hint is reachable without it.
+            <div className="form-hint-doc">
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant={false}
+                markdown={monospaceParameterNames(markdown)}
+              />
+            </div>
           )}
           showFieldDocs={showHint}
           onSubmit={form.handleSubmit(

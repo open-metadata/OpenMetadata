@@ -38,6 +38,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.databricks.metadata import DatabricksSource
 
@@ -645,7 +646,7 @@ class DatabricksConnectionTest(TestCase):
             mock_connection.execute.assert_called_once()
 
     def test_databricks_engine_wrapper_get_tables_no_schemas(self):
-        """Test get_tables when no schemas are available"""
+        """get_tables raises rather than passing a mandatory step with nothing resolved."""
         mock_engine = Mock()
         mock_inspector = Mock()
         mock_inspector.get_schema_names.return_value = []
@@ -654,9 +655,8 @@ class DatabricksConnectionTest(TestCase):
             mock_inspect.return_value = mock_inspector
 
             wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
-            tables = wrapper.get_tables()
-
-            self.assertEqual(tables, [])
+            with self.assertRaises(SourceConnectionException):
+                wrapper.get_tables()
             mock_inspector.get_table_names.assert_not_called()
 
     def test_databricks_engine_wrapper_get_views_with_cached_schema(self):
@@ -728,7 +728,7 @@ class DatabricksConnectionTest(TestCase):
             mock_connection.execute.assert_called_once()
 
     def test_databricks_engine_wrapper_get_views_no_schemas(self):
-        """Test get_views when no schemas are available"""
+        """get_views raises rather than passing a mandatory step with nothing resolved."""
         mock_engine = Mock()
         mock_inspector = Mock()
         mock_inspector.get_schema_names.return_value = []
@@ -737,9 +737,8 @@ class DatabricksConnectionTest(TestCase):
             mock_inspect.return_value = mock_inspector
 
             wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
-            views = wrapper.get_views()
-
-            self.assertEqual(views, [])
+            with self.assertRaises(SourceConnectionException):
+                wrapper.get_views()
             mock_inspector.get_view_names.assert_not_called()
 
     def test_databricks_engine_wrapper_caching_behavior(self):

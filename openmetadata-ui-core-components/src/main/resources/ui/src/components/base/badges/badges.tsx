@@ -17,79 +17,79 @@ export const filledColors: Record<
   { root: string; addon: string; addonButton: string }
 > = {
   gray: {
-    root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:ring-utility-gray-200',
+    root: 'tw:bg-utility-gray-50 tw:text-utility-gray-700 tw:outline-utility-gray-200',
     addon: 'tw:text-utility-gray-500',
     addonButton:
       'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
   },
   brand: {
-    root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:ring-utility-brand-200',
+    root: 'tw:bg-utility-brand-50 tw:text-utility-brand-700 tw:outline-utility-brand-200',
     addon: 'tw:text-utility-brand-500',
     addonButton:
       'tw:hover:bg-utility-brand-100 tw:text-utility-brand-400 tw:hover:text-utility-brand-500',
   },
   error: {
-    root: 'tw:bg-utility-error-50 tw:text-utility-error-700 tw:ring-utility-error-200',
+    root: 'tw:bg-utility-error-50 tw:text-utility-error-700 tw:outline-utility-error-200',
     addon: 'tw:text-utility-error-500',
     addonButton:
       'tw:hover:bg-utility-error-100 tw:text-utility-error-400 tw:hover:text-utility-error-500',
   },
   warning: {
-    root: 'tw:bg-utility-warning-50 tw:text-utility-warning-700 tw:ring-utility-warning-200',
+    root: 'tw:bg-utility-warning-50 tw:text-utility-warning-700 tw:outline-utility-warning-200',
     addon: 'tw:text-utility-warning-500',
     addonButton:
       'tw:hover:bg-utility-warning-100 tw:text-utility-warning-400 tw:hover:text-utility-warning-500',
   },
   success: {
-    root: 'tw:bg-utility-success-50 tw:text-utility-success-700 tw:ring-utility-success-200',
+    root: 'tw:bg-utility-success-50 tw:text-utility-success-700 tw:outline-utility-success-200',
     addon: 'tw:text-utility-success-500',
     addonButton:
       'tw:hover:bg-utility-success-100 tw:text-utility-success-400 tw:hover:text-utility-success-500',
   },
   'gray-blue': {
-    root: 'tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-700 tw:ring-utility-gray-blue-200',
+    root: 'tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-700 tw:outline-utility-gray-blue-200',
     addon: 'tw:text-utility-gray-blue-500',
     addonButton:
       'tw:hover:bg-utility-gray-blue-100 tw:text-utility-gray-blue-400 tw:hover:text-utility-gray-blue-500',
   },
   'blue-light': {
-    root: 'tw:bg-utility-blue-light-50 tw:text-utility-blue-light-700 tw:ring-utility-blue-light-200',
+    root: 'tw:bg-utility-blue-light-50 tw:text-utility-blue-light-700 tw:outline-utility-blue-light-200',
     addon: 'tw:text-utility-blue-light-500',
     addonButton:
       'tw:hover:bg-utility-blue-light-100 tw:text-utility-blue-light-400 tw:hover:text-utility-blue-light-500',
   },
   blue: {
-    root: 'tw:bg-utility-blue-50 tw:text-utility-blue-700 tw:ring-utility-blue-200',
+    root: 'tw:bg-utility-blue-50 tw:text-utility-blue-700 tw:outline-utility-blue-200',
     addon: 'tw:text-utility-blue-500',
     addonButton:
       'tw:hover:bg-utility-blue-100 tw:text-utility-blue-400 tw:hover:text-utility-blue-500',
   },
   indigo: {
-    root: 'tw:bg-utility-indigo-50 tw:text-utility-indigo-700 tw:ring-utility-indigo-200',
+    root: 'tw:bg-utility-indigo-50 tw:text-utility-indigo-700 tw:outline-utility-indigo-200',
     addon: 'tw:text-utility-indigo-500',
     addonButton:
       'tw:hover:bg-utility-indigo-100 tw:text-utility-indigo-400 tw:hover:text-utility-indigo-500',
   },
   purple: {
-    root: 'tw:bg-utility-purple-50 tw:text-utility-purple-700 tw:ring-utility-purple-200',
+    root: 'tw:bg-utility-purple-50 tw:text-utility-purple-700 tw:outline-utility-purple-200',
     addon: 'tw:text-utility-purple-500',
     addonButton:
       'tw:hover:bg-utility-purple-100 tw:text-utility-purple-400 tw:hover:text-utility-purple-500',
   },
   pink: {
-    root: 'tw:bg-utility-pink-50 tw:text-utility-pink-700 tw:ring-utility-pink-200',
+    root: 'tw:bg-utility-pink-50 tw:text-utility-pink-700 tw:outline-utility-pink-200',
     addon: 'tw:text-utility-pink-500',
     addonButton:
       'tw:hover:bg-utility-pink-100 tw:text-utility-pink-400 tw:hover:text-utility-pink-500',
   },
   orange: {
-    root: 'tw:bg-utility-orange-50 tw:text-utility-orange-700 tw:ring-utility-orange-200',
+    root: 'tw:bg-utility-orange-50 tw:text-utility-orange-700 tw:outline-utility-orange-200',
     addon: 'tw:text-utility-orange-500',
     addonButton:
       'tw:hover:bg-utility-orange-100 tw:text-utility-orange-400 tw:hover:text-utility-orange-500',
   },
   'blue-dark': {
-    root: 'tw:bg-utility-blue-dark-50 tw:text-utility-gray-700 tw:ring-utility-gray-blue-200',
+    root: 'tw:bg-utility-blue-dark-50 tw:text-utility-gray-700 tw:outline-utility-gray-blue-200',
     addon: 'tw:text-utility-gray-700',
     addonButton:
       'tw:hover:bg-utility-blue-dark-100 tw:text-utility-gray-700 tw:hover:text-utility-blue-dark-500',
@@ -119,7 +119,7 @@ const withPillTypes = {
       'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:shadow-xs',
     styles: {
       gray: {
-        root: 'tw:bg-primary tw:text-secondary tw:ring-primary',
+        root: 'tw:bg-primary tw:text-secondary tw:outline-primary',
         addon: 'tw:text-gray-500',
         addonButton:
           'tw:hover:bg-utility-gray-100 tw:text-utility-gray-400 tw:hover:text-utility-gray-500',
@@ -141,7 +141,7 @@ const withBadgeTypes = {
   },
   [badgeTypes.badgeModern]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-primary tw:text-secondary tw:ring-primary tw:shadow-xs',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-primary tw:text-secondary tw:outline-primary tw:shadow-xs',
     styles: addonOnlyColors,
   },
 };
@@ -195,7 +195,7 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        bordered && 'tw:ring-1 tw:ring-inset',
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
         props.className
       )}
       data-testid={props['data-testid']}>
@@ -253,7 +253,7 @@ export const BadgeWithDot = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        bordered && 'tw:ring-1 tw:ring-inset',
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
         className
       )}>
       <Dot className={colors.styles[color].addon} size="sm" />
@@ -352,7 +352,7 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size][icon],
         colors.styles[color].root,
-        bordered && 'tw:ring-1 tw:ring-inset',
+        bordered && 'tw:outline-1 tw:-outline-offset-1',
         className
       )}>
       {IconLeading && (
@@ -418,7 +418,7 @@ export const BadgeWithFlag = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        bordered && 'tw:ring-1 tw:ring-inset'
+        bordered && 'tw:outline-1 tw:-outline-offset-1'
       )}>
       <img
         alt={`${flag} flag`}
@@ -478,7 +478,7 @@ export const BadgeWithImage = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        bordered && 'tw:ring-1 tw:ring-inset'
+        bordered && 'tw:outline-1 tw:-outline-offset-1'
       )}>
       <img
         alt="Badge"
@@ -557,7 +557,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        bordered && 'tw:ring-1 tw:ring-inset'
+        bordered && 'tw:outline-1 tw:-outline-offset-1'
       )}>
       {children}
       <button
@@ -626,7 +626,7 @@ export const BadgeIcon = <T extends BadgeTypes>(props: BadgeIconProps<T>) => {
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        bordered && 'tw:ring-1 tw:ring-inset'
+        bordered && 'tw:outline-1 tw:-outline-offset-1'
       )}>
       <Icon
         className={cx('tw:size-3 tw:stroke-[3px]', colors.styles[color].addon)}

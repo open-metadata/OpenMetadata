@@ -24,6 +24,7 @@ import { TFunction } from 'i18next';
 import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
 import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
 import {
+  Agent,
   AgentActionPermissions,
   AgentStatus,
   RunStatus,
@@ -42,6 +43,20 @@ export const ALL_AGENT_PERMISSIONS: AgentActionPermissions = {
   edit: true,
   delete: true,
 };
+
+// Single source of truth for every run entry point. An agent that is already
+// running or queued must not be triggerable again — a second trigger would
+// queue a duplicate run behind the one still waiting. A paused agent is not
+// triggerable either; `enabled` defaults to true in the IngestionPipeline
+// schema, so only an explicit false means paused.
+export const canRunAgent = (
+  agent: Agent,
+  permissions: AgentActionPermissions = NO_AGENT_PERMISSIONS
+): boolean =>
+  permissions.trigger &&
+  agent.enabled !== false &&
+  agent.status !== 'running' &&
+  agent.status !== 'queued';
 
 export const fmtNum = (n: number): string => n.toLocaleString();
 

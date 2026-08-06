@@ -384,6 +384,22 @@ export class TableClass extends EntityClass {
       }
     }
 
+    // Last-resort FQN reconstruction from the class's own known parts. Falling
+    // back to `visitEntityPage` (the global-search flow) is a known source of
+    // flakiness — Suggestions can skip its fetch under CI load and the wait
+    // times out — so we prefer to look the table up by its constructed FQN and
+    // stay on the deterministic direct-navigation path.
+    if (!this.entityResponseData.fullyQualifiedName) {
+      const constructedFqn = `${this.service.name}.${this.database.name}.${this.schema.name}.${this.entity.name}`;
+      const response = await page.request.get(
+        `/api/v1/tables/name/${encodeURIComponent(constructedFqn)}`
+      );
+
+      if (response.ok()) {
+        this.entityResponseData = await response.json();
+      }
+    }
+
     const tableFqn = this.entityResponseData.fullyQualifiedName ?? '';
     const canUseDirectNavigation =
       !searchTerm || (tableFqn.length > 0 && searchTerm === tableFqn);

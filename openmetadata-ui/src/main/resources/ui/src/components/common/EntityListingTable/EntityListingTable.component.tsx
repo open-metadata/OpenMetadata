@@ -70,9 +70,7 @@ const EntityListingTable = <T extends { id: string; name: string }>({
       selectionBehavior="toggle"
       selectionMode="multiple"
       onSelectionChange={handleSelectionChange}>
-      <Table.Header
-        className="tw:border-t tw:border-x tw:border-secondary"
-        columns={columns}>
+      <Table.Header columns={columns}>
         {(col) => <Table.Head id={col.id} key={col.id} label={col.label} />}
       </Table.Header>
       <Table.Body
@@ -86,9 +84,7 @@ const EntityListingTable = <T extends { id: string; name: string }>({
         }>
         {(entity) => (
           <Table.Row
-            className={`tw:border-x tw:border-secondary${
-              onEntityClick ? ' tw:cursor-pointer' : ''
-            }`}
+            className={onEntityClick ? 'tw:cursor-pointer' : undefined}
             columns={columns}
             data-testid={entity.name}
             id={entity.id}
