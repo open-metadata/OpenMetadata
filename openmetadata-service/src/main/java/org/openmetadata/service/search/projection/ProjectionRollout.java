@@ -48,8 +48,14 @@ public final class ProjectionRollout {
 
   public static final String SHADOW_PROPERTY = "openmetadata.search.projection.shadow";
 
+  /** Drift detection (§11.4). Separate from the shadow flag: it samples reads, not writes. */
+  public static final String DRIFT_PROPERTY = "openmetadata.search.projection.drift";
+
   private static final boolean SHADOW_ENABLED =
       Boolean.parseBoolean(System.getProperty(SHADOW_PROPERTY, "false"));
+
+  private static final boolean DRIFT_ENABLED =
+      Boolean.parseBoolean(System.getProperty(DRIFT_PROPERTY, "false"));
 
   private static final String METRIC = "search.index.projection.shadow";
 
@@ -57,6 +63,14 @@ public final class ProjectionRollout {
 
   public static boolean shadowEnabled() {
     return SHADOW_ENABLED;
+  }
+
+  /**
+   * Off by default in production until the cost of detection is measured — it re-projects sampled
+   * documents, which is real work on a live node.
+   */
+  public static boolean driftDetectionEnabled() {
+    return DRIFT_ENABLED;
   }
 
   /**

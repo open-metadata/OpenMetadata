@@ -564,6 +564,28 @@ judgement call is not mine to make.
 
 ---
 
+## 11.7 Phase 7 drift detection (landed 2026-08-04, off by default)
+
+`SearchDriftDetector` + `DocumentDrift`. Given a stored document and its entity, re-project and emit
+`search.index.drift{entityType, docPath}` for each path that disagrees. **Detection only — nothing
+writes to the index.** Off by default via `openmetadata.search.projection.drift`, because
+re-projecting sampled documents is real work on a live node and the design asks for its cost to be
+measured before it runs in production.
+
+Two rules keep it usable, and both are the difference between a detector people read and one they mute:
+
+- **Absent / null / empty are equivalent.** The two write paths genuinely disagree about materialising
+  empty collections, in both directions, and that is not drift a user can see.
+- **Paths outside `REBUILD_AUTHORITY` are never reported.** An `embedding` cannot be reconstructed and
+  a fenced ordinal is not the projector's to hold, so those always differ — reporting them would fire
+  on every sampled document and bury the real findings.
+
+What is deliberately not here: the sampler (N docs/entity-type/hour) and the repair path that turns
+this into a continuous reconciler. Detection is the half that carries no risk; a background sampler is
+app-level scheduling, and repair writes to the index, so both want the detection cost measured first.
+
+---
+
 ## 12. Collate extension contract
 
 The redesign must preserve or deliberately replace these seams — Collate's entire search surface is 9
