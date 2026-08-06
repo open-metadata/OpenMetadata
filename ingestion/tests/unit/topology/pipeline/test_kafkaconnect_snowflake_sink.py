@@ -12,12 +12,17 @@
 
 import json
 import logging
+import os
+import subprocess
+import sys
 import uuid
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+import metadata
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
@@ -242,6 +247,107 @@ class TestSnowflakeSinkResolver:
         config = {k: v for k, v in BASE_SNOWFLAKE_CONFIG.items() if k != "snowflake.database.name"}
         dataset = get_resolver("SnowflakeSink").resolve_datasets(config, [])[0]
         assert dataset.fully_qualified is False
+
+
+SELF_MANAGED_SNOWFLAKE_CLASS = "com.snowflake.kafka.connector.SnowflakeSinkConnector"
+
+# A self-managed sink using the shorter key variations (both are listed in
+# ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS / _SCHEMA_KEYS, so the key-list search read them).
+SELF_MANAGED_VARIATION_CONFIG = {
+    "connector.class": SELF_MANAGED_SNOWFLAKE_CLASS,
+    "name": "self-managed-variations",
+    "topics": "orders",
+    "snowflake.database": "DB1",
+    "snowflake.schema": "SCH1",
+    "snowflake.topic2table.map": "orders:ORDERS_TBL",
+}
+
+# A self-managed sink subscribing by regex: no `topics` key exists to derive table names from,
+# which is also what a failed /topics fetch looks like (get_connector_topics answers None).
+SELF_MANAGED_REGEX_CONFIG = {
+    "connector.class": SELF_MANAGED_SNOWFLAKE_CLASS,
+    "name": "self-managed-regex",
+    "topics.regex": r"prod\..*",
+    "snowflake.database.name": "DB",
+    "snowflake.schema.name": "SCH",
+    "snowflake.topic2table.map": "prod.orders:ORDERS",
+}
+
+
+class TestSnowflakeResolverIsASupersetOfTheDefault:
+    """Registering a connector class makes the generic key-list path unreachable for it, with
+    no fallback, so anything DefaultResolver used to resolve has to still resolve here. Each
+    test first asserts what DefaultResolver answers -- the behaviour self-managed sinks had
+    before this resolver existed -- and then requires the same of the registered resolver."""
+
+    def test_key_variations_still_populate_database_and_schema(self):
+        old = DefaultResolver().resolve_datasets(SELF_MANAGED_VARIATION_CONFIG, [])
+        assert [(d.table, d.database, d.schema) for d in old] == [("ORDERS_TBL", "DB1", "SCH1")]
+
+        datasets = get_resolver(SELF_MANAGED_SNOWFLAKE_CLASS).resolve_datasets(SELF_MANAGED_VARIATION_CONFIG, [])
+        assert [(d.table, d.database, d.schema) for d in datasets] == [("ORDERS_TBL", "DB1", "SCH1")]
+        # Losing database/schema also loses fully_qualified, which drops the four-part FQN and
+        # with it the Priority-1 table lookup, so lineage vanishes even though a table was named.
+        assert datasets[0].fully_qualified is True
+        assert datasets[0].source_topic == "orders"
+
+    def test_the_documented_key_wins_when_both_forms_are_present(self):
+        """Precedence matches the key-list order: the `.name` form is consulted first."""
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.database": "IGNORED", "snowflake.schema": "IGNORED"})
+        dataset = get_resolver("SnowflakeSink").resolve_datasets(config, [])[0]
+        assert (dataset.database, dataset.schema) == ("EVENT_LANDING", "PUBLIC")
+
+    def test_topics_regex_still_yields_the_mapped_table(self):
+        old = DefaultResolver().resolve_datasets(SELF_MANAGED_REGEX_CONFIG, [])
+        assert [(d.table, d.database, d.schema) for d in old] == [("ORDERS", "DB", "SCH")]
+
+        datasets = get_resolver(SELF_MANAGED_SNOWFLAKE_CLASS).resolve_datasets(SELF_MANAGED_REGEX_CONFIG, [])
+        assert [(d.table, d.database, d.schema) for d in datasets] == [("ORDERS", "DB", "SCH")]
+
+    def test_match_topic_falls_back_for_a_dataset_without_a_source_topic(self):
+        """Recovering the dataset is not enough on its own: the resolver's match_topic returns
+        None without a source_topic, and a dataset whose topic never matches yields no edge."""
+        resolver = get_resolver(SELF_MANAGED_SNOWFLAKE_CLASS)
+        dataset = resolver.resolve_datasets(SELF_MANAGED_REGEX_CONFIG, [])[0]
+        assert dataset.source_topic is None
+        topic_map = {"ORDERS": "<topic>"}
+        assert resolver.match_topic(dataset, topic_map, SELF_MANAGED_REGEX_CONFIG) == "<topic>"
+        assert resolver.match_topic(dataset, topic_map, SELF_MANAGED_REGEX_CONFIG) == DefaultResolver().match_topic(
+            dataset, topic_map, SELF_MANAGED_REGEX_CONFIG
+        )
+
+    def test_a_config_naming_neither_topics_nor_tables_still_yields_nothing(self):
+        config = {"connector.class": "SnowflakeSink", "name": "empty"}
+        assert get_resolver("SnowflakeSink").resolve_datasets(config, []) == []
+
+
+class TestPackageImportRegistersTheResolvers:
+    """Production reaches the resolvers through the `sinks` package, so both Snowflake keys are
+    registered by the side-effect import in `sinks/__init__.py`. This test module imports
+    `sinks.snowflake` directly at module scope and the registry is a module global, so every
+    other assertion here passes even with that import removed -- while production would
+    silently degrade to DefaultResolver and emit zero datasets. Only a fresh interpreter that
+    imports the package alone can observe the registration."""
+
+    @pytest.mark.parametrize("connector_class", ["SnowflakeSink", SELF_MANAGED_SNOWFLAKE_CLASS])
+    def test_importing_only_the_package_registers_snowflake(self, connector_class):
+        # Point the child at the same src tree this process imported: the venv also holds a
+        # stale non-editable copy of `metadata` that would otherwise win.
+        src_root = Path(metadata.__file__).resolve().parents[1]
+        script = (
+            "from metadata.ingestion.source.pipeline.kafkaconnect.sinks import get_resolver\n"
+            f"resolver = get_resolver({connector_class!r})\n"
+            "name = type(resolver).__name__\n"
+            "assert name == 'SnowflakeSinkResolver', f'package import resolved {name}'\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**os.environ, "PYTHONPATH": str(src_root)},
+        )
+        assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
 
 
 def _new_source() -> KafkaconnectSource:

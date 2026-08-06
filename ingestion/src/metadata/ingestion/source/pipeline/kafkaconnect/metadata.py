@@ -547,18 +547,20 @@ class KafkaconnectSource(PipelineServiceSource):
                         logger.info(
                             f"Using matched database service '{result.database_service_name}' from connector config"
                         )
+                        # Debezium's `database` is a logical server name rather than a real
+                        # database, so an unqualified dataset keeps it in the schema slot.
+                        database_name = dataset_details.database if dataset_details.fully_qualified else None
+                        schema_name = (
+                            dataset_details.schema if dataset_details.fully_qualified else dataset_details.database
+                        )
                         dataset_entity = self.metadata.get_by_name(
                             entity=dataset_details.dataset_type,
                             fqn=fqn.build(
                                 metadata=self.metadata,
                                 entity_type=dataset_details.dataset_type,
                                 table_name=dataset_details.table,
-                                database_name=(dataset_details.database if dataset_details.fully_qualified else None),
-                                schema_name=(
-                                    dataset_details.schema
-                                    if dataset_details.fully_qualified
-                                    else dataset_details.database
-                                ),
+                                database_name=database_name,
+                                schema_name=schema_name,
                                 service_name=result.database_service_name,
                             ),
                         )

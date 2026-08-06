@@ -17,12 +17,14 @@ from typing import Any, Dict, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.type.schema import DataTypeTopic
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.pipeline.kafkaconnect.constants import ConnectorConfigKeys
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
     KafkaConnectDatasetDetails,
     KafkaConnectTopics,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.sinks.base import (
+    DefaultResolver,
     SinkDatasetResolver,
     sink_resolver_registry,
 )
@@ -71,6 +73,10 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
     The connector defaults to one table per topic and only deviates where
     topic2table.map says so, which is why the generic key-list strategy finds
     nothing: there is no config key naming the table at all in the common case.
+
+    Registering a resolver makes the key-list path unreachable for this connector
+    class, so everything the key-list path could answer must still be answered
+    here -- hence the key variations and the fallbacks below.
     """
 
     def resolve_datasets(
@@ -78,11 +84,26 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         config: dict,
         topics: Optional[List[KafkaConnectTopics]] = None,  # noqa: UP006, UP045
     ) -> List[KafkaConnectDatasetDetails]:  # noqa: UP006
-        database = config.get("snowflake.database.name")
-        schema = config.get("snowflake.schema.name")
+        topic_names = self._topic_names(config, topics)
+        if not topic_names:
+            # A connector can subscribe by topics.regex, and get_connector_topics answers
+            # None on any transport failure, so an empty topic list is not proof that the
+            # connector writes nothing: topic2table.map still names its tables. Deferring
+            # keeps self-managed sinks at the lineage they had before this resolver existed.
+            logger.info(
+                f"Snowflake sink '{config.get('name')}' declares no topics; "
+                f"resolving its target from the connector config keys instead"
+            )
+            datasets = DefaultResolver().resolve_datasets(config, topics)
+            if not datasets:
+                logger.warning(f"Snowflake sink '{config.get('name')}' declares no topics; no lineage can be built")
+            return datasets
+
+        database = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS)
+        schema = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_SCHEMA_KEYS)
         mapping = self._topic2table_map(config)
 
-        datasets = [
+        return [
             KafkaConnectDatasetDetails(
                 table=mapping.get(topic) or snowflake_table_name(topic),
                 database=database,
@@ -90,16 +111,14 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
                 source_topic=topic,
                 fully_qualified=bool(database and schema),
             )
-            for topic in self._topic_names(config, topics)
+            for topic in topic_names
         ]
-
-        if not datasets:
-            logger.warning(f"Snowflake sink '{config.get('name')}' declares no topics; no lineage can be built")
-        return datasets
 
     def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Optional[Any]:  # noqa: UP045
         if not dataset.source_topic:
-            return None
+            # Datasets from the resolve_datasets fallback above carry no originating topic,
+            # so the generic name-based match is the only one left that can pair them.
+            return DefaultResolver().match_topic(dataset, topic_entity_map, config)
         topic_entity = topic_entity_map.get(dataset.source_topic)
         if topic_entity is None:
             logger.warning(
@@ -185,6 +204,15 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             for field in root.children or []:
                 walk(field, [])
         return paths
+
+    @staticmethod
+    def _first_configured(config: dict, keys: List[str]) -> Optional[str]:  # noqa: UP006, UP045
+        """The value of the first of `keys` the connector actually set."""
+        for key in keys:
+            value = config.get(key)
+            if value:
+                return value
+        return None
 
     @staticmethod
     def _topic2table_map(config: dict) -> Dict[str, str]:  # noqa: UP006
