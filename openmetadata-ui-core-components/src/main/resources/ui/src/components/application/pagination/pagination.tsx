@@ -110,13 +110,13 @@ const MobilePagination = ({
 
   return (
     <nav
-      aria-label={t('label.pagination')}
+      aria-label={t('label.pagination', 'Pagination')}
       className={cx(
         'tw:flex tw:items-center tw:justify-between tw:md:hidden',
         className
       )}>
       <Button
-        aria-label={t('label.previous-page')}
+        aria-label={t('label.previous-page', 'Go to previous page')}
         color="secondary"
         iconLeading={ArrowLeft}
         size="sm"
@@ -129,7 +129,7 @@ const MobilePagination = ({
       </span>
 
       <Button
-        aria-label={t('label.next-page')}
+        aria-label={t('label.next-page', 'Go to next page')}
         color="secondary"
         iconLeading={ArrowRight}
         size="sm"
@@ -363,7 +363,7 @@ export const PaginationCardMinimal = ({
       <MobilePagination page={page} total={total} onPageChange={onPageChange} />
 
       <nav
-        aria-label={t('label.pagination')}
+        aria-label={t('label.pagination', 'Pagination')}
         className={cx(
           'tw:hidden tw:items-center tw:gap-3 tw:md:flex',
           align === 'center' && 'tw:justify-between'
@@ -506,9 +506,9 @@ export const PaginationCardWithControls = ({
       onPageChange={handlePageChange}>
       <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-5 tw:gap-y-3">
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>{t('label.page')}</span>
+          <span className={compactTextClassName}>{t('label.page', 'Page')}</span>
           <input
-            aria-label={t('label.current-page')}
+            aria-label={t('label.current-page', 'Current page')}
             className={compactPageInputClassName}
             inputMode="numeric"
             max={totalPages}
@@ -568,9 +568,9 @@ export const PaginationCardWithControls = ({
         </div>
 
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>{t('label.records')}</span>
+          <span className={compactTextClassName}>{t('label.records', 'Records')}</span>
           <Select
-            aria-label={t('label.records')}
+            aria-label={t('label.records', 'Records')}
             className={compactRowsPerPageSelectClassName}
             data-testid="rows-per-page-dropdown"
             fontSize="xs"

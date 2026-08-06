@@ -141,7 +141,7 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
 
   return (
     <div
-      aria-label={t('label.field-documentation')}
+      aria-label={t('label.field-documentation', 'Field documentation')}
       className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
       ref={rootRef}
       role="note">

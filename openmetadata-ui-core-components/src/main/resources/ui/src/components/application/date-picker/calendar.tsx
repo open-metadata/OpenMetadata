@@ -117,7 +117,7 @@ export const Calendar = ({
         <div className="tw:flex tw:gap-3">
           <DateInput className="tw:flex-1" />
           <PresetButton value={today(getLocalTimeZone())}>
-            {t('label.today')}
+            {t('label.today', 'Today')}
           </PresetButton>
         </div>
 

@@ -215,7 +215,7 @@ const PaginationRoot = ({
   return (
     <PaginationContext.Provider value={paginationContextValue}>
       <nav
-        aria-label={t('label.pagination-navigation')}
+        aria-label={t('label.pagination-navigation', 'Pagination Navigation')}
         className={className}
         style={style}>
         {children}

@@ -95,7 +95,7 @@ const FilterRow = ({
       {...props}>
       <div className="tw:flex tw:items-center tw:gap-3">{children}</div>
       <AriaButton
-        aria-label={t('label.remove-filter')}
+        aria-label={t('label.remove-filter', 'Remove filter')}
         className="tw:flex tw:size-9 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover"
         onPress={onRemove}>
         <XClose className="tw:size-5" />
