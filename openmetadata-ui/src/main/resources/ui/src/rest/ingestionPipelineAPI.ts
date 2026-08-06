@@ -23,6 +23,7 @@ import {
   PipelineStatus,
   ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { SORT_ORDER } from '../enums/common.enum';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
@@ -61,6 +62,10 @@ export const getIngestionPipelines = async (data: {
   serviceType?: string;
   limit?: number;
   applicationType?: PipelineType;
+  // Order by the effective display name (`displayName` falling back to `name`) — the value the
+  // Name column renders — instead of the endpoint's default `name` order.
+  sortField?: 'displayName';
+  sortOrder?: SORT_ORDER;
 }) => {
   const { arrQueryFields, serviceFilter, paging, pipelineType, ...rest } = data;
 

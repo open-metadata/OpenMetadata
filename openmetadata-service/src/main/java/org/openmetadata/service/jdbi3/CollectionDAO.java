@@ -6198,6 +6198,52 @@ public interface CollectionDAO {
         @Define("cond") String cond,
         @BindMap Map<String, Object> bindings,
         @BindMap Map<String, String> params);
+
+    // Ordering by displayNameSort (a generated column: COALESCE(NULLIF(displayName,''), name))
+    // rather than `name`, so the list can be ordered by the value the Name column renders.
+    // Cursor is the (displayNameSort, id) tuple, mirroring ContextFileDAO's updatedAt cursor;
+    // `deleted, displayNameSort, id` is indexed to keep this a range scan. The column is not
+    // case-folded, so ORDER BY and the cursor comparison share the column's own collation.
+    @SqlQuery(
+        "SELECT json FROM ingestion_pipeline_entity <cond> "
+            + "ORDER BY displayNameSort <order>, id <order> LIMIT :limit")
+    List<String> listByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("order") String order,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT json FROM ingestion_pipeline_entity <cond> "
+            + "AND (displayNameSort <op> :afterDisplayName "
+            + "OR (displayNameSort = :afterDisplayName AND id <op> :afterId)) "
+            + "ORDER BY displayNameSort <order>, id <order> LIMIT :limit")
+    List<String> listAfterByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("order") String order,
+        @Define("op") String op,
+        @Bind("limit") int limit,
+        @Bind("afterDisplayName") String afterDisplayName,
+        @Bind("afterId") String afterId);
+
+    // Walks backwards in the reverse direction, then re-sorts the page into the requested order.
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT displayNameSort, id, json FROM ingestion_pipeline_entity <cond> "
+            + "AND (displayNameSort <op> :beforeDisplayName "
+            + "OR (displayNameSort = :beforeDisplayName AND id <op> :beforeId)) "
+            + "ORDER BY displayNameSort <reverseOrder>, id <reverseOrder> LIMIT :limit"
+            + ") last_rows_subquery ORDER BY displayNameSort <order>, id <order>")
+    List<String> listBeforeByDisplayName(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("order") String order,
+        @Define("reverseOrder") String reverseOrder,
+        @Define("op") String op,
+        @Bind("limit") int limit,
+        @Bind("beforeDisplayName") String beforeDisplayName,
+        @Bind("beforeId") String beforeId);
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {

@@ -35,3 +35,15 @@ CREATE INDEX IF NOT EXISTS idx_tci_status_fqn ON test_case_incident (testCaseRes
 CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
+
+-- Server-side ordering for the ingestion pipeline list (collate#3919).
+-- The Name column renders `displayName ?? name`, so the list has to be orderable by that same
+-- value; pipelines created from the UI get a machine-generated `name` (Automations use
+-- OpenMetadata_application_<random>) that bears no relation to the label the user typed.
+-- Not case-folded on purpose: ORDER BY and the keyset-cursor comparison then share the column's
+-- own collation, so the cursor value can be carried verbatim in Java with no risk of Java and SQL
+-- disagreeing on case-folding at a page boundary. Sort-only column, never rendered.
+ALTER TABLE ingestion_pipeline_entity
+    ADD COLUMN IF NOT EXISTS displayNameSort VARCHAR(256)
+    GENERATED ALWAYS AS (COALESCE(NULLIF(json ->> 'displayName', ''), json ->> 'name')) STORED;
+CREATE INDEX IF NOT EXISTS idx_ingestion_pipeline_display_sort ON ingestion_pipeline_entity (deleted, displayNameSort, id);

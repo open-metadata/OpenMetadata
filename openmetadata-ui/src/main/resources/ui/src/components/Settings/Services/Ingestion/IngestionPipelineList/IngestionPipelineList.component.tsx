@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SORT_ORDER } from '../../../../../enums/common.enum';
+import { SORT_FIELD_DISPLAY_NAME } from '../../../../../constants/Ingestions.constant';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { Button, Col, Row, TablePaginationConfig } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
-import { FilterValue, TableRowSelection } from 'antd/lib/table/interface';
+import {
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+  TableRowSelection,
+} from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import capitalize from 'lodash/capitalize';
 import isNil from 'lodash/isNil';
@@ -63,6 +71,7 @@ export const IngestionPipelineList = ({
   const [loading, setLoading] = useState(false);
   const [pipelineTypeFilter, setPipelineTypeFilter] =
     useState<PipelineType[]>();
+  const [sortOrder, setSortOrder] = useState<SORT_ORDER>();
 
   const pagingInfo = usePaging();
 
@@ -137,10 +146,12 @@ export const IngestionPipelineList = ({
       paging,
       pipelineType,
       limit,
+      sortOrder,
     }: {
       paging?: Omit<Paging, 'total'>;
       pipelineType?: PipelineType[];
       limit?: number;
+      sortOrder?: SORT_ORDER;
     }) => {
       setLoading(true);
       try {
@@ -156,6 +167,9 @@ export const IngestionPipelineList = ({
           paging,
           pipelineType,
           limit,
+          ...(sortOrder
+            ? { sortField: SORT_FIELD_DISPLAY_NAME, sortOrder }
+            : {}),
         });
 
         setPipelines(data);
@@ -175,6 +189,7 @@ export const IngestionPipelineList = ({
         fetchPipelines({
           paging: { [cursorType]: paging[cursorType] },
           limit: pageSize,
+          sortOrder,
         });
         handlePageChange(
           currentPage,
@@ -183,7 +198,7 @@ export const IngestionPipelineList = ({
         );
       }
     },
-    [fetchPipelines, paging, handlePageChange]
+    [fetchPipelines, paging, handlePageChange, sortOrder]
   );
 
   useEffect(() => {
@@ -194,28 +209,54 @@ export const IngestionPipelineList = ({
         fetchPipelines({
           paging: { [cursorType]: cursorValue },
           limit: pageSize,
+          sortOrder,
         });
       } else {
-        fetchPipelines({ limit: pageSize });
+        fetchPipelines({ limit: pageSize, sortOrder });
       }
     }
-  }, [serviceName, isAirflowAvailable, pageSize, pagingCursor]);
+  }, [serviceName, isAirflowAvailable, pageSize, pagingCursor, sortOrder]);
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
     useCallback(
       (
         _pagination: TablePaginationConfig,
-        filters: Record<string, FilterValue | null>
+        filters: Record<string, FilterValue | null>,
+        _sorter:
+          | SorterResult<IngestionPipeline>
+          | SorterResult<IngestionPipeline>[],
+        extra: TableCurrentDataSource<IngestionPipeline>
       ) => {
+        // AntD reports sort/filter/pagination through one callback. Reading `filters` on a sort
+        // action saw pipelineType as undefined and silently cleared the active filter.
+        if (extra.action !== 'filter') {
+          return;
+        }
+
         const pipelineType = filters.pipelineType as PipelineType[];
         setPipelineTypeFilter(pipelineType);
         fetchPipelines({
           pipelineType,
           limit: pageSize,
+          sortOrder,
         });
       },
-      [fetchPipelines]
+      [fetchPipelines, pageSize, sortOrder]
     );
+
+  const handleSortChange = useCallback(
+    (updatedSortOrder?: SORT_ORDER) => {
+      setSortOrder(updatedSortOrder);
+      // A new order invalidates the current cursor — restart from the first page.
+      handlePageChange(INITIAL_PAGING_VALUE);
+      fetchPipelines({
+        pipelineType: pipelineTypeFilter,
+        limit: pageSize,
+        sortOrder: updatedSortOrder,
+      });
+    },
+    [fetchPipelines, handlePageChange, pageSize, pipelineTypeFilter]
+  );
 
   const handleRowChange = useCallback(
     (selectedRowKeys: React.Key[], selectedRows: IngestionPipeline[]) => {
@@ -269,7 +310,9 @@ export const IngestionPipelineList = ({
           isLoading={loading}
           pipelineTypeColumnObj={typeColumnObj}
           serviceName={serviceName}
+          sortOrder={sortOrder}
           onPageChange={handlePipelinePageChange}
+          onSortChange={handleSortChange}
         />
       </Col>
     </Row>

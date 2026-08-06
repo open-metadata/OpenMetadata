@@ -73,7 +73,9 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
@@ -126,6 +128,130 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     this.supportsSearch = true;
     this.openMetadataApplicationConfig = config;
   }
+
+  /**
+   * List pipelines ordered by the value the UI's Name column renders ({@code displayName ?? name}),
+   * rather than the raw {@code name} the default cursor pagination orders by.
+   *
+   * <p>Pipelines created from the UI get a machine-generated {@code name} — Automations use {@code
+   * OpenMetadata_application_<random>} — so ordering by {@code name} is arbitrary on screen, and
+   * because the default listing already orders by {@code name}, sorting the Name column client-side
+   * appeared to do nothing (collate#3919).
+   *
+   * <p>Keyset pagination is preserved: the cursor is the {@code (displayNameSort, id)} tuple, so
+   * callers keep using {@code before}/{@code after} exactly as before and deep paging stays an
+   * index range scan. Modelled on {@link ContextFileRepository#listByUpdatedAt}.
+   */
+  public ResultList<IngestionPipeline> listByDisplayName(
+      UriInfo uriInfo,
+      Fields fields,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      boolean ascending) {
+    CollectionDAO.IngestionPipelineDAO pipelineDAO =
+        Entity.getCollectionDAO().ingestionPipelineDAO();
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+    List<IngestionPipeline> entities = new ArrayList<>();
+    if (limitParam <= 0) {
+      return getResultList(entities, null, null, total);
+    }
+
+    String order = ascending ? "ASC" : "DESC";
+    String reverseOrder = ascending ? "DESC" : "ASC";
+    String forward = ascending ? ">" : "<";
+    String backward = ascending ? "<" : ">";
+
+    if (!nullOrEmpty(before)) {
+      DisplayNameCursor cursor = parseDisplayNameCursor(before);
+      entities =
+          hydrateByDisplayName(
+              pipelineDAO.listBeforeByDisplayName(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  order,
+                  reverseOrder,
+                  backward,
+                  limitParam + 1,
+                  cursor.displayName(),
+                  cursor.id()),
+              fields,
+              uriInfo,
+              filter);
+      String beforeCursor = null;
+      String afterCursor = null;
+      if (entities.size() > limitParam) {
+        entities.remove(0);
+        beforeCursor = displayNameCursorValue(entities.get(0));
+      }
+      if (!entities.isEmpty()) {
+        afterCursor = displayNameCursorValue(entities.get(entities.size() - 1));
+      }
+      return getResultList(entities, beforeCursor, afterCursor, total);
+    }
+
+    List<String> jsons;
+    if (nullOrEmpty(after)) {
+      jsons =
+          pipelineDAO.listByDisplayName(
+              filter.getQueryParams(), filter.getCondition(), order, limitParam + 1);
+    } else {
+      DisplayNameCursor cursor = parseDisplayNameCursor(after);
+      jsons =
+          pipelineDAO.listAfterByDisplayName(
+              filter.getQueryParams(),
+              filter.getCondition(),
+              order,
+              forward,
+              limitParam + 1,
+              cursor.displayName(),
+              cursor.id());
+    }
+
+    entities = hydrateByDisplayName(jsons, fields, uriInfo, filter);
+    String beforeCursor =
+        nullOrEmpty(after) || entities.isEmpty() ? null : displayNameCursorValue(entities.get(0));
+    String afterCursor = null;
+    if (entities.size() > limitParam) {
+      entities.remove(limitParam);
+      afterCursor = displayNameCursorValue(entities.get(limitParam - 1));
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private List<IngestionPipeline> hydrateByDisplayName(
+      List<String> jsons, Fields fields, UriInfo uriInfo, ListFilter filter) {
+    List<IngestionPipeline> entities = JsonUtils.readObjects(jsons, IngestionPipeline.class);
+    setFieldsInBulk(fields, entities, filter);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return entities;
+  }
+
+  private DisplayNameCursor parseDisplayNameCursor(String cursor) {
+    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(cursor));
+    String displayName = cursorMap.get("displayNameSort");
+    String id = cursorMap.get("id");
+    if (displayName == null || id == null || id.isBlank()) {
+      throw new BadRequestException("Invalid cursor for sortField pagination");
+    }
+    return new DisplayNameCursor(displayName, id);
+  }
+
+  /**
+   * Must reproduce the {@code displayNameSort} generated column exactly —
+   * {@code COALESCE(NULLIF(displayName,''), name)}. The column is deliberately not case-folded, so
+   * the value is carried verbatim and comparison semantics stay entirely inside the database.
+   */
+  private String displayNameCursorValue(IngestionPipeline pipeline) {
+    String displayName = pipeline.getDisplayName();
+    String sortKey = nullOrEmpty(displayName) ? pipeline.getName() : displayName;
+    return JsonUtils.pojoToJson(
+        Map.of(
+            "displayNameSort", sortKey == null ? "" : sortKey, "id", pipeline.getId().toString()));
+  }
+
+  private record DisplayNameCursor(String displayName, String id) {}
 
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {

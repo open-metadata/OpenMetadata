@@ -35,3 +35,16 @@ CREATE TABLE IF NOT EXISTS test_case_incident (
     INDEX idx_tci_assignee (assignee, testCaseResolutionStatusType),
     INDEX idx_tci_updated (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Server-side ordering for the ingestion pipeline list (collate#3919).
+-- The Name column renders `displayName ?? name`, so the list has to be orderable by that same
+-- value; pipelines created from the UI get a machine-generated `name` (Automations use
+-- OpenMetadata_application_<random>) that bears no relation to the label the user typed.
+-- Not case-folded on purpose: ORDER BY and the keyset-cursor comparison then share the column's
+-- own collation (utf8mb4_0900_ai_ci is already case-insensitive), so the cursor value can be
+-- carried verbatim in Java. VIRTUAL is indexable and avoids a table rewrite; Postgres uses STORED
+-- because it has no VIRTUAL.
+ALTER TABLE ingestion_pipeline_entity
+    ADD COLUMN displayNameSort VARCHAR(256)
+    GENERATED ALWAYS AS (COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), ''), JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')))) VIRTUAL;
+CREATE INDEX idx_ingestion_pipeline_display_sort ON ingestion_pipeline_entity (deleted, displayNameSort, id);

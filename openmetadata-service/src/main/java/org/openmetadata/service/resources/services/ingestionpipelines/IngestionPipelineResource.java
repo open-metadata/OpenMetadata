@@ -84,6 +84,7 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -102,8 +103,10 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.RestUtil;
 
 // TODO merge with workflows
 @Slf4j
@@ -118,6 +121,8 @@ public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
+  static final String SORT_FIELD_DISPLAY_NAME = "displayName";
+  private static final String SORT_ORDER_DESC = "desc";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";
@@ -236,6 +241,50 @@ public class IngestionPipelineResource
     }
   }
 
+  /**
+   * Mirrors {@link EntityResource#listInternal} — cursor validation, authorization and the domain
+   * filter all still apply — but orders by the effective display name instead of {@code name}. See
+   * {@link IngestionPipelineRepository#listByDisplayName} for why (collate#3919).
+   */
+  private ResultList<IngestionPipeline> listSortedByDisplayName(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      String sortField,
+      String sortOrder) {
+    validateSortField(sortField);
+    Fields fields = getFields(fieldsParam);
+    RestUtil.validateCursors(before, after);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, getViewOperations(fields)),
+        filter.getResourceContext(entityType));
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+
+    return addHref(
+        uriInfo,
+        repository.listByDisplayName(
+            uriInfo,
+            fields,
+            filter,
+            limitParam,
+            before,
+            after,
+            !SORT_ORDER_DESC.equalsIgnoreCase(sortOrder)));
+  }
+
+  private void validateSortField(String sortField) {
+    if (!SORT_FIELD_DISPLAY_NAME.equalsIgnoreCase(sortField)) {
+      throw new BadRequestException(
+          String.format(
+              "Invalid sortField '%s'. Supported values: %s", sortField, SORT_FIELD_DISPLAY_NAME));
+    }
+  }
+
   @GET
   @Valid
   @Operation(
@@ -313,7 +362,24 @@ public class IngestionPipelineResource
               description = "List Ingestion Pipelines by provider..",
               schema = @Schema(implementation = ProviderType.class))
           @QueryParam("provider")
-          ProviderType provider) {
+          ProviderType provider,
+      @Parameter(
+              description =
+                  "Order the list by a field instead of the default `name`. Only `displayName` is "
+                      + "supported, which orders by the effective display name "
+                      + "(`displayName` falling back to `name`) — the value clients render.",
+              schema = @Schema(type = "string", allowableValues = SORT_FIELD_DISPLAY_NAME))
+          @QueryParam("sortField")
+          String sortField,
+      @Parameter(
+              description = "Direction to apply to `sortField`.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
@@ -323,8 +389,19 @@ public class IngestionPipelineResource
             .addQueryParam("applicationType", applicationType)
             .addQueryParam("provider", provider == null ? null : provider.value());
     ResultList<IngestionPipeline> ingestionPipelines =
-        super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+        nullOrEmpty(sortField)
+            ? super.listInternal(
+                uriInfo, securityContext, fieldsParam, filter, limitParam, before, after)
+            : listSortedByDisplayName(
+                uriInfo,
+                securityContext,
+                fieldsParam,
+                filter,
+                limitParam,
+                before,
+                after,
+                sortField,
+                sortOrder);
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
       decryptOrNullify(securityContext, ingestionPipeline, false);
