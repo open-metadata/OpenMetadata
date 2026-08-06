@@ -18,6 +18,7 @@ from typing import Any, Iterable
 FULL_PROJECTS = {
     "chromium",
     "Basic",
+    "Data Insight",
     "Ingestion",
     "DataAssetRulesEnabled",
     "DataAssetRulesDisabled",
@@ -32,6 +33,7 @@ FULL_PROJECTS = {
 PROJECT_LANES = {
     "chromium": "chromium",
     "Basic": "chromium",
+    "Data Insight": "chromium",
     "Ingestion": "ingestion",
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
