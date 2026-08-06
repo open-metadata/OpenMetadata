@@ -10,7 +10,7 @@ until a bounded live smoke test is approved.
 import re
 from collections.abc import Iterable
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, bindparam, select
 from sqlalchemy.schema import Table
 
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
@@ -58,6 +58,12 @@ def _validate_limit(limit: int, *, max_rows: int = MAX_CLICKZETTA_SAMPLE_ROWS) -
     return limit
 
 
+def _apply_bounded_limit(query, limit: int):
+    """Apply a ClickZetta-compatible literal-executed row limit."""
+
+    return query.limit(bindparam(None, _validate_limit(limit), literal_execute=True))
+
+
 def build_bounded_sample_query(table: Table, column_names: Iterable[str] | None, limit: int) -> Select:
     """Build a bounded SQLAlchemy select without touching a live connection."""
 
@@ -75,7 +81,10 @@ def build_bounded_sample_query(table: Table, column_names: Iterable[str] | None,
 
     if not selected_columns:
         raise ValueError("ClickZetta sample requires at least one column")
-    return select(*selected_columns).select_from(table).limit(limit)
+    # The ClickZetta DB-API driver does not accept a regular bound parameter
+    # in ``LIMIT ?``.  ``literal_execute`` keeps the query composable while
+    # rendering the already-validated integer at execution time.
+    return _apply_bounded_limit(select(*selected_columns).select_from(table), limit)
 
 
 class ClickzettaSampler(SQASampler):
@@ -110,7 +119,7 @@ class ClickzettaSampler(SQASampler):
 
         selectable = self.set_tablesample(None, self.raw_dataset.__table__)  # type: ignore[attr-defined]
         query = self._base_sample_query(selectable, column)
-        return query.limit(limit).cte(f"{self.get_sampler_table_name()}_sample")
+        return _apply_bounded_limit(query, limit).cte(f"{self.get_sampler_table_name()}_sample")
 
     def get_dataset(self, column=None, **kwargs):
         """Always return a bounded dataset unless a bounded custom query is used."""

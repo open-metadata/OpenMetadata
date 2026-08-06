@@ -165,7 +165,7 @@ class ClickzettaDatabase(Database):
 
     def _query(self, sql_code: str) -> list:
         normalized_sql = sql_code.lower()
-        is_schema_query = "information_schema.columns" in normalized_sql or normalized_sql.lstrip().startswith("describe ")
+        is_schema_query = normalized_sql.lstrip().startswith("describe ")
         if not is_schema_query and not self.allow_full_table_scan:
             raise RuntimeError(
                 "ClickZetta data diff is disabled for data queries unless "

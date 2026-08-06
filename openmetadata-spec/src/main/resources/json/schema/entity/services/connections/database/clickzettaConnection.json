@@ -121,9 +121,9 @@
     },
     "supportsProfiler": {
       "title": "Supports Profiler",
-      "description": "ClickZetta profiling remains disabled until its bounded live gate is approved.",
+      "description": "Supports guarded ClickZetta profiling. Configure an explicit bounded ROWS sample; row-count scans additionally require allowFullTableScan=true.",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler",
-      "default": false
+      "default": true
     },
     "supportsDataDiff": {
       "title": "Supports Data Diff",

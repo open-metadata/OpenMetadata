@@ -24,6 +24,9 @@ except ModuleNotFoundError:
     generated_module.ClickzettaConnection = ClickzettaConnection
     sys.modules[_CLICKZETTA_CONFIG_MODULE] = generated_module
 
+from metadata.data_quality.interface.sqlalchemy.clickzetta.test_suite_interface import (  # noqa: E402
+    ClickzettaTestSuiteInterface,
+)
 from metadata.generated.schema.entity.services.connections.database.clickzettaConnection import (  # noqa: E402
     ClickzettaConnection,
 )
@@ -31,14 +34,18 @@ from metadata.ingestion.source.database.clickzetta.data_diff.table_parameter imp
     ClickzettaTableParameter,
 )
 from metadata.ingestion.source.database.clickzetta.service_spec import ServiceSpec  # noqa: E402
+from metadata.profiler.interface.sqlalchemy.clickzetta.profiler_interface import (  # noqa: E402
+    ClickzettaProfilerInterface,
+)
+from metadata.sampler.sqlalchemy.clickzetta.sampler import ClickzettaSampler  # noqa: E402
 from metadata.utils.importer import get_class_path  # noqa: E402
 
 
-def test_clickzetta_registers_the_validated_data_diff_adapter():
-    """Data diff uses the ClickZetta adapter instead of a generic SQLAlchemy fallback."""
-    assert ServiceSpec.profiler_class is None
-    assert ServiceSpec.sampler_class is None
-    assert ServiceSpec.test_suite_class is None
+def test_clickzetta_registers_guarded_data_capability_adapters():
+    """All registered data capabilities use ClickZetta-specific guarded adapters."""
+    assert ServiceSpec.profiler_class == get_class_path(ClickzettaProfilerInterface)
+    assert ServiceSpec.sampler_class == get_class_path(ClickzettaSampler)
+    assert ServiceSpec.test_suite_class == get_class_path(ClickzettaTestSuiteInterface)
     assert ServiceSpec.data_diff == get_class_path(ClickzettaTableParameter)
 
 
@@ -50,7 +57,7 @@ def test_clickzetta_dbt_flag_defaults_to_disabled():
     )
     schema = json.loads(schema_path.read_text())
     assert schema["properties"]["supportsDBTExtraction"]["default"] is False
-    assert schema["properties"]["supportsProfiler"]["default"] is False
+    assert schema["properties"]["supportsProfiler"]["default"] is True
     assert schema["properties"]["supportsDataDiff"]["default"] is True
 
     if not hasattr(ClickzettaConnection, "model_validate"):
@@ -72,6 +79,6 @@ def test_clickzetta_dbt_flag_defaults_to_disabled():
     # when those fields are available, while keeping this source-schema test
     # runnable in a clean checkout.
     if hasattr(config, "supportsProfiler"):
-        assert config.supportsProfiler is False
+        assert config.supportsProfiler is True
     if hasattr(config, "supportsDataDiff"):
         assert config.supportsDataDiff is True
