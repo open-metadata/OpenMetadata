@@ -42,6 +42,12 @@ export const transformErrors: ErrorTransformer = (errors) => {
             minimum: params?.limit,
           }),
         }),
+        maximum: () => ({
+          message: t('message.value-must-be-less-than-or-equal', {
+            field: fieldName,
+            maximum: params?.limit,
+          }),
+        }),
       };
 
       const errorHandler = errorMessages[name as keyof typeof errorMessages];

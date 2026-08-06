@@ -15,12 +15,11 @@ import {
   PipelineState,
   PipelineStatus,
 } from '../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getEncodedFqn } from '../../src/utils/StringUtils';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { getCurrentMillis } from './dateTime';
-import { waitForAllLoadersToDisappear } from './entity';
+import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { waitForTaskResolveResponse } from './task';
 
