@@ -215,21 +215,20 @@ test.describe('Ingestion agent list Name column sorting', () => {
     const secondPage = waitForSortedListing(page, { cursored: true });
 
     await page.getByTestId('next').click();
+    await secondPage;
+    await waitForAllLoadersToDisappear(page);
 
-    // Taken from the response rather than the rendered cell: the row this cursor addresses is the
-    // server's answer, and it is what the page after the reload has to agree with.
-    const [rowOnSecondPage] = renderedNames(await (await secondPage).json());
-
-    expect(rowOnSecondPage).toBeTruthy();
-
+    // Deliberately not asserting *which* agent lands here. The tab lists every database agent, so a
+    // spec running alongside this one can create a row that sorts into the cursor's gap; what the
+    // bug broke is that the page came back at all.
     const restoredPage = waitForSortedListing(page, { cursored: true });
 
     await page.reload();
     await restoredPage;
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByTestId('pipeline-name').first()).toHaveText(
-      rowOnSecondPage
-    );
+    // Without the sort order in the URL the reload replayed a (displayNameSort, id) cursor against
+    // the name-ordered listing, which matches no row: an empty table under a "page 2" paginator.
+    await expect(page.getByTestId('pipeline-name')).toHaveCount(1);
   });
 });
