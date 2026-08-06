@@ -55,6 +55,25 @@ from metadata.workflow.metadata import MetadataWorkflow
 PIPELINE_SERVICE_NAME = "prefect_integration_test"
 
 
+def _post_with_retry(url, json, timeout=10, attempts=5, backoff=0.5):
+    """
+    A freshly-booted Prefect server's /health passing doesn't mean the server
+    is done with its own startup writes (SQLite migrations, telemetry, ...) --
+    a request landing in that window can get a transient 503 with no useful
+    detail (observed both as a bare "database is locked" and as a 503 with no
+    server-side error at all). Retrying is the correct response to a
+    briefly-flaky-after-boot service; guessing a better readiness probe is not,
+    since more than one internal write can cause it.
+    """
+    resp = None
+    for _ in range(attempts):
+        resp = requests.post(url, json=json, timeout=timeout)
+        if resp.status_code != 503:
+            return resp
+        time.sleep(backoff)
+    return resp
+
+
 @pytest.fixture(scope="module")
 def metadata():
     """OpenMetadata client fixture."""
@@ -134,24 +153,22 @@ def test_create_flows_in_prefect(prefect_server):
     completed flow run (for pipeline status), and a task run on that run
     (for the task DAG).
     """
-    flow_resp = requests.post(
+    flow_resp = _post_with_retry(
         f"{prefect_server}/flows/",
         json={"name": "test-integration-flow"},
-        timeout=10,
     )
     assert flow_resp.status_code == 201, f"Failed to create flow: {flow_resp.text}"
     flow_id = flow_resp.json()["id"]
 
-    simple_flow_resp = requests.post(
+    simple_flow_resp = _post_with_retry(
         f"{prefect_server}/flows/",
         json={"name": "test-simple-flow"},
-        timeout=10,
     )
     assert simple_flow_resp.status_code == 201, f"Failed to create flow: {simple_flow_resp.text}"
 
     # Deployment tags are what yield_pipeline/yield_tag/yield_pipeline_lineage_details
     # actually read (via _get_all_tags) — this is the real tag/lineage source.
-    dep_resp = requests.post(
+    dep_resp = _post_with_retry(
         f"{prefect_server}/deployments/",
         json={
             "flow_id": flow_id,
@@ -164,19 +181,17 @@ def test_create_flows_in_prefect(prefect_server):
                 "integration-test",
             ],
         },
-        timeout=10,
     )
     assert dep_resp.status_code == 201, f"Failed to create deployment: {dep_resp.text}"
 
-    run_resp = requests.post(
+    run_resp = _post_with_retry(
         f"{prefect_server}/flow_runs/",
         json={"flow_id": flow_id, "state": {"type": "COMPLETED", "name": "Completed"}},
-        timeout=10,
     )
     assert run_resp.status_code == 201, f"Failed to create flow run: {run_resp.text}"
     flow_run_id = run_resp.json()["id"]
 
-    task_run_resp = requests.post(
+    task_run_resp = _post_with_retry(
         f"{prefect_server}/task_runs/",
         json={
             "flow_run_id": flow_run_id,
@@ -186,15 +201,13 @@ def test_create_flows_in_prefect(prefect_server):
             "tags": ["etl"],
             "state": {"type": "COMPLETED", "name": "Completed"},
         },
-        timeout=10,
     )
     assert task_run_resp.status_code == 201, f"Failed to create task run: {task_run_resp.text}"
 
     # Verify flows were created using POST /flows/filter
-    response = requests.post(
+    response = _post_with_retry(
         f"{prefect_server}/flows/filter",
         json={},
-        timeout=10,
     )
     assert response.status_code == 200
     flows = response.json()
