@@ -41,6 +41,24 @@ export const getAllPersonas = async (params: GetPersonasParams) => {
   return response.data;
 };
 
+export const searchPersonas = async (
+  query: string,
+  limit = 25
+): Promise<Persona[]> => {
+  const response = await axiosClient.get<PagingResponse<Persona[]>>(
+    `${BASE_URL}/search`,
+    {
+      params: {
+        q: query || undefined,
+        limit,
+        offset: 0,
+      },
+    }
+  );
+
+  return response.data.data;
+};
+
 export const getPersonaByName = async (fqn: string, fields?: string) => {
   const response = await axiosClient.get<Persona>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,

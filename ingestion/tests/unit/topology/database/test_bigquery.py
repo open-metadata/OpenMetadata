@@ -16,7 +16,8 @@ bigquery unit tests
 # pylint: disable=line-too-long
 import types
 from copy import deepcopy
-from typing import Dict  # noqa: UP035
+from types import SimpleNamespace
+from typing import ClassVar, Dict  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
@@ -62,6 +63,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
+from metadata.utils.lru_cache import LRUCache
 
 mock_bq_config = {
     "source": {
@@ -788,7 +790,7 @@ class TestBigqueryRegionAwareQueries:
         mock_dataset = Mock()
         mock_dataset.location = location
         self.bq_source.client.get_dataset.return_value = mock_dataset
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
 
     # --- get_stored_procedures ---
 
@@ -823,7 +825,7 @@ class TestBigqueryRegionAwareQueries:
     def test_get_stored_procedures_falls_back_when_location_unavailable(self):
         """When client.get_dataset raises, falls back to dataset-scoped query and returns results."""
         self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
         sp_row = {"name": "my_proc", "definition": "BEGIN END", "language": "SQL"}
         mock_engine, mock_conn = self._make_engine_mock([sp_row])
         self.bq_source.engine = mock_engine
@@ -838,7 +840,7 @@ class TestBigqueryRegionAwareQueries:
     def test_get_stored_procedures_returns_empty_when_dataset_not_found(self):
         """When both client.get_dataset and SQL execution fail, returns empty without a producer failure."""
         self.bq_source.client.get_dataset.side_effect = Exception("404 Not found")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
         mock_engine = MagicMock()
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = Exception("404 Not found in location US")
@@ -913,7 +915,7 @@ class TestBigqueryRegionAwareQueries:
     def test_prefetch_table_ddls_falls_back_when_location_unavailable(self):
         """When client.get_dataset raises, falls back to dataset-scoped query and populates cache."""
         self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
         ddl_row = Mock()
         ddl_row.table_name = "my_table"
         ddl_row.ddl = "CREATE TABLE my_table (id INT64)"
@@ -929,7 +931,7 @@ class TestBigqueryRegionAwareQueries:
     def test_prefetch_table_ddls_cache_empty_when_dataset_not_found(self):
         """When both client.get_dataset and SQL execution fail, cache stays empty and no exception propagates."""
         self.bq_source.client.get_dataset.side_effect = Exception("404 Not found")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
         mock_engine = MagicMock()
         mock_conn = MagicMock()
         mock_conn.execute.side_effect = Exception("404 Not found in location US")
@@ -979,9 +981,168 @@ class TestBigqueryRegionAwareQueries:
     def test_life_cycle_query_falls_back_when_location_unavailable(self):
         """When client.get_dataset raises, falls back to the dataset-scoped created-only query."""
         self.bq_source.client.get_dataset.side_effect = Exception("permission denied")
-        self.bq_source._current_dataset_obj = None
+        self.bq_source._dataset_obj_cache.clear()
 
         query = self.bq_source.get_life_cycle_query()
 
         assert "TABLE_STORAGE" not in query
         assert "creation_time as created_at" in query
+
+
+class _EvictedOnReadCache(LRUCache):
+    """An LRUCache whose entries vanish between the lookup and the read.
+
+    Stands in for another ingestion thread evicting the key in that window, which is not
+    reproducible deterministically with real threads.
+    """
+
+    def get(self, key):
+        raise KeyError(key)
+
+
+class TestBigqueryPerSchemaCaching:
+    """
+    The dataset/table object caches must be keyed per schema.
+
+    The databaseSchema topology node emits tags and the schema entity *before* its table
+    child node runs, so a cache that is only invalidated by the table producer hands the
+    previous dataset's description and labels to the next schema.
+    """
+
+    # dataset_id -> (description, labels)
+    DATASETS: ClassVar[dict] = {
+        "clean_identity_resolution": ("Clean Identity Resolution data", {"tier": "bronze"}),
+        "clean_mac": ("Clean MAC data", {"tier": "silver"}),
+        "clean_recon": ("Clean recon data", {"tier": "gold"}),
+    }
+
+    def setup_method(self):
+        self._patchers = [
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"),
+            patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"),
+            patch(
+                "metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client",
+                return_value=Mock(),
+            ),
+        ]
+        for p in self._patchers:
+            p.start()
+
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], metadata)
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
+        # The table node repopulates the dataset cache after invalidating it (DDL prefetch here;
+        # the lifecycle and stored-procedure stages do the same), which is what strands the
+        # previous schema's dataset in the cache for the next schema.
+        self.bq_source.source_config.includeDDL = True
+        self.bq_source.source_config.includeTags = True
+
+        self.bq_source.client = Mock()
+        self.bq_source.client.get_dataset.side_effect = self._get_dataset
+        self.bq_source.client.list_tables.return_value = []
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = []
+        self.bq_source.engine = MagicMock()
+        self.bq_source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        self.bq_source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+    def teardown_method(self):
+        for p in self._patchers:
+            p.stop()
+
+    def _get_dataset(self, dataset_ref: str):
+        description, labels = self.DATASETS[dataset_ref.rsplit(".", maxsplit=1)[-1]]
+        return SimpleNamespace(description=description, labels=labels, location="US")
+
+    def _walk_schema_then_tables(self, schema_name: str):
+        """Mimic the topology: schema stages first, then the table node producer."""
+        self.bq_source.context.get().__dict__["database_schema"] = schema_name
+        dataset_for_tags = self.bq_source.get_dataset_obj(schema_name)
+        description = self.bq_source.get_schema_description(schema_name)
+        list(self.bq_source.query_table_names_and_types(schema_name))
+        return description, dataset_for_tags.labels
+
+    def test_each_schema_gets_its_own_description(self):
+        """Descriptions must not shift onto the following schema."""
+        ingested = {schema: self._walk_schema_then_tables(schema)[0] for schema in self.DATASETS}
+
+        assert ingested == {schema: desc for schema, (desc, _) in self.DATASETS.items()}
+
+    def test_each_schema_gets_its_own_dataset_labels(self):
+        """Dataset labels feed schema tags; a stale dataset object invents tags that do not exist."""
+        ingested = {schema: self._walk_schema_then_tables(schema)[1] for schema in self.DATASETS}
+
+        assert ingested == {schema: labels for schema, (_, labels) in self.DATASETS.items()}
+
+    def test_dataset_obj_is_fetched_once_per_schema(self):
+        """The cache must still spare repeat API calls for the same schema."""
+        for _ in range(3):
+            self.bq_source.get_dataset_obj("clean_mac")
+
+        assert self.bq_source.client.get_dataset.call_count == 1
+
+    def test_table_obj_cache_is_scoped_per_schema(self):
+        """Same-named tables in different schemas must not share a cached table object."""
+        table_objs = {}
+        for schema in ("clean_mac", "clean_recon"):
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            self.bq_source.client.get_table.return_value = SimpleNamespace(
+                labels={"schema": schema}, description=f"{schema} events"
+            )
+            table_objs[schema] = self.bq_source.get_table_obj(table_name="events")
+
+        assert table_objs["clean_mac"].labels == {"schema": "clean_mac"}
+        assert table_objs["clean_recon"].labels == {"schema": "clean_recon"}
+
+    def test_table_obj_is_fetched_once_per_table(self):
+        """The cache must still spare repeat API calls for the same schema and table."""
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source.client.get_table.return_value = SimpleNamespace(labels={}, description="events")
+
+        for _ in range(3):
+            self.bq_source.get_table_obj(table_name="events")
+
+        assert self.bq_source.client.get_table.call_count == 1
+
+    def test_interleaved_schemas_keep_their_own_description(self):
+        """
+        The schema node is multi-threaded, so two schemas can be in flight at once.
+        Interleaving their stages must not let one schema's dataset serve the other.
+        """
+        schemas = ["clean_mac", "clean_recon"]
+
+        for schema in schemas:
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            self.bq_source.get_dataset_obj(schema)
+
+        descriptions = {schema: self.bq_source.get_schema_description(schema) for schema in schemas}
+
+        assert descriptions == {schema: self.DATASETS[schema][0] for schema in schemas}
+
+    def test_dataset_obj_survives_entry_evicted_before_read(self):
+        """
+        LRUCache locks each operation separately, so a concurrent put that triggers
+        eviction can drop the key after we looked it up but before we read it. Reading
+        must fall back to a fetch rather than raising KeyError at the caller.
+        """
+        self.bq_source._dataset_obj_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._dataset_obj_cache.put(f"{MOCK_DB_NAME}.clean_mac", object())
+
+        dataset_obj = self.bq_source.get_dataset_obj("clean_mac")
+
+        assert dataset_obj.description == "Clean MAC data"
+
+    def test_table_obj_survives_entry_evicted_before_read(self):
+        """Same eviction window as the dataset cache, for the table object cache."""
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
+        self.bq_source.client.get_table.return_value = SimpleNamespace(labels={}, description="events")
+        self.bq_source._table_obj_cache = _EvictedOnReadCache(capacity=8)
+        self.bq_source._table_obj_cache.put(f"{MOCK_DB_NAME}.clean_mac.events", object())
+
+        table_obj = self.bq_source.get_table_obj(table_name="events")
+
+        assert table_obj.description == "events"

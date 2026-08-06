@@ -162,6 +162,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
 
+      - name: Restore openmetadata-ui dist cache
+        # Only the next step (openmetadata-dist -am) transitively builds UI.
+        uses: ./.github/actions/cache-ui-dist
+
       - name: Build openmetadata-dist tarball
         # ContainerizedServer.buildLocalImageContainer needs
         # openmetadata-dist/target/openmetadata-*.tar.gz to bake the local image.
