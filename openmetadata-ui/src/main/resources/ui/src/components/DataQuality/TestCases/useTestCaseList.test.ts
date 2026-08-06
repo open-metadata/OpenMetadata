@@ -138,7 +138,8 @@ describe('useTestCaseList', () => {
 
     expect(lastPayload().q).toBe(`*${escapeESReservedCharacters(url)}*`);
     expect(lastPayload().q).toContain(String.raw`\:`);
-    expect(lastPayload().q).not.toMatch(/[^\\]:/);
+    expect(lastPayload().q).toContain(String.raw`\/`);
+    expect(lastPayload().q).not.toMatch(/[^\\][:/]/);
   });
 
   it('should pass a non-empty testCaseStatus through as-is', async () => {
