@@ -244,6 +244,31 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testBuildsQueryWithDataProductsFilter() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+    int size = 10;
+    int k = 100;
+    Map<String, List<String>> filters = Map.of("dataProducts", List.of("clickstream"));
+
+    String query = VectorSearchQueryBuilder.build(vector, size, 0, k, filters, 0.0);
+
+    JsonNode root = MAPPER.readTree(query);
+    JsonNode mustFilters =
+        root.get("query").get("knn").get("embedding").get("filter").get("bool").get("must");
+
+    // Should have 2 filters: deleted=false + dataProducts
+    assertEquals(2, mustFilters.size());
+
+    // Second filter should be a term query on dataProducts.name
+    JsonNode dataProductFilter = mustFilters.get(1);
+    assertTrue(dataProductFilter.has("term"));
+
+    JsonNode termQuery = dataProductFilter.get("term");
+    assertTrue(termQuery.has("dataProducts.name"));
+    assertEquals("clickstream", termQuery.get("dataProducts.name").asText());
+  }
+
+  @Test
   void testBuildsQueryWithMultipleFilters() throws Exception {
     float[] vector = {0.1f, 0.2f, 0.3f, 0.4f};
     int size = 20;

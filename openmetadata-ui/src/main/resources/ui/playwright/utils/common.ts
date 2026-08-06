@@ -785,7 +785,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await glossaryResponse;
   await waitForAllLoadersToDisappear(page);
   await page
-    .getByRole('menuitem', { name: glossaryName })
+    .getByTestId('glossary-left-panel')
+    .getByRole('menuitem', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -889,7 +890,8 @@ export const waitForSearchResult = async (
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
-  childFqnSearchTerm: string
+  childFqnSearchTerm: string,
+  exploreTabName?: string
 ) => {
   // Domain propagation from the parent service to its children — and the
   // subsequent search reindex — is eventually consistent. Gate on the search
@@ -941,6 +943,11 @@ export const verifyDomainPropagation = async (
   await searchBox.fill(childFqnSearchTerm);
   await searchBox.press('Enter');
   await waitForAllLoadersToDisappear(page);
+
+  if (exploreTabName) {
+    await page.getByRole('menuitem', { name: exploreTabName }).click();
+    await waitForAllLoadersToDisappear(page);
+  }
 
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   await expect(entityCard).toBeVisible({ timeout: 30_000 });

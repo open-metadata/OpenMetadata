@@ -204,6 +204,17 @@ class TestClientApiVersionDetection:
         assert client.api_version == "v1"
 
 
+# ── Client: Retry Configuration ──────────────────────────────────────────
+
+
+class TestClientRetryCodes:
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_503_and_504_are_retried(self, mock_rest_cls):
+        _make_client(mock_rest_cls)
+        client_config = mock_rest_cls.call_args.args[0]
+        assert client_config.retry_codes == [503, 504]
+
+
 # ── Client: Build DAG Details ────────────────────────────────────────────
 
 
@@ -937,3 +948,25 @@ class TestClientGetDagRuns:
 
         runs = client.get_dag_runs("my_dag")
         assert runs == []
+
+
+class TestIncludeUnDeployedPipelines:
+    """REST path must honor includeUnDeployedPipelines like the DB path does."""
+
+    def _run(self, include_undeployed):
+        source = MagicMock()
+        source.source_config.includeUnDeployedPipelines = include_undeployed
+        source.connection.get_all_dags.return_value = [
+            {"dag_id": "active_1", "is_paused": False},
+            {"dag_id": "paused_1", "is_paused": True},
+            {"dag_id": "active_2", "is_paused": False},
+        ]
+        source.connection.build_dag_details.side_effect = lambda dag: dag["dag_id"]
+
+        return list(AirflowApiSource.get_pipelines_list(source))
+
+    def test_excludes_paused_when_disabled(self):
+        assert self._run(False) == ["active_1", "active_2"]
+
+    def test_keeps_paused_when_enabled(self):
+        assert self._run(True) == ["active_1", "paused_1", "active_2"]
