@@ -359,6 +359,14 @@ const TestConnection: FC<TestConnectionProps> = ({
               response.id,
               controller.signal
             );
+
+            // a newer run may have started while the request was in flight
+            if (runId !== runIdRef.current) {
+              resolve();
+
+              return;
+            }
+
             const { response: testConnectionResponse } = workflowResponse;
             const { status: testConnectionStatus, steps = [] } =
               testConnectionResponse || {};
