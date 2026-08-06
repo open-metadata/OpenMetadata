@@ -26,6 +26,12 @@ public final class TableDataQualityPage extends PageObject {
   private static final String API_TEST_CASE_UPDATE_REGEX = ".*/api/v1/dataQuality/testCases/.+";
   private static final String API_TEST_DEFINITION_REGEX =
       ".*/api/v1/dataQuality/testDefinitions/.+";
+  // The edit drawer on 1.13 is still the legacy EditTestCaseModalV1, not the unified
+  // TestCaseFormV1 the create drawer uses. It submits via "update-btn" and its form is
+  // "edit-test-form" ("test-case-form-v1" exists there only as a CSS class, so waiting on
+  // that testid silently no-ops). Create-drawer helpers below keep create-btn/test-case-form-v1.
+  private static final String EDIT_SAVE_BTN = "update-btn";
+  private static final String EDIT_FORM = "edit-test-form";
 
   private TableDataQualityPage(final Page page, final UiSession session) {
     super(page, session);
@@ -184,8 +190,8 @@ public final class TableDataQualityPage extends PageObject {
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
-        () -> byTestId("create-btn").click());
-    byTestId("test-case-form-v1")
+        () -> byTestId(EDIT_SAVE_BTN).click());
+    byTestId(EDIT_FORM)
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
   }
@@ -212,8 +218,8 @@ public final class TableDataQualityPage extends PageObject {
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
-        () -> byTestId("create-btn").click());
-    byTestId("test-case-form-v1")
+        () -> byTestId(EDIT_SAVE_BTN).click());
+    byTestId(EDIT_FORM)
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
   }
@@ -221,7 +227,7 @@ public final class TableDataQualityPage extends PageObject {
   /** Click Cancel to close the OPEN edit drawer. */
   public TableDataQualityPage cancelEditDrawer() {
     page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancel")).click();
-    byTestId("test-case-form-v1")
+    byTestId(EDIT_FORM)
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
   }
@@ -234,7 +240,7 @@ public final class TableDataQualityPage extends PageObject {
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     final String value = page.locator(selector).inputValue();
     page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Cancel")).click();
-    byTestId("test-case-form-v1")
+    byTestId(EDIT_FORM)
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return value;
   }
