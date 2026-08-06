@@ -37,9 +37,10 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
-import { getTermQuery } from './SearchUtils';
+import { getTermQuery } from './SearchPureUtils';
 
-// Re-exports from FeedUtilsPure (backward compat)
+// Re-exports from FeedUtilsPure keep existing 1.13 consumers working while
+// individual imports are migrated across the backport sequence.
 export {
   buildMentionLink,
   deletePost,

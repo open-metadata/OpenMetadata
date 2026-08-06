@@ -174,7 +174,7 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn().mockReturnValue({}),
 }));
 
