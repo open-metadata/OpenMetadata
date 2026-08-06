@@ -193,7 +193,7 @@ Two packages, depending on what you're building.
 
 | Goal | Package | Install |
 |------|---------|---------|
-| Read/write metadata, lineage, glossary, quality | [`openmetadata-ingestion`](https://pypi.org/project/openmetadata-ingestion/) | `pip install "openmetadata-ingestion~=1.13.1.0"` |
+| Read/write metadata, lineage, glossary, quality | [`openmetadata-ingestion`](https://pypi.org/project/openmetadata-ingestion/) | `pip install "openmetadata-ingestion"` |
 | Give an LLM or agent governed access (MCP, LangChain) | [`data-ai-sdk`](https://pypi.org/project/data-ai-sdk/) | `pip install data-ai-sdk` |
 
 Also available: [`@openmetadata/ai-sdk`](https://www.npmjs.com/package/@openmetadata/ai-sdk) (TypeScript), [`org.open-metadata:ai-sdk`](https://central.sonatype.com/artifact/org.open-metadata/ai-sdk) (Java).
