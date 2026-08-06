@@ -18,7 +18,7 @@ import {
   StoredProcedureCodeObject,
 } from '../../../generated/entity/data/storedProcedure';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../SchemaEditor/SchemaEditor'))
