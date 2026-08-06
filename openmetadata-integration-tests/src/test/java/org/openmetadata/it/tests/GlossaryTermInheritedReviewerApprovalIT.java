@@ -93,6 +93,9 @@ public class GlossaryTermInheritedReviewerApprovalIT {
   private static final Duration STATUS_TIMEOUT = Duration.ofMinutes(3);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
+  /** Terms created after the reviewer is added, to land on a poisoned executor thread. */
+  private static final int POISONED_THREAD_PROBE_COUNT = 6;
+
   protected SharedEntities shared() {
     return SharedEntities.get();
   }
@@ -164,6 +167,48 @@ public class GlossaryTermInheritedReviewerApprovalIT {
     Task task = awaitOpenApprovalTask(child.getId(), child.getFullyQualifiedName());
     assertAssigneeIsReviewer(task);
     waitForTermStatus(child.getId(), EntityStatus.IN_REVIEW);
+  }
+
+  /**
+   * Stale inheritance-parent cache. {@code EntityRepository.inheritanceParentCache} is a static
+   * ThreadLocal cleared only by {@code ImpersonationCleanupFilter}, a JAX-RS response filter — so on
+   * Flowable's async job-executor threads it is never cleared for the life of the process.
+   *
+   * <p>This drives the reported ordering: the glossary starts with NO reviewers, a first term is
+   * created so the workflow caches that reviewer-less glossary snapshot on a job thread, and only then
+   * is the reviewer added. Every term created afterwards must still be gated as "has reviewers"; a
+   * term that lands in a terminal status instead means a job thread served the stale parent.
+   *
+   * <p>Several terms are created because the executor has a pool of threads and only the poisoned ones
+   * exhibit the bug — one term could be routed to a clean thread and pass by luck.
+   */
+  @Test
+  void test_reviewerAddedToGlossaryAfterFirstTerm_stillGatesLaterTerms(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = createGlossary(ns, /* withReviewer */ false);
+
+    // Poison: this term's workflow caches the glossary parent while it has no reviewers.
+    GlossaryTerm seed = createTerm(glossary, "seed_before_reviewer", false);
+    waitForTermStatus(seed.getId(), EntityStatus.APPROVED);
+
+    addReviewerToGlossary(glossary.getId());
+
+    for (int i = 0; i < POISONED_THREAD_PROBE_COUNT; i++) {
+      GlossaryTerm term = createTerm(glossary, "after_reviewer_" + i, false);
+      assertTermInheritsReviewer(term.getId());
+      awaitOpenApprovalTask(term.getId(), term.getFullyQualifiedName());
+    }
+  }
+
+  private void addReviewerToGlossary(UUID glossaryId) throws Exception {
+    String patch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/reviewers\",\"value\":"
+                + "[{\"id\":\"%s\",\"type\":\"user\"}]}]",
+            reviewer().getId());
+    SdkClients.adminClient()
+        .glossaries()
+        .patch(glossaryId.toString(), new ObjectMapper().readTree(patch));
   }
 
   /**
