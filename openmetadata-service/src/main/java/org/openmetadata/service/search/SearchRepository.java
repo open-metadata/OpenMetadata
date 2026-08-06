@@ -2351,6 +2351,80 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * Cascades an asset's domain change to its inherited descendants in the search index. When a Data
+   * Product's domain changes or an asset is moved between domains, the direct asset's own document is
+   * updated by the caller, but descendants that <em>inherit</em> the asset's domain (no explicit
+   * domain of their own) keep the old domain in search until a full reindex. This rewrites those
+   * descendant documents with {@code newDomains}; descendants that carry an explicit domain are left
+   * untouched by the underlying script. Fixes the divergence where Explore and the entity page
+   * disagreed after a domain move (#30678).
+   */
+  public void propagateAssetDomainChangeToChildren(
+      String entityType, UUID entityId, List<EntityReference> newDomains) {
+    if (entityId == null || !checkIfIndexingIsSupported(entityType)) {
+      return;
+    }
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> propagateAssetDomainChangeToChildren(entityType, entityId, newDomains),
+            "propagateAssetDomainChangeToChildren",
+            entityId.toString(),
+            null,
+            entityType))) {
+      return;
+    }
+    if (!getSearchClient().isClientAvailable()) {
+      SearchIndexRetryQueue.enqueue(
+          entityId.toString(),
+          null,
+          "propagateAssetDomainChangeToChildren: Search client unavailable");
+      return;
+    }
+    Timer.Sample s = RequestLatencyContext.startSearchOperation();
+    try {
+      propagateInheritedDomainsToChildren(entityType, entityId, newDomains);
+    } catch (IOException e) {
+      SearchIndexRetryQueue.enqueue(
+          entityId.toString(),
+          null,
+          SearchIndexRetryQueue.failureReason("propagateAssetDomainChangeToChildren", e));
+    } finally {
+      RequestLatencyContext.endSearchOperation(s);
+    }
+  }
+
+  private void propagateInheritedDomainsToChildren(
+      String entityType, UUID entityId, List<EntityReference> newDomains) throws IOException {
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    if (indexMapping == null
+        || nullOrEmpty(indexMapping.getChildAliases())
+        || Entity.DOMAIN.equalsIgnoreCase(entityType)) {
+      return;
+    }
+    Pair<String, Map<String, Object>> updates = buildInheritedDomainChildUpdate(newDomains);
+    applyChildFieldUpdates(entityType, entityId.toString(), indexMapping, updates);
+  }
+
+  private Pair<String, Map<String, Object>> buildInheritedDomainChildUpdate(
+      List<EntityReference> newDomains) {
+    List<EntityReference> inheritedDomains =
+        nullOrEmpty(newDomains)
+            ? new ArrayList<>()
+            : JsonUtils.deepCopyList(newDomains, EntityReference.class);
+    inheritedDomains.forEach(domain -> domain.setInherited(true));
+    Map<String, Object> params = new HashMap<>();
+    String script;
+    if (inheritedDomains.isEmpty()) {
+      params.put("removedDomains", inheritedDomains);
+      script = generateRemoveListScript(FIELD_DOMAINS);
+    } else {
+      params.put("updatedDomains", inheritedDomains);
+      script = generateAddListScript(FIELD_DOMAINS);
+    }
+    return new ImmutablePair<>(script, params);
+  }
+
   public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
     if (deferSearchWrite(
         new DeferredSearchWrite(
@@ -2469,18 +2543,27 @@ public class SearchRepository {
     if (changeDescription != null && !nullOrEmpty(indexMapping.getChildAliases())) {
       Pair<String, Map<String, Object>> updates =
           getInheritedFieldChanges(changeDescription, entity, entityType);
-      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
-        if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
-          propagateToDomainChildren(entityId, indexMapping, updates);
-        } else {
-          String parentFieldName = resolveParentFieldName(entityType, updates);
-          Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-          List<String> entityChildren =
-              filterChildAliasesByCapability(
-                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
-          if (!nullOrEmpty(entityChildren)) {
-            searchClient.updateChildren(entityChildren, parentMatch, updates);
-          }
+      applyChildFieldUpdates(entityType, entityId, indexMapping, updates);
+    }
+  }
+
+  private void applyChildFieldUpdates(
+      String entityType,
+      String entityId,
+      IndexMapping indexMapping,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    if (updates.getKey() != null && !updates.getKey().isEmpty()) {
+      if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+        propagateToDomainChildren(entityId, indexMapping, updates);
+      } else {
+        String parentFieldName = resolveParentFieldName(entityType, updates);
+        Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
+        List<String> entityChildren =
+            filterChildAliasesByCapability(
+                indexMapping, capability -> capability == null || !capability.isTimeSeries());
+        if (!nullOrEmpty(entityChildren)) {
+          searchClient.updateChildren(entityChildren, parentMatch, updates);
         }
       }
     }

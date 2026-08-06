@@ -414,6 +414,7 @@ public class DomainRepository extends EntityRepository<Domain> {
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
       searchRepository.updateEntity(ref);
+      propagateInheritedDomainToAssetChildren(entityId, ref, isAdd);
     }
 
     result.withSuccessRequest(success);
@@ -431,6 +432,16 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
 
     return result;
+  }
+
+  private void propagateInheritedDomainToAssetChildren(
+      UUID domainId, EntityReference asset, boolean isAdd) {
+    // updateEntity only rebuilds the moved asset's own search doc. Descendants that inherit their
+    // domain must follow in search too, else Explore keeps them under the old domain (#30678).
+    List<EntityReference> newDomains =
+        isAdd ? List.of(getEntityReferenceById(DOMAIN, domainId, ALL)) : List.of();
+    searchRepository.propagateAssetDomainChangeToChildren(
+        asset.getType(), asset.getId(), newDomains);
   }
 
   private BulkResponse buildDryRunImpactResponse(

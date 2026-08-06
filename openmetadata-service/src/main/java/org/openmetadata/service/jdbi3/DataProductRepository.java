@@ -1026,6 +1026,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           List<UUID> assetIds =
               allRecords.stream().map(CollectionDAO.EntityRelationshipRecord::getId).toList();
           searchRepository.updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
+          // updateAssetDomainsByIds only rewrites the direct assets' own search docs. Descendants
+          // that inherit their domain (e.g. tables under a migrated schema) must follow in search
+          // too, otherwise Explore keeps them under the old domain until a reindex (#30678).
+          for (CollectionDAO.EntityRelationshipRecord record : allRecords) {
+            searchRepository.propagateAssetDomainChangeToChildren(
+                record.getType(), record.getId(), updatedDomains);
+          }
         }
       }
     }

@@ -35,6 +35,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
@@ -51,6 +52,8 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
@@ -1499,6 +1502,70 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     // ...and the prefix-sharing sibling must stay exactly as it was (no double / no spillover).
     verifyDomainInSearch(siblingFqn, sibling.getId().toString());
+  }
+
+  // ===================================================================
+  // Issue #30678: moving an asset between domains from the Domain page must
+  // propagate the new domain to descendants that INHERIT their domain in the
+  // search index, not just on the entity page — otherwise Explore and domain
+  // filters keep the descendant under the old domain until a full reindex.
+  // ===================================================================
+  @Test
+  void test_moveSchemaBetweenDomains_propagatesToInheritedDescendantsInSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Domain source = createEntity(createRequest(ns.prefix("dom_inh_src"), ns));
+    Domain target = createEntity(createRequest(ns.prefix("dom_inh_tgt"), ns));
+
+    // Schema carries an explicit domain; the child table inherits it (no explicit domain).
+    DatabaseSchema schema = createSchemaInDomain(ns, "inh", source.getFullyQualifiedName());
+    Table child = createInheritingTable(ns, "inh", schema);
+
+    awaitAssetDomainFqn(client, mapper, child.getId().toString(), source.getFullyQualifiedName());
+
+    // Move the schema into the target domain from the Domain page (bulk assets/add).
+    EntityReference schemaRef =
+        new EntityReference()
+            .withId(schema.getId())
+            .withType("databaseSchema")
+            .withFullyQualifiedName(schema.getFullyQualifiedName());
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + target.getFullyQualifiedName() + "/assets/add",
+            new BulkAssets().withAssets(List.of(schemaRef)),
+            BulkOperationResult.class);
+
+    // The inherited descendant follows the schema into the target domain in search (#30678).
+    awaitAssetDomainFqn(client, mapper, child.getId().toString(), target.getFullyQualifiedName());
+  }
+
+  private DatabaseSchema createSchemaInDomain(TestNamespace ns, String suffix, String domainFqn) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name(ns.shortPrefix("dom_db_" + suffix))
+            .in(service.getFullyQualifiedName())
+            .execute();
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(ns.shortPrefix("dom_sch_" + suffix))
+            .withDatabase(database.getFullyQualifiedName())
+            .withDomains(List.of(domainFqn));
+    return SdkClients.adminClient().databaseSchemas().create(createSchema);
+  }
+
+  private Table createInheritingTable(TestNamespace ns, String suffix, DatabaseSchema schema) {
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.shortPrefix("dom_tbl_" + suffix))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
   }
 
   private Table createTableInDomain(TestNamespace ns, String suffix, String domainFqn) {

@@ -738,7 +738,90 @@ public class DataProductDomainMigrationIT {
         domainC.getFullyQualifiedName(), finalDp.getDomains().get(0).getFullyQualifiedName());
   }
 
+  /**
+   * Reproduces #30678: when a data product's asset is a container (a schema), descendants that
+   * inherit the schema's domain must follow it to the new domain in the search index, not just on
+   * the entity page. Descendants that carry an explicit domain must be left untouched.
+   */
+  @Test
+  void testDataProductDomainMigrationPropagatesToInheritedDescendants(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String shortId = ns.shortPrefix();
+
+    Domain sourceDomain = createDomain(client, "inh_src_" + shortId);
+    Domain targetDomain = createDomain(client, "inh_tgt_" + shortId);
+    Domain otherDomain = createDomain(client, "inh_other_" + shortId);
+
+    // The schema carries an explicit domain and is the data product's only asset.
+    DatabaseSchema schema = createSchemaInDomain(ns, "inh_schema_" + shortId, sourceDomain);
+
+    // t1 inherits the schema's domain (no explicit domain of its own); t2 has an explicit domain
+    // equal to the source; t3 has an explicit unrelated domain.
+    Table t1 = createTableUnderSchema(ns, "inh_t1_" + shortId, schema, null);
+    Table t2 = createTableUnderSchema(ns, "inh_t2_" + shortId, schema, sourceDomain);
+    Table t3 = createTableUnderSchema(ns, "inh_t3_" + shortId, schema, otherDomain);
+
+    CreateDataProduct createDp = new CreateDataProduct();
+    createDp.setName("inh_dp_" + shortId);
+    createDp.setDescription("Data product asserting inherited-descendant search propagation");
+    createDp.setDomains(List.of(sourceDomain.getFullyQualifiedName()));
+    DataProduct dataProduct = client.dataProducts().create(createDp);
+
+    BulkAssets bulkRequest =
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    new EntityReference()
+                        .withId(schema.getId())
+                        .withType("databaseSchema")
+                        .withFullyQualifiedName(schema.getFullyQualifiedName())));
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkRequest);
+    waitForSearchIndexUpdate();
+
+    // Baseline: the inherited descendant is under the source domain in search.
+    verifyAssetsInDomainSearch(client, sourceDomain.getFullyQualifiedName(), List.of(t1), true);
+
+    // Move the data product (and its schema asset) to the target domain.
+    moveDataProductToDomain(client, dataProduct, targetDomain);
+    waitForSearchIndexUpdate();
+
+    // The inherited descendant follows the schema in search — the fix for #30678.
+    verifyAssetsInDomainSearch(client, targetDomain.getFullyQualifiedName(), List.of(t1), true);
+    verifyAssetsInDomainSearch(client, sourceDomain.getFullyQualifiedName(), List.of(t1), false);
+    verifyAssetsHaveDomainViaAPI(client, List.of(t1), targetDomain, true);
+    verifyAssetsHaveDomainViaAPI(client, List.of(t1), sourceDomain, false);
+
+    // Descendants with an explicit domain are left untouched by the migration.
+    verifyAssetsInDomainSearch(client, sourceDomain.getFullyQualifiedName(), List.of(t2), true);
+    verifyAssetsInDomainSearch(client, otherDomain.getFullyQualifiedName(), List.of(t3), true);
+    verifyAssetsHaveDomainViaAPI(client, List.of(t2), sourceDomain, true);
+    verifyAssetsHaveDomainViaAPI(client, List.of(t3), otherDomain, true);
+  }
+
   // ==================== Helper Methods ====================
+
+  private DatabaseSchema createSchemaInDomain(TestNamespace ns, String baseName, Domain domain) {
+    initializeSharedDbEntities(ns);
+    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
+    schemaReq.setName(ns.prefix(baseName));
+    schemaReq.setDatabase(sharedDatabase.getFullyQualifiedName());
+    schemaReq.setDomains(List.of(domain.getFullyQualifiedName()));
+    return SdkClients.adminClient().databaseSchemas().create(schemaReq);
+  }
+
+  private Table createTableUnderSchema(
+      TestNamespace ns, String baseName, DatabaseSchema schema, Domain explicitDomain) {
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix(baseName));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    if (explicitDomain != null) {
+      tableRequest.setDomains(List.of(explicitDomain.getFullyQualifiedName()));
+    }
+    tableRequest.setColumns(
+        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    return SdkClients.adminClient().tables().create(tableRequest);
+  }
 
   private Domain createDomain(OpenMetadataClient client, String name) {
     CreateDomain request = new CreateDomain();
