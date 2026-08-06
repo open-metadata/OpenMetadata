@@ -1126,6 +1126,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         edges: filteredEdges,
       };
     });
+
+    // Clear the selection so EdgeInteractionOverlay stops rendering the
+    // floating edit/delete button over the edge we just removed.
+    setSelectedEdge(undefined);
   };
 
   const removeColumnEdge = async (edge: Edge, confirmDelete: boolean) => {
@@ -1185,6 +1189,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
     setColumnsHavingLineage(updatedColumnsHavingLineage);
 
+    // Clear the selection so EdgeInteractionOverlay stops rendering the
+    // floating delete button at the position of the edge we just removed.
+    setSelectedEdge(undefined);
     setShowDeleteModal(false);
   };
 
