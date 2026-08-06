@@ -357,6 +357,57 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testDataQualitySearchEscapesLuceneSyntaxInFreeText() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String pastedUrl = "*https://localhost:8585/table/orders*";
+
+    String osQuery =
+        osFactory
+            .getSearchSourceBuilderV2("test_case_search_index", pastedUrl, 0, 10)
+            .query()
+            .toJsonString();
+    String esQuery =
+        esFactory
+            .getSearchSourceBuilderV2("test_suite_search_index", pastedUrl, 0, 10)
+            .query()
+            .toString();
+
+    for (String builtQuery : List.of(osQuery, esQuery)) {
+      assertFalse(
+          builtQuery.contains("https://localhost:8585/table/orders"),
+          "Unescaped Lucene syntax must not reach the search engine: " + builtQuery);
+      assertTrue(
+          builtQuery.contains("*https\\\\:\\\\/\\\\/localhost\\\\:8585\\\\/table\\\\/orders*"),
+          "Reserved characters must be escaped while the wildcards stay active: " + builtQuery);
+    }
+  }
+
+  @Test
+  public void testEscapeQueryStringSyntaxKeepsWildcardsAndExistingEscapes() {
+    assertEquals(
+        "*orders*",
+        SearchSourceBuilderFactory.escapeQueryStringSyntax("*orders*"),
+        "Wildcards are how callers ask for substring matching and must stay active");
+    assertEquals(
+        "*foo\\*bar*",
+        SearchSourceBuilderFactory.escapeQueryStringSyntax("*foo\\*bar*"),
+        "A caller that escaped its own input must not be double escaped");
+    assertEquals(
+        "orders\\(v2\\)",
+        SearchSourceBuilderFactory.escapeQueryStringSyntax("orders(v2)"),
+        "Unbalanced or literal parentheses must be escaped");
+    assertEquals(
+        "name\\\\",
+        SearchSourceBuilderFactory.escapeQueryStringSyntax("name\\"),
+        "A dangling trailing backslash must be escaped so the query still parses");
+    assertNull(SearchSourceBuilderFactory.escapeQueryStringSyntax(null));
+    assertEquals("", SearchSourceBuilderFactory.escapeQueryStringSyntax(""));
+  }
+
+  @Test
   public void testEmptyAndWildcardQueries() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
 

@@ -793,17 +793,6 @@ public class OpenSearchSourceBuilderFactory
     };
   }
 
-  public OpenSearchRequestBuilder buildDataQualitySearchBuilderV2(
-      String indexName, String query, int from, int size) {
-    return switch (indexName) {
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
-      default -> buildAggregateSearchBuilderV2(query, from, size);
-    };
-  }
-
   public OpenSearchRequestBuilder buildCommonSearchBuilderV2(String query, int from, int size) {
     AssetTypeConfiguration defaultConfig = getOrCreateDefaultConfig();
     LOG.debug(

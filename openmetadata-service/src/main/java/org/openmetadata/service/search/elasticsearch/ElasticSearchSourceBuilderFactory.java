@@ -464,17 +464,6 @@ public class ElasticSearchSourceBuilderFactory
     return searchRequestBuilder;
   }
 
-  public ElasticSearchRequestBuilder buildDataQualitySearchBuilderV2(
-      String indexName, String query, int from, int size) {
-    return switch (indexName) {
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
-      default -> buildAggregateSearchBuilderV2(query, from, size);
-    };
-  }
-
   public ElasticSearchRequestBuilder buildTestCaseSearchV2(String query, int from, int size) {
     Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseIndex.getFields());
     Highlight hb = buildHighlightsV2(List.of("testSuite.name", "testSuite.description"));
