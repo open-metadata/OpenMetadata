@@ -209,13 +209,22 @@ test.describe('Large Glossary Performance Tests', () => {
     // Clear search
     await searchInput.clear();
     await page.waitForResponse('api/v1/glossaryTerms?*');
+    await waitForAllLoadersToDisappear(page);
 
-    // Verify all terms are shown again
-
-    const allTerms = await page.locator('tbody tr[data-row-key]').count();
-
-    // 51 because there is one additional row which is not rendered
-    expect(allTerms).toBeGreaterThanOrEqual(50);
+    // Verify all terms are shown again.
+    //
+    // waitForResponse only proves the listing bytes arrived — the component
+    // still has to apply the store update and re-render the rows, which
+    // happens in a later microtask (GlossaryTermTab sets the terms after its
+    // own await). A single count() here has no retry budget and samples the
+    // stale search results instead, so poll the rendered row count.
+    //
+    // Polling rather than toHaveCount: the tab auto-fetches another page when
+    // the rows do not fill the viewport, so an exact count would swap this
+    // flake for a different one.
+    await expect
+      .poll(() => page.locator('tbody tr[data-row-key]').count())
+      .toBeGreaterThanOrEqual(50);
   });
 
   test('should expand and collapse all terms', async ({ page }) => {
