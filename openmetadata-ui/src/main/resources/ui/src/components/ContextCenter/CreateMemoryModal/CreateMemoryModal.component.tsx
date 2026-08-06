@@ -202,7 +202,7 @@ const EmptyTags: FC = () => {
   const { t } = useTranslation();
 
   return (
-    <Typography className="tw:text-utility-gray-400" size='text-xs'>
+    <Typography className="tw:text-utility-gray-400" size="text-xs">
       {t('label.no-tags-added')}
     </Typography>
   );

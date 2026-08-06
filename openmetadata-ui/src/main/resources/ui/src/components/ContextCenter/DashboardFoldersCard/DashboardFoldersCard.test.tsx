@@ -42,10 +42,7 @@ const MOCK_FOLDERS: Folder[] = [
 describe('DashboardFoldersCard', () => {
   it('renders the folder list with children count badges', () => {
     render(
-      <DashboardFoldersCard
-        folders={MOCK_FOLDERS}
-        onOpenFolder={jest.fn()}
-      />
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFolder={jest.fn()} />
     );
 
     expect(screen.getByText('Reports')).toBeInTheDocument();
@@ -84,10 +81,7 @@ describe('DashboardFoldersCard', () => {
 
   it('does not fetch children until a folder is expanded', () => {
     render(
-      <DashboardFoldersCard
-        folders={MOCK_FOLDERS}
-        onOpenFolder={jest.fn()}
-      />
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFolder={jest.fn()} />
     );
 
     expect(listContextFiles).not.toHaveBeenCalled();

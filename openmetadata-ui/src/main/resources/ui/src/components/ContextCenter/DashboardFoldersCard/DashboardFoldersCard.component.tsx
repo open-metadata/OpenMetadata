@@ -84,7 +84,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
   const handleClick = (e: MouseEvent, folderId: string) => {
     e.stopPropagation();
     onOpenFolder(folderId);
-  }
+  };
 
   const handleKeyDown = (e: KeyboardEvent, folderId: string) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -92,7 +92,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
       e.stopPropagation();
       onOpenFolder(folderId);
     }
-  }
+  };
 
   return (
     <ContextSimplePillarCard
@@ -138,7 +138,9 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                     role="button"
                     tabIndex={0}
                     onClick={(e: MouseEvent) => handleClick(e, folder.id)}
-                    onKeyDown={(e: KeyboardEvent) => handleKeyDown(e, folder.id)}>
+                    onKeyDown={(e: KeyboardEvent) =>
+                      handleKeyDown(e, folder.id)
+                    }>
                     <FolderIcon className="tw:size-4 tw:shrink-0 tw:text-quaternary" />
                     <div className="tw:min-w-0">
                       <Typography
