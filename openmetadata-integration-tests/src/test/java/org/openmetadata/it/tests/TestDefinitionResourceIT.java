@@ -292,7 +292,30 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   }
 
   @Test
-  void list_entityTypeFilterYieldsSameResultForAdminAndNonAdmin_200_OK(TestNamespace ns) {
+  void list_emptyEntityTypeFilterIsIgnored_200_OK(TestNamespace ns) {
+    TestDefinition columnDefinition = createColumnTestDefinition(ns, "empty_column");
+    TestDefinition tableDefinition = createTableTestDefinition(ns, "empty_table");
+
+    Set<String> fullyQualifiedNames =
+        fullyQualifiedNamesOf(listByEntityType(SdkClients.adminClient(), ""));
+
+    assertTrue(
+        fullyQualifiedNames.contains(columnDefinition.getFullyQualifiedName()),
+        "An empty entityType must not filter out COLUMN test definitions");
+    assertTrue(
+        fullyQualifiedNames.contains(tableDefinition.getFullyQualifiedName()),
+        "An empty entityType must not filter out TABLE test definitions");
+  }
+
+  /**
+   * Proves that a caller holding no roles at all sees exactly what an admin sees, which is what the
+   * issue disputed. It does not cover the one configuration that genuinely does diverge: a
+   * {@code DomainOnlyAccessRole} holder with no domains, whose listing is broken by
+   * {@code EntityUtil.addDomainQueryParam} overwriting this very query param with the resource type.
+   * That is a separate defect, unrelated to casing, and is not fixed or exercised here.
+   */
+  @Test
+  void list_entityTypeFilterYieldsSameResultForAdminAndRoleLessUser_200_OK(TestNamespace ns) {
     TestDefinition columnDefinition = createColumnTestDefinition(ns, "rbac_column");
     TestDefinition tableDefinition = createTableTestDefinition(ns, "rbac_table");
 
