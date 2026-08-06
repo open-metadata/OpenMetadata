@@ -46,6 +46,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRe
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -490,6 +491,11 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
+    // Quartz worker threads are long lived and never pass through the JAX-RS response filter, so
+    // per-request ThreadLocal caches would otherwise persist across ticks and serve indefinitely
+    // stale reads. Destinations on this thread read entities (governance workflows resolve
+    // inherited reviewers here), so start each tick from a clean slate.
+    PerRequestContextCleaner.clear();
     this.init(jobExecutionContext);
     if (this.eventSubscription == null) {
       LOG.error("Skipping job execution - EventSubscription could not be loaded");
@@ -520,6 +526,8 @@ public abstract class AbstractEventConsumer
       } else if (gapStateChanged) {
         persistPendingGapState(jobExecutionContext);
       }
+      // Bound retention while this worker sits idle between ticks.
+      PerRequestContextCleaner.clear();
     }
   }
 

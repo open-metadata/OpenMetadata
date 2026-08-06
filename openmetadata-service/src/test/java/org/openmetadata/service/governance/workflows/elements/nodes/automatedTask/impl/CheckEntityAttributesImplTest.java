@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,21 +40,19 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 /**
  * Covers the reviewers gate of the Glossary Approval Workflow.
  *
- * <p>{@code CheckGlossaryTermHasReviewers} decides whether an approval task is created at all. It
- * evaluates the shipped JsonLogic rule below against the term, and routes a {@code false} result to a
- * terminal status. A term whose reviewers are <b>inherited</b> from its parent glossary must still
- * answer {@code true}; otherwise no approval task is ever created and the term settles in Draft.
+ * <p>{@code CheckGlossaryTermHasReviewers} decides whether an approval task is created at all: it
+ * evaluates the shipped JsonLogic rule below against the term and routes a {@code false} result to a
+ * terminal status, leaving the term in Draft with no task. These tests pin how that rule reads the
+ * entity it is handed.
  *
- * <p>These tests pin that behaviour at the unit level, where the failing condition can be forced
- * directly: an entity read that returns <b>no</b> reviewers on the term while the parent supplies
- * them. {@link #reviewersRule_inheritedReviewersOnly_evaluatesTrue()} fails without the
- * effective-reviewer resolution in {@code CheckEntityAttributesImpl} and passes with it.
+ * <p>Whether a term that <i>inherits</i> its reviewers arrives here with them populated is a property
+ * of the read path, not of this delegate — it is covered by the inheritance tests and by {@code
+ * GlossaryTermInheritedReviewerApprovalIT}.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -71,10 +68,6 @@ class CheckEntityAttributesImplTest {
   @Mock private DelegateExecution execution;
   @Mock private Expression rulesExpr;
   @Mock private Expression inputNamespaceMapExpr;
-
-  @SuppressWarnings("rawtypes")
-  @Mock
-  private EntityRepository mockRepository;
 
   private CheckEntityAttributesImpl delegate;
   private MockedStatic<Entity> mockedEntity;
@@ -92,10 +85,8 @@ class CheckEntityAttributesImplTest {
     when(execution.getCurrentActivityId()).thenReturn(NODE_ID);
     when(execution.getVariable("global_relatedEntity"))
         .thenReturn("<#E::glossaryTerm::Property.hello world>");
-    when(mockRepository.isSupportsReviewers()).thenReturn(true);
 
     mockedEntity = mockStatic(Entity.class);
-    mockedEntity.when(() -> Entity.getEntityRepository(anyString())).thenReturn(mockRepository);
 
     capturedVars = new HashMap<>();
     doAnswer(
@@ -112,73 +103,37 @@ class CheckEntityAttributesImplTest {
     mockedEntity.close();
   }
 
-  /**
-   * The reported bug. The term carries no reviewers of its own — the read returned none — but its
-   * glossary supplies one, so effective-reviewer resolution must make the gate answer true. Without
-   * that resolution the rule sees an empty array, {@code some} is vacuously false, and the term is
-   * routed to Draft with no approval task.
-   */
+  /** Reviewers present on the entity — whether set directly or applied by inheritance. */
   @Test
-  void reviewersRule_inheritedReviewersOnly_evaluatesTrue() {
-    givenRelatedEntity(termWithReviewers(null));
-    givenEffectiveReviewers(reviewer("manoj"));
-
-    delegate.execute(execution);
-
-    assertTrue(
-        result(),
-        "Gate must see the inherited reviewer and allow the approval task to be created; "
-            + "a false result here is what leaves the term in Draft");
-  }
-
-  /** A reviewer set directly on the term is unaffected by the resolution. */
-  @Test
-  void reviewersRule_directReviewersOnTerm_evaluatesTrue() {
+  void reviewersRule_reviewersPresentOnEntity_evaluatesTrue() {
     givenRelatedEntity(termWithReviewers(List.of(reviewer("manoj"))));
 
     delegate.execute(execution);
 
-    assertTrue(result(), "A directly attached reviewer must satisfy the gate");
+    assertTrue(result(), "A term carrying a reviewer must satisfy the gate");
   }
 
-  /** Nothing to inherit anywhere: the gate must still answer false and auto-approve. */
+  /** No reviewers anywhere: the gate must be false so the term auto-approves. */
   @Test
-  void reviewersRule_noReviewersAnywhere_evaluatesFalse() {
+  void reviewersRule_noReviewers_evaluatesFalse() {
     givenRelatedEntity(termWithReviewers(null));
-    givenEffectiveReviewers();
 
     delegate.execute(execution);
 
-    assertFalse(result(), "With no reviewers on the term or its parents the gate must be false");
+    assertFalse(result(), "With no reviewers the gate must be false");
   }
 
   /**
-   * A reviewer reference without a fullyQualifiedName does not satisfy the shipped rule, which tests
-   * {@code fullyQualifiedName != null} per element. Resolution must not paper over that.
+   * The shipped rule tests {@code fullyQualifiedName != null} per element, so a reference missing its
+   * FQN does not satisfy it. Pinned because inheritance copies references between entities.
    */
   @Test
-  void reviewersRule_inheritedReviewerWithoutFqn_evaluatesFalse() {
-    givenRelatedEntity(termWithReviewers(null));
-    givenEffectiveReviewers(new EntityReference().withType(Entity.USER));
+  void reviewersRule_reviewerWithoutFqn_evaluatesFalse() {
+    givenRelatedEntity(termWithReviewers(List.of(new EntityReference().withType(Entity.USER))));
 
     delegate.execute(execution);
 
     assertFalse(result(), "A reviewer reference with no FQN must not satisfy the rule");
-  }
-
-  /**
-   * Resolution must not be attempted for entities that do not support reviewers, and the gate must
-   * fall back to whatever the entity itself carries.
-   */
-  @Test
-  void reviewersRule_entityWithoutReviewerSupport_evaluatesFalse() {
-    when(mockRepository.isSupportsReviewers()).thenReturn(false);
-    givenRelatedEntity(termWithReviewers(null));
-
-    delegate.execute(execution);
-
-    assertFalse(result(), "An entity type without reviewer support must not satisfy the gate");
-    assertEquals(1, capturedVars.size(), "Only the node result should be written");
   }
 
   private void givenRelatedEntity(GlossaryTerm term) {
@@ -188,11 +143,6 @@ class CheckEntityAttributesImplTest {
                 Entity.getEntity(
                     any(MessageParser.EntityLink.class), anyString(), any(Include.class)))
         .thenReturn(term);
-  }
-
-  @SuppressWarnings("unchecked")
-  private void givenEffectiveReviewers(EntityReference... reviewers) {
-    when(mockRepository.getEffectiveReviewersUntyped(any())).thenReturn(List.of(reviewers));
   }
 
   private GlossaryTerm termWithReviewers(List<EntityReference> reviewers) {
