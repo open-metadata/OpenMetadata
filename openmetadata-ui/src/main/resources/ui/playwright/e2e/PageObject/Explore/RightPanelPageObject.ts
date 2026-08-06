@@ -132,6 +132,7 @@ export class RightPanelPageObject {
   private readonly panelAddDomain: Locator;
   private readonly panelEditDataProducts: Locator;
   private readonly panelLoaders: Locator;
+  private readonly pageLoader: Locator;
 
   // Data asset configurations aligned with EntityRightPanelVerticalNav (hasSchemaTab, hasLineageTab, data quality for Table only, hasCustomPropertiesTab)
   private static readonly DATA_ASSET_CONFIGS: Record<string, DataAssetConfig> =
@@ -397,6 +398,7 @@ export class RightPanelPageObject {
     this.panelLoaders = this.getSummaryPanel().locator(
       '[data-testid="loader"]'
     );
+    this.pageLoader = this.page.locator('[data-testid="loader"]');
 
     // Set entity configuration if provided
     if (entity) {
@@ -959,10 +961,7 @@ export class RightPanelPageObject {
   async navigateToTab(tabName: string) {
     const tab = this.getTabLocator(tabName);
     await tab.click();
-    // `pageLoader` matches every [data-testid="loader"] on the page, so
-    // waitFor() throws a strict-mode violation whenever more than one section
-    // is loading. This helper asserts the count instead, tolerating 0..N.
-    await waitForAllLoadersToDisappear(this.page);
+    await expect(this.pageLoader).toHaveCount(0, { timeout: 10000 });
   }
 
   /**

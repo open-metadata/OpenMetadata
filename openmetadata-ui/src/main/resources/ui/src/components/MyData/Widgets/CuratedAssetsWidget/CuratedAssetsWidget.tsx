@@ -15,7 +15,7 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -57,6 +57,7 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
 import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -64,11 +65,14 @@ import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './curated-assets-widget.less';
-import CuratedAssetsModal from './CuratedAssetsModal/CuratedAssetsModal';
 import {
   CURATED_ASSETS_SORT_BY_KEYS,
   CURATED_ASSETS_SORT_BY_OPTIONS,
 } from './CuratedAssetsWidget.constants';
+
+const CuratedAssetsModal = withSuspenseFallback(
+  lazy(() => import('./CuratedAssetsModal/CuratedAssetsModal'))
+);
 
 const CuratedAssetsWidget = ({
   isEditView,

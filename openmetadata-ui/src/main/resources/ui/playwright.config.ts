@@ -101,6 +101,9 @@ export default defineConfig({
         // per-test beforeEach (which deletes all intake forms) from racing against
         // the domain intake form this spec creates in beforeAll.
         '**/IntakeFormCustomPropertyFields.spec.ts',
+        // Same reasoning as above: it is the only spec that creates and deletes
+        // both custom properties and a singleton intake form.
+        '**/CustomPropertyIntakeFormCascade.spec.ts',
       ],
     },
     {
@@ -192,6 +195,18 @@ export default defineConfig({
     {
       name: 'IntakeFormCustomPropertyFields',
       testMatch: '**/IntakeFormCustomPropertyFields.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
+    },
+    // Deleting a custom property must prune it from that entity type's intake
+    // form, so this spec writes both the shared entity-type row (which
+    // CustomProperties.spec.ts also writes) and the singleton intake form
+    // (which IntakeForm.spec.ts also writes). No single spec file serialises
+    // both; running after chromium makes it the sole writer of either.
+    {
+      name: 'CustomPropertyIntakeFormCascade',
+      testMatch: '**/CustomPropertyIntakeFormCascade.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,

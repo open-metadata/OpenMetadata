@@ -15,7 +15,14 @@ import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Fragment,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CustomPropertyEmpty } from '../../../assets/svg/custom-property-empty.svg';
@@ -34,6 +41,7 @@ import {
 } from '../../../utils/EntityVersionUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import ExpandableCard from '../ExpandableCard/ExpandableCard';
@@ -43,7 +51,12 @@ import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from './CustomPropertyTable.interface';
-import { PropertyValue } from './PropertyValue';
+
+const PropertyValue = withSuspenseFallback(
+  lazy(() =>
+    import('./PropertyValue').then((m) => ({ default: m.PropertyValue }))
+  )
+);
 
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   entityType,

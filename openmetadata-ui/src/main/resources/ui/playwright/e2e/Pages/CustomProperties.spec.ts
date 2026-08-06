@@ -49,7 +49,6 @@ import {
   CUSTOM_PROPERTIES_ENTITIES,
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
-  INTAKE_FORM_CUSTOM_PROPERTY_ENTITIES,
   NAME_SUFFIX,
 } from '../../constant/customProperty';
 import {
@@ -97,14 +96,11 @@ import {
 import {
   addCustomPropertiesForEntity,
   createCustomPropertyForEntity,
-  createStringCustomProperty,
   CustomProperty,
   CustomPropertyTypeByName,
   deleteCreatedProperty,
   editCreatedProperty,
   fillTableColumnInputDetails,
-  removeCustomPropertyByApi,
-  removeIntakeForm,
   setValueForProperty,
   updateCustomPropertyInRightPanel,
   validateValueForProperty,
@@ -484,121 +480,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await deleteCreatedProperty(page, propertyName);
       });
     });
-
-    // ── Deleting a CP prunes it from that entity type's intake form ─────────
-    //
-    // Moved here from IntakeForm.spec.ts: this asserts on custom-property
-    // lifecycle, and it is the one intake-form test that must CREATE and DELETE
-    // properties rather than read the shared fixtures. It lives inside this
-    // entity's describe.serial so those writes stay serialised with every other
-    // write to the same (global, read-modify-write) entity-type row.
-
-    if (INTAKE_FORM_CUSTOM_PROPERTY_ENTITIES.includes(entity.name)) {
-      const deletedProperty = `pwIntakeDeleted${uuid()}`;
-      const survivingProperty = `pwIntakeSurviving${uuid()}`;
-
-      test.beforeAll(
-        'Create the disposable intake-form properties',
-        async ({ browser }) => {
-          const { apiContext, afterAction } = await createNewPage(browser);
-
-          for (const propertyName of [deletedProperty, survivingProperty]) {
-            await createStringCustomProperty(
-              apiContext,
-              entity.name,
-              propertyName
-            );
-          }
-
-          await afterAction();
-        }
-      );
-
-      test.afterAll(
-        'Remove the intake form and any surviving properties',
-        async ({ browser }) => {
-          const { apiContext, afterAction } = await createNewPage(browser);
-
-          // Both helpers no-op when the target is already gone, so this cleans up
-          // whether the test passed, failed mid-way, or never ran. Leaving an
-          // enabled intake form behind would make every other spec's create form
-          // for this entity demand a required field.
-          await removeIntakeForm(apiContext, entity.name);
-
-          for (const propertyName of [deletedProperty, survivingProperty]) {
-            await removeCustomPropertyByApi(
-              apiContext,
-              entity.name,
-              propertyName
-            );
-          }
-
-          await afterAction();
-        }
-      );
-
-      test(`deleting a required custom property prunes it from the ${entity.name} intake form`, async ({
-        browser,
-      }) => {
-        const { apiContext, afterAction } = await createNewPage(browser);
-
-        await removeIntakeForm(apiContext, entity.name);
-
-        const createResponse = await apiContext.post(
-          '/api/v1/governance/intakeForms',
-          {
-            data: {
-              name: entity.name,
-              entityType: entity.name,
-              enabled: true,
-              formFields: [
-                {
-                  fieldKind: 'customProperty',
-                  fieldLabel: deletedProperty,
-                  fieldPath: `extension.${deletedProperty}`,
-                  required: true,
-                },
-                {
-                  fieldKind: 'customProperty',
-                  fieldLabel: survivingProperty,
-                  fieldPath: `extension.${survivingProperty}`,
-                  required: false,
-                },
-              ],
-            },
-          }
-        );
-
-        expect(createResponse.status()).toBe(201);
-
-        await removeCustomPropertyByApi(
-          apiContext,
-          entity.name,
-          deletedProperty
-        );
-
-        const intakeFormResponse = await apiContext.get(
-          `/api/v1/governance/intakeForms/entityType/${entity.name}`
-        );
-
-        expect(intakeFormResponse.status()).toBe(200);
-
-        const intakeForm = (await intakeFormResponse.json()) as {
-          formFields: Array<{ fieldPath: string; required: boolean }>;
-          requiredFields: Array<{ fieldPath: string }>;
-        };
-
-        expect(intakeForm.formFields).toEqual([
-          expect.objectContaining({
-            fieldPath: `extension.${survivingProperty}`,
-            required: false,
-          }),
-        ]);
-        expect(intakeForm.requiredFields).toHaveLength(0);
-
-        await afterAction();
-      });
-    }
 
     // ── Set & Update all CP types (entities with a UI entity page) ──────────
 
@@ -3448,9 +3329,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
 
           await waitForAllLoadersToDisappear(page);
-          await page.locator('[data-testid="loader"]').waitFor({
-            state: 'detached',
-          });
 
           await page.getByTestId('add-field-btn').click();
 
