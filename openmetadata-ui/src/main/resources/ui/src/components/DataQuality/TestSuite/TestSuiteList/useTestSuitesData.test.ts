@@ -276,7 +276,7 @@ describe('useTestSuitesData', () => {
   });
 
   it('should escape query_string reserved characters in searchValue so a URL does not break the shard query', async () => {
-    const url = 'https://release-2-0.getcollate.io/test-case-results';
+    const url = 'https://example.com/data-quality/test-case-results';
     renderData(buildProps({ searchValue: url }));
 
     await waitFor(() =>
