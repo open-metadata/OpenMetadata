@@ -54,6 +54,12 @@ const mockUseActivityFeedProviderValue = {
 
 const mockOnOwnerUpdate = jest.fn();
 const mockFetchTaskCount = jest.fn();
+const LAST_RUN_BANNER_TEST_ID = 'test-case-last-run-banner';
+const LAST_RUN_INCIDENT_TEST_ID = 'test-case-last-run-incident';
+const OWNER_COMPONENT_TEST_ID = 'owner-component';
+const RESULT_EXPECTED_TEST_ID = 'test-case-result-expected';
+const SEVERITY_COMPONENT_TEXT = 'Severity.component';
+const STATUS_COMPONENT_TEXT = 'TestCaseIncidentManagerStatus.component';
 
 const mockProps: IncidentManagerPageHeaderProps = {
   onOwnerUpdate: mockOnOwnerUpdate,
@@ -140,10 +146,14 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
     .fn()
     .mockImplementation(({ children, onUpdate, placeHolder, ...rest }) => (
-      <div {...rest} data-testid="owner-component" onClick={onUpdate}>
-        <div data-testid="placeholder">{placeHolder}</div>
+      <button
+        {...rest}
+        data-testid={OWNER_COMPONENT_TEST_ID}
+        type="button"
+        onClick={onUpdate}>
+        <span data-testid="placeholder">{placeHolder}</span>
         {children}
-      </div>
+      </button>
     )),
 }));
 
@@ -151,8 +161,9 @@ jest.mock('../Severity/Severity.component', () => {
   return jest.fn().mockImplementation(({ headerName, onSubmit }) => (
     <div>
       <div data-testid="severity-header">{headerName}</div>
-      <div>Severity.component</div>
+      <div>{SEVERITY_COMPONENT_TEXT}</div>
       <button
+        aria-label={SEVERITY_COMPONENT_TEXT}
         data-testid="update-severity"
         onClick={() => onSubmit(Severities.Severity4)}
       />
@@ -164,8 +175,9 @@ jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
   return jest.fn().mockImplementation(({ headerName, onSubmit }) => (
     <div>
       <div data-testid="status-header">{headerName}</div>
-      <div>TestCaseIncidentManagerStatus.component</div>
+      <div>{STATUS_COMPONENT_TEXT}</div>
       <button
+        aria-label={STATUS_COMPONENT_TEXT}
         data-testid="test-case-incident-manager-status"
         onClick={() => onSubmit(MOCK_TEST_CASE_RESOLUTION_STATUS[1])}
       />
@@ -231,7 +243,7 @@ describe('Incident Manager Page Header component', () => {
   it('should trigger onOwnerUpdate', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId('owner-component'));
+    fireEvent.click(screen.getByTestId(OWNER_COMPONENT_TEST_ID));
 
     expect(mockOnOwnerUpdate).toHaveBeenCalled();
   });
@@ -279,7 +291,7 @@ describe('Incident Manager Page Header component', () => {
   it('Component should render without status details', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    expect(screen.getByTestId('owner-component')).toBeInTheDocument();
+    expect(screen.getByTestId(OWNER_COMPONENT_TEST_ID)).toBeInTheDocument();
     // If Table FQN is present
     expect(screen.getByText('label.table')).toBeInTheDocument();
     expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
@@ -301,20 +313,18 @@ describe('Incident Manager Page Header component', () => {
       );
     });
 
-    expect(screen.getAllByTestId('owner-component')).toHaveLength(2);
+    expect(screen.getAllByTestId(OWNER_COMPONENT_TEST_ID)).toHaveLength(2);
     // Incident
     expect(screen.getByText('label.incident')).toBeInTheDocument();
     expect(screen.getByText('#9')).toBeInTheDocument();
     // Incident
     expect(screen.getByText('label.incident-status')).toBeInTheDocument();
-    expect(
-      screen.getByText('TestCaseIncidentManagerStatus.component')
-    ).toBeInTheDocument();
+    expect(screen.getByText(STATUS_COMPONENT_TEXT)).toBeInTheDocument();
     // Assignee
     expect(screen.getByTestId('assignee')).toBeInTheDocument();
     // Severity
     expect(screen.getByText('label.severity')).toBeInTheDocument();
-    expect(screen.getByText('Severity.component')).toBeInTheDocument();
+    expect(screen.getByText(SEVERITY_COMPONENT_TEXT)).toBeInTheDocument();
     // If Table FQN is present
     expect(screen.getByText('label.table')).toBeInTheDocument();
     expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
@@ -350,28 +360,28 @@ describe('Incident Manager Page Header component', () => {
       const testCaseResult: TestCaseResult = {
         testCaseStatus,
         result,
-        testResultValue: [{ name: 'rowCount', value: '5' }],
+        testResultValue: [
+          { name: 'rowCount', predictedValue: '1000', value: '5' },
+        ],
         timestamp: 1_786_001_601_000,
       };
       mockUseTestCaseStore.testCase = {
         ...mockUseTestCaseStore.testCase,
-        parameterValues: [{ name: 'expectedValue', value: '1000' }],
         testCaseResult,
       };
 
       render(<IncidentManagerPageHeader {...mockProps} />);
 
       expect(await screen.findByText(result)).toBeInTheDocument();
-      expect(screen.getAllByTestId('test-case-last-run-banner')).toHaveLength(
-        1
-      );
-      expect(screen.getByTestId('test-case-last-run-banner')).toHaveTextContent(
+      expect(screen.getAllByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveLength(1);
+      expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveTextContent(
         `label.last-run label.${testCaseStatus.toLowerCase()}`
       );
       expect(screen.getByTestId('test-case-last-run-status')).toHaveClass(
         {
           [TestCaseStatus.Aborted]: 'tw:text-warning-primary',
           [TestCaseStatus.Failed]: 'tw:text-error-primary',
+          [TestCaseStatus.Queued]: 'tw:text-brand-primary',
           [TestCaseStatus.Success]: 'tw:text-success-primary',
         }[testCaseStatus]
       );
@@ -385,12 +395,12 @@ describe('Incident Manager Page Header component', () => {
 
       if (testCaseStatus === TestCaseStatus.Aborted) {
         expect(
-          screen.queryByTestId('test-case-result-expected')
+          screen.queryByTestId(RESULT_EXPECTED_TEST_ID)
         ).not.toBeInTheDocument();
       } else {
-        expect(
-          screen.getByTestId('test-case-result-expected')
-        ).toHaveTextContent('label.result / label.expected');
+        expect(screen.getByTestId(RESULT_EXPECTED_TEST_ID)).toHaveTextContent(
+          'label.result / label.expected'
+        );
         expect(screen.getByTestId('test-case-result-value')).toHaveTextContent(
           '5 / 1,000'
         );
@@ -401,7 +411,7 @@ describe('Incident Manager Page Header component', () => {
         testCaseStatus === TestCaseStatus.Aborted
       ) {
         const incidentRow = await screen.findByTestId(
-          'test-case-last-run-incident'
+          LAST_RUN_INCIDENT_TEST_ID
         );
 
         expect(incidentRow).toHaveTextContent('INC–9');
@@ -412,11 +422,33 @@ describe('Incident Manager Page Header component', () => {
         );
       } else {
         expect(
-          screen.queryByTestId('test-case-last-run-incident')
+          screen.queryByTestId(LAST_RUN_INCIDENT_TEST_ID)
         ).not.toBeInTheDocument();
       }
     }
   );
+
+  it('should not pair a result with an unrelated test parameter', async () => {
+    const result = 'Found 5 rows';
+
+    mockUseTestCaseStore.testCase = {
+      ...mockUseTestCaseStore.testCase,
+      parameterValues: [{ name: 'columnName', value: 'customer_id' }],
+      testCaseResult: {
+        result,
+        testCaseStatus: TestCaseStatus.Failed,
+        testResultValue: [{ name: 'rowCount', value: '5' }],
+        timestamp: 1_786_001_601_000,
+      },
+    };
+
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(await screen.findByText(result)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(RESULT_EXPECTED_TEST_ID)
+    ).not.toBeInTheDocument();
+  });
 
   it('should explain when the latest run is queued without a result', async () => {
     mockUseTestCaseStore.testCase = {
@@ -432,15 +464,15 @@ describe('Incident Manager Page Header component', () => {
     expect(
       await screen.findByText('message.test-case-run-queued')
     ).toBeInTheDocument();
-    expect(screen.getAllByTestId('test-case-last-run-banner')).toHaveLength(1);
-    expect(screen.getByTestId('test-case-last-run-banner')).toHaveTextContent(
+    expect(screen.getAllByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveLength(1);
+    expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveTextContent(
       'label.last-run label.queued'
     );
     expect(
-      screen.queryByTestId('test-case-result-expected')
+      screen.queryByTestId(RESULT_EXPECTED_TEST_ID)
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('test-case-last-run-incident')
+      screen.queryByTestId(LAST_RUN_INCIDENT_TEST_ID)
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('test-case-next-run')).toHaveTextContent(
       'label.next · label.running-now'
@@ -455,17 +487,17 @@ describe('Incident Manager Page Header component', () => {
 
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    const banner = await screen.findByTestId('test-case-last-run-banner');
+    const banner = await screen.findByTestId(LAST_RUN_BANNER_TEST_ID);
 
-    expect(screen.getAllByTestId('test-case-last-run-banner')).toHaveLength(1);
+    expect(screen.getAllByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveLength(1);
     expect(banner).toHaveTextContent('label.last-run label.not-run-yet');
     expect(banner).toHaveTextContent('message.test-case-not-run-yet');
     expect(banner).toHaveTextContent('label.next · label.not-scheduled');
     expect(
-      screen.queryByTestId('test-case-result-expected')
+      screen.queryByTestId(RESULT_EXPECTED_TEST_ID)
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('test-case-last-run-incident')
+      screen.queryByTestId(LAST_RUN_INCIDENT_TEST_ID)
     ).not.toBeInTheDocument();
   });
 });

@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import type { EntityReference } from '../../../../generated/type/entityReference';
 import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
@@ -71,6 +72,47 @@ const HeaderFieldValue = ({
     {children}
   </Typography>
 );
+
+const TestTypeField = ({
+  testDefinition,
+}: {
+  testDefinition?: EntityReference;
+}) => {
+  const { t } = useTranslation();
+  const testDefinitionName = getEntityName(testDefinition);
+  const testDefinitionDescription = testDefinition?.description;
+
+  // The value is truncated to keep the header on one row, so reveal the full
+  // test type name (plus its description when present) on hover.
+  const testTypeTooltip = testDefinitionDescription ? (
+    <div className="tw:flex tw:flex-col tw:gap-1.5">
+      <div className="tw:font-medium">{testDefinitionName}</div>
+      <div>{testDefinitionDescription}</div>
+    </div>
+  ) : (
+    testDefinitionName
+  );
+
+  return (
+    <>
+      <HeaderDotSeparator />
+      <HeaderField label={t('label.test-type')}>
+        <Tooltip
+          isDisabled={!testDefinitionName}
+          placement="bottom"
+          title={testTypeTooltip}>
+          <TooltipTrigger className="tw:w-fit tw:max-w-full">
+            <span
+              className="tw:block tw:max-w-[176px] tw:truncate tw:text-sm tw:font-medium tw:text-primary"
+              data-testid="test-definition-name">
+              {testDefinitionName}
+            </span>
+          </TooltipTrigger>
+        </Tooltip>
+      </HeaderField>
+    </>
+  );
+};
 
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
@@ -172,21 +214,16 @@ const IncidentManagerPageHeader = ({
         />
       </>
     );
-  }, [testCaseStatusData, isLoading, taskLinkInfo, hasEditStatusPermission]);
-
-  const testDefinitionName = getEntityName(testCaseData?.testDefinition);
-  const testDefinitionDescription = testCaseData?.testDefinition?.description;
-
-  // The value is truncated to keep the header on one row, so reveal the full
-  // test type name (plus its description when present) on hover.
-  const testTypeTooltip = testDefinitionDescription ? (
-    <div className="tw:flex tw:flex-col tw:gap-1.5">
-      <div className="tw:font-medium">{testDefinitionName}</div>
-      <div>{testDefinitionDescription}</div>
-    </div>
-  ) : (
-    testDefinitionName
-  );
+  }, [
+    handleAssigneeUpdate,
+    handleSeverityUpdate,
+    hasEditStatusPermission,
+    isLoading,
+    onIncidentStatusUpdate,
+    t,
+    taskLinkInfo,
+    testCaseStatusData,
+  ]);
 
   return (
     <>
@@ -259,26 +296,11 @@ const IncidentManagerPageHeader = ({
             </HeaderField>
           </>
         )}
-        <HeaderDotSeparator />
-        <HeaderField label={t('label.test-type')}>
-          <Tooltip
-            isDisabled={!testDefinitionName}
-            placement="bottom"
-            title={testTypeTooltip}>
-            <TooltipTrigger className="tw:w-fit tw:max-w-full">
-              <span
-                className="tw:block tw:max-w-[176px] tw:truncate tw:text-sm tw:font-medium tw:text-primary"
-                data-testid="test-definition-name">
-                {testDefinitionName}
-              </span>
-            </TooltipTrigger>
-          </Tooltip>
-        </HeaderField>
+        <TestTypeField testDefinition={testCaseData?.testDefinition} />
       </div>
       {!isVersionPage && !dimensionKey && (
         <TestCaseLastRunBanner
           incidentTask={incidentTask}
-          parameterValues={testCaseData?.parameterValues}
           taskLinkInfo={taskLinkInfo}
           testCaseResult={testCaseData?.testCaseResult}
           testCaseStatusData={testCaseStatusData}

@@ -13,7 +13,6 @@
 
 import type { Task } from '../../../../generated/entity/tasks/task';
 import type {
-  TestCaseParameterValue,
   TestCaseResolutionStatus,
   TestCaseResult,
 } from '../../../../generated/tests/testCase';
@@ -21,7 +20,6 @@ import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
 export interface TestCaseLastRunBannerProps {
   incidentTask: Task | null;
-  parameterValues?: TestCaseParameterValue[];
   testCaseResult?: TestCaseResult;
   testCaseStatusData?: TestCaseResolutionStatus;
   taskLinkInfo: TaskLinkInfo | null;
