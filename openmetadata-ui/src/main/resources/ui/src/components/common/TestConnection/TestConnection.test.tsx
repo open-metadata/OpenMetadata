@@ -1176,4 +1176,88 @@ describe('Test Connection Component', () => {
 
     expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
   });
+
+  it('Should not let a superseded run overwrite the result of a newer one', async () => {
+    jest.useFakeTimers();
+
+    const onTestConnectionStatusChange = jest.fn();
+
+    // the first run dies while polling, which leaves its expiry timer armed
+    (getWorkflowById as jest.Mock).mockRejectedValueOnce(new Error('failed'));
+
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          onTestConnectionStatusChange={onTestConnectionStatusChange}
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(
+      screen.getByText('message.connection-test-failed')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
+
+    // past the first run's expiry, whose callback must no longer touch the UI
+    await act(async () => {
+      jest.advanceTimersByTime(180000);
+    });
+
+    expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
+    expect(
+      screen.queryByTestId('connection-timeout-message')
+    ).not.toBeInTheDocument();
+  });
+
+  it('Should stop polling the workflow after unmount', async () => {
+    jest.useFakeTimers();
+
+    (getWorkflowById as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        status: 'Running',
+        response: { ...WORKFLOW_DETAILS.response, status: 'Running' },
+      })
+    );
+
+    const { unmount } = render(<TestConnection {...mockProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    unmount();
+
+    const callsAtUnmount = (getWorkflowById as jest.Mock).mock.calls.length;
+
+    await act(async () => {
+      jest.advanceTimersByTime(180000);
+    });
+
+    expect((getWorkflowById as jest.Mock).mock.calls).toHaveLength(
+      callsAtUnmount
+    );
+  });
 });

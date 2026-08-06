@@ -168,6 +168,17 @@ const TestConnection: FC<TestConnectionProps> = ({
    */
   const currentWorkflowRef = useRef(currentWorkflow);
 
+  // Timers live in a ref so a new run - or an unmount - can cancel the previous
+  // run's callbacks before they write state over a newer result.
+  const timersRef = useRef<{ intervalId?: number; timeoutId?: number }>({});
+  const runIdRef = useRef(0);
+
+  const clearTimers = useCallback(() => {
+    clearInterval(timersRef.current.intervalId);
+    clearTimeout(timersRef.current.timeoutId);
+    timersRef.current = {};
+  }, []);
+
   const { controller } = useAbortController();
 
   const serviceType = useMemo(() => {
@@ -326,10 +337,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   const handleWorkflowPolling = async (
     response: Workflow,
     definitionSteps: TestConnectionStep[],
-    intervalObject: {
-      intervalId?: number;
-      timeoutId?: number;
-    }
+    runId: number
   ) => {
     // return a promise that wraps the interval and handles errors inside it
     return new Promise<void>((resolve, reject) => {
@@ -337,8 +345,14 @@ const TestConnection: FC<TestConnectionProps> = ({
        * fetch workflow repeatedly with 2s interval
        * until status is either Failed or Successful
        */
-      intervalObject.intervalId = toNumber(
+      timersRef.current.intervalId = toNumber(
         setInterval(async () => {
+          if (runId !== runIdRef.current) {
+            resolve();
+
+            return;
+          }
+
           setProgress(updateProgress);
           try {
             const workflowResponse = await getWorkflowData(
@@ -367,9 +381,7 @@ const TestConnection: FC<TestConnectionProps> = ({
               definitionSteps
             );
 
-            // clear the current interval
-            clearInterval(intervalObject.intervalId);
-            clearTimeout(intervalObject.timeoutId);
+            clearTimers();
 
             // set testing connection to false
             setIsTestingConnection(false);
@@ -393,13 +405,10 @@ const TestConnection: FC<TestConnectionProps> = ({
     setMessage(t(TEST_CONNECTION_TESTING_MESSAGE));
     handleResetState();
 
-    const updatedFormData = formatFormDataForSubmit(getData());
+    clearTimers();
+    const runId = ++runIdRef.current;
 
-    // current interval id
-    const intervalObject: {
-      intervalId?: number;
-      timeoutId?: number;
-    } = {};
+    const updatedFormData = formatFormDataForSubmit(getData());
 
     const { ingestionRunner, ...rest } = updatedFormData as ConfigObject & {
       ingestionRunner?: string;
@@ -453,8 +462,12 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       // stop fetching the workflow after 2 minutes
       const timeoutId = setTimeout(() => {
+        if (runId !== runIdRef.current) {
+          return;
+        }
+
         // clear the current interval
-        clearInterval(intervalObject.intervalId);
+        clearInterval(timersRef.current.intervalId);
 
         // using reference to ensure call back should have latest value
         const currentWorkflowStatus = currentWorkflowRef.current
@@ -482,13 +495,13 @@ const TestConnection: FC<TestConnectionProps> = ({
         onTestConnectionStatusChange?.(false);
       }, FETCHING_EXPIRY_TIME);
 
-      intervalObject.timeoutId = Number(timeoutId);
+      timersRef.current.timeoutId = Number(timeoutId);
 
       // Handle workflow polling and completion
-      await handleWorkflowPolling(response, definitionSteps, intervalObject);
+      await handleWorkflowPolling(response, definitionSteps, runId);
     } catch (error) {
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-      clearInterval(intervalObject.intervalId);
+      clearTimers();
       setIsTestingConnection(false);
       setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
       setTestStatus(StatusType.Failed);
@@ -678,6 +691,8 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   useEffect(() => {
     return () => {
+      clearTimers();
+
       /**
        * if workflow is present then delete the workflow when component unmount
        */
