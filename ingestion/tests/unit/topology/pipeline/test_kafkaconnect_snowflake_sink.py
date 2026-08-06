@@ -36,8 +36,10 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.schema import FieldModel, SchemaType
 from metadata.generated.schema.type.schema import Topic as TopicSchema
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     CONNECTOR_CLASS_TO_SERVICE_TYPE,
@@ -594,6 +596,52 @@ def _nested_table() -> Table:
     )
 
 
+# Field and column FQNs exactly as observed live on 2026-08-06. The Avro record name
+# (OrderEvent) is itself a level in the topic field FQN, so a topic field FQN is
+# <messagingService>.<topic>.<recordName>.<field>.
+TOPIC_FIELD_FQN_PREFIX = "confluent_kafka.order_events_nested"
+TABLE_COLUMN_FQN_PREFIX = "snowflake.TEST_DB.MAYUR_SCHEMA.ORDER_EVENTS_NESTED"
+
+
+def _with_field_fqns(topic: Topic, prefix: str) -> Topic:
+    """Populate the field FQNs a real topic ingestion writes. `build_column_lineage`
+    resolves both ends of every edge through `fullyQualifiedName`, so a fixture without
+    them silently produces zero edges."""
+    for root_field in topic.messageSchema.schemaFields or []:
+        root_fqn = f"{prefix}.{model_str(root_field.name)}"
+        root_field.fullyQualifiedName = FullyQualifiedEntityName(root_fqn)
+        for child in root_field.children or []:
+            child.fullyQualifiedName = FullyQualifiedEntityName(f"{root_fqn}.{model_str(child.name)}")
+    return topic
+
+
+def _nested_topic_with_field_fqns() -> Topic:
+    return _with_field_fqns(_nested_topic(), TOPIC_FIELD_FQN_PREFIX)
+
+
+def _nested_table_with_column_fqns() -> Table:
+    """`_nested_table()` plus the column FQNs a real Snowflake ingestion writes."""
+    table = _nested_table()
+    for column in table.columns or []:
+        column.fullyQualifiedName = FullyQualifiedEntityName(f"{TABLE_COLUMN_FQN_PREFIX}.{model_str(column.name)}")
+    return table
+
+
+SNOWFLAKE_SINK_DETAILS = KafkaConnectPipelineDetails(
+    name="snowflake_sink_avro",
+    type="sink",
+    config={"connector.class": "SnowflakeSink"},
+)
+
+NESTED_DATASET_DETAILS = KafkaConnectDatasetDetails(
+    table="ORDER_EVENTS_NESTED",
+    database="TEST_DB",
+    schema="MAYUR_SCHEMA",
+    source_topic="order_events_nested",
+    fully_qualified=True,
+)
+
+
 class TestObservedColumnShape:
     """Locks in the shapes measured against live Confluent Cloud + Snowflake on 2026-08-05:
     Snowflake schematization creates one column per top-level Avro field, uppercased, and a
@@ -603,32 +651,158 @@ class TestObservedColumnShape:
         columns = _new_source()._extract_columns_from_entity(_nested_topic())
         assert columns == ["order_id", "customer_name", "order_total", "address"]
 
-    def test_nested_record_maps_to_one_variant_column(self):
-        """Snowflake does not flatten nested records; ADDRESS is a single VARIANT."""
-        source = _new_source()._extract_columns_from_entity(_nested_topic())
-        target = _new_source()._extract_columns_from_entity(_nested_table())
-        target_map = {c.lower(): c for c in target}
-        matched = {s: target_map[s.lower()] for s in source if s.lower() in target_map}
-        assert matched == {
-            "order_id": "ORDER_ID",
-            "customer_name": "CUSTOMER_NAME",
-            "order_total": "ORDER_TOTAL",
-            "address": "ADDRESS",
-        }
-
-    def test_record_metadata_produces_no_edge(self):
-        """RECORD_METADATA has no source-side counterpart, so it must yield no edge."""
-        source = _new_source()._extract_columns_from_entity(_nested_topic())
-        assert "record_metadata" not in {s.lower() for s in source}
+    def test_extractors_produce_the_observed_column_sets(self):
+        """Both extractors, over the live shapes: the topic yields only the four
+        top-level Avro fields (street/city/zipcode stay inside `address`) and the table
+        yields the five Snowflake columns, `ADDRESS` being one VARIANT rather than three
+        flattened columns. The name matching between the two sets is the product's job
+        and is asserted through `build_column_lineage` in TestObservedColumnLineageEdges."""
+        assert _new_source()._extract_columns_from_entity(_nested_topic()) == [
+            "order_id",
+            "customer_name",
+            "order_total",
+            "address",
+        ]
+        assert _new_source()._extract_columns_from_entity(_nested_table()) == [
+            "RECORD_METADATA",
+            "CUSTOMER_NAME",
+            "ORDER_ID",
+            "ORDER_TOTAL",
+            "ADDRESS",
+        ]
 
     def test_every_topic_field_finds_a_column(self):
         source = _new_source()._extract_columns_from_entity(_nested_topic())
         target = {c.lower() for c in _new_source()._extract_columns_from_entity(_nested_table())}
+        # Without this guard an empty source list satisfies the claim vacuously.
+        assert source
         assert [s for s in source if s.lower() not in target] == []
+
+
+class TestObservedColumnLineageEdges:
+    """The headline behaviour: `build_column_lineage` over the real observed topic and
+    table shapes. Every edge below was produced by a live run against Confluent Cloud +
+    Snowflake and re-verified 2026-08-06."""
+
+    def _edges(self) -> set:
+        topic = _nested_topic_with_field_fqns()
+        table = _nested_table_with_column_fqns()
+        lineage = _new_source().build_column_lineage(
+            from_entity=topic,
+            to_entity=table,
+            topic_entity=topic,
+            pipeline_details=SNOWFLAKE_SINK_DETAILS,
+            dataset_details=NESTED_DATASET_DETAILS,
+        )
+        assert lineage is not None, "sink column lineage produced no edges at all"
+        assert all(len(edge.fromColumns) == 1 for edge in lineage)
+        # fromColumns entries and toColumn are RootModels; bare str() yields "root='...'".
+        return {(model_str(edge.fromColumns[0]), model_str(edge.toColumn)) for edge in lineage}
+
+    def test_sink_maps_every_topic_field_to_its_snowflake_column(self):
+        assert self._edges() == {
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.order_id",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ORDER_ID",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.customer_name",
+                f"{TABLE_COLUMN_FQN_PREFIX}.CUSTOMER_NAME",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.order_total",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ORDER_TOTAL",
+            ),
+            (
+                f"{TOPIC_FIELD_FQN_PREFIX}.OrderEvent.address",
+                f"{TABLE_COLUMN_FQN_PREFIX}.ADDRESS",
+            ),
+        }
+
+    def test_nested_record_targets_one_variant_column(self):
+        """Snowflake stores `address` as a single VARIANT, so exactly one edge lands on
+        ADDRESS — not three edges onto flattened ADDRESS_STREET/CITY/ZIPCODE columns."""
+        targets = [target for _, target in self._edges()]
+        assert targets.count(f"{TABLE_COLUMN_FQN_PREFIX}.ADDRESS") == 1
+
+    def test_record_metadata_is_never_a_lineage_target(self):
+        """RECORD_METADATA is added by the sink itself and has no topic-side field, so
+        no edge may claim it."""
+        targets = {target for _, target in self._edges()}
+        assert f"{TABLE_COLUMN_FQN_PREFIX}.RECORD_METADATA" not in targets
+
+
+# The live schema is snake_case throughout, which leaves the source side of the matcher's
+# case fold unexercised; camelCase Avro fields are common and Snowflake uppercases them.
+CAMEL_CASE_AVRO = json.dumps(
+    {
+        "type": "record",
+        "name": "CamelEvent",
+        "namespace": "com.example.events",
+        "fields": [{"name": "orderId", "type": "string"}],
+    }
+)
+CAMEL_TOPIC_FIELD_FQN_PREFIX = "confluent_kafka.camel_events"
+CAMEL_TABLE_COLUMN_FQN_PREFIX = "snowflake.TEST_DB.MAYUR_SCHEMA.CAMEL_EVENTS"
+
+
+class TestColumnMatchingIsCaseInsensitiveOnBothSides:
+    """Derived (not live-observed) case: matching is case-insensitive in both directions,
+    so a camelCase topic field still reaches its uppercased Snowflake column."""
+
+    def test_camel_case_field_matches_its_uppercased_column(self):
+        topic = _with_field_fqns(
+            Topic(
+                id=uuid.uuid4(),
+                name="camel_events",
+                partitions=1,
+                service={"id": uuid.uuid4(), "type": "messagingService"},
+                messageSchema=TopicSchema(
+                    schemaText=CAMEL_CASE_AVRO,
+                    schemaType=SchemaType.Avro,
+                    schemaFields=parse_avro_schema(CAMEL_CASE_AVRO, cls=FieldModel),
+                ),
+            ),
+            CAMEL_TOPIC_FIELD_FQN_PREFIX,
+        )
+        table = Table(
+            id=uuid.uuid4(),
+            name="CAMEL_EVENTS",
+            columns=[
+                Column(
+                    name="ORDERID",
+                    dataType=DataType.VARCHAR,
+                    fullyQualifiedName=f"{CAMEL_TABLE_COLUMN_FQN_PREFIX}.ORDERID",
+                )
+            ],
+            databaseSchema={"id": uuid.uuid4(), "type": "databaseSchema"},
+        )
+        lineage = _new_source().build_column_lineage(
+            from_entity=topic,
+            to_entity=table,
+            topic_entity=topic,
+            pipeline_details=SNOWFLAKE_SINK_DETAILS,
+            dataset_details=KafkaConnectDatasetDetails(
+                table="CAMEL_EVENTS",
+                database="TEST_DB",
+                schema="MAYUR_SCHEMA",
+                source_topic="camel_events",
+                fully_qualified=True,
+            ),
+        )
+        assert lineage is not None, "camelCase field produced no edge at all"
+        assert [(model_str(edge.fromColumns[0]), model_str(edge.toColumn)) for edge in lineage] == [
+            (
+                f"{CAMEL_TOPIC_FIELD_FQN_PREFIX}.CamelEvent.orderId",
+                f"{CAMEL_TABLE_COLUMN_FQN_PREFIX}.ORDERID",
+            )
+        ]
 
 
 class TestEndToEndDatasetResolution:
     def test_real_connector_config_resolves_one_dataset_per_topic(self):
+        """The connector config is verbatim from a live `GET /connectors/{name}` captured
+        2026-08-05; the resulting lineage was re-verified live 2026-08-06."""
         config = dict(
             REAL_CONFLUENT_CLOUD_RESPONSE["config"],
             topics="order_events_flat,order_events_nested,om-lineage-test",
@@ -643,3 +817,9 @@ class TestEndToEndDatasetResolution:
         ]
         assert all(d.database == "TEST_DB" and d.schema == "MAYUR_SCHEMA" for d in datasets)
         assert all(d.fully_qualified for d in datasets)
+        # match_topic returns None without source_topic, so losing it silently kills lineage.
+        assert [d.source_topic for d in datasets] == [
+            "order_events_flat",
+            "order_events_nested",
+            "om-lineage-test",
+        ]
