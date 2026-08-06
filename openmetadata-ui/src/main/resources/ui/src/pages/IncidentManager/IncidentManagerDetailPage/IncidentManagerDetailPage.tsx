@@ -35,6 +35,8 @@ import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb
 import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
 import TestCaseFormDrawer from '../../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
+import TestCaseLastRunBanner from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component';
+import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -94,6 +96,10 @@ const IncidentManagerDetailPage = ({
     getEntityFeedCount,
     setTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
+  const incidentHeaderData = useTestCaseIncidentHeader({
+    fetchTaskCount: getEntityFeedCount,
+    isVersionPage,
+  });
 
   const tabItems: TabsProps['items'] = useMemo(
     () =>
@@ -105,9 +111,38 @@ const IncidentManagerDetailPage = ({
             {isBeta && <BetaBadge />}
           </div>
         ),
-        children: <Tab showSidePanel={isTabExpanded} />,
+        children: (
+          <>
+            {key === TestCasePageTabs.TEST_CASE_RESULTS &&
+              !isVersionPage &&
+              !dimensionKey && (
+                <div
+                  className="tw:px-4 tw:pt-4"
+                  data-testid="test-case-last-run-banner-tab-container">
+                  <TestCaseLastRunBanner
+                    incidentTask={incidentHeaderData.incidentTask}
+                    taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                    testCaseResult={testCase?.testCaseResult}
+                    testCaseStatus={testCase?.testCaseStatus}
+                    testCaseStatusData={incidentHeaderData.testCaseStatusData}
+                  />
+                </div>
+              )}
+            <Tab showSidePanel={isTabExpanded} />
+          </>
+        ),
       })),
-    [tabs, isTabExpanded]
+    [
+      dimensionKey,
+      incidentHeaderData.incidentTask,
+      incidentHeaderData.taskLinkInfo,
+      incidentHeaderData.testCaseStatusData,
+      isTabExpanded,
+      isVersionPage,
+      tabs,
+      testCase?.testCaseResult,
+      testCase?.testCaseStatus,
+    ]
   );
 
   const breadcrumb = useMemo(() => {
@@ -361,9 +396,8 @@ const IncidentManagerDetailPage = ({
             </Box>
           </Box>
           <IncidentManagerPageHeader
-            fetchTaskCount={getEntityFeedCount}
+            incidentHeaderData={incidentHeaderData}
             isVersionPage={isVersionPage}
-            testCaseData={testCase}
             onOwnerUpdate={handleOwnerChange}
           />
         </Box>

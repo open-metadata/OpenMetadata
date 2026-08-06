@@ -13,7 +13,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import { TestCase } from '../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
@@ -115,10 +116,7 @@ const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useParams: () => ({
-    fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
-    tab: TestCasePageTabs.TEST_CASE_RESULTS,
-  }),
+  useParams: jest.fn(),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
@@ -139,7 +137,21 @@ jest.mock('../../../components/common/Loader/Loader', () => ({
 }));
 jest.mock(
   '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
-  () => jest.fn().mockImplementation(() => <div>IncidentManagerPageHeader</div>)
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => <div>IncidentManagerPageHeader</div>),
+    IncidentManagerPageHeaderView: jest
+      .fn()
+      .mockImplementation(() => <div>IncidentManagerPageHeader</div>),
+  })
+);
+jest.mock(
+  '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader',
+  () => ({
+    useTestCaseIncidentHeader: jest.fn(),
+  })
 );
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -168,6 +180,7 @@ jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  customFormatDateTime: jest.fn().mockReturnValue('Jan 01, 2024'),
   formatDateTime: jest.fn().mockReturnValue('Jan 01, 2024'),
   getCurrentMillis: jest.fn().mockReturnValue(1711583974000),
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
@@ -190,6 +203,34 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
 };
 
 describe('IncidentManagerDetailPage', () => {
+  beforeEach(() => {
+    jest.mocked(useParams).mockReturnValue({
+      fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
+      tab: TestCasePageTabs.TEST_CASE_RESULTS,
+    });
+    jest.mocked(useTestCaseIncidentHeader).mockReturnValue({
+      testCaseData: mockTestCaseData,
+      incidentTask: null,
+      testCaseStatusData: undefined,
+      isLoading: false,
+      taskLinkInfo: null,
+      ownerDisplayName: undefined,
+      ownerRef: undefined,
+      columnName: null,
+      tableFqn: 'sample_data.ecommerce_db.shopify.dim_address',
+      dimensionKey: undefined,
+      hasEditStatusPermission: true,
+      hasEditOwnerPermission: true,
+      hasEditDomainPermission: true,
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+      handleSeverityUpdate: jest.fn(),
+      handleAssigneeUpdate: jest.fn(),
+      handleDomainUpdate: jest.fn(),
+      onIncidentStatusUpdate: jest.fn(),
+    });
+  });
+
   it('should render component', async () => {
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
@@ -219,6 +260,31 @@ describe('IncidentManagerDetailPage', () => {
     });
 
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should render the last run banner inside the test case results tab', async () => {
+    await act(async () => {
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
+    });
+
+    expect(await screen.findByTestId('tabs')).toContainElement(
+      await screen.findByTestId('test-case-last-run-banner')
+    );
+  });
+
+  it('should not render the last run banner inside the incident tab', async () => {
+    jest.mocked(useParams).mockReturnValue({
+      fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
+      tab: TestCasePageTabs.ISSUES,
+    });
+
+    await act(async () => {
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
+    });
+
+    expect(
+      screen.queryByTestId('test-case-last-run-banner')
+    ).not.toBeInTheDocument();
   });
 
   it("should render no permission message if user doesn't have permission", async () => {

@@ -189,7 +189,7 @@ const getIncidentTitle = (
 
 const RunDescription = ({ description }: { description?: string }) =>
   description ? (
-    <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-sm tw:leading-normal tw:text-secondary">
+    <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-secondary">
       {description}
     </p>
   ) : null;
@@ -213,12 +213,12 @@ const NoRunBanner = () => {
             icon={Minus}
             radius="xl"
             shape="square"
-            size="lg"
+            size="sm"
           />
           <div className="tw:min-w-0 tw:flex-1">
-            <p className="tw:m-0 tw:text-lg tw:leading-snug">
+            <p className="tw:m-0 tw:text-sm tw:leading-snug">
               <span
-                className="tw:font-medium tw:text-primary"
+                className="tw:text-sm tw:font-medium tw:text-primary"
                 data-testid="test-case-last-run-prefix">
                 {t('label.last-run')}
               </span>{' '}
@@ -228,7 +228,7 @@ const NoRunBanner = () => {
                 {t('label.not-run-yet')}
               </span>
             </p>
-            <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-sm tw:leading-normal tw:text-secondary">
+            <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-secondary">
               {t('message.test-case-not-run-yet')}
             </p>
           </div>
@@ -276,7 +276,7 @@ const ResultExpected = ({
           {t('label.result')} / {t('label.expected')}
         </span>
         <span
-          className="tw:mt-1 tw:whitespace-nowrap tw:text-md tw:font-semibold"
+          className="tw:mt-1 tw:whitespace-nowrap tw:text-xs tw:font-semibold"
           data-testid="test-case-result-value">
           <span className={config.resultClassName}>{resultValue}</span>
           <span className="tw:text-tertiary"> / {expectedValue}</span>
@@ -302,7 +302,7 @@ const LastRunTime = ({
   return (
     <div className="tw:flex tw:min-w-36 tw:flex-col tw:items-end tw:justify-center tw:text-right">
       <span
-        className="tw:whitespace-nowrap tw:text-sm tw:font-semibold tw:text-primary"
+        className="tw:whitespace-nowrap tw:text-xs tw:font-semibold tw:text-primary"
         data-testid="test-case-last-run-time">
         {customFormatDateTime(timestamp, 'MMM d, yyyy, h:mm a')}
       </span>
@@ -347,11 +347,11 @@ const IncidentDetails = ({
         className={config.statusClassName}
         size={20}
       />
-      <span className="tw:shrink-0 tw:text-sm tw:font-semibold tw:text-primary">
+      <span className="tw:shrink-0 tw:text-xs tw:font-semibold tw:text-primary">
         {incidentId}
       </span>
       {description && (
-        <span className="tw:min-w-0 tw:text-sm tw:text-secondary">
+        <span className="tw:min-w-0 tw:text-xs tw:text-secondary">
           {description}
         </span>
       )}
@@ -365,7 +365,7 @@ const IncidentDetails = ({
         color="primary"
         data-testid="view-incident-button"
         iconTrailing={ArrowUpRight}
-        size="sm"
+        size="xs"
         onClick={() => navigate(incidentLink.path)}>
         {t('label.view-entity', { entity: t('label.incident') })}
       </Button>
@@ -432,12 +432,12 @@ const TestCaseLastRunBanner = ({
             icon={config.icon}
             radius="xl"
             shape="square"
-            size="lg"
+            size="sm"
           />
           <div className="tw:min-w-0 tw:flex-1">
-            <p className="tw:m-0 tw:text-lg tw:leading-snug">
+            <p className="tw:m-0 tw:text-sm tw:leading-snug">
               <span
-                className="tw:font-medium tw:text-primary"
+                className="tw:text-sm tw:font-medium tw:text-primary"
                 data-testid="test-case-last-run-prefix">
                 {t('label.last-run')}
               </span>{' '}

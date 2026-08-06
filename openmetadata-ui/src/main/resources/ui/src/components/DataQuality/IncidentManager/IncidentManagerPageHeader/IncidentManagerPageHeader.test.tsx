@@ -31,8 +31,10 @@ import {
   getListTestCaseIncidentByStateId,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
-import IncidentManagerPageHeader from './IncidentManagerPageHeader.component';
+import IncidentManagerPageHeaderView from './IncidentManagerPageHeader.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
+import TestCaseLastRunBanner from './TestCaseLastRunBanner.component';
+import { useTestCaseIncidentHeader } from './useTestCaseIncidentHeader';
 
 const mockEntityPermissions = {
   Create: true,
@@ -62,9 +64,47 @@ const RESULT_EXPECTED_TEST_ID = 'test-case-result-expected';
 const SEVERITY_COMPONENT_TEXT = 'Severity.component';
 const STATUS_COMPONENT_TEXT = 'TestCaseIncidentManagerStatus.component';
 
-const mockProps: IncidentManagerPageHeaderProps = {
+type IncidentManagerPageHeaderHarnessProps = Omit<
+  IncidentManagerPageHeaderProps,
+  'incidentHeaderData'
+> & {
+  fetchTaskCount: () => void;
+  testCaseData?: TestCase;
+};
+
+const mockProps: IncidentManagerPageHeaderHarnessProps = {
   onOwnerUpdate: mockOnOwnerUpdate,
   fetchTaskCount: mockFetchTaskCount,
+};
+
+const IncidentManagerPageHeader = ({
+  fetchTaskCount,
+  isVersionPage = false,
+  onOwnerUpdate,
+}: IncidentManagerPageHeaderHarnessProps) => {
+  const incidentHeaderData = useTestCaseIncidentHeader({
+    fetchTaskCount,
+    isVersionPage,
+  });
+
+  return (
+    <>
+      <IncidentManagerPageHeaderView
+        incidentHeaderData={incidentHeaderData}
+        isVersionPage={isVersionPage}
+        onOwnerUpdate={onOwnerUpdate}
+      />
+      {!isVersionPage && !incidentHeaderData.dimensionKey && (
+        <TestCaseLastRunBanner
+          incidentTask={incidentHeaderData.incidentTask}
+          taskLinkInfo={incidentHeaderData.taskLinkInfo}
+          testCaseResult={incidentHeaderData.testCaseData?.testCaseResult}
+          testCaseStatus={incidentHeaderData.testCaseData?.testCaseStatus}
+          testCaseStatusData={incidentHeaderData.testCaseStatusData}
+        />
+      )}
+    </>
+  );
 };
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
@@ -391,9 +431,17 @@ describe('Incident Manager Page Header component', () => {
         }[testCaseStatus]
       );
       expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
-        'tw:text-primary'
+        'tw:text-primary',
+        'tw:text-sm'
       );
+      expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
+        'tw:size-8'
+      );
+      expect(screen.getByText(result)).toHaveClass('tw:text-xs');
       expect(screen.getByTestId('test-case-last-run-time')).toBeInTheDocument();
+      expect(screen.getByTestId('test-case-last-run-time')).toHaveClass(
+        'tw:text-xs'
+      );
       expect(screen.getByTestId('test-case-next-run')).toHaveTextContent(
         'label.next · label.not-scheduled'
       );
@@ -431,6 +479,7 @@ describe('Incident Manager Page Header component', () => {
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
         expect(viewIncidentButton).toHaveTextContent('label.view-entity');
+        expect(viewIncidentButton).toHaveClass('tw:text-xs');
         expect(viewIncidentButton).not.toHaveAttribute('href');
 
         fireEvent.click(viewIncidentButton);
@@ -541,5 +590,14 @@ describe('Incident Manager Page Header component', () => {
     expect(
       screen.queryByTestId(LAST_RUN_INCIDENT_TEST_ID)
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
+      'tw:text-sm'
+    );
+    expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
+      'tw:size-8'
+    );
+    expect(screen.getByText('message.test-case-not-run-yet')).toHaveClass(
+      'tw:text-xs'
+    );
   });
 });

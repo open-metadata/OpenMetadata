@@ -33,8 +33,6 @@ import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import './incident-manager.less';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
-import TestCaseLastRunBanner from './TestCaseLastRunBanner.component';
-import { useTestCaseIncidentHeader } from './useTestCaseIncidentHeader';
 
 const HeaderField = ({
   label,
@@ -211,13 +209,12 @@ const StatusDetails = ({
 
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
-  fetchTaskCount,
+  incidentHeaderData,
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
   const {
     testCaseData,
-    incidentTask,
     testCaseStatusData,
     isLoading,
     taskLinkInfo,
@@ -235,7 +232,7 @@ const IncidentManagerPageHeader = ({
     handleAssigneeUpdate,
     handleDomainUpdate,
     onIncidentStatusUpdate,
-  } = useTestCaseIncidentHeader({ fetchTaskCount, isVersionPage });
+  } = incidentHeaderData;
 
   return (
     <>
@@ -320,15 +317,6 @@ const IncidentManagerPageHeader = ({
         )}
         <TestTypeField testDefinition={testCaseData?.testDefinition} />
       </div>
-      {!isVersionPage && !dimensionKey && (
-        <TestCaseLastRunBanner
-          incidentTask={incidentTask}
-          taskLinkInfo={taskLinkInfo}
-          testCaseResult={testCaseData?.testCaseResult}
-          testCaseStatus={testCaseData?.testCaseStatus}
-          testCaseStatusData={testCaseStatusData}
-        />
-      )}
     </>
   );
 };
