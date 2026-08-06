@@ -1522,6 +1522,11 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate(ALLOW_IMPERSONATION_FIELD, this::updateAllowImpersonation);
       compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
+          "preferences",
+          () ->
+              recordChange(
+                  "preferences", original.getPreferences(), updated.getPreferences(), true));
+      compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
       compareAndUpdateAny(
