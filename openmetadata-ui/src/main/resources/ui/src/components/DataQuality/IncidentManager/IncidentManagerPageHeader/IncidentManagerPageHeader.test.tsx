@@ -350,10 +350,12 @@ describe('Incident Manager Page Header component', () => {
       const testCaseResult: TestCaseResult = {
         testCaseStatus,
         result,
+        testResultValue: [{ name: 'rowCount', value: '5' }],
         timestamp: 1_786_001_601_000,
       };
       mockUseTestCaseStore.testCase = {
         ...mockUseTestCaseStore.testCase,
+        parameterValues: [{ name: 'expectedValue', value: '1000' }],
         testCaseResult,
       };
 
@@ -366,6 +368,53 @@ describe('Incident Manager Page Header component', () => {
       expect(screen.getByTestId('test-case-last-run-banner')).toHaveTextContent(
         `label.last-run label.${testCaseStatus.toLowerCase()}`
       );
+      expect(screen.getByTestId('test-case-last-run-status')).toHaveClass(
+        {
+          [TestCaseStatus.Aborted]: 'tw:text-warning-primary',
+          [TestCaseStatus.Failed]: 'tw:text-error-primary',
+          [TestCaseStatus.Success]: 'tw:text-success-primary',
+        }[testCaseStatus]
+      );
+      expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
+        'tw:text-primary'
+      );
+      expect(screen.getByTestId('test-case-last-run-time')).toBeInTheDocument();
+      expect(screen.getByTestId('test-case-next-run')).toHaveTextContent(
+        'label.next · label.not-scheduled'
+      );
+
+      if (testCaseStatus === TestCaseStatus.Aborted) {
+        expect(
+          screen.queryByTestId('test-case-result-expected')
+        ).not.toBeInTheDocument();
+      } else {
+        expect(
+          screen.getByTestId('test-case-result-expected')
+        ).toHaveTextContent('label.result / label.expected');
+        expect(screen.getByTestId('test-case-result-value')).toHaveTextContent(
+          '5 / 1,000'
+        );
+      }
+
+      if (
+        testCaseStatus === TestCaseStatus.Failed ||
+        testCaseStatus === TestCaseStatus.Aborted
+      ) {
+        const incidentRow = await screen.findByTestId(
+          'test-case-last-run-incident'
+        );
+
+        expect(incidentRow).toHaveTextContent('INC–9');
+        expect(incidentRow).toHaveTextContent(result);
+        expect(incidentRow).toHaveTextContent('label.acknowledged');
+        expect(screen.getByTestId('view-incident-button')).toHaveTextContent(
+          'label.view-entity'
+        );
+      } else {
+        expect(
+          screen.queryByTestId('test-case-last-run-incident')
+        ).not.toBeInTheDocument();
+      }
     }
   );
 
@@ -387,6 +436,15 @@ describe('Incident Manager Page Header component', () => {
     expect(screen.getByTestId('test-case-last-run-banner')).toHaveTextContent(
       'label.last-run label.queued'
     );
+    expect(
+      screen.queryByTestId('test-case-result-expected')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('test-case-last-run-incident')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('test-case-next-run')).toHaveTextContent(
+      'label.next · label.running-now'
+    );
   });
 
   it('should show one not-run-yet banner when no latest result exists', async () => {
@@ -403,5 +461,11 @@ describe('Incident Manager Page Header component', () => {
     expect(banner).toHaveTextContent('label.last-run label.not-run-yet');
     expect(banner).toHaveTextContent('message.test-case-not-run-yet');
     expect(banner).toHaveTextContent('label.next · label.not-scheduled');
+    expect(
+      screen.queryByTestId('test-case-result-expected')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('test-case-last-run-incident')
+    ).not.toBeInTheDocument();
   });
 });

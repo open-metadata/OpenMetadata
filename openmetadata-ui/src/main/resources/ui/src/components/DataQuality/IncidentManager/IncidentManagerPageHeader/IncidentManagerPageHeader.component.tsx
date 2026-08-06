@@ -80,6 +80,7 @@ const IncidentManagerPageHeader = ({
   const { t } = useTranslation();
   const {
     testCaseData,
+    incidentTask,
     testCaseStatusData,
     isLoading,
     taskLinkInfo,
@@ -276,8 +277,11 @@ const IncidentManagerPageHeader = ({
       </div>
       {!isVersionPage && !dimensionKey && (
         <TestCaseLastRunBanner
+          incidentTask={incidentTask}
+          parameterValues={testCaseData?.parameterValues}
           taskLinkInfo={taskLinkInfo}
           testCaseResult={testCaseData?.testCaseResult}
+          testCaseStatusData={testCaseStatusData}
         />
       )}
     </>
