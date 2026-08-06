@@ -217,7 +217,7 @@ describe('AgentCard', () => {
   });
 
   it('should open the latest run when clicking diagnose on a failed agent', () => {
-    renderCard({ ...baseAgent, status: 'failed', failStep: 'Source' });
+    renderCard({ ...baseAgent, status: 'failed' });
 
     fireEvent.click(screen.getByText('label.diagnose'));
 

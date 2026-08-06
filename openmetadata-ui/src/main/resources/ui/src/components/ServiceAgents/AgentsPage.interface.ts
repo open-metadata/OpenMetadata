@@ -56,7 +56,6 @@ export interface Agent {
   schedule?: string;
   after?: string;
   finishedAt?: string;
-  failStep?: string;
   enabled?: boolean;
 }
 
