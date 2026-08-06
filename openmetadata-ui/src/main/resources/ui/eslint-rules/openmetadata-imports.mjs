@@ -10,20 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *  http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -542,6 +528,46 @@ function getOwningFunction(node) {
   return null;
 }
 
+function getExecutionBranches(node, owner) {
+  const branches = new Map();
+  let current = node;
+
+  while (current.parent && current !== owner) {
+    const parent = current.parent;
+
+    if (
+      (parent.type === 'IfStatement' ||
+        parent.type === 'ConditionalExpression') &&
+      (current === parent.consequent || current === parent.alternate)
+    ) {
+      branches.set(parent, current);
+    } else if (
+      current.type === 'SwitchCase' &&
+      parent.type === 'SwitchStatement'
+    ) {
+      branches.set(parent, current);
+    } else if (parent.type === 'TryStatement' && current !== parent.finalizer) {
+      branches.set(parent, current);
+    }
+
+    current = parent;
+  }
+
+  return branches;
+}
+
+function canShareExecutionPath(first, second) {
+  for (const [branchPoint, branch] of first.branches) {
+    const secondBranch = second.branches.get(branchPoint);
+
+    if (secondBranch && secondBranch !== branch) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 const reviewSequentialApiCalls = createRule(
   {
     sequentialApiCalls:
@@ -568,13 +594,23 @@ const reviewSequentialApiCalls = createRule(
         }
 
         const awaits = awaitsByFunction.get(owner) ?? [];
-        awaits.push(node);
+        awaits.push({ branches: getExecutionBranches(node, owner), node });
         awaitsByFunction.set(owner, awaits);
       },
       'Program:exit'() {
         for (const awaits of awaitsByFunction.values()) {
-          for (const node of awaits.slice(1)) {
-            context.report({ messageId: 'sequentialApiCalls', node });
+          for (let index = 1; index < awaits.length; index += 1) {
+            const current = awaits[index];
+            const hasEarlierCallOnPath = awaits
+              .slice(0, index)
+              .some((previous) => canShareExecutionPath(previous, current));
+
+            if (hasEarlierCallOnPath) {
+              context.report({
+                messageId: 'sequentialApiCalls',
+                node: current.node,
+              });
+            }
           }
         }
       },

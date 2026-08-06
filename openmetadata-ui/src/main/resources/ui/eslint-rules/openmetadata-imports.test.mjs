@@ -350,6 +350,46 @@ ruleTester.run(
         `,
         filename: '/project/src/components/Entity.tsx',
       },
+      {
+        code: `
+          import { getEntity, getLineage } from '../rest/entityAPI';
+          async function load(id, includeLineage) {
+            if (includeLineage) {
+              return await getLineage(id);
+            } else {
+              return await getEntity(id);
+            }
+          }
+        `,
+        filename: '/project/src/components/Entity.tsx',
+      },
+      {
+        code: `
+          import { getEntity, getLineage } from '../rest/entityAPI';
+          async function load(id, entityType) {
+            switch (entityType) {
+              case 'table':
+                return await getEntity(id);
+              default:
+                return await getLineage(id);
+            }
+          }
+        `,
+        filename: '/project/src/components/Entity.tsx',
+      },
+      {
+        code: `
+          import { getEntity, getLineage } from '../rest/entityAPI';
+          async function load(id) {
+            try {
+              return await getEntity(id);
+            } catch {
+              return await getLineage(id);
+            }
+          }
+        `,
+        filename: '/project/src/components/Entity.tsx',
+      },
     ],
     invalid: [
       {
@@ -359,6 +399,19 @@ ruleTester.run(
             const entity = await getEntity(id);
             const lineage = await getLineage(id);
             return { entity, lineage };
+          }
+        `,
+        errors: 1,
+        filename: '/project/src/components/Entity.tsx',
+      },
+      {
+        code: `
+          import { getEntity, getLineage } from '../rest/entityAPI';
+          async function load(id, includeEntity) {
+            if (includeEntity) {
+              await getEntity(id);
+            }
+            return await getLineage(id);
           }
         `,
         errors: 1,
