@@ -58,6 +58,10 @@ const dedicatedStateTestIgnore = hasDedicatedIngestionLane
       '**/*AfterReindex.spec.ts',
     ]
   : [];
+const intakeFormSpecs = [
+  '**/*IntakeForm*.spec.ts',
+  '**/*IntakeForm*/**/*.spec.ts',
+];
 const combineGrep = (base?: RegExp) => {
   if (!base) {
     return shardGrep;
@@ -207,7 +211,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
-        '**/IntakeForm.spec.ts',
+        ...intakeFormSpecs,
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
         '**/VisualRegression/**',
@@ -408,11 +412,12 @@ export default defineConfig({
     },
     {
       name: 'IntakeForm',
-      testMatch: '**/IntakeForm.spec.ts',
+      testMatch: intakeFormSpecs,
       use: { ...devices['Desktop Chrome'] },
       dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+      workers: 1,
     },
   ],
 
