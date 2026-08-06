@@ -155,18 +155,18 @@ def render_code_slack(name, by_rule, rules, total, top):
     return head + "\n" + "\n".join(rows)
 
 
-def count_severities(libs, by_rule):
-    """Snyk Code SARIF uses level (error/warning/note); treat error=high, warning=medium, note=low.
-    Dep libs already have explicit severity."""
+def count_severities(libs, by_rule=None):
+    """Count vulnerable dependency packages only — one per (package, version)
+    library at its most-severe severity. Snyk Code (SAST) findings are still
+    shown in the detail sections but are deliberately excluded from the severity
+    totals and the high/critical build gate: they are code-quality findings, not
+    package vulnerabilities, and folding them in (even per-rule) conflated the
+    two and inflated the counts."""
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for info in libs.values():
         sev = (info["sev"] or "low").lower()
         if sev in counts:
             counts[sev] += 1
-    for rid, items in by_rule.items():
-        for uri, level, lines in items:
-            mapped = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
-            counts[mapped] += 1  # count locations to match render_code_md total
     return counts
 
 

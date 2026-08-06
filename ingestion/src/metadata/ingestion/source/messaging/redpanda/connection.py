@@ -41,7 +41,9 @@ logger = ingestion_logger()
 
 class RedpandaConnection(BaseConnection[RedpandaConnectionConfig, KafkaClient]):
     def _get_client(self) -> KafkaClient:
-        return get_kafka_connection(self.service_connection)
+        client = get_kafka_connection(self.service_connection)
+        self._on_close(client.close_consumer)
+        return client
 
     def test_connection(
         self,

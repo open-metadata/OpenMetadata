@@ -219,8 +219,8 @@ class Histogram(HybridMetric):
             Dict
         """
         # pylint: disable=import-outside-toplevel
-        import numpy as np  # noqa: PLC0415
-        import pandas as pd  # noqa: PLC0415
+        import numpy as np
+        import pandas as pd
 
         if self.col is None or not is_quantifiable(self.col.type):
             return None
