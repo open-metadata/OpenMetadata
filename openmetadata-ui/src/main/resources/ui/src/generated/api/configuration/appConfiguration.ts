@@ -22,11 +22,7 @@ export interface AppConfiguration {
     defaultAppMode?: DefaultAppMode | null;
 }
 
-/**
- * Tenant-wide app-mode force. Non-null pins every user to this mode at boot regardless of
- * their per-user preference; null means user preference wins.
- */
 export enum DefaultAppMode {
-    Ai = "ai",
+    AI = "ai",
     Classic = "classic",
 }
