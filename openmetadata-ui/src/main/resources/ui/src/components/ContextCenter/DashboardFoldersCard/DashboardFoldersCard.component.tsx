@@ -19,8 +19,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { FC, useCallback, useEffect, useState } from 'react';
+import {
+  FC,
+  KeyboardEvent,
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { FOLDER_CARD_CHILDREN_LIMIT } from '../../../constants/ContextCenter.constants';
@@ -35,6 +41,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
   folders,
   isLoading = false,
   onCreateFolder,
+  onOpenFolder,
 }) => {
   const { t } = useTranslation();
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
@@ -74,6 +81,19 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
     }
   };
 
+  const handleClick = (e: MouseEvent, folderId: string) => {
+    e.stopPropagation();
+    onOpenFolder(folderId);
+  }
+
+  const handleKeyDown = (e: KeyboardEvent, folderId: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      onOpenFolder(folderId);
+    }
+  }
+
   return (
     <ContextSimplePillarCard
       dataTestId="dashboard-folders-card"
@@ -105,15 +125,20 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
               id={folder.id}
               key={folder.id}
               textValue={getEntityName(folder)}>
-              <Tree.ItemContent
-                hasChildItems={hasChildItems}
-                showExpandIcon={false}>
+              <Tree.ItemContent hasChildItems={hasChildItems}>
                 <Box
                   align="center"
                   className="tw:flex-1 tw:min-w-0"
                   gap={3}
                   justify="between">
-                  <Box align="center" className="tw:min-w-0" gap={2}>
+                  <Box
+                    align="center"
+                    className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
+                    gap={2}
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e: MouseEvent) => handleClick(e, folder.id)}
+                    onKeyDown={(e: KeyboardEvent) => handleKeyDown(e, folder.id)}>
                     <FolderIcon className="tw:size-4 tw:shrink-0 tw:text-quaternary" />
                     <div className="tw:min-w-0">
                       <Typography
@@ -125,16 +150,9 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                       </Typography>
                     </div>
                   </Box>
-                  <Box align="center" gap={2}>
-                    <Badge size="xs" type="color">
-                      {folder.childrenCount ?? 0}
-                    </Badge>
-                    <Tree.ExpandButton
-                      className={classNames(
-                        !hasChildItems && 'tw:invisible tw:pointer-events-none'
-                      )}
-                    />
-                  </Box>
+                  <Badge size="xs" type="color">
+                    {folder.childrenCount ?? 0}
+                  </Badge>
                 </Box>
               </Tree.ItemContent>
 

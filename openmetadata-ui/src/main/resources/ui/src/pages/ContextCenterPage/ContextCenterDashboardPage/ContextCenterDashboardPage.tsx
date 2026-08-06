@@ -60,6 +60,7 @@ import {
   CreateKnowledgePage,
   KnowledgePage,
   PageType,
+  QuickLink,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
 import { listContextFiles, listFolders } from '../../../rest/assetAPI';
@@ -93,9 +94,7 @@ const ContextCenterDashboardPage: FC = () => {
   const [documentsCount, setDocumentsCount] = useState(0);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [folderCount, setFolderCount] = useState(0);
-  const [memories, setMemories] = useState<
-    Array<{ title: string; meta: string[] }>
-  >([]);
+  const [memories, setMemories] = useState<ContextMemory[]>([]);
   const [memoriesCount, setMemoriesCount] = useState(0);
   const [mostCitedMemories, setMostCitedMemories] = useState<ContextMemory[]>(
     []
@@ -221,12 +220,7 @@ const ContextCenterDashboardPage: FC = () => {
         sortOrder: 'desc',
       });
       setMemoriesCount(response.paging.total ?? response.data.length);
-      setMemories(
-        response.data.map((m) => ({
-          title: m.title ?? m.name,
-          meta: [`cited ${m.usageCount}×`],
-        }))
-      );
+      setMemories(response.data);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -286,6 +280,55 @@ const ContextCenterDashboardPage: FC = () => {
     fetchFolders();
   }, [fetchFolders]);
 
+  const handleOpenKnowledgePage = useCallback(
+    (page: Pick<KnowledgePage, 'pageType' | 'page' | 'fullyQualifiedName'>) => {
+      if (page.pageType === PageType.QUICK_LINK) {
+        window.open(
+          (page.page as QuickLink).url,
+          '_blank',
+          'noopener,noreferrer'
+        );
+
+        return;
+      }
+      navigate(contextCenterClassBase.getArticlePath(page.fullyQualifiedName));
+    },
+    [navigate]
+  );
+
+  const handleOpenDocument = useCallback(
+    (documentId: string) => {
+      navigate(
+        `${contextCenterClassBase.getDocumentsListPath()}?document=${encodeURIComponent(
+          documentId
+        )}`
+      );
+    },
+    [navigate]
+  );
+
+  const handleOpenMemory = useCallback(
+    (memoryName: string) => {
+      navigate(
+        `${contextCenterClassBase.getMemoriesListPath()}?memory=${encodeURIComponent(
+          memoryName
+        )}`
+      );
+    },
+    [navigate]
+  );
+
+  const handleOpenFolder = useCallback(
+    (folderId: string) => {
+      navigate(
+        `${contextCenterClassBase.getDocumentsListPath()}?folder=${encodeURIComponent(
+          folderId
+        )}`
+      );
+    },
+    [navigate]
+  );
+
   const articlesRecentItems = useMemo(
     () =>
       articles.map((article) => {
@@ -303,9 +346,10 @@ const ContextCenterDashboardPage: FC = () => {
           icon,
           meta: metaParts,
           title: getEntityName(article),
+          onClick: () => handleOpenKnowledgePage(article),
         };
       }),
-    [articles]
+    [articles, handleOpenKnowledgePage]
   );
 
   const documentsRecentItems = useMemo(
@@ -314,11 +358,15 @@ const ContextCenterDashboardPage: FC = () => {
         const metaParts = [
           doc.updatedBy,
           getShortRelativeTime(doc.updatedAt),
-        ].filter(Boolean);
+        ].filter((part): part is string => Boolean(part));
 
-        return { title: getEntityName(doc), meta: metaParts };
+        return {
+          title: getEntityName(doc),
+          meta: metaParts,
+          onClick: () => handleOpenDocument(doc.id),
+        };
       }),
-    [documents]
+    [documents, handleOpenDocument]
   );
 
   const recentlyViewedItems = useMemo(() => {
@@ -330,8 +378,19 @@ const ContextCenterDashboardPage: FC = () => {
       title: getEntityName(page),
       pageType: page.pageType,
       time: page.timestamp ? getShortRelativeTime(page.timestamp) : '',
+      onClick: () => handleOpenKnowledgePage(page),
     }));
-  }, [recentlyViewedQuickLinks]);
+  }, [recentlyViewedQuickLinks, handleOpenKnowledgePage]);
+
+  const memoriesRecentItems = useMemo(
+    () =>
+      memories.map((memory) => ({
+        title: memory.title ?? getEntityName(memory),
+        meta: [`cited ${memory.usageCount}×`],
+        onClick: () => handleOpenMemory(memory.name),
+      })),
+    [memories, handleOpenMemory]
+  );
 
   const mostCitedItems = useMemo(
     () =>
@@ -339,8 +398,9 @@ const ContextCenterDashboardPage: FC = () => {
         id: memory.id,
         title: memory.title ?? getEntityName(memory),
         citedCount: memory.usageCount ?? 0,
+        onClick: () => handleOpenMemory(memory.name),
       })),
-    [mostCitedMemories]
+    [mostCitedMemories, handleOpenMemory]
   );
 
   return (
@@ -498,7 +558,7 @@ const ContextCenterDashboardPage: FC = () => {
                 dataTestId="memory-detail-card"
                 icon={MemoryIcon}
                 isLoading={isMemoriesLoading}
-                recent={memories}
+                recent={memoriesRecentItems}
                 stat={String(memoriesCount)}
                 statSub={t('label.memory-plural')}
                 subtitle={t('message.atomic-facts-ai-should-remember')}
@@ -520,9 +580,18 @@ const ContextCenterDashboardPage: FC = () => {
                   {recentlyViewedItems.map((item) => (
                     <Box
                       align="center"
-                      className="tw:py-1.5"
+                      className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
                       gap={2}
-                      key={item.id}>
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={item.onClick}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          item.onClick();
+                        }
+                      }}>
                       {item.pageType === PageType.QUICK_LINK ? (
                         <QuickLinkIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
                       ) : (
@@ -566,6 +635,7 @@ const ContextCenterDashboardPage: FC = () => {
                     ? () => setIsCreateFolderModalOpen(true)
                     : undefined
                 }
+                onOpenFolder={handleOpenFolder}
               />
 
               <ContextSimplePillarCard
@@ -579,9 +649,18 @@ const ContextCenterDashboardPage: FC = () => {
                   {mostCitedItems.map((item) => (
                     <Box
                       align="center"
-                      className="tw:py-1.5"
+                      className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
                       gap={2}
-                      key={item.id}>
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={item.onClick}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          item.onClick();
+                        }
+                      }}>
                       <MemoryIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
                       <Box
                         align="center"

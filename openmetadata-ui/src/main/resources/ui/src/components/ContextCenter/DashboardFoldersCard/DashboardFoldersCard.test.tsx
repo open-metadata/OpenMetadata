@@ -41,7 +41,12 @@ const MOCK_FOLDERS: Folder[] = [
 
 describe('DashboardFoldersCard', () => {
   it('renders the folder list with children count badges', () => {
-    render(<DashboardFoldersCard folders={MOCK_FOLDERS} />);
+    render(
+      <DashboardFoldersCard
+        folders={MOCK_FOLDERS}
+        onOpenFolder={jest.fn()}
+      />
+    );
 
     expect(screen.getByText('Reports')).toBeInTheDocument();
     expect(screen.getByText('Archive')).toBeInTheDocument();
@@ -49,7 +54,7 @@ describe('DashboardFoldersCard', () => {
   });
 
   it('renders the empty state when there are no folders', () => {
-    render(<DashboardFoldersCard folders={[]} />);
+    render(<DashboardFoldersCard folders={[]} onOpenFolder={jest.fn()} />);
 
     expect(
       screen.getByText('message.no-folders-yet-create-one')
@@ -59,7 +64,11 @@ describe('DashboardFoldersCard', () => {
   it('renders the New Folder action with a leading icon and triggers onCreateFolder on click', () => {
     const onCreateFolder = jest.fn();
     render(
-      <DashboardFoldersCard folders={[]} onCreateFolder={onCreateFolder} />
+      <DashboardFoldersCard
+        folders={[]}
+        onCreateFolder={onCreateFolder}
+        onOpenFolder={jest.fn()}
+      />
     );
 
     const newFolderButton = screen.getByRole('button', {
@@ -74,8 +83,53 @@ describe('DashboardFoldersCard', () => {
   });
 
   it('does not fetch children until a folder is expanded', () => {
-    render(<DashboardFoldersCard folders={MOCK_FOLDERS} />);
+    render(
+      <DashboardFoldersCard
+        folders={MOCK_FOLDERS}
+        onOpenFolder={jest.fn()}
+      />
+    );
 
     expect(listContextFiles).not.toHaveBeenCalled();
+  });
+
+  it('calls onOpenFolder when the folder name is clicked, without expanding it', () => {
+    const onOpenFolder = jest.fn();
+    render(
+      <DashboardFoldersCard
+        folders={MOCK_FOLDERS}
+        onOpenFolder={onOpenFolder}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reports' }));
+
+    expect(onOpenFolder).toHaveBeenCalledWith('folder-1');
+    expect(listContextFiles).not.toHaveBeenCalled();
+  });
+
+  it('fetches children when the expand button is clicked, without calling onOpenFolder', () => {
+    const onOpenFolder = jest.fn();
+    render(
+      <DashboardFoldersCard
+        folders={MOCK_FOLDERS}
+        onOpenFolder={onOpenFolder}
+      />
+    );
+
+    const folderNameButton = screen.getByRole('button', { name: 'Reports' });
+    const folderRow = folderNameButton.closest('[role="row"]') as HTMLElement;
+    const rowButtons = Array.from(folderRow.querySelectorAll('button'));
+    const expandButton = rowButtons.find((btn) => btn !== folderNameButton);
+
+    expect(expandButton).toBeDefined();
+
+    fireEvent.click(expandButton as HTMLButtonElement);
+
+    expect(onOpenFolder).not.toHaveBeenCalled();
+    expect(listContextFiles).toHaveBeenCalledWith({
+      folderId: 'folder-1',
+      limit: expect.any(Number),
+    });
   });
 });

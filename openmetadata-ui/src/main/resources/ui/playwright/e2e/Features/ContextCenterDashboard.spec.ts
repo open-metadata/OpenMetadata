@@ -124,6 +124,8 @@ test.describe('Context Center - Dashboard', () => {
         .catch(() => false);
       if (isStillInTopThree) {
         await expect(seededDocument).toBeVisible();
+        await seededDocument.click();
+        await expect(page).toHaveURL(/\/context-center\/documents\?document=/);
       }
     });
 
@@ -156,6 +158,8 @@ test.describe('Context Center - Dashboard', () => {
         .catch(() => false);
       if (isStillInTopThree) {
         await expect(seededMemory).toBeVisible();
+        await seededMemory.click();
+        await expect(page).toHaveURL(/\/context-center\/memories\?memory=/);
       }
     });
   });
@@ -184,7 +188,13 @@ test.describe('Context Center - Dashboard', () => {
 
       const recentlyViewedCard = page.getByTestId('recently-viewed-card');
       await expect(recentlyViewedCard).toBeVisible();
-      await expect(recentlyViewedCard.getByText(displayName)).toBeVisible();
+
+      const recentlyViewedItem = recentlyViewedCard.getByText(displayName);
+      await expect(recentlyViewedItem).toBeVisible();
+      await recentlyViewedItem.click();
+      await expect(page).toHaveURL(
+        new RegExp(`/context-center/articles/${article.fullyQualifiedName}`)
+      );
     });
   });
 
@@ -227,6 +237,10 @@ test.describe('Context Center - Dashboard', () => {
 
       const firstItem = mostCitedCard.getByTestId('most-cited-count').first();
       await expect(firstItem).toContainText('Cited 999999 times');
+
+      const firstItemRow = mostCitedCard.getByRole('button').first();
+      await firstItemRow.click();
+      await expect(page).toHaveURL(/\/context-center\/memories\?memory=/);
     });
   });
 
@@ -286,6 +300,14 @@ test.describe('Context Center - Dashboard', () => {
 
       const childRow = tree.getByRole('row', { name: fileName });
       await expect(childRow).toBeVisible();
+
+      await navigateToDashboard(page);
+
+      const folderNameLink = tree
+        .getByRole('row', { name: folderName })
+        .getByRole('button', { name: folderName });
+      await folderNameLink.click();
+      await expect(page).toHaveURL(/\/context-center\/documents\?folder=/);
     });
   });
 
