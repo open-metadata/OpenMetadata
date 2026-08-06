@@ -68,6 +68,7 @@ from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
 
@@ -336,6 +337,7 @@ class FivetranSource(PipelineServiceSource):
 
         source_connector_type = pipeline_details.source.get("service")
         is_messaging_source = source_connector_type in MESSAGING_CONNECTOR_TYPES
+        is_messaging_destination = pipeline_details.destination.get("service") in MESSAGING_CONNECTOR_TYPES
 
         source_database_name = self._get_database_name(pipeline_details.source)
         destination_database_name = self._get_database_name(pipeline_details.destination)
@@ -364,12 +366,14 @@ class FivetranSource(PipelineServiceSource):
 
                 destination_table_name = table_data.get("name_in_destination")
 
-                from_entity = self._resolve_source_entity(
-                    is_messaging_source=is_messaging_source,
-                    table_name=table_name,
-                    schema_name=schema_name,
-                    database_name=source_database_name,
-                )
+                if is_messaging_source:
+                    from_entity = self._resolve_topic(topic_name=table_name)
+                else:
+                    from_entity = self._resolve_table(
+                        table_name=table_name,
+                        schema_name=schema_name,
+                        database_name=source_database_name,
+                    )
                 if not from_entity:
                     logger.debug(
                         f"Lineage skipped for pipeline [{pipeline_name}]"
@@ -377,15 +381,18 @@ class FivetranSource(PipelineServiceSource):
                     )
                     continue
 
-                to_entity = self._resolve_destination_table(
-                    table_name=destination_table_name,
-                    schema_name=destination_schema_name,
-                    database_name=destination_database_name,
-                )
+                if is_messaging_destination:
+                    to_entity = self._resolve_topic(topic_name=f"{destination_schema_name}.{destination_table_name}")
+                else:
+                    to_entity = self._resolve_table(
+                        table_name=destination_table_name,
+                        schema_name=destination_schema_name,
+                        database_name=destination_database_name,
+                    )
                 if not to_entity:
                     logger.debug(
                         f"Lineage skipped for pipeline [{pipeline_name}]"
-                        f" since destination table [{destination_schema_name}."
+                        f" since destination entity [{destination_schema_name}."
                         f"{destination_table_name}] not found."
                     )
                     continue
@@ -413,12 +420,17 @@ class FivetranSource(PipelineServiceSource):
                         logger.warning(f"Pipeline entity not found for [{pipeline_name}], skipping lineage.")
                         return
 
-                from_entity_type = "topic" if is_messaging_source else "table"
                 yield Either(
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=from_entity.id, type=from_entity_type),  # type: ignore
-                            toEntity=EntityReference(id=to_entity.id, type="table"),  # type: ignore
+                            fromEntity=EntityReference(  # type: ignore
+                                id=from_entity.id,
+                                type=ENTITY_REFERENCE_TYPE_MAP[from_entity.__class__.__name__],
+                            ),
+                            toEntity=EntityReference(  # type: ignore
+                                id=to_entity.id,
+                                type=ENTITY_REFERENCE_TYPE_MAP[to_entity.__class__.__name__],
+                            ),
                             lineageDetails=LineageDetails(
                                 pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),  # type: ignore
                                 source=LineageSource.PipelineLineage,

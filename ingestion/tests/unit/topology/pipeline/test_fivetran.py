@@ -27,6 +27,8 @@ from metadata.generated.schema.entity.data.pipeline import (
     StatusType,
     Task,
 )
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -558,9 +560,9 @@ class TestFivetranLineage:
     def test_cross_service(self, mock_build, mock_get_services, fivetran_source):
         source, client = fivetran_source
         mock_get_services.return_value = ["pg_svc", "sf_svc"]
-        mock_src = Mock()
+        mock_src = Mock(spec=Table)
         mock_src.id = str(uuid4())
-        mock_dst = Mock()
+        mock_dst = Mock(spec=Table)
         mock_dst.id = str(uuid4())
         mock_pipe = Mock()
         mock_pipe.id.root = str(uuid4())
@@ -606,7 +608,7 @@ class TestFivetranLineage:
         source, client = fivetran_source
         mock_get_services.return_value = ["pg"]
         same_id = str(uuid4())
-        mock_table = Mock()
+        mock_table = Mock(spec=Table)
         mock_table.id = same_id
 
         mock_build.side_effect = lambda *a, **kw: "pg.db.public.orders"
@@ -632,9 +634,9 @@ class TestFivetranLineage:
         source, client = fivetran_source
         mock_db.return_value = ["sf"]
         mock_msg.return_value = ["kafka"]
-        mock_topic = Mock()
+        mock_topic = Mock(spec=Topic)
         mock_topic.id = str(uuid4())
-        mock_table = Mock()
+        mock_table = Mock(spec=Table)
         mock_table.id = str(uuid4())
         mock_pipe = Mock()
         mock_pipe.id.root = str(uuid4())
@@ -737,6 +739,57 @@ class TestFivetranLineage:
             mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"]
             == '"fivetran_dex.employee_paystub"'
         )
+
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
+    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
+    @patch("metadata.utils.fqn.build")
+    def test_table_to_topic_lineage(self, mock_build, mock_db, mock_msg, fivetran_source):
+        source, client = fivetran_source
+        mock_db.return_value = ["pg"]
+        mock_msg.return_value = ["kafka"]
+        mock_table = Mock(spec=Table)
+        mock_table.id = str(uuid4())
+        mock_topic = Mock(spec=Topic)
+        mock_topic.id = str(uuid4())
+        mock_pipe = Mock()
+        mock_pipe.id.root = str(uuid4())
+
+        def build_se(*a, **kw):
+            if kw.get("topic_name"):
+                return f"{kw['service_name']}.{kw['topic_name']}"
+            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
+
+        mock_build.side_effect = build_se
+
+        def get_by_name(entity, fqn):
+            s = str(fqn)
+            if "kafka" in s:
+                return mock_topic
+            if "pg" in s:
+                return mock_table
+            return mock_pipe
+
+        with patch.object(source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name = Mock(side_effect=get_by_name)
+            client.get_connector_schema_details.return_value = {
+                "hr": {
+                    "enabled": True,
+                    "name_in_destination": "fivetran_dex",
+                    "tables": {"paystub": {"enabled": True, "name_in_destination": "employee_paystub"}},
+                }
+            }
+            client.get_connector_column_lineage.return_value = {}
+            details = FivetranPipelineDetails(
+                source={"id": "pg", "service": "postgres", "schema": "hr", "config": {"database": "db"}},
+                destination={"id": "cc", "service": "confluent_cloud", "config": {}},
+                group=mock_data["group"],
+                connector_id="pg",
+            )
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        assert result[0].right.edge.fromEntity.type == "table"
+        assert result[0].right.edge.toEntity.type == "topic"
 
 
 class TestFivetranColumnLineage:
