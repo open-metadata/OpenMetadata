@@ -14,14 +14,10 @@ import { APIRequestContext } from '@playwright/test';
 import * as fs from 'fs';
 import { isUndefined } from 'lodash';
 import * as path from 'path';
-import {
-  CUSTOM_PROPERTIES_ENTITIES,
-  INTAKE_FORM_CUSTOM_PROPERTY_ENTITIES,
-} from '../../constant/customProperty';
+import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { uuid } from '../../utils/common';
 import {
   getCustomPropertyCreationData,
-  getIntakeFormCustomPropertyCreationData,
   getLazyLoadEnumCustomPropertyData,
 } from '../../utils/customPropertyAdvancedSearchUtils';
 import { DataProduct } from '../domain/DataProduct';
@@ -181,14 +177,6 @@ export class EntityDataClass {
     string,
     Record<string, string | number | boolean | object>
   > = {};
-  // Custom properties the IntakeForm specs need, keyed by entity type. Separate
-  // from `customProperties` because their configs (ISO dates, glossaryTerm/user
-  // scoped references, their own enum option sets) deliberately differ from the
-  // shared fixtures.
-  static readonly intakeFormCustomProperties: Record<
-    string,
-    Record<string, { name: string }>
-  > = {};
 
   static async setupCustomPropertyData(
     apiContext: APIRequestContext,
@@ -238,26 +226,6 @@ export class EntityDataClass {
       await apiContext.put(`/api/v1/metadata/types/${createdMetadataType.id}`, {
         data: lazyEnum,
       });
-    }
-
-    // Same reasoning for the intake-form fixtures: created here so IntakeForm
-    // never has to write a shared entity-type row while other specs run.
-    if (INTAKE_FORM_CUSTOM_PROPERTY_ENTITIES.includes(entityType)) {
-      const intakeFormData = getIntakeFormCustomPropertyCreationData(
-        typesData,
-        entityType
-      );
-
-      this.intakeFormCustomProperties[entityType] = intakeFormData;
-
-      for (const typeData of Object.values(intakeFormData)) {
-        await apiContext.put(
-          `/api/v1/metadata/types/${createdMetadataType.id}`,
-          {
-            data: typeData,
-          }
-        );
-      }
     }
   }
 
@@ -475,7 +443,6 @@ export class EntityDataClass {
       worksheet1: this.worksheet1.get(),
       worksheet2: this.worksheet2.get(),
       customProperties: this.customProperties,
-      intakeFormCustomProperties: this.intakeFormCustomProperties,
     };
 
     const filePath = path.join(
@@ -697,12 +664,6 @@ export class EntityDataClass {
         }
         if (responseData.customProperties) {
           Object.assign(this.customProperties, responseData.customProperties);
-        }
-        if (responseData.intakeFormCustomProperties) {
-          Object.assign(
-            this.intakeFormCustomProperties,
-            responseData.intakeFormCustomProperties
-          );
         }
       }
     } catch (error) {

@@ -40,15 +40,6 @@ export const ENTITY_REFERENCE_PROPERTIES = [
   'Entity Reference List',
 ];
 
-// Entity types the IntakeForm specs build intake forms for. entity-data.setup.ts
-// pre-creates their custom properties so those specs never write a shared
-// entity-type row while other specs are running.
-export const INTAKE_FORM_CUSTOM_PROPERTY_ENTITIES = [
-  'dataProduct',
-  'domain',
-  'glossaryTerm',
-];
-
 const commonCustomPropertyValues = {
   integerValue: '14',
   stringValue: 'This is string property',

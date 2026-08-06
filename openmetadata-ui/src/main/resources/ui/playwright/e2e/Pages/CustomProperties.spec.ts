@@ -29,15 +29,16 @@
  * the same row from another worker makes one side's property vanish while the API
  * still answers 200. Two rules keep that from happening:
  *
- *   1. If the shared fixtures already provide the property you need, read
- *      `EntityDataClass.customProperties[entityType][typeKey]` instead of
- *      creating your own. entity-data.setup.ts creates 17 property types on every
+ *   1. A spec that only *uses* custom properties must read the shared fixtures —
+ *      `EntityDataClass.customProperties[entityType][typeKey]` — rather than
+ *      create its own. entity-data.setup.ts creates every property type on every
  *      entity type, sequentially, before any test runs.
- *   2. If you genuinely need a config the fixtures do not have, create it through
- *      `putCustomPropertyWithRetry` (utils/customProperty.ts), which re-reads the
- *      row and re-applies the property until it is actually persisted.
+ *   2. A spec that must create or delete custom properties belongs in this file,
+ *      inside the describe.serial for its entity type. The exception is any spec
+ *      that Playwright already runs in isolation (the IntakeForm suites have
+ *      their own serial project), which cannot overlap with this file by design.
  *
- * Never PUT/PATCH `/api/v1/metadata/types/*` directly from a spec.
+ * Never PUT/PATCH `/api/v1/metadata/types/*` from a spec that runs in parallel.
  */
 
 import { APIRequestContext, expect, test } from '@playwright/test';

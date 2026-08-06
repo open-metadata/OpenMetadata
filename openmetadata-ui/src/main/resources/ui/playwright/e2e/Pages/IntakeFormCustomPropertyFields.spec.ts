@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { performAdminLogin } from '../../utils/admin';
@@ -24,42 +23,12 @@ import { test } from '../fixtures/pages';
 const DOMAIN_ENTITY_TYPE = 'domain';
 const ID = uuid();
 
-// Custom properties come from entity-data.setup.ts, which creates them
-// sequentially before any test runs. Specs must never PUT
-// /api/v1/metadata/types/{id} themselves: it is read-modify-write on a single
-// global row per entity type, so a concurrent writer silently drops one side's
-// property while the API still answers 200.
-//
-// Resolved on access so the fixture data is never read while this file is being
-// collected — the setup project writes it only once collection is done.
-const fixture = (key: string) => {
-  const property =
-    EntityDataClass.intakeFormCustomProperties[DOMAIN_ENTITY_TYPE]?.[key];
-
-  expect(
-    property?.name,
-    `intake-form custom property "${key}" missing for "${DOMAIN_ENTITY_TYPE}" — entity-data setup did not run or its fixture is stale`
-  ).toBeTruthy();
-
-  return property.name;
-};
-
 const CP = {
-  get str() {
-    return fixture('string');
-  },
-  get table() {
-    return fixture('fieldsTable');
-  },
-  get link() {
-    return fixture('hyperlink');
-  },
-  get interval() {
-    return fixture('timeInterval');
-  },
-  get ref() {
-    return fixture('reference');
-  },
+  str: `pwCpString${ID}`,
+  table: `pwCpTable${ID}`,
+  link: `pwCpLink${ID}`,
+  interval: `pwCpInterval${ID}`,
+  ref: `pwCpRef${ID}`,
 };
 
 const ensureNoIntakeForm = async (
@@ -81,6 +50,40 @@ const ensureNoIntakeForm = async (
       );
     }
   }
+};
+
+const ensureCustomProperty = async (
+  api: APIRequestContext,
+  entityType: string,
+  propertyName: string,
+  propertyTypeName: string,
+  config?: unknown
+) => {
+  const typeRes = await api.get(
+    `/api/v1/metadata/types/name/${entityType}?fields=customProperties`
+  );
+  expect(typeRes.status()).toBe(200);
+  const type = await typeRes.json();
+  const exists = (type.customProperties ?? []).some(
+    (cp: { name: string }) => cp.name === propertyName
+  );
+  if (exists) {
+    return;
+  }
+  const propertyTypeRes = await api.get(
+    `/api/v1/metadata/types/name/${propertyTypeName}`
+  );
+  expect(propertyTypeRes.status()).toBe(200);
+  const propertyType = await propertyTypeRes.json();
+  const put = await api.put(`/api/v1/metadata/types/${type.id}`, {
+    data: {
+      name: propertyName,
+      description: 'Custom property for intake-form field playwright test',
+      propertyType: { id: propertyType.id, type: 'type' },
+      ...(config === undefined ? {} : { customPropertyConfig: { config } }),
+    },
+  });
+  expect(put.status()).toBe(200);
 };
 
 const createIntakeForm = async (
@@ -145,10 +148,7 @@ const selectExtensionReference = async ({
   await input.fill(query);
   await searchResponse;
 
-  const option = page
-    .getByRole('option')
-    .filter({ hasText: optionText })
-    .first();
+  const option = page.getByRole('option').filter({ hasText: optionText }).first();
   await expect(option).toBeVisible({ timeout: 15000 });
   await option.click();
 };
@@ -183,27 +183,40 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.beforeAll(
-      'Set up custom properties + intake form',
-      async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll('Set up custom properties + intake form', async ({
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-        await glossary.create(apiContext);
-        await glossaryTerm.create(apiContext);
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-        await ensureNoIntakeForm(apiContext, DOMAIN_ENTITY_TYPE);
+      await ensureNoIntakeForm(apiContext, DOMAIN_ENTITY_TYPE);
+      await ensureCustomProperty(apiContext, DOMAIN_ENTITY_TYPE, CP.str, 'string');
+      await ensureCustomProperty(apiContext, DOMAIN_ENTITY_TYPE, CP.table, 'table-cp', {
+        columns: ['id', 'value'],
+      });
+      await ensureCustomProperty(apiContext, DOMAIN_ENTITY_TYPE, CP.link, 'hyperlink-cp');
+      await ensureCustomProperty(
+        apiContext,
+        DOMAIN_ENTITY_TYPE,
+        CP.interval,
+        'timeInterval'
+      );
+      await ensureCustomProperty(apiContext, DOMAIN_ENTITY_TYPE, CP.ref, 'entityReference', [
+        'glossaryTerm',
+      ]);
 
-        await createIntakeForm(apiContext, DOMAIN_ENTITY_TYPE, [
-          CP.str,
-          CP.table,
-          CP.link,
-          CP.interval,
-          CP.ref,
-        ]);
+      await createIntakeForm(apiContext, DOMAIN_ENTITY_TYPE, [
+        CP.str,
+        CP.table,
+        CP.link,
+        CP.interval,
+        CP.ref,
+      ]);
 
-        await afterAction();
-      }
-    );
+      await afterAction();
+    });
 
     test.afterAll('Tear down', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -297,9 +310,7 @@ test.describe(
       );
 
       // time interval (start + end)
-      await extensionInput(page, `extension-${CP.interval}-start`).fill(
-        startVal
-      );
+      await extensionInput(page, `extension-${CP.interval}-start`).fill(startVal);
       await extensionInput(page, `extension-${CP.interval}-end`).fill(endVal);
 
       // entity reference — use the search-response-aware helper so we don't
@@ -350,10 +361,7 @@ test.describe(
       // table: id column preserved, and NO stray keys beyond the config columns
       expect(ext[CP.table].rows).toHaveLength(1);
       expect(ext[CP.table].rows[0]).toEqual({ id: tableId, value: tableValue });
-      expect(Object.keys(ext[CP.table].rows[0]).sort()).toEqual([
-        'id',
-        'value',
-      ]);
+      expect(Object.keys(ext[CP.table].rows[0]).sort()).toEqual(['id', 'value']);
 
       // hyperlink object
       expect(ext[CP.link].url).toBe(linkUrl);
