@@ -69,6 +69,14 @@ describe('StatusDataWidget', () => {
     );
   });
 
+  it('should render the card with internal padding', () => {
+    render(<StatusDataWidget {...defaultProps} />);
+
+    const statusCard = screen.getByTestId('status-data-widget').parentElement;
+
+    expect(statusCard).toHaveClass('tw:px-4', 'tw:py-3');
+  });
+
   it('should render the icon with correct props', () => {
     render(<StatusDataWidget {...defaultProps} />);
 
