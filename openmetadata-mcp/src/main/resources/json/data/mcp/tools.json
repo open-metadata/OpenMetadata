@@ -768,6 +768,7 @@
         "properties": {
           "entityType": {
             "type": "string",
+            "enum": ["TABLE", "COLUMN"],
             "description": "Entity Type can be 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE."
           },
           "testPlatform": {

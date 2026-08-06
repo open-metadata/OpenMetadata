@@ -162,8 +162,9 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
    * value stays an absent filter so that clients serializing an unset filter are not rejected.
    */
   public static void addEntityTypeFilter(ListFilter filter, String entityType) {
-    if (!CommonUtil.nullOrEmpty(entityType)) {
-      filter.addQueryParam(ENTITY_TYPE_PARAM, parseEntityType(entityType).value());
+    String value = CommonUtil.nullOrEmpty(entityType) ? "" : entityType.trim();
+    if (!value.isEmpty()) {
+      filter.addQueryParam(ENTITY_TYPE_PARAM, parseEntityType(value).value());
     }
   }
 
