@@ -110,7 +110,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   /**
    * Width of the {@code displayNameSort} generated column. {@code displayName} is an unbounded
    * string in the schema, so the column truncates rather than rejects — keep this in sync with the
-   * {@code LEFT(..., 256)} in the 2.1.0 migration.
+   * {@code LEFT(..., 256)} in the 1.13.4 migration.
    */
   private static final int DISPLAY_NAME_SORT_MAX_CHARS = 256;
 

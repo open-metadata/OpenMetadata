@@ -41,7 +41,7 @@ import org.openmetadata.service.util.RestUtil;
  * <p>Any disagreement is silent and data-dependent: the cursor is compared against the column with
  * {@code >}/{@code =}, so a Java value one character off from the stored one skips or repeats a row
  * at a page boundary rather than failing. The fixtures below were run through real MySQL 8.0 and
- * PostgreSQL 15 against the 2.1.0 DDL, and both engines produced exactly these values — this test is
+ * PostgreSQL 15 against the 1.13.4 DDL, and both engines produced exactly these values — this test is
  * what keeps the Java half from drifting away from them.
  */
 class IngestionPipelineSortCursorTest {

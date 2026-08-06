@@ -61,19 +61,3 @@ CREATE INDEX IF NOT EXISTS idx_security_service_entity_deleted_service_type ON s
 CREATE INDEX IF NOT EXISTS idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
 CREATE INDEX IF NOT EXISTS idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
 CREATE INDEX IF NOT EXISTS idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);
-
--- Server-side ordering for the ingestion pipeline list (collate#3919).
--- The Name column renders `displayName ?? name`, so the list has to be orderable by that same
--- value; pipelines created from the UI get a machine-generated `name` (Automations use
--- OpenMetadata_application_<random>) that bears no relation to the label the user typed.
--- Not case-folded on purpose: ORDER BY and the keyset-cursor comparison then share the column's
--- own collation, so the cursor value can be carried verbatim in Java with no risk of Java and SQL
--- disagreeing on case-folding at a page boundary. Sort-only column, never rendered.
--- left(..., 256) is load-bearing, not cosmetic: displayName has no maxLength in the schema, and a
--- STORED column is materialised for every existing row, so without it a single longer value aborts
--- this ALTER ("value too long for type character varying(256)") and blocks the whole upgrade.
--- Truncating keeps the column total; ties break on id.
-ALTER TABLE ingestion_pipeline_entity
-    ADD COLUMN IF NOT EXISTS displayNameSort VARCHAR(256)
-    GENERATED ALWAYS AS (left(COALESCE(NULLIF(json ->> 'displayName', ''), json ->> 'name'), 256)) STORED;
-CREATE INDEX IF NOT EXISTS idx_ingestion_pipeline_display_sort ON ingestion_pipeline_entity (deleted, displayNameSort, id);
