@@ -127,9 +127,9 @@
     },
     "supportsDataDiff": {
       "title": "Supports Data Diff",
-      "description": "ClickZetta data diff remains disabled until its bounded live gate is approved.",
+      "description": "Supports ClickZetta data diff when connectionArguments or connectionOptions includes allowFullTableScan=true and the configured key is stable and supported by the data-diff engine.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff",
-      "default": false
+      "default": true
     },
     "supportsDBTExtraction": {
       "description": "Attached dbt metadata ingestion remains disabled until the Dagster/dbt workflow is live and validated.",
