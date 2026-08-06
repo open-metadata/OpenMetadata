@@ -903,7 +903,11 @@ export const verifyDomainPropagation = async (
 ) => {
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   const domainLink = entityCard.getByTestId('domain-link').first();
-  const tabSelector = page.getByRole('menuitem', { name: exploreTabName });
+  
+  let tabSelector;
+  if (exploreTabName) {
+    tabSelector = page.getByRole('menuitem', { name: exploreTabName });
+  }
 
   await waitForSearchResult(page, childFqnSearchTerm, domainLink, tabSelector);
   await expect(entityCard).toBeVisible();
