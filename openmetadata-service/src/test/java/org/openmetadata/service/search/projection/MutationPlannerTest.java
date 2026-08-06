@@ -122,6 +122,25 @@ class MutationPlannerTest {
     assertThat(subset.covers("descriptionSources")).isFalse();
   }
 
+  @Test
+  @DisplayName("a tag change must reproject, because its label-type counts are not scriptable")
+  void tagChangeRequiresReprojection() {
+    ProjectionSpec spec = new DefaultProjectionSpec();
+    assertThat(spec.requiresReprojection()).containsExactlyInAnyOrder("tagSources", "tierSources");
+
+    // The counts sum each column's tags separately while the document's tags array is deduped by
+    // tagFQN, so the data they are computed from is not in the document. Scripting them would give
+    // a
+    // plausible wrong number on any column-bearing entity.
+    assertThat(planner.requiresReprojection(planner.plan(updated("tags")).mask())).isTrue();
+    assertThat(TagDocInvariant.INSTANCE.produces())
+        .as("the painless postlude must not claim to maintain paths it cannot compute")
+        .doesNotContain("tagSources", "tierSources");
+
+    // A change that does not touch tags can still be scripted.
+    assertThat(planner.requiresReprojection(planner.plan(updated("description")).mask())).isFalse();
+  }
+
   private static ChangeDescription updated(String fieldName) {
     return new ChangeDescription()
         .withFieldsUpdated(

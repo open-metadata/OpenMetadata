@@ -162,6 +162,9 @@ import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.projection.DefaultProjectionSpec;
+import org.openmetadata.service.search.projection.MutationPlanner;
+import org.openmetadata.service.search.projection.ProjectionRollout;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -497,6 +500,13 @@ public class SearchRepository {
    * describes it ({@code Entity.FIELD_PIPELINE_STATUS} is the entity <i>field</i> of the same name).
    */
   private static final List<String> INDICES_WITHOUT_REINDEX_SOURCE = List.of("pipelineStatus");
+
+  /**
+   * Declared-lineage planner, used only for the off-by-default shadow accounting in {@link
+   * #canUseScriptedPartialUpdate}. Stateless, so a single instance is fine.
+   */
+  private final MutationPlanner projectionPlanner =
+      new MutationPlanner(new DefaultProjectionSpec());
 
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
@@ -4021,10 +4031,16 @@ public class SearchRepository {
 
   private boolean canUseScriptedPartialUpdate(ChangeDescription changeDescription) {
     Set<String> changedFieldNames = getChangedFieldNames(changeDescription);
-    return !changedFieldNames.isEmpty()
-        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
-        && !hasRelationshipReplacement(changeDescription, TEST_SUITES)
-        && !hasRelationshipReplacement(changeDescription, TESTS);
+    boolean canScript =
+        !changedFieldNames.isEmpty()
+            && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
+            && !hasRelationshipReplacement(changeDescription, TEST_SUITES)
+            && !hasRelationshipReplacement(changeDescription, TESTS);
+    // Shadow only, and off by default: counts what the declared-lineage planner would have decided
+    // here so the 7-fields-to-all-declared claim is measured on real traffic before phase 4 acts on
+    // it. The decision returned is unchanged either way.
+    ProjectionRollout.recordShadowComparison(projectionPlanner, changeDescription, canScript);
+    return canScript;
   }
 
   private boolean hasRelationshipReplacement(

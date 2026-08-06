@@ -50,4 +50,17 @@ public interface ProjectionSpec {
   default FieldOwnership ownershipOf(String docPath) {
     return FieldOwnership.DERIVED;
   }
+
+  /**
+   * Paths that no painless script can maintain, so a cascade touching them must reproject the
+   * document instead of scripting it.
+   *
+   * <p>Not every derived path is renderable into painless. An update-by-query only sees the stored
+   * document, so a path computed from data the document does not carry cannot be recomputed in the
+   * cluster at any level of effort. Declaring these is what stops a cascade from silently choosing
+   * SCRIPT where REPROJECT was required — the §14 trade-off that yields a stale derived field.
+   */
+  default Set<String> requiresReprojection() {
+    return Set.of();
+  }
 }

@@ -53,6 +53,19 @@ public final class MutationPlanner {
     this.spec = spec;
   }
 
+  /**
+   * Whether a write covering {@code mask} must reproject rather than run a painless script.
+   *
+   * <p>Cascades are the caller that matters here: an update-by-query is the only way to touch a
+   * million children without reading them, but it can only recompute what the stored document
+   * carries. If the mask reaches a path declared in {@link ProjectionSpec#requiresReprojection()},
+   * scripting it produces a plausible wrong value, so the cascade has to rebuild those documents
+   * instead.
+   */
+  public boolean requiresReprojection(FieldMask mask) {
+    return spec.requiresReprojection().stream().anyMatch(mask::covers);
+  }
+
   public Mutation plan(ChangeDescription changeDescription) {
     if (changeDescription == null) {
       return new Mutation(FieldMask.all(), Reason.NO_CHANGE_DESCRIPTION);

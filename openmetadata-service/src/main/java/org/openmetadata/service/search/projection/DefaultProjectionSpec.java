@@ -105,6 +105,28 @@ public class DefaultProjectionSpec implements ProjectionSpec {
     return ALWAYS_PROJECTED;
   }
 
+  /**
+   * {@code tagSources} / {@code tierSources} are label-type counts, and they are not recomputable
+   * from the stored document.
+   *
+   * <p>{@code SearchIndexUtils.processTagAndTierSources} counts the entity's tags <em>and each
+   * column's tags separately</em>, summing repeats — a tag on three columns contributes three. The
+   * document's {@code tags} array is the output of {@code mergeChildTags}, which dedupes by {@code
+   * tagFQN}, so the same situation appears there once. The pre-dedup per-column structure the counts
+   * are derived from simply is not in the document, so no painless script recovers them, however
+   * carefully written.
+   *
+   * <p>This is why they are declared here rather than added to {@code TAG_RESEPARATION_SCRIPT}:
+   * scripting them would produce numbers that look right and are wrong on any column-bearing entity,
+   * which is worse than leaving them to a reprojection.
+   */
+  private static final Set<String> REQUIRES_REPROJECTION = Set.of("tagSources", "tierSources");
+
+  @Override
+  public Set<String> requiresReprojection() {
+    return REQUIRES_REPROJECTION;
+  }
+
   @Override
   public FieldOwnership ownershipOf(String docPath) {
     return OWNERSHIP.getOrDefault(FieldMask.topLevelKeyOf(docPath), FieldOwnership.DERIVED);

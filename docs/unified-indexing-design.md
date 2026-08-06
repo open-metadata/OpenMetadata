@@ -527,6 +527,41 @@ Two things worth recording, both found by building it rather than by reading:
 strips `appliedAt` through it rather than copying it. A second copy of that rule is exactly the drift
 this phase exists to remove.
 
+### The `tagSources` finding, resolved — and it changes §11.2's conclusion
+
+The obvious fix for the asymmetry above was to teach `TAG_RESEPARATION_SCRIPT` to compute the two
+counts. That fix is **wrong**, and the reason is worth keeping:
+
+`SearchIndexUtils.processTagAndTierSources` counts the entity's tags *and each column's tags
+separately*, summing repeats — a tag on three columns contributes three. The document's `tags` array
+is the output of `mergeChildTags`, which dedupes by `tagFQN`, so that same tag appears once. The
+pre-dedup per-column structure the counts derive from **is not in the document**, so no
+update-by-query recovers them however carefully written. Scripting them would yield numbers that look
+right and are wrong on every column-bearing entity, which is worse than not scripting them.
+
+So they are declared `requiresReprojection()`: paths a cascade must rebuild rather than script. This
+is §14's "choosing SCRIPT where REPROJECT was needed yields a stale derived field", now a declaration
+the planner can act on instead of a hazard someone has to remember. **Phase 5 must honour it** — a
+rules-driven cascade that only generates painless cannot maintain these paths at all.
+
+## 11.6 Phase 4 gate (landed 2026-08-04, off by default)
+
+`ProjectionRollout` is the flag phase 4 flips, and what it currently enables is *shadow* comparison
+only: `canUseScriptedPartialUpdate` records what the declared-lineage planner would have decided
+beside what the live path did decide, and the live path's decision still executes unchanged.
+
+The counters (`search.index.projection.shadow`) exist because "partial coverage goes from 7 fields to
+all declared fields" is an assertion until it is measured on real traffic — `narrowed_where_full` is
+the win, `widened_where_partial` means a lineage is probably missing, and `reprojection_required`
+counts masks that reach the unscriptable paths above. Reading the flag once at class init is
+deliberate: this is the hottest write path, and a per-write property lookup would cost more than the
+feature saves.
+
+What phase 4 still owes, and why it is not done here: deleting `getScriptWithParams` and
+`PARTIAL_SCRIPT_SUPPORTED_FIELDS` cannot happen while the flag can be off, and flipping it is a
+per-entity-type rollout decision that wants the shadow numbers first. The mechanism is in place; the
+judgement call is not mine to make.
+
 ---
 
 ## 12. Collate extension contract
