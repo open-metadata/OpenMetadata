@@ -349,7 +349,7 @@ public class McpToolsValidationIT extends McpTestBase {
    * nothing on PostgreSQL before the fix.
    */
   @Test
-  @Order(11)
+  @Order(22)
   void testGetTestDefinitionsForMixedCaseEntityType() throws Exception {
     Map<String, Object> toolCall = McpTestUtils.createGetTestDefinitionsToolCall("Column");
     JsonNode result = executeToolCall(toolCall);

@@ -38,7 +38,9 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 @Execution(ExecutionMode.CONCURRENT)
 public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, CreateTestDefinition> {
 
-  private static final List<String> ENTITY_TYPE_CASINGS = List.of("COLUMN", "Column", "column");
+  private static final List<String> ENTITY_TYPE_CASINGS =
+      List.of("COLUMN", "Column", "column", " Column ");
+  private static final List<String> BLANK_ENTITY_TYPES = List.of("", " ");
   private static final int ENTITY_TYPE_FILTER_LIMIT = 1000000;
 
   // Disable tests that don't apply to TestDefinition
@@ -296,15 +298,17 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     TestDefinition columnDefinition = createColumnTestDefinition(ns, "empty_column");
     TestDefinition tableDefinition = createTableTestDefinition(ns, "empty_table");
 
-    Set<String> fullyQualifiedNames =
-        fullyQualifiedNamesOf(listByEntityType(SdkClients.adminClient(), ""));
+    for (String blank : BLANK_ENTITY_TYPES) {
+      Set<String> fullyQualifiedNames =
+          fullyQualifiedNamesOf(listByEntityType(SdkClients.adminClient(), blank).getData());
 
-    assertTrue(
-        fullyQualifiedNames.contains(columnDefinition.getFullyQualifiedName()),
-        "An empty entityType must not filter out COLUMN test definitions");
-    assertTrue(
-        fullyQualifiedNames.contains(tableDefinition.getFullyQualifiedName()),
-        "An empty entityType must not filter out TABLE test definitions");
+      assertTrue(
+          fullyQualifiedNames.contains(columnDefinition.getFullyQualifiedName()),
+          "A blank entityType must not filter out COLUMN test definitions");
+      assertTrue(
+          fullyQualifiedNames.contains(tableDefinition.getFullyQualifiedName()),
+          "A blank entityType must not filter out TABLE test definitions");
+    }
   }
 
   /**
@@ -346,12 +350,19 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
       String entityTypeParam,
       TestDefinition columnDefinition,
       TestDefinition tableDefinition) {
-    List<TestDefinition> definitions = listByEntityType(client, entityTypeParam);
+    ListResponse<TestDefinition> response = listByEntityType(client, entityTypeParam);
+    List<TestDefinition> definitions = response.getData();
     Set<String> fullyQualifiedNames = fullyQualifiedNamesOf(definitions);
 
     assertTrue(
         definitions.stream().allMatch(d -> d.getEntityType() == TestDefinitionEntityType.COLUMN),
         "entityType=" + entityTypeParam + " must return only COLUMN test definitions");
+    assertTrue(
+        response.getPaging().getTotal() > 0,
+        "entityType="
+            + entityTypeParam
+            + " must produce a non-zero paging total, which is served by the DAO's separate"
+            + " listCount query");
     assertTrue(
         fullyQualifiedNames.contains(columnDefinition.getFullyQualifiedName()),
         "entityType="
@@ -366,14 +377,14 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
             + tableDefinition.getFullyQualifiedName());
   }
 
-  private static List<TestDefinition> listByEntityType(
+  private static ListResponse<TestDefinition> listByEntityType(
       OpenMetadataClient client, String entityTypeParam) {
     ListParams params =
         new ListParams()
             .setLimit(ENTITY_TYPE_FILTER_LIMIT)
             .addFilter("entityType", entityTypeParam);
 
-    return client.testDefinitions().list(params).getData();
+    return client.testDefinitions().list(params);
   }
 
   private static Set<String> fullyQualifiedNamesOf(List<TestDefinition> definitions) {
