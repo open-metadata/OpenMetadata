@@ -374,6 +374,7 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
             referred_table_schema=sqltypes.Unicode(),
             referred_table_name=sqltypes.Unicode(),
             referred_column=sqltypes.Unicode(),
+            referred_database=sqltypes.Unicode(),
         )
     )
 
@@ -384,6 +385,7 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
         return {
             "name": None,
             "constrained_columns": [],
+            "referred_database": None,
             "referred_schema": None,
             "referred_table": None,
             "referred_columns": [],
@@ -407,10 +409,12 @@ def get_foreign_keys(self, connection, tablename, dbname, owner=None, schema=Non
             _,  # match rule
             fkuprule,
             fkdelrule,
+            rdbname,
         ) = row_
 
         rec = fkeys[rfknm]
         rec["name"] = rfknm
+        rec["referred_database"] = rdbname
 
         if fkuprule != "NO ACTION":
             rec["options"]["onupdate"] = fkuprule

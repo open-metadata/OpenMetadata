@@ -53,6 +53,7 @@ from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_FOREIGN_KEY,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -546,6 +547,59 @@ class MssqlIdentityColumnTest(TestCase):
     def test_missing_seed_returns_empty_dict(self):
         assert mssql_dialet.get_identity_values(BigInteger(), None, Decimal("1")) == {}
         assert mssql_dialet.get_identity_values(BigInteger(), Decimal("1"), None) == {}
+
+
+class TestMssqlForeignKeyReferredDatabase:
+    """``get_foreign_keys`` must report the database holding the referred table.
+
+    Without it the caller builds the referred FQN with a ``None`` database and the
+    constraint is dropped.
+    """
+
+    @staticmethod
+    def _fk_row(constraint_name, constrained_column, referred_column):
+        return (
+            "sales",  # constraint schema
+            constraint_name,
+            1,  # ordinal position
+            constrained_column,
+            "sales",  # referred schema
+            "customers",
+            referred_column,
+            None,  # match rule
+            "NO ACTION",
+            "NO ACTION",
+            "my_catalog",  # DB_NAME()
+        )
+
+    def _foreign_keys(self, rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execute.return_value.fetchall.return_value = rows
+
+        return mssql_dialet.get_foreign_keys(MSDialect(), connection, "orders", schema="sales")
+
+    def test_referred_database_comes_from_the_query(self):
+        keys = self._foreign_keys([self._fk_row("fk_orders_customer", "customer_id", "id")])
+
+        assert [key["referred_database"] for key in keys] == ["my_catalog"]
+
+    def test_query_selects_the_database_name(self):
+        assert "DB_NAME() AS referred_database" in MSSQL_GET_FOREIGN_KEY
+
+    def test_multi_column_key_is_still_grouped(self):
+        (key,) = self._foreign_keys(
+            [
+                self._fk_row("fk_orders_customer", "customer_id", "id"),
+                self._fk_row("fk_orders_customer", "customer_region", "region"),
+            ]
+        )
+
+        assert key["name"] == "fk_orders_customer"
+        assert key["referred_table"] == "customers"
+        assert key["constrained_columns"] == ["customer_id", "customer_region"]
+        assert key["referred_columns"] == ["id", "region"]
 
 
 class TestMssqlQueryStoreSelection:
