@@ -688,7 +688,7 @@ class TestFivetranLineage:
     def test_falls_back_to_cross_service_search_when_unconfigured(self, mock_get_services, fivetran_source):
         source, _ = fivetran_source
         mock_get_services.return_value = []
-        found = Mock()
+        found = Mock(spec=Table)
         found.service = Mock(name="svc")
 
         with patch.object(source, "metadata") as mock_metadata:
@@ -729,7 +729,7 @@ class TestFivetranLineage:
     def test_topic_search_string_quotes_dotted_name(self, mock_get_services, fivetran_source):
         source, _ = fivetran_source
         mock_get_services.return_value = []
-        found = Mock()
+        found = Mock(spec=Topic)
         found.service = Mock(name="kafka")
 
         with patch.object(source, "metadata") as mock_metadata:

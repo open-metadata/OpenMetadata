@@ -15,7 +15,7 @@ Fivetran source to extract metadata
 import traceback
 from collections import Counter
 from datetime import datetime
-from typing import Iterable, List, Optional, Union, cast  # noqa: UP035
+from typing import Iterable, List, Optional, TypeVar, Union, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -91,6 +91,11 @@ HISTORICAL_SYNC_FIELDS = [
     ("succeeded_at", StatusType.Successful),
     ("failed_at", StatusType.Failed),
 ]
+
+
+# Constrained (not just bound) so isinstance(x, entity_type) narrows `x` to the concrete
+# member type instead of the union - see _search_any_service.
+EntityT = TypeVar("EntityT", Table, Topic)
 
 
 def _resolve_field_fqn(entity: Union[Table, Topic], name: str) -> Optional[str]:  # noqa: UP007, UP045
@@ -480,6 +485,8 @@ class FivetranSource(PipelineServiceSource):
                 schema_name=schema_name,
                 table_name=table_name,
             )
+            if not entity_fqn:
+                continue
             entity = self.metadata.get_by_name(entity=Table, fqn=entity_fqn)
             if entity:
                 return entity
@@ -496,6 +503,8 @@ class FivetranSource(PipelineServiceSource):
                 service_name=service_name,
                 topic_name=topic_name,
             )
+            if not entity_fqn:
+                continue
             entity = self.metadata.get_by_name(entity=Topic, fqn=entity_fqn)
             if entity:
                 return entity
@@ -505,24 +514,26 @@ class FivetranSource(PipelineServiceSource):
 
     def _search_any_service(
         self,
-        entity_type: type,
+        entity_type: type[EntityT],
         parts: List[Optional[str]],  # noqa: UP006, UP045
-    ) -> Optional[Union[Table, Topic]]:  # noqa: UP007, UP045
+    ) -> EntityT | None:
         # search_in_any_service pads missing parent levels with `*`, so pass only
         # known parts. Quoting matters: a dotted topic name would otherwise be
         # split into service.topic instead of being treated as one FQN part.
         search_string = fqn.FQN_SEPARATOR.join(fqn.quote_name(part) for part in parts if part)
-        entity = self.metadata.search_in_any_service(
+        result = self.metadata.search_in_any_service(
             entity_type=entity_type,
             fqn_search_string=search_string,
         )
-        if entity:
-            service_name = entity.service.name if getattr(entity, "service", None) else "unknown"
-            logger.debug(
-                f"Resolved {entity_type.__name__} [{search_string}] via cross-service search"
-                f" in service [{service_name}]"
-            )
-        return entity
+        # search_in_any_service is annotated to allow a list (fetch_multiple_entities=True),
+        # which we never request; reject that shape explicitly rather than assume it away.
+        if not isinstance(result, entity_type):
+            return None
+        service_name = result.service.name if result.service else "unknown"
+        logger.debug(
+            f"Resolved {entity_type.__name__} [{search_string}] via cross-service search in service [{service_name}]"
+        )
+        return result
 
     def _get_pipeline_entity(self) -> Optional[Pipeline]:  # noqa: UP045
         pipeline_fqn = fqn.build(
