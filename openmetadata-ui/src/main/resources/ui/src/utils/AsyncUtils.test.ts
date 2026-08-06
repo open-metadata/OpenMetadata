@@ -109,17 +109,21 @@ describe('runWithConcurrencyLimit', () => {
   });
 
   it('isolates per-item failures when the worker catches its own errors', async () => {
-    const results = await runWithConcurrencyLimit([1, 2, 3, 4], 2, async (n) => {
-      try {
-        if (n % 2 === 0) {
-          throw new Error(`fail ${n}`);
-        }
+    const results = await runWithConcurrencyLimit(
+      [1, 2, 3, 4],
+      2,
+      async (n) => {
+        try {
+          if (n % 2 === 0) {
+            throw new Error(`fail ${n}`);
+          }
 
-        return n;
-      } catch {
-        return null;
+          return n;
+        } catch {
+          return null;
+        }
       }
-    });
+    );
 
     expect(results).toEqual([1, null, 3, null]);
   });

@@ -135,8 +135,8 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       (entry) => uploadSingleFile(entry),
       () => cancelledRef.current
     );
-    const batchFiles = results.filter(
-      (file): file is ContextFile => Boolean(file)
+    const batchFiles = results.filter((file): file is ContextFile =>
+      Boolean(file)
     );
 
     if (!cancelledRef.current) {
