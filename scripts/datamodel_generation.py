@@ -17,10 +17,13 @@ import glob
 import os
 
 from datamodel_code_generator.imports import Import
-from datamodel_code_generator.model import pydantic as pydantic_model
+from datamodel_code_generator.model.pydantic_v2 import types as pydantic_v2_types
 from datamodel_code_generator.__main__ import main
 
-pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
+# datamodel-code-generator dropped the pydantic v1 model package in 0.30; the SecretStr
+# import constant now lives in the pydantic_v2 types module. It is read as a module global
+# when the type map is built, so rebinding it here still redirects password fields.
+pydantic_v2_types.IMPORT_SECRET_STR = Import.from_full_path(
     "metadata.ingestion.models.custom_pydantic.CustomSecretStr"
 )
 
