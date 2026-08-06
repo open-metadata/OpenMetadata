@@ -16,10 +16,13 @@ import { noop } from 'lodash';
 import { useNavigate } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getTeamByName } from '../../../rest/teamsAPI';
 import { getUserByName } from '../../../rest/userAPI';
 import UserPopOverCard, {
   PopoverContent,
   PopoverTitle,
+  TeamPopoverContent,
+  TeamPopoverTitle,
   UserRoles,
   UserTeams,
 } from './UserPopOverCard';
@@ -62,6 +65,26 @@ jest.mock('../../../rest/userAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockUserData)),
 }));
+
+const mockTeamData = {
+  id: 'team-id-1',
+  name: 'testTeam',
+  displayName: 'Test Team',
+  description: 'Team description',
+  teamType: 'Group',
+  userCount: 5,
+  parents: [{ id: 'parent-1', name: 'parentTeam', displayName: 'Parent Team' }],
+};
+
+jest.mock('../../../rest/teamsAPI', () => ({
+  getTeamByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTeamData)),
+}));
+
+jest.mock('../RichTextEditor/RichTextEditorPreviewNew', () => {
+  return jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>);
+});
 
 const mockPush = jest.fn();
 
@@ -298,6 +321,84 @@ describe('Test UserPopOverCard components', () => {
       userNameButton.click();
 
       expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
+    });
+  });
+
+  describe('TeamPopoverContent Component', () => {
+    it('should render team details after fetch', async () => {
+      await act(async () => {
+        render(<TeamPopoverContent teamName="testTeam" />);
+      });
+
+      expect(getTeamByName).toHaveBeenCalledWith('testTeam', {
+        fields: ['parents', 'userCount'],
+      });
+      expect(screen.getByTestId('team-popover-content')).toBeInTheDocument();
+      expect(screen.getByText('Team description')).toBeInTheDocument();
+      expect(screen.getByTestId('team-type')).toHaveTextContent('Group');
+      expect(screen.getByTestId('team-user-count')).toHaveTextContent(
+        '5 label.user-plural'
+      );
+      expect(screen.getByTestId('team-parents')).toBeInTheDocument();
+      expect(screen.getByText('Parent Team')).toBeInTheDocument();
+    });
+
+    it('should fetch team only once for the same team name', async () => {
+      (getTeamByName as jest.Mock).mockClear();
+
+      await act(async () => {
+        render(<TeamPopoverContent teamName="cachedTeam" />);
+      });
+      await act(async () => {
+        render(<TeamPopoverContent teamName="cachedTeam" />);
+      });
+
+      expect(getTeamByName).toHaveBeenCalledTimes(1);
+    });
+
+    it('should show no data message when team fetch fails', async () => {
+      (getTeamByName as jest.Mock).mockImplementationOnce(() =>
+        Promise.reject(new Error('not found'))
+      );
+
+      await act(async () => {
+        render(<TeamPopoverContent teamName="missingTeam" />);
+      });
+
+      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    });
+
+    it('should show no description placeholder when description is empty', async () => {
+      (getTeamByName as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({ ...mockTeamData, description: undefined })
+      );
+
+      await act(async () => {
+        render(<TeamPopoverContent teamName="noDescriptionTeam" />);
+      });
+
+      expect(screen.getByText('label.no-description')).toBeInTheDocument();
+    });
+  });
+
+  describe('TeamPopoverTitle Component', () => {
+    it('should render team display name and navigate to team page on click', async () => {
+      mockPush.mockClear();
+
+      await act(async () => {
+        render(
+          <TeamPopoverTitle
+            profilePicture={<div>ProfilePicture</div>}
+            teamName="testTeam"
+          />
+        );
+      });
+
+      expect(screen.getByTestId('team-name')).toHaveTextContent('Test Team');
+
+      screen.getByTestId('team-name').click();
+
+      expect(mockPush).toHaveBeenCalledWith('/settings/members/teams/testTeam');
     });
   });
 

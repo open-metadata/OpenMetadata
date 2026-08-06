@@ -30,9 +30,11 @@ import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
+import { Team } from '../../../generated/entity/teams/team';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getTeamByName } from '../../../rest/teamsAPI';
 import { getUserByName } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -43,6 +45,64 @@ import { getNonDeletedTeams } from '../../../utils/TeamUtils';
 import { getUserWithImage } from '../../../utils/UserDataUtils';
 import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
+import RichTextEditorPreviewerNew from '../RichTextEditor/RichTextEditorPreviewNew';
+
+const TEAM_POPOVER_CACHE_MAX_SIZE = 50;
+const teamPopoverCache = new Map<string, Promise<Team>>();
+
+const fetchTeamForPopover = (teamName: string): Promise<Team> => {
+  let teamPromise = teamPopoverCache.get(teamName);
+
+  if (!teamPromise) {
+    teamPromise = getTeamByName(teamName, {
+      fields: [TabSpecificField.PARENTS, TabSpecificField.USER_COUNT],
+    });
+    teamPromise.catch(() => teamPopoverCache.delete(teamName));
+
+    if (teamPopoverCache.size >= TEAM_POPOVER_CACHE_MAX_SIZE) {
+      const oldestKey = teamPopoverCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        teamPopoverCache.delete(oldestKey);
+      }
+    }
+    teamPopoverCache.set(teamName, teamPromise);
+  }
+
+  return teamPromise;
+};
+
+export const useTeamPopoverData = (teamName: string) => {
+  const [team, setTeam] = useState<Team>();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+
+    fetchTeamForPopover(teamName)
+      .then((teamData) => {
+        if (isMounted) {
+          setTeam(teamData);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setTeam(undefined);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [teamName]);
+
+  return { team, loading };
+};
 
 export const UserTeams = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationStore();
@@ -230,6 +290,112 @@ export const PopoverTitle = React.memo(
   }
 );
 
+export const TeamPopoverContent = React.memo(
+  ({ teamName }: { teamName: string }) => {
+    const { t } = useTranslation();
+    const { team, loading } = useTeamPopoverData(teamName);
+
+    if (loading) {
+      return <Loader size="small" />;
+    }
+
+    if (isEmpty(team)) {
+      return (
+        <div className="w-40">
+          <span>{t('message.no-data-available')}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-40" data-testid="team-popover-content">
+        {team?.description ? (
+          <RichTextEditorPreviewerNew
+            enableSeeMoreVariant={false}
+            markdown={team.description}
+          />
+        ) : (
+          <span className="text-grey-muted">{t('label.no-description')}</span>
+        )}
+
+        <p className="d-flex flex-wrap m-t-xs">
+          {team?.teamType && (
+            <span
+              className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss m-r-xss"
+              data-testid="team-type">
+              {team.teamType}
+            </span>
+          )}
+          <span
+            className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss"
+            data-testid="team-user-count">
+            {`${team?.userCount ?? 0} ${t('label.user-plural')}`}
+          </span>
+        </p>
+
+        {!isEmpty(team?.parents) && (
+          <div className="m-t-xs" data-testid="team-parents">
+            <p className="d-flex items-center">
+              <IconTeams height={16} width={16} />
+              <span className="m-r-xs m-l-xss align-middle font-medium">
+                {t('label.parent')}
+              </span>
+            </p>
+
+            <p className="d-flex flex-wrap m-t-xss">
+              {team?.parents?.map((parent) => (
+                <Link
+                  className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss m-r-xss"
+                  key={parent.id}
+                  to={getTeamAndUserDetailsPath(parent.name ?? '')}>
+                  {getEntityName(parent)}
+                </Link>
+              ))}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+);
+
+export const TeamPopoverTitle = React.memo(
+  ({
+    teamName,
+    profilePicture,
+  }: {
+    teamName: string;
+    profilePicture: JSX.Element;
+  }) => {
+    const navigate = useNavigate();
+    const { team } = useTeamPopoverData(teamName);
+    const name = team?.name ?? teamName;
+    const displayName = getEntityName(team as unknown as EntityReference);
+
+    return (
+      <Space align="center">
+        {profilePicture}
+        <div className="self-center">
+          <Button
+            className="text-info p-0"
+            type="link"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(getTeamAndUserDetailsPath(name));
+            }}>
+            <span className="font-medium m-r-xs" data-testid="team-name">
+              {displayName || teamName}
+            </span>
+          </Button>
+          {displayName && displayName !== name && (
+            <span className="text-grey-muted">{name}</span>
+          )}
+        </div>
+      </Space>
+    );
+  }
+);
+
 export interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
   displayName?: ReactNode;
@@ -250,10 +416,11 @@ const UserPopOverCard: FC<Props> = ({
   className,
   profileWidth = 24,
 }) => {
+  const isTeam = type === OwnerType.TEAM;
   const profilePicture = (
     <ProfilePicture
       avatarType="outlined"
-      isTeam={type === OwnerType.TEAM}
+      isTeam={isTeam}
       name={userName}
       width={`${profileWidth}`}
     />
@@ -262,14 +429,27 @@ const UserPopOverCard: FC<Props> = ({
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
-      content={<PopoverContent type={type} userName={userName} />}
+      content={
+        isTeam ? (
+          <TeamPopoverContent teamName={userName} />
+        ) : (
+          <PopoverContent type={type} userName={userName} />
+        )
+      }
       overlayClassName="ant-popover-card"
       title={
-        <PopoverTitle
-          profilePicture={profilePicture}
-          type={type}
-          userName={userName}
-        />
+        isTeam ? (
+          <TeamPopoverTitle
+            profilePicture={profilePicture}
+            teamName={userName}
+          />
+        ) : (
+          <PopoverTitle
+            profilePicture={profilePicture}
+            type={type}
+            userName={userName}
+          />
+        )
       }
       trigger="hover">
       {(children as ReactNode) ?? (
