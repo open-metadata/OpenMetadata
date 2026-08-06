@@ -66,6 +66,9 @@ import {
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
+const CodeEditor = withSuspenseFallback(
+  lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
+);
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();
