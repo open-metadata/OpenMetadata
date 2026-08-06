@@ -608,6 +608,27 @@ export const applyTextFormatting = async (
   await page.keyboard.press(SHORTCUTS[format]);
 };
 
+/**
+ * Selects text inside the editor and waits until ProseMirror has actually
+ * ingested the selection.
+ *
+ * `locator.selectText()` assigns only the *DOM* selection. ProseMirror picks
+ * that up asynchronously through its DOM observer, so a formatting shortcut
+ * pressed immediately afterwards is applied against the previous (collapsed)
+ * editor selection: it toggles a stored mark, the range is never wrapped, and
+ * no <em>/<code> node is produced. Selecting via a keyboard shortcut does not
+ * have this problem, which is why the bold steps never flake.
+ *
+ * The bubble menu is rendered from `state.selection.empty`, so its appearance
+ * proves the editor state now holds the range. Requiring it hidden first makes
+ * this an edge trigger rather than a match against a stale selection.
+ */
+export const selectTextInEditor = async (page: Page, text: string) => {
+  await page.waitForSelector('.menu-wrapper', { state: 'hidden' });
+  await page.getByText(text).selectText();
+  await page.waitForSelector('.menu-wrapper', { state: 'visible' });
+};
+
 export const selectAllText = async (page: Page) => {
   await page.keyboard.press(SHORTCUTS.selectAll);
 };

@@ -37,6 +37,7 @@ import {
   selectAll,
   selectAllText,
   selectLastWord,
+  selectTextInEditor,
   toggleTask,
   typeInTableCell,
   undo,
@@ -168,7 +169,7 @@ export const runTextFormattingTest = async (
     await page.keyboard.type('Italic text');
 
     await expect(page.getByText('Italic text')).toBeVisible();
-    await page.getByText('Italic text').selectText();
+    await selectTextInEditor(page, 'Italic text');
     await applyTextFormatting(page, 'italic');
 
     await expect(page.getByText('Italic text')).toBeVisible();
@@ -180,7 +181,7 @@ export const runTextFormattingTest = async (
     await page.keyboard.type('inline code');
 
     await expect(page.getByText('inline code')).toBeVisible();
-    await page.getByText('inline code').selectText();
+    await selectTextInEditor(page, 'inline code');
     await applyTextFormatting(page, 'code');
 
     await expect(page.getByText('inline code')).toBeVisible();
