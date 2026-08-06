@@ -10,6 +10,42 @@ from collections import Counter
 from pathlib import Path
 
 
+# Playwright "setup" projects declared in playwright.config.ts as
+# `dependencies: [...]` values on other projects. Their tests run once per
+# shard-invocation that includes a dependent project (Playwright behaviour —
+# a setup project runs before each dependent), not once per plan. The planner
+# already excludes them from `FULL_PROJECTS`, so they never appear in a
+# shard's `testIds`. But they DO appear in the shard's timing artifact, so
+# the coverage checker used to flag them as "unexpected + duplicate" whenever
+# LPT split two dependent files across shards.
+#
+# Example failure — merge_group run 31083026904:
+#   [data-insight-application] > dataInsightApp.ts > Run Data Insight
+#   application and wait until success
+# ran on chromium-04 AND chromium-17 because two @data-insight spec files
+# landed on separate shards, but appeared in neither plan's `testIds`.
+#
+# Keep this list aligned with playwright.config.ts's setup-project section.
+LIFECYCLE_PROJECTS: frozenset[str] = frozenset({
+    "setup",
+    "entity-data-setup",
+    "entity-data-teardown",
+    "data-insight-application",
+    "search-rbac-setup",
+    "search-rbac-teardown",
+})
+
+
+def is_lifecycle_test(test: dict) -> bool:
+    """A `test` from the timing artifact is a lifecycle test if its Playwright
+    project name matches one of the setup projects declared in the config.
+    Lifecycle tests are expected to run once per shard-invocation, not once
+    per plan, so the coverage checker must exclude them from the plan-vs-exec
+    reconciliation.
+    """
+    return test.get("project") in LIFECYCLE_PROJECTS
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan-glob", required=True)
@@ -68,7 +104,11 @@ def main() -> None:
 
     for filename in timing_files:
         payload = json.loads(Path(filename).read_text(encoding="utf-8"))
-        executed.update(test["id"] for test in payload.get("tests", []))
+        executed.update(
+            test["id"]
+            for test in payload.get("tests", [])
+            if not is_lifecycle_test(test)
+        )
 
     zero_attempt_skipped: dict[str, dict] = {}
     for filename in result_files:

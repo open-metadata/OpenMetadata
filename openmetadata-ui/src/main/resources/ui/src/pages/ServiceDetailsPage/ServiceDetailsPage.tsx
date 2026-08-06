@@ -56,7 +56,6 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
   OPEN_METADATA,
@@ -139,6 +138,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
@@ -162,14 +162,12 @@ import {
   getEditConnectionPath,
   getServiceDetailsPath,
   getServiceVersionPath,
-  getSettingPath,
 } from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
   getServiceDisplayNameQueryFilter,
-  getServiceRouteFromServiceType,
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -556,6 +554,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const fetchCollateAgentsList = useCallback(
     async (_paging?: Omit<Paging, 'total'>) => {
+      // A deleted service has no live automations and the endpoint 404s on it, so asking only
+      // produces an error toast on a page the user opened deliberately.
+      if (deleted) {
+        setCollateAgentsList([]);
+        handleCollateAgentPagingChange({ total: 0 });
+
+        return;
+      }
       try {
         setIsCollateAgentLoading(true);
         // AutoPilot creates at most one automation per template, so the list is
@@ -570,7 +576,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsCollateAgentLoading(false);
       }
     },
-    [decodedServiceFQN, handleCollateAgentPagingChange]
+    [decodedServiceFQN, handleCollateAgentPagingChange, deleted]
   );
 
   const getAllIngestionWorkflows = useCallback(
@@ -1383,10 +1389,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     (isSoftDelete?: boolean) => {
       if (!isSoftDelete) {
         navigate(
-          getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory)
-          )
+          connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
         );
       }
     },

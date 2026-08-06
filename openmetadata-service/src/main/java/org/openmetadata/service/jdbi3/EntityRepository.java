@@ -2370,8 +2370,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Whether a single entity instance should be embedded into the vector/semantic index. Defaults to
    * {@link #isSearchIndexable}; override when an instance may be keyword-searchable but must not be
-   * reachable through the vector path (e.g. {@link ContextMemoryRepository} keeps non-org-wide
-   * memories out because vector chunks carry no visibility fields to filter on).
+   * reachable through the vector path — for instance when its chunk documents cannot carry the
+   * fields its privacy model needs the vector query to filter on.
    */
   public boolean isVectorEmbeddable(EntityInterface entity) {
     return isSearchIndexable(entity);
@@ -6173,6 +6173,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
       certTagsByTarget.put(entity.getFullyQualifiedName(), List.of(tagLabel));
     }
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(certTagsByTarget);
+  }
+
+  /**
+   * Certification is stored as a {@code tag_usage} row but is surfaced as its own entity field, so
+   * every tags read path filters it out. A caller that wipes tags with the prefix-agnostic
+   * {@code deleteTagsByTarget} and re-applies from {@code entity.getTags()} would therefore drop the
+   * certification permanently (issue #30545). Use this instead when replacing an entity's tags
+   * outside the {@code EntityUpdater} path.
+   */
+  protected void deleteTagsPreservingCertification(String entityFQN) {
+    String certClassification = getCertificationClassification();
+    if (certClassification == null) {
+      daoCollection.tagUsageDAO().deleteTagsByTarget(entityFQN);
+    } else {
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTargetExcludingPrefix(
+              TagLabel.TagSource.CLASSIFICATION.ordinal(), certClassification + ".%", entityFQN);
+    }
   }
 
   protected void deleteCertificationTag(String entityFQN) {

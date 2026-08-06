@@ -100,7 +100,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
-  private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
+  public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
