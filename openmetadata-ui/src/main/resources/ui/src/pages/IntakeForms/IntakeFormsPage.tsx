@@ -182,12 +182,15 @@ const IntakeFormsPage = () => {
       initialValue: null,
     });
 
-  const columns = [
-    { id: 'entityType', name: t('label.entity-type') },
-    { id: 'formFields', name: t('label.field-plural') },
-    { id: 'enabled', name: t('label.enabled') },
-    { id: 'actions', name: t('label.action-plural') },
-  ];
+  const columns = useMemo(
+    () => [
+      { id: 'entityType', name: t('label.entity-type') },
+      { id: 'formFields', name: t('label.field-plural') },
+      { id: 'enabled', name: t('label.enabled') },
+      { id: 'actions', name: t('label.action-plural') },
+    ],
+    [t]
+  );
 
   const renderAddButton = () => {
     if (allEntityTypesCovered) {

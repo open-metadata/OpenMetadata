@@ -1420,7 +1420,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     List<TagLabel> mergedTableTags =
         mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
-    daoCollection.tagUsageDAO().deleteTagsByTarget(table.getFullyQualifiedName());
+    deleteTagsPreservingCertification(table.getFullyQualifiedName());
     table.setTags(mergedTableTags);
     applyTags(table);
 
