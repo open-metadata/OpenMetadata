@@ -19,6 +19,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import es.co.elastic.clients.util.NamedValue;
+import jakarta.json.stream.JsonGenerator;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -38,6 +40,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchRequestBuilder
 import org.openmetadata.service.search.elasticsearch.ElasticSearchSourceBuilderFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 
 public class SearchSourceBuilderFactoryTest {
 
@@ -209,6 +212,40 @@ public class SearchSourceBuilderFactoryTest {
       assertEquals(0, tableBuilder.from());
       assertEquals(10, tableBuilder.size());
     }
+  }
+
+  @Test
+  public void testColumnIndexUsesStructuredDataAssetBuilder() {
+    // Regression for the Explore column count-vs-results mismatch: index=tableColumn must go
+    // through the structured data-asset builder (operator AND over fqnParts) so an FQN query
+    // matches the one column precisely. The old permissive OR multi_match had no fqnParts and
+    // matched every column that shared a parent-name token (returned the whole index).
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String osQuery =
+        serializeOpenSearchRequest(
+            osFactory.getSearchSourceBuilderV2("tableColumn", "customer orders", 0, 15));
+    String esQuery =
+        esFactory
+            .getSearchSourceBuilderV2("tableColumn", "customer orders", 0, 15)
+            .query()
+            .toString();
+
+    assertTrue(osQuery.contains("fqnParts"), osQuery);
+    assertTrue(osQuery.contains("\"operator\":\"and\""), osQuery);
+    assertTrue(esQuery.contains("fqnParts"), esQuery);
+    assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
+  }
+
+  private static String serializeOpenSearchRequest(OpenSearchRequestBuilder requestBuilder) {
+    JacksonJsonpMapper mapper = new JacksonJsonpMapper();
+    StringWriter writer = new StringWriter();
+    JsonGenerator generator = mapper.jsonProvider().createGenerator(writer);
+    requestBuilder.build("table_search_index").serialize(generator, mapper);
+    generator.close();
+    return writer.toString();
   }
 
   @Test
