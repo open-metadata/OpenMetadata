@@ -23,7 +23,10 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
+from metadata.profiler.orm.converter.common import CommonMapTypes
+from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
 from metadata.profiler.orm.registry import CustomTypes
 
 
@@ -125,12 +128,21 @@ def test_metadata_column(mock_schema, mock_database):
 
 @patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
 @patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
-def test_money_and_bit_types_are_mapped(mock_schema, mock_database):
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Mssql, "mssql_money_and_bit_table"),
+        (DatabaseServiceType.AzureSQL, "azuresql_money_and_bit_table"),
+    ],
+)
+def test_money_and_bit_types_are_mapped(mock_schema, mock_database, service_type, table_name):
     """MONEY and BIT columns (e.g. from MSSQL) must resolve to a concrete SQLAlchemy
     type instead of falling back to CustomTypes.UNDETERMINED, which skips profiling
     and renders sample data as the literal string "OPENMETADATA_UNDETERMIND[value]".
+
+    Each case needs its own table name: ometa_to_sqa_orm keys the generated declarative
+    class on it, so reusing one collides in the shared registry.
     """
-    table_name = "money_and_bit_table"
     column_definition = [
         ("amount", DataType.MONEY),
         ("flag", DataType.BIT),
@@ -142,7 +154,7 @@ def test_money_and_bit_types_are_mapped(mock_schema, mock_database):
         id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
         name=table_name,
         columns=columns,
-        serviceType=DatabaseServiceType.Mssql,
+        serviceType=service_type,
     )
 
     orm_table = ometa_to_sqa_orm(table, None)
@@ -155,3 +167,26 @@ def test_money_and_bit_types_are_mapped(mock_schema, mock_database):
     assert isinstance(amount_type, sqlalchemy.NUMERIC)
     assert not isinstance(flag_type, undetermined_type)
     assert isinstance(flag_type, sqlalchemy.BOOLEAN)
+
+
+@mark.parametrize("mapper", [MssqlMapTypes, AzureSqlMapTypes])
+def test_money_and_bit_reverse_map(mapper):
+    """The reverse map drives metric_filter's decision on which metrics to run, so
+    MONEY and BIT must be added to the existing entries rather than replacing them.
+    """
+    reverse_map = mapper.map_sqa_to_om_types()
+
+    assert reverse_map[sqlalchemy.NUMERIC] == {DataType.NUMBER, DataType.NUMERIC, DataType.MONEY}
+    assert reverse_map[sqlalchemy.BOOLEAN] == {DataType.BOOLEAN, DataType.BIT}
+
+
+def test_money_and_bit_stay_out_of_the_common_mapper():
+    """These are T-SQL types: mapping them on CommonMapTypes would apply them to every
+    connector, including ones where BIT is a bit-string rather than a boolean.
+    """
+    assert DataType.MONEY not in CommonMapTypes._TYPE_MAP
+    assert DataType.BIT not in CommonMapTypes._TYPE_MAP
+
+    common_reverse_map = CommonMapTypes.map_sqa_to_om_types()
+    assert DataType.MONEY not in common_reverse_map[sqlalchemy.NUMERIC]
+    assert DataType.BIT not in common_reverse_map[sqlalchemy.BOOLEAN]
