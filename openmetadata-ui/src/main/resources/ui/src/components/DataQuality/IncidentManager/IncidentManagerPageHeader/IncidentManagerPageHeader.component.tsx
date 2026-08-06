@@ -17,7 +17,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
@@ -114,6 +113,102 @@ const TestTypeField = ({
   );
 };
 
+type IncidentHeaderData = ReturnType<typeof useTestCaseIncidentHeader>;
+type StatusDetailsProps = Pick<
+  IncidentHeaderData,
+  | 'handleAssigneeUpdate'
+  | 'handleSeverityUpdate'
+  | 'hasEditStatusPermission'
+  | 'isLoading'
+  | 'onIncidentStatusUpdate'
+  | 'taskLinkInfo'
+  | 'testCaseStatusData'
+>;
+
+const StatusDetails = ({
+  handleAssigneeUpdate,
+  handleSeverityUpdate,
+  hasEditStatusPermission,
+  isLoading,
+  onIncidentStatusUpdate,
+  taskLinkInfo,
+  testCaseStatusData,
+}: StatusDetailsProps) => {
+  const { t } = useTranslation();
+
+  if (isLoading) {
+    return <Skeleton height={24} variant="rounded" width={160} />;
+  }
+
+  if (isUndefined(testCaseStatusData)) {
+    return (
+      <>
+        <HeaderDotSeparator />
+        <HeaderField label={t('label.incident-status')}>
+          <HeaderFieldValue>
+            {t('label.no-entity', { entity: t('label.incident') })}
+          </HeaderFieldValue>
+        </HeaderField>
+      </>
+    );
+  }
+
+  const details = testCaseStatusData.testCaseResolutionStatusDetails;
+
+  return (
+    <>
+      {taskLinkInfo && (
+        <>
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.incident')}>
+            <Link
+              className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
+              data-testid="incident-task-link"
+              to={taskLinkInfo.path}>
+              {taskLinkInfo.label}
+              <InternalLinkIcon className="text-grey-muted" width="14px" />
+            </Link>
+          </HeaderField>
+        </>
+      )}
+      <HeaderDotSeparator />
+      <TestCaseIncidentManagerStatus
+        newLook
+        data={testCaseStatusData}
+        hasPermission={hasEditStatusPermission}
+        headerName={t('label.incident-status')}
+        onSubmit={onIncidentStatusUpdate}
+      />
+      <HeaderDotSeparator />
+      <div className="tw:min-w-0" data-testid="assignee">
+        <OwnerLabel
+          className="header-owner-heading"
+          hasPermission={hasEditStatusPermission}
+          isCompactView={false}
+          multiple={{
+            user: false,
+            team: false,
+          }}
+          owners={details?.assignee ? [details.assignee] : []}
+          placeHolder={t('label.assignee')}
+          tooltipText={t('label.edit-entity', {
+            entity: t('label.assignee'),
+          })}
+          onUpdate={handleAssigneeUpdate}
+        />
+      </div>
+      <HeaderDotSeparator />
+      <Severity
+        newLook
+        hasPermission={hasEditStatusPermission}
+        headerName={t('label.severity')}
+        severity={testCaseStatusData.severity}
+        onSubmit={handleSeverityUpdate}
+      />
+    </>
+  );
+};
+
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   fetchTaskCount,
@@ -141,89 +236,6 @@ const IncidentManagerPageHeader = ({
     handleDomainUpdate,
     onIncidentStatusUpdate,
   } = useTestCaseIncidentHeader({ fetchTaskCount, isVersionPage });
-
-  const statusDetails = useMemo(() => {
-    if (isLoading) {
-      return <Skeleton height={24} variant="rounded" width={160} />;
-    }
-
-    if (isUndefined(testCaseStatusData)) {
-      return (
-        <>
-          <HeaderDotSeparator />
-          <HeaderField label={t('label.incident-status')}>
-            <HeaderFieldValue>
-              {t('label.no-entity', { entity: t('label.incident') })}
-            </HeaderFieldValue>
-          </HeaderField>
-        </>
-      );
-    }
-
-    const details = testCaseStatusData?.testCaseResolutionStatusDetails;
-
-    return (
-      <>
-        {taskLinkInfo && (
-          <>
-            <HeaderDotSeparator />
-            <HeaderField label={t('label.incident')}>
-              <Link
-                className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
-                data-testid="incident-task-link"
-                to={taskLinkInfo.path}>
-                {taskLinkInfo.label}
-                <InternalLinkIcon className="text-grey-muted" width="14px" />
-              </Link>
-            </HeaderField>
-          </>
-        )}
-        <HeaderDotSeparator />
-        <TestCaseIncidentManagerStatus
-          newLook
-          data={testCaseStatusData}
-          hasPermission={hasEditStatusPermission}
-          headerName={t('label.incident-status')}
-          onSubmit={onIncidentStatusUpdate}
-        />
-        <HeaderDotSeparator />
-        <div className="tw:min-w-0" data-testid="assignee">
-          <OwnerLabel
-            className="header-owner-heading"
-            hasPermission={hasEditStatusPermission}
-            isCompactView={false}
-            multiple={{
-              user: false,
-              team: false,
-            }}
-            owners={details?.assignee ? [details.assignee] : []}
-            placeHolder={t('label.assignee')}
-            tooltipText={t('label.edit-entity', {
-              entity: t('label.assignee'),
-            })}
-            onUpdate={handleAssigneeUpdate}
-          />
-        </div>
-        <HeaderDotSeparator />
-        <Severity
-          newLook
-          hasPermission={hasEditStatusPermission}
-          headerName={t('label.severity')}
-          severity={testCaseStatusData.severity}
-          onSubmit={handleSeverityUpdate}
-        />
-      </>
-    );
-  }, [
-    handleAssigneeUpdate,
-    handleSeverityUpdate,
-    hasEditStatusPermission,
-    isLoading,
-    onIncidentStatusUpdate,
-    t,
-    taskLinkInfo,
-    testCaseStatusData,
-  ]);
 
   return (
     <>
@@ -256,7 +268,17 @@ const IncidentManagerPageHeader = ({
           owners={testCaseData?.owners ?? ownerRef}
           onUpdate={onOwnerUpdate}
         />
-        {!isVersionPage && statusDetails}
+        {!isVersionPage && (
+          <StatusDetails
+            handleAssigneeUpdate={handleAssigneeUpdate}
+            handleSeverityUpdate={handleSeverityUpdate}
+            hasEditStatusPermission={hasEditStatusPermission}
+            isLoading={isLoading}
+            taskLinkInfo={taskLinkInfo}
+            testCaseStatusData={testCaseStatusData}
+            onIncidentStatusUpdate={onIncidentStatusUpdate}
+          />
+        )}
         {tableFqn && (
           <>
             <HeaderDotSeparator />
