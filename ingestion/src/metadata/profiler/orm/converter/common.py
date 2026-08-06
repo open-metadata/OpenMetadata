@@ -71,8 +71,6 @@ class CommonMapTypes:
         DataType.IPV4: CustomTypes.IP.value,
         DataType.IPV6: CustomTypes.IP.value,
         DataType.DATETIMERANGE: CustomTypes.SQADATETIMERANGE.value,
-        DataType.MONEY: sqlalchemy.NUMERIC,
-        DataType.BIT: sqlalchemy.BOOLEAN,
     }
 
     def map_types(self, col: Column, table_service_type):
@@ -89,7 +87,7 @@ class CommonMapTypes:
     def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
         """returns an ORM type"""
         return {
-            sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC, DataType.MONEY},
+            sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC},
             sqlalchemy.SMALLINT: {
                 DataType.TINYINT,
                 DataType.SMALLINT,
@@ -109,7 +107,7 @@ class CommonMapTypes:
             sqlalchemy.TEXT: {DataType.TEXT, DataType.MEDIUMTEXT},
             sqlalchemy.CHAR: {DataType.CHAR},
             sqlalchemy.VARCHAR: {DataType.VARCHAR},
-            sqlalchemy.BOOLEAN: {DataType.BOOLEAN, DataType.BIT},
+            sqlalchemy.BOOLEAN: {DataType.BOOLEAN},
             sqlalchemy.LargeBinary: {
                 DataType.MEDIUMBLOB,
                 DataType.BINARY,
