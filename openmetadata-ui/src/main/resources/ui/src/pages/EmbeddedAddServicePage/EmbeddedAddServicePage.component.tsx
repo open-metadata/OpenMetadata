@@ -246,7 +246,7 @@ const EmbeddedAddServicePage = () => {
   };
 
   const handleServiceCategoryChange = (category: ServiceCategory) => {
-    setShowErrorMessage({ ...showErrorMessage, serviceType: false });
+    setShowErrorMessage((prev) => ({ ...prev, serviceType: false }));
     setServiceConfig((prev) => ({
       ...prev,
       serviceType: '',

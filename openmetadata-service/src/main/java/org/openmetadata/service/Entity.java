@@ -752,10 +752,9 @@ public final class Entity {
 
   /**
    * Whether an entity instance should be embedded into the vector/semantic index, per its
-   * repository's {@link EntityRepository#isVectorEmbeddable} policy (e.g. {@code
-   * ContextMemoryRepository} keeps non-org-wide memories out because the vector query path carries
-   * no per-document visibility filter). Defaults and null-handling match {@link
-   * #isSearchIndexable}.
+   * repository's {@link EntityRepository#isVectorEmbeddable} policy. An entity type may opt out when
+   * its chunk documents cannot carry the filters its privacy model requires. Defaults and
+   * null-handling match {@link #isSearchIndexable}.
    */
   public static boolean isVectorEmbeddable(EntityInterface entity) {
     return repositoryPolicyAllows(entity, EntityRepository::isVectorEmbeddable);
@@ -811,6 +810,16 @@ public final class Entity {
           CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
     return entityRepository;
+  }
+
+  /**
+   * Entity type names of every service entity, e.g. {@code databaseService}. This is the single
+   * source of truth for "what is a service" — callers that need to iterate all service types must
+   * use it rather than hardcoding a list, which is how entity/utils/servicesCount.json drifted to
+   * covering only 7 of the 13 service types.
+   */
+  public static List<String> getServiceEntityTypes() {
+    return List.copyOf(SERVICE_TYPE_ENTITY_MAP.values());
   }
 
   public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
