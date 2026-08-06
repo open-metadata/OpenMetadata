@@ -200,7 +200,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       // Echo the caller's cursor rather than returning null, which reads as end-of-pagination and
       // dead-ends forward navigation. Mirrors EntityRepository#listBefore.
       String afterCursor =
-          entities.isEmpty() ? before : displayNameCursorValue(entities.get(entities.size() - 1));
+          entities.isEmpty()
+              ? RestUtil.decodeCursor(before)
+              : displayNameCursorValue(entities.get(entities.size() - 1));
       return getResultList(entities, beforeCursor, afterCursor, total);
     }
 
@@ -233,10 +235,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
-  private String forwardBeforeCursor(String after, List<IngestionPipeline> entities) {
+  /**
+   * {@link ResultList} base64-encodes whatever cursor it is handed, so both branches have to yield
+   * the decoded form: {@link #displayNameCursorValue} produces raw JSON, and the echoed cursor
+   * arrived off the wire already encoded.
+   */
+  @VisibleForTesting
+  String forwardBeforeCursor(String after, List<IngestionPipeline> entities) {
     String beforeCursor = null;
     if (!nullOrEmpty(after)) {
-      beforeCursor = entities.isEmpty() ? after : displayNameCursorValue(entities.get(0));
+      beforeCursor =
+          entities.isEmpty()
+              ? RestUtil.decodeCursor(after)
+              : displayNameCursorValue(entities.get(0));
     }
     return beforeCursor;
   }

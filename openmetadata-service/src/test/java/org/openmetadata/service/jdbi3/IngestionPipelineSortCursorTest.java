@@ -13,14 +13,17 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository.DisplayNameCursor;
 import org.openmetadata.service.util.RestUtil;
@@ -57,6 +60,8 @@ class IngestionPipelineSortCursorTest {
     when(repository.displayNameCursorValue(Mockito.any())).thenCallRealMethod();
     when(repository.parseDisplayNameCursor(Mockito.anyString())).thenCallRealMethod();
     when(repository.parseCursorMap(Mockito.nullable(String.class))).thenCallRealMethod();
+    when(repository.forwardBeforeCursor(Mockito.nullable(String.class), Mockito.any()))
+        .thenCallRealMethod();
   }
 
   private IngestionPipeline pipeline(String name, String displayName) {
@@ -173,6 +178,30 @@ class IngestionPipelineSortCursorTest {
 
     assertThrows(
         BadRequestException.class, () -> repository.parseDisplayNameCursor(defaultListingCursor));
+  }
+
+  /**
+   * A page can come back empty when the cursor was valid but every row past it was deleted
+   * meanwhile; the caller's own cursor is echoed so navigation does not dead-end. {@link ResultList}
+   * base64-encodes every cursor it is handed, and the echoed one arrived off the wire already
+   * encoded — returning it as-is hands the client a double-encoded cursor that no later request can
+   * parse.
+   */
+  @Test
+  void test_emptyPage_echoesACursorTheClientCanUseAgain() {
+    String wireCursor = RestUtil.encodeCursor("{\"displayNameSort\":\"Alpha\",\"id\":\"id-1\"}");
+
+    String echoed = repository.forwardBeforeCursor(wireCursor, List.of());
+
+    assertEquals(
+        wireCursor,
+        new ResultList<>(List.of(), echoed, null, 0).getPaging().getBefore(),
+        "echoed cursor must survive ResultList's encoding unchanged");
+  }
+
+  @Test
+  void test_emptyPage_echoesNothingOnAGenuineFirstPage() {
+    assertNull(repository.forwardBeforeCursor(null, List.of()));
   }
 
   @Test
