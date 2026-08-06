@@ -15,12 +15,14 @@ import type { Task } from '../../../../generated/entity/tasks/task';
 import type {
   TestCaseResolutionStatus,
   TestCaseResult,
+  TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
 export interface TestCaseLastRunBannerProps {
   incidentTask: Task | null;
   testCaseResult?: TestCaseResult;
+  testCaseStatus?: TestCaseStatus;
   testCaseStatusData?: TestCaseResolutionStatus;
   taskLinkInfo: TaskLinkInfo | null;
 }

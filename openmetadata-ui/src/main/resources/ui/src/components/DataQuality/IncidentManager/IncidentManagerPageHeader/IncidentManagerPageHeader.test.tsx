@@ -428,6 +428,30 @@ describe('Incident Manager Page Header component', () => {
     }
   );
 
+  it('should use the authoritative test case status when the embedded result is stale', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...mockUseTestCaseStore.testCase,
+      testCaseResult: {
+        result: 'Query execution failed',
+        testCaseStatus: TestCaseStatus.Failed,
+        timestamp: 1_786_001_601_000,
+      },
+      testCaseStatus: TestCaseStatus.Aborted,
+    };
+
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(
+      await screen.findByTestId('test-case-last-run-status')
+    ).toHaveTextContent('label.aborted');
+    expect(screen.getByTestId('test-case-last-run-status')).toHaveClass(
+      'tw:text-warning-primary'
+    );
+    expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).not.toHaveTextContent(
+      'label.failed'
+    );
+  });
+
   it('should not pair a result with an unrelated test parameter', async () => {
     const result = 'Found 5 rows';
 

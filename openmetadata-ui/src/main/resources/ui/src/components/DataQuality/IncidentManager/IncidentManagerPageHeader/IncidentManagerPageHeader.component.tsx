@@ -325,6 +325,7 @@ const IncidentManagerPageHeader = ({
           incidentTask={incidentTask}
           taskLinkInfo={taskLinkInfo}
           testCaseResult={testCaseData?.testCaseResult}
+          testCaseStatus={testCaseData?.testCaseStatus}
           testCaseStatusData={testCaseStatusData}
         />
       )}

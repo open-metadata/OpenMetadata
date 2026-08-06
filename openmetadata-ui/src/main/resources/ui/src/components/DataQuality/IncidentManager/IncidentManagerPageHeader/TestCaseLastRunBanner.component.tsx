@@ -357,16 +357,19 @@ const IncidentDetails = ({
 const TestCaseLastRunBanner = ({
   incidentTask,
   testCaseResult,
+  testCaseStatus: authoritativeTestCaseStatus,
   testCaseStatusData,
   taskLinkInfo,
 }: TestCaseLastRunBannerProps) => {
   const { t } = useTranslation();
+  const testCaseStatus =
+    authoritativeTestCaseStatus ?? testCaseResult?.testCaseStatus;
 
-  if (!testCaseResult?.testCaseStatus) {
+  if (!testCaseResult || !testCaseStatus) {
     return <NoRunBanner />;
   }
 
-  const { result, testCaseStatus, testResultValue, timestamp } = testCaseResult;
+  const { result, testResultValue, timestamp } = testCaseResult;
   const config = STATUS_CONFIG[testCaseStatus];
   const statusLabel = {
     [TestCaseStatus.Aborted]: t('label.aborted'),
