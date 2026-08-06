@@ -12,6 +12,9 @@
 
 import pytest
 
+from metadata.ingestion.source.pipeline.kafkaconnect.models import (
+    KafkaConnectDatasetDetails,
+)
 from metadata.ingestion.source.pipeline.kafkaconnect.sinks.snowflake import (
     java_string_hashcode,
     snowflake_table_name,
@@ -58,3 +61,21 @@ class TestSnowflakeTableName:
     def test_dotted_topic_is_sanitised(self):
         result = snowflake_table_name("prod.orders.v1")
         assert result.startswith("PROD_ORDERS_V1_")
+
+
+class TestDatasetDetailsNewFields:
+    def test_defaults_preserve_existing_behaviour(self):
+        dataset = KafkaConnectDatasetDetails(table="ORDERS")
+        assert dataset.source_topic is None
+        assert dataset.fully_qualified is False
+
+    def test_carries_originating_topic(self):
+        dataset = KafkaConnectDatasetDetails(
+            table="ORDERS",
+            database="EVENT_LANDING",
+            schema="PUBLIC",
+            source_topic="orders_events",
+            fully_qualified=True,
+        )
+        assert dataset.source_topic == "orders_events"
+        assert dataset.fully_qualified is True
