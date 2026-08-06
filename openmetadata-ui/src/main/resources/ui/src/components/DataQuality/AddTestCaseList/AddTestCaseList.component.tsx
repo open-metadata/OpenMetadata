@@ -61,7 +61,10 @@ import { getColumnNameFromEntityLink } from '../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { replacePlus } from '../../../utils/StringUtils';
+import {
+  escapeESReservedCharacters,
+  replacePlus,
+} from '../../../utils/StringUtils';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
@@ -78,7 +81,6 @@ export const AddTestCaseList = ({
   onSubmit,
   cancelText,
   submitText,
-  testCaseFilters,
   columnFilters,
   selectedTest,
   existingTest,
@@ -269,10 +271,11 @@ export const AddTestCaseList = ({
     }) => {
       try {
         setIsLoading(true);
-        const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
-        const q = testCaseFilters
-          ? `${globalSearch} && ${testCaseFilters}`
-          : globalSearch;
+        // `q` must stay free text: /v1/dataQuality/testCases/search/list escapes Lucene syntax in
+        // it (#31077), so scoping filters travel as first-class params via `testCaseParams`.
+        const q = searchText
+          ? `*${escapeESReservedCharacters(searchText)}*`
+          : WILD_CARD_CHAR;
 
         const columnNamesFromKeys =
           filterColumns.length > 0
@@ -334,7 +337,6 @@ export const AddTestCaseList = ({
     },
     [
       items,
-      testCaseFilters,
       selectedTestNames,
       testCaseParams,
       filterStatus,
@@ -583,7 +585,6 @@ export const AddTestCaseList = ({
     filterTestType,
     filterTables,
     filterColumns,
-    testCaseFilters,
     testCaseParams,
   ]);
 

@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.SEARCH_CONVERGENCE_TIMEOUT;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.WILDCARD_WRAPPED_RESERVED_QUERIES;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -28,7 +30,6 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
-import org.openmetadata.it.util.LuceneReservedQueries;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -76,9 +77,6 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite> {
-  // Search converges synchronously post-commit, but a transient ES write failure falls back to the
-  // async retry queue — allow generous headroom so heavy parallel runs don't trip the happy path.
-  private static final Duration SEARCH_CONVERGENCE_TIMEOUT = Duration.ofSeconds(120);
 
   // Disable tests that don't apply to TestSuite
   {
@@ -447,7 +445,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
                     searchTestSuiteNames("*" + reservedDisplayName + "*").contains(reservedSuite),
                     "An escaped reserved-character term must still match, not just avoid a 500"));
 
-    for (String reservedQuery : LuceneReservedQueries.WILDCARD_WRAPPED) {
+    for (String reservedQuery : WILDCARD_WRAPPED_RESERVED_QUERIES) {
       assertDoesNotThrow(
           () -> searchTestSuiteNames(reservedQuery),
           "search/list must not fail for the query " + reservedQuery);

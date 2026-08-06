@@ -12,16 +12,24 @@
  */
 package org.openmetadata.it.util;
 
+import java.time.Duration;
 import java.util.List;
 
-/**
- * Search terms that a user can realistically paste into a search box and that Lucene's query_string
- * parser rejects unless they are escaped. Issue #31077: every one of these returned a 500
- * query_shard_exception from the data quality search endpoints.
- */
-public final class LuceneReservedQueries {
+/** Shared fixtures for the data quality search integration tests. */
+public final class DataQualitySearchFixtures {
 
-  public static final List<String> WILDCARD_WRAPPED =
+  /**
+   * Search converges synchronously post-commit, but a transient write failure falls back to the
+   * async retry queue — allow generous headroom so heavy parallel runs don't trip the happy path.
+   */
+  public static final Duration SEARCH_CONVERGENCE_TIMEOUT = Duration.ofSeconds(120);
+
+  /**
+   * Search terms a user can realistically paste into a search box that Lucene's query_string parser
+   * rejects unless they are escaped. Issue #31077: every one of these returned a 500
+   * query_shard_exception from the data quality search endpoints.
+   */
+  public static final List<String> WILDCARD_WRAPPED_RESERVED_QUERIES =
       List.of(
           "*https://localhost:8585/table/orders*",
           "*orders (v2)*",
@@ -33,5 +41,5 @@ public final class LuceneReservedQueries {
           "*fuzzy~*",
           "*trailing backslash\\*");
 
-  private LuceneReservedQueries() {}
+  private DataQualitySearchFixtures() {}
 }

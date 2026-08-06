@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.SEARCH_CONVERGENCE_TIMEOUT;
+import static org.openmetadata.it.util.DataQualitySearchFixtures.WILDCARD_WRAPPED_RESERVED_QUERIES;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,7 +38,6 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
-import org.openmetadata.it.util.LuceneReservedQueries;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -85,9 +86,6 @@ import org.slf4j.LoggerFactory;
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  // Search converges synchronously post-commit, but a transient ES write failure falls back to the
-  // async retry queue — allow generous headroom so heavy parallel runs don't trip the happy path.
-  private static final Duration SEARCH_CONVERGENCE_TIMEOUT = Duration.ofSeconds(120);
   private static final RetryConfig DEADLOCK_RETRY_CONFIG =
       RetryConfig.custom()
           .maxAttempts(3)
@@ -2442,7 +2440,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     searchTestCaseNames("*" + reservedDisplayName + "*").contains(reservedTestCase),
                     "An escaped reserved-character term must still match, not just avoid a 500"));
 
-    for (String reservedQuery : LuceneReservedQueries.WILDCARD_WRAPPED) {
+    for (String reservedQuery : WILDCARD_WRAPPED_RESERVED_QUERIES) {
       assertDoesNotThrow(
           () -> searchTestCaseNames(reservedQuery),
           "search/list must not fail for the query " + reservedQuery);
@@ -2491,6 +2489,79 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertTrue(
         searchQueryNames(fieldQuery + " AND NOT " + fieldQuery).isEmpty(),
         "AND/NOT must be honoured as Lucene operators, not matched as literal text");
+  }
+
+  /**
+   * The "Add test cases" picker scopes its list to one test suite while the user types free text.
+   * Because {@code q} is escaped as free text on this endpoint, that scoping must travel in a
+   * first-class filter param; expressing it as a Lucene fragment inside {@code q} silently returns
+   * nothing. Asserts both halves of the picker's real request shape.
+   */
+  @Test
+  void test_suiteScopedPickerQueryReturnsTheSuiteTestCases(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String tableTest = ns.prefix("picker_table_test");
+    String columnTest = ns.prefix("picker_column_test");
+
+    TestCase createdTableTest =
+        TestCaseBuilder.create(client)
+            .name(tableTest)
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    TestCaseBuilder.create(client)
+        .name(columnTest)
+        .forColumn(table, "id")
+        .testDefinition("columnValuesToBeNotNull")
+        .create();
+
+    TestCase fetched =
+        client.testCases().getByName(createdTableTest.getFullyQualifiedName(), "testSuite");
+    String suiteFqn = fetched.getTestSuite().getFullyQualifiedName();
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    Awaitility.await("the picker's suite-scoped query lists the suite's test cases")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              List<String> scoped = searchTestCasesForSuite("*", entityLink);
+              assertTrue(
+                  scoped.contains(tableTest), "table-level test must be listed, got: " + scoped);
+              assertTrue(
+                  scoped.contains(columnTest), "column-level test must be listed, got: " + scoped);
+            });
+
+    // Free text still narrows within the suite scope.
+    List<String> narrowed = searchTestCasesForSuite("*" + columnTest + "*", entityLink);
+    assertTrue(narrowed.contains(columnTest), "free text must still match inside the suite scope");
+    assertFalse(narrowed.contains(tableTest), "free text must still exclude non-matching tests");
+
+    // The counterpart of the /v1/search/query pin: on this endpoint `q` is free text, so a Lucene
+    // fragment in it matches literally and finds nothing. This is why the picker must not compose
+    // its suite scope into `q`.
+    assertTrue(
+        searchTestCaseNames("* && testSuite.fullyQualifiedName:\"" + suiteFqn + "\"").isEmpty(),
+        "a Lucene expression in `q` must not silently behave like a filter on this endpoint");
+  }
+
+  private List<String> searchTestCasesForSuite(String query, String entityLink) {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/search/list",
+                null,
+                RequestOptions.builder()
+                    .queryParam("q", query)
+                    .queryParam("entityLink", entityLink)
+                    .queryParam("includeAllTests", "true")
+                    .queryParam("limit", "50")
+                    .build());
+    return namesUnder(JsonUtils.readTree(response).path("data"));
   }
 
   private List<String> searchTestCaseNames(String query) {

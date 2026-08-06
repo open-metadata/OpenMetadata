@@ -53,6 +53,7 @@ import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
@@ -315,6 +316,8 @@ public class TestCaseResultResource
     if (latest.equals("true") && (testSuiteId == null && entityFQN == null)) {
       throw new IllegalArgumentException("latest=true requires testSuiteId");
     }
+    // `q` is documented as a free-text term here, so Lucene syntax in it is user data (#31077).
+    String searchTerm = SearchUtils.escapeQueryStringSyntax(q);
     EntityUtil.Fields fields = repository.getFields(fieldParams);
     SearchListFilter searchListFilter = new SearchListFilter();
     Optional.ofNullable(startTimestamp)
@@ -339,7 +342,7 @@ public class TestCaseResultResource
           fields,
           searchListFilter,
           "testCaseFQN.keyword",
-          q,
+          searchTerm,
           limit,
           offset,
           "timestamp",
@@ -354,7 +357,7 @@ public class TestCaseResultResource
         limit,
         offset,
         new SearchSortFilter("timestamp", "desc", null, null),
-        q,
+        searchTerm,
         queryString,
         authRequests,
         AuthorizationLogic.ANY);
@@ -420,7 +423,13 @@ public class TestCaseResultResource
     List<AuthRequest> authRequests = getAuthRequestsForListOps(testCaseFQN, testSuiteId);
 
     return super.latestInternalFromSearch(
-        securityContext, fields, searchListFilter, q, authRequests, AuthorizationLogic.ANY);
+        securityContext,
+        fields,
+        searchListFilter,
+        // `q` is documented as a free-text term here, so Lucene syntax in it is user data (#31077).
+        SearchUtils.escapeQueryStringSyntax(q),
+        authRequests,
+        AuthorizationLogic.ANY);
   }
 
   @PATCH

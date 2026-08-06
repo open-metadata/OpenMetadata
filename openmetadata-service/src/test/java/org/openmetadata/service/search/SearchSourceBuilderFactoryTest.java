@@ -384,8 +384,9 @@ public class SearchSourceBuilderFactoryTest {
       assertTrue(
           builtQuery.contains(luceneExpression),
           "Lucene syntax must reach the engine verbatim for /v1/search/query: " + builtQuery);
+      // The escape lands before the colon, so this is the needle an escaping builder would emit.
       assertFalse(
-          builtQuery.contains("my_suite\\\\"),
+          builtQuery.contains("keyword\\\\:"),
           "The builder must not escape the query itself: " + builtQuery);
     }
   }

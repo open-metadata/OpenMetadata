@@ -43,6 +43,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
 });
 jest.mock('../../../utils/StringUtils', () => {
   return {
+    ...jest.requireActual('../../../utils/StringUtils'),
     replacePlus: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
@@ -362,38 +363,45 @@ describe('AddTestCaseList', () => {
       });
     });
 
-    it('applies testCaseFilters when provided', async () => {
-      const testCaseFilters = 'testSuiteFullyQualifiedName:sample.test.suite';
+    // Issue #31077: `q` is escaped as free text by the search/list endpoint, so scoping filters
+    // must travel as first-class params. Composing Lucene into `q` silently returned 0 rows.
+    it('keeps q free text and sends scoping filters as params', async () => {
+      const testCaseParams = {
+        entityLink: '<#E::table::sample.test.table>',
+        includeAllTests: true,
+      };
 
       await act(async () => {
-        renderWithRouter({ ...mockProps, testCaseFilters });
+        renderWithRouter({ ...mockProps, testCaseParams });
       });
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: `* && ${testCaseFilters}`,
+          q: '*',
+          entityLink: '<#E::table::sample.test.table>',
+          includeAllTests: true,
           limit: 25,
           offset: 0,
         });
       });
     });
 
-    it('combines search term with testCaseFilters', async () => {
-      const testCaseFilters = 'testSuiteFullyQualifiedName:sample.test.suite';
-
+    it('escapes Lucene reserved characters typed into the search bar', async () => {
       await act(async () => {
-        renderWithRouter({ ...mockProps, testCaseFilters });
+        renderWithRouter(mockProps);
       });
 
       const searchBar = screen.getByTestId('search-bar');
 
       await act(async () => {
-        fireEvent.change(searchBar, { target: { value: 'column_test' } });
+        fireEvent.change(searchBar, {
+          target: { value: 'https://example.com/x' },
+        });
       });
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: `*column_test* && ${testCaseFilters}`,
+          q: String.raw`*https\:\/\/example.com\/x*`,
           limit: 25,
           offset: 0,
         });
