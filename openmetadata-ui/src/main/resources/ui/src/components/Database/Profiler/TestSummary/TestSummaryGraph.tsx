@@ -19,6 +19,7 @@ import {
   ReactElement,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -39,7 +40,7 @@ import {
   YAxis,
 } from 'recharts';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
-import { Coordinate } from 'recharts/types/util/types';
+import { CartesianViewBox, Coordinate } from 'recharts/types/util/types';
 import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import {
   GREEN_3,
@@ -60,6 +61,7 @@ import { updateActiveChartFilter } from '../../../../utils/ChartUtils';
 import {
   formatTestSummaryYAxis,
   getStatusDotColor,
+  getTestSummaryTooltipPosition,
   prepareChartData,
 } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
@@ -78,28 +80,75 @@ import {
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
 interface ActiveTooltip {
+  anchor: Coordinate;
   payload: Record<string, unknown>;
   position: Coordinate;
+  positioned: boolean;
 }
+
+interface TooltipSize {
+  height: number;
+  width: number;
+}
+
+type TooltipBoundary = Required<CartesianViewBox>;
+
+const isTooltipBoundary = (
+  viewBox: CartesianViewBox
+): viewBox is TooltipBoundary =>
+  [viewBox.height, viewBox.width, viewBox.x, viewBox.y].every((value) =>
+    Number.isFinite(value)
+  );
 
 interface TestSummaryTooltipContentProps {
   activeTooltip?: ActiveTooltip;
+  onMeasure: (size: TooltipSize, boundary: TooltipBoundary) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  viewBox?: CartesianViewBox;
 }
 
 const TestSummaryTooltipContent = ({
   activeTooltip,
+  onMeasure,
   onMouseEnter,
   onMouseLeave,
-}: Readonly<TestSummaryTooltipContentProps>) => (
-  <TestSummaryCustomTooltip
-    active={Boolean(activeTooltip)}
-    payload={activeTooltip ? [{ payload: activeTooltip.payload }] : undefined}
-    onMouseEnter={onMouseEnter}
-    onMouseLeave={onMouseLeave}
-  />
-);
+  viewBox,
+}: Readonly<TestSummaryTooltipContentProps>) => {
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (
+      !activeTooltip ||
+      !viewBox ||
+      !isTooltipBoundary(viewBox) ||
+      !contentRef.current
+    ) {
+      return;
+    }
+
+    const { height, width } = contentRef.current.getBoundingClientRect();
+
+    if (height > 0 && width > 0 && viewBox.height > 0 && viewBox.width > 0) {
+      // Resolve collision before paint so the incident link never visibly
+      // moves away from a pointer approaching the tooltip.
+      onMeasure({ height, width }, viewBox);
+    }
+  }, [activeTooltip, onMeasure, viewBox]);
+
+  return (
+    <div ref={contentRef}>
+      <TestSummaryCustomTooltip
+        active={Boolean(activeTooltip)}
+        payload={
+          activeTooltip ? [{ payload: activeTooltip.payload }] : undefined
+        }
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      />
+    </div>
+  );
+};
 
 function TestSummaryGraph({
   testCaseName,
@@ -128,11 +177,41 @@ function TestSummaryGraph({
     (x: number, y: number, payload: Record<string, unknown>) => {
       cancelTooltipClose();
       setActiveTooltip({
+        anchor: { x, y },
         payload,
         position: { x: x + TOOLTIP_GAP, y: y + TOOLTIP_GAP },
+        positioned: false,
       });
     },
     [cancelTooltipClose]
+  );
+
+  const handleTooltipMeasure = useCallback(
+    (tooltipSize: TooltipSize, boundary: TooltipBoundary) => {
+      setActiveTooltip((currentTooltip) => {
+        if (!currentTooltip) {
+          return currentTooltip;
+        }
+
+        const position = getTestSummaryTooltipPosition({
+          anchor: currentTooltip.anchor,
+          boundary,
+          gap: TOOLTIP_GAP,
+          tooltipSize,
+        });
+
+        if (
+          currentTooltip.positioned &&
+          currentTooltip.position.x === position.x &&
+          currentTooltip.position.y === position.y
+        ) {
+          return currentTooltip;
+        }
+
+        return { ...currentTooltip, position, positioned: true };
+      });
+    },
+    []
   );
 
   const handleTooltipClose = useCallback(() => {
@@ -338,6 +417,7 @@ function TestSummaryGraph({
           content={
             <TestSummaryTooltipContent
               activeTooltip={activeTooltip}
+              onMeasure={handleTooltipMeasure}
               onMouseEnter={cancelTooltipClose}
               onMouseLeave={handleTooltipClose}
             />
@@ -351,6 +431,7 @@ function TestSummaryGraph({
           position={activeTooltip?.position}
           wrapperStyle={{
             pointerEvents: 'auto',
+            visibility: activeTooltip?.positioned ? 'visible' : 'hidden',
             // Recharts exposes the active wrapper before measuring its content.
             // Seed its transform so the first frame does not render at the origin.
             transform: activeTooltip

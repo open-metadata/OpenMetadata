@@ -173,3 +173,69 @@ export const formatTestSummaryYAxis = (
   useFreshnessFormat
     ? convertSecondsToHumanReadableFormat(value, 2)
     : axisTickFormatter(value);
+
+interface Dimensions {
+  height: number;
+  width: number;
+}
+
+interface TooltipBoundary extends Dimensions {
+  x: number;
+  y: number;
+}
+
+interface TooltipPositionOptions {
+  anchor: Pick<TooltipBoundary, 'x' | 'y'>;
+  boundary: TooltipBoundary;
+  gap: number;
+  tooltipSize: Dimensions;
+}
+
+const getTooltipAxisPosition = (
+  anchor: number,
+  tooltipDimension: number,
+  boundaryStart: number,
+  boundaryDimension: number,
+  gap: number
+) => {
+  if (tooltipDimension >= boundaryDimension) {
+    return boundaryStart;
+  }
+
+  const positivePosition = anchor + gap;
+  const negativePosition = anchor - tooltipDimension - gap;
+  const boundaryEnd = boundaryStart + boundaryDimension;
+  const preferredPosition =
+    positivePosition + tooltipDimension <= boundaryEnd
+      ? positivePosition
+      : negativePosition;
+
+  return Math.min(
+    Math.max(preferredPosition, boundaryStart),
+    boundaryEnd - tooltipDimension
+  );
+};
+
+// A fixed Recharts position bypasses its collision detection. Resolve each
+// axis independently so the tooltip remains anchored to the triggering dot.
+export const getTestSummaryTooltipPosition = ({
+  anchor,
+  boundary,
+  gap,
+  tooltipSize,
+}: TooltipPositionOptions) => ({
+  x: getTooltipAxisPosition(
+    anchor.x,
+    tooltipSize.width,
+    boundary.x,
+    boundary.width,
+    gap
+  ),
+  y: getTooltipAxisPosition(
+    anchor.y,
+    tooltipSize.height,
+    boundary.y,
+    boundary.height,
+    gap
+  ),
+});

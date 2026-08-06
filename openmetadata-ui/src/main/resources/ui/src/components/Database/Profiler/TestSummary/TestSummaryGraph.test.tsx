@@ -19,6 +19,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { cloneElement } from 'react';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { getTaskById } from '../../../../rest/tasksAPI';
@@ -68,6 +69,11 @@ const ACTIVE_ATTRIBUTE = 'data-active';
 const ACTIVE_VALUE = 'true';
 const INACTIVE_VALUE = 'false';
 const TOOLTIP_CONTENT_TEST_ID = 'test-summary-custom-tooltip';
+const TOOLTIP_X_ATTRIBUTE = 'data-x';
+const TOOLTIP_Y_ATTRIBUTE = 'data-y';
+const POINT_TEST_ID = 'test-summary-point-min';
+const TOOLTIP_TEST_ID = 'recharts-tooltip';
+let mockPointCoordinate = { x: 320, y: 120 };
 
 jest.mock('@tanstack/react-query', () => ({
   useQueries: jest.fn(),
@@ -110,8 +116,8 @@ jest.mock('recharts', () => ({
         data-testid={`line-${dataKey}`}>
         <svg>
           {dot({
-            cx: 320,
-            cy: 120,
+            cx: mockPointCoordinate.x,
+            cy: mockPointCoordinate.y,
             dataKey,
             payload: {
               max: 96612,
@@ -143,9 +149,14 @@ jest.mock('recharts', () => ({
           data-animation-active={String(isAnimationActive)}
           data-testid="recharts-tooltip"
           data-transform={wrapperStyle?.transform}
+          data-visibility={wrapperStyle?.visibility}
           data-x={position?.x ?? 640}
           data-y={position?.y ?? 240}>
-          {active ? content : null}
+          {active
+            ? cloneElement(content, {
+                viewBox: { height: 400, width: 800, x: 0, y: 0 },
+              })
+            : null}
         </div>
       )
     ),
@@ -198,10 +209,26 @@ jest.mock(
 
 describe('TestSummaryGraph', () => {
   beforeEach(() => {
+    mockPointCoordinate = { x: 320, y: 120 };
+    jest.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      bottom: 280,
+      height: 160,
+      left: 0,
+      right: 240,
+      top: 120,
+      width: 240,
+      x: 0,
+      y: 120,
+      toJSON: jest.fn(),
+    });
     mockUseActivityFeedProvider.mockReturnValue({
       entityThread: [],
     });
     mockUseQueries.mockReturnValue([]);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('should display error placeholder when the result data is empty', () => {
@@ -396,7 +423,7 @@ describe('TestSummaryGraph', () => {
     jest.useFakeTimers();
     render(<TestSummaryGraph {...mockProps} />);
 
-    const tooltip = screen.getByTestId('recharts-tooltip');
+    const tooltip = screen.getByTestId(TOOLTIP_TEST_ID);
 
     expect(tooltip).toHaveAttribute(ACTIVE_ATTRIBUTE, INACTIVE_VALUE);
     expect(screen.getByTestId('line-min')).toHaveAttribute(
@@ -404,7 +431,7 @@ describe('TestSummaryGraph', () => {
       INACTIVE_VALUE
     );
 
-    const point = screen.getByTestId('test-summary-point-min');
+    const point = screen.getByTestId(POINT_TEST_ID);
 
     expect(point).toHaveAttribute('r', '4');
     expect(point.parentElement).toHaveAttribute('overflow', 'visible');
@@ -419,8 +446,8 @@ describe('TestSummaryGraph', () => {
       'data-transform',
       'translate(324px, 124px)'
     );
-    expect(tooltip).toHaveAttribute('data-x', '324');
-    expect(tooltip).toHaveAttribute('data-y', '124');
+    expect(tooltip).toHaveAttribute(TOOLTIP_X_ATTRIBUTE, '324');
+    expect(tooltip).toHaveAttribute(TOOLTIP_Y_ATTRIBUTE, '124');
 
     fireEvent.keyDown(point, {
       key: 'Escape',
@@ -452,13 +479,13 @@ describe('TestSummaryGraph', () => {
     jest.useFakeTimers();
     render(<TestSummaryGraph {...mockProps} />);
 
-    const point = screen.getByTestId('test-summary-point-min');
-    const tooltip = screen.getByTestId('recharts-tooltip');
+    const point = screen.getByTestId(POINT_TEST_ID);
+    const tooltip = screen.getByTestId(TOOLTIP_TEST_ID);
 
     fireEvent.mouseEnter(point);
 
-    expect(tooltip).toHaveAttribute('data-x', '324');
-    expect(tooltip).toHaveAttribute('data-y', '124');
+    expect(tooltip).toHaveAttribute(TOOLTIP_X_ATTRIBUTE, '324');
+    expect(tooltip).toHaveAttribute(TOOLTIP_Y_ATTRIBUTE, '124');
 
     fireEvent.mouseLeave(point);
     act(() => {
@@ -476,5 +503,23 @@ describe('TestSummaryGraph', () => {
     expect(tooltip).toHaveAttribute(ACTIVE_ATTRIBUTE, ACTIVE_VALUE);
 
     jest.useRealTimers();
+  });
+
+  it('should flip the fixed tooltip position when the chart edges would overflow', () => {
+    mockPointCoordinate = { x: 760, y: 360 };
+    render(<TestSummaryGraph {...mockProps} />);
+
+    const point = screen.getByTestId(POINT_TEST_ID);
+    const tooltip = screen.getByTestId(TOOLTIP_TEST_ID);
+
+    fireEvent.mouseEnter(point);
+
+    expect(tooltip).toHaveAttribute(
+      'data-transform',
+      'translate(516px, 196px)'
+    );
+    expect(tooltip).toHaveAttribute(TOOLTIP_X_ATTRIBUTE, '516');
+    expect(tooltip).toHaveAttribute(TOOLTIP_Y_ATTRIBUTE, '196');
+    expect(tooltip).toHaveAttribute('data-visibility', 'visible');
   });
 });

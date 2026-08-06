@@ -16,6 +16,7 @@ import { TestCaseStatus } from '../../generated/tests/testCase';
 import {
   formatTestSummaryYAxis,
   getStatusDotColor,
+  getTestSummaryTooltipPosition,
   prepareChartData,
   PrepareChartDataType,
 } from './TestSummaryGraphUtils';
@@ -495,5 +496,65 @@ describe('formatTestSummaryYAxis', () => {
   it('should use axis tick format when useFreshnessFormat is false', () => {
     expect(formatTestSummaryYAxis(1000, false)).toBe('1k');
     expect(formatTestSummaryYAxis(1_000_000, false)).toBe('1M');
+  });
+});
+
+describe('getTestSummaryTooltipPosition', () => {
+  const boundary = { height: 300, width: 800, x: 80, y: 16 };
+  const tooltipSize = { height: 160, width: 240 };
+
+  it('should keep the preferred bottom-right placement when it fits', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 200, y: 80 },
+        boundary,
+        gap: 4,
+        tooltipSize,
+      })
+    ).toEqual({ x: 204, y: 84 });
+  });
+
+  it('should flip above when the tooltip would overflow the bottom', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 200, y: 280 },
+        boundary,
+        gap: 4,
+        tooltipSize,
+      })
+    ).toEqual({ x: 204, y: 116 });
+  });
+
+  it('should flip left when the tooltip would overflow the right edge', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 850, y: 80 },
+        boundary,
+        gap: 4,
+        tooltipSize,
+      })
+    ).toEqual({ x: 606, y: 84 });
+  });
+
+  it('should flip both axes at the bottom-right corner', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 850, y: 280 },
+        boundary,
+        gap: 4,
+        tooltipSize,
+      })
+    ).toEqual({ x: 606, y: 116 });
+  });
+
+  it('should clamp oversized tooltips to the boundary origin', () => {
+    expect(
+      getTestSummaryTooltipPosition({
+        anchor: { x: 400, y: 150 },
+        boundary,
+        gap: 4,
+        tooltipSize: { height: 400, width: 900 },
+      })
+    ).toEqual({ x: 80, y: 16 });
   });
 });
