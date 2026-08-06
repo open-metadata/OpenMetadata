@@ -20,63 +20,61 @@ import {
   waitForAccessTokenExpiry,
   withShortOidcTokenValidity,
 } from '../../utils/sessionRenewal';
-import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
-import { buildOktaConfidentialConfigPayload } from '../../utils/sso-providers/okta';
+import { keycloakOidcConfidentialProviderHelper } from '../../utils/sso-providers/keycloak-oidc';
 import {
   swapSecurityConfig,
 } from '../../utils/ssoAuth';
 import { loginViaSso } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
 
-// The confidential counterpart to OktaSessionRenewalPublic.spec.ts, and the
-// shape most self-hosted Okta deployments actually run.
+// Confidential-client OIDC renewal against the local Keycloak fixture.
 //
-// clientType: 'confidential' makes AuthProvider mount GenericAuthenticator
-// rather than OktaAuthenticator, so renewal stops going to the Okta tenant and
-// becomes GET /api/v1/auth/refresh against OpenMetadata, backed by the
-// server-side OM_SESSION. That makes this suite a near-copy of
-// SSORenewal.spec.ts, with oidcConfiguration.tokenValidity standing in for
-// samlConfiguration.security.tokenValidity as the TTL knob.
+// This is the only confidential coverage that runs anywhere in CI. The Java ITs
+// have confidential backends but nothing sets jpw.auth, and the mock-oidc
+// Playwright suite is referenced by no workflow — so AuthenticationCodeFlowHandler
+// (handleLogin, handleCallback, handleRefresh) is otherwise exercised only by
+// mocked unit tests. Simply reaching the first assertion here walks the whole
+// server-side code flow: authorize, callback, code exchange, session, refresh.
 //
-// Tagged @okta, deliberately not @tokenRenewal. It does shorten a TTL, but
-// tokenValidity governs OpenMetadata's own JWT rather than anything the Okta
-// tenant issues, so the reason @tokenRenewal is excluded from the okta leg does
-// not apply — and carrying that tag would leave this spec running nowhere.
-const OKTA_CONFIDENTIAL_TAGS = ['@sso', '@Platform', '@okta'];
+// Keycloak rather than Okta because the fixture is the tenant: the client secret
+// is a committed throwaway and the realm is ours, so no external app registration
+// has to be provisioned before this can run. clientType: 'confidential' is what
+// makes AuthProvider mount GenericAuthenticator, moving renewal onto
+// GET /api/v1/auth/refresh — the same transport SSORenewal.spec.ts asserts for
+// SAML, but reached through a completely different handler.
+//
+// Tagged @tokenRenewal, which is accurate — it shortens
+// oidcConfiguration.tokenValidity — and lands it on exactly the leg that can run
+// it: the okta leg excludes that tag (no confidential app there) and the
+// -crosssite leg excludes it too, leaving keycloak-azure-saml.
+const CONFIDENTIAL_RENEWAL_TAGS = ['@sso', '@Platform', '@tokenRenewal'];
 
-const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
 const password = process.env[SSO_ENV.PASSWORD] ?? '';
-const confidentialClientId =
-  process.env[SSO_ENV.OKTA_CONFIDENTIAL_CLIENT_ID] ?? '';
-const clientSecret = process.env[SSO_ENV.OKTA_CLIENT_SECRET] ?? '';
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Okta Confidential Session Renewal', {
-  tag: OKTA_CONFIDENTIAL_TAGS,
+test.describe('Confidential OIDC Session Renewal', {
+  tag: CONFIDENTIAL_RENEWAL_TAGS,
 }, () => {
   test.slow();
   // eslint-disable-next-line playwright/no-skipped-test
   test.skip(
-    !username || !password || !confidentialClientId || !clientSecret,
-    `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD} plus ${SSO_ENV.OKTA_CONFIDENTIAL_CLIENT_ID}/${SSO_ENV.OKTA_CLIENT_SECRET} for a confidential Okta app registration`
+    !username || !password,
+    `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
   );
 
-  let helper: ProviderHelper;
+  const helper = keycloakOidcConfidentialProviderHelper;
   let restoreSecurity: (() => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
 
   test.beforeAll(
-    'Swap server to confidential Okta with a short JWT TTL and sign in',
+    'Swap server to confidential OIDC with a short JWT TTL and sign in',
     async ({ browser }) => {
-      helper = getProviderHelper(providerType);
       restoreSecurity = await swapSecurityConfig(
         browser,
-        withShortOidcTokenValidity(
-          buildOktaConfidentialConfigPayload(confidentialClientId, clientSecret)
-        )
+        withShortOidcTokenValidity(await helper.buildConfigPayload())
       );
 
       userContext = await browser.newContext();

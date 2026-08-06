@@ -240,10 +240,10 @@ export default defineConfig({
       name: 'sso-auth',
       testMatch: [
         '**/OktaSelfSignupClaims.spec.ts',
-        '**/OktaSessionRenewalConfidential.spec.ts',
         '**/OktaSessionRenewalPublic.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/SSORenewal.spec.ts',
+        '**/SSORenewalConfidential.spec.ts',
       ],
       use: { ...devices['Desktop Chrome'] },
       fullyParallel: false,
