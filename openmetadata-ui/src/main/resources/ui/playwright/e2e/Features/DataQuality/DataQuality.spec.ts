@@ -740,6 +740,100 @@ test.describe(
       });
     });
 
+    test('shows exactly one banner for the latest test case run', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const lastRunTable = new TableClass();
+
+      try {
+        await lastRunTable.create(apiContext);
+        const testCase = await lastRunTable.createTestCase(apiContext, {
+          name: `last_run_banner_${uuid()}`,
+          testDefinition: 'tableRowCountToBeBetween',
+          parameterValues: [
+            { name: 'minValue', value: 1 },
+            { name: 'maxValue', value: 100 },
+          ],
+        });
+        const testCaseFqn = testCase['fullyQualifiedName'];
+        const testCaseDetailsPath = `/test-case/${encodeURIComponent(
+          testCaseFqn
+        )}/test-case-results`;
+        const banner = page.getByTestId('test-case-last-run-banner');
+        const waitForTestCaseDetails = () =>
+          page.waitForResponse(
+            (response) =>
+              response
+                .url()
+                .includes('/api/v1/dataQuality/testCases/name/') &&
+              response.status() === 200
+          );
+
+        await test.step('Show the no-run state before the first result', async () => {
+          const testCaseDetailsResponse = waitForTestCaseDetails();
+          await page.goto(testCaseDetailsPath);
+          await testCaseDetailsResponse;
+
+          await expect(banner).toHaveCount(1);
+          await expect(banner).toContainText('Last Run Not run yet');
+          await expect(banner).toContainText(
+            'This test has not run yet. Add it to a pipeline to start collecting results.'
+          );
+          await expect(banner).toContainText('Next · Not scheduled');
+        });
+
+        const runResults = [
+          {
+            result: 'Latest banner failed result',
+            testCaseStatus: 'Failed',
+            timestamp: getCurrentMillis(),
+          },
+          {
+            result: 'Latest banner success result',
+            testCaseStatus: 'Success',
+            timestamp: getCurrentMillis() + 1_000,
+          },
+        ];
+
+        for (const [index, runResult] of runResults.entries()) {
+          await test.step(`Replace the banner with ${runResult.testCaseStatus}`, async () => {
+            const resultResponse = await apiContext.post(
+              `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
+                testCaseFqn
+              )}`,
+              { data: runResult }
+            );
+
+            expect(resultResponse.ok()).toBeTruthy();
+
+            const testCaseDetailsResponse = waitForTestCaseDetails();
+            await page.reload();
+            await testCaseDetailsResponse;
+
+            await expect(banner).toHaveCount(1);
+            await expect(banner).toContainText(
+              `Last Run ${runResult.testCaseStatus}`
+            );
+            await expect(banner).toContainText(runResult.result);
+
+            if (index === 0) {
+              await expect(banner).not.toContainText('Not run yet');
+            } else {
+              await expect(banner).not.toContainText(
+                runResults[index - 1].result
+              );
+            }
+          });
+        }
+      } finally {
+        await lastRunTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
     test('TestCase filters', async ({ page }) => {
       test.setTimeout(360000);
 

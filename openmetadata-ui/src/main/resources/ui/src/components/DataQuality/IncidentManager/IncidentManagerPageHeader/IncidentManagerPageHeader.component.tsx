@@ -33,6 +33,7 @@ import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import './incident-manager.less';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
+import TestCaseLastRunBanner from './TestCaseLastRunBanner.component';
 import { useTestCaseIncidentHeader } from './useTestCaseIncidentHeader';
 
 const HeaderField = ({
@@ -187,91 +188,99 @@ const IncidentManagerPageHeader = ({
   );
 
   return (
-    <div className="incident-manager-header w-full">
-      <DomainLabel
-        headerLayout
-        showDashPlaceholder
-        domains={testCaseData?.domains}
-        entityFqn={testCaseData?.fullyQualifiedName ?? ''}
-        entityId={testCaseData?.id ?? ''}
-        entityType={EntityType.TEST_CASE}
-        hasPermission={hasEditDomainPermission}
-        multiple={false}
-        textClassName="render-domain-lebel-style"
-        onUpdate={handleDomainUpdate}
-      />
-      <HeaderDotSeparator />
-      <OwnerLabel
-        showDashPlaceholder
-        avatarSize={24}
-        className="header-owner-heading"
-        hasPermission={hasEditOwnerPermission}
-        isCompactView={false}
-        maxVisibleOwners={3}
-        multiple={{
-          user: canAddMultipleUserOwners,
-          team: canAddMultipleTeamOwner,
-        }}
-        ownerDisplayName={ownerDisplayName}
-        owners={testCaseData?.owners ?? ownerRef}
-        onUpdate={onOwnerUpdate}
-      />
-      {!isVersionPage && statusDetails}
-      {tableFqn && (
-        <>
-          <HeaderDotSeparator />
-          <HeaderField label={t('label.table')}>
-            <Link
-              className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
-              data-testid="table-name"
-              to={getEntityDetailsPath(
-                EntityType.TABLE,
-                tableFqn,
-                EntityTabs.PROFILER,
-                ProfilerTabPath.DATA_QUALITY
-              )}>
-              {getNameFromFQN(tableFqn)}
-              <InternalLinkIcon className="text-grey-muted" width="14px" />
-            </Link>
-          </HeaderField>
-        </>
+    <>
+      <div className="incident-manager-header w-full">
+        <DomainLabel
+          headerLayout
+          showDashPlaceholder
+          domains={testCaseData?.domains}
+          entityFqn={testCaseData?.fullyQualifiedName ?? ''}
+          entityId={testCaseData?.id ?? ''}
+          entityType={EntityType.TEST_CASE}
+          hasPermission={hasEditDomainPermission}
+          multiple={false}
+          textClassName="render-domain-lebel-style"
+          onUpdate={handleDomainUpdate}
+        />
+        <HeaderDotSeparator />
+        <OwnerLabel
+          showDashPlaceholder
+          avatarSize={24}
+          className="header-owner-heading"
+          hasPermission={hasEditOwnerPermission}
+          isCompactView={false}
+          maxVisibleOwners={3}
+          multiple={{
+            user: canAddMultipleUserOwners,
+            team: canAddMultipleTeamOwner,
+          }}
+          ownerDisplayName={ownerDisplayName}
+          owners={testCaseData?.owners ?? ownerRef}
+          onUpdate={onOwnerUpdate}
+        />
+        {!isVersionPage && statusDetails}
+        {tableFqn && (
+          <>
+            <HeaderDotSeparator />
+            <HeaderField label={t('label.table')}>
+              <Link
+                className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
+                data-testid="table-name"
+                to={getEntityDetailsPath(
+                  EntityType.TABLE,
+                  tableFqn,
+                  EntityTabs.PROFILER,
+                  ProfilerTabPath.DATA_QUALITY
+                )}>
+                {getNameFromFQN(tableFqn)}
+                <InternalLinkIcon className="text-grey-muted" width="14px" />
+              </Link>
+            </HeaderField>
+          </>
+        )}
+        {dimensionKey && (
+          <>
+            <HeaderDotSeparator />
+            <HeaderField label={t('label.dimension')}>
+              <HeaderFieldValue dataTestId="dimension-key">
+                {dimensionKey}
+              </HeaderFieldValue>
+            </HeaderField>
+          </>
+        )}
+        {columnName && (
+          <>
+            <HeaderDotSeparator />
+            <HeaderField label={t('label.column')}>
+              <HeaderFieldValue dataTestId="test-column-name">
+                {columnName}
+              </HeaderFieldValue>
+            </HeaderField>
+          </>
+        )}
+        <HeaderDotSeparator />
+        <HeaderField label={t('label.test-type')}>
+          <Tooltip
+            isDisabled={!testDefinitionName}
+            placement="bottom"
+            title={testTypeTooltip}>
+            <TooltipTrigger className="tw:w-fit tw:max-w-full">
+              <span
+                className="tw:block tw:max-w-[176px] tw:truncate tw:text-sm tw:font-medium tw:text-primary"
+                data-testid="test-definition-name">
+                {testDefinitionName}
+              </span>
+            </TooltipTrigger>
+          </Tooltip>
+        </HeaderField>
+      </div>
+      {!isVersionPage && !dimensionKey && (
+        <TestCaseLastRunBanner
+          taskLinkInfo={taskLinkInfo}
+          testCaseResult={testCaseData?.testCaseResult}
+        />
       )}
-      {dimensionKey && (
-        <>
-          <HeaderDotSeparator />
-          <HeaderField label={t('label.dimension')}>
-            <HeaderFieldValue dataTestId="dimension-key">
-              {dimensionKey}
-            </HeaderFieldValue>
-          </HeaderField>
-        </>
-      )}
-      {columnName && (
-        <>
-          <HeaderDotSeparator />
-          <HeaderField label={t('label.column')}>
-            <HeaderFieldValue dataTestId="test-column-name">
-              {columnName}
-            </HeaderFieldValue>
-          </HeaderField>
-        </>
-      )}
-      <HeaderDotSeparator />
-      <HeaderField label={t('label.test-type')}>
-        <Tooltip
-          isDisabled={!testDefinitionName}
-          placement="bottom"
-          title={testTypeTooltip}>
-          <TooltipTrigger className="tw:w-fit tw:max-w-full">
-            <span
-              className="tw:block tw:max-w-[176px] tw:truncate tw:text-sm tw:font-medium tw:text-primary"
-              data-testid="test-definition-name">
-              {testDefinitionName}
-            </span>
-          </TooltipTrigger>
-        </Tooltip>
-      </HeaderField>
-    </div>
+    </>
   );
 };
 

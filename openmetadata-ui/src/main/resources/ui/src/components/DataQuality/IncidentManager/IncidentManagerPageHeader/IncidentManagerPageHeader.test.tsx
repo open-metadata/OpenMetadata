@@ -14,6 +14,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React, { act } from 'react';
 import * as reactRouterDom from 'react-router-dom';
+import {
+  type TestCase,
+  type TestCaseResult,
+  TestCaseStatus,
+} from '../../../../generated/tests/testCase';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   MOCK_TASK_DATA,
@@ -168,8 +173,8 @@ jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
   ));
 });
 
-const mockUseTestCaseStore = {
-  testCase: { ...MOCK_TEST_CASE_DATA, incidentId: '123' },
+const mockUseTestCaseStore: { testCase: TestCase } = {
+  testCase: { ...MOCK_TEST_CASE_DATA, incidentId: '123' } as TestCase,
 };
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
@@ -199,6 +204,13 @@ jest.mock('../../../../hooks/useEntityRules', () => ({
 }));
 
 describe('Incident Manager Page Header component', () => {
+  beforeEach(() => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      incidentId: '123',
+    } as TestCase;
+  });
+
   it('getIncidentTaskByStateId should be call on mount', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
@@ -326,5 +338,70 @@ describe('Incident Manager Page Header component', () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
     expect(getIncidentTaskByStateId).toHaveBeenCalledWith('123');
+  });
+
+  it.each<[TestCaseStatus, string]>([
+    [TestCaseStatus.Failed, 'Query execution failed'],
+    [TestCaseStatus.Aborted, 'Connection timed out'],
+    [TestCaseStatus.Success, 'All rows passed'],
+  ])(
+    'should show the latest %s run status and result',
+    async (testCaseStatus, result) => {
+      const testCaseResult: TestCaseResult = {
+        testCaseStatus,
+        result,
+        timestamp: 1_786_001_601_000,
+      };
+      mockUseTestCaseStore.testCase = {
+        ...mockUseTestCaseStore.testCase,
+        testCaseResult,
+      };
+
+      render(<IncidentManagerPageHeader {...mockProps} />);
+
+      expect(await screen.findByText(result)).toBeInTheDocument();
+      expect(screen.getAllByTestId('test-case-last-run-banner')).toHaveLength(
+        1
+      );
+      expect(screen.getByTestId('test-case-last-run-banner')).toHaveTextContent(
+        `label.last-run label.${testCaseStatus.toLowerCase()}`
+      );
+    }
+  );
+
+  it('should explain when the latest run is queued without a result', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...mockUseTestCaseStore.testCase,
+      testCaseResult: {
+        testCaseStatus: TestCaseStatus.Queued,
+        timestamp: 1_786_001_601_000,
+      },
+    };
+
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(
+      await screen.findByText('message.test-case-run-queued')
+    ).toBeInTheDocument();
+    expect(screen.getAllByTestId('test-case-last-run-banner')).toHaveLength(1);
+    expect(screen.getByTestId('test-case-last-run-banner')).toHaveTextContent(
+      'label.last-run label.queued'
+    );
+  });
+
+  it('should show one not-run-yet banner when no latest result exists', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...mockUseTestCaseStore.testCase,
+      testCaseResult: undefined,
+    };
+
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    const banner = await screen.findByTestId('test-case-last-run-banner');
+
+    expect(screen.getAllByTestId('test-case-last-run-banner')).toHaveLength(1);
+    expect(banner).toHaveTextContent('label.last-run label.not-run-yet');
+    expect(banner).toHaveTextContent('message.test-case-not-run-yet');
+    expect(banner).toHaveTextContent('label.next · label.not-scheduled');
   });
 });
