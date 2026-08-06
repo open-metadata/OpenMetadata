@@ -514,8 +514,8 @@ export const CoverImageUploadField = ({
         <div
           aria-invalid={isInvalid || undefined}
           className={cx(
-            'tw:group tw:relative tw:w-full tw:overflow-hidden tw:rounded-lg tw:ring-1 tw:ring-secondary',
-            isInvalid && 'tw:ring-2 tw:ring-error',
+            'tw:group tw:relative tw:w-full tw:overflow-hidden tw:rounded-lg tw:outline-1 tw:outline-secondary',
+            isInvalid && 'tw:outline-2 tw:outline-error',
             previewClassName
           )}
           data-testid="cover-image-upload-preview-container"

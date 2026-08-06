@@ -26,6 +26,11 @@ export const getLogsFromResponse = (
   res: IngestionPipelineLogByIdInterface,
   pipelineType: string
 ) => {
+  // A by-fqn fetch returns the logs under a generic `logs` key (no pipeline type to select a
+  // *_task field); prefer it, falling back to the type-specific field for by-id responses.
+  if (res.logs) {
+    return res.logs;
+  }
   switch (pipelineType) {
     case PipelineType.Metadata:
       return res.ingestion_task || '';

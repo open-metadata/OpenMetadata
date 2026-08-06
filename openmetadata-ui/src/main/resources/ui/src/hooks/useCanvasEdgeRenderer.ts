@@ -27,7 +27,11 @@ import {
   isEdgeInViewport,
   setupCanvas,
 } from '../utils/CanvasUtils';
-import { computeEdgeStyle, LineageEdgeColors } from '../utils/EdgeStyleUtils';
+import {
+  computeEdgeStyle,
+  computeEdgeVisualState,
+  LineageEdgeColors,
+} from '../utils/EdgeStyleUtils';
 import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
 import { useLineageStore } from './useLineageStore';
@@ -254,16 +258,17 @@ export function useCanvasEdgeRenderer({
 
     const visibleEdges = edges.filter(
       (edge) =>
-        isEdgeTraced(edge, tracedColumns) ||
-        isEdgeInViewport(
-          edge,
-          getNode(edge.source),
-          getNode(edge.target),
-          viewport,
-          containerWidth,
-          containerHeight,
-          columnsInCurrentPages
-        )
+        computeEdgeVisualState(edge, tracedNodes, tracedColumns) !== 'hidden' &&
+        (isEdgeTraced(edge, tracedColumns) ||
+          isEdgeInViewport(
+            edge,
+            getNode(edge.source),
+            getNode(edge.target),
+            viewport,
+            containerWidth,
+            containerHeight,
+            columnsInCurrentPages
+          ))
     );
 
     visibleEdgesRef.current = visibleEdges;

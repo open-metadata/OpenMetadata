@@ -191,12 +191,17 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
     and are caught by the TCP preflight in CheckAccess via NETWORK_ERRORS; a wrong
     *account* is not - Snowflake's wildcard DNS resolves any
     ``<account>.snowflakecomputing.com`` and accepts TCP on 443, so it is only
-    rejected at the HTTP login layer (errno 290404), handled here."""
+    rejected at the HTTP login layer, handled here."""
     return ErrorPack(
-        when(_sf_errno(290404)).diagnose(
-            "Snowflake account not found",
-            fix="Check the account identifier - the login endpoint returned 404. Use the account "
-            "from your Snowflake URL (e.g. <org>-<account> or <locator>.<region>.<cloud>).",
+        # Any login-endpoint 403 yields this message (snowflake _auth.py), so it
+        # means "rejected at login" - proxy, IP allowlist, network policy too, per
+        # the fix. Keyed on the message: this path's errno is an accidental 540001.
+        when(Matchers.contains("verify the account name is correct")).diagnose(
+            "Snowflake rejected the login endpoint request",
+            fix="Snowflake answered 403 before authenticating. Most often the account identifier is "
+            "wrong - use the one from your Snowflake URL (e.g. <org>-<account> or "
+            "<locator>.<region>.<cloud>). If it is correct, check whether a network policy, IP "
+            "allowlist, or proxy is blocking this host.",
         ),
         when(Matchers.contains("multi-factor authentication")).diagnose(
             "Multi-factor authentication required",

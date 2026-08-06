@@ -700,6 +700,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                 workflowName, node.getNodeDisplayName(), configuredTransitions, outgoingEdges);
             continue;
           }
+          validateApprovalConditions(workflowName, node.getNodeDisplayName(), outgoingEdges);
+          continue;
         }
 
         // Check if we have both TRUE and FALSE conditions
@@ -727,6 +729,36 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       }
     }
   }
+
+  private void validateApprovalConditions(
+      String workflowName, String nodeDisplayName, List<EdgeDefinition> outgoingEdges) {
+    boolean hasApprove = false;
+    boolean hasReject = false;
+    for (EdgeDefinition edge : outgoingEdges) {
+      String condition = edge.getCondition();
+      if (condition != null) {
+        String trimmed = condition.trim();
+        if (APPROVE_CONDITIONS.contains(trimmed)) {
+          hasApprove = true;
+        } else if (REJECT_CONDITIONS.contains(trimmed)) {
+          hasReject = true;
+        }
+      }
+    }
+
+    if (!hasApprove || !hasReject) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' must have both approve and reject outgoing sequence flows. "
+                  + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
+              workflowName, nodeDisplayName));
+    }
+  }
+
+  private static final Set<String> APPROVE_CONDITIONS =
+      Set.of(Workflow.APPROVE_CONDITION, Workflow.LEGACY_APPROVE_CONDITION);
+  private static final Set<String> REJECT_CONDITIONS =
+      Set.of(Workflow.REJECT_CONDITION, Workflow.LEGACY_REJECT_CONDITION);
 
   /**
    * Checks if a node is a conditional task that requires TRUE/FALSE outputs.

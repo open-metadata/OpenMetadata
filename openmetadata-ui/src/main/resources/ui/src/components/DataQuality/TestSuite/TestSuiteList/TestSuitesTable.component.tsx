@@ -14,6 +14,7 @@ import {
   Box,
   EmptyPlaceholder,
   EmptyPlaceholderAction,
+  Skeleton,
   Table,
 } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
@@ -199,7 +200,25 @@ export const TestSuitesTable = ({
         </Table.Header>
         <Table.Body
           items={isLoading ? [] : data}
-          renderEmptyState={() => (isLoading ? <></> : noDataPlaceholder)}>
+          renderEmptyState={() =>
+            isLoading ? (
+              // Keep the table footprint stable while a page or cached query
+              // changes, rather than flashing the true empty-state message.
+              <Box className="tw:p-4">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton
+                    className="tw:mb-2"
+                    data-testid="test-suite-loading-row"
+                    height={40}
+                    key={index}
+                    width="100%"
+                  />
+                ))}
+              </Box>
+            ) : (
+              noDataPlaceholder
+            )
+          }>
           {(record) => renderRow(record)}
         </Table.Body>
       </Table>

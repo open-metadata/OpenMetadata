@@ -496,7 +496,7 @@ export const getEntityChildDetails = (
           permissions={{} as OperationPermission}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
-          <RelatedMetrics isInSummaryPanel />
+          <RelatedMetrics />
         </GenericProvider>
       );
 

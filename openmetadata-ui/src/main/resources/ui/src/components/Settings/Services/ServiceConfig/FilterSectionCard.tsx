@@ -366,7 +366,7 @@ export function FilterSectionCard({
             {hasSystemExcludes && (
               <BooleanFieldTemplate
                 {...({
-                  formData: !hasSystemExcludesEnabled,
+                  formData: hasSystemExcludesEnabled,
                   idSchema: {
                     $id: `${section.fieldName}-exclude-system-filters`,
                   },

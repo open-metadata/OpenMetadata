@@ -23,6 +23,9 @@ export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
 ];
 
 export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';
-export const COLLATE_DOCUMENTATION_APP_NAME = 'CollateAIApplication';
-export const COLLATE_DATA_QUALITY_APP_NAME = 'CollateAIQualityAgentApplication';
-export const COLLATE_AUTO_TIER_APP_NAME = 'CollateAITierAgentApplication';
+// AutoPilot's Collate agents run as AI Automations instantiated per service,
+// named `{serviceName}_{template}`. These template suffixes identify each agent
+// and key the widget's ordering, labels and icons.
+export const DOCUMENTATION_AUTOMATION_TEMPLATE = 'DescriptionAutomation';
+export const DATA_QUALITY_AUTOMATION_TEMPLATE = 'DataQualityAutomation';
+export const TIER_AUTOMATION_TEMPLATE = 'TierAutomation';

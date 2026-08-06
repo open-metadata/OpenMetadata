@@ -117,12 +117,6 @@ ATHENA_ERRORS = ErrorPack(
         "s3StagingDir, and if the bucket requires encryption, use a workgroup that sets "
         "server-side encryption on query results.",
     ),
-    # By message, not by type: pyathena renders EndpointConnectionError into the
-    # SQLAlchemy error it raises, so the original type does not survive the chain.
-    when(Matchers.contains("could not connect to the endpoint")).diagnose(
-        "Cannot reach the AWS Athena endpoint",
-        fix="Check that awsRegion is correct and that the Athena endpoint is reachable from where ingestion runs.",
-    ),
 ).including(AWS_ERRORS)
 
 

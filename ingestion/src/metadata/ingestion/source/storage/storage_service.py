@@ -55,6 +55,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
+    close_on_failure,
     create_connection,
     get_connection,
     run_test_connection,
@@ -184,11 +185,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
         # Try to get the global manifest
         self.global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()  # noqa: UP045
@@ -660,8 +658,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         Called by the source after ``expand_entries`` so both literal
         and expanded entries are filtered uniformly.
         """
-        from metadata.utils.filters import filter_by_container  # noqa: PLC0415
-        from metadata.utils.storage_utils import is_excluded_artifact  # noqa: PLC0415
+        from metadata.utils.filters import filter_by_container
+        from metadata.utils.storage_utils import is_excluded_artifact
 
         pattern = getattr(self.source_config, "containerFilterPattern", None)
         filtered: List[MetadataEntry] = []  # noqa: UP006

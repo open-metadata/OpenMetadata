@@ -547,6 +547,18 @@ test.describe.serial('Team persona setting flow', () => {
       const personaResponse2 = await personasLoadResponse2;
       expect(personaResponse2.status()).toBe(200);
 
+      // Typing filters via the server-side search endpoint, not client-side.
+      const personaSearchResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/personas/search') &&
+          response.request().method() === 'GET'
+      );
+      await adminPage
+        .locator('[data-testid="default-persona-select-list"] input')
+        .fill(teamPersona2.responseData.displayName);
+      const searchResponse = await personaSearchResponse;
+      expect(searchResponse.status()).toBe(200);
+
       // Click the new persona (teamPersona2)
       const userPersonaOption = adminPage.locator(
         `.ant-select-dropdown:visible [title="${teamPersona2.responseData.displayName}"]`
@@ -601,7 +613,7 @@ test.describe.serial('Team persona setting flow', () => {
       expect(teamPatchRevertResponseData.status()).toBe(200);
     });
 
-    await test.step('Admin can verify the team persona is applied to the team user', async () => {
+    await test.step('Team persona is not auto-applied as the user default persona', async () => {
       // Navigate to the Users tab in the Team page
       await adminPage.getByTestId('users').click();
 
@@ -615,22 +627,16 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.getByTestId(teamUser.responseData.name).click();
       await userProfileResponse;
 
-      // Verify the user inherited the team's default persona
+      // The inherited team persona must NOT be shown as the user's default persona
       await adminPage.getByTestId('persona-details-card').waitFor();
-      const defaultPersonaChip = adminPage
-        .locator(
-          '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
-        )
-        .first();
-
-      await expect(defaultPersonaChip).toContainText(
-        teamPersona.responseData.displayName
+      await expect(adminPage.getByTestId('default-persona-chip')).toContainText(
+        'No default persona'
       );
 
-      // Verify the inherited icon is displayed
+      // The misleading inherited icon must not be rendered on the default persona
       await expect(
         adminPage.locator('[data-testid="default-persona-chip"] .inherit-icon')
-      ).toBeVisible();
+      ).toHaveCount(0);
     });
   });
 

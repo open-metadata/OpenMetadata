@@ -45,7 +45,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.drive.drive_service import DriveServiceSource
 from metadata.ingestion.source.drive.sftp.models import SftpDirectoryInfo, SftpFileInfo
 from metadata.utils import fqn
@@ -96,11 +99,8 @@ class SftpSource(DriveServiceSource):
         self._root_files_processed: bool = False
         self._root_directory_prefixes: List[str] = []  # noqa: UP006
 
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @classmethod
     def create(
@@ -654,9 +654,6 @@ class SftpSource(DriveServiceSource):
             self._files_by_parent_cache.clear()
             self._directory_fqn_cache.clear()
             self._root_files_processed = False
-
-            if self.client:
-                self.client.close()
 
             if self._connection is not None:
                 self._connection.close()

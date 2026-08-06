@@ -275,12 +275,13 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     continue
                 yield stored_procedure
             except Exception as exc:
-                logger.error()
+                stack_trace = traceback.format_exc()
+                logger.debug(stack_trace)
                 self.status.failed(
                     error=StackTraceError(
-                        name=row._asdict().get("name", "UNKNOWN"),
+                        name=row._asdict().get("procedure_name", "UNKNOWN"),
                         error=f"Error parsing Stored Procedure payload: {exc}",
-                        stackTrace=traceback.format_exc(),
+                        stackTrace=stack_trace,
                     )
                 )
 

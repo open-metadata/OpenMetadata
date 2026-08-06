@@ -124,7 +124,9 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
             if sftp_client is None:
                 raise SourceConnectionException("Failed to open an SFTP channel over the transport")  # noqa: TRY301
 
-            return SftpClient(sftp=sftp_client, transport=transport)
+            client = SftpClient(sftp=sftp_client, transport=transport)
+            self._on_close(client.close)
+            return client  # noqa: TRY300
 
         except Exception as exc:
             if transport:

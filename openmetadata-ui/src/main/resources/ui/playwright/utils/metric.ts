@@ -145,11 +145,7 @@ export const updateRelatedMetric = async (
     (response) => response.request().method() === 'PATCH'
   );
   if (type === 'add') {
-    await page
-      .getByTestId('add-related-metrics-container')
-      .locator('span')
-      .first()
-      .click();
+    await page.getByTestId('add-related-metrics-container').first().click();
   } else {
     await page.getByTestId('edit-related-metrics').click();
   }

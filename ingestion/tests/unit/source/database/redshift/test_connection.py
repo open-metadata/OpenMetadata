@@ -39,6 +39,7 @@ from metadata.ingestion.source.database.redshift.connection import (
     REDSHIFT_ERRORS,
     RedshiftChecks,
     RedshiftConnection,
+    _pgcode,
     _summarize_databases,
 )
 from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
@@ -112,8 +113,12 @@ def test_auth_failure_message_is_classified():
     assert REDSHIFT_ERRORS.classify(error).title == "Authentication failed"
 
 
-def test_auth_failure_sqlstate_is_classified():
-    error = _SqlAlchemyError(_Psycopg2Error("authorization not valid", pgcode="28000"))
+def test_a_connect_phase_auth_failure_carries_no_sqlstate_to_match_on():
+    """Pins why there is no 28000/28P01 rule: a connect-phase failure has no
+    PGresult, so .pgcode is None (verified on PostgreSQL 15) and only the message
+    rule can fire. The old test fabricated pgcode="28000" here."""
+    error = _SqlAlchemyError(_Psycopg2Error(_AUTH_FAILED_MSG))
+    assert _pgcode(error) is None
     assert REDSHIFT_ERRORS.classify(error).title == "Authentication failed"
 
 

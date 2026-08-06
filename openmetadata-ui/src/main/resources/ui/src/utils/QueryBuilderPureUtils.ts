@@ -777,6 +777,10 @@ export const getEntityTypeAggregationFilter = (
   qFilter: QueryFilterInterface,
   entityType: string | string[]
 ): QueryFilterInterface => {
+  if (entityType === EntityType.ALL) {
+    return qFilter;
+  }
+
   if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
     const firstMustBlock = (
       qFilter.query?.bool?.must as QueryFieldInterface[]

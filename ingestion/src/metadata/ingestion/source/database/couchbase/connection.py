@@ -36,9 +36,9 @@ from metadata.utils.constants import THREE_MIN
 class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
     def _get_client(self) -> Any:
         # pylint: disable=import-outside-toplevel
-        from couchbase.auth import PasswordAuthenticator  # noqa: PLC0415
-        from couchbase.cluster import Cluster  # noqa: PLC0415
-        from couchbase.options import ClusterOptions  # noqa: PLC0415
+        from couchbase.auth import PasswordAuthenticator
+        from couchbase.cluster import Cluster
+        from couchbase.options import ClusterOptions
 
         connection = self.service_connection
         auth = PasswordAuthenticator(connection.username, connection.password.get_secret_value())
@@ -58,7 +58,7 @@ class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
         of a metadata workflow or during an Automation Workflow
         """
         # pylint: disable=import-outside-toplevel
-        from couchbase.cluster import Cluster  # noqa: PLC0415
+        from couchbase.cluster import Cluster
 
         client = self.client
 

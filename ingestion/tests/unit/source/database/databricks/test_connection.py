@@ -25,8 +25,10 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
     DatabricksConnection as DatabricksConnectionConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.databricks.connection import (
     DATABRICKS_ERRORS,
+    UNRESOLVED_TARGET_TOKEN,
     DatabricksChecks,
     DatabricksConnection,
 )
@@ -97,9 +99,12 @@ def test_expired_token_message_is_classified():
     assert DATABRICKS_ERRORS.classify(error).title == "Access token expired"
 
 
-def test_forbidden_message_is_classified():
-    error = _SqlAlchemyError(Exception("HTTP Response code: 403, Forbidden"))
-    assert DATABRICKS_ERRORS.classify(error).title == "Access denied"
+def test_a_not_found_object_is_not_misread_as_access_denied():
+    """Regression: a `contains("forbidden")` rule used to sit ahead of every
+    not-found rule, so any object whose name contained "forbidden" was diagnosed as
+    "Access denied". The rule is gone; this keeps it gone."""
+    error = _SqlAlchemyError(Exception("[TABLE_OR_VIEW_NOT_FOUND] The table `forbidden_items` does not exist"))
+    assert DATABRICKS_ERRORS.classify(error).title == "Table or view not found"
 
 
 def test_malformed_http_path_is_classified():
@@ -336,7 +341,11 @@ def test_schema_scoped_get_schemas_skips_use_catalog_when_catalog_unresolved():
     engine.connect.assert_not_called()
 
 
-def test_get_tables_returns_empty_when_catalog_unresolved():
+@pytest.mark.parametrize("listing", ["get_tables", "get_views"])
+def test_listing_raises_when_the_catalog_never_resolved(listing):
+    """GetTables/GetViews are mandatory steps. Returning [] here would be
+    indistinguishable from "the schema is empty", so the step would pass having
+    resolved nothing and proved nothing - it must fail instead."""
     from metadata.ingestion.source.database.databricks.connection import (
         DatabricksEngineWrapper,
     )
@@ -345,5 +354,26 @@ def test_get_tables_returns_empty_when_catalog_unresolved():
     wrapper = DatabricksEngineWrapper(Borrowed.of(engine))
     wrapper.first_catalog = None
     wrapper.first_schema = "my_schema"
-    assert wrapper.get_tables() == []
+
+    with pytest.raises(SourceConnectionException) as failure:
+        getattr(wrapper, listing)()
+
+    assert UNRESOLVED_TARGET_TOKEN in str(failure.value)
+    assert DATABRICKS_ERRORS.classify(failure.value).title == "Could not resolve a catalog and schema to probe"
     engine.connect.assert_not_called()
+
+
+@pytest.mark.parametrize("listing", ["get_tables", "get_views"])
+def test_listing_raises_when_the_schema_never_resolved(listing):
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksEngineWrapper,
+    )
+
+    engine = MagicMock()
+    wrapper = DatabricksEngineWrapper(Borrowed.of(engine))
+    wrapper.first_catalog = "my_catalog"
+    wrapper.schemas = []  # get_schemas() ran and found nothing usable
+    wrapper.first_schema = None
+
+    with pytest.raises(SourceConnectionException):
+        getattr(wrapper, listing)()

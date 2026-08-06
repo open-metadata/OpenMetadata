@@ -313,11 +313,16 @@ const AutocompleteTrigger = ({
       {...otherProps}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
-          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
+          // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
+          // so rings thin/vanish in Safari when zoomed out). `outline-hidden` is gone — the
+          // outline IS the border and focus indicator, as in input.tsx.
+          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
-          isInvalid && 'tw:ring-error_subtle',
-          isFocusWithin && 'tw:ring-2 tw:ring-brand',
-          isFocusWithin && isInvalid && 'tw:ring-2 tw:ring-error',
+          isInvalid && 'tw:outline-error_subtle',
+          isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
+          isFocusWithin &&
+            isInvalid &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-error',
           sizes[size].root
         )
       }

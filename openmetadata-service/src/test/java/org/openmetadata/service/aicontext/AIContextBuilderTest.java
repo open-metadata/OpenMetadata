@@ -24,16 +24,19 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.AIContext;
+import org.openmetadata.schema.type.CardinalityDistribution;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
@@ -45,6 +48,7 @@ import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
@@ -53,6 +57,7 @@ import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 
 /**
  * Unit tests for the pure structural transforms of {@link AIContextBuilder}. These verify that the
@@ -240,6 +245,16 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void toFieldContexts_carriesRawDataTypeEnumAlongsideDisplayType() {
+    List<FieldContext> fields = AIContextBuilder.toFieldContexts(sampleTable().getColumns());
+    // customer_id has a display type ("bigint") that wins for dataType; the raw enum name must
+    // still be available for programmatic type branching.
+    assertEquals("bigint", fields.get(1).getDataType());
+    assertEquals("BIGINT", fields.get(1).getDataTypeEnum());
+    assertEquals("BIGINT", fields.get(0).getDataTypeEnum());
+  }
+
+  @Test
   void edgeContexts_capturesColumnMappingsAndFunctions() {
     UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     UUID targetId = UUID.fromString("22222222-2222-2222-2222-222222222222");
@@ -399,6 +414,109 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void unescapeRichText_decodesHtmlEntitiesFromBlockEditorContent() {
+    assertEquals(
+        "```\ncode\n```",
+        AIContextBuilder.unescapeRichText("&#96;&#96;&#96;\ncode\n&#96;&#96;&#96;"),
+        "backtick entities must decode to a real markdown code fence");
+    assertEquals(
+        "aum >= 250k for the bank's clients",
+        AIContextBuilder.unescapeRichText("aum &gt;&#61; 250k for the bank&#39;s clients"),
+        "operator and apostrophe entities must decode");
+  }
+
+  @Test
+  void unescapeRichText_leavesPlainTextNullAndBareAmpersandUntouched() {
+    assertEquals("R&D spend", AIContextBuilder.unescapeRichText("R&D spend"));
+    assertEquals("", AIContextBuilder.unescapeRichText(""));
+    assertNull(AIContextBuilder.unescapeRichText(null));
+  }
+
+  @Test
+  void metricContent_unescapesDescriptionAndPreservesExpressionCode() {
+    Metric metric =
+        new Metric()
+            .withName("HighValue")
+            .withDescription("Flag when deposits &gt;&#61; 50k for the bank&#39;s book.")
+            .withMetricExpression(new MetricExpression().withCode("SUM(deposit) >= 50000"));
+    String content = AIContextBuilder.metricContent(metric);
+    assertTrue(
+        content.contains("deposits >= 50k for the bank's book."),
+        "metric description entities must be unescaped");
+    assertTrue(content.contains("SUM(deposit) >= 50000"), "expression code must pass through raw");
+  }
+
+  @Test
+  void toFieldContexts_unescapesColumnDescriptionEntities() {
+    Column column =
+        new Column()
+            .withName("value_segment")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDescription(
+                "private_banking when aum &gt;&#61; 250k, else the bank&#39;s default");
+    FieldContext field = AIContextBuilder.toFieldContexts(List.of(column)).getFirst();
+    assertEquals(
+        "private_banking when aum >= 250k, else the bank's default", field.getDescription());
+  }
+
+  @Test
+  void toDataModelContext_prefersCompiledSqlAndMapsMeta() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withPath("models/marts/core/dim_customers.sql")
+            .withDbtSourceProject("banking_redshift")
+            .withSql("SELECT * FROM staging.customers")
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    TableDataModel context = AIContextBuilder.toDataModelContext(dataModel);
+    assertEquals("DBT", context.getModelType());
+    assertEquals("models/marts/core/dim_customers.sql", context.getPath());
+    assertEquals("banking_redshift", context.getSourceProject());
+    assertEquals("SELECT * FROM staging.customers", context.getSql(), "compiled SQL must win");
+  }
+
+  @Test
+  void toDataModelContext_fallsBackToRawSqlWhenCompiledAbsent() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    assertEquals(
+        "SELECT * FROM {{ ref('customers') }}",
+        AIContextBuilder.toDataModelContext(dataModel).getSql());
+  }
+
+  @Test
+  void toDataModelContext_nullWhenAbsentOrEmpty() {
+    assertNull(AIContextBuilder.toDataModelContext(null));
+    assertNull(AIContextBuilder.toDataModelContext(new DataModel()), "empty model must be dropped");
+  }
+
+  @Test
+  void toDataModelContext_boundsOversizedSql() {
+    DataModel dataModel =
+        new DataModel().withModelType(DataModel.ModelType.DDL).withSql("SELECT 1 ".repeat(2000));
+    String sql = AIContextBuilder.toDataModelContext(dataModel).getSql();
+    assertTrue(
+        sql.length() <= AIContextBuilder.MAX_DATA_MODEL_SQL_CHARS + 20,
+        "model SQL must be bounded");
+    assertTrue(sql.endsWith("(truncated)"), "bounded SQL must be marked truncated");
+  }
+
+  @Test
+  void buildTableContext_includesDataModelWhenPresent() {
+    Table table =
+        new Table()
+            .withName("orders")
+            .withColumns(List.of())
+            .withDataModel(
+                new DataModel().withModelType(DataModel.ModelType.DBT).withSql("SELECT 1"));
+    TableDataModel dataModel = AIContextBuilder.buildTableContext(table).getDataModel();
+    assertEquals("DBT", dataModel.getModelType());
+    assertEquals("SELECT 1", dataModel.getSql());
+  }
+
+  @Test
   void applySearchFields_materializesStructuralContextAndFkTargets() {
     Map<String, Object> doc = new HashMap<>();
     AIContextBuilder.applySearchFields(doc, sampleTable());
@@ -443,6 +561,59 @@ class AIContextBuilderTest {
     assertEquals("status", observability.getColumnProfiles().get(0).getName());
     assertEquals(0.1, observability.getColumnProfiles().get(0).getNullProportion());
     assertEquals("Z", observability.getColumnProfiles().get(0).getMax());
+  }
+
+  @Test
+  void populateProfile_carriesSampleMetadataAndDetailedColumnStats() {
+    CardinalityDistribution distribution =
+        new CardinalityDistribution()
+            .withCategories(List.of("active", "Others"))
+            .withCounts(List.of(80, 20))
+            .withPercentages(List.of(80.0, 20.0));
+    Table profiled =
+        new Table()
+            .withProfile(
+                new TableProfile()
+                    .withRowCount(1000.0)
+                    .withTimestamp(123L)
+                    .withProfileSample(50.0)
+                    .withProfileSampleType(TableProfile.ProfileSampleType.PERCENTAGE))
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("status")
+                        .withProfile(
+                            new ColumnProfile()
+                                .withUniqueProportion(0.97)
+                                .withMean(12.5)
+                                .withMedian(11.0)
+                                .withCardinalityDistribution(distribution))));
+    Observability observability = new Observability();
+    AIContextBuilder.populateProfile(observability, profiled);
+    assertEquals(50.0, observability.getProfileSample());
+    assertEquals("PERCENTAGE", observability.getProfileSampleType());
+    ColumnProfileSummary summary = observability.getColumnProfiles().get(0);
+    assertEquals(0.97, summary.getUniqueProportion());
+    assertEquals(12.5, summary.getMean());
+    assertEquals(11.0, summary.getMedian());
+    assertEquals(distribution, summary.getCardinalityDistribution());
+  }
+
+  @Test
+  void serviceRef_andServiceType_resolveFromTable() {
+    EntityReference service =
+        new EntityReference()
+            .withId(UUID.fromString("33333333-3333-3333-3333-333333333333"))
+            .withName("snowflake_prod")
+            .withType("databaseService");
+    Table table =
+        sampleTable()
+            .withService(service)
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
+    assertEquals(service, AIContextBuilder.serviceRef(table));
+    assertEquals("Snowflake", AIContextBuilder.serviceType(table));
+    assertNull(AIContextBuilder.serviceRef(new Metric()), "non-table assets carry no service ref");
+    assertNull(AIContextBuilder.serviceType(new Metric()));
   }
 
   @Test

@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -31,10 +33,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
@@ -175,21 +180,16 @@ public class SearchIndexRetryWorker implements Managed {
     try {
       EntityReference root = resolveEntityReference(record);
       if (root != null) {
-        reindexEntityCascade(root);
-        collectionDAO
-            .searchIndexRetryQueueDAO()
-            .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-        Metrics.counter("search.retry.processed", "result", "success").increment();
+        EntityInterface rootEntity = reindexEntityCascade(root);
+        propagateAfterRetry(rootEntity, record.getFailureReason());
+        completeClaim(record);
         return;
       }
 
       String entityId = normalize(record.getEntityId());
       if (!entityId.isEmpty()) {
-        removeStaleEntityById(entityId);
-        collectionDAO
-            .searchIndexRetryQueueDAO()
-            .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-        Metrics.counter("search.retry.processed", "result", "success").increment();
+        removeStaleEntityById(entityId, record.getEntityType());
+        completeClaim(record);
         return;
       }
 
@@ -206,7 +206,9 @@ public class SearchIndexRetryWorker implements Managed {
     String reason = SearchIndexRetryQueue.failureReason("retryFailed", e);
     if (isRetryable(e)) {
       String nextStatus = retryableNextStatus(record.getRetryCount());
-      recordRetryFailure(record, reason, nextStatus);
+      if (!recordRetryFailure(record, reason, nextStatus)) {
+        return;
+      }
       if (STATUS_FAILED.equals(nextStatus)) {
         Metrics.counter("search.retry.processed", "result", "exhausted").increment();
         LOG.warn(
@@ -225,7 +227,9 @@ public class SearchIndexRetryWorker implements Managed {
             e.getMessage());
       }
     } else {
-      recordRetryFailure(record, reason, STATUS_FAILED);
+      if (!recordRetryFailure(record, reason, STATUS_FAILED)) {
+        return;
+      }
       Metrics.counter("search.retry.processed", "result", "non_retryable").increment();
       LOG.warn(
           "Non-retryable error for entityId={} entityFqn={}, marking as FAILED: {}",
@@ -235,11 +239,45 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
-  private void recordRetryFailure(SearchIndexRetryRecord record, String reason, String status) {
-    collectionDAO
-        .searchIndexRetryQueueDAO()
-        .updateFailureAndRetryCount(record.getEntityId(), record.getEntityFqn(), reason, status);
+  boolean recordRetryFailure(SearchIndexRetryRecord record, String reason, String status) {
+    String retainedReason =
+        SearchIndexRetryQueue.preservePropagationContext(record.getFailureReason(), reason);
+    int updated =
+        collectionDAO
+            .searchIndexRetryQueueDAO()
+            .updateFailureAndRetryCount(
+                record.getEntityId(),
+                record.getEntityFqn(),
+                retainedReason,
+                status,
+                record.getClaimToken());
+    if (updated == 0) {
+      recordSuperseded(record);
+      return false;
+    }
     Metrics.counter("search.retry.processed", "result", "failure").increment();
+    return true;
+  }
+
+  boolean completeClaim(SearchIndexRetryRecord record) {
+    int deleted =
+        collectionDAO
+            .searchIndexRetryQueueDAO()
+            .deleteClaimed(record.getEntityId(), record.getEntityFqn(), record.getClaimToken());
+    if (deleted == 0) {
+      recordSuperseded(record);
+      return false;
+    }
+    Metrics.counter("search.retry.processed", "result", "success").increment();
+    return true;
+  }
+
+  private void recordSuperseded(SearchIndexRetryRecord record) {
+    Metrics.counter("search.retry.processed", "result", "superseded").increment();
+    LOG.debug(
+        "Search retry claim was superseded for entityId={} entityFqn={}",
+        record.getEntityId(),
+        record.getEntityFqn());
   }
 
   // ---------------------------------------------------------------------------
@@ -377,12 +415,14 @@ public class SearchIndexRetryWorker implements Managed {
   // Reindexing
   // ---------------------------------------------------------------------------
 
-  private void reindexEntityCascade(EntityReference root) throws Exception {
+  EntityInterface reindexEntityCascade(EntityReference root) throws Exception {
     ArrayDeque<EntityReference> queue = new ArrayDeque<>();
     Set<String> visited = new HashSet<>();
     List<EntityInterface> entitiesToIndex = new ArrayList<>();
+    Map<UUID, Long> relationshipRevisions = new HashMap<>();
     queue.add(root);
     int processed = 0;
+    EntityInterface rootEntity = null;
 
     while (!queue.isEmpty() && processed < MAX_CASCADE_REINDEX) {
       EntityReference current = queue.poll();
@@ -399,24 +439,35 @@ public class SearchIndexRetryWorker implements Managed {
         continue;
       }
 
-      EntityInterface entity;
+      StableEntitySnapshot snapshot;
       try {
-        String fields = String.join(",", ReindexingUtil.getSearchIndexFields(current.getType()));
-        entity = Entity.getEntity(current, fields, Include.ALL);
-      } catch (Exception ex) {
+        snapshot = loadStableEntitySnapshot(current);
+      } catch (EntityNotFoundException ex) {
+        removeStaleEntityById(current.getId().toString(), current.getType());
         continue;
+      } catch (Exception ex) {
+        throw ex;
       }
 
+      EntityInterface entity = snapshot.entity();
       if (entity == null) {
-        continue;
+        throw new IllegalStateException(
+            "Loaded an empty entity while processing search retry for " + current.getId());
+      }
+      if (root.getId().equals(current.getId()) && root.getType().equals(current.getType())) {
+        rootEntity = entity;
       }
 
       entitiesToIndex.add(entity);
+      if (snapshot.relationshipRevision() != null) {
+        relationshipRevisions.put(entity.getId(), snapshot.relationshipRevision());
+      }
       processed++;
 
       if (entitiesToIndex.size() >= CASCADE_BATCH_SIZE) {
-        upsertEntitiesInBulk(entitiesToIndex);
+        upsertEntitiesInBulk(entitiesToIndex, relationshipRevisions);
         entitiesToIndex.clear();
+        relationshipRevisions.clear();
       }
 
       addChildrenByRelation(
@@ -443,12 +494,60 @@ public class SearchIndexRetryWorker implements Managed {
     }
 
     if (!entitiesToIndex.isEmpty()) {
-      upsertEntitiesInBulk(entitiesToIndex);
+      upsertEntitiesInBulk(entitiesToIndex, relationshipRevisions);
+    }
+    return rootEntity;
+  }
+
+  void propagateAfterRetry(EntityInterface rootEntity, String failureReason) throws IOException {
+    ChangeDescription propagationChangeDescription =
+        SearchIndexRetryQueue.getPropagationContext(failureReason);
+    if (rootEntity != null && propagationChangeDescription != null) {
+      searchRepository.propagateEntityAfterRetry(rootEntity, propagationChangeDescription);
     }
   }
 
-  private void upsertEntitiesInBulk(List<EntityInterface> entitiesToIndex) throws Exception {
-    if (entitiesToIndex.size() == 1) {
+  private StableEntitySnapshot loadStableEntitySnapshot(EntityReference reference) {
+    String fields = String.join(",", ReindexingUtil.getSearchIndexFields(reference.getType()));
+    if (!isRelationshipRevisionEntityType(reference.getType())) {
+      return new StableEntitySnapshot(Entity.getEntity(reference, fields, Include.ALL), null);
+    }
+
+    for (int attempt = 0; attempt < 3; attempt++) {
+      long revisionBefore = getRelationshipRevision(reference);
+      var cachedReadBundle = CacheBundle.getCachedReadBundle();
+      if (cachedReadBundle != null) {
+        cachedReadBundle.invalidate(reference.getType(), reference.getId());
+      }
+      EntityInterface entity = Entity.getEntity(reference, fields, Include.ALL);
+      if (entity instanceof TestSuite testSuite && !Boolean.FALSE.equals(testSuite.getBasic())) {
+        return new StableEntitySnapshot(entity, null);
+      }
+      long revisionAfter = getRelationshipRevision(reference);
+      if (revisionBefore == revisionAfter) {
+        return new StableEntitySnapshot(entity, revisionAfter);
+      }
+    }
+    throw new IllegalStateException(
+        "Relationships kept changing while preparing search retry for " + reference.getId());
+  }
+
+  private boolean isRelationshipRevisionEntityType(String entityType) {
+    return Entity.TEST_CASE.equals(entityType) || Entity.TEST_SUITE.equals(entityType);
+  }
+
+  private long getRelationshipRevision(EntityReference reference) {
+    Map<UUID, Long> revisions =
+        Entity.TEST_CASE.equals(reference.getType())
+            ? TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(reference.getId()))
+            : TestSuiteRepository.getTestsRelationshipRevisions(List.of(reference.getId()));
+    return revisions.getOrDefault(reference.getId(), 0L);
+  }
+
+  private void upsertEntitiesInBulk(
+      List<EntityInterface> entitiesToIndex, Map<UUID, Long> relationshipRevisions)
+      throws Exception {
+    if (entitiesToIndex.size() == 1 && relationshipRevisions.isEmpty()) {
       upsertEntityDirect(entitiesToIndex.getFirst());
       return;
     }
@@ -486,8 +585,35 @@ public class SearchIndexRetryWorker implements Managed {
       for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
         Map<String, Object> context = new HashMap<>();
         context.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
+        Map<UUID, Long> typeRelationshipRevisions =
+            relationshipRevisionsFor(entry.getValue(), relationshipRevisions);
+        if (!typeRelationshipRevisions.isEmpty()) {
+          context.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, typeRelationshipRevisions);
+        }
         ReindexingUtil.populateDocBuildContext(context, entry.getKey(), entry.getValue());
         bulkSink.write(entry.getValue(), context);
+      }
+
+      if (!relationshipRevisions.isEmpty()) {
+        for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+          List<EntityInterface> relationshipEntities =
+              entry.getValue().stream()
+                  .filter(entity -> relationshipRevisions.containsKey(entity.getId()))
+                  .toList();
+          if (relationshipEntities.isEmpty()) {
+            continue;
+          }
+          Map<UUID, Long> typeRelationshipRevisions =
+              relationshipRevisionsFor(relationshipEntities, relationshipRevisions);
+          Map<String, Object> relationshipContext = new HashMap<>();
+          relationshipContext.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
+          relationshipContext.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
+          relationshipContext.put(
+              BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, typeRelationshipRevisions);
+          ReindexingUtil.populateDocBuildContext(
+              relationshipContext, entry.getKey(), relationshipEntities);
+          bulkSink.write(relationshipEntities, relationshipContext);
+        }
       }
 
       boolean flushComplete = bulkSink.flushAndAwait(60);
@@ -512,6 +638,18 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
+  private Map<UUID, Long> relationshipRevisionsFor(
+      List<EntityInterface> entities, Map<UUID, Long> relationshipRevisions) {
+    Map<UUID, Long> revisions = new HashMap<>();
+    for (EntityInterface entity : entities) {
+      Long revision = relationshipRevisions.get(entity.getId());
+      if (revision != null) {
+        revisions.put(entity.getId(), revision);
+      }
+    }
+    return revisions;
+  }
+
   private void upsertEntityDirect(EntityInterface entity) throws Exception {
     if (entity == null || entity.getEntityReference() == null || entity.getId() == null) {
       return;
@@ -529,7 +667,7 @@ public class SearchIndexRetryWorker implements Managed {
     searchRepository
         .getSearchClient()
         .createEntity(
-            indexMapping.getIndexName(searchRepository.getClusterAlias()),
+            searchRepository.getWriteIndexName(indexMapping),
             entity.getId().toString(),
             JsonUtils.pojoToJson(doc));
   }
@@ -549,21 +687,36 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
-  private void removeStaleEntityById(String entityId) {
-    for (String entityType : searchRepository.getSearchEntities()) {
+  void removeStaleEntityById(String entityId, String entityTypeHint) throws Exception {
+    String normalizedEntityType = normalize(entityTypeHint);
+    Set<String> entityTypes =
+        normalizedEntityType.isEmpty()
+                || searchRepository.getIndexMapping(normalizedEntityType) == null
+            ? searchRepository.getSearchEntities()
+            : Set.of(normalizedEntityType);
+    for (String entityType : entityTypes) {
       IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
       if (indexMapping == null) {
         continue;
       }
-      try {
-        searchRepository
-            .getSearchClient()
-            .deleteEntity(indexMapping.getIndexName(searchRepository.getClusterAlias()), entityId);
-      } catch (Exception ignored) {
-        // Ignore not-found / index mismatch and continue best-effort cleanup.
+      String canonicalIndex = indexMapping.getIndexName(searchRepository.getClusterAlias());
+      for (String targetIndex : searchRepository.getWriteFanoutTargets(canonicalIndex)) {
+        try {
+          searchRepository.getSearchClient().deleteEntity(targetIndex, entityId);
+        } catch (ElasticsearchException e) {
+          if (e.status() != 404) {
+            throw e;
+          }
+        } catch (OpenSearchException e) {
+          if (e.status() != 404) {
+            throw e;
+          }
+        }
       }
     }
   }
+
+  private record StableEntitySnapshot(EntityInterface entity, Long relationshipRevision) {}
 
   // ---------------------------------------------------------------------------
   // Resilience: client availability, backoff, and error classification
