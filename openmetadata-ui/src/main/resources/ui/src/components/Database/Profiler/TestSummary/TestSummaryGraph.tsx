@@ -62,7 +62,10 @@ import {
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
+  isTestSummaryTooltipBoundary,
   prepareChartData,
+  TooltipBoundary,
+  TooltipSize,
 } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
   DATE_TIME_12_HOUR_FORMAT,
@@ -85,20 +88,6 @@ interface ActiveTooltip {
   position: Coordinate;
 }
 
-interface TooltipSize {
-  height: number;
-  width: number;
-}
-
-type TooltipBoundary = Required<CartesianViewBox>;
-
-const isTooltipBoundary = (
-  viewBox: CartesianViewBox
-): viewBox is TooltipBoundary =>
-  [viewBox.height, viewBox.width, viewBox.x, viewBox.y].every((value) =>
-    Number.isFinite(value)
-  );
-
 interface TestSummaryTooltipContentProps {
   activeTooltip?: ActiveTooltip;
   onMeasure: (size: TooltipSize, boundary: TooltipBoundary) => void;
@@ -120,7 +109,7 @@ const TestSummaryTooltipContent = ({
     if (
       !activeTooltip ||
       !viewBox ||
-      !isTooltipBoundary(viewBox) ||
+      !isTestSummaryTooltipBoundary(viewBox) ||
       !contentRef.current
     ) {
       return;

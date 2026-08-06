@@ -13,6 +13,7 @@
 import isUndefined from 'lodash/isUndefined';
 import omitBy from 'lodash/omitBy';
 import round from 'lodash/round';
+import { CartesianViewBox } from 'recharts/types/util/types';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
@@ -174,12 +175,12 @@ export const formatTestSummaryYAxis = (
     ? convertSecondsToHumanReadableFormat(value, 2)
     : axisTickFormatter(value);
 
-interface Dimensions {
+export interface TooltipSize {
   height: number;
   width: number;
 }
 
-interface TooltipBoundary extends Dimensions {
+export interface TooltipBoundary extends TooltipSize {
   x: number;
   y: number;
 }
@@ -188,8 +189,20 @@ interface TooltipPositionOptions {
   anchor: Pick<TooltipBoundary, 'x' | 'y'>;
   boundary: TooltipBoundary;
   gap: number;
-  tooltipSize: Dimensions;
+  tooltipSize: TooltipSize;
 }
+
+/**
+ * Recharts types every view-box coordinate as optional, while overflow-aware
+ * placement requires complete finite bounds. Invalid bounds intentionally fall
+ * back to the dot-relative position instead of hiding the tooltip.
+ */
+export const isTestSummaryTooltipBoundary = (
+  viewBox: CartesianViewBox
+): viewBox is TooltipBoundary =>
+  [viewBox.height, viewBox.width, viewBox.x, viewBox.y].every((value) =>
+    Number.isFinite(value)
+  );
 
 const getTooltipAxisPosition = (
   anchor: number,
