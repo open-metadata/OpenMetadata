@@ -9,10 +9,12 @@ Create a ClickZetta user with read access to the workspace, virtual cluster,
 schemas, and tables that OpenMetadata should catalog. Metadata extraction is
 supported directly. Usage and query-lineage extraction additionally require a
 read-only query-history table or view configured below. Connector-specific
-profiling, bounded sampling, and native test adapters are implemented in the
-contribution branch but remain disabled in the service spec. The data diff
-adapter is registered with an explicit full-scan guard and has passed a bounded
-typed-table smoke test. DBT artifacts are ingested
+profiling, bounded sampling, and native test adapters are registered with
+fail-closed guards. Profiling requires an explicit ROWS sample and row-count
+metrics additionally require `allowFullTableScan=true`; sampling rejects
+percentage/random modes; native tests reject custom SQL and diff definitions.
+The data diff adapter is registered with the same explicit full-scan guard and
+has passed a bounded typed-table smoke test. DBT artifacts are ingested
 by the separate DBT source (for example, from S3); this database connector does
 not run DBT models or read DBT artifacts itself.
 
@@ -76,7 +78,8 @@ view must expose these canonical columns:
 Leave this blank when running metadata-only ingestion. For a first validation,
 grant the ingestion identity read access to the native history object and set a
 small query-log result limit. The connector applies a time window and result
-limit; it does not profile, sample, diff, or execute tests against table data.
+limit; data-reading workflows remain separate and require their own bounded
+configuration.
 $$
 
 $$section
@@ -99,7 +102,7 @@ Add optional keyword arguments passed to the SQLAlchemy engine.
 
 The capability adapters also recognize `allowFullTableScan=true` in connection
 options or arguments as an explicit opt-in for row-count profiling or data-diff
-data queries. Do not set this option on the current production connection; it
-is reserved for a controlled non-production smoke test after the connector's
-live gates are approved.
+data queries. Do not set this option on the current production connection
+unless a full scan has been explicitly approved; use a controlled,
+explicitly named smoke-test table instead.
 $$
