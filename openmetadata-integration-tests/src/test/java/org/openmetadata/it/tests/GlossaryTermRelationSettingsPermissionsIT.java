@@ -53,11 +53,24 @@ public class GlossaryTermRelationSettingsPermissionsIT {
   private static final String RELATION_TYPES_PATH = SETTINGS_PATH + "/relationTypes";
   private static final String ADMIN_ONLY_SETTINGS_PATH = "/v1/system/settings/searchSettings";
   private static final String JSON_PATCH_MEDIA_TYPE = "application/json-patch+json";
+  private static final String SYSTEM_RELATION_TYPE = "relatedTo";
 
-  private static final String RELATION_TYPE_BODY =
+  // Jersey runs @Valid bean validation before the resource method body, so a payload missing any
+  // @NotNull field of GlossaryTermRelationType (name, displayName, category) is rejected with 400
+  // and never reaches authorizeAdmin. These bodies must stay schema-valid or the write tests below
+  // silently stop proving anything about authorization.
+  private static final String NEW_RELATION_TYPE_BODY =
       """
       {"name":"itRelationTypeForbidden","displayName":"IT Relation Type",\
-      "description":"created by a non-admin, must never be persisted"}\
+      "description":"created by a non-admin, must never be persisted",\
+      "category":"associative"}\
+      """;
+
+  private static final String EXISTING_RELATION_TYPE_BODY =
+      """
+      {"name":"relatedTo","displayName":"Renamed By A Non-Admin",\
+      "description":"edited by a non-admin, must never be persisted",\
+      "category":"associative"}\
       """;
 
   // The dataConsumer JWT is resolved through SubjectCache during authorization; if the user has not
@@ -128,10 +141,12 @@ public class GlossaryTermRelationSettingsPermissionsIT {
       mode = ResourceAccessMode.READ_WRITE)
   void test_createRelationType_dataConsumer_returns403() throws Exception {
     HttpResponse<String> response =
-        send("POST", RELATION_TYPES_PATH, RELATION_TYPE_BODY, "application/json");
+        send("POST", RELATION_TYPES_PATH, NEW_RELATION_TYPE_BODY, "application/json");
 
     assertEquals(
-        403, response.statusCode(), "DataConsumer should not be able to add relation types");
+        403,
+        response.statusCode(),
+        "DataConsumer should not be able to add relation types: " + response.body());
   }
 
   @Test
@@ -140,10 +155,16 @@ public class GlossaryTermRelationSettingsPermissionsIT {
       mode = ResourceAccessMode.READ_WRITE)
   void test_updateRelationType_dataConsumer_returns403() throws Exception {
     HttpResponse<String> response =
-        send("PUT", RELATION_TYPES_PATH + "/relatedTo", RELATION_TYPE_BODY, "application/json");
+        send(
+            "PUT",
+            RELATION_TYPES_PATH + "/" + SYSTEM_RELATION_TYPE,
+            EXISTING_RELATION_TYPE_BODY,
+            "application/json");
 
     assertEquals(
-        403, response.statusCode(), "DataConsumer should not be able to edit relation types");
+        403,
+        response.statusCode(),
+        "DataConsumer should not be able to edit relation types: " + response.body());
   }
 
   @Test
@@ -152,10 +173,12 @@ public class GlossaryTermRelationSettingsPermissionsIT {
       mode = ResourceAccessMode.READ_WRITE)
   void test_deleteRelationType_dataConsumer_returns403() throws Exception {
     HttpResponse<String> response =
-        send("DELETE", RELATION_TYPES_PATH + "/relatedTo", null, "application/json");
+        send("DELETE", RELATION_TYPES_PATH + "/" + SYSTEM_RELATION_TYPE, null, "application/json");
 
     assertEquals(
-        403, response.statusCode(), "DataConsumer should not be able to delete relation types");
+        403,
+        response.statusCode(),
+        "DataConsumer should not be able to delete relation types: " + response.body());
   }
 
   @Test
@@ -171,7 +194,9 @@ public class GlossaryTermRelationSettingsPermissionsIT {
     HttpResponse<String> response = send("PUT", "/v1/system/settings", body, "application/json");
 
     assertEquals(
-        403, response.statusCode(), "DataConsumer should not be able to overwrite the settings");
+        403,
+        response.statusCode(),
+        "DataConsumer should not be able to overwrite the settings: " + response.body());
   }
 
   @Test
@@ -184,7 +209,9 @@ public class GlossaryTermRelationSettingsPermissionsIT {
     HttpResponse<String> response = send("PATCH", SETTINGS_PATH, patch, JSON_PATCH_MEDIA_TYPE);
 
     assertEquals(
-        403, response.statusCode(), "DataConsumer should not be able to patch the settings");
+        403,
+        response.statusCode(),
+        "DataConsumer should not be able to patch the settings: " + response.body());
   }
 
   private static String dataConsumerToken() {
