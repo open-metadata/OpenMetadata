@@ -381,6 +381,41 @@ public class SearchSourceBuilderFactoryTest {
     return writer.toString();
   }
 
+  /**
+   * The data quality builders also serve {@code /v1/search/query} and {@code /v1/search/export},
+   * whose {@code q} is a documented Lucene expression. Escaping belongs at the free-text resource
+   * endpoints, never here — see {@code SearchUtils.escapeQueryStringSyntax}.
+   */
+  @Test
+  public void testDataQualitySearchPreservesLuceneSyntaxForSearchQueryEndpoint() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String luceneExpression = "testSuite.name.keyword:my_suite AND NOT entityFQN:archived";
+
+    String osQuery =
+        osFactory
+            .getSearchSourceBuilderV2("test_case_search_index", luceneExpression, 0, 10)
+            .query()
+            .toJsonString();
+    String esQuery =
+        esFactory
+            .getSearchSourceBuilderV2("test_suite_search_index", luceneExpression, 0, 10)
+            .query()
+            .toString();
+
+    for (String builtQuery : List.of(osQuery, esQuery)) {
+      assertTrue(
+          builtQuery.contains(luceneExpression),
+          "Lucene syntax must reach the engine verbatim for /v1/search/query: " + builtQuery);
+      // The escape lands before the colon, so this is the needle an escaping builder would emit.
+      assertFalse(
+          builtQuery.contains("keyword\\\\:"),
+          "The builder must not escape the query itself: " + builtQuery);
+    }
+  }
+
   @Test
   public void testEmptyAndWildcardQueries() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);

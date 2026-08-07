@@ -55,6 +55,18 @@ public final class SearchUtils {
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
+  /**
+   * Lucene syntax characters that make a {@code query_string} query unparseable when they appear in
+   * free text. {@code *} and {@code ?} are deliberately absent: callers pass them as wildcards to
+   * ask for prefix/substring matching, so escaping them would turn every wildcard search literal.
+   *
+   * <p>Note the asymmetry with the UI helper {@code escapeESReservedCharacters}, which <em>does</em>
+   * escape {@code *} and {@code ?}: the UI escapes the user's text and then adds its own wrapping
+   * wildcards, so only the wrapping ones stay active. Harmonising the two sets would break wildcard
+   * search — the server must leave the wildcards its callers supply intact.
+   */
+  public static final String QUERY_STRING_SYNTAX_CHARACTERS = "+-=&|><!(){}[]^\"~:/";
+
   private static final String EXACT_AGG_SUFFIX = "__exact";
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
@@ -823,5 +835,42 @@ public final class SearchUtils {
       return 10;
     }
     return analyzedSubTokenCount(query) > 2 ? 1 : 10;
+  }
+
+  /**
+   * Escape the Lucene syntax characters the caller left unescaped so that free-text input (a pasted
+   * URL, a name with parentheses) cannot produce an unparseable {@code query_string} and a {@code
+   * query_shard_exception}. Characters the caller already escaped are left as they are, which keeps
+   * the result stable for clients that escape their own input.
+   *
+   * <p>Only call this for endpoints that document {@code q} as a free-text term. Endpoints that
+   * document {@code q} as a Lucene expression (notably {@code /v1/search/query}) must not escape it.
+   */
+  public static String escapeQueryStringSyntax(String query) {
+    String escaped = query;
+    if (!nullOrEmpty(query)) {
+      escaped = escapeUnescapedSyntaxCharacters(query);
+    }
+    return escaped;
+  }
+
+  private static String escapeUnescapedSyntaxCharacters(String query) {
+    StringBuilder escaped = new StringBuilder(query.length() * 2);
+    boolean previousCharacterEscaped = false;
+    for (int index = 0; index < query.length(); index++) {
+      char current = query.charAt(index);
+      if (!previousCharacterEscaped && isUnparseableWithoutEscaping(query, index)) {
+        escaped.append('\\');
+      }
+      escaped.append(current);
+      previousCharacterEscaped = !previousCharacterEscaped && current == '\\';
+    }
+    return escaped.toString();
+  }
+
+  private static boolean isUnparseableWithoutEscaping(String query, int index) {
+    char current = query.charAt(index);
+    boolean danglingEscape = current == '\\' && index == query.length() - 1;
+    return danglingEscape || QUERY_STRING_SYNTAX_CHARACTERS.indexOf(current) >= 0;
   }
 }

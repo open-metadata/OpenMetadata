@@ -267,6 +267,7 @@ export const ES_RESERVED_CHARACTERS: Record<string, string> = {
   '=': String.raw`\=`,
   '&': String.raw`\&`,
   '&&': String.raw`\&&`,
+  '|': String.raw`\|`,
   '||': String.raw`\||`,
   '>': String.raw`\>`,
   '<': String.raw`\<`,

@@ -967,6 +967,45 @@ class SearchUtilsTest {
         + "]}";
   }
 
+  @Test
+  void escapeQueryStringSyntaxKeepsWildcardsAndExistingEscapes() {
+    assertEquals(
+        "*orders*",
+        SearchUtils.escapeQueryStringSyntax("*orders*"),
+        "Wildcards are how callers ask for substring matching and must stay active");
+    assertEquals(
+        "*foo\\*bar*",
+        SearchUtils.escapeQueryStringSyntax("*foo\\*bar*"),
+        "A caller that escaped its own input must not be double escaped");
+    assertEquals(
+        "orders\\(v2\\)",
+        SearchUtils.escapeQueryStringSyntax("orders(v2)"),
+        "Unbalanced or literal parentheses must be escaped");
+    assertEquals(
+        "name\\\\",
+        SearchUtils.escapeQueryStringSyntax("name\\"),
+        "A dangling trailing backslash must be escaped so the query still parses");
+    assertNull(SearchUtils.escapeQueryStringSyntax(null));
+    assertEquals("", SearchUtils.escapeQueryStringSyntax(""));
+  }
+
+  @Test
+  void escapeQueryStringSyntaxNeutralisesEveryReservedCharacter() {
+    for (char reserved : SearchUtils.QUERY_STRING_SYNTAX_CHARACTERS.toCharArray()) {
+      String escaped = SearchUtils.escapeQueryStringSyntax("a" + reserved + "b");
+      assertEquals(
+          "a\\" + reserved + "b", escaped, "Reserved character " + reserved + " must be escaped");
+    }
+  }
+
+  @Test
+  void escapeQueryStringSyntaxTurnsBooleanPipesIntoLiteralText() {
+    assertEquals(
+        "a\\|\\|b",
+        SearchUtils.escapeQueryStringSyntax("a||b"),
+        "Unescaped double pipes lex as the OR operator and silently change the query's meaning");
+  }
+
   private static String bucket(String key, int docCount) {
     return "{\"key\":\"" + key + "\",\"doc_count\":" + docCount + "}";
   }

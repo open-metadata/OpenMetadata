@@ -895,6 +895,37 @@ test.describe(
         await page.getByTestId('searchbar-component').locator('input').clear();
         await getTestCaseResponse;
 
+        // Issue #31077: a pasted URL is full of Lucene reserved characters. Asserts both layers -
+        // the UI escapes them, and the server accepts the escaped query instead of returning a
+        // 500 query_shard_exception. Checking only the status would still pass if the UI stopped
+        // escaping but the server escaper covered for it.
+        // Matches on the unescaped host so that a UI escaping regression fails on the explicit
+        // assertion below rather than as an opaque waitForResponse timeout.
+        const reservedCharSearchResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/search/list') &&
+            response.url().includes('8585')
+        );
+        await page
+          .getByTestId('searchbar-component')
+          .locator('input')
+          .fill('https://localhost:8585/table/orders');
+        const reservedCharSearch = await reservedCharSearchResponse;
+
+        expect(decodeURIComponent(reservedCharSearch.url())).toContain(
+          String.raw`*https\:\/\/localhost\:8585\/table\/orders*`
+        );
+        expect(reservedCharSearch.status()).toBe(200);
+
+        // clear the reserved-character search
+        const clearReservedCharSearch = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list?*'
+        );
+        await page.getByTestId('searchbar-component').locator('input').clear();
+        await clearReservedCharSearch;
+
         // Test case filter by service name
         const serviceResponse = page.waitForResponse(
           '/api/v1/search/query?q=*index=databaseService*'

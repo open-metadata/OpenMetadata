@@ -129,6 +129,24 @@ describe('useTestCaseList', () => {
     expect(lastPayload().q).toBe('*orders*');
   });
 
+  it('should escape Lucene reserved characters in the searchValue before wrapping it in wildcards', async () => {
+    renderList({ searchValue: 'https://example.com/path?x=1' });
+
+    await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
+
+    expect(lastPayload().q).toBe(
+      String.raw`*https\:\/\/example.com\/path\?x\=1*`
+    );
+  });
+
+  it('should escape a user typed wildcard so only the surrounding wildcards stay active', async () => {
+    renderList({ searchValue: 'foo*bar' });
+
+    await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
+
+    expect(lastPayload().q).toBe(String.raw`*foo\*bar*`);
+  });
+
   it('should pass a non-empty testCaseStatus through as-is', async () => {
     renderList({
       params: { testCaseStatus: TestCaseStatus.Failed },

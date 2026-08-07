@@ -141,6 +141,12 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     };
   }
 
+  /**
+   * Deliberately passes {@code query} through unescaped: this builder also serves {@code
+   * /v1/search/query} and {@code /v1/search/export}, whose {@code q} is a documented Lucene
+   * expression. Endpoints that document {@code q} as free text escape it themselves at the resource
+   * layer with {@link SearchUtils#escapeQueryStringSyntax(String)}.
+   */
   default S buildDataQualitySearchBuilderV2(String indexName, String query, int from, int size) {
     return switch (indexName) {
       case "test_case_search_index",
