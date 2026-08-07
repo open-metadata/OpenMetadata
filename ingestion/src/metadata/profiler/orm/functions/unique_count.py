@@ -25,6 +25,8 @@ from metadata.profiler.orm.functions.count import CountFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.orm.types.custom_image import CustomImage
 
+UNIQUE_COUNT_VALUE_ALIAS = "value_count"
+
 
 def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElement, ColumnElement]:  # noqa: UP006
     """

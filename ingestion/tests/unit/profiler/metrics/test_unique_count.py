@@ -14,10 +14,10 @@ Validate the UniqueCount metric query building
 
 from unittest.mock import Mock
 
-from sqlalchemy import Column, String
-from sqlalchemy.sql.sqltypes import NullType
+from sqlalchemy import Column, Integer, String
 
 from metadata.profiler.metrics.static.unique_count import UniqueCount
+from metadata.profiler.orm.functions.unique_count import UNIQUE_COUNT_VALUE_ALIAS
 from metadata.profiler.orm.registry import Dialects
 
 
@@ -31,12 +31,13 @@ def test_bigquery_unique_count():
 
     assert "countif" in str(result).lower()
 
-    # The column referenced inside COUNTIF must be untyped (NullType) so the literal `1`
-    # binds as INT64 and matches the numeric COUNT subquery output. A typed column would
-    # bind `1` as STRING/BYTES and fail on BigQuery with:
+    # The COUNTIF must compare the wrapping subquery's integer occurrence-count column
+    # (referenced via the shared, dot-free alias) against `1`, not the source column.
+    # This binds `1` as INT64 regardless of the source column type -- a String/BYTES
+    # source column would otherwise bind `1` as STRING/BYTES and fail on BigQuery with:
     #   No matching signature for operator = for argument types: INT64, STRING
     countif_args = list(result.element.clauses)
     binary_expression = countif_args[0]
 
-    assert binary_expression.left.name == "test_col"
-    assert isinstance(binary_expression.left.type, NullType)
+    assert binary_expression.left.name == UNIQUE_COUNT_VALUE_ALIAS
+    assert isinstance(binary_expression.left.type, Integer)
