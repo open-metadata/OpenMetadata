@@ -115,6 +115,37 @@ const getOpenApprovalTaskCount = async (
   return (body.data ?? []).length;
 };
 
+/**
+ * The workflow deliberately reads fresh data because its result is a gating decision. The term
+ * page uses the normal entity-read path, where a just-updated glossary can briefly retain its
+ * pre-patch cached parent. Wait until that normal GET exposes the inherited reviewer before
+ * asserting the rendered card; a real inheritance failure still exhausts STATUS_TIMEOUT.
+ */
+const waitForInheritedReviewer = async (
+  apiContext: APIRequestContext,
+  termId: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/glossaryTerms/${termId}?fields=reviewers`
+        );
+        const term = await response.json();
+
+        return (term.reviewers ?? []).some(
+          ({ id }: { id: string }) => id === reviewer.responseData.id
+        );
+      },
+      {
+        message: `Term ${termId} never exposed its inherited reviewer on a normal GET`,
+        timeout: STATUS_TIMEOUT,
+        intervals: [3_000, 5_000, 10_000],
+      }
+    )
+    .toBe(true);
+};
+
 test.describe(
   'Glossary Approval - inherited reviewers',
   { tag: ['@Features', '@Governance'] },
@@ -229,6 +260,7 @@ test.describe(
       await term.create(apiContext);
 
       await waitForSettledStatus(apiContext, term.responseData.id);
+      await waitForInheritedReviewer(apiContext, term.responseData.id);
       await afterAction();
 
       await page.goto(
