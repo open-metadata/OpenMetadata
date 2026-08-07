@@ -23,7 +23,6 @@ import {
   formatDurationToHHMMSS,
   formatMonth,
   formatTimeDurationFromSeconds,
-  getNextCronRunTimestamp,
   getScheduleDescriptionTexts,
   isValidDateFormat,
 } from './DateTimeUtils';
@@ -796,34 +795,5 @@ describe('getScheduleDescriptionTexts', () => {
     expect(typeof result1.descriptionSecondPart).toBe('string');
     expect(typeof result2.descriptionFirstPart).toBe('string');
     expect(typeof result2.descriptionSecondPart).toBe('string');
-  });
-});
-
-describe('getNextCronRunTimestamp', () => {
-  it('returns the next hourly run in the configured timezone', () => {
-    const currentTimestamp = Date.parse('2026-08-07T11:47:00.000Z');
-
-    expect(getNextCronRunTimestamp('10 * * * *', 'UTC', currentTimestamp)).toBe(
-      Date.parse('2026-08-07T12:10:00.000Z')
-    );
-  });
-
-  it('supports ranges, steps, and named weekdays', () => {
-    const currentTimestamp = Date.parse('2026-08-07T17:30:00.000Z');
-
-    expect(
-      getNextCronRunTimestamp(
-        '0 9-17/2 * * MON-FRI',
-        'America/New_York',
-        currentTimestamp
-      )
-    ).toBe(Date.parse('2026-08-07T19:00:00.000Z'));
-  });
-
-  it('returns undefined for invalid schedules and timezones', () => {
-    expect(getNextCronRunTimestamp('invalid', 'UTC')).toBeUndefined();
-    expect(
-      getNextCronRunTimestamp('0 0 * * *', 'Invalid/Timezone')
-    ).toBeUndefined();
   });
 });

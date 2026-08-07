@@ -49,7 +49,7 @@ import {
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
-import { getNextCronRunTimestamp } from '../../../utils/date-time/DateTimeUtils';
+import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
@@ -67,7 +67,7 @@ const breakableTooltipText = (text?: ReactNode) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );
 
-const getPipelineNextRunTimestamp = (pipeline: IngestionPipeline) => {
+const getPipelineNextRunTimestamp = async (pipeline: IngestionPipeline) => {
   const scheduleInterval = pipeline.airflowConfig?.scheduleInterval;
 
   if (
@@ -95,10 +95,11 @@ const fetchNextTestCaseRunTimestamp = async (testSuiteFqns: string[]) => {
       })
     )
   );
-  const nextRuns = responses
-    .flatMap(({ data }) => data)
-    .map(getPipelineNextRunTimestamp)
-    .filter((nextRun): nextRun is number => nextRun !== undefined);
+  const nextRuns = (
+    await Promise.all(
+      responses.flatMap(({ data }) => data).map(getPipelineNextRunTimestamp)
+    )
+  ).filter((nextRun): nextRun is number => nextRun !== undefined);
 
   return nextRuns.length ? Math.min(...nextRuns) : undefined;
 };
