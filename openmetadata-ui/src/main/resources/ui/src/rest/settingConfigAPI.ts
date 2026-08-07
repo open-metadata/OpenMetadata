@@ -13,8 +13,8 @@
 
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
-import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
