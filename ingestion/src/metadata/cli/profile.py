@@ -29,7 +29,7 @@ from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandl
 logger = cli_logger()
 
 
-def run_profiler(config_path: Path) -> None:
+def run_profiler(config_path: Path, status_file: Path | None = None) -> None:
     """
     Run the Profiler workflow from a config path
     to a JSON or YAML file
@@ -46,4 +46,4 @@ def run_profiler(config_path: Path) -> None:
         WorkflowInitErrorHandler.print_init_error(exc, workflow_config_dict, PipelineType.profiler)
         sys.exit(1)
 
-    execute_workflow(workflow=workflow, config_dict=workflow_config_dict)
+    execute_workflow(workflow=workflow, config_dict=workflow_config_dict, status_file=status_file)

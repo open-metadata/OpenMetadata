@@ -28,7 +28,7 @@ from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandl
 logger = cli_logger()
 
 
-def run_classification(config_path: Path) -> None:
+def run_classification(config_path: Path, status_file: Path | None = None) -> None:
     """
     Run the sampler workflow from a config path
     to a JSON or YAML file
@@ -48,4 +48,4 @@ def run_classification(config_path: Path) -> None:
         WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.metadata)
         sys.exit(1)
 
-    execute_workflow(workflow=workflow, config_dict=config_dict)
+    execute_workflow(workflow=workflow, config_dict=config_dict, status_file=status_file)
