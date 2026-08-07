@@ -976,7 +976,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               </Typography>
                             </div>
                             <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
-                              {selectedTags.length === 0 && <EmptyTags />}
+                              {isViewOnly && selectedTags.length === 0 && <EmptyTags />}
                               {selectedTags.map((tag) =>
                                 isViewOnly ? (
                                   <Badge
