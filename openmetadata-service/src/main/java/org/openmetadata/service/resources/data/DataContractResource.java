@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.data;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -553,6 +555,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Valid CreateDataContract create) {
     DataContract dataContract =
         getDataContract(create, securityContext.getUserPrincipal().getName());
+    preserveODCSPassthrough(dataContract);
     return createOrUpdate(uriInfo, securityContext, dataContract);
   }
 
@@ -578,6 +581,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       CreateDataContract create = YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
+      preserveODCSPassthrough(dataContract);
       return createOrUpdate(uriInfo, securityContext, dataContract);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
@@ -1610,48 +1614,47 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   private DataContract applySmartMerge(EntityReference entityRef, DataContract imported) {
-    DataContract existing = null;
-
-    // Try to find existing contract by entity reference
-    try {
-      existing = repository.loadEntityDataContract(entityRef);
-    } catch (Exception e) {
-      LOG.debug(
-          "Could not load contract by entity ref for {}: {}", entityRef.getId(), e.getMessage());
-    }
-
-    if (existing != null) {
-      LOG.debug("Found existing contract {} for entity {}", existing.getId(), entityRef.getId());
-      return ODCSConverter.smartMerge(existing, imported);
-    }
-
-    // No existing contract found - return imported for new creation
-    LOG.debug("No existing contract found for entity {}, will create new", entityRef.getId());
-    return imported;
+    DataContract existing = loadExistingContract(entityRef);
+    return existing == null ? imported : ODCSConverter.smartMerge(existing, imported);
   }
 
   private DataContract applyFullReplace(EntityReference entityRef, DataContract imported) {
+    DataContract existing = loadExistingContract(entityRef);
+    return existing == null ? imported : ODCSConverter.fullReplace(existing, imported);
+  }
+
+  private DataContract loadExistingContract(EntityReference entityRef) {
     DataContract existing = null;
-
-    // Try to find existing contract by entity reference
-    try {
-      existing = repository.loadEntityDataContract(entityRef);
-    } catch (Exception e) {
-      LOG.debug(
-          "Could not load contract by entity ref for {}: {}", entityRef.getId(), e.getMessage());
+    if (entityRef != null && entityRef.getId() != null) {
+      try {
+        existing = repository.loadEntityDataContract(entityRef);
+      } catch (JsonParsingException e) {
+        LOG.debug(
+            "Could not read the stored contract for entity {}: {}",
+            entityRef.getId(),
+            e.getMessage());
+      }
     }
+    return existing;
+  }
 
+  /**
+   * The ODCS passthrough fields exist only so that an imported ODCS document can be exported back
+   * unchanged. They are not part of the OpenMetadata contract editing surface, so a full-replace
+   * request that never mentions them comes from a client that does not know they exist rather than
+   * from a user asking to drop them — carry them forward, matching the merge semantics the ODCS
+   * import endpoints already use. Clearing them is done through PUT /odcs?mode=replace.
+   */
+  private void preserveODCSPassthrough(DataContract dataContract) {
+    DataContract existing = loadExistingContract(dataContract.getEntity());
     if (existing != null) {
-      LOG.debug(
-          "Found existing contract {} for entity {}, will replace",
-          existing.getId(),
-          entityRef.getId());
-      return ODCSConverter.fullReplace(existing, imported);
+      if (nullOrEmpty(dataContract.getOdcsQualityRules())) {
+        dataContract.setOdcsQualityRules(existing.getOdcsQualityRules());
+      }
+      if (nullOrEmpty(dataContract.getOdcsElementExtensions())) {
+        dataContract.setOdcsElementExtensions(existing.getOdcsElementExtensions());
+      }
     }
-
-    // No existing contract found - return imported for new creation
-    LOG.debug("No existing contract found for entity {}, will create new", entityRef.getId());
-    return imported;
   }
 
   public static class DataContractList extends ResultList<DataContract> {
