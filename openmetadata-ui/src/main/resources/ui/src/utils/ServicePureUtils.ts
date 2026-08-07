@@ -179,6 +179,9 @@ export const getResourceEntityFromServiceCategory = (
     case 'worksheets':
     case ServiceCategory.DRIVE_SERVICES:
       return ResourceEntity.DRIVE_SERVICE;
+
+    case ServiceCategory.SECURITY_SERVICES:
+      return ResourceEntity.SECURITY_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
