@@ -478,15 +478,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           AuthenticationResponseParser.parse(new URI(computedCallbackUrl), parameters);
 
       if (response instanceof AuthenticationErrorResponse authenticationErrorResponse) {
-        LOG.error(
-            "Bad authentication response, error={}", authenticationErrorResponse.getErrorObject());
         // login_required & friends are the IdP's spec-defined "silent auth not possible"
         // replies (e.g. prompt=none with no IdP session). Fall back to interactive signin
         // instead of a 500 the frontend cannot recover from.
-        if (SILENT_AUTH_ERRORS.contains(authenticationErrorResponse.getErrorObject().getCode())) {
+        String errorCode = authenticationErrorResponse.getErrorObject().getCode();
+        if (SILENT_AUTH_ERRORS.contains(errorCode)) {
+          LOG.warn("Silent auth not possible (error={}), redirecting to signin", errorCode);
           resp.sendRedirect(serverUrl + "/signin");
           return;
         }
+        LOG.error(
+            "Bad authentication response, error={}", authenticationErrorResponse.getErrorObject());
         throw new TechnicalException("Bad authentication response");
       }
 
