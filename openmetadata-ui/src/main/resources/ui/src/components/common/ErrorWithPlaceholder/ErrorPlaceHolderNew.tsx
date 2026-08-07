@@ -20,7 +20,7 @@ import NoDataPlaceholderNew from './NoDataPlaceholderNew';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
 import { ErrorPlaceholderProps } from './placeholder.interface';
 
-const ErrorPlaceHolderNew = ({
+const ErrorPlaceHolderNewBase = ({
   doc,
   onClick,
   type,
@@ -109,5 +109,26 @@ const ErrorPlaceHolderNew = ({
 
   return getErrorPlaceHolder();
 };
+
+/**
+ * Type-safe named variants — prefer these over the `type={ERROR_PLACEHOLDER_TYPE.*}`
+ * switch. The `type=` prop stays supported for existing call sites.
+ */
+const ErrorPlaceHolderNew =
+  ErrorPlaceHolderNewBase as typeof ErrorPlaceHolderNewBase & {
+    Create: typeof CreateErrorPlaceHolder;
+    Assign: typeof AssignErrorPlaceHolder;
+    Filter: typeof FilterErrorPlaceHolder;
+    Permission: typeof PermissionErrorPlaceholder;
+    Custom: typeof CustomNoDataPlaceHolderNew;
+    NoData: typeof NoDataPlaceholderNew;
+  };
+
+ErrorPlaceHolderNew.Create = CreateErrorPlaceHolder;
+ErrorPlaceHolderNew.Assign = AssignErrorPlaceHolder;
+ErrorPlaceHolderNew.Filter = FilterErrorPlaceHolder;
+ErrorPlaceHolderNew.Permission = PermissionErrorPlaceholder;
+ErrorPlaceHolderNew.Custom = CustomNoDataPlaceHolderNew;
+ErrorPlaceHolderNew.NoData = NoDataPlaceholderNew;
 
 export default ErrorPlaceHolderNew;

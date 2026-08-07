@@ -80,4 +80,14 @@ describe('Test Error place holder Component', () => {
 
     expect(getByText(container, 'Children1')).toBeInTheDocument();
   });
+
+  it('exposes a component for every named variant', () => {
+    expect(ErrorPlaceHolder.Create).toBeDefined();
+    expect(ErrorPlaceHolder.CoreCreate).toBeDefined();
+    expect(ErrorPlaceHolder.Assign).toBeDefined();
+    expect(ErrorPlaceHolder.Filter).toBeDefined();
+    expect(ErrorPlaceHolder.Permission).toBeDefined();
+    expect(ErrorPlaceHolder.Custom).toBeDefined();
+    expect(ErrorPlaceHolder.NoData).toBeDefined();
+  });
 });
