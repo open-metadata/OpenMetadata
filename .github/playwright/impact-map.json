@@ -4,8 +4,6 @@
     "playwright/e2e/Auth/**",
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
-    "playwright/e2e/Pages/DataInsight.spec.ts",
-    "playwright/e2e/Pages/DataInsightSettings.spec.ts",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
     "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
     "playwright/e2e/Features/OntologyImportRdf.spec.ts",
@@ -298,6 +296,17 @@
         "playwright/e2e/Flow/Navbar.spec.ts",
         "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/locale/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/i18next/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/Login.spec.ts",
+        "playwright/e2e/Flow/Navbar.spec.ts"
       ]
     },
     {

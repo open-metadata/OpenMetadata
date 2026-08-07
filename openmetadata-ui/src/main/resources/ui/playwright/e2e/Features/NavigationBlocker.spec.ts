@@ -213,12 +213,23 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       adminPage.locator('[data-testid="save-button"]')
     ).toBeEnabled();
 
-    // Save changes
-    const saveResponse = adminPage.waitForResponse('/api/v1/docStore');
+    // Save changes.
+    // The persona is shared across the tests in this file and an earlier test
+    // already saves a layout for it, so this save is an UPDATE
+    // (PUT /api/v1/docStore/{id}) rather than a create. A bare
+    // '/api/v1/docStore' string is an exact URL match, and '*' does not cross
+    // a '/', so both would miss the update and hang until the test timeout.
+    const saveResponse = adminPage.waitForResponse('**/api/v1/docStore**');
     await adminPage.locator('[data-testid="save-button"]').click();
     await saveResponse;
 
-    await toastNotification(adminPage, /Page layout created successfully/i);
+    // This test asserts navigation-blocker behaviour, not create-vs-update
+    // semantics, so accept either outcome rather than depending on whether a
+    // preceding test already created the layout.
+    await toastNotification(
+      adminPage,
+      /Page layout (created|updated) successfully/i
+    );
     await expect(
       adminPage.locator('[data-testid="save-button"]')
     ).toBeDisabled();
