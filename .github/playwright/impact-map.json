@@ -7,7 +7,8 @@
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
     "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
     "playwright/e2e/Features/OntologyImportRdf.spec.ts",
-    "playwright/e2e/VisualRegression/**"
+    "playwright/e2e/VisualRegression/**",
+    "playwright/e2e/Features/EntityExportJobsTray.spec.ts"
   ],
   "smoke": [
     {
@@ -434,6 +435,18 @@
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
         "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/EntityImport/CsvJobsTray/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityExportModalProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/csvAPI.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/CsvJobsTray.spec.ts",
+        "playwright/e2e/Features/EntityExportJobsTray.spec.ts"
       ]
     }
   ]
