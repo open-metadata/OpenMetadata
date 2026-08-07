@@ -211,17 +211,8 @@ export const selectOption = async (
   // interaction (MultiSelect keeps its popup open by design). The popup can
   // also close and reopen under a new id while the builder re-renders, so
   // re-resolve it (and reopen if needed) on every retry.
-  //
-  // For async (isSearchable) widgets, the initial fill() fires one fetch but
-  // a slow ES index can return empty results for newly-created entities.
-  // Re-applying the filter text on every retry re-triggers onInputChange →
-  // loadAsync so that a fresh search fires on each attempt rather than
-  // waiting forever on a single stale empty result.
   const control = comboboxInput.or(triggerButton).first();
   await expect(async () => {
-    if (isSearchable) {
-      await comboboxInput.fill(optionTitle);
-    }
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
       await control.press('ArrowDown');
     }
@@ -232,9 +223,14 @@ export const selectOption = async (
     const option = page
       .locator(`[role="listbox"][id="${listboxId}"]`)
       .getByRole('option', { name: optionTitle, exact: true })
-      .first()
-      .click({ timeout: 3000 });
-  }).toPass({ timeout: 60000 });
+      .first();
+    if (isSearchable && (await option.count()) === 0) {
+      await comboboxInput.fill('');
+      await comboboxInput.fill(optionTitle);
+      throw new Error(`Option "${optionTitle}" not present yet; re-searched`);
+    }
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
 
   // Close the popup if the click didn't: re-selecting the current value emits
   // no selection change (so the popup stays open) and MultiSelect popups stay
