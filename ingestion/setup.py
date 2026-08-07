@@ -232,6 +232,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "clickhouse-sqlalchemy>=0.3",
         DATA_DIFF["clickhouse"],
     },
+    "clickzetta": {
+        "clickzetta-sqlalchemy==0.8.65.4",
+        "clickzetta-connector==1.0.30",
+    },
     "dagster": {
         "croniter<3",
         VERSIONS["pymysql"],
