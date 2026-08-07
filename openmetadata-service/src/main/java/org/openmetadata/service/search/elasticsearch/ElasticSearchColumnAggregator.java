@@ -356,7 +356,16 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       Map<String, List<ColumnWithContext>> columnsByName)
       throws IOException {
 
-    SearchRequest searchRequest = SearchRequest.of(s -> s.index(indexes).query(query).size(10000));
+    SearchRequest searchRequest =
+        SearchRequest.of(
+            s ->
+                s.index(indexes)
+                    .query(query)
+                    .size(10000)
+                    .source(
+                        src ->
+                            src.filter(
+                                f -> f.includes(ColumnAggregator.TAG_SOURCE_FETCH_INCLUDES))));
 
     SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
     long totalHits = response.hits().total() != null ? response.hits().total().value() : 0;

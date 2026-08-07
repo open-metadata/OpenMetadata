@@ -38,6 +38,29 @@ public interface ColumnAggregator {
    */
   int SAMPLE_DOCS_PER_COLUMN = 100;
 
+  /**
+   * Fields the tag/glossary source-fetch actually reads from each hit. The fetch reads {@code
+   * _source} in Java to find which columns carry a tag (flat ES mapping can't), so restricting
+   * {@code _source} to just these fields keeps responses small. Full {@code _source} pulls
+   * table-level descriptions, sample data, profiles and every column sub-field, producing multi-MB
+   * (G1 humongous) allocations that drive Full-GC churn under concurrent load.
+   */
+  List<String> TAG_SOURCE_FETCH_INCLUDES =
+      List.of(
+          "fullyQualifiedName",
+          "entityType",
+          "displayName",
+          "service.name",
+          "database.name",
+          "databaseSchema.name",
+          "columns.name",
+          "columns.displayName",
+          "columns.description",
+          "columns.dataType",
+          "columns.fullyQualifiedName",
+          "columns.tags",
+          "columns.children");
+
   /** Aggregation names used in pattern-search queries (ES + OS). */
   String AGG_MATCHING_COLUMNS = "matching_columns";
 
