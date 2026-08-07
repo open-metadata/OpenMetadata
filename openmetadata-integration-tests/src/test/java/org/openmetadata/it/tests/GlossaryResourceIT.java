@@ -182,6 +182,36 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   // ===================================================================
 
   @Test
+  void list_filterByDomain_scopesResults(TestNamespace ns) {
+    // Reported bug: GlossaryResource.list ignored the global `?domain=` filter, so a
+    // glossary belonging to one domain still showed up when a different domain was
+    // selected. The listing must be scoped to the requested domain.
+    Glossary glossary =
+        createEntity(
+            new CreateGlossary()
+                .withName(ns.prefix("domainScopedGlossary"))
+                .withDescription("Glossary assigned to a single domain")
+                .withDomains(List.of(testDomain().getFullyQualifiedName())));
+
+    ListParams sameDomain =
+        new ListParams().setLimit(1000).setDomain(testDomain().getFullyQualifiedName());
+    assertTrue(
+        listContainsGlossary(sameDomain, glossary.getId()),
+        "Glossary must appear when filtering by its own domain");
+
+    ListParams otherDomain =
+        new ListParams().setLimit(1000).setDomain(testSubDomain().getFullyQualifiedName());
+    assertFalse(
+        listContainsGlossary(otherDomain, glossary.getId()),
+        "Glossary must not appear when filtering by a different domain");
+  }
+
+  private boolean listContainsGlossary(ListParams params, UUID glossaryId) {
+    return listEntities(params).getData().stream()
+        .anyMatch(candidate -> glossaryId.equals(candidate.getId()));
+  }
+
+  @Test
   void test_createGlossaryWithDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
