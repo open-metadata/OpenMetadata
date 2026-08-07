@@ -15,8 +15,6 @@ import { useQuery } from '@tanstack/react-query';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { getTeamByName } from '../../rest/teamsAPI';
 
-const TEAM_POPOVER_STALE_TIME_MS = 5 * 60 * 1000;
-
 export const useTeamPopoverData = (teamName: string) => {
   const { data: team, isLoading: loading } = useQuery({
     queryKey: ['team-popover', teamName],
@@ -25,7 +23,6 @@ export const useTeamPopoverData = (teamName: string) => {
         fields: [TabSpecificField.PARENTS, TabSpecificField.USER_COUNT],
       }),
     enabled: Boolean(teamName),
-    staleTime: TEAM_POPOVER_STALE_TIME_MS,
   });
 
   return { team, loading };
