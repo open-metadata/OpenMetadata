@@ -131,8 +131,8 @@ import {
 import {
   centerNodePosition,
   getViewportForLineageExport,
-  positionNodesUsingElk,
 } from '../../utils/EntityLineageLayoutUtils';
+import { positionNodesUsingElk } from '../../utils/Lineage/Layout/ElkLayoutUtils';
 import {
   createNodes,
   getConnectedNodesEdges,
