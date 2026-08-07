@@ -88,7 +88,10 @@ public class MeteredElasticsearchTransport implements ElasticsearchTransport {
 
   @Override
   public Transport withOptions(TransportOptions options) {
-    return delegate.withOptions(options);
+    Transport derived = delegate.withOptions(options);
+    return derived instanceof ElasticsearchTransport elasticsearch
+        ? new MeteredElasticsearchTransport(elasticsearch)
+        : derived;
   }
 
   @Override

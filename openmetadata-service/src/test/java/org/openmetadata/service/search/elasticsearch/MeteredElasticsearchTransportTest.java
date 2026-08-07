@@ -26,6 +26,7 @@ import es.co.elastic.clients.json.JsonpDeserializer;
 import es.co.elastic.clients.json.JsonpMapper;
 import es.co.elastic.clients.transport.ElasticsearchTransport;
 import es.co.elastic.clients.transport.Endpoint;
+import es.co.elastic.clients.transport.Transport;
 import es.co.elastic.clients.transport.TransportOptions;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -116,9 +117,20 @@ class MeteredElasticsearchTransportTest {
 
     assertNull(transport.jsonpMapper());
     assertNull(transport.options());
-    assertSame(delegate, transport.withOptions((TransportOptions) null));
     transport.close();
     assertTrue(delegate.closed());
+  }
+
+  @Test
+  void derivingATransportWithOptionsKeepsItMetered() throws IOException {
+    StubTransport delegate = new StubTransport(unavailable());
+    Transport derived =
+        new MeteredElasticsearchTransport(delegate).withOptions((TransportOptions) null);
+
+    assertSame(delegate, MeteredElasticsearchTransport.unwrap((ElasticsearchTransport) derived));
+    assertThrows(
+        ElasticsearchException.class, () -> derived.performRequest("q", SEARCH_ENDPOINT, null));
+    assertEquals(1.0, count("failure", "503"));
   }
 
   private double count(String outcome, String status) {
