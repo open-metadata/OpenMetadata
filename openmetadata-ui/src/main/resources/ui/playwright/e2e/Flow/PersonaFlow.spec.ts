@@ -627,10 +627,26 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.getByTestId(teamUser.responseData.name).click();
       await userProfileResponse;
 
-      // The inherited team persona must NOT be shown as the user's default persona
       await adminPage.getByTestId('persona-details-card').waitFor();
-      await expect(adminPage.getByTestId('default-persona-chip')).toContainText(
-        'No default persona'
+
+      const defaultPersonaChip = adminPage.getByTestId('default-persona-chip');
+      // Asserted so the negative check below cannot pass against a chip that
+      // never rendered.
+      await expect(defaultPersonaChip).toBeVisible();
+
+      // The inherited team persona must NOT be shown as the user's default
+      // persona.
+      //
+      // Deliberately not asserting the literal "No default persona"
+      // placeholder: when a user has no default persona the backend resolves
+      // the field to the *system* default persona, which is global state this
+      // test does not own. The sibling describe in this file sets and clears a
+      // system default, and the environment ships with one pre-seeded, so the
+      // placeholder only appears when unrelated work happens to have cleared
+      // it. The invariant under test is just that the team's persona is not
+      // auto-applied.
+      await expect(defaultPersonaChip).not.toContainText(
+        teamPersona.responseData.displayName
       );
 
       // The misleading inherited icon must not be rendered on the default persona

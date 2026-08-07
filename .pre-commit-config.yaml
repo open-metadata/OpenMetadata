@@ -86,3 +86,10 @@ repos:
         files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js|less)$
         pass_filenames: false
         require_serial: true
+      - id: core-components-i18n
+        name: core-components i18n checks (gates 1+2+3)
+        description: Fails if core-components `t()` keys, locale files, or the language-set are out of sync. Run `yarn check-i18n-all` in openmetadata-ui-core-components/src/main/resources/ui.
+        entry: bash -c 'cd openmetadata-ui-core-components/src/main/resources/ui && yarn check-i18n-all'
+        language: system
+        files: ^openmetadata-ui-core-components/src/main/resources/ui/src/.*\.(ts|tsx|json)$
+        pass_filenames: false

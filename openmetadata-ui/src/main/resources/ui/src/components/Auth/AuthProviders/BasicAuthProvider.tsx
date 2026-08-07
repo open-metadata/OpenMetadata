@@ -176,8 +176,10 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   );
 
   const handleLogout = useCallback(async () => {
-    const token = await getOidcToken();
-    const refreshToken = await getRefreshToken();
+    const [token, refreshToken] = await Promise.all([
+      getOidcToken(),
+      getRefreshToken(),
+    ]);
     const isExpired = extractDetailsFromToken(token).isExpired;
     if (token && !isExpired) {
       try {

@@ -372,7 +372,14 @@ test.describe('Context Center - Documents Page', () => {
       expect(bulkMoveBody.numberOfRowsFailed ?? 0).toBe(0);
       expectBulkIdsRequest(bulkMoveRes.request().postData(), [document.id]);
 
+      // The root document list is ordered updatedAt DESC and paginated at
+      // PAGE_SIZE_BASE rows, and this reload refetches page 1. Workers share
+      // this backend, so uploads landing between the move and the reload can
+      // push the moved row off page 1 — and the test never scrolls, so it is
+      // then on no page the test loads. Scope the list to the target folder,
+      // where the row is the only hit and pagination cannot displace it.
       await navigateToDocuments(page);
+      await selectFolderInSidebar(page, lastPageFolder.name);
       await expect(
         getDocumentRowByName(page, fileName).getByTestId('document-folder-name')
       ).toHaveText(lastPageFolder.name);
