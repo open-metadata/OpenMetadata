@@ -38,32 +38,34 @@ import {
 import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 import {
-  getAlertActionTypeDisplayName,
-  getAlertEventsFilterLabels,
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
+  getConnectionTimeoutField,
+  getDestinationConfigField,
+  getFieldByArgumentType,
+  getFqnSearchIndexes,
+  searchEntity,
+} from './AlertsUtil';
+import {
+  getAlertActionTypeDisplayName,
+  getAlertEventsFilterLabels,
   getChangeEventDataFromTypedEvent,
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
   getConfigQueryParamsArrayFromObject,
   getConfigQueryParamsObjectFromArray,
-  getConnectionTimeoutField,
-  getDestinationConfigField,
   getDisplayNameForEntities,
-  getFieldByArgumentType,
   getFilteredDestinationOptions,
   getFormattedDestinations,
-  getFqnSearchIndexes,
   getFunctionDisplayName,
   getLabelsForEventDetails,
   listLengthValidator,
   normalizeDestinationConfig,
-  searchEntity,
-} from './AlertsUtil';
+} from './AlertsUtilPure';
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
