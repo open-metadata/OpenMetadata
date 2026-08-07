@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { useNavigate } from 'react-router-dom';
+import { screen, waitFor } from '@testing-library/react';
 import { OwnerType } from '../../../enums/user.enum';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getTeamByName } from '../../../rest/teamsAPI';
+import { getUserByName } from '../../../rest/userAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { PopoverTitle } from './PopoverTitle.component';
 
 const mockUserData = {
@@ -23,16 +24,40 @@ const mockUserData = {
 };
 
 const mockPush = jest.fn();
+const mockUpdateUserProfilePics = jest.fn();
+const mockStoreState = {
+  userProfilePics: {},
+  updateUserProfilePics: mockUpdateUserProfilePics,
+};
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockPush),
-  Link: jest.fn().mockImplementation(({ children }) => children),
 }));
 
-jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
-  useUserProfile: jest
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest
     .fn()
-    .mockImplementation(() => [null, null, mockUserData]),
+    .mockImplementation((selector) =>
+      selector ? selector(mockStoreState) : mockStoreState
+    ),
+}));
+
+jest.mock('../../../rest/userAPI', () => ({
+  getUserByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockUserData)),
+}));
+
+jest.mock('../../../rest/teamsAPI', () => ({
+  getTeamByName: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ name: 'testTeam', displayName: 'Test Team' })
+    ),
+}));
+
+jest.mock('../../../utils/UserDataUtils', () => ({
+  getUserWithImage: jest.fn().mockImplementation((user) => user),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -42,13 +67,13 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 }));
 
 describe('PopoverTitle Component', () => {
-  it('should render user name and display name correctly', () => {
-    (useUserProfile as jest.Mock).mockImplementation(() => [
-      null,
-      null,
-      mockUserData,
-    ]);
-    render(
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPush.mockClear();
+  });
+
+  it('should render user name and display name correctly', async () => {
+    renderWithQueryClient(
       <PopoverTitle
         profilePicture={<div>ProfilePicture</div>}
         type={OwnerType.USER}
@@ -56,18 +81,12 @@ describe('PopoverTitle Component', () => {
       />
     );
 
-    expect(screen.getByText('Test User')).toBeInTheDocument();
+    expect(await screen.findByText('Test User')).toBeInTheDocument();
     expect(screen.getByText('testUser')).toBeInTheDocument();
   });
 
-  it('should navigate using name instead of display name when clicking display name in tooltip', () => {
-    (useUserProfile as jest.Mock).mockImplementation(() => [
-      null,
-      null,
-      mockUserData,
-    ]);
-
-    render(
+  it('should navigate using name instead of display name when clicking display name', async () => {
+    renderWithQueryClient(
       <PopoverTitle
         profilePicture={<div>ProfilePicture</div>}
         type={OwnerType.USER}
@@ -75,16 +94,17 @@ describe('PopoverTitle Component', () => {
       />
     );
 
-    screen.getByText('Test User').click();
+    (await screen.findByText('Test User')).click();
 
     expect(mockPush).toHaveBeenCalledWith('/users/testUser');
   });
 
-  it('should handle click on user name', () => {
-    const mockNavigate = jest.fn();
-    (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
+  it('should show only userName when displayName is not available', async () => {
+    (getUserByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ name: 'testUser' })
+    );
 
-    render(
+    renderWithQueryClient(
       <PopoverTitle
         profilePicture={<div>ProfilePicture</div>}
         type={OwnerType.USER}
@@ -92,40 +112,15 @@ describe('PopoverTitle Component', () => {
       />
     );
 
-    screen.getByText('Test User').click();
-
-    expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
-  });
-
-  it('should show only userName when displayName is not available', () => {
-    (useUserProfile as jest.Mock).mockImplementationOnce(() => [
-      null,
-      null,
-      { name: 'testUser' },
-    ]);
-
-    render(
-      <PopoverTitle
-        profilePicture={<div>ProfilePicture</div>}
-        type={OwnerType.USER}
-        userName="testUser"
-      />
+    await waitFor(() =>
+      expect(screen.getByTestId('user-name')).toHaveTextContent('testUser')
     );
 
-    expect(screen.getByText('testUser')).toBeInTheDocument();
     expect(screen.queryByText('Test User')).not.toBeInTheDocument();
   });
 
-  it('should navigate to team details path when type is TEAM', () => {
-    const mockNavigate = jest.fn();
-    (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
-    (useUserProfile as jest.Mock).mockImplementation(() => [
-      null,
-      null,
-      { name: 'testTeam', displayName: 'Test Team' },
-    ]);
-
-    render(
+  it('should navigate to team details path when type is TEAM', async () => {
+    renderWithQueryClient(
       <PopoverTitle
         profilePicture={<div>ProfilePicture</div>}
         type={OwnerType.TEAM}
@@ -133,24 +128,15 @@ describe('PopoverTitle Component', () => {
       />
     );
 
-    screen.getByText('Test Team').click();
+    (await screen.findByText('Test Team')).click();
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/settings/members/teams/testTeam'
-    );
-    expect(mockNavigate).not.toHaveBeenCalledWith('/users/testTeam');
+    expect(getTeamByName).toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith('/settings/members/teams/testTeam');
+    expect(mockPush).not.toHaveBeenCalledWith('/users/testTeam');
   });
 
-  it('should navigate to user profile path when type is USER', () => {
-    const mockNavigate = jest.fn();
-    (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
-    (useUserProfile as jest.Mock).mockImplementation(() => [
-      null,
-      null,
-      { name: 'testUser', displayName: 'Test User' },
-    ]);
-
-    render(
+  it('should navigate to user profile path when type is USER', async () => {
+    renderWithQueryClient(
       <PopoverTitle
         profilePicture={<div>ProfilePicture</div>}
         type={OwnerType.USER}
@@ -158,8 +144,8 @@ describe('PopoverTitle Component', () => {
       />
     );
 
-    screen.getByText('Test User').click();
+    (await screen.findByText('Test User')).click();
 
-    expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
+    expect(mockPush).toHaveBeenCalledWith('/users/testUser');
   });
 });

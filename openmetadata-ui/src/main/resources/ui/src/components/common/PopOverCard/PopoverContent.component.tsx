@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 
-import { get, isEmpty } from 'lodash';
-import React, { Fragment, useCallback, useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TabSpecificField } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { getUserByName } from '../../../rest/userAPI';
-import { getUserWithImage } from '../../../utils/UserDataUtils';
+import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import Loader from '../Loader/Loader';
 import { PopoverContentProps } from './UserPopOverCard.interface';
 import { UserRoles } from './UserRoles.component';
@@ -27,47 +23,8 @@ import { UserTeams } from './UserTeams.component';
 
 export const PopoverContent = React.memo(
   ({ userName, type = OwnerType.USER }: PopoverContentProps) => {
-    const isTeam = type === OwnerType.TEAM;
-    const [, , user = {}] = useUserProfile({
-      permission: true,
-      name: userName,
-      isTeam,
-    });
-    const { updateUserProfilePics } = useApplicationStore();
-    const [loading, setLoading] = useState(false);
     const { t } = useTranslation();
-    const teamDetails = get(user, 'teams', null);
-
-    const getUserWithAdditionalDetails = useCallback(async () => {
-      try {
-        setLoading(true);
-        let user = await getUserByName(userName, {
-          fields: [
-            TabSpecificField.TEAMS,
-            TabSpecificField.ROLES,
-            TabSpecificField.PROFILE,
-          ],
-        });
-        user = getUserWithImage(user);
-
-        updateUserProfilePics({
-          id: userName,
-          user,
-        });
-      } catch {
-        // Error
-      } finally {
-        setLoading(false);
-      }
-    }, [userName, updateUserProfilePics]);
-
-    useEffect(() => {
-      if (!teamDetails && !isTeam) {
-        getUserWithAdditionalDetails();
-      } else {
-        setLoading(false);
-      }
-    }, [teamDetails, isTeam, getUserWithAdditionalDetails]);
+    const { data: user, loading } = useEntityPopoverData(userName, type);
 
     return (
       <Fragment>

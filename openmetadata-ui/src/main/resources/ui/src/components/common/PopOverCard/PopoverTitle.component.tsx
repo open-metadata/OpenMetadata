@@ -17,7 +17,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getTeamAndUserDetailsPath,
@@ -28,12 +28,7 @@ import { PopoverTitleProps } from './UserPopOverCard.interface';
 export const PopoverTitle = React.memo(
   ({ userName, profilePicture, type = OwnerType.USER }: PopoverTitleProps) => {
     const navigate = useNavigate();
-
-    const [, , userData] = useUserProfile({
-      permission: true,
-      name: userName,
-      isTeam: type === OwnerType.TEAM,
-    });
+    const { data: userData } = useEntityPopoverData(userName, type);
 
     const name = userData?.name ?? '';
     const displayName = getEntityName(userData as unknown as EntityReference);

@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { noop } from 'lodash';
 import { OwnerType } from '../../../enums/user.enum';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getTeamByName } from '../../../rest/teamsAPI';
 import { getUserByName } from '../../../rest/userAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { PopoverContent } from './PopoverContent.component';
 
 const mockUserData = {
@@ -27,24 +28,31 @@ const mockUserData = {
 };
 
 const mockUpdateUserProfilePics = jest.fn();
+const mockStoreState = {
+  userProfilePics: { testUser: mockUserData },
+  updateUserProfilePics: mockUpdateUserProfilePics,
+};
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    userProfilePics: { testUser: mockUserData },
-    updateUserProfilePics: mockUpdateUserProfilePics,
-  })),
-}));
-
-jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
-  useUserProfile: jest
+  useApplicationStore: jest
     .fn()
-    .mockImplementation(() => [null, null, mockUserData]),
+    .mockImplementation((selector) =>
+      selector ? selector(mockStoreState) : mockStoreState
+    ),
 }));
 
 jest.mock('../../../rest/userAPI', () => ({
   getUserByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockUserData)),
+}));
+
+jest.mock('../../../rest/teamsAPI', () => ({
+  getTeamByName: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('../../../utils/UserDataUtils', () => ({
+  getUserWithImage: jest.fn().mockImplementation((user) => user),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -62,51 +70,63 @@ describe('PopoverContent Component', () => {
     jest.clearAllMocks();
   });
 
-  it('should show loader while loading', async () => {
-    (useUserProfile as jest.Mock).mockImplementation(() => [null, null, {}]);
+  it('should show loader while loading', () => {
     (getUserByName as jest.Mock).mockImplementationOnce(
       () => new Promise(noop)
     );
 
-    render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
+    renderWithQueryClient(
+      <PopoverContent type={OwnerType.USER} userName="testUser" />
+    );
 
     expect(screen.getByText('Loader')).toBeInTheDocument();
   });
 
   it('should show no data message when user data is empty', async () => {
-    (useUserProfile as jest.Mock).mockImplementation(() => [null, null, {}]);
     (getUserByName as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({})
     );
 
-    await act(async () => {
-      render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
-    });
+    renderWithQueryClient(
+      <PopoverContent type={OwnerType.USER} userName="testUser" />
+    );
 
-    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    expect(
+      await screen.findByText('message.no-data-available')
+    ).toBeInTheDocument();
   });
 
-  it('should fetch additional user details when needed', async () => {
-    const mockUser = { name: 'testUser', teams: null };
-    (useUserProfile as jest.Mock).mockImplementation(() => [
-      null,
-      null,
-      mockUser,
-    ]);
+  it('should fetch additional user details with the expected fields', async () => {
+    renderWithQueryClient(
+      <PopoverContent type={OwnerType.USER} userName="testUser" />
+    );
 
-    await act(async () => {
-      render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
-    });
-
-    expect(getUserByName).toHaveBeenCalledWith('testUser', {
-      fields: ['teams', 'roles', 'profile'],
-    });
+    await waitFor(() =>
+      expect(getUserByName).toHaveBeenCalledWith('testUser', {
+        fields: ['teams', 'roles', 'profile'],
+      })
+    );
   });
 
-  it('should not fetch additional details for team type', async () => {
-    await act(async () => {
-      render(<PopoverContent type={OwnerType.TEAM} userName="testUser" />);
-    });
+  it('should mirror the fetched user into the profile-pic store', async () => {
+    renderWithQueryClient(
+      <PopoverContent type={OwnerType.USER} userName="testUser" />
+    );
+
+    await waitFor(() =>
+      expect(mockUpdateUserProfilePics).toHaveBeenCalledWith({
+        id: 'testUser',
+        user: mockUserData,
+      })
+    );
+  });
+
+  it('should not fetch user details for team type', async () => {
+    renderWithQueryClient(
+      <PopoverContent type={OwnerType.TEAM} userName="testTeam" />
+    );
+
+    await waitFor(() => expect(getTeamByName).toHaveBeenCalled());
 
     expect(getUserByName).not.toHaveBeenCalled();
   });
