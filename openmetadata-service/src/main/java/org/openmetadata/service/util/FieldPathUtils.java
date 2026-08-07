@@ -214,7 +214,7 @@ public class FieldPathUtils {
           return new FieldPathComponents(parts[0], fieldName, property);
         }
       } catch (ParseCancellationException | IllegalArgumentException e) {
-        LOG.warn("[FieldPathUtils] Could not parse dot field path: {}", fieldPath);
+        LOG.warn("[FieldPathUtils] Could not parse dot field path: {}", fieldPath, e);
       }
     }
 
