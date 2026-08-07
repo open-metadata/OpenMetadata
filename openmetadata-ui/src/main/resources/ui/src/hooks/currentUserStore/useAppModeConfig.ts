@@ -52,16 +52,19 @@ const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
  * Hydrate the tenant-level app-mode force from the boot-time
  * `GET /system/config/appConfig` response.
  *
- * Order matters: the runtime pin (`writeAppMode`) is written BEFORE
- * `setForced` flips `isForced` to true. `writeAppMode` has its own guard
- * that no-ops once a force is active (see `useAppMode.ts`) — writing
- * first means this initial pin lands while the store still looks
- * unforced, and every write after this one is correctly blocked.
+ * Order matters. `writeAppMode` no-ops once `isForced` is true, so:
+ *   1. Reset the force first — the store is module-level and survives an
+ *      SPA logout→login on the same tab, so a stale `isForced=true` from a
+ *      prior session would block the re-pin below.
+ *   2. Write the runtime pin while the store still looks unforced.
+ *   3. Flip `isForced` to true (if this tenant has a force) so every
+ *      subsequent user-initiated write is blocked.
  */
 export const hydrateAppModeConfig = (config: AppConfiguration): void => {
   const wireMode = config?.defaultAppMode ?? null;
   const runtimeMode = wireMode ? CONFIG_MODE_TO_RUNTIME[wireMode] : null;
 
+  useAppModeConfig.getState().setForced(null);
   if (runtimeMode) {
     writeAppMode(runtimeMode);
   }

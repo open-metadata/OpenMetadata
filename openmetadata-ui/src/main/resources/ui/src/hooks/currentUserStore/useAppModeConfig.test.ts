@@ -66,4 +66,19 @@ describe('hydrateAppModeConfig', () => {
     expect(useAppModeConfig.getState().isForced).toBe(true);
     expect(writeAppMode).toHaveBeenCalledWith('default');
   });
+
+  it('re-pins the runtime mode on a same-tab re-hydration when isForced is stale', () => {
+    // Regression: the store is module-level and survives an SPA logout→login
+    // without a page reload. If a prior session left `isForced=true`,
+    // writeAppMode's own guard would no-op the re-hydration's initial pin
+    // and the new session would be stuck on the previous runtime mode.
+    // hydrateAppModeConfig must reset the force BEFORE the pin so the write
+    // always lands.
+    useAppModeConfig.getState().setForced('ai'); // stale from prior session
+
+    hydrateAppModeConfig({ defaultAppMode: 'ai' });
+
+    expect(writeAppMode).toHaveBeenCalledWith('ai');
+    expect(useAppModeConfig.getState().isForced).toBe(true);
+  });
 });
