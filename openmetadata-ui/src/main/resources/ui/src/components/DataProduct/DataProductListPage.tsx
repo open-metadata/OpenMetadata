@@ -120,7 +120,7 @@ const DataProductListPage = ({
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const showHeaderSearch = isAiMode && !renderPageHeader;
+  const showHeaderSearch = isAiMode;
 
   const [searchInputValue, setSearchInputValue] = useState(
     dataProductListing.urlState.searchQuery ?? ''
@@ -152,6 +152,10 @@ const DataProductListPage = ({
     },
   };
 
+  const headerSearch = showHeaderSearch ? (
+    <Input className="tw:w-72" {...searchInputProps} />
+  ) : undefined;
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
     descriptionMessageKey: 'message.data-product-description',
@@ -160,9 +164,7 @@ const DataProductListPage = ({
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
     variant: isAiMode ? 'search' : undefined,
-    search: showHeaderSearch ? (
-      <Input className="tw:w-72" {...searchInputProps} />
-    ) : undefined,
+    search: headerSearch,
     breadcrumb: headerBreadcrumb,
   });
 
@@ -401,6 +403,7 @@ const DataProductListPage = ({
             createPermission: permissions.dataProduct?.Create || false,
             count: dataProductListing.totalEntities,
             breadcrumb: headerBreadcrumb,
+            search: headerSearch,
           })
         : pageHeader}
 
