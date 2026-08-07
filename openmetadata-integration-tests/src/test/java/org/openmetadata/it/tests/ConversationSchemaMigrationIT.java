@@ -275,9 +275,24 @@ class ConversationSchemaMigrationIT {
     return JsonUtils.readValue(json, Conversation.class);
   }
 
+  /**
+   * Mirrors the generated id and type columns the real legacy table has carried since the 0.x
+   * schema. The migration pages by the primary key and filters on the indexed type column, so a
+   * json-only fixture would not exercise the query it actually runs against a customer database.
+   */
   private void createTemporaryLegacyThreadTable(Handle handle, ConnectionType connectionType) {
-    String jsonType = connectionType == ConnectionType.POSTGRES ? "jsonb" : "json";
-    handle.execute("CREATE TEMPORARY TABLE thread_entity (json " + jsonType + " NOT NULL)");
+    handle.execute(
+        connectionType == ConnectionType.POSTGRES
+            ? "CREATE TEMPORARY TABLE thread_entity ("
+                + "id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL, "
+                + "json JSONB NOT NULL, "
+                + "type VARCHAR(64) GENERATED ALWAYS AS (json ->> 'type') STORED, "
+                + "PRIMARY KEY (id))"
+            : "CREATE TEMPORARY TABLE thread_entity ("
+                + "id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL, "
+                + "json JSON NOT NULL, "
+                + "type VARCHAR(64) GENERATED ALWAYS AS (json ->> '$.type'), "
+                + "PRIMARY KEY (id))");
   }
 
   private void insertLegacyThread(Handle handle, ConnectionType connectionType, Thread thread) {
