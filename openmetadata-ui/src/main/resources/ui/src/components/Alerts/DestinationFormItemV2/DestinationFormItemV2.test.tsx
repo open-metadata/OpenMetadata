@@ -99,6 +99,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Grid.Item = GridItem;
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Button: ({
       onPress,
       children,
@@ -114,9 +116,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+
     Card,
     Divider: () => <hr />,
     Grid,
+
     Input: ({
       onChange,
       value,
@@ -137,7 +141,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange={(e) => onChange?.(e.target.value)}
       />
     ),
+
     Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
+
     Typography: ({
       children,
       as: Tag = 'span',

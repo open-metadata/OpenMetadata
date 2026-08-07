@@ -25,6 +25,8 @@ type MockFieldProp = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(
@@ -34,6 +36,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   Dialog: Object.assign(
     jest.fn().mockImplementation(({ children, title }) => (
       <div role="dialog">
@@ -50,14 +53,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         .mockImplementation(({ children }) => <div>{children}</div>),
     }
   ),
+
   Modal: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+
   ModalOverlay: jest
     .fn()
     .mockImplementation(({ children, isOpen }) =>
       isOpen ? <div>{children}</div> : null
     ),
+
   FieldTypes: { COLOR_PICKER: 'color_picker', ICON_PICKER: 'icon_picker' },
   HelperTextType: { ALERT: 'alert', TOOLTIP: 'tooltip' },
+
   HookForm: ({
     children,
     form,
@@ -80,6 +87,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </form>
     </FormProvider>
   ),
+
   getField: (field: MockFieldProp) => {
     const testId = field.props?.['data-testid'] ?? field.id ?? field.name;
 

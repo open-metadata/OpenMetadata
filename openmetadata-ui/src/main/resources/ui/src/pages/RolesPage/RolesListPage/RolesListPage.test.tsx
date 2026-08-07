@@ -17,13 +17,17 @@ import { ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import RolesListPage from './RolesListPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+
   Popover: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+
   PopoverTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick, isDisabled, ...rest }) => (
@@ -31,6 +35,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </button>
     )),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -40,10 +45,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
+
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
 

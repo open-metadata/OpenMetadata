@@ -232,18 +232,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Box: MockBox,
     Button: MockButton,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: () => <span data-testid="skeleton">Loading...</span>,
     Table: MockTable,
+
     Tooltip: ({
       children,
       title,
     }: React.PropsWithChildren<{ title?: string }>) => (
       <div title={title}>{children}</div>
     ),
+
     TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
+
     Typography: ({
       children,
       className,
@@ -253,6 +257,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </span>
     ),
+
     Dropdown: {
       Root: DropdownRoot,
       Popover: DropdownPopover,

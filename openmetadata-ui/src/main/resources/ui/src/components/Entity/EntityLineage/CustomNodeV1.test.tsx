@@ -152,6 +152,8 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -173,6 +175,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         />
       )
     ),
+
   BadgeWithIcon: jest
     .fn()
     .mockImplementation(({ children, iconLeading: Icon }) => (
@@ -181,11 +184,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </span>
     )),
+
   Box: jest.fn().mockImplementation(({ children, className, ...props }) => (
     <div className={className} {...props}>
       {children}
     </div>
   )),
+
   Breadcrumbs: jest
     .fn()
     .mockImplementation(({ items, 'data-testid': testId }) => {
@@ -209,6 +214,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </div>
       );
     }),
+
   Button: jest
     .fn()
     .mockImplementation(
@@ -222,6 +228,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   Typography: jest
     .fn()
     .mockImplementation(

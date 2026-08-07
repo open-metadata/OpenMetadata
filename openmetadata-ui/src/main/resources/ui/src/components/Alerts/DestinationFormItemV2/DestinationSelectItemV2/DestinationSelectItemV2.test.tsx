@@ -99,9 +99,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Grid.Item = GridItem;
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Alert: ({ title, variant }: { title: ReactNode; variant?: string }) => (
       <div data-testid={`alert-${variant}`}>{title}</div>
     ),
+
     Button: ({
       onPress,
       children,
@@ -117,7 +120,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+
     Grid,
+
     Input: ({
       onChange,
       value,
@@ -143,7 +148,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         />
       </div>
     ),
+
     Select: SelectBase,
+
     Toggle: ({
       onChange,
       isSelected,

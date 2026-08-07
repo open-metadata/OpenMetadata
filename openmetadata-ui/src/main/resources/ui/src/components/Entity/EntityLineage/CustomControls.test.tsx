@@ -43,6 +43,8 @@ const defaultProps = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(
@@ -62,6 +64,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   Dropdown: {
     Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Popover: jest
@@ -80,19 +83,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <li data-key={key}>{children}</li>
       )),
   },
+
   Tooltip: jest
     .fn()
     .mockImplementation(({ children, title }) => (
       <div title={title as string}>{children}</div>
     )),
+
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <>{children}</>),
+
   Typography: jest
     .fn()
     .mockImplementation(({ children, as: Tag = 'span', className }) => (
       <Tag className={className}>{children}</Tag>
     )),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -112,6 +119,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   Tabs: Object.assign(
     jest
       .fn()

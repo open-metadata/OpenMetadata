@@ -27,18 +27,23 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: jest.fn().mockImplementation((props) => (
     <div className={props.className} data-testid={props['data-testid']}>
       {props.children}
     </div>
   )),
+
   Button: jest.fn().mockImplementation((props) => (
     <button data-testid={props['data-testid']} onClick={props.onPress}>
       {props.children}
     </button>
   )),
+
   Divider: jest.fn().mockImplementation(() => <hr />),
   Tooltip: jest.fn().mockImplementation((props) => props.children),
+
   Typography: jest
     .fn()
     .mockImplementation((props) => <span>{props.children}</span>),

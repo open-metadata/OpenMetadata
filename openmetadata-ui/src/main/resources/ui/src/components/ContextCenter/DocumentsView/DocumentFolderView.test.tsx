@@ -116,6 +116,8 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest.fn(
     ({
       children,
@@ -125,9 +127,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onClick?: (e: React.MouseEvent) => void;
     }) => <button onClick={onClick}>{children}</button>
   ),
+
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span data-testid="badge">{children}</span>
   )),
+
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -143,14 +147,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   Card: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div data-testid="card">{children}</div>
   )),
+
   Dot: jest.fn(() => <div data-testid="dot">dot</div>),
+
   FileIcon: jest.fn(({ type }: { type: string }) => (
     <span data-testid={`file-icon-${type}`} />
   )),
+
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
+
   Tree: Object.assign(
     jest.fn(
       ({
@@ -190,6 +199,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

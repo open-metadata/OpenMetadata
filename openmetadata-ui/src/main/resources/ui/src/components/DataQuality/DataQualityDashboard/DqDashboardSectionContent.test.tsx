@@ -27,7 +27,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </div>
   );
 
-  return { Grid };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Grid,
+  };
 });
 
 jest.mock('../../../utils/ObservabilityRouterClassBase', () => ({

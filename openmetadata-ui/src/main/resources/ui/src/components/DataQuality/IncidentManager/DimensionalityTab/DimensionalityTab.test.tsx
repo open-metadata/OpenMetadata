@@ -34,10 +34,13 @@ const PRESET_RANGE = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Select: Object.assign(
     jest.fn().mockImplementation(() => <div data-testid="dimension-select" />),
     { Item: jest.fn() }
   ),
+
   Skeleton: jest.fn().mockImplementation(() => <div data-testid="skeleton" />),
   Table: jest.fn(),
 }));

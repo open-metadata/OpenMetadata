@@ -46,7 +46,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   MockTabs.List = MockTabList;
   MockTabs.Item = MockTabItem;
 
-  return { Tabs: MockTabs };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Tabs: MockTabs,
+  };
 });
 
 import { render, screen } from '@testing-library/react';

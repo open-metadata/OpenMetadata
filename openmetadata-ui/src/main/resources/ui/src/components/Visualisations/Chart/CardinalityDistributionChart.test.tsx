@@ -19,6 +19,8 @@ import CardinalityDistributionChart, {
 } from './CardinalityDistributionChart.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: ({
     children,
     ...props

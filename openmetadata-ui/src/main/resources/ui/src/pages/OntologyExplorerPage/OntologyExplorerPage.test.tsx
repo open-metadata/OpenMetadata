@@ -17,11 +17,14 @@ import OntologyExplorerPage from './OntologyExplorerPage';
 const mockOntologyExplorer = jest.fn();
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: jest
     .fn()
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <span data-testid={testId}>{children}</span>
     )),
+
   Box: jest
     .fn()
     .mockImplementation(
@@ -39,13 +42,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </div>
       )
     ),
+
   Card: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     )),
+
   Dot: jest.fn().mockImplementation(() => <span data-testid="stats-dot" />),
   Skeleton: jest.fn().mockImplementation(() => <div data-testid="skeleton" />),
+
   Typography: jest
     .fn()
     .mockImplementation(

@@ -34,6 +34,8 @@ jest.mock('../../utils/useRequiredParams', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
@@ -41,14 +43,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </button>
     )),
+
   Card: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+
   Tooltip: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <>{children}</>),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(({ icon, onClick, 'data-testid': testId }) => (

@@ -17,6 +17,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import LineageSection from './LineageSection';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(
@@ -35,7 +37,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   Divider: jest.fn().mockImplementation(() => <hr />),
+
   Typography: jest
     .fn()
     .mockImplementation(

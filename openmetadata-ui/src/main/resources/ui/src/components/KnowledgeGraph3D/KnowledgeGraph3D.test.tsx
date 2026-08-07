@@ -116,6 +116,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   Select.Item = SelectItem;
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Badge,
     Button,
     ButtonGroup,

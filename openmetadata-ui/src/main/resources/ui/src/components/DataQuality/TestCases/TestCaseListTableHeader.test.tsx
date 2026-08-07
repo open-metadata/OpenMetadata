@@ -15,12 +15,15 @@ import { act } from 'react';
 import { TestCaseListTableHeader } from './TestCaseListTableHeader.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: ({
     children,
     'data-testid': testId,
   }: React.PropsWithChildren<{ 'data-testid'?: string }>) => (
     <div data-testid={testId}>{children}</div>
   ),
+
   Input: ({
     value,
     placeholder,
@@ -37,6 +40,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange={(e) => onChange?.(e.target.value)}
     />
   ),
+
   Typography: ({
     children,
     'data-testid': testId,

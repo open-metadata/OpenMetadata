@@ -35,6 +35,8 @@ jest.mock('@untitledui/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick, isDisabled, ...rest }) => (
@@ -42,12 +44,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </button>
     )),
+
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+
   Breadcrumbs: jest
     .fn()
     .mockImplementation(
@@ -81,6 +86,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         );
       }
     ),
+
   Typography: jest
     .fn()
     .mockImplementation(({ as: Component = 'span', children, ...props }) => (

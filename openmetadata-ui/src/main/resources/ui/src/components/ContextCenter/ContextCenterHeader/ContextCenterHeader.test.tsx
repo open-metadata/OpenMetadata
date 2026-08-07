@@ -20,10 +20,14 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Breadcrumbs: jest.fn(() => <nav data-testid="title-breadcrumb" />),
+
   Button: jest.fn(
     ({
       children,
@@ -33,9 +37,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onClick?: () => void;
     }) => <button onClick={onClick}>{children}</button>
   ),
+
   Card: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Input: jest.fn(
     ({
       onChange,
@@ -56,6 +62,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
+
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

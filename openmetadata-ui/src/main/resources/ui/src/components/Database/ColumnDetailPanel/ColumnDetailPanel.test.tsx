@@ -93,6 +93,8 @@ jest.mock('antd', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest.fn().mockImplementation(
     ({
       children,
@@ -110,6 +112,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   Typography: jest
     .fn()
     .mockImplementation(({ as: Component = 'span', children, ...props }) => (

@@ -26,6 +26,8 @@ jest.mock('rest/assetAPI', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest.fn(
     ({
       children,
@@ -49,6 +51,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   Dialog: Object.assign(
     jest.fn(
       ({
@@ -75,6 +78,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )),
     }
   ),
+
   Input: jest.fn(
     ({
       value,
@@ -95,13 +99,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
+
   Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   ModalOverlay: jest.fn(
     ({ children, isOpen }: { children: React.ReactNode; isOpen: boolean }) =>
       isOpen ? <div data-testid="modal-overlay">{children}</div> : null
   ),
+
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

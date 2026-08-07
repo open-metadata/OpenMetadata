@@ -21,6 +21,8 @@ jest.mock('./TagsForm', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   SlideoutMenu: Object.assign(
     ({
       isOpen,
@@ -64,6 +66,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   Button: ({
     children,
     onClick,
@@ -84,6 +87,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Typography: ({
     children,
     'data-testid': testId,

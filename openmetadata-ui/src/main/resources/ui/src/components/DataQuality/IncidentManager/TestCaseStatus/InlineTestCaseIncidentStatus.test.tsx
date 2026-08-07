@@ -107,6 +107,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Box: ({
       children,
       className,
@@ -127,6 +129,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </div>
     ),
+
     Button: React.forwardRef<
       HTMLButtonElement,
       React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -151,6 +154,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </button>
       )
     ),
+
     ButtonUtility: ({
       icon: Icon,
       onClick,
@@ -164,7 +168,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {Icon ? <Icon /> : null}
       </button>
     ),
+
     Divider: () => <hr />,
+
     Dropdown: {
       Root: ({
         children,
@@ -201,6 +207,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Item: DropdownItem,
       Separator: () => <hr data-testid="dropdown-separator" />,
     },
+
     Input: ({
       onChange,
       placeholder,
@@ -217,6 +224,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {...props}
       />
     ),
+
     Label: ({
       children,
       isRequired,
@@ -229,6 +237,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {isRequired && <span> *</span>}
       </label>
     ),
+
     Popover: ({
       children,
       containerClassName,
@@ -242,6 +251,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </div>
     ),
+
     PopoverTrigger: ({
       children,
       isOpen,
@@ -270,6 +280,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       );
     },
+
     TextArea: ({
       onChange,
       value,
@@ -293,6 +304,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {...props}
       />
     ),
+
     Typography: ({
       as: Component = 'span',
       children,

@@ -89,18 +89,24 @@ jest.mock('antd', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Alert: jest.fn(({ title }: { title: string }) => (
     <div role="alert">{title}</div>
   )),
+
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+
   BadgeWithButton: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+
   Box: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Button: jest.fn(
     ({
       children,
@@ -110,12 +116,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onClick?: () => void;
     }) => <button onClick={onClick}>{children}</button>
   ),
+
   ButtonUtility: jest.fn(({ onClick }: { onClick?: () => void }) => (
     <button onClick={onClick}>x</button>
   )),
+
   Card: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Dialog: Object.assign(
     jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -126,8 +135,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )),
     }
   ),
+
   Dot: jest.fn(() => <span />),
   FieldTypes: { TEXT: 'text', SELECT: 'select' },
+
   FormField: ({
     control,
     name,
@@ -141,9 +152,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
     return <>{children(controller)}</>;
   },
+
   FormItemLabel: jest.fn(({ label }: { label: React.ReactNode }) => (
     <label>{label}</label>
   )),
+
   getField: (fieldProp: {
     name: string;
     label: React.ReactNode;
@@ -194,6 +207,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
     return <MockField />;
   },
+
   HookForm: ({
     form,
     children,
@@ -211,6 +225,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </form>
     </FormProvider>
   ),
+
   Input: jest.fn(
     ({
       'data-testid': testId,
@@ -228,13 +243,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
+
   Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   ModalOverlay: jest.fn(
     ({ children, isOpen }: { children: React.ReactNode; isOpen?: boolean }) =>
       isOpen ? <div>{children}</div> : null
   ),
+
   Select: Object.assign(
     jest.fn(
       ({
@@ -249,6 +267,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Item: jest.fn(({ label }: { label: string }) => <option>{label}</option>),
     }
   ),
+
   TextArea: jest.fn(
     ({
       'data-testid': testId,
@@ -266,12 +285,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
+
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   )),
+
   TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   )),
+
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

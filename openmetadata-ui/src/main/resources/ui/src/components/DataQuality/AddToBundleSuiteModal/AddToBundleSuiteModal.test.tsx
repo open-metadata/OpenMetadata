@@ -126,6 +126,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Button: ({
       children,
       onPress,
@@ -141,10 +143,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+
     Dialog: MockDialog,
+
     Modal: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="modal">{children}</div>
     ),
+
     ModalOverlay: ({
       children,
       isOpen,

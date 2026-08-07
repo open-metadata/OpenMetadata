@@ -18,6 +18,8 @@ import { MOCK_TASK_RECOGNIZER_FEEDBACK } from '../../../mocks/Task.mock';
 import FeedbackApprovalTask from './FeedbackApprovalTask';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   BadgeWithDot: ({
     children,
     'data-testid': testId,
@@ -25,6 +27,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: ReactNode;
     'data-testid'?: string;
   }) => <span data-testid={testId}>{children}</span>,
+
   Grid: Object.assign(
     ({
       children,
@@ -43,6 +46,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Item: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     }
   ),
+
   Typography: ({
     children,
     'data-testid': testId,

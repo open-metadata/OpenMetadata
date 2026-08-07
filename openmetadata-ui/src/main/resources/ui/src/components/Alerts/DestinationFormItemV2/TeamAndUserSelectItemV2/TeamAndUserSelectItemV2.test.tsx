@@ -24,6 +24,8 @@ import TeamAndUserSelectItemV2 from './TeamAndUserSelectItemV2';
 import { TeamAndUserSelectItemV2Props } from './TeamAndUserSelectItemV2.interface';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   BadgeWithButton: ({
     children,
     onButtonClick,
@@ -40,6 +42,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     </span>
   ),
+
   Checkbox: ({
     isSelected,
     'data-testid': tid,
@@ -54,6 +57,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       type="checkbox"
     />
   ),
+
   Input: ({
     onChange,
     value,

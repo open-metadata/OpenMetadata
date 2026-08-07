@@ -52,10 +52,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     FieldTypes,
     HelperTextType,
     Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     Avatar: () => <div data-testid="avatar" />,
+
     FormItemLabel: ({
       label,
       tooltip,
@@ -71,6 +73,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {tooltip}
       </span>
     ),
+
     IconPickerField: ({
       value,
       onChange,
@@ -86,6 +89,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange={(e) => onChange?.(e.target.value)}
       />
     ),
+
     Tooltip: ({
       children,
       title,
@@ -97,6 +101,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </div>
     ),
+
     TooltipTrigger: ({
       children,
       className,
@@ -104,11 +109,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children: React.ReactNode;
       className?: string;
     }) => <button className={className}>{children}</button>,
+
     HintText: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
     ),
+
     Toggle,
     Grid: GridComponent,
+
     HookForm: ({
       children,
       onSubmit,
@@ -120,6 +128,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </form>
     ),
+
     FormField: ({
       name,
       children,
@@ -142,6 +151,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         },
         fieldState: { invalid: false },
       }),
+
     getField: (fieldProp: {
       id?: string;
       name: string;

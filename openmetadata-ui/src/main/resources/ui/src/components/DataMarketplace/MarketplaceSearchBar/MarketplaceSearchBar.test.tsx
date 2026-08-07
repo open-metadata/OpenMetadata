@@ -109,7 +109,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
     children?: React.ReactNode;
   } & Record<string, unknown>) => <span {...rest}>{children}</span>;
 
-  return { Input, SelectPopover, Typography };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Input,
+    SelectPopover,
+    Typography,
+  };
 });
 
 jest.mock('@untitledui/icons', () => ({

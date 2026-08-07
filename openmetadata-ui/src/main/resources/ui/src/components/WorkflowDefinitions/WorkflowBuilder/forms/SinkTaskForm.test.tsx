@@ -97,7 +97,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   const SelectWithItem = Object.assign(Select, { Item: SelectItem });
 
-  return { Input, Select: SelectWithItem };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Input,
+    Select: SelectWithItem,
+  };
 });
 
 jest.mock('../../../../contexts/WorkflowModeContext', () => ({

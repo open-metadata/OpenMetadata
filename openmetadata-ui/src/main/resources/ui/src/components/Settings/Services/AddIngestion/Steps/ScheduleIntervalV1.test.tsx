@@ -61,6 +61,8 @@ jest.mock('./ScheduleSelectionCards', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: ({
     children,
     color,
@@ -85,6 +87,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Card: ({
     children,
     className,
@@ -96,6 +99,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
+
   Grid: Object.assign(
     ({ children, ...rest }: Record<string, unknown>) => (
       <div data-testid={rest['data-testid'] as string}>
@@ -110,6 +114,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   Select: Object.assign(
     ({
       items,
@@ -140,6 +145,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Item: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     }
   ),
+
   TimePicker: ({
     value,
     onChange,
@@ -161,6 +167,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       }}
     />
   ),
+
   Input: ({
     value,
     onChange,
@@ -182,6 +189,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onChange={(e) => onChange?.(e.target.value)}
     />
   ),
+
   Typography: ({
     children,
     className,

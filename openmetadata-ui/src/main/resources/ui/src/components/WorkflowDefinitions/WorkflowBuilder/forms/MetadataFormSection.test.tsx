@@ -84,7 +84,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     );
   };
 
-  return { Input, TextArea };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Input,
+    TextArea,
+  };
 });
 
 jest.mock('../../../../contexts/WorkflowModeContext', () => ({

@@ -16,6 +16,8 @@ import { AssetSelectionDrawer } from './AssetSelectionDrawer';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   SlideoutMenu: Object.assign(
     ({
       isOpen,
@@ -61,6 +63,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   Typography: ({
     children,
     'data-testid': testId,

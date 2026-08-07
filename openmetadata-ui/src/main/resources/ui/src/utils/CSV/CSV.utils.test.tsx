@@ -56,14 +56,18 @@ import {
 } from './CSVPureUtils';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Tooltip: jest.fn().mockImplementation(({ children, title }) => (
     <div data-testid="tooltip" title={title}>
       {children}
     </div>
   )),
+
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <>{children}</>),
+
   Typography: jest
     .fn()
     .mockImplementation(

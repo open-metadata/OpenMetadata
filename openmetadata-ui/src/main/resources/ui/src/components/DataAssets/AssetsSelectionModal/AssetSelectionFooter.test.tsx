@@ -16,6 +16,8 @@ import AssetSelectionFooter, {
 } from './AssetSelectionFooter';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: ({
     children,
     'data-testid': testId,
@@ -23,6 +25,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     'data-testid'?: string;
   }) => <div data-testid={testId}>{children}</div>,
+
   Button: ({
     children,
     onClick,
@@ -44,9 +47,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+
   Divider: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
     <div data-testid={testId ?? 'divider'} />
   ),
+
   Typography: ({
     children,
     'data-testid': testId,

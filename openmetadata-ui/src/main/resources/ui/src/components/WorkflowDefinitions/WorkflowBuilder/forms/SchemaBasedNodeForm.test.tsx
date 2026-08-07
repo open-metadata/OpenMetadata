@@ -69,7 +69,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     className?: string;
   }) => <span className={props.className}>{props.children}</span>;
 
-  return { Input, TextArea, Toggle, Typography };
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    Input,
+    TextArea,
+    Toggle,
+    Typography,
+  };
 });
 
 jest.mock('react-i18next', () => ({

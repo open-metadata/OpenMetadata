@@ -30,14 +30,18 @@ const mockTeamOwner = [
 ];
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Typography: jest
     .fn()
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <span data-testid={testId}>{children}</span>
     )),
+
   Button: jest
     .fn()
     .mockImplementation(({ children }) => <button>{children}</button>),
+
   Dropdown: {
     Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     Popover: jest

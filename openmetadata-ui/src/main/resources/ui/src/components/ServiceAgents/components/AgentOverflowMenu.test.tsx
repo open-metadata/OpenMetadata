@@ -22,6 +22,8 @@ const mockMenuAction: { current?: (key: string) => void } = {};
 const mockOpenChange: { current?: (open: boolean) => void } = {};
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Dropdown: {
     Root: ({
       children,

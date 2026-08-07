@@ -16,6 +16,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import CoreBooleanField from './CoreBooleanField';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Toggle: jest.fn(
     ({
       isDisabled,

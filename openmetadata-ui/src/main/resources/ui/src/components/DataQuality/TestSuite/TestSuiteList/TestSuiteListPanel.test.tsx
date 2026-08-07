@@ -71,6 +71,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Tabs = Object.assign(TabsComponent, { List, Item });
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Box: ({
       children,
       className,
@@ -84,6 +86,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </div>
     ),
+
     Input: ({
       placeholder,
       value,
@@ -100,6 +103,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange={(e) => onChange(e.target.value)}
       />
     ),
+
     Tabs,
   };
 });

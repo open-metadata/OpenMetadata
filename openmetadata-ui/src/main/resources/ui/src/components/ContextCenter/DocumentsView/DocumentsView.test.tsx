@@ -47,6 +47,8 @@ jest.mock('react-aria-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Box: jest.fn(
     ({
       children,
@@ -62,6 +64,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )
   ),
+
   Button: jest.fn(
     ({
       children,
@@ -77,6 +80,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -90,6 +94,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   Card: jest.fn(
     ({
       children,
@@ -99,6 +104,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       'data-testid'?: string;
     }) => <div data-testid={testId}>{children}</div>
   ),
+
   Dropdown: {
     Root: jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -134,10 +140,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )
     ),
   },
+
   Dot: jest.fn(() => <span>·</span>),
+
   EmptyPlaceholder: jest.fn(({ title }: { title?: React.ReactNode }) => (
     <div data-testid="empty-placeholder">{title}</div>
   )),
+
   Checkbox: jest.fn(
     ({
       onChange,
@@ -147,16 +156,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       'aria-label'?: string;
     }) => <input aria-label={ariaLabel} type="checkbox" onChange={onChange} />
   ),
+
   FileIcon: jest.fn(({ type }: { type: string }) => (
     <span data-testid={`file-icon-${type}`} />
   )),
+
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
+
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

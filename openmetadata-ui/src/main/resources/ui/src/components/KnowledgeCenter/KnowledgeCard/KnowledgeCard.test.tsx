@@ -37,16 +37,20 @@ const mockProps: KnowledgeCardProps = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: jest
     .fn()
     .mockImplementation(({ children }) => (
       <span data-testid="badge">{children}</span>
     )),
+
   Box: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
+
   ButtonUtility: jest
     .fn()
     .mockImplementation(({ children, onClick, 'data-testid': testId }) => (
@@ -54,12 +58,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         {children}
       </button>
     )),
+
   Card: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
       <div {...props}>{children}</div>
     )),
+
   Dot: jest.fn().mockReturnValue(<span data-testid="dot" />),
+
   Typography: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (

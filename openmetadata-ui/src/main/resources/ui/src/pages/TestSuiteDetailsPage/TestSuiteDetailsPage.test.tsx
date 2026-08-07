@@ -34,7 +34,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     ...actual,
+
     Button: ({
       children,
       onPress,
@@ -52,6 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+
     DialogTrigger: ({
       children,
       isOpen,
@@ -88,6 +91,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </div>
       );
     },
+
     Dialog: Object.assign(
       ({
         children,
@@ -121,6 +125,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ),
       }
     ),
+
     Modal: ({
       children,
       className,
@@ -134,6 +139,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </div>
     ),
+
     ModalOverlay: ({
       children,
       isOpen,
@@ -150,6 +156,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
           {children}
         </div>
       ) : null,
+
     Tabs: (() => {
       const TabsRoot = ({
         children,

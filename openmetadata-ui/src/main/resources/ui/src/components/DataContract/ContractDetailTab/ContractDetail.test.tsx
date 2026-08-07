@@ -43,12 +43,16 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
   )),
+
   BadgeWithIcon: jest.fn(({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
   )),
+
   Box: jest.fn(
     ({
       children,
@@ -64,6 +68,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )
   ),
+
   Button: jest.fn(
     ({
       children,
@@ -81,6 +86,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -90,6 +96,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       [key: string]: unknown;
     }) => <button onClick={onClick} {...rest} />
   ),
+
   Card: Object.assign(
     jest.fn(
       ({
@@ -118,6 +125,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       )),
     }
   ),
+
   Divider: jest.fn(
     ({
       className,
@@ -135,6 +143,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
+
   Dropdown: (() => {
     const OnActionCtx = React.createContext<
       ((key: string) => void) | undefined
@@ -190,6 +199,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       Separator: jest.fn(() => <hr />),
     };
   })(),
+
   Tooltip: jest.fn(
     ({
       children,
@@ -203,9 +213,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </div>
     )
   ),
+
   TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   )),
+
   Typography: jest.fn(
     ({
       as: Tag = 'span',

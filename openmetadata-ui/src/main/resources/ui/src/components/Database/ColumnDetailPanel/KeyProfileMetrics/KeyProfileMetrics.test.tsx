@@ -16,12 +16,15 @@ import { ColumnProfile } from '../../../../generated/entity/data/table';
 import { KeyProfileMetrics } from './KeyProfileMetrics.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Tooltip: ({
     children,
     title,
   }: React.PropsWithChildren<{ title?: string }>) => (
     <div title={title}>{children}</div>
   ),
+
   TooltipTrigger: ({ children }: React.PropsWithChildren) => <>{children}</>,
 }));
 

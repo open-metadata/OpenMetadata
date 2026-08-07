@@ -28,6 +28,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const React = require('react');
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+
     Autocomplete: Object.assign(
       ({ children, ...props }: Record<string, unknown>) =>
         React.createElement('div', props, children),
@@ -36,19 +38,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
           React.createElement('div', props, label),
       }
     ),
+
     Badge: ({ children, ...props }: Record<string, unknown>) =>
       React.createElement('span', props, children),
+
     BadgeWithIcon: ({
       children,
       iconLeading: _iconLeading,
       ...props
     }: Record<string, unknown>) => React.createElement('span', props, children),
+
     Button: ({
       children,
       iconLeading: _iconLeading,
       ...props
     }: Record<string, unknown>) =>
       React.createElement('button', props, children),
+
     Select: Object.assign(
       ({ children, ...props }: Record<string, unknown>) =>
         React.createElement('select', props, children),
@@ -57,10 +63,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
           React.createElement('option', props, label),
       }
     ),
+
     Tooltip: ({ children, ...props }: Record<string, unknown>) =>
       React.createElement('span', props, children),
+
     TooltipTrigger: ({ children, ...props }: Record<string, unknown>) =>
       React.createElement('span', props, children),
+
     Typography: ({ children, ...props }: Record<string, unknown>) =>
       React.createElement('span', props, children),
   };

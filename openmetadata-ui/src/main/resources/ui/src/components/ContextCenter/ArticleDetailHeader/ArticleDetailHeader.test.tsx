@@ -130,12 +130,16 @@ jest.mock(
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+
   Box: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Button: jest.fn(
     ({
       children,
@@ -151,6 +155,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -168,10 +173,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )
   ),
+
   Card: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Dot: jest.fn(() => <span>·</span>),
+
   Dropdown: Object.assign(
     jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -209,7 +217,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
+
   Tabs: Object.assign(
     jest.fn(
       ({
@@ -231,12 +241,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),

@@ -15,6 +15,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { DeleteModal } from './DeleteModal';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+
   Button: jest
     .fn()
     .mockImplementation(
@@ -24,6 +26,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+
   Dialog: Object.assign(
     jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     {
@@ -32,6 +35,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         .mockImplementation(({ children }) => <div>{children}</div>),
     }
   ),
+
   Grid: Object.assign(
     jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
     {
@@ -40,13 +44,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         .mockImplementation(({ children }) => <div>{children}</div>),
     }
   ),
+
   FeaturedIcon: jest.fn().mockReturnValue(<div data-testid="featured-icon" />),
   Modal: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+
   ModalOverlay: jest
     .fn()
     .mockImplementation(({ children, isOpen }) =>
       isOpen ? <div>{children}</div> : null
     ),
+
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),

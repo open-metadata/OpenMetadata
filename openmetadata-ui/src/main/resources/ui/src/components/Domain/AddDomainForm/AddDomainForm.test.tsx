@@ -101,10 +101,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => <div data-testid={testId}>{label}</div>;
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Autocomplete,
+
     Avatar: (props: Record<string, unknown>) => (
       <div data-testid="avatar" {...props} />
     ),
+
     Box: ({
       children,
       ...props
@@ -112,7 +115,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children?: ReactNode;
       [key: string]: unknown;
     }) => <div {...props}>{children}</div>,
+
     Dot: (props: Record<string, unknown>) => <span {...props} />,
+
     Button: ({
       children,
       onPress,
@@ -141,6 +146,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+
     FieldTypes: {
       COVER_IMAGE_UPLOAD: 'cover_image_upload',
       DESCRIPTION: 'description',
@@ -155,6 +161,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       USER_TEAM_SELECT: 'user_team_select',
       USER_TEAM_SELECT_INPUT: 'user_team_select_input',
     },
+
     FormField: <TFieldValues extends FieldValues = FieldValues>({
       control,
       name,
@@ -184,8 +191,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
         rules={rules}
       />
     ),
+
     FormItemLabel: ({ label }: { label: ReactNode }) => <div>{label}</div>,
     HintText: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+
     HookForm: ({
       children,
       onSubmit,
@@ -204,6 +213,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </form>
     ),
+
     getField: (field: {
       id?: string;
       name: string;
@@ -217,6 +227,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {field.label}
       </div>
     ),
+
     Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
     TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
   };
