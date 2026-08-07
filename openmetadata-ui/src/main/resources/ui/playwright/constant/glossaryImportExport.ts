@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TABLE_CP_COLUMNS } from './customPropertyAdvancedSearch';
+
 export const CUSTOM_PROPERTIES_TYPES = {
   STRING: 'String',
   MARKDOWN: 'Markdown',
@@ -31,7 +33,10 @@ This project is designed to **simplify** and *automate* daily tasks. It aims to:
 3. **Automation**: Automate repetitive workflows using custom scripts.`,
   SQL_QUERY: 'SELECT * FROM table_name WHERE id="20";',
   TABLE: {
-    columns: ['pw-import-export-column1', 'pw-import-export-column2'],
+    // Must mirror the columns entity-data.setup.ts creates on the shared
+    // `table-cp` property — the import/export specs now reuse that property
+    // instead of creating their own.
+    columns: TABLE_CP_COLUMNS,
     rows: 'pw-import-export-row1-column1,pw-import-export-row1-column2',
   },
 };
