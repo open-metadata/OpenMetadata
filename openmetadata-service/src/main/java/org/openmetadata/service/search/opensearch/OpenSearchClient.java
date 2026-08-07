@@ -136,10 +136,12 @@ public class OpenSearchClient implements SearchClient {
 
     if (useIamAuth) {
       this.awsHttpClient = AwsCrtHttpClient.builder().build();
-      this.transport = createAwsSdk2Transport(config, awsConfig, this.awsHttpClient);
+      this.transport =
+          MeteredOpenSearchTransport.wrap(
+              createAwsSdk2Transport(config, awsConfig, this.awsHttpClient));
     } else {
       this.awsHttpClient = null;
-      this.transport = createApacheHttpClient5Transport(config);
+      this.transport = MeteredOpenSearchTransport.wrap(createApacheHttpClient5Transport(config));
     }
 
     this.newClient = createOpenSearchNewClient(transport);
@@ -171,7 +173,7 @@ public class OpenSearchClient implements SearchClient {
 
       LOG.info(
           "Successfully initialized OpenSearch Java API client with transport: {}",
-          transport.getClass().getSimpleName());
+          MeteredOpenSearchTransport.unwrap(transport).getClass().getSimpleName());
       return newClient;
     } catch (Exception e) {
       LOG.error("Failed to initialize new Opensearch client", e);
