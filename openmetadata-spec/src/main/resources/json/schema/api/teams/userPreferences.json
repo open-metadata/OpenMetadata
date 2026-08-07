@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://open-metadata.org/schema/api/teams/userPreferences.json",
+  "title": "UserPreferences",
+  "description": "Per-user opaque UI preferences bag. Not a full entity - no versioning, audit, or soft-delete. Stored independently of the User entity so it can evolve without affecting User schema/versioning.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.teams.UserPreferences",
+  "properties": {
+    "userId": {
+      "description": "Unique identifier of the User this preferences bag belongs to.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "preferences": {
+      "description": "Opaque per-user UI preferences (e.g. appMode).",
+      "type": "object",
+      "additionalProperties": true,
+      "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>",
+      "default": {}
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the preferences in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["userId", "preferences"],
+  "additionalProperties": false
+}
