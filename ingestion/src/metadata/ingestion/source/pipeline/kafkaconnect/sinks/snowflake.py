@@ -101,6 +101,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
 
         database = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS)
         schema = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_SCHEMA_KEYS)
+        self._warn_on_partial_qualification(config, database, schema)
         mapping = self._topic2table_map(config)
 
         return [
@@ -109,9 +110,13 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
                 database=database,
                 schema=schema,
                 source_topic=topic,
-                fully_qualified=bool(database and schema),
+                # fully_qualified decides which FQN slot `database` fills, and a Snowflake sink's
+                # database is always a real database -- never a Debezium-style logical server
+                # name. Requiring `schema` too would push a lone database into the schema slot
+                # and build an FQN that can never match the table.
+                fully_qualified=bool(database),
             )
-            for topic in topic_names
+            for topic in self._with_mapped_topics(config, topic_names, mapping)
         ]
 
     def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Optional[Any]:  # noqa: UP045
@@ -204,6 +209,45 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
             for field in root.children or []:
                 walk(field, [])
         return paths
+
+    @staticmethod
+    def _warn_on_partial_qualification(config: dict, database: Optional[str], schema: Optional[str]) -> None:  # noqa: UP045
+        """
+        Report a config that names a database but no schema, or the reverse.
+
+        The connector itself requires both, so one of them missing is a misconfiguration
+        upstream; naming the absent key turns an otherwise silent table-not-found into
+        something a support engineer can act on.
+        """
+        if bool(database) == bool(schema):
+            return
+        if database:
+            present, missing = f"database '{database}'", ConnectorConfigKeys.SNOWFLAKE_SCHEMA_KEYS[0]
+        else:
+            present, missing = f"schema '{schema}'", ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS[0]
+        logger.warning(
+            f"Snowflake sink '{config.get('name')}' declares a {present} but no '{missing}'; "
+            f"its tables cannot be addressed by a full FQN and lineage may be missed"
+        )
+
+    @staticmethod
+    def _with_mapped_topics(config: dict, topic_names: List[str], mapping: Dict[str, str]) -> List[str]:  # noqa: UP006
+        """
+        `topic_names` plus any topic that only topic2table.map knows about.
+
+        A topics.regex subscription whose concrete topics were not all discovered leaves the
+        rest named solely in the map -- explicit user configuration pairing a topic with a
+        table, so dropping it loses lineage the config plainly asked for. Discovered topics
+        keep their position; recovered ones are appended.
+        """
+        discovered = set(topic_names)
+        mapped_only = [topic for topic in mapping if topic not in discovered]
+        if mapped_only:
+            logger.info(
+                f"Snowflake sink '{config.get('name')}' maps topic(s) missing from its topic list "
+                f"({', '.join(mapped_only)}); building their datasets from snowflake.topic2table.map"
+            )
+        return [*topic_names, *mapped_only]
 
     @staticmethod
     def _first_configured(config: dict, keys: List[str]) -> Optional[str]:  # noqa: UP006, UP045

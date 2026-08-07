@@ -249,6 +249,111 @@ class TestSnowflakeSinkResolver:
         assert dataset.fully_qualified is False
 
 
+DATABASE_ONLY_CONFIG = {k: v for k, v in BASE_SNOWFLAKE_CONFIG.items() if k != "snowflake.schema.name"}
+SCHEMA_ONLY_CONFIG = {k: v for k, v in BASE_SNOWFLAKE_CONFIG.items() if k != "snowflake.database.name"}
+
+
+class TestPartialQualificationNeverMisplacesTheDatabase:
+    """`fully_qualified` decides *which slot* `database` lands in, and for a Snowflake sink
+    `database` is always a real database -- never a Debezium-style logical server name. Deciding
+    it from `database and schema` conflated that with "are both parts present", so a sink that
+    set only snowflake.database.name pushed its database into the schema slot and produced an
+    FQN (<service>.<database>.<table>) that can never match the real table."""
+
+    def test_a_database_only_config_is_still_qualified(self):
+        dataset = get_resolver("SnowflakeSink").resolve_datasets(DATABASE_ONLY_CONFIG, [])[0]
+        assert dataset.database == "EVENT_LANDING"
+        assert dataset.schema is None
+        assert dataset.fully_qualified is True
+
+    def test_a_database_only_config_keeps_the_database_out_of_the_schema_slot(self):
+        dataset = get_resolver("SnowflakeSink").resolve_datasets(DATABASE_ONLY_CONFIG, [])[0]
+        kwargs = _priority_one_fqn_kwargs(
+            dataset,
+            KafkaConnectPipelineDetails(name="s", type="sink", config=DATABASE_ONLY_CONFIG),
+        )
+        assert kwargs["database_name"] == "EVENT_LANDING"
+        assert kwargs["schema_name"] is None
+        assert kwargs["table_name"] == "ORDER_EVENTS_FLAT"
+
+    def test_a_database_only_config_warns_and_names_the_missing_schema_key(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            get_resolver("SnowflakeSink").resolve_datasets(DATABASE_ONLY_CONFIG, [])
+        combined = " ".join(record.message for record in caplog.records)
+        assert "snowflake.schema.name" in combined
+        assert "snowflake-landing" in combined
+
+    def test_a_schema_only_config_warns_and_names_the_missing_database_key(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            get_resolver("SnowflakeSink").resolve_datasets(SCHEMA_ONLY_CONFIG, [])
+        combined = " ".join(record.message for record in caplog.records)
+        assert "snowflake.database.name" in combined
+
+    def test_a_complete_config_does_not_warn(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            get_resolver("SnowflakeSink").resolve_datasets(BASE_SNOWFLAKE_CONFIG, [])
+        assert [record.message for record in caplog.records] == []
+
+
+class TestMappedTopicsAreNeverDropped:
+    """snowflake.topic2table.map is explicit user configuration naming a concrete topic->table
+    pair. Building datasets only for topics in the discovered/configured topic list dropped every
+    mapping whose topic was not in that list -- the case a topics.regex subscription produces when
+    only some of its topics are discovered -- and dropped it silently, so the lost lineage was not
+    even diagnosable."""
+
+    def test_a_mapped_topic_absent_from_the_topic_list_still_yields_a_dataset(self):
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "prod.orders:ORDERS"})
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert {d.source_topic: d.table for d in datasets}["prod.orders"] == "ORDERS"
+
+    def test_discovered_topics_keep_their_order_and_mapped_only_topics_follow(self):
+        """Several assertions elsewhere pin the exact dataset order for discovered topics, so
+        the recovered mappings are appended rather than interleaved."""
+        config = dict(
+            BASE_SNOWFLAKE_CONFIG,
+            **{"snowflake.topic2table.map": "prod.orders:ORDERS,order_events_flat:FLAT,prod.items:ITEMS"},
+        )
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert [d.source_topic for d in datasets] == [
+            "order_events_flat",
+            "om-lineage-test",
+            "prod.orders",
+            "prod.items",
+        ]
+        assert [d.table for d in datasets] == ["FLAT", "OM_LINEAGE_TEST_702890019", "ORDERS", "ITEMS"]
+
+    def test_a_mapped_only_topic_is_qualified_like_every_other_dataset(self):
+        """Without database/schema and fully_qualified the recovered dataset reaches Priority 1
+        with an unusable FQN, so recovering it would buy no lineage."""
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "prod.orders:ORDERS"})
+        dataset = next(
+            d for d in get_resolver("SnowflakeSink").resolve_datasets(config, []) if d.source_topic == "prod.orders"
+        )
+        assert (dataset.database, dataset.schema) == ("EVENT_LANDING", "PUBLIC")
+        assert dataset.fully_qualified is True
+
+    def test_a_mapped_only_topic_is_recovered_alongside_a_discovered_topic_list(self):
+        """The reported case: the connector subscribes by regex, only some concrete topics get
+        discovered, and the map names the rest."""
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "prod.orders:ORDERS"})
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [KafkaConnectTopics(name="prod.items")])
+        assert [d.source_topic for d in datasets] == ["prod.items", "prod.orders"]
+
+    def test_recovering_mapped_topics_is_logged(self, caplog):
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "prod.orders:ORDERS"})
+        with caplog.at_level(logging.INFO):
+            get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        combined = " ".join(record.message for record in caplog.records)
+        assert "prod.orders" in combined
+        assert "snowflake.topic2table.map" in combined
+
+    def test_a_map_naming_only_discovered_topics_adds_nothing(self):
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "order_events_flat:ORDERS"})
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert [d.source_topic for d in datasets] == ["order_events_flat", "om-lineage-test"]
+
+
 SELF_MANAGED_SNOWFLAKE_CLASS = "com.snowflake.kafka.connector.SnowflakeSinkConnector"
 
 # A self-managed sink using the shorter key variations (both are listed in
@@ -399,15 +504,17 @@ class TestSnowflakeServiceResolution:
         assert "snowflake.url.name" in SERVICE_TYPE_HOSTNAME_KEYS["Snowflake"]
 
     def test_url_with_leading_whitespace_is_stripped(self):
-        """Observed live: the UI stored ' FMFAHQK-GI58232.snowflakecomputing.com'."""
-        extracted = KafkaconnectSource._extract_hostname(None, " FMFAHQK-GI58232.snowflakecomputing.com")
-        assert extracted == "FMFAHQK-GI58232.snowflakecomputing.com"
+        """Observed live: the Confluent UI stored the URL with a leading space, as
+        '<account>.snowflakecomputing.com' (account anonymised here)."""
+        extracted = KafkaconnectSource._extract_hostname(None, " EXAMPLE1-AB00000.snowflakecomputing.com")
+        assert extracted == "EXAMPLE1-AB00000.snowflakecomputing.com"
 
 
 # Observed live: Confluent reports "<account>.snowflakecomputing.com" (with a leading
 # space, as the UI stored it) while the OpenMetadata service holds the bare account.
-LIVE_SNOWFLAKE_URL = " FMFAHQK-GI58232.snowflakecomputing.com"
-LIVE_SNOWFLAKE_ACCOUNT = "FMFAHQK-GI58232"
+# The shape is what was captured; the account identifier itself is anonymised.
+LIVE_SNOWFLAKE_URL = " EXAMPLE1-AB00000.snowflakecomputing.com"
+LIVE_SNOWFLAKE_ACCOUNT = "EXAMPLE1-AB00000"
 
 
 def _database_service(name: str, service_type: DatabaseServiceType, config) -> DatabaseService:
@@ -445,7 +552,7 @@ class TestSnowflakeHostnameMatching:
         assert source.find_database_service_by_hostname("Snowflake", LIVE_SNOWFLAKE_URL) == "snowflake_prod"
 
     def test_account_matching_is_case_insensitive(self):
-        source = _source_with_services([_snowflake_service(account="fmfahqk-gi58232")])
+        source = _source_with_services([_snowflake_service(account="example1-ab00000")])
         assert source.find_database_service_by_hostname("Snowflake", LIVE_SNOWFLAKE_URL) == "snowflake_prod"
 
     def test_a_different_account_does_not_match(self):
@@ -489,6 +596,31 @@ CDC_PIPELINE_DETAILS = KafkaConnectPipelineDetails(
 )
 
 
+def _priority_one_fqn_kwargs(dataset, pipeline_details) -> dict:
+    """The keyword arguments Priority 1 of ``get_dataset_entity`` passes to ``fqn.build``."""
+    captured = []
+    source = MagicMock(spec=KafkaconnectSource)
+    source.metadata = MagicMock()
+    # A miss on every lookup keeps all three priorities reachable, so captured[0]
+    # is unambiguously the Priority 1 call.
+    source.metadata.get_by_name.return_value = None
+    source.get_service_from_connector_config.return_value = MagicMock(database_service_name="matched_service")
+    source.get_db_service_names.return_value = []
+
+    def fake_fqn_build(metadata=None, entity_type=None, **kwargs):
+        captured.append(kwargs)
+        return
+
+    with patch(
+        "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
+        side_effect=fake_fqn_build,
+    ):
+        KafkaconnectSource.get_dataset_entity(source, pipeline_details, dataset)
+
+    assert captured, "expected at least one fqn.build call"
+    return captured[0]
+
+
 class TestDatasetFqnConstruction:
     """Pins the *slot* each value lands in by asserting on fqn.build's keyword arguments.
 
@@ -501,31 +633,8 @@ class TestDatasetFqnConstruction:
     the database/schema/table slots.
     """
 
-    def _priority_one_kwargs(self, dataset, pipeline_details) -> dict:
-        captured = []
-        source = MagicMock(spec=KafkaconnectSource)
-        source.metadata = MagicMock()
-        # A miss on every lookup keeps all three priorities reachable, so captured[0]
-        # is unambiguously the Priority 1 call.
-        source.metadata.get_by_name.return_value = None
-        source.get_service_from_connector_config.return_value = MagicMock(database_service_name="matched_service")
-        source.get_db_service_names.return_value = []
-
-        def fake_fqn_build(metadata=None, entity_type=None, **kwargs):
-            captured.append(kwargs)
-            return
-
-        with patch(
-            "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
-            side_effect=fake_fqn_build,
-        ):
-            KafkaconnectSource.get_dataset_entity(source, pipeline_details, dataset)
-
-        assert captured, "expected at least one fqn.build call"
-        return captured[0]
-
     def test_qualified_dataset_builds_four_part_fqn(self):
-        kwargs = self._priority_one_kwargs(
+        kwargs = _priority_one_fqn_kwargs(
             KafkaConnectDatasetDetails(
                 table="ORDER_EVENTS_FLAT",
                 database="EVENT_LANDING",
@@ -543,7 +652,7 @@ class TestDatasetFqnConstruction:
     def test_unqualified_cdc_dataset_keeps_three_part_fqn(self):
         """Debezium's 'database' is the logical server name (topic.prefix), not a real
         database, so it belongs in the schema slot with the database slot left empty."""
-        kwargs = self._priority_one_kwargs(
+        kwargs = _priority_one_fqn_kwargs(
             KafkaConnectDatasetDetails(table="orders", database="inventory", fully_qualified=False),
             CDC_PIPELINE_DETAILS,
         )
@@ -555,7 +664,7 @@ class TestDatasetFqnConstruction:
         """table.include.list = "inventory.orders" populates `schema` while the dataset
         stays unqualified: the logical server name must still win the schema slot.
         Gating on `schema` instead of `fully_qualified` breaks exactly here."""
-        kwargs = self._priority_one_kwargs(
+        kwargs = _priority_one_fqn_kwargs(
             KafkaConnectDatasetDetails(
                 table="orders",
                 database="inventory",
@@ -580,8 +689,8 @@ class TestUnresolvableTableDiagnostics:
 
         dataset = KafkaConnectDatasetDetails(
             table="ORDER_EVENTS_FLAT",
-            database="TEST_DB",
-            schema="MAYUR_SCHEMA",
+            database="EXAMPLE_DB",
+            schema="EXAMPLE_SCHEMA",
             source_topic="order_events_flat",
             fully_qualified=True,
         )
@@ -597,23 +706,27 @@ class TestUnresolvableTableDiagnostics:
         assert "ORDER_EVENTS_FLAT" in combined
 
 
-# Captured verbatim from GET /connect/v1/environments/env-.../connectors/SnowflakeSinkConnector_0
-REAL_CONFLUENT_CLOUD_RESPONSE = {
+# The shape of a real GET /connect/v1/environments/{env}/connectors/{name} response, captured
+# verbatim: the exact key set, secrets rendered as fixed-width masks rather than omitted, the
+# leading space Confluent stores in snowflake.url.name, and the absence of every defaulted
+# property (snowflake.enable.schematization, snowflake.ingestion.method). Those properties are
+# what the tests below assert on; every credential, host, account and identifier is anonymised.
+CAPTURED_CONFLUENT_CLOUD_RESPONSE = {
     "name": "SnowflakeSinkConnector_0",
     "type": "sink",
     "config": {
         "connector.class": "SnowflakeSink",
         "input.data.format": "AVRO",
-        "kafka.api.key": "IWZOEA4Q46ZJDE52",
+        "kafka.api.key": "FAKEKEY123456789",
         "kafka.api.secret": "****************",
         "kafka.auth.mode": "KAFKA_API_KEY",
-        "kafka.endpoint": "SASL_SSL://pkc-56d1g.eastus.azure.confluent.cloud:9092",
+        "kafka.endpoint": "SASL_SSL://pkc-00000.eastus.azure.confluent.cloud:9092",
         "name": "SnowflakeSinkConnector_0",
-        "snowflake.database.name": "TEST_DB",
+        "snowflake.database.name": "EXAMPLE_DB",
         "snowflake.private.key": "****************",
-        "snowflake.schema.name": "MAYUR_SCHEMA",
-        "snowflake.url.name": " FMFAHQK-GI58232.snowflakecomputing.com",
-        "snowflake.user.name": "MAYUR",
+        "snowflake.schema.name": "EXAMPLE_SCHEMA",
+        "snowflake.url.name": " EXAMPLE1-AB00000.snowflakecomputing.com",
+        "snowflake.user.name": "ETL_USER",
         "tasks.max": "1",
         "topics": "order_events_flat",
     },
@@ -627,7 +740,7 @@ def _confluent_cloud_client(monkeypatch):
     )
     client = KafkaConnectClient(connection)
     client.client = MagicMock()
-    client.client.get_connector.return_value = REAL_CONFLUENT_CLOUD_RESPONSE
+    client.client.get_connector.return_value = CAPTURED_CONFLUENT_CLOUD_RESPONSE
     return client
 
 
@@ -637,11 +750,11 @@ class TestConfluentCloudConfigShape:
         assert client.is_confluent_cloud is True
         config = client.get_connector_config("SnowflakeSinkConnector_0")
         assert config["connector.class"] == "SnowflakeSink"
-        assert config["snowflake.database.name"] == "TEST_DB"
+        assert config["snowflake.database.name"] == "EXAMPLE_DB"
 
     def test_defaulted_properties_are_absent_not_false(self):
         """The API omits defaults, so presence checks are unsafe."""
-        config = REAL_CONFLUENT_CLOUD_RESPONSE["config"]
+        config = CAPTURED_CONFLUENT_CLOUD_RESPONSE["config"]
         assert "snowflake.enable.schematization" not in config
         assert "snowflake.ingestion.method" not in config
 
@@ -672,7 +785,7 @@ NESTED_AVRO = json.dumps(
     }
 )
 
-# Verbatim from DESC TABLE TEST_DB.MAYUR_SCHEMA.ORDER_EVENTS_NESTED
+# The column set a live DESC TABLE returned, verbatim (database and schema anonymised).
 REAL_SNOWFLAKE_COLUMNS = [
     ("RECORD_METADATA", DataType.JSON),
     ("CUSTOMER_NAME", DataType.VARCHAR),
@@ -705,11 +818,12 @@ def _nested_table() -> Table:
     )
 
 
-# Field and column FQNs exactly as observed live on 2026-08-06. The Avro record name
+# Field and column FQNs in exactly the form observed live on 2026-08-06, with the database and
+# schema segments anonymised (the segment *structure* is what matters). The Avro record name
 # (OrderEvent) is itself a level in the topic field FQN, so a topic field FQN is
 # <messagingService>.<topic>.<recordName>.<field>.
 TOPIC_FIELD_FQN_PREFIX = "confluent_kafka.order_events_nested"
-TABLE_COLUMN_FQN_PREFIX = "snowflake.TEST_DB.MAYUR_SCHEMA.ORDER_EVENTS_NESTED"
+TABLE_COLUMN_FQN_PREFIX = "snowflake.EXAMPLE_DB.EXAMPLE_SCHEMA.ORDER_EVENTS_NESTED"
 
 
 def _with_field_fqns(topic: Topic, prefix: str) -> Topic:
@@ -744,8 +858,8 @@ SNOWFLAKE_SINK_DETAILS = KafkaConnectPipelineDetails(
 
 NESTED_DATASET_DETAILS = KafkaConnectDatasetDetails(
     table="ORDER_EVENTS_NESTED",
-    database="TEST_DB",
-    schema="MAYUR_SCHEMA",
+    database="EXAMPLE_DB",
+    schema="EXAMPLE_SCHEMA",
     source_topic="order_events_nested",
     fully_qualified=True,
 )
@@ -852,7 +966,7 @@ CAMEL_CASE_AVRO = json.dumps(
     }
 )
 CAMEL_TOPIC_FIELD_FQN_PREFIX = "confluent_kafka.camel_events"
-CAMEL_TABLE_COLUMN_FQN_PREFIX = "snowflake.TEST_DB.MAYUR_SCHEMA.CAMEL_EVENTS"
+CAMEL_TABLE_COLUMN_FQN_PREFIX = "snowflake.EXAMPLE_DB.EXAMPLE_SCHEMA.CAMEL_EVENTS"
 
 
 class TestColumnMatchingIsCaseInsensitiveOnBothSides:
@@ -893,8 +1007,8 @@ class TestColumnMatchingIsCaseInsensitiveOnBothSides:
             pipeline_details=SNOWFLAKE_SINK_DETAILS,
             dataset_details=KafkaConnectDatasetDetails(
                 table="CAMEL_EVENTS",
-                database="TEST_DB",
-                schema="MAYUR_SCHEMA",
+                database="EXAMPLE_DB",
+                schema="EXAMPLE_SCHEMA",
                 source_topic="camel_events",
                 fully_qualified=True,
             ),
@@ -910,10 +1024,11 @@ class TestColumnMatchingIsCaseInsensitiveOnBothSides:
 
 class TestEndToEndDatasetResolution:
     def test_real_connector_config_resolves_one_dataset_per_topic(self):
-        """The connector config is verbatim from a live `GET /connectors/{name}` captured
-        2026-08-05; the resulting lineage was re-verified live 2026-08-06."""
+        """The connector config keeps the shape of a live `GET /connectors/{name}` captured
+        2026-08-05 (identifiers anonymised); the resulting lineage was re-verified live
+        2026-08-06."""
         config = dict(
-            REAL_CONFLUENT_CLOUD_RESPONSE["config"],
+            CAPTURED_CONFLUENT_CLOUD_RESPONSE["config"],
             topics="order_events_flat,order_events_nested,om-lineage-test",
         )
         details = KafkaConnectPipelineDetails(name="s", type="sink", config=config)
@@ -924,7 +1039,7 @@ class TestEndToEndDatasetResolution:
             "ORDER_EVENTS_NESTED",
             "OM_LINEAGE_TEST_702890019",
         ]
-        assert all(d.database == "TEST_DB" and d.schema == "MAYUR_SCHEMA" for d in datasets)
+        assert all(d.database == "EXAMPLE_DB" and d.schema == "EXAMPLE_SCHEMA" for d in datasets)
         assert all(d.fully_qualified for d in datasets)
         # match_topic returns None without source_topic, so losing it silently kills lineage.
         assert [d.source_topic for d in datasets] == [
@@ -1065,8 +1180,8 @@ def _flattened_table_with_column_fqns() -> Table:
 def _flatten_dataset_details(column_mappings) -> KafkaConnectDatasetDetails:
     return KafkaConnectDatasetDetails(
         table="ORDER_EVENTS_NESTED",
-        database="TEST_DB",
-        schema="MAYUR_SCHEMA",
+        database="EXAMPLE_DB",
+        schema="EXAMPLE_SCHEMA",
         source_topic="order_events_nested",
         fully_qualified=True,
         column_mappings=column_mappings,
@@ -1362,7 +1477,7 @@ SHADOWED_LEAF_AVRO = json.dumps(
 )
 
 SIBLING_TOPIC_PREFIX = "confluent_kafka.sibling_events"
-SIBLING_TABLE_PREFIX = "snowflake.TEST_DB.MAYUR_SCHEMA.SIBLING_EVENTS"
+SIBLING_TABLE_PREFIX = "snowflake.EXAMPLE_DB.EXAMPLE_SCHEMA.SIBLING_EVENTS"
 
 
 class TestSameNamedLeavesResolveDistinctly:
@@ -1636,7 +1751,7 @@ class TestDebugHostnameDiagnostic:
         details = KafkaConnectPipelineDetails(
             name="SnowflakeSinkConnector_0",
             type="sink",
-            config=REAL_CONFLUENT_CLOUD_RESPONSE["config"],
+            config=CAPTURED_CONFLUENT_CLOUD_RESPONSE["config"],
         )
 
         with patch(
@@ -1648,7 +1763,7 @@ class TestDebugHostnameDiagnostic:
         assert source.lineage_results, "expected at least one lineage result entry"
         table_fqn = source.lineage_results[0]["table_fqn"]
         assert "NOT SET" not in table_fqn
-        assert "hostname: FMFAHQK-GI58232.snowflakecomputing.com" in table_fqn
+        assert "hostname: EXAMPLE1-AB00000.snowflakecomputing.com" in table_fqn
 
     def test_cdc_style_connector_falls_back_to_database_hostname(self):
         """A connector class absent from CONNECTOR_CLASS_TO_SERVICE_TYPE (or a service type
