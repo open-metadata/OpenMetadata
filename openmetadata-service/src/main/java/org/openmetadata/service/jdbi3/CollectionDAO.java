@@ -193,8 +193,10 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.session.UserSession;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindJsonContains;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
@@ -1566,7 +1568,7 @@ public interface CollectionDAO {
         @BindUUID("id") UUID id,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @Transaction
     @ConnectionAwareSqlBatch(
@@ -1584,7 +1586,7 @@ public interface CollectionDAO {
         @BindUUID("id") List<UUID> id,
         @Bind("extension") List<String> extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") List<String> json);
+        @BindJson("json") List<String> json);
 
     @Transaction
     @ConnectionAwareSqlBatch(
@@ -1615,7 +1617,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE entity_extension SET json = (:json :: jsonb) where (json ->> 'id) = :id",
         connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+    void update(@BindUUID("id") UUID id, @BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
@@ -1676,8 +1678,23 @@ public interface CollectionDAO {
             "INSERT INTO entity_extension (id, extension, json,jsonschema) VALUES (:id, :extension, :json::jsonb,:jsonschema) "
                 + "ON CONFLICT (id, extension) DO UPDATE SET json = EXCLUDED.json , jsonschema = EXCLUDED.jsonschema",
         connectionType = POSTGRES)
-    void bulkUpsertExtensions(
+    void bulkUpsertExtensionsInternal(
         @BindBean List<ExtensionWithIdAndSchemaObject> extensionWithIdObjects);
+
+    default void bulkUpsertExtensions(List<ExtensionWithIdAndSchemaObject> extensionWithIdObjects) {
+      List<ExtensionWithIdAndSchemaObject> sanitizedExtensions =
+          extensionWithIdObjects.stream()
+              .map(
+                  extension ->
+                      ExtensionWithIdAndSchemaObject.builder()
+                          .id(extension.getId())
+                          .extension(extension.getExtension())
+                          .json(JsonStorageUtils.sanitizeNulCharacters(extension.getJson()))
+                          .jsonschema(extension.getJsonschema())
+                          .build())
+              .toList();
+      bulkUpsertExtensionsInternal(sanitizedExtensions);
+    }
 
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
@@ -1977,7 +1994,7 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
         @Bind("relationType") String relationType,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -3018,7 +3035,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO <tableName>(json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Define("tableName") String tableName, @Bind("json") String json);
+    void insert(@Define("tableName") String tableName, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO thread_entity(json) VALUES (:json)",
@@ -3026,7 +3043,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO thread_entity(json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM <tableName> WHERE id = :id")
     String findById(@Define("tableName") String tableName, @BindUUID("id") UUID id);
@@ -3616,7 +3633,9 @@ public interface CollectionDAO {
         value = "UPDATE <tableName> SET json = (:json :: jsonb) where id = :id",
         connectionType = POSTGRES)
     void update(
-        @Define("tableName") String tableName, @BindUUID("id") UUID id, @Bind("json") String json);
+        @Define("tableName") String tableName,
+        @BindUUID("id") UUID id,
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE thread_entity SET json = :json where id = :id",
@@ -3624,7 +3643,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE thread_entity SET json = (:json :: jsonb) where id = :id",
         connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+    void update(@BindUUID("id") UUID id, @BindJson("json") String json);
 
     @SqlQuery(
         "SELECT entityLink, type, taskStatus, COUNT(id) as count FROM ( "
@@ -4523,7 +4542,7 @@ public interface CollectionDAO {
             "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json :: jsonb, :fqnHash)",
         connectionType = POSTGRES)
     void insertTask(
-        @Bind("id") String id, @Bind("json") String json, @BindFQN("fqnHash") String fqn);
+        @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
     default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
@@ -4537,7 +4556,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE task_entity SET json = (:json :: jsonb) WHERE id = :id",
         connectionType = POSTGRES)
-    void updateTask(@Bind("id") String id, @Bind("json") String json);
+    void updateTask(@Bind("id") String id, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -4762,7 +4781,7 @@ public interface CollectionDAO {
             "INSERT INTO announcement_entity (id, json, fqnHash) VALUES (:id, :json :: jsonb, :fqnHash)",
         connectionType = POSTGRES)
     void insertAnnouncement(
-        @Bind("id") String id, @Bind("json") String json, @BindFQN("fqnHash") String fqn);
+        @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
     default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
@@ -5022,7 +5041,7 @@ public interface CollectionDAO {
             "INSERT INTO task_form_schema_entity (id, json, fqnHash) VALUES (:id, :json :: jsonb, :fqnHash)",
         connectionType = POSTGRES)
     void insertTaskFormSchema(
-        @Bind("id") String id, @Bind("json") String json, @BindFQN("fqnHash") String fqn);
+        @Bind("id") String id, @BindJson("json") String json, @BindFQN("fqnHash") String fqn);
 
     @Override
     default void insert(org.openmetadata.schema.EntityInterface entity, String fqn) {
@@ -5052,7 +5071,7 @@ public interface CollectionDAO {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -5075,7 +5094,7 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @SqlQuery(
         "SELECT json FROM field_relationship WHERE "
@@ -5519,7 +5538,7 @@ public interface CollectionDAO {
         @Bind("id") String id,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -5537,7 +5556,7 @@ public interface CollectionDAO {
     void upsertFailedEvent(
         @Bind("id") String id,
         @Bind("extension") String extension,
-        @Bind("json") String json,
+        @BindJson("json") String json,
         @Bind("source") String source);
 
     // Batch insert for successful events - reduces connection pool contention
@@ -5598,7 +5617,7 @@ public interface CollectionDAO {
     void batchUpsertSuccessfulChangeEventsInternal(
         @Bind("change_event_id") List<String> changeEventIds,
         @Bind("event_subscription_id") List<String> eventSubscriptionIds,
-        @Bind("json") List<String> jsonList,
+        @BindJson("json") List<String> jsonList,
         @Bind("timestamp") List<Long> timestamps);
 
     @SqlQuery(
@@ -6798,7 +6817,8 @@ public interface CollectionDAO {
                 + "'recognizers', :recognizers::jsonb "
                 + ")::jsonb WHERE json->>'fullyQualifiedName' = :tagFqn",
         connectionType = POSTGRES)
-    void patchRecognizers(@Bind("tagFqn") String tagFqn, @Bind("recognizers") String recognizers);
+    void patchRecognizers(
+        @Bind("tagFqn") String tagFqn, @BindJson("recognizers") String recognizers);
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -6820,7 +6840,7 @@ public interface CollectionDAO {
         @Bind("state") int state,
         @Bind("reason") String reason,
         @Bind("appliedBy") String appliedBy,
-        @Bind("metadata") String metadata);
+        @BindJson("metadata") String metadata);
 
     default void applyTag(
         int source,
@@ -7673,7 +7693,7 @@ public interface CollectionDAO {
         @Bind("state") List<Integer> states,
         @Bind("reason") List<String> reasons,
         @Bind("appliedBy") List<String> appliedBys,
-        @Bind("metadata") List<String> metadataList);
+        @BindJson("metadata") List<String> metadataList);
 
     /**
      * Delete multiple tags in batch to improve performance
@@ -8763,7 +8783,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @Transaction
     @ConnectionAwareSqlBatch(
@@ -8772,7 +8792,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlBatch(
         value = "INSERT INTO change_event (json) VALUES (CAST(:json AS jsonb))",
         connectionType = POSTGRES)
-    void insertBatchRows(@Bind("json") List<String> jsons);
+    void insertBatchRows(@BindJson("json") List<String> jsons);
 
     default void insertBatch(List<String> jsons) {
       if (nullOrEmpty(jsons)) {
@@ -9837,7 +9857,7 @@ public interface CollectionDAO {
     void insert(
         @Bind("identifier") String identifier,
         @Bind("type") String type,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -9850,7 +9870,7 @@ public interface CollectionDAO {
     void update(
         @Bind("identifier") String identifier,
         @Bind("type") String type,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @SqlUpdate("DELETE FROM apps_data_store WHERE identifier = :identifier AND type = :type")
     void delete(@Bind("identifier") String identifier, @Bind("type") String type);
@@ -9880,7 +9900,7 @@ public interface CollectionDAO {
         value =
             "INSERT INTO apps_extension_time_series(json, extension) VALUES (:json :: jsonb, :extension)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json, @Bind("extension") String extension);
+    void insert(@BindJson("json") String json, @Bind("extension") String extension);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -9970,7 +9990,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void update(
         @Bind("appId") String appId,
-        @Bind("json") String json,
+        @BindJson("json") String json,
         @Bind("timestamp") Long timestamp,
         @Bind("extension") String extension);
 
@@ -10243,7 +10263,7 @@ public interface CollectionDAO {
         @BindFQN("testCaseFQNHash") String testCaseFQNHash,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json,
+        @BindJson("json") String json,
         @Bind("incidentStateId") String incidentStateId);
 
     default void insert(
@@ -10306,7 +10326,7 @@ public interface CollectionDAO {
         @Define("table") String table,
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @SqlUpdate("DELETE FROM query_cost_time_series WHERE entityFQNHash = :entityFQNHash ")
     void deleteWithEntityFqnHash(@BindFQN("entityFQNHash") String entityFQNHash);
@@ -10532,7 +10552,7 @@ public interface CollectionDAO {
         @BindFQN("testCaseFQNHash") String testCaseFQNHash,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json,
+        @BindJson("json") String json,
         @Bind("incidentStateId") String incidentStateId);
 
     @ConnectionAwareSqlQuery(
@@ -10873,7 +10893,7 @@ public interface CollectionDAO {
             "INSERT into openmetadata_settings (configType, json)"
                 + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
-    void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+    void insertSettings(@Bind("configType") String configType, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -10889,8 +10909,8 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int updateSettingsIfCurrent(
         @Bind("configType") String configType,
-        @Bind("expectedJson") String expectedJson,
-        @Bind("updatedJson") String updatedJson);
+        @BindJson("expectedJson") String expectedJson,
+        @BindJson("updatedJson") String updatedJson);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -10906,7 +10926,7 @@ public interface CollectionDAO {
                 + "AND json = (:expectedJson :: jsonb)",
         connectionType = POSTGRES)
     int updateGlossaryTermRelationSettingsIfCurrent(
-        @Bind("expectedJson") String expectedJson, @Bind("updatedJson") String updatedJson);
+        @BindJson("expectedJson") String expectedJson, @BindJson("updatedJson") String updatedJson);
 
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
@@ -11086,7 +11106,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO user_tokens (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = :json WHERE token = :token",
@@ -11094,7 +11114,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = (:json :: jsonb) WHERE token = :token",
         connectionType = POSTGRES)
-    void update(@Bind("token") String token, @Bind("json") String json);
+    void update(@Bind("token") String token, @BindJson("json") String json);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);
@@ -11158,7 +11178,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO user_session (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -11171,7 +11191,7 @@ public interface CollectionDAO {
     int updateIfVersion(
         @Bind("id") String id,
         @Bind("expectedVersion") long expectedVersion,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @SqlUpdate("DELETE FROM user_session WHERE id = :id")
     void delete(@Bind("id") String id);
@@ -11588,7 +11608,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO suggestions(fqnHash, json) VALUES (:fqnHash, :json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@BindFQN("fqnHash") String fullyQualifiedName, @Bind("json") String json);
+    void insert(@BindFQN("fqnHash") String fullyQualifiedName, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE suggestions SET json = :json where id = :id",
@@ -11596,7 +11616,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE suggestions SET json = (:json :: jsonb) where id = :id",
         connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+    void update(@BindUUID("id") UUID id, @BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM suggestions WHERE id = :id")
     String findById(@BindUUID("id") UUID id);
@@ -11791,7 +11811,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO recognizer_feedback_entity(json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
+    void insert(@BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM recognizer_feedback_entity WHERE id = :id")
     String findById(@BindUUID("id") UUID id);
@@ -11802,7 +11822,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE recognizer_feedback_entity SET json = :json :: jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+    void update(@BindUUID("id") UUID id, @BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM recognizer_feedback_entity WHERE entityLink = :entityLink")
     List<String> findByEntityLink(@Bind("entityLink") String entityLink);
@@ -12182,7 +12202,7 @@ public interface CollectionDAO {
         @Define("table") String table,
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -12197,7 +12217,7 @@ public interface CollectionDAO {
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -12344,8 +12364,8 @@ public interface CollectionDAO {
         @Bind("id") String id,
         @Bind("runningOn") String runningOn,
         @Bind("completedAt") long completedAt,
-        @Bind("artifacts") String artifacts,
-        @Bind("manifest") String manifest,
+        @BindJson("artifacts") String artifacts,
+        @BindJson("manifest") String manifest,
         @Bind("updatedBy") String updatedBy);
 
     @ConnectionAwareSqlUpdate(
@@ -12429,7 +12449,7 @@ public interface CollectionDAO {
         @Define("table") String table,
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -12444,7 +12464,7 @@ public interface CollectionDAO {
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
-        @Bind("json") String json);
+        @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "DELETE FROM <table> WHERE serverId = :serverId AND timestamp = :timestamp",
@@ -12552,13 +12572,13 @@ public interface CollectionDAO {
     void insert(
         @Bind("id") String id,
         @Bind("status") String status,
-        @Bind("jobConfiguration") String jobConfiguration,
+        @BindJson("jobConfiguration") String jobConfiguration,
         @Bind("targetIndexPrefix") String targetIndexPrefix,
         @Bind("totalRecords") long totalRecords,
         @Bind("processedRecords") long processedRecords,
         @Bind("successRecords") long successRecords,
         @Bind("failedRecords") long failedRecords,
-        @Bind("stats") String stats,
+        @BindJson("stats") String stats,
         @Bind("createdBy") String createdBy,
         @Bind("createdAt") long createdAt,
         @Bind("updatedAt") long updatedAt,
@@ -12584,7 +12604,7 @@ public interface CollectionDAO {
         @Bind("processedRecords") long processedRecords,
         @Bind("successRecords") long successRecords,
         @Bind("failedRecords") long failedRecords,
-        @Bind("stats") String stats,
+        @BindJson("stats") String stats,
         @Bind("startedAt") Long startedAt,
         @Bind("completedAt") Long completedAt,
         @Bind("updatedAt") long updatedAt,
@@ -12645,7 +12665,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void updateStagedIndexMapping(
         @Bind("id") String id,
-        @Bind("stagedIndexMapping") String stagedIndexMapping,
+        @BindJson("stagedIndexMapping") String stagedIndexMapping,
         @Bind("updatedAt") long updatedAt);
 
     @SqlUpdate("UPDATE search_index_job SET updatedAt = :updatedAt WHERE id = :id")
@@ -14207,8 +14227,8 @@ public interface CollectionDAO {
         @Bind("fieldName") String fieldName,
         @Bind("oldValue") String oldValue,
         @Bind("newValue") String newValue,
-        @Bind("domains") String domains,
-        @Bind("json") String json);
+        @BindJson("domains") String domains,
+        @BindJson("json") String json);
 
     // Batch insert for activity events - one round-trip per change event instead of one per row
     @Transaction
@@ -14437,7 +14457,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE activity_stream SET json = :json::jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void updateJson(@Bind("id") String id, @Bind("json") String json);
+    void updateJson(@Bind("id") String id, @BindJson("json") String json);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -14533,7 +14553,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO activity_stream_config(id, json) VALUES (:id, :json::jsonb)",
         connectionType = POSTGRES)
-    void insert(@Bind("id") String id, @Bind("json") String json);
+    void insert(@Bind("id") String id, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE activity_stream_config SET json = :json WHERE id = :id",
@@ -14541,7 +14561,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE activity_stream_config SET json = :json::jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void update(@Bind("id") String id, @Bind("json") String json);
+    void update(@Bind("id") String id, @BindJson("json") String json);
 
     @SqlQuery("SELECT json FROM activity_stream_config WHERE id = :id")
     String findById(@Bind("id") String id);
@@ -14584,12 +14604,12 @@ public interface CollectionDAO {
     void insert(
         @Bind("id") String id,
         @Bind("status") String status,
-        @Bind("jobConfiguration") String jobConfiguration,
+        @BindJson("jobConfiguration") String jobConfiguration,
         @Bind("totalRecords") long totalRecords,
         @Bind("processedRecords") long processedRecords,
         @Bind("successRecords") long successRecords,
         @Bind("failedRecords") long failedRecords,
-        @Bind("stats") String stats,
+        @BindJson("stats") String stats,
         @Bind("createdBy") String createdBy,
         @Bind("createdAt") long createdAt,
         @Bind("updatedAt") long updatedAt);
@@ -14614,7 +14634,7 @@ public interface CollectionDAO {
         @Bind("processedRecords") long processedRecords,
         @Bind("successRecords") long successRecords,
         @Bind("failedRecords") long failedRecords,
-        @Bind("stats") String stats,
+        @BindJson("stats") String stats,
         @Bind("startedAt") Long startedAt,
         @Bind("completedAt") Long completedAt,
         @Bind("updatedAt") long updatedAt,
@@ -15383,10 +15403,10 @@ public interface CollectionDAO {
         @Bind("clientId") String clientId,
         @Bind("clientSecret") String clientSecret,
         @Bind("clientName") String clientName,
-        @Bind("redirectUris") String redirectUris,
-        @Bind("grantTypes") String grantTypes,
+        @BindJson("redirectUris") String redirectUris,
+        @BindJson("grantTypes") String grantTypes,
         @Bind("authMethod") String authMethod,
-        @Bind("scopes") String scopes);
+        @BindJson("scopes") String scopes);
 
     @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
     void delete(@Bind("clientId") String clientId);
@@ -15413,7 +15433,7 @@ public interface CollectionDAO {
         @Bind("codeChallenge") String codeChallenge,
         @Bind("codeChallengeMethod") String codeChallengeMethod,
         @Bind("redirectUri") String redirectUri,
-        @Bind("scopes") String scopes,
+        @BindJson("scopes") String scopes,
         @Bind("expiresAt") long expiresAt);
 
     @SqlUpdate(
@@ -15446,7 +15466,7 @@ public interface CollectionDAO {
         @Bind("accessTokenEncrypted") String accessTokenEncrypted,
         @Bind("clientId") String clientId,
         @Bind("userName") String userName,
-        @Bind("scopes") String scopes,
+        @BindJson("scopes") String scopes,
         @Bind("expiresAt") long expiresAt);
 
     @SqlUpdate("DELETE FROM oauth_access_tokens WHERE token_hash = :tokenHash")
@@ -15475,7 +15495,7 @@ public interface CollectionDAO {
         @Bind("refreshTokenEncrypted") String refreshTokenEncrypted,
         @Bind("clientId") String clientId,
         @Bind("userName") String userName,
-        @Bind("scopes") String scopes,
+        @BindJson("scopes") String scopes,
         @Bind("expiresAt") long expiresAt);
 
     @SqlUpdate("UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE token_hash = :tokenHash")
@@ -15523,7 +15543,7 @@ public interface CollectionDAO {
         @Bind("codeChallengeMethod") String codeChallengeMethod,
         @Bind("redirectUri") String redirectUri,
         @Bind("mcpState") String mcpState,
-        @Bind("scopes") String scopes,
+        @BindJson("scopes") String scopes,
         @Bind("pac4jState") String pac4jState,
         @Bind("pac4jNonce") String pac4jNonce,
         @Bind("pac4jCodeVerifier") String pac4jCodeVerifier,
@@ -15985,7 +16005,9 @@ public interface CollectionDAO {
             "UPDATE knowledge_center SET json = :json::jsonb, fqnHash = :fqnHash WHERE id = :id",
         connectionType = POSTGRES)
     void updateFullyQualifiedName(
-        @Bind("id") String pageId, @Bind("json") String json, @BindFQN("fqnHash") String fqnHash);
+        @Bind("id") String pageId,
+        @BindJson("json") String json,
+        @BindFQN("fqnHash") String fqnHash);
   }
 
   interface AssetDAO {
@@ -15995,7 +16017,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO asset_entity (json, fqnHash) VALUES (:json :: jsonb, :fqnHash)",
         connectionType = POSTGRES)
-    void insert(@BindFQN("fqnHash") String fqnHash, @Bind("json") String json);
+    void insert(@BindFQN("fqnHash") String fqnHash, @BindJson("json") String json);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE asset_entity SET json = :json WHERE id = :id",
@@ -16003,7 +16025,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE asset_entity SET json = :json::jsonb WHERE id = :id",
         connectionType = POSTGRES)
-    void update(@Bind("json") String json, @Bind("id") String id);
+    void update(@BindJson("json") String json, @Bind("id") String id);
 
     @SqlQuery("SELECT json FROM asset_entity WHERE id = :id")
     String getById(@Bind("id") String id);

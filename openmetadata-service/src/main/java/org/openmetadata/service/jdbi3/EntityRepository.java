@@ -272,6 +272,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.RequestEntityCache;
@@ -5400,7 +5401,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected String serializeForStorage(T entity) {
-    return storageJsonNode(entity).toString();
+    return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
   }
 
   protected String serializeForVersionHistory(T entity) {
