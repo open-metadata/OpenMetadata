@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.tags;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 
@@ -57,6 +58,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Recognizer;
@@ -187,6 +189,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
+              description = "Filter tags by domain name or fully qualified name",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(
               description = "Filter Disabled Classifications",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("disabled")
@@ -216,6 +223,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     ListFilter filter = new ListFilter(include).addQueryParam("parent", parent);
     if (disabled != null) {
       filter.addQueryParam("classification.disabled", disabled);
+    }
+    if (!nullOrEmpty(domain)) {
+      EntityReference domainReference =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

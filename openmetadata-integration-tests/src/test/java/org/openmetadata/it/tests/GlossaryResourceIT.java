@@ -573,8 +573,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     String nsPrefix = ns.prefix("");
 
     List<Glossary> inDomainA =
-        listEntities(
-                new ListParams().withDomain(domainA.getFullyQualifiedName()).withLimit(1000))
+        listEntities(new ListParams().withDomain(domainA.getFullyQualifiedName()).withLimit(1000))
             .getData()
             .stream()
             .filter(glossary -> glossary.getName().contains(nsPrefix))
@@ -587,8 +586,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         "Glossary from domain B must not be listed when filtering by domain A");
 
     List<Glossary> inDomainB =
-        listEntities(
-                new ListParams().withDomain(domainB.getFullyQualifiedName()).withLimit(1000))
+        listEntities(new ListParams().withDomain(domainB.getFullyQualifiedName()).withLimit(1000))
             .getData()
             .stream()
             .filter(glossary -> glossary.getName().contains(nsPrefix))

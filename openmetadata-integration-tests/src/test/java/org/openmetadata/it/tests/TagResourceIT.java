@@ -32,10 +32,13 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Paging;
@@ -166,6 +169,60 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   @Override
   protected ListResponse<Tag> listEntities(ListParams params) {
     return SdkClients.adminClient().tags().list(params);
+  }
+
+  @Test
+  void test_listWithDomainFilter(TestNamespace ns) {
+    Domain domainA = createTestDomain(ns, "domainA");
+    Domain domainB = createTestDomain(ns, "domainB");
+
+    Tag tagA1 =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.shortPrefix("tagA1"))
+                .withDomains(List.of(domainA.getFullyQualifiedName())));
+    Tag tagA2 =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.shortPrefix("tagA2"))
+                .withDomains(List.of(domainA.getFullyQualifiedName())));
+    Tag tagB =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.shortPrefix("tagB"))
+                .withDomains(List.of(domainB.getFullyQualifiedName())));
+
+    List<Tag> listedForA =
+        listEntities(new ListParams().withDomain(domainA.getFullyQualifiedName()).withLimit(1000))
+            .getData()
+            .stream()
+            .toList();
+
+    assertTrue(listedForA.stream().anyMatch(t -> t.getName().equals(tagA1.getName())));
+    assertTrue(listedForA.stream().anyMatch(t -> t.getName().equals(tagA2.getName())));
+    assertFalse(
+        listedForA.stream().anyMatch(t -> t.getName().equals(tagB.getName())),
+        "Tag from domain B must not be listed when filtering by domain A");
+
+    List<Tag> listedForB =
+        listEntities(new ListParams().withDomain(domainB.getFullyQualifiedName()).withLimit(1000))
+            .getData()
+            .stream()
+            .toList();
+
+    assertTrue(listedForB.stream().anyMatch(t -> t.getName().equals(tagB.getName())));
+    assertFalse(
+        listedForB.stream().anyMatch(t -> t.getName().equals(tagA1.getName())),
+        "Tag from domain A must not be listed when filtering by domain B");
+  }
+
+  private Domain createTestDomain(TestNamespace ns, String suffix) {
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(ns.prefix(suffix))
+            .withDescription("Test domain " + suffix)
+            .withDomainType(DomainType.AGGREGATE);
+    return SdkClients.adminClient().domains().create(createDomain);
   }
 
   @Override
