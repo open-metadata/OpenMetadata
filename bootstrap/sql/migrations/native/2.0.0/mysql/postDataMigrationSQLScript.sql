@@ -221,6 +221,23 @@ SET json = JSON_SET(json, '$.connection.config.policyAgentConfig.supportsMaskedA
 WHERE serviceType = 'Databricks'
   AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig.supportsMaskedAccess') = true;
 
+-- Unity Catalog: same defaults as Databricks (enabled/Full true, Column and Masked false).
+-- The field is new for this serviceType, so every existing row is missing the object
+-- entirely — one full-object write, no guarded flips.
+UPDATE dbservice_entity
+SET json = JSON_SET(
+    json,
+    '$.connection.config.policyAgentConfig',
+    JSON_OBJECT(
+        'enabled', true,
+        'supportsColumnAccess', false,
+        'supportsFullAccess', true,
+        'supportsMaskedAccess', false
+    )
+)
+WHERE serviceType = 'UnityCatalog'
+  AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig') IS NULL;
+
 -- Postgres no longer declares policyAgentConfig. Earlier this script backfilled the
 -- object onto Postgres rows; remove it so the stored shape matches the schema.
 UPDATE dbservice_entity
