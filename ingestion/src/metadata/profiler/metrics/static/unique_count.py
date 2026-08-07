@@ -17,7 +17,7 @@ import json
 from collections import Counter
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import column, func
+from sqlalchemy import Integer, column, func
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from metadata.profiler.processor.runner import PandasRunner
 
 logger = profiler_logger()
+
+VALUE_COUNT_ALIAS = "value_count"
 
 
 class UniqueCount(QueryMetric):
@@ -67,10 +69,7 @@ class UniqueCount(QueryMetric):
 
         # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for performance
         if session.get_bind().dialect.name == Dialects.BigQuery:
-            # We are querying against the subquery output (which is a COUNT), so the type is numeric.
-            # Use an untyped column to avoid passing the original metric type (like STRING or BYTES) into the COUNTIF comparison.
-            count_col = column(col.name)
-            return func.countif(count_col == 1).label(self.name())
+            return func.countif(column(VALUE_COUNT_ALIAS, Integer()) == 1).label(self.name())
 
         unique_count_query = _unique_count_query_mapper[session.get_bind().dialect.name](col, session, sample)
         only_once_sub = unique_count_query.subquery("only_once")
