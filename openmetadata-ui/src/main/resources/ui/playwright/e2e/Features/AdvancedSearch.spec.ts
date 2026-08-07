@@ -76,6 +76,25 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
       topic1.create(apiContext),
       topic2.create(apiContext),
     ]);
+
+    // Wait for ES to index the new schemas before tests run. Without this the
+    // OMSelectWidget aggregate autocomplete fires while ES is still ingesting and
+    // returns empty buckets, causing the "Database Schema" field tests to flake.
+    for (const schemaName of [
+      table1.schemaResponseData.name,
+      table2.schemaResponseData.name,
+    ]) {
+      await expect(async () => {
+        const res = await apiContext.get(
+          `api/v1/search/aggregate?index=databaseSchema&field=displayName.keyword&value=.*${encodeURIComponent(schemaName)}.*&q=&deleted=false`
+        );
+        const data = await res.json();
+        const buckets: Array<{ key: string }> =
+          data?.aggregations?.['sterms#displayName.keyword']?.buckets ?? [];
+        expect(buckets.some((b) => b.key === schemaName)).toBe(true);
+      }).toPass({ timeout: 60_000, intervals: [2_000] });
+    }
+
     glossaryEntity = new Glossary(undefined, [
       {
         id: user.responseData.id,
