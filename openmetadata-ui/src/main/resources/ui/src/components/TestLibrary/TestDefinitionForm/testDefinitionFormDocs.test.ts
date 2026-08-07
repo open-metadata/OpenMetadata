@@ -79,6 +79,10 @@ describe('TEST_DEFINITION_FIELD_DOCS', () => {
 const SQL_HELP_KEY = 'test-definition-sql-query-help';
 const REQUIRED_PLACEHOLDERS = ['{{ table_name }}', '{{ column_name }}'];
 const FORBIDDEN_PLACEHOLDERS = ['{table}', '{column}'];
+const LOCALE_DIR = path.resolve(__dirname, '../../../locale/languages');
+
+const countOccurrences = (haystack: string, needle: string): number =>
+  haystack.split(needle).length - 1;
 
 const readSqlExpressionMarkdownSection = (): string => {
   const markdown = fs.readFileSync(
@@ -146,13 +150,54 @@ describe('Test Definition SQL expression help copy', () => {
     });
   });
 
-  it('does not leave single-brace placeholders in the form-hint markdown', () => {
+  it('mentions each single-brace placeholder only in the warning that it does not work', () => {
     const section = readSqlExpressionMarkdownSection();
 
     FORBIDDEN_PLACEHOLDERS.forEach((placeholder) => {
-      // Allowed only inside the explicit "these do not work" warning, which is
-      // why the check is scoped to backtick-free prose occurrences.
-      expect(section.replace(/`[^`]*`/g, '')).not.toContain(placeholder);
+      // Pinned by count rather than by stripping backticks: this file's own
+      // style puts every placeholder in backticks, so a backtick-stripping
+      // check would pass vacuously while a regression that re-documents
+      // `{table}` as a working placeholder sailed through.
+      expect(countOccurrences(section, placeholder)).toBe(1);
+
+      const mention = section
+        .split('\n')
+        .find((line) => line.includes(placeholder));
+
+      expect(mention).toMatch(/\*\*not\*\* substituted/);
     });
   });
+});
+
+// The corrected copy exists in 20 locale files. `yarn i18n` syncs keys, not
+// values, so nothing downstream will ever re-check these strings — a translator
+// "improving" a locale back to {table} would ship silently.
+describe('sqlExpression help copy across every locale', () => {
+  const localeFiles = fs
+    .readdirSync(LOCALE_DIR)
+    .filter((file) => file.endsWith('.json'));
+
+  it('discovers the locale catalogue so the per-locale checks are not vacuous', () => {
+    expect(localeFiles.length).toBeGreaterThan(1);
+  });
+
+  it.each(localeFiles)(
+    '%s documents the Jinja2 placeholders and no single-brace form',
+    (file) => {
+      const catalogue = JSON.parse(
+        fs.readFileSync(path.join(LOCALE_DIR, file), 'utf-8')
+      ) as { message?: Record<string, string> };
+      const helpText = catalogue.message?.[SQL_HELP_KEY];
+
+      expect(helpText).toBeDefined();
+
+      REQUIRED_PLACEHOLDERS.forEach((placeholder) => {
+        expect(helpText).toContain(placeholder);
+      });
+
+      FORBIDDEN_PLACEHOLDERS.forEach((placeholder) => {
+        expect(helpText).not.toContain(placeholder);
+      });
+    }
+  );
 });
