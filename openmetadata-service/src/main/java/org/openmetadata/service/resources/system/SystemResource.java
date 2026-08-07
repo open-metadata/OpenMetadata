@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
@@ -264,7 +265,10 @@ public class SystemResource {
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
-    if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
+    // appConfiguration is read by every user at boot (fallback-chain resolution), not just
+    // admins; PATCH below remains admin-only.
+    if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())
+        && !name.equalsIgnoreCase(APP_CONFIGURATION.toString())) {
       authorizer.authorizeAdmin(securityContext);
     }
     return systemRepository.getConfigWithKey(name);
