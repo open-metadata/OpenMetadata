@@ -544,13 +544,37 @@ describe('shouldIncludeInExport (DOM filter)', () => {
     expect(shouldIncludeInExport(html('<button>click</button>'))).toBe(true);
   });
 
-  it('skips React Flow handle pips (invisible in the export)', () => {
-    expect(
-      shouldIncludeInExport(html('<div class="react-flow__handle"></div>'))
-    ).toBe(false);
+  it('keeps React Flow handles — OM lineage handles paint a visible box', () => {
+    // React Flow's `<Handle>` always adds the base `react-flow__handle`
+    // class. OM's CustomNodeV1 wraps it as
+    // `<Handle className="lineage-node-handle" .../>`, so real DOM is
+    // `react-flow__handle react-flow__handle-right lineage-node-handle`,
+    // which `custom-node.less` styles as a visible 20x20 white box with an
+    // SVG icon. Filtering by the base class alone would silently drop those
+    // visible handles from the exported PNG — regression covered here.
     expect(
       shouldIncludeInExport(
-        html('<div class="react-flow__handle react-flow__handle-right"></div>')
+        html(
+          '<div class="react-flow__handle react-flow__handle-right lineage-node-handle"></div>'
+        )
+      )
+    ).toBe(true);
+    // Even a bare react-flow__handle (no wrapper) must be kept — we cannot
+    // tell from the class alone whether it paints.
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__handle"></div>'))
+    ).toBe(true);
+  });
+
+  it('skips handles explicitly opted out via data-export-hide="true"', () => {
+    // For handles that truly do not paint (edge-attachment pips on
+    // non-lineage react-flow surfaces, for example), the component author
+    // must opt in individually — the safe path.
+    expect(
+      shouldIncludeInExport(
+        html(
+          '<div class="react-flow__handle" data-export-hide="true"></div>'
+        )
       )
     ).toBe(false);
   });

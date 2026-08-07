@@ -60,15 +60,21 @@ const computeSafePixelRatio = (
 // that contribute zero pixels is the highest-leverage optimization
 // available here.
 //
-// Rules (each must be strictly non-visual — a false positive shows up as a
-// missing element in the exported PNG):
-//   1. `.react-flow__handle` — React Flow's edge-attachment pips. Invisible
-//      in a static export; edges are drawn by renderEdgesOverlay on a
-//      separate canvas.
-//   2. `[data-export-hide="true"]` — explicit opt-out for components that
+// Rules (each must be strictly non-visual — a false positive silently drops
+// an element from the exported PNG):
+//   1. `[data-export-hide="true"]` — explicit opt-out for components that
 //      know they don't paint during export (loading spinners, hover-only
-//      chrome, dev overlays).
-//   3. `.sr-only` / `.visually-hidden` — screen-reader-only content.
+//      chrome, dev overlays). Only literal "true" — partial values stay
+//      included so a stray attribute doesn't silently drop content.
+//   2. `.sr-only` / `.visually-hidden` — screen-reader-only content.
+//
+// Deliberately NOT filtered: `.react-flow__handle`. React Flow always adds
+// that base class to every `<Handle>`, but OpenMetadata's lineage handles
+// (`<Handle className="lineage-node-handle" ... />` in CustomNodeV1) are
+// styled as visible 20x20 white bordered boxes with an SVG icon (see
+// `custom-node.less` `.react-flow .lineage-node-handle`), not the invisible
+// pips a blanket class match would assume. Tag any handles that really
+// shouldn't paint with `data-export-hide="true"` on a case-by-case basis.
 //
 // Must be O(1) per node — anything that walks the tree here defeats the
 // point.
@@ -82,7 +88,6 @@ export const shouldIncludeInExport = (node: Element): boolean => {
   }
   const classList = node.classList;
   if (
-    classList?.contains('react-flow__handle') ||
     classList?.contains('sr-only') ||
     classList?.contains('visually-hidden')
   ) {
