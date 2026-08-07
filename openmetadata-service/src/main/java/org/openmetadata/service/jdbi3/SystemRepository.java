@@ -119,6 +119,7 @@ import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
 import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
+import org.openmetadata.service.security.auth.validator.OidcPromptPolicy;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.util.EntityUtil;
@@ -1517,6 +1518,10 @@ public class SystemRepository {
                     validateSamlConfiguration(authConfig.getSamlConfiguration(), applicationConfig);
               }
               break;
+            case BASIC:
+            case OPENMETADATA:
+              // Native password providers need no external identity-provider validation.
+              break;
             default:
               providerError =
                   ValidationErrorBuilder.createFieldError(
@@ -1651,6 +1656,17 @@ public class SystemRepository {
         }
       } else if ("public".equals(clientType)) {
         LOG.debug("Public client detected - oidcConfiguration is optional");
+      }
+
+      // Provider-aware prompt validation (single source of truth). Blocks values that lock users
+      // out before the config is applied, e.g. the silent-sign-in prompt 'none'.
+      if (authConfig.getOidcConfiguration() != null) {
+        FieldError promptError =
+            OidcPromptPolicy.validate(
+                authConfig.getProvider(), authConfig.getOidcConfiguration().getPrompt());
+        if (promptError != null) {
+          return promptError;
+        }
       }
 
       // Provider-specific enhanced validation
@@ -2186,6 +2202,13 @@ public class SystemRepository {
     }
   }
 
+  private static final Pattern PRINCIPAL_DOMAIN_PATTERN =
+      Pattern.compile("^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,}$");
+
+  static boolean isValidPrincipalDomain(String domain) {
+    return !nullOrEmpty(domain) && PRINCIPAL_DOMAIN_PATTERN.matcher(domain.trim()).matches();
+  }
+
   private FieldError validateAuthorizerConfiguration(
       AuthorizerConfiguration authzConfig, String currentUsername) {
     try {
@@ -2205,6 +2228,19 @@ public class SystemRepository {
       if (nullOrEmpty(authzConfig.getPrincipalDomain())) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTHZ_PRINCIPAL_DOMAIN, "Principal domain is required");
+      }
+
+      // When enforcement is on, an invalid principal domain rejects every user whose email domain
+      // does not match and locks the deployment out, so it must be a real domain name.
+      if (Boolean.TRUE.equals(authzConfig.getEnforcePrincipalDomain())
+          && !isValidPrincipalDomain(authzConfig.getPrincipalDomain())) {
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTHZ_PRINCIPAL_DOMAIN,
+            "Principal domain '"
+                + authzConfig.getPrincipalDomain()
+                + "' is not a valid domain name (expected e.g. 'company.com', not a URL or email). "
+                + "With 'Enforce Principal Domain' enabled, users whose email domain does not match "
+                + "are denied access — an invalid value locks everyone out.");
       }
 
       // Try to instantiate the authorizer class

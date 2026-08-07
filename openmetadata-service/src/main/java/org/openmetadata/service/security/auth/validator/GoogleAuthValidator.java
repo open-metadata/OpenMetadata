@@ -100,28 +100,11 @@ public class GoogleAuthValidator {
       FieldError publicKeyCheck = validatePublicKeyUrls(authConfig.getPublicKeyUrls());
       if (publicKeyCheck != null) return publicKeyCheck;
 
-      // Get prompt from the main auth config's oidcConfiguration
+      // Prompt values are validated centrally by OidcPromptPolicy; the live credential check below
+      // additionally exercises the value against Google's authorization endpoint.
       String prompt = oidcConfig.getPrompt();
       String scope = oidcConfig.getScope();
       String accessType = "online";
-
-      // Validate prompt parameter for Google
-      if (!nullOrEmpty(prompt)) {
-        // Google only supports: consent, select_account, or empty
-        // Google does NOT support 'none' (even though it's in OpenID Connect spec)
-        if ("none".equalsIgnoreCase(prompt)) {
-          return ValidationErrorBuilder.createFieldError(
-              ValidationErrorBuilder.FieldPaths.OIDC_PROMPT,
-              "Google OAuth does not support prompt='none'. Valid values are: 'consent', 'select_account', or leave it empty.");
-        }
-        if (!"consent".equalsIgnoreCase(prompt) && !"select_account".equalsIgnoreCase(prompt)) {
-          return ValidationErrorBuilder.createFieldError(
-              ValidationErrorBuilder.FieldPaths.OIDC_PROMPT,
-              "Invalid prompt value for Google OAuth: '"
-                  + prompt
-                  + "'. Valid values are: 'consent', 'select_account', or leave it empty.");
-        }
-      }
 
       return validateGoogleCredentials(
           oidcConfig.getId(),
