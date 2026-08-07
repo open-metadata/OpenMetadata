@@ -491,14 +491,20 @@ export default function EntitySummaryPanel({
 
   const updateEntityData = useCallback(
     (updatedData: Partial<EntityData>) => {
+      // Keep the panel's own entityData in sync regardless of onEntityUpdate
+      // being wired up (e.g. the Lineage drawer). Otherwise entityData stays
+      // frozen at its initial fetch, so the panel shows stale values after an
+      // edit, and subsequent tag/tier patches get diffed against an
+      // out-of-date "before" array, producing invalid JSON Patches.
+      const newData = {
+        ...(entityData ?? entityDetails.details),
+        ...updatedData,
+      } as EntityData;
+      setEntityData(newData);
+
       if (onEntityUpdate) {
         onEntityUpdate(updatedData);
       } else {
-        const newData = {
-          ...(entityData ?? entityDetails.details),
-          ...updatedData,
-        } as EntityData;
-        setEntityData(newData);
         afterEntityUpdate?.(newData);
       }
     },
