@@ -35,6 +35,7 @@
         "Grafana",
         "Hex",
         "Ssrs",
+        "Rill",
         "SapS4Hana",
         "Omni"
       ],
@@ -98,6 +99,9 @@
         },
         {
           "name": "Ssrs"
+        },
+        {
+          "name": "Rill"
         },
         {
           "name": "SapS4Hana"
@@ -177,6 +181,9 @@
             },
             {
               "$ref": "./connections/dashboard/ssrsConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/rillConnection.json"
             },
             {
               "$ref": "./connections/dashboard/sapS4HanaConnection.json"
