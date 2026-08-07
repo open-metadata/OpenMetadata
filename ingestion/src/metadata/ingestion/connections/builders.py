@@ -138,9 +138,9 @@ def init_empty_connection_arguments() -> ConnectionArguments:
     Initialize a ConnectionArguments model with an empty dictionary.
     This helps set keys without further validations.
 
-    Running `ConnectionArguments()` returns `ConnectionArguments(root=None)`.
+    `ConnectionArguments()` raises a ValidationError since `root` is required.
 
-    Instead, we want `ConnectionArguments(root={}})` so that
+    Instead, we want `ConnectionArguments(root={})` so that
     we can pass new keys easily as `connectionArguments.root["key"] = "value"`
     """
     return ConnectionArguments(root={})
@@ -151,9 +151,9 @@ def init_empty_connection_options() -> ConnectionOptions:
     Initialize a ConnectionOptions model with an empty dictionary.
     This helps set keys without further validations.
 
-    Running `ConnectionOptions()` returns `ConnectionOptions(root=None)`.
+    `ConnectionOptions()` raises a ValidationError since `root` is required.
 
-    Instead, we want `ConnectionOptions(root={}})` so that
+    Instead, we want `ConnectionOptions(root={})` so that
     we can pass new keys easily as `ConnectionOptions.root["key"] = "value"`
     """
     return ConnectionOptions(root={})
