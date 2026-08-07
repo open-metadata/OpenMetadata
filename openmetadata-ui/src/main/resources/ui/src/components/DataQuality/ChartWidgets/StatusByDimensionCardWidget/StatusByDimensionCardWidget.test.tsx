@@ -20,37 +20,27 @@ import {
 } from '../../../../rest/dataQualityDashboardAPI';
 import StatusByDimensionCardWidget from './StatusByDimensionCardWidget.component';
 
+const mockStatusByDimensionWidgetTestId = 'status-by-dimension-widget';
+
 jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
   fetchTestCaseSummaryByDimension: jest.fn(),
   fetchTestCaseSummaryByNoDimension: jest.fn(),
 }));
 
-jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/DataQuality/DataQualityPureUtils'),
   getDimensionIcon: jest.fn((dimension) => `icon-${dimension}`),
-  transformToTestCaseStatusByDimension: jest.fn(() =>
-    [
-      DataQualityDimensions.Accuracy,
-      DataQualityDimensions.Completeness,
-      DataQualityDimensions.Consistency,
-      DataQualityDimensions.Integrity,
-      DataQualityDimensions.SQL,
-      DataQualityDimensions.Uniqueness,
-      DataQualityDimensions.Validity,
-      DataQualityDimensions.NoDimension,
-    ].map((dimension) => ({
-      title: dimension,
-      success: 0,
-      failed: 0,
-      aborted: 0,
-      total: 0,
-    }))
-  ),
 }));
 
 jest.mock('../StatusCardWidget/StatusCardWidget.component', () =>
   jest
     .fn()
-    .mockImplementation(() => <div>StatusByDimensionWidget.component</div>)
+    .mockImplementation(({ statusData }) => (
+      <div
+        data-testid={mockStatusByDimensionWidgetTestId}
+        data-total={statusData.total}
+      />
+    ))
 );
 jest.mock('../../../../constants/DataQuality.constants', () => ({
   ...jest.requireActual('../../../../constants/DataQuality.constants'),
@@ -141,18 +131,14 @@ describe('StatusByDimensionCardWidget', () => {
     const mockData = {
       data: [
         {
-          title: DataQualityDimensions.Accuracy,
-          success: 5,
-          failed: 1,
-          aborted: 0,
-          total: 6,
+          dataQualityDimension: DataQualityDimensions.Accuracy,
+          document_count: '6',
+          'testCaseResult.testCaseStatus': 'success',
         },
         {
-          title: DataQualityDimensions.Completeness,
-          success: 3,
-          failed: 2,
-          aborted: 1,
-          total: 6,
+          dataQualityDimension: DataQualityDimensions.Completeness,
+          document_count: '6',
+          'testCaseResult.testCaseStatus': 'success',
         },
       ],
     };
@@ -171,7 +157,7 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     expect(
-      await screen.findAllByText('StatusByDimensionWidget.component')
+      await screen.findAllByTestId(mockStatusByDimensionWidgetTestId)
     ).toHaveLength(8);
   });
 
@@ -189,7 +175,104 @@ describe('StatusByDimensionCardWidget', () => {
     );
 
     expect(
-      await screen.findAllByText('StatusByDimensionWidget.component')
+      await screen.findAllByTestId(mockStatusByDimensionWidgetTestId)
     ).toHaveLength(8);
+  });
+
+  it('ignores stale responses when chart filters change', async () => {
+    const createDeferredResponse = () => {
+      let resolve!: (value: { data: Record<string, string>[] }) => void;
+      const promise = new Promise<{ data: Record<string, string>[] }>(
+        (promiseResolve) => {
+          resolve = promiseResolve;
+        }
+      );
+
+      return { promise, resolve };
+    };
+    const olderResponse = createDeferredResponse();
+    const newerResponse = createDeferredResponse();
+    const newerChartFilter = { ...chartFilter, ownerFqn: 'newOwnerFqn' };
+
+    (fetchTestCaseSummaryByDimension as jest.Mock)
+      .mockReturnValueOnce(olderResponse.promise)
+      .mockReturnValueOnce(newerResponse.promise);
+    (fetchTestCaseSummaryByNoDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+
+    const { rerender } = render(
+      <StatusByDimensionCardWidget chartFilter={chartFilter} />
+    );
+
+    rerender(<StatusByDimensionCardWidget chartFilter={newerChartFilter} />);
+
+    await act(async () => {
+      newerResponse.resolve({
+        data: [
+          {
+            dataQualityDimension: DataQualityDimensions.Accuracy,
+            document_count: '2',
+            'testCaseResult.testCaseStatus': 'success',
+          },
+        ],
+      });
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId(mockStatusByDimensionWidgetTestId)[0]
+      ).toHaveAttribute('data-total', '2')
+    );
+
+    await act(async () => {
+      olderResponse.resolve({
+        data: [
+          {
+            dataQualityDimension: DataQualityDimensions.Accuracy,
+            document_count: '1',
+            'testCaseResult.testCaseStatus': 'success',
+          },
+        ],
+      });
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId(mockStatusByDimensionWidgetTestId)[0]
+      ).toHaveAttribute('data-total', '2')
+    );
+  });
+
+  it('uses only two, four, or eight responsive columns', async () => {
+    (fetchTestCaseSummaryByDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+    (fetchTestCaseSummaryByNoDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+
+    const { container } = render(
+      <StatusByDimensionCardWidget chartFilter={chartFilter} />
+    );
+
+    await waitFor(() =>
+      expect(fetchTestCaseSummaryByDimension).toHaveBeenCalledWith(chartFilter)
+    );
+
+    const responsiveContainer = container.firstElementChild;
+    const grid = responsiveContainer?.firstElementChild;
+
+    expect(responsiveContainer).toHaveClass('tw:@container');
+    expect(grid).toHaveClass(
+      'tw:grid-cols-[repeat(2,minmax(0,20rem))]',
+      'tw:@3xl:grid-cols-[repeat(4,minmax(0,20rem))]',
+      'tw:@8xl:grid-cols-[repeat(8,minmax(0,20rem))]',
+      'tw:@8xl:gap-x-8'
+    );
+    expect(grid).not.toHaveClass(
+      'tw:@7xl:grid-cols-[repeat(8,minmax(0,20rem))]',
+      'tw:@7xl:gap-x-8'
+    );
   });
 });
