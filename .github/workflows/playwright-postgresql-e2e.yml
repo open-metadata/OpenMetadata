@@ -369,6 +369,26 @@ jobs:
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         run: sudo make install_antlr_cli
 
+      - name: Restore openmetadata-ui dist cache
+        # Two guards ANDed together:
+        #   - distribution-cache miss (otherwise we already have the tarball)
+        #   - not a fork PR under pull_request_target — that combination runs
+        #     base-branch privileged with untrusted checked-out code, so a
+        #     cache save would poison the default-branch cache scope (CodeQL
+        #     `actions/actions/cache-poisoning`). Same guard lives inside the
+        #     composite action for defence in depth, but CodeQL is a static
+        #     analyser and needs to see it here at the workflow level.
+        if: >-
+          steps.distribution-cache.outputs.usable != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        uses: ./.github/actions/cache-ui-dist
+        with:
+          # PW_E2E_BUILD alters vite chunking; PW_E2E_BUNDLE alters it further.
+          # Keep those variants in separate cache buckets so a non-e2e build
+          # never returns an e2e-shaped dist (or vice versa).
+          variant: pw-e2e-${{ needs.cache-keys.outputs.bundle_mode == 'coarse' && 'bundle' || 'build' }}
+
       - name: Build with Maven
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         env:
@@ -551,6 +571,7 @@ jobs:
           npx playwright test --list --reporter=json \
             --project=chromium \
             --project=Basic \
+            --project="Data Insight" \
             --project=Ingestion \
             --project=ImportExport \
             --project=DataAssetRulesEnabled \
@@ -1826,15 +1847,22 @@ jobs:
           git config user.name "github-actions[bot]"
           # Reset the tracked branch to the latest state — a single tracked
           # PR gets updated across successive runs rather than accumulating
-          # one PR per merge_group.
+          # one PR per merge_group. Plain `--force` (not `--force-with-lease`)
+          # because Checkout only fetched `main`, so no remote-tracking ref
+          # exists for this bot-owned branch and a lease would be rejected
+          # with "stale info" on the second and every subsequent run.
           git checkout -B "$branch"
           git add .github/playwright/timing-baseline.json
           git commit -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID}"
-          git push --force-with-lease origin "$branch"
+          git push --force origin "$branch"
 
           summary_body="$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")"
           pr_body=$(printf '## Summary\n\nAuto-refreshed from [merge_group run %s](%s).\n\n```\n%s\n```\n\nA human still clicks merge. If this drift looks unreasonable, close the PR — the next successful merge_group run will open a fresh one.\n' "$RUN_ID" "$RUN_URL" "$summary_body")
-          existing=$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number' || echo "")
+          # `.[0].number` on an empty array yields the literal string "null",
+          # not an empty string; the `// empty` fallback turns that into a
+          # real empty string so the -n test below correctly picks the
+          # `gh pr create` branch on the very first run.
+          existing=$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty' || echo "")
           if [[ -n "$existing" ]]; then
             gh pr edit "$existing" --body "$pr_body"
             echo "Updated existing PR #$existing"

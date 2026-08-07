@@ -137,7 +137,8 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     String processInstanceId = execution.getProcessInstanceId();
     String businessKey = execution.getProcessInstanceBusinessKey();
     if (businessKey == null || businessKey.isEmpty()) {
-      LOG.warn(
+      // No businessKey -> not an OM-managed workflow instance, nothing to record.
+      LOG.debug(
           "[STAGE_SKIP] ProcessInstance: {} (workflow: {}) - no business key, not an OM-managed process instance",
           processInstanceId,
           workflowDefinitionName);
@@ -197,11 +198,24 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
         (UUID) varHandler.getNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
 
     if (workflowInstanceStateId == null) {
-      LOG.error(
-          "[STAGE_UPDATE_NO_ID] Workflow: {}, ProcessInstance: {}, Stage: {} - Cannot update stage, state ID is null",
-          workflowDefinitionName,
-          processInstanceId,
-          stage);
+      // No stage record exists to update. Two disjoint causes:
+      //   1. Non-OM-managed process (no businessKey) - addNewStage returned early. Expected.
+      //   2. OM-managed process whose stage creation failed or whose executionId variable
+      //      never propagated - this IS a bug and must not be silenced.
+      String businessKey = execution.getProcessInstanceBusinessKey();
+      if (businessKey == null || businessKey.isEmpty()) {
+        LOG.debug(
+            "[STAGE_UPDATE_NO_ID] Workflow: {}, ProcessInstance: {}, Stage: {} - not OM-managed",
+            workflowDefinitionName,
+            processInstanceId,
+            stage);
+      } else {
+        LOG.error(
+            "[STAGE_UPDATE_NO_ID] Workflow: {}, ProcessInstance: {}, Stage: {} - state ID missing on OM-managed instance",
+            workflowDefinitionName,
+            processInstanceId,
+            stage);
+      }
       return;
     }
 

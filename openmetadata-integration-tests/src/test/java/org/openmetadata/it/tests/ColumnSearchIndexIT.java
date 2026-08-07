@@ -80,6 +80,51 @@ public class ColumnSearchIndexIT {
     }
 
     @Test
+    @DisplayName("FQN search on tableColumn matches only that column, not its siblings")
+    void testColumnFqnSearchIsPrecise(TestNamespace ns) {
+      OpenMetadataClient client = SdkClients.adminClient();
+      Table table = createTableWithColumns(ns, "col_fqn_precise");
+      String userIdFqn =
+          table.getColumns().stream()
+              .filter(c -> c.getName().equals(ns.prefix("user_id")))
+              .findFirst()
+              .orElseThrow()
+              .getFullyQualifiedName();
+
+      // Searching a column's full FQN must return only that column. The permissive OR builder
+      // also matched sibling columns (user_email, created_at) that share the service/db/schema/
+      // table tokens, inflating the count (the "count 1 vs results 7381" bug); the structured
+      // builder (operator AND over fqnParts) matches just the one column.
+      Awaitility.await("precise FQN column search")
+          .pollInterval(POLL_INTERVAL)
+          .atMost(POLL_AT_MOST)
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                String response =
+                    client
+                        .search()
+                        .query(userIdFqn)
+                        .index(COLUMN_SEARCH_INDEX)
+                        .size(50)
+                        .deleted(false)
+                        .execute();
+                JsonNode root = OBJECT_MAPPER.readTree(response);
+                int total = root.path("hits").path("total").path("value").asInt();
+                assertEquals(1, total, "FQN search should match one column, response: " + response);
+                assertEquals(
+                    userIdFqn,
+                    root.path("hits")
+                        .path("hits")
+                        .get(0)
+                        .path("_source")
+                        .path("fullyQualifiedName")
+                        .asText(),
+                    "The single hit should be the searched column");
+              });
+    }
+
+    @Test
     @DisplayName("Should return columns with parent table reference")
     void testColumnHasTableReference(TestNamespace ns) {
       OpenMetadataClient client = SdkClients.adminClient();

@@ -2370,8 +2370,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Whether a single entity instance should be embedded into the vector/semantic index. Defaults to
    * {@link #isSearchIndexable}; override when an instance may be keyword-searchable but must not be
-   * reachable through the vector path (e.g. {@link ContextMemoryRepository} keeps non-org-wide
-   * memories out because vector chunks carry no visibility fields to filter on).
+   * reachable through the vector path — for instance when its chunk documents cannot carry the
+   * fields its privacy model needs the vector query to filter on.
    */
   public boolean isVectorEmbeddable(EntityInterface entity) {
     return isSearchIndexable(entity);
@@ -4941,6 +4941,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete the extension data storing custom properties
               removeExtension(entityInterface);
 
+              // Cancel any governance workflow instances tied to this entity before the row
+              // goes away, so downstream nodes do not throw EntityNotFoundException. The
+              // Flowable query and cancel calls must never abort the delete transaction —
+              // a stray engine failure here shouldn't wedge entity deletes on a data plane
+              // the workflow engine has no authority over.
+              if (WorkflowHandler.isInitialized()) {
+                try {
+                  WorkflowHandler.getInstance()
+                      .cancelInstancesForEntity(entityInterface.getId(), "Entity deleted");
+                } catch (Exception cancelEx) {
+                  LOG.warn(
+                      "Failed to cancel workflow instances for entity {}: {}",
+                      entityInterface.getId(),
+                      cancelEx.getMessage());
+                }
+              }
+
               // Delete all the threads that are about this entity
               Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
@@ -6175,6 +6192,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(certTagsByTarget);
   }
 
+  /**
+   * Certification is stored as a {@code tag_usage} row but is surfaced as its own entity field, so
+   * every tags read path filters it out. A caller that wipes tags with the prefix-agnostic
+   * {@code deleteTagsByTarget} and re-applies from {@code entity.getTags()} would therefore drop the
+   * certification permanently (issue #30545). Use this instead when replacing an entity's tags
+   * outside the {@code EntityUpdater} path.
+   */
+  protected void deleteTagsPreservingCertification(String entityFQN) {
+    String certClassification = getCertificationClassification();
+    if (certClassification == null) {
+      daoCollection.tagUsageDAO().deleteTagsByTarget(entityFQN);
+    } else {
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTargetExcludingPrefix(
+              TagLabel.TagSource.CLASSIFICATION.ordinal(), certClassification + ".%", entityFQN);
+    }
+  }
+
   protected void deleteCertificationTag(String entityFQN) {
     String certClassification = getCertificationClassification();
     if (certClassification == null) return;
@@ -6950,6 +6986,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // entity_usage is keyed by id (not covered by the root's FQN-prefix cleanup), so descendants
       // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
       daoCollection.usageDAO().deleteByIds(entityIds);
+    }
+    try (var ignored = phase("bulkHardDeleteWorkflows")) {
+      // Workflow-engine failures must never wedge a bulk hard-delete; the workflow
+      // instances are best-effort cleanup, the entity rows are the source of truth.
+      if (WorkflowHandler.isInitialized()) {
+        try {
+          WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
+        } catch (Exception cancelEx) {
+          LOG.warn(
+              "Failed to cancel workflow instances for {} entities: {}",
+              entityIds.size(),
+              cancelEx.getMessage());
+        }
+      }
     }
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
       Entity.getFeedRepository().deleteByAbout(entityIds);
