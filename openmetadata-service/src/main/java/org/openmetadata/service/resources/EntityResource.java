@@ -96,6 +96,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
+import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -1172,15 +1173,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext,
       String name,
       CsvImportResult result) {
-    versioningRepo.createChangeEventForBulkOperation(
-        versioningRepo.getByName(
-            uriInfo,
-            name,
-            new Fields(versioningRepo.getAllowedFields(), ""),
-            Include.NON_DELETED,
-            false),
-        result,
-        securityContext.getUserPrincipal().getName());
+    String updatedBy = securityContext.getUserPrincipal().getName();
+    EntityInterface versionedEntity =
+        DomainAccessFilter.resolveAccessibleVersioningTarget(versioningRepo, name, updatedBy);
+    if (versionedEntity != null) {
+      versioningRepo.createChangeEventForBulkOperation(versionedEntity, result, updatedBy);
+    }
   }
 
   protected ResourceContext<T> getResourceContext() {
