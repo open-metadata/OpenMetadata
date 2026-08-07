@@ -13,6 +13,7 @@
 
 import type { Task } from '../../../../generated/entity/tasks/task';
 import type {
+  TestCaseParameterValue,
   TestCaseResolutionStatus,
   TestCaseResult,
   TestCaseStatus,
@@ -21,6 +22,8 @@ import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
 export interface TestCaseLastRunBannerProps {
   incidentTask: Task | null;
+  nextRunTimestamp?: number;
+  parameterValues?: TestCaseParameterValue[];
   testCaseResult?: TestCaseResult;
   testCaseStatus?: TestCaseStatus;
   testCaseStatusData?: TestCaseResolutionStatus;

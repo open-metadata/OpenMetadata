@@ -151,6 +151,7 @@ class TestCaseClassBase {
   public getFields(): string[] {
     return [
       TabSpecificField.TESTSUITE,
+      'testSuites',
       TabSpecificField.TEST_CASE_RESULT,
       TabSpecificField.TEST_DEFINITION,
       TabSpecificField.OWNERS,

@@ -97,6 +97,7 @@ const IncidentManagerPageHeader = ({
       {!isVersionPage && !incidentHeaderData.dimensionKey && (
         <TestCaseLastRunBanner
           incidentTask={incidentHeaderData.incidentTask}
+          parameterValues={incidentHeaderData.testCaseData?.parameterValues}
           taskLinkInfo={incidentHeaderData.taskLinkInfo}
           testCaseResult={incidentHeaderData.testCaseData?.testCaseResult}
           testCaseStatus={incidentHeaderData.testCaseData?.testCaseStatus}
@@ -419,6 +420,9 @@ describe('Incident Manager Page Header component', () => {
 
       expect(await screen.findByText(result)).toBeInTheDocument();
       expect(screen.getAllByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveLength(1);
+      expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveClass(
+        'tw:font-sans'
+      );
       expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveTextContent(
         `label.last-run label.${testCaseStatus.toLowerCase()}`
       );
@@ -435,12 +439,26 @@ describe('Incident Manager Page Header component', () => {
         'tw:text-sm'
       );
       expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
-        'tw:size-8'
+        'tw:size-8',
+        'tw:rounded-lg'
+      );
+      expect(screen.getByTestId('test-case-last-run-summary')).toHaveClass(
+        'tw:py-3.5',
+        {
+          [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
+          [TestCaseStatus.Failed]: 'tw:bg-error-50',
+          [TestCaseStatus.Queued]: 'tw:bg-brand-primary',
+          [TestCaseStatus.Success]: 'tw:bg-success-primary',
+        }[testCaseStatus]
       );
       expect(screen.getByText(result)).toHaveClass('tw:text-xs');
+      expect(
+        screen.getByTestId('test-case-run-description')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('test-case-last-run-time')).toBeInTheDocument();
       expect(screen.getByTestId('test-case-last-run-time')).toHaveClass(
-        'tw:text-xs'
+        'tw:text-xs',
+        'tw:font-normal'
       );
       expect(screen.getByTestId('test-case-next-run')).toHaveTextContent(
         'label.next · label.not-scheduled'
@@ -454,9 +472,13 @@ describe('Incident Manager Page Header component', () => {
         expect(screen.getByTestId(RESULT_EXPECTED_TEST_ID)).toHaveTextContent(
           'label.result / label.expected'
         );
+        expect(screen.getByText('label.result / label.expected')).toHaveClass(
+          'tw:text-secondary'
+        );
         expect(screen.getByTestId('test-case-result-value')).toHaveTextContent(
           '5 / 1,000'
         );
+        expect(screen.getByText('/ 1,000')).toHaveClass('tw:text-secondary');
       }
 
       if (
@@ -467,6 +489,12 @@ describe('Incident Manager Page Header component', () => {
           LAST_RUN_INCIDENT_TEST_ID
         );
 
+        expect(incidentRow).toHaveClass(
+          {
+            [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
+            [TestCaseStatus.Failed]: 'tw:bg-error-50',
+          }[testCaseStatus]
+        );
         expect(incidentRow).toHaveTextContent('INC–9');
         expect(incidentRow).toHaveTextContent(
           'message.request-test-case-failure-resolution-message getNameFromFQN (testCase)'
@@ -475,6 +503,9 @@ describe('Incident Manager Page Header component', () => {
           'New incident for test case: generic description'
         );
         expect(incidentRow).toHaveTextContent('label.acknowledged');
+        expect(
+          screen.getByTestId('test-case-incident-description')
+        ).toBeInTheDocument();
 
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
@@ -517,6 +548,28 @@ describe('Incident Manager Page Header component', () => {
     expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).not.toHaveTextContent(
       'label.failed'
     );
+  });
+
+  it('should use the matching test parameter when the result omits its predicted value', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...mockUseTestCaseStore.testCase,
+      parameterValues: [
+        { name: 'rowCount', value: '10000' },
+        { name: 'columnName', value: 'customer_id' },
+      ],
+      testCaseResult: {
+        result: 'Found 110 rows vs. the expected 10,000',
+        testCaseStatus: TestCaseStatus.Failed,
+        testResultValue: [{ name: 'rowCount', value: '110' }],
+        timestamp: 1_786_001_601_000,
+      },
+    };
+
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(
+      await screen.findByTestId(RESULT_EXPECTED_TEST_ID)
+    ).toHaveTextContent('110 / 10,000');
   });
 
   it('should not pair a result with an unrelated test parameter', async () => {
@@ -594,7 +647,11 @@ describe('Incident Manager Page Header component', () => {
       'tw:text-sm'
     );
     expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
-      'tw:size-8'
+      'tw:size-8',
+      'tw:rounded-lg'
+    );
+    expect(screen.getByTestId('test-case-last-run-summary')).toHaveClass(
+      'tw:py-3.5'
     );
     expect(screen.getByText('message.test-case-not-run-yet')).toHaveClass(
       'tw:text-xs'

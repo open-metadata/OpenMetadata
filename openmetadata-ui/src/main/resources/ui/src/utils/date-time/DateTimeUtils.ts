@@ -544,6 +544,184 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
   return sevenDaysStartGMTArrayInMillis;
 };
 
+const CRON_MONTHS: Record<string, number> = {
+  APR: 4,
+  AUG: 8,
+  DEC: 12,
+  FEB: 2,
+  JAN: 1,
+  JUL: 7,
+  JUN: 6,
+  MAR: 3,
+  MAY: 5,
+  NOV: 11,
+  OCT: 10,
+  SEP: 9,
+};
+const CRON_WEEKDAYS: Record<string, number> = {
+  FRI: 5,
+  MON: 1,
+  SAT: 6,
+  SUN: 0,
+  THU: 4,
+  TUE: 2,
+  WED: 3,
+};
+
+interface ParsedCronField {
+  values: number[];
+  wildcard: boolean;
+}
+
+const parseCronValue = (
+  value: string,
+  aliases: Record<string, number>
+): number => aliases[value.toUpperCase()] ?? Number(value);
+
+const parseCronField = (
+  expression: string,
+  minimum: number,
+  maximum: number,
+  aliases: Record<string, number> = {}
+): ParsedCronField | undefined => {
+  const values = new Set<number>();
+  const wildcard = expression === '*' || expression.startsWith('*/');
+
+  for (const segment of expression.split(',')) {
+    const [rangeExpression, stepExpression, ...extraParts] = segment.split('/');
+    const step = stepExpression === undefined ? 1 : Number(stepExpression);
+
+    if (extraParts.length || !Number.isInteger(step) || step <= 0) {
+      return undefined;
+    }
+
+    let rangeStart = minimum;
+    let rangeEnd = maximum;
+
+    if (rangeExpression !== '*') {
+      const [startExpression, endExpression, ...extraRangeParts] =
+        rangeExpression.split('-');
+      rangeStart = parseCronValue(startExpression, aliases);
+      rangeEnd = endExpression
+        ? parseCronValue(endExpression, aliases)
+        : stepExpression
+        ? maximum
+        : rangeStart;
+
+      if (extraRangeParts.length) {
+        return undefined;
+      }
+    }
+
+    if (
+      !Number.isInteger(rangeStart) ||
+      !Number.isInteger(rangeEnd) ||
+      rangeStart < minimum ||
+      rangeEnd > maximum ||
+      rangeStart > rangeEnd
+    ) {
+      return undefined;
+    }
+
+    for (let value = rangeStart; value <= rangeEnd; value += step) {
+      values.add(value);
+    }
+  }
+
+  return values.size
+    ? { values: [...values].sort((left, right) => left - right), wildcard }
+    : undefined;
+};
+
+const doesCronDayMatch = (
+  dayOfMonthMatches: boolean,
+  dayOfWeekMatches: boolean,
+  dayOfMonthIsWildcard: boolean,
+  dayOfWeekIsWildcard: boolean
+) => {
+  if (dayOfMonthIsWildcard) {
+    return dayOfWeekMatches;
+  }
+
+  if (dayOfWeekIsWildcard) {
+    return dayOfMonthMatches;
+  }
+
+  // Standard cron treats restricted day-of-month and day-of-week fields as alternatives.
+  return dayOfMonthMatches || dayOfWeekMatches;
+};
+
+export const getNextCronRunTimestamp = (
+  scheduleInterval: string,
+  timezone = 'UTC',
+  currentTimestamp = Date.now()
+): number | undefined => {
+  const cronParts = scheduleInterval.trim().split(/\s+/);
+
+  if (cronParts.length !== 5) {
+    return undefined;
+  }
+
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = cronParts;
+  const parsedMinute = parseCronField(minute, 0, 59);
+  const parsedHour = parseCronField(hour, 0, 23);
+  const parsedDayOfMonth = parseCronField(dayOfMonth, 1, 31);
+  const parsedMonth = parseCronField(month, 1, 12, CRON_MONTHS);
+  const parsedDayOfWeek = parseCronField(dayOfWeek, 0, 6, CRON_WEEKDAYS);
+  const currentDate = DateTime.fromMillis(currentTimestamp, { zone: timezone });
+
+  if (
+    !parsedMinute ||
+    !parsedHour ||
+    !parsedDayOfMonth ||
+    !parsedMonth ||
+    !parsedDayOfWeek ||
+    !currentDate.isValid
+  ) {
+    return undefined;
+  }
+
+  // This covers the longest gap between valid February 29 schedules.
+  const lastDate = currentDate.plus({ years: 8 }).endOf('day');
+  let date = currentDate.startOf('day');
+
+  while (date <= lastDate) {
+    const dayOfMonthMatches = parsedDayOfMonth.values.includes(date.day);
+    const dayOfWeekMatches = parsedDayOfWeek.values.includes(date.weekday % 7);
+    const dayMatches = doesCronDayMatch(
+      dayOfMonthMatches,
+      dayOfWeekMatches,
+      parsedDayOfMonth.wildcard,
+      parsedDayOfWeek.wildcard
+    );
+
+    if (parsedMonth.values.includes(date.month) && dayMatches) {
+      for (const scheduledHour of parsedHour.values) {
+        for (const scheduledMinute of parsedMinute.values) {
+          const nextRun = DateTime.fromObject(
+            {
+              day: date.day,
+              hour: scheduledHour,
+              minute: scheduledMinute,
+              month: date.month,
+              year: date.year,
+            },
+            { zone: timezone }
+          );
+
+          if (nextRun.isValid && nextRun.toMillis() > currentTimestamp) {
+            return nextRun.toMillis();
+          }
+        }
+      }
+    }
+
+    date = date.plus({ days: 1 }).startOf('day');
+  }
+
+  return undefined;
+};
+
 export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
   if (!cronstrueModule) {
     // Kick off the lazy load so subsequent calls (and the hook) succeed.

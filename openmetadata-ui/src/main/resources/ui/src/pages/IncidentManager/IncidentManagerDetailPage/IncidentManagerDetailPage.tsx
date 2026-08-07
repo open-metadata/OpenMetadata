@@ -16,6 +16,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
@@ -42,7 +43,13 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
+import { getNextCronRunTimestamp } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
@@ -59,6 +66,42 @@ import { useTestCaseDetailPage } from './useTestCaseDetailPage';
 const breakableTooltipText = (text?: ReactNode) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );
+
+const getPipelineNextRunTimestamp = (pipeline: IngestionPipeline) => {
+  const scheduleInterval = pipeline.airflowConfig?.scheduleInterval;
+
+  if (
+    pipeline.enabled === false ||
+    pipeline.airflowConfig?.pausePipeline ||
+    !scheduleInterval
+  ) {
+    return undefined;
+  }
+
+  return getNextCronRunTimestamp(
+    scheduleInterval,
+    pipeline.airflowConfig?.pipelineTimezone
+  );
+};
+
+const fetchNextTestCaseRunTimestamp = async (testSuiteFqns: string[]) => {
+  const responses = await Promise.all(
+    testSuiteFqns.map((testSuite) =>
+      getIngestionPipelines({
+        arrQueryFields: ['airflowConfig'],
+        limit: 100,
+        pipelineType: [PipelineType.TestSuite],
+        testSuite,
+      })
+    )
+  );
+  const nextRuns = responses
+    .flatMap(({ data }) => data)
+    .map(getPipelineNextRunTimestamp)
+    .filter((nextRun): nextRun is number => nextRun !== undefined);
+
+  return nextRuns.length ? Math.min(...nextRuns) : undefined;
+};
 
 const IncidentManagerDetailPage = ({
   isVersionPage = false,
@@ -100,6 +143,26 @@ const IncidentManagerDetailPage = ({
     fetchTaskCount: getEntityFeedCount,
     isVersionPage,
   });
+  const testSuiteFqns = useMemo(() => {
+    const fqns = [
+      testCase?.testSuite?.fullyQualifiedName ?? testCase?.testSuite?.name,
+      ...(testCase?.testSuites?.map(
+        (testSuite) => testSuite.fullyQualifiedName ?? testSuite.name
+      ) ?? []),
+    ].filter((fqn): fqn is string => Boolean(fqn));
+
+    return [...new Set(fqns)];
+  }, [testCase?.testSuite, testCase?.testSuites]);
+  const { data: nextRunTimestamp } = useQuery({
+    queryKey: ['test-case-next-run', testCaseFQN, testSuiteFqns],
+    queryFn: () => fetchNextTestCaseRunTimestamp(testSuiteFqns),
+    enabled: Boolean(
+      testSuiteFqns.length &&
+        !isVersionPage &&
+        !dimensionKey &&
+        activeTab === TestCasePageTabs.TEST_CASE_RESULTS
+    ),
+  });
 
   const tabItems: TabsProps['items'] = useMemo(
     () =>
@@ -121,6 +184,8 @@ const IncidentManagerDetailPage = ({
                   data-testid="test-case-last-run-banner-tab-container">
                   <TestCaseLastRunBanner
                     incidentTask={incidentHeaderData.incidentTask}
+                    nextRunTimestamp={nextRunTimestamp}
+                    parameterValues={testCase?.parameterValues}
                     taskLinkInfo={incidentHeaderData.taskLinkInfo}
                     testCaseResult={testCase?.testCaseResult}
                     testCaseStatus={testCase?.testCaseStatus}
@@ -139,7 +204,9 @@ const IncidentManagerDetailPage = ({
       incidentHeaderData.testCaseStatusData,
       isTabExpanded,
       isVersionPage,
+      nextRunTimestamp,
       tabs,
+      testCase?.parameterValues,
       testCase?.testCaseResult,
       testCase?.testCaseStatus,
     ]

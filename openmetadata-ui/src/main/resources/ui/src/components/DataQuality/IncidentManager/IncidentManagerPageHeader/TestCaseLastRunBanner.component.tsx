@@ -32,47 +32,59 @@ import {
   TestCaseResolutionStatusTypes,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
-import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  convertMillisecondsToHumanReadableFormat,
+  customFormatDateTime,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import ExpandableBannerText from './ExpandableBannerText';
 import type { TestCaseLastRunBannerProps } from './TestCaseLastRunBanner.interface';
 import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
 const STATUS_CONFIG = {
   [TestCaseStatus.Aborted]: {
     containerClassName:
-      'tw:border-utility-warning-200 tw:border-l-utility-warning-500 tw:bg-warning-primary',
+      'tw:border-utility-warning-200 tw:border-l-utility-warning-500',
     dividerClassName: 'tw:border-utility-warning-200',
     icon: SlashCircle01,
     iconColor: 'warning',
+    incidentClassName: 'tw:bg-yellow-50',
     resultClassName: 'tw:text-warning-primary',
     statusClassName: 'tw:text-warning-primary',
+    summaryClassName: 'tw:bg-yellow-50',
   },
   [TestCaseStatus.Failed]: {
     containerClassName:
-      'tw:border-utility-error-200 tw:border-l-utility-error-500 tw:bg-error-primary',
+      'tw:border-utility-error-200 tw:border-l-utility-error-500',
     dividerClassName: 'tw:border-utility-error-200',
     icon: XClose,
     iconColor: 'error',
+    incidentClassName: 'tw:bg-error-50',
     resultClassName: 'tw:text-error-primary',
     statusClassName: 'tw:text-error-primary',
+    summaryClassName: 'tw:bg-error-50',
   },
   [TestCaseStatus.Queued]: {
     containerClassName:
-      'tw:border-utility-brand-200 tw:border-l-utility-brand-500 tw:bg-brand-primary',
+      'tw:border-utility-brand-200 tw:border-l-utility-brand-500',
     dividerClassName: 'tw:border-utility-brand-200',
     icon: Clock,
     iconColor: 'brand',
+    incidentClassName: 'tw:bg-brand-primary',
     resultClassName: 'tw:text-brand-primary',
     statusClassName: 'tw:text-brand-primary',
+    summaryClassName: 'tw:bg-brand-primary',
   },
   [TestCaseStatus.Success]: {
     containerClassName:
-      'tw:border-utility-success-200 tw:border-l-utility-success-500 tw:bg-success-primary',
+      'tw:border-utility-success-200 tw:border-l-utility-success-500',
     dividerClassName: 'tw:border-utility-success-200',
     icon: Check,
     iconColor: 'success',
+    incidentClassName: 'tw:bg-success-primary',
     resultClassName: 'tw:text-success-primary',
     statusClassName: 'tw:text-success-primary',
+    summaryClassName: 'tw:bg-success-primary',
   },
 } as const;
 
@@ -135,12 +147,18 @@ const getIncidentLink = (
 ) => (INCIDENT_RUN_STATUSES.has(testCaseStatus) ? taskLinkInfo : null);
 
 const getMetricSummary = (
+  parameterValues: TestCaseLastRunBannerProps['parameterValues'],
   testResultValue: TestResultValues,
   testCaseStatus: TestCaseStatus
 ) => {
   const metric = testResultValue?.[0];
   const resultValue = formatMetricValue(metric?.value);
-  const expectedValue = formatMetricValue(metric?.predictedValue);
+  const matchingParameter = parameterValues?.find(
+    ({ name }) => name === metric?.name
+  );
+  const expectedValue = formatMetricValue(
+    metric?.predictedValue ?? matchingParameter?.value
+  );
 
   return {
     expectedValue,
@@ -189,21 +207,45 @@ const getIncidentTitle = (
 
 const RunDescription = ({ description }: { description?: string }) =>
   description ? (
-    <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-secondary">
-      {description}
-    </p>
+    <ExpandableBannerText
+      className="tw:!mt-1"
+      dataTestId="test-case-run-description"
+      text={description}
+    />
   ) : null;
 
-const NoRunBanner = () => {
+const getNextRunLabel = (
+  nextRunTimestamp: number | undefined,
+  inLabel: string,
+  notScheduledLabel: string
+) => {
+  if (!nextRunTimestamp) {
+    return notScheduledLabel;
+  }
+
+  const millisecondsUntilNextRun =
+    Math.ceil((nextRunTimestamp - Date.now()) / 60_000) * 60_000;
+
+  return `${inLabel} ${convertMillisecondsToHumanReadableFormat(
+    millisecondsUntilNextRun,
+    2
+  )}`;
+};
+
+const NoRunBanner = ({
+  nextRunTimestamp,
+}: Pick<TestCaseLastRunBannerProps, 'nextRunTimestamp'>) => {
   const { t } = useTranslation();
 
   return (
     <div
       aria-live="polite"
-      className="tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 tw:border-utility-gray-200 tw:border-l-utility-gray-400 tw:bg-secondary"
+      className="tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 tw:border-utility-gray-200 tw:border-l-utility-gray-400 tw:font-sans"
       data-testid="test-case-last-run-banner"
       role="status">
-      <div className="tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-4 tw:lg:flex-row tw:lg:items-center">
+      <div
+        className="tw:flex tw:flex-col tw:gap-4 tw:bg-secondary tw:px-5 tw:py-3.5 tw:lg:flex-row tw:lg:items-center"
+        data-testid="test-case-last-run-summary">
         <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-4">
           <FeaturedIcon
             outlined
@@ -211,7 +253,7 @@ const NoRunBanner = () => {
             color="gray"
             data-testid="test-case-last-run-icon"
             icon={Minus}
-            radius="xl"
+            radius="lg"
             shape="square"
             size="sm"
           />
@@ -236,13 +278,18 @@ const NoRunBanner = () => {
         <div className="tw:flex tw:min-w-36 tw:shrink-0 tw:flex-col tw:items-start tw:lg:items-end">
           <span
             aria-hidden="true"
-            className="tw:text-sm tw:font-semibold tw:text-primary">
+            className="tw:text-sm tw:font-normal tw:text-primary">
             —
           </span>
           <span
             className="tw:mt-1 tw:whitespace-nowrap tw:text-xs tw:text-secondary"
             data-testid="test-case-next-run">
-            {t('label.next')} · {t('label.not-scheduled')}
+            {t('label.next')} ·{' '}
+            {getNextRunLabel(
+              nextRunTimestamp,
+              t('label.in-lowercase'),
+              t('label.not-scheduled')
+            )}
           </span>
         </div>
       </div>
@@ -272,14 +319,14 @@ const ResultExpected = ({
       <div
         className="tw:flex tw:min-w-32 tw:flex-col tw:items-end tw:justify-center tw:text-right"
         data-testid="test-case-result-expected">
-        <span className="tw:text-xs tw:font-medium tw:tracking-wide tw:text-tertiary tw:uppercase">
+        <span className="tw:text-xs tw:font-medium tw:tracking-wide tw:text-secondary tw:uppercase">
           {t('label.result')} / {t('label.expected')}
         </span>
         <span
           className="tw:mt-1 tw:whitespace-nowrap tw:text-xs tw:font-semibold"
           data-testid="test-case-result-value">
           <span className={config.resultClassName}>{resultValue}</span>
-          <span className="tw:text-tertiary"> / {expectedValue}</span>
+          <span className="tw:text-secondary"> / {expectedValue}</span>
         </span>
       </div>
       <span
@@ -291,9 +338,11 @@ const ResultExpected = ({
 };
 
 const LastRunTime = ({
+  nextRunTimestamp,
   testCaseStatus,
   timestamp,
 }: {
+  nextRunTimestamp?: number;
   testCaseStatus: TestCaseStatus;
   timestamp?: number;
 }) => {
@@ -302,7 +351,7 @@ const LastRunTime = ({
   return (
     <div className="tw:flex tw:min-w-36 tw:flex-col tw:items-end tw:justify-center tw:text-right">
       <span
-        className="tw:whitespace-nowrap tw:text-xs tw:font-semibold tw:text-primary"
+        className="tw:whitespace-nowrap tw:text-xs tw:font-normal tw:text-primary"
         data-testid="test-case-last-run-time">
         {customFormatDateTime(timestamp, 'MMM d, yyyy, h:mm a')}
       </span>
@@ -312,7 +361,11 @@ const LastRunTime = ({
         {t('label.next')} ·{' '}
         {testCaseStatus === TestCaseStatus.Queued
           ? t('label.running-now')
-          : t('label.not-scheduled')}
+          : getNextRunLabel(
+              nextRunTimestamp,
+              t('label.in-lowercase'),
+              t('label.not-scheduled')
+            )}
       </span>
     </div>
   );
@@ -340,7 +393,7 @@ const IncidentDetails = ({
 
   return (
     <div
-      className={`tw:flex tw:flex-wrap tw:items-center tw:gap-3 tw:border-t tw:px-5 tw:py-3 ${config.dividerClassName}`}
+      className={`tw:flex tw:flex-wrap tw:items-center tw:gap-3 tw:border-t tw:px-5 tw:py-3 ${config.dividerClassName} ${config.incidentClassName}`}
       data-testid="test-case-last-run-incident">
       <AlertTriangle
         aria-hidden="true"
@@ -351,12 +404,18 @@ const IncidentDetails = ({
         {incidentId}
       </span>
       {description && (
-        <span className="tw:min-w-0 tw:text-xs tw:text-secondary">
-          {description}
-        </span>
+        <ExpandableBannerText
+          className="tw:flex-1"
+          dataTestId="test-case-incident-description"
+          text={description}
+        />
       )}
       {statusConfig && (
-        <BadgeWithDot color={statusConfig.color} size="sm" type="pill-color">
+        <BadgeWithDot
+          className="tw:bg-white"
+          color={statusConfig.color}
+          size="sm"
+          type="pill-color">
           {t(statusConfig.label)}
         </BadgeWithDot>
       )}
@@ -375,6 +434,8 @@ const IncidentDetails = ({
 
 const TestCaseLastRunBanner = ({
   incidentTask,
+  nextRunTimestamp,
+  parameterValues,
   testCaseResult,
   testCaseStatus: authoritativeTestCaseStatus,
   testCaseStatusData,
@@ -385,7 +446,7 @@ const TestCaseLastRunBanner = ({
     authoritativeTestCaseStatus ?? testCaseResult?.testCaseStatus;
 
   if (!testCaseResult || !testCaseStatus) {
-    return <NoRunBanner />;
+    return <NoRunBanner nextRunTimestamp={nextRunTimestamp} />;
   }
 
   const { result, testResultValue, timestamp } = testCaseResult;
@@ -402,7 +463,11 @@ const TestCaseLastRunBanner = ({
     t('message.test-case-run-queued')
   );
   const incidentLink = getIncidentLink(taskLinkInfo, testCaseStatus);
-  const metricSummary = getMetricSummary(testResultValue, testCaseStatus);
+  const metricSummary = getMetricSummary(
+    parameterValues,
+    testResultValue,
+    testCaseStatus
+  );
   const incidentTitle = incidentTask
     ? getIncidentTitle(
         incidentTask,
@@ -419,10 +484,12 @@ const TestCaseLastRunBanner = ({
   return (
     <div
       aria-live="polite"
-      className={`tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 ${config.containerClassName}`}
+      className={`tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 tw:font-sans ${config.containerClassName}`}
       data-testid="test-case-last-run-banner"
       role="status">
-      <div className="tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-4 tw:lg:flex-row tw:lg:items-center">
+      <div
+        className={`tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-3.5 tw:lg:flex-row tw:lg:items-center ${config.summaryClassName}`}
+        data-testid="test-case-last-run-summary">
         <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-4">
           <FeaturedIcon
             outlined
@@ -430,7 +497,7 @@ const TestCaseLastRunBanner = ({
             color={config.iconColor}
             data-testid="test-case-last-run-icon"
             icon={config.icon}
-            radius="xl"
+            radius="lg"
             shape="square"
             size="sm"
           />
@@ -458,7 +525,11 @@ const TestCaseLastRunBanner = ({
             resultValue={metricSummary.resultValue}
             show={metricSummary.show}
           />
-          <LastRunTime testCaseStatus={testCaseStatus} timestamp={timestamp} />
+          <LastRunTime
+            nextRunTimestamp={nextRunTimestamp}
+            testCaseStatus={testCaseStatus}
+            timestamp={timestamp}
+          />
         </div>
       </div>
 
