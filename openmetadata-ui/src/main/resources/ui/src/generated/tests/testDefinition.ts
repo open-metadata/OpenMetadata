@@ -72,10 +72,12 @@ export interface TestDefinition {
     /**
      * SQL expression template for custom SQL-based test definitions. The template is rendered
      * with Jinja2, so every substitution variable must use double curly braces: {{ table_name
-     * }} and {{ column_name }} for runtime entity references, and {{ paramName }} for
-     * user-defined parameters. Single-brace placeholders are not substituted and will produce
-     * invalid SQL. This field is only applicable for test definitions with testPlatforms set to
-     * 'OpenMetadata' and is used to execute custom SQL queries for data quality validation.
+     * }} for the runtime table reference, {{ column_name }} for the runtime column reference
+     * (available only for column-level test definitions, i.e. entityType COLUMN), and {{
+     * paramName }} for user-defined parameters. Single-brace placeholders are not substituted
+     * and will produce invalid SQL. This field is only applicable for test definitions with
+     * testPlatforms set to 'OpenMetadata' and is used to execute custom SQL queries for data
+     * quality validation.
      */
     sqlExpression?:      string;
     supportedDataTypes?: DataType[];
