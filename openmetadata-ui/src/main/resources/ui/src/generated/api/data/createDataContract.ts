@@ -166,8 +166,9 @@ export enum EntityStatus {
  * ODCS attributes of a schema element that OpenMetadata does not model on its own Column
  * type. Anchored by element name so they can be reattached to the right element on export.
  * Unlike the other definitions here, which stay open so that vendor-specific keys in an
- * uploaded ODCS document survive the round trip, this is an internal storage shape written
- * only by the converter and is therefore closed.
+ * uploaded ODCS document survive the round trip, this one is closed: it is never
+ * deserialised from a raw ODCS document, and the OpenMetadata envelopes that do carry it
+ * (createDataContract, dataContract) are themselves closed.
  */
 export interface OdcsElementExtension {
     /**
