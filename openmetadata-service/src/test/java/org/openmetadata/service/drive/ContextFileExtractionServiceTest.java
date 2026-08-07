@@ -51,7 +51,7 @@ import org.openmetadata.service.jdbi3.ContextFileRepository;
 @ExtendWith(MockitoExtension.class)
 class ContextFileExtractionServiceTest {
 
-  private static final String UPLOADER = "rohit.jain";
+  private static final String UPLOADER = "test.user";
 
   @Mock private ContextFileRepository repository;
   @Mock private ContextFileContentRepository contentRepository;
