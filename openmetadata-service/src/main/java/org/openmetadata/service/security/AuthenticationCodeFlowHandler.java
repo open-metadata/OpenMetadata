@@ -481,7 +481,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         // A 500 strands the browser on a dead cookie in a login loop; clear the cookie and
         // send the user to interactive signin instead.
         LOG.warn("No session found for callback, clearing session cookie, redirecting to signin");
-        clearSessionCookie(resp);
+        clearSessionCookie(req, resp);
         resp.sendRedirect(serverUrl + "/signin");
         return;
       }
@@ -590,7 +590,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         // Respond 401 (not 500) and clear the dead cookie so the frontend re-logins cleanly
         // instead of looping on a cookie that can never resolve again.
         LOG.warn("No session found for refresh, clearing session cookie, responding 401");
-        clearSessionCookie(httpServletResponse);
+        clearSessionCookie(httpServletRequest, httpServletResponse);
         respondRefreshUnauthorized(httpServletResponse);
         return;
       }
@@ -881,15 +881,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private static void respondRefreshUnauthorized(HttpServletResponse response) throws IOException {
+    // Write the body directly: SecurityUtil.writeJsonResponse ends with setStatus(SC_OK),
+    // which would silently turn this 401 into a 200 on an uncommitted response.
     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-    writeJsonResponse(response, "{\"error\":\"Session expired. Please login again.\"}");
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    response.getOutputStream().print("{\"error\":\"Session expired. Please login again.\"}");
+    response.getOutputStream().flush();
   }
 
-  private static void clearSessionCookie(HttpServletResponse response) {
+  private static void clearSessionCookie(HttpServletRequest request, HttpServletResponse response) {
     Cookie deadCookie = new Cookie("JSESSIONID", "");
     deadCookie.setPath("/");
     deadCookie.setMaxAge(0);
     deadCookie.setHttpOnly(true);
+    deadCookie.setSecure(request.isSecure());
     response.addCookie(deadCookie);
   }
 
