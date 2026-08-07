@@ -425,6 +425,14 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public void setFields(User user, Fields fields, RelationIncludes relationIncludes) {
+    // Ensure `preferences` is always a valid JSON container on the read path so a
+    // client JSON-Patch `add /preferences/<key>` finds a parent to add into, even
+    // for users created before this field existed in the schema. The prepare()
+    // init only covers newly created/updated users; the majority pre-upgrade have
+    // no `preferences` key in their stored JSON.
+    if (user.getPreferences() == null) {
+      user.setPreferences(new HashMap<>());
+    }
     user.setTeams(fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams());
     user.setOwns(fields.contains("owns") ? getOwns(user) : user.getOwns());
     user.setFollows(fields.contains("follows") ? getFollows(user) : user.getFollows());
