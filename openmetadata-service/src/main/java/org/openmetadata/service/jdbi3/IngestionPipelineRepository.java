@@ -606,7 +606,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               pipelineStatus.getRunId(),
               ingestionPipeline.getFullyQualifiedName(),
               PIPELINE_STATUS_EXTENSION,
-              JsonUtils.pojoToJson(pipelineStatus));
+              JsonUtils.pojoToJsonPostgresSafe(pipelineStatus));
     } else {
       daoCollection
           .entityExtensionTimeSeriesDao()
@@ -614,7 +614,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               ingestionPipeline.getFullyQualifiedName(),
               PIPELINE_STATUS_EXTENSION,
               PIPELINE_STATUS_JSON_SCHEMA,
-              JsonUtils.pojoToJson(pipelineStatus));
+              JsonUtils.pojoToJsonPostgresSafe(pipelineStatus));
     }
     ChangeDescription change =
         addPipelineStatusChangeDescription(
@@ -772,7 +772,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void updatePipelineStatusByRunId(String fqn, PipelineStatus pipelineStatus) {
     IngestionPipeline ingestionPipeline = findByName(fqn, Include.NON_DELETED);
     String pipelineFqn = ingestionPipeline.getFullyQualifiedName();
-    String json = JsonUtils.pojoToJson(pipelineStatus);
+    String json = JsonUtils.pojoToJsonPostgresSafe(pipelineStatus);
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
