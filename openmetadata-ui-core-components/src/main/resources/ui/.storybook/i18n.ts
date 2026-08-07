@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,21 +11,20 @@
  *  limitations under the License.
  */
 
-// Main entry point for OpenMetadata UI Core Components
-// Re-export everything from organized modules
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import { CORE_NS, initCoreI18n } from '../src/locale';
 
-// Color system
-export * from './colors';
+void i18n.use(initReactI18next).init({
+  fallbackLng: 'en-US',
+  lng: 'en-US',
+  ns: [CORE_NS],
+  defaultNS: CORE_NS,
+  interpolation: { escapeValue: false },
+});
 
-// Components
-export * from './components';
+// `initCoreI18n` eagerly registers every supported language, so no
+// `languageChanged` lazy-load handler is needed here.
+initCoreI18n(i18n);
 
-// Utilities
-export * from './utils';
-
-// Types (kept at root for convenience)
-export * from './types';
-
-// i18n
-export * from './locale';
-export * from './i18n/useCoreTranslation';
+export default i18n;
