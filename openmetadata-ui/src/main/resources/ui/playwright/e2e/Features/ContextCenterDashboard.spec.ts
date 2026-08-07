@@ -308,9 +308,7 @@ test.describe('Context Center - Dashboard', () => {
 
       const panel = page.getByTestId('document-preview-panel');
       await expect(panel).toBeVisible();
-      await expect(panel.getByTestId('preview-file-name')).toHaveText(
-        fileName
-      );
+      await expect(panel.getByTestId('preview-file-name')).toHaveText(fileName);
     });
   });
 
@@ -399,19 +397,29 @@ test.describe('Context Center - Dashboard', () => {
 
       await test.step('Articles card redirects to /context-center/articles', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('article-detail-card').getByRole('button', { name: 'View All Articles' }).click();
+        await page
+          .getByTestId('article-detail-card')
+          .getByRole('button', { name: 'View All Articles' })
+          .click();
         await expect(page).toHaveURL(/\/context-center\/articles/);
       });
 
       await test.step('Documents card redirects to /context-center/documents', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('document-detail-card').getByRole('button', { name: 'View All Documents' }).first().click();
+        await page
+          .getByTestId('document-detail-card')
+          .getByRole('button', { name: 'View All Documents' })
+          .first()
+          .click();
         await expect(page).toHaveURL(/\/context-center\/documents/);
       });
 
       await test.step('Memories card redirects to /context-center/memories', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('memory-detail-card').getByRole('button', { name: 'View All Memories' }).click();
+        await page
+          .getByTestId('memory-detail-card')
+          .getByRole('button', { name: 'View All Memories' })
+          .click();
         await expect(page).toHaveURL(/\/context-center\/memories/);
         await waitForAllLoadersToDisappear(page);
       });
