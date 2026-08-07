@@ -62,11 +62,7 @@ interface DialogHeaderProps {
 }
 
 const DialogHeader = ({ title, children, className }: DialogHeaderProps) => (
-  <div
-    className={cx(
-      'tw:shrink-0 tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6',
-      className
-    )}>
+  <div className={cx('tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6', className)}>
     {title && (
       <Heading
         className="tw:text-md tw:font-semibold tw:text-primary"
@@ -83,16 +79,16 @@ interface DialogContentProps {
   className?: string;
 }
 
-// flex-1 + min-h-0 let this pane absorb all the available space *and* shrink
-// below its content's intrinsic height — without min-h-0, a flex item's
-// default min-height: auto (content-based) blocks the shrink and the scroll
-// this exists for never kicks in. overflow-y-auto only does anything once
-// that shrink has actually happened. See DialogBase for the rest of the
-// flex-column chain this depends on.
+// max-h-[60vh] + overflow-y-auto so long content scrolls within its own pane
+// instead of being silently clipped by the panel's overflow-hidden rounding
+// (Dialog.Footer sits below this, outside it, so it's unaffected either
+// way). Matches the value/pattern already duplicated across ~13 call sites
+// in openmetadata-ui/collate-ui that worked around this by hand; a consumer
+// can still override via className for a case that genuinely needs more.
 const DialogContent = ({ children, className }: DialogContentProps) => (
   <div
     className={cx(
-      'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:justify-start tw:gap-4 tw:overflow-y-auto tw:px-4 tw:pt-5 tw:sm:px-6',
+      'tw:flex tw:max-h-[60vh] tw:flex-col tw:justify-start tw:gap-4 tw:overflow-y-auto tw:px-4 tw:pt-5 tw:sm:px-6',
       className
     )}>
     {children}
@@ -107,7 +103,7 @@ interface DialogFooterProps {
 const DialogFooter = ({ children, className }: DialogFooterProps) => (
   <div
     className={cx(
-      'tw:shrink-0 tw:z-10 tw:mt-6 tw:sm:mt-8 tw:border-t tw:border-secondary',
+      'tw:z-10 tw:mt-6 tw:sm:mt-8 tw:border-t tw:border-secondary',
       className
     )}>
     <div className="tw:flex tw:flex-1 tw:gap-3 tw:sm:px-6 tw:px-4 tw:py-4 tw:justify-end">
@@ -155,27 +151,21 @@ const DialogBase = ({
       props.className as string | undefined
     )}>
     {({ close }) => (
-      // flex + max-h-[85dvh] here (not a % height — Modal above only ever
-      // sets max-height, never a definite height, so a percentage would have
-      // no definite ancestor to resolve against and silently no-op) bounds
-      // the panel so DialogContent's flex-1/min-h-0/overflow-y-auto below
-      // has an actual constraint to shrink against instead of growing
-      // unbounded and being clipped by the rounded-2xl overflow-hidden pane.
       <div
         className={cx(
-          'tw:relative tw:flex tw:max-h-[85dvh] tw:w-full tw:flex-col tw:rounded-2xl tw:bg-primary tw:shadow-xl',
+          'tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl',
           panelClassName
         )}
         style={{ maxWidth: width }}>
-        <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-2xl">
+        <div className="tw:overflow-hidden tw:rounded-2xl">
           {title && (
             <>
               <DialogHeader
                 className={showCloseButton ? 'tw:pr-12' : undefined}
                 title={title}
               />
-              <div className="tw:h-5 tw:w-full tw:shrink-0" />
-              <div className="tw:w-full tw:shrink-0 tw:border-t tw:border-secondary" />
+              <div className="tw:h-5 tw:w-full" />
+              <div className="tw:w-full tw:border-t tw:border-secondary" />
             </>
           )}
           {children}
