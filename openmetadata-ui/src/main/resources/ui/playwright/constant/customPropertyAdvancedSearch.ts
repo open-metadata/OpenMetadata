@@ -11,6 +11,19 @@
  *  limitations under the License.
  */
 
+// Mirrors the `table-cp` columns that entity-data.setup.ts creates. Any spec that
+// fills a setup table-cp must use these, not its own column names.
+export const TABLE_CP_COLUMNS = ['Sr No', 'Name', 'Role'];
+
+// 150 values: the CP enum dropdown's asyncFetch returns items 0-99 on page 1;
+// "Load more" reaches items 100-149.
+export const LAZY_LOAD_ENUM_VALUES = Array.from(
+  { length: 150 },
+  (_, i) => `enum_val_${String(i).padStart(3, '0')}`
+);
+export const LAZY_LOAD_ENUM_FIRST_PAGE_VALUE = 'enum_val_000';
+export const LAZY_LOAD_ENUM_SECOND_PAGE_VALUE = 'enum_val_100';
+
 export const CP_BASE_VALUES = {
   string: 'gsdgfsdg',
   email: 'admin@open-metadata.org',
@@ -45,7 +58,7 @@ export const CP_BASE_VALUES = {
         Role: 'Data Steward',
       },
     ],
-    columns: ['Sr No', 'Name', 'Role'],
+    columns: TABLE_CP_COLUMNS,
   },
 };
 

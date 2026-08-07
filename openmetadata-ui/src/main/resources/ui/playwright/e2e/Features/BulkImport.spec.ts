@@ -34,7 +34,6 @@ import {
 } from '../../utils/entity';
 import {
   createColumnRowDetails,
-  createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
   createStoredProcedureRowDetails,
@@ -45,6 +44,7 @@ import {
   fillRowDetails,
   fillStoredProcedureCode,
   firstTimeGridAddRowAction,
+  getSetupCustomPropertiesForEntity,
   performBulkDownload,
   performColumnSelectAndDeleteOperation,
   performDeleteOperationOnEntity,
@@ -145,12 +145,9 @@ test.describe('Bulk Import Export', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await dbService.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASES
-      );
-    });
+    customPropertyRecord = getSetupCustomPropertiesForEntity(
+      GlobalSettingOptions.DATABASES
+    );
 
     await test.step('should export data database service details', async () => {
       await dbService.visitEntityPage(page);
@@ -397,12 +394,9 @@ test.describe('Bulk Import Export', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await dbEntity.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASE_SCHEMA
-      );
-    });
+    customPropertyRecord = getSetupCustomPropertiesForEntity(
+      GlobalSettingOptions.DATABASE_SCHEMA
+    );
 
     await test.step('should export data database details', async () => {
       await dbEntity.visitEntityPage(page);
@@ -609,12 +603,9 @@ test.describe('Bulk Import Export', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await dbSchemaEntity.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.TABLES
-      );
-    });
+    customPropertyRecord = getSetupCustomPropertiesForEntity(
+      GlobalSettingOptions.TABLES
+    );
 
     await test.step('should export data database schema details', async () => {
       await dbSchemaEntity.visitEntityPage(page);
@@ -1112,7 +1103,9 @@ test.describe('Bulk Import Export', () => {
           await expect(firstCell).not.toBeFocused();
           await expect(secondCell).toBeFocused();
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(0);
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            0
+          );
         });
 
         await test.step('should select all the cells in the column by clicking on column header', async () => {
@@ -1131,7 +1124,9 @@ test.describe('Bulk Import Export', () => {
 
           await expect(firstHeaderCell).toBeFocused();
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(rowCount);
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            rowCount
+          );
         });
 
         await test.step('allow multiple column selection', async () => {
@@ -1239,7 +1234,9 @@ test.describe('Bulk Import Export', () => {
           await mouse.move(endXLeftUp, endYLeftUp, { steps: 10 }); // Smooth drag
           await mouse.up();
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            8
+          );
 
           // Hold shift and click on fifthCellSixthRow
           await page.keyboard.down('Shift');
@@ -1255,9 +1252,10 @@ test.describe('Bulk Import Export', () => {
           await firstCellFirstRow.click();
           await page.keyboard.up('Shift');
 
-          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+          await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+            8
+          );
         });
-
 
         await test.step('perform single cell copy-paste and undo-redo', async () => {
           // click first cell of first row
