@@ -226,6 +226,10 @@ const getNextRunLabel = (
   const millisecondsUntilNextRun =
     Math.ceil((nextRunTimestamp - Date.now()) / 60_000) * 60_000;
 
+  if (millisecondsUntilNextRun <= 0) {
+    return notScheduledLabel;
+  }
+
   return `${inLabel} ${convertMillisecondsToHumanReadableFormat(
     millisecondsUntilNextRun,
     2

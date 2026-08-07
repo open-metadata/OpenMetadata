@@ -657,4 +657,17 @@ describe('Incident Manager Page Header component', () => {
       'tw:text-xs'
     );
   });
+
+  it('should not show a negative duration when a cached next run has passed', () => {
+    const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(2_000);
+
+    render(<TestCaseLastRunBanner nextRunTimestamp={1_000} />);
+
+    const nextRun = screen.getByTestId('test-case-next-run');
+
+    expect(nextRun).toHaveTextContent('label.not-scheduled');
+    expect(nextRun).not.toHaveTextContent('label.in-lowercase');
+
+    dateNowSpy.mockRestore();
+  });
 });

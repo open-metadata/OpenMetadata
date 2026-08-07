@@ -12,9 +12,8 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { Typography } from 'antd';
 import classNames from 'classnames';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface ExpandableBannerTextProps {
@@ -31,36 +30,62 @@ const ExpandableBannerText = ({
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
+  const textRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     setExpanded(false);
   }, [text]);
 
+  useEffect(() => {
+    const textElement = textRef.current;
+
+    if (!textElement || expanded) {
+      return;
+    }
+
+    const updateOverflow = () =>
+      setHasOverflow(textElement.scrollWidth > textElement.clientWidth);
+    const resizeObserver = globalThis.ResizeObserver
+      ? new ResizeObserver(updateOverflow)
+      : undefined;
+
+    updateOverflow();
+    resizeObserver?.observe(textElement);
+    globalThis.addEventListener('resize', updateOverflow);
+
+    return () => {
+      resizeObserver?.disconnect();
+      globalThis.removeEventListener('resize', updateOverflow);
+    };
+  }, [expanded, text]);
+
   return (
-    <Typography.Paragraph
+    <p
       className={classNames(
         'tw:!mb-0 tw:min-w-0 tw:text-xs tw:leading-normal tw:text-secondary',
+        expanded ? 'tw:block' : 'tw:flex tw:items-baseline tw:gap-1',
         className
       )}
-      data-testid={dataTestId}
-      ellipsis={
-        expanded
-          ? false
-          : {
-              rows: 1,
-              expandable: true,
-              onEllipsis: setHasOverflow,
-              onExpand: () => setExpanded(true),
-              symbol: (
-                <span
-                  className="tw:text-brand-primary"
-                  data-testid={`${dataTestId}-more-button`}>
-                  {t('label.more-lowercase')}
-                </span>
-              ),
-            }
-      }>
-      {text}
+      data-testid={dataTestId}>
+      <span
+        className={classNames(
+          'tw:text-xs tw:leading-normal tw:text-secondary',
+          {
+            'tw:min-w-0 tw:flex-1 tw:truncate': !expanded,
+          }
+        )}
+        ref={textRef}>
+        {text}
+      </span>
+      {!expanded && hasOverflow && (
+        <Button
+          className="tw:inline-flex tw:h-auto tw:shrink-0 tw:p-0 tw:align-baseline tw:text-xs"
+          color="link-color"
+          data-testid={`${dataTestId}-more-button`}
+          onPress={() => setExpanded(true)}>
+          {t('label.more-lowercase')}
+        </Button>
+      )}
       {expanded && hasOverflow && (
         <Button
           className="tw:ml-1 tw:inline-flex tw:h-auto tw:p-0 tw:align-baseline tw:text-xs"
@@ -70,7 +95,7 @@ const ExpandableBannerText = ({
           {t('label.less-lowercase')}
         </Button>
       )}
-    </Typography.Paragraph>
+    </p>
   );
 };
 

@@ -14,45 +14,33 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import ExpandableBannerText from './ExpandableBannerText';
 
-jest.mock('antd', () => {
-  const React = jest.requireActual('react');
-
-  return {
-    Typography: {
-      Paragraph: ({ children, ellipsis, ...props }) => {
-        React.useEffect(() => {
-          if (ellipsis && typeof ellipsis === 'object') {
-            ellipsis.onEllipsis?.(true);
-          }
-        }, [ellipsis]);
-
-        return (
-          <div
-            {...props}
-            data-ellipsis-rows={
-              ellipsis && typeof ellipsis === 'object'
-                ? ellipsis.rows
-                : undefined
-            }>
-            {children}
-            {ellipsis && typeof ellipsis === 'object' && (
-              <button type="button" onClick={ellipsis.onExpand}>
-                {ellipsis.symbol}
-              </button>
-            )}
-          </div>
-        );
-      },
-    },
-  };
-});
-
 const FIRST_TEXT = 'A failure description that does not fit on one line.';
 const SECOND_TEXT = 'Incident details that also overflow their available row.';
 const FAILURE_TEXT_TEST_ID = 'failure-text';
 const FAILURE_MORE_TEST_ID = `${FAILURE_TEXT_TEST_ID}-more-button`;
+let scrollWidth = 200;
 
 describe('ExpandableBannerText', () => {
+  beforeAll(() => {
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+      configurable: true,
+      get: () => scrollWidth,
+    });
+  });
+
+  beforeEach(() => {
+    scrollWidth = 200;
+  });
+
+  afterAll(() => {
+    delete HTMLElement.prototype.clientWidth;
+    delete HTMLElement.prototype.scrollWidth;
+  });
+
   it('keeps the collapsed text and more control in one clamped line', () => {
     render(
       <ExpandableBannerText
@@ -64,8 +52,10 @@ describe('ExpandableBannerText', () => {
     const text = screen.getByTestId(FAILURE_TEXT_TEST_ID);
     const more = screen.getByTestId(FAILURE_MORE_TEST_ID);
 
-    expect(text).toHaveAttribute('data-ellipsis-rows', '1');
+    expect(text).toHaveClass('tw:flex');
     expect(text).toContainElement(more);
+    expect(more.tagName).toBe('BUTTON');
+    expect(more).toHaveTextContent('label.more-lowercase');
   });
 
   it('shows the full text with an inline less control when expanded', () => {
@@ -82,8 +72,21 @@ describe('ExpandableBannerText', () => {
     const less = screen.getByTestId('failure-text-less-button');
 
     expect(text).toHaveTextContent(FIRST_TEXT);
-    expect(text).not.toHaveAttribute('data-ellipsis-rows');
+    expect(text).toHaveClass('tw:block');
     expect(text).toContainElement(less);
+  });
+
+  it('does not show the more control when the text fits', () => {
+    scrollWidth = 100;
+
+    render(
+      <ExpandableBannerText
+        dataTestId={FAILURE_TEXT_TEST_ID}
+        text={FIRST_TEXT}
+      />
+    );
+
+    expect(screen.queryByTestId(FAILURE_MORE_TEST_ID)).not.toBeInTheDocument();
   });
 
   it('expands failure and incident details independently', () => {
