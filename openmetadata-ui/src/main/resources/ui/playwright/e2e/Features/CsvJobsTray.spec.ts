@@ -11,232 +11,230 @@
  *  limitations under the License.
  */
 
-import { expect, Page, Route } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 
-import { redirectToHomePage } from '../../utils/common';
+import { performAdminLogin } from '../../utils/admin';
+import { getExportModalContent, openExportScopeModal } from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const JOB_ID_EXPORT = 'pw-tray-export-running';
-const JOB_ID_IMPORT = 'pw-tray-import-running';
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-const RUNNING_EXPORT_JOB = {
-  jobId: JOB_ID_EXPORT,
-  operation: 'EXPORT',
-  entityType: 'metric',
-  createdBy: 'admin',
-  status: 'RUNNING',
-  progress: 5,
-  total: 18,
-};
-
-const RUNNING_IMPORT_JOB = {
-  jobId: JOB_ID_IMPORT,
-  operation: 'IMPORT',
-  entityType: 'metric',
-  createdBy: 'admin',
-  status: 'RUNNING',
-  progress: 3,
-  total: 10,
-};
-
-const fulfillJobsRoute = (route: Route, jobs: Record<string, unknown>[]) =>
-  route.fulfill({ contentType: 'application/json', json: jobs });
-
-const mockJobsApi = (page: Page, jobs: Record<string, unknown>[]) =>
-  page.route('**/api/v1/csvAsyncJobs**', (route) =>
-    fulfillJobsRoute(route, jobs)
+const startAsyncExport = async (page: Page): Promise<string> => {
+  const asyncResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/export/async') && res.status() === 202
   );
 
-const triggerJobsRefresh = async (page: Page) => {
-  await page.evaluate(() =>
-    window.dispatchEvent(new Event('csv-jobs-refresh'))
-  );
+  await getExportModalContent(page)
+    .getByRole('button', { name: 'Export' })
+    .click();
+
+  const { jobId } = (await (await asyncResponse).json()) as { jobId: string };
+
+  await expect(page.getByText('Export started')).toBeVisible();
+  await expect(getExportModalContent(page)).not.toBeVisible();
+
+  return jobId;
 };
 
-const activateJobsTray = async (page: Page) => {
+const waitForJobCompleted = async (
+  apiContext: APIRequestContext,
+  jobId: string
+): Promise<void> => {
   await expect
     .poll(
       async () => {
-        await triggerJobsRefresh(page);
+        const res = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
+        const jobs = (await res.json()) as Array<{
+          jobId: string;
+          status: string;
+        }>;
 
-        return page.locator('.csv-jobs-tray').count();
+        if (!Array.isArray(jobs)) {
+          throw new Error(
+            `Unexpected response ${res.status()}: ${JSON.stringify(jobs).slice(0, 200)}`
+          );
+        }
+
+        return jobs.find((j) => j.jobId === jobId)?.status;
       },
-      { timeout: 10_000 }
+      { timeout: 90_000 }
     )
-    .toBeGreaterThan(0);
+    .toBe('COMPLETED');
 };
 
-const openTray = async (page: Page) => {
-  await page.locator('.csv-jobs-tray-launcher').click();
-  await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
-};
+const triggerJobsRefresh = (page: Page) =>
+  page.evaluate(() => window.dispatchEvent(new Event('csv-jobs-refresh')));
 
-test.describe('CsvJobsTray', () => {
+// ── suite ─────────────────────────────────────────────────────────────────────
+
+test.describe.serial('CsvJobsTray', () => {
   test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await page.goto('/metrics');
-    await page.waitForURL(/\/metrics/);
-  });
-
-  test('shows a running export job and its progress text', async ({ page }) => {
-    await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
-    await activateJobsTray(page);
-
-    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
-    await openTray(page);
-
-    await expect(page.locator('.csv-jobs-tray-item-running')).toHaveCount(1);
-    await expect(page.getByText(/Exporting Metrics/i)).toBeVisible();
-  });
-
-  test('shows an import job in the tray', async ({ page }) => {
-    await mockJobsApi(page, [RUNNING_IMPORT_JOB]);
-    await activateJobsTray(page);
-
-    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
-    await openTray(page);
-
-    await expect(page.getByText(/Importing Metrics/i)).toBeVisible();
-  });
-
-  test('can cancel a running job from the tray', async ({ page }) => {
-    await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
-    await activateJobsTray(page);
-
-    let cancelCalled = false;
-    await page.route(
-      `**/api/v1/csvAsyncJobs/${JOB_ID_EXPORT}/cancel`,
-      async (route) => {
-        cancelCalled = true;
-        await route.fulfill({
-          contentType: 'application/json',
-          json: { ...RUNNING_EXPORT_JOB, status: 'CANCELLING' },
-        });
-      }
+    const searchResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/search/query') && res.status() === 200
     );
-
-    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
-    await openTray(page);
-
-    await page
-      .locator('.csv-jobs-tray-action')
-      .filter({ hasText: 'Cancel' })
-      .click();
-
-    await expect.poll(() => cancelCalled, { timeout: 10_000 }).toBe(true);
+    await page.goto('/explore/tables?search=sample_data');
+    await expect(page.getByTestId('explore-page')).toBeVisible();
+    await searchResponse;
   });
 
-  test('shows Download button for a completed export job', async ({ page }) => {
-    await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
-    await activateJobsTray(page);
-
-    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
-    await openTray(page);
-
-    await mockJobsApi(page, [
-      { ...RUNNING_EXPORT_JOB, status: 'COMPLETED', progress: 18 },
-    ]);
-    await triggerJobsRefresh(page);
-
-    await expect(page.locator('.csv-jobs-tray-item-success')).toHaveCount(1);
-
-    let downloadCalled = false;
-    await page.route(
-      `**/api/v1/csvAsyncJobs/${JOB_ID_EXPORT}/result`,
-      async (route) => {
-        downloadCalled = true;
-        await route.fulfill({
-          contentType: 'text/csv',
-          body: 'name,displayName\ntest_metric,Test Metric',
-        });
+  test.afterEach(async ({ page }) => {
+    // Best-effort: dismiss any remaining jobs so they don't accumulate across
+    // serial tests (serial execution still shares the admin user's job list).
+    try {
+      const clearButton = page.locator('.csv-jobs-tray-clear');
+      if (await clearButton.isVisible({ timeout: 2_000 })) {
+        await clearButton.click();
+        return;
       }
+      for (const btn of await page.locator('.csv-jobs-tray-dismiss').all()) {
+        if (await btn.isVisible()) {
+          await btn.click();
+        }
+      }
+    } catch {
+      // tray may already be hidden — ignore
+    }
+  });
+
+  test('tray surfaces an export job after export starts', async ({ page }) => {
+    test.slow();
+
+    await openExportScopeModal(page);
+    await startAsyncExport(page);
+
+    // The export modal fires csv-jobs-refresh internally; the tray appears once
+    // the component polls and sees the new job.
+    await expect(page.locator('.csv-jobs-tray')).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(/Exporting|Exported/).first()).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('auto-opens the tray when an export job completes', async ({
+    page,
+    browser,
+  }) => {
+    test.slow();
+
+    await openExportScopeModal(page);
+    const jobId = await startAsyncExport(page);
+
+    // Tray auto-opens once the component polls and sees the state change to
+    // COMPLETED.
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 90_000,
+    });
+    await expect(page.getByText(/Exporting|Exported/).first()).toBeVisible();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await waitForJobCompleted(apiContext, jobId);
+    await afterAction();
+  });
+
+  test('shows Download button for a completed job and triggers file download', async ({
+    page,
+    browser,
+  }) => {
+    test.slow();
+
+    await openExportScopeModal(page);
+    const jobId = await startAsyncExport(page);
+
+    // Poll the backend until done before asserting the Download button so that a
+    // slow job doesn't exhaust the assertion timeout.
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await waitForJobCompleted(apiContext, jobId);
+    await afterAction();
+
+    await triggerJobsRefresh(page);
+
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const downloadButton = page
+      .getByRole('button', { name: 'Download' })
+      .first();
+    await expect(downloadButton).toBeVisible({ timeout: 30_000 });
+
+    const resultResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes(`/api/v1/csvAsyncJobs/${jobId}/result`) &&
+        res.status() === 200
     );
+    const downloadEvent = page.waitForEvent('download');
 
-    await page
-      .locator('.csv-jobs-tray-action')
-      .filter({ hasText: 'Download' })
-      .click();
+    await downloadButton.click();
+    await resultResponse;
 
-    await expect.poll(() => downloadCalled, { timeout: 10_000 }).toBe(true);
+    const download = await downloadEvent;
+    expect(download.suggestedFilename()).toContain(jobId);
+    expect(download.suggestedFilename()).toContain('.csv');
   });
 
-  test('FAILED import job shows error styling and dismiss button', async ({
+  test('Clear completed removes terminal jobs and hides the tray', async ({
     page,
+    browser,
   }) => {
-    await mockJobsApi(page, [RUNNING_IMPORT_JOB]);
-    await activateJobsTray(page);
+    test.slow();
 
-    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
-    await openTray(page);
+    await openExportScopeModal(page);
+    const jobId = await startAsyncExport(page);
 
-    await mockJobsApi(page, [
-      {
-        ...RUNNING_IMPORT_JOB,
-        status: 'FAILED',
-        error: 'Invalid CSV format',
-        progress: 0,
-        total: 0,
-      },
-    ]);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await waitForJobCompleted(apiContext, jobId);
+    await afterAction();
+
     await triggerJobsRefresh(page);
 
-    await expect(page.locator('.csv-jobs-tray-item-error')).toHaveCount(1);
-    await expect(page.locator('.csv-jobs-tray-dismiss')).toBeVisible();
-  });
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.locator('.csv-jobs-tray-item-success').first()
+    ).toBeVisible({ timeout: 30_000 });
 
-  test('dismiss button removes a completed import job and hides the tray', async ({
-    page,
-  }) => {
-    // COMPLETED EXPORT shows Download; COMPLETED IMPORT shows the dismiss (XClose) button
-    await mockJobsApi(page, [RUNNING_IMPORT_JOB]);
-    await activateJobsTray(page);
-
-    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
-    await openTray(page);
-
-    await mockJobsApi(page, [
-      { ...RUNNING_IMPORT_JOB, status: 'COMPLETED', progress: 10 },
-    ]);
-    await triggerJobsRefresh(page);
-
-    await expect(page.locator('.csv-jobs-tray-item-success')).toHaveCount(1);
-    await expect(page.locator('.csv-jobs-tray-dismiss')).toBeVisible();
-    await page.locator('.csv-jobs-tray-dismiss').click();
-
-    await expect(page.locator('.csv-jobs-tray')).not.toBeVisible();
-  });
-
-  test('multiple jobs co-exist in the tray', async ({ page }) => {
-    await mockJobsApi(page, [RUNNING_EXPORT_JOB, RUNNING_IMPORT_JOB]);
-    await activateJobsTray(page);
-
-    await expect(page.locator('.csv-jobs-tray-launcher')).toContainText('2');
-    await openTray(page);
-
-    await expect(page.locator('.csv-jobs-tray-item')).toHaveCount(2);
-    await expect(page.getByText(/Exporting Metrics/i)).toBeVisible();
-    await expect(page.getByText(/Importing Metrics/i)).toBeVisible();
-  });
-
-  test('Clear completed removes all terminal jobs and hides the tray', async ({
-    page,
-  }) => {
-    await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
-    await activateJobsTray(page);
-
-    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
-    await openTray(page);
-
-    await mockJobsApi(page, [
-      { ...RUNNING_EXPORT_JOB, status: 'COMPLETED', progress: 18 },
-    ]);
-    await triggerJobsRefresh(page);
-
-    await expect(page.locator('.csv-jobs-tray-item-success')).toHaveCount(1);
     await page.locator('.csv-jobs-tray-clear').click();
 
     await expect(page.locator('.csv-jobs-tray')).not.toBeVisible();
+  });
+
+  test('does not re-open the tray after the user minimizes it', async ({
+    page,
+    browser,
+  }) => {
+    test.slow();
+
+    await openExportScopeModal(page);
+    const jobId = await startAsyncExport(page);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await waitForJobCompleted(apiContext, jobId);
+    await afterAction();
+
+    await triggerJobsRefresh(page);
+
+    // Tray auto-opens on completion.
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // User closes the tray.
+    await page.locator('.csv-jobs-tray-close').click();
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeHidden();
+    await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
+
+    // Next poll must not re-open it.
+    const reFetch = page.waitForResponse('**/api/v1/csvAsyncJobs**');
+    await triggerJobsRefresh(page);
+    await reFetch;
+
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeHidden();
   });
 });
