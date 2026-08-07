@@ -859,12 +859,19 @@ export const waitForSearchResult = async (
   await expect
     .poll(
       async () => {
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.request().method() === 'GET',
-          { timeout: 15_000 }
-        );
+        // Swallow the timeout: this wait only exists to let the search settle
+        // before checking the result, and the enclosing poll is what decides
+        // success. Left unhandled, a single slow search rejects and the
+        // exception aborts the whole poll instead of counting as "not yet" —
+        // so a 45s budget could fail after one 15s iteration.
+        const searchResponse = page
+          .waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.request().method() === 'GET',
+            { timeout: 15_000 }
+          )
+          .catch(() => null);
 
         if (hasSubmittedSearch) {
           await Promise.all([searchResponse, page.reload()]);
