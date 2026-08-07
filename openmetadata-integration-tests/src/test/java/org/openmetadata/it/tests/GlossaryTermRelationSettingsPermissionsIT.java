@@ -119,10 +119,13 @@ public class GlossaryTermRelationSettingsPermissionsIT {
     assertEquals(401, response.statusCode(), "Unauthenticated reads must still be rejected");
   }
 
+  // The write-attempt tests below take the lock in READ_WRITE mode even though they expect a 403:
+  // if the admin gate ever regresses the request lands, and an exclusive lock keeps that mutation
+  // from corrupting shared settings under tests that hold the READ lock.
   @Test
   @ResourceLock(
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
-      mode = ResourceAccessMode.READ)
+      mode = ResourceAccessMode.READ_WRITE)
   void test_createRelationType_dataConsumer_returns403() throws Exception {
     HttpResponse<String> response =
         send("POST", RELATION_TYPES_PATH, RELATION_TYPE_BODY, "application/json");
@@ -134,7 +137,7 @@ public class GlossaryTermRelationSettingsPermissionsIT {
   @Test
   @ResourceLock(
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
-      mode = ResourceAccessMode.READ)
+      mode = ResourceAccessMode.READ_WRITE)
   void test_updateRelationType_dataConsumer_returns403() throws Exception {
     HttpResponse<String> response =
         send("PUT", RELATION_TYPES_PATH + "/relatedTo", RELATION_TYPE_BODY, "application/json");
@@ -146,7 +149,7 @@ public class GlossaryTermRelationSettingsPermissionsIT {
   @Test
   @ResourceLock(
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
-      mode = ResourceAccessMode.READ)
+      mode = ResourceAccessMode.READ_WRITE)
   void test_deleteRelationType_dataConsumer_returns403() throws Exception {
     HttpResponse<String> response =
         send("DELETE", RELATION_TYPES_PATH + "/relatedTo", null, "application/json");
@@ -158,7 +161,7 @@ public class GlossaryTermRelationSettingsPermissionsIT {
   @Test
   @ResourceLock(
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
-      mode = ResourceAccessMode.READ)
+      mode = ResourceAccessMode.READ_WRITE)
   void test_putSettings_dataConsumer_returns403() throws Exception {
     String body =
         """
@@ -174,7 +177,7 @@ public class GlossaryTermRelationSettingsPermissionsIT {
   @Test
   @ResourceLock(
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
-      mode = ResourceAccessMode.READ)
+      mode = ResourceAccessMode.READ_WRITE)
   void test_patchSettings_dataConsumer_returns403() throws Exception {
     String patch = "[{\"op\":\"remove\",\"path\":\"/relationTypes/0\"}]";
 
