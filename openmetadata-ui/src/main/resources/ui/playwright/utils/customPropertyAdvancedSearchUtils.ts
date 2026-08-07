@@ -14,7 +14,9 @@ import { expect, Page } from '@playwright/test';
 import { isObject, isUndefined } from 'lodash';
 import {
   CP_BASE_VALUES,
+  LAZY_LOAD_ENUM_VALUES,
   MULTISELECT_OPERATORS,
+  TABLE_CP_COLUMNS,
 } from '../constant/customPropertyAdvancedSearch';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TopicClass } from '../support/entity/TopicClass';
@@ -183,7 +185,7 @@ export const getCustomPropertyCreationData = (types: CPASTestData['types']) => {
       },
       customPropertyConfig: {
         config: {
-          columns: ['Sr No', 'Name', 'Role'],
+          columns: TABLE_CP_COLUMNS,
         },
       },
     },
@@ -217,6 +219,21 @@ export const getCustomPropertyCreationData = (types: CPASTestData['types']) => {
     },
   };
 };
+
+export const getLazyLoadEnumCustomPropertyData = (
+  types: CPASTestData['types']
+): CustomPropertyDetails => ({
+  name: `cp-${uuid()}-enumlazy`,
+  description: 'Enum CP with 150 values for advanced search lazy load',
+  propertyType: {
+    name: 'enum',
+    type: 'type',
+    id: types.find((type) => type.name === 'enum')?.id ?? '',
+  },
+  customPropertyConfig: {
+    config: { values: LAZY_LOAD_ENUM_VALUES, multiSelect: true },
+  },
+});
 
 export const getCustomPropertyValues = (
   createdCPData: CustomPropertyDetails[],
