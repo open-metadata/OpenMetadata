@@ -346,11 +346,16 @@ describe('useCurrentUserStore', () => {
       ).toBe(true);
     });
 
-    it('emits a remove op when appMode is set to null', async () => {
+    it('emits a remove op when appMode is set to null (and server had the key)', async () => {
       jest.useFakeTimers();
       seedCurrentUser({
         id: 'u1',
         name: 'alice',
+        preferences: { appMode: 'ai' },
+      });
+      // Seed serverKnown so the remove op is emitted — see the skip-remove
+      // test below for the absent-key case.
+      hydrateBackendSyncedPreferences({ id: 'u1', name: 'alice' } as any, {
         preferences: { appMode: 'ai' },
       });
 
@@ -362,6 +367,26 @@ describe('useCurrentUserStore', () => {
       expect(patchUserPreferencesMock).toHaveBeenCalledWith('u1', [
         { op: 'remove', path: '/appMode' },
       ]);
+    });
+
+    it('skips PATCH entirely when null is set on a key the server never had', async () => {
+      // Regression: JSON-Patch `remove` on an absent object member throws
+      // per RFC 6902. Emitting one caused the backend to reject the whole
+      // patch and surface an error toast for what is semantically a no-op.
+      jest.useFakeTimers();
+      // Seed hydration with an empty server-known state — no `appMode`.
+      seedCurrentUser({
+        id: 'u1',
+        name: 'alice',
+        preferences: {},
+      });
+
+      const { setPreference } = renderUseCurrentUserPreferences();
+      setPreference({ appMode: null });
+      jest.advanceTimersByTime(300);
+      await Promise.resolve();
+
+      expect(patchUserPreferencesMock).not.toHaveBeenCalled();
     });
 
     it('rolls back local state and toasts when the PATCH fails', async () => {

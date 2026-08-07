@@ -54,7 +54,10 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
-import { hydrateBackendSyncedPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import {
+  hydrateBackendSyncedPreferences,
+  resetBackendSyncState,
+} from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   clearAppMode,
@@ -287,6 +290,11 @@ export const AuthProvider = ({
     // their own persona/preference-resolved mode rather than inheriting
     // this user's transient mode.
     clearAppMode();
+
+    // Reset the debounced backend-sync bookkeeping so a pending PATCH
+    // from user A cannot be flushed with user B's value/id when the SPA
+    // logs out + back in within the 300ms window.
+    resetBackendSyncState();
 
     setApplicationLoading(false);
 

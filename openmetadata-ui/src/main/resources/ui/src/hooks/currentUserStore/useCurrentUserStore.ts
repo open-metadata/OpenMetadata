@@ -145,17 +145,28 @@ async function flushPendingPatch(
   // JSON-Patch ops apply directly against the `preferences` map on the
   // backend (`UserPreferencesRepository.patch`) — paths are NOT prefixed
   // with `/preferences/`.
-  const ops: Operation[] = Array.from(attempted.entries()).map(
-    ([key, value]) => {
+  //
+  // `remove` on an absent member throws per RFC 6902 and would surface as
+  // an error toast + rollback for what is semantically a no-op. Skip
+  // remove ops when the key isn't on `serverKnown` (never persisted, or
+  // already cleared).
+  const ops: Operation[] = Array.from(attempted.entries())
+    .map(([key, value]): Operation | null => {
       if (value === null) {
-        return { op: 'remove', path: `/${key}` } as Operation;
+        return key in serverKnown
+          ? ({ op: 'remove', path: `/${key}` } as Operation)
+          : null;
       }
 
       const op = key in serverKnown ? 'replace' : 'add';
 
       return { op, path: `/${key}`, value } as Operation;
-    }
-  );
+    })
+    .filter((op): op is Operation => op !== null);
+
+  if (ops.length === 0) {
+    return;
+  }
 
   try {
     const updated = await patchUserPreferences(userId, ops);
