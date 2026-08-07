@@ -18,9 +18,12 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.governance.workflows.Stage;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
@@ -174,6 +177,66 @@ public class WorkflowInstanceStateResource
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.listWorkflowInstanceStateForInstance(
         workflowDefinitionName, workflowInstanceId, offset, startTs, endTs, limitParam, latest);
+  }
+
+  @GET
+  @Path("/workflowInstanceId/{workflowInstanceId}")
+  @Operation(
+      operationId = "getWorkflowInstanceStatesByWorkflowInstanceId",
+      summary = "Get all Workflow Instance States for a Workflow Instance id",
+      description =
+          "Get Workflow Instance States for a Workflow Instance id, ordered by timestamp "
+              + "ascending. Id-based lookup is stable across WorkflowDefinition renames because "
+              + "the underlying query filters on the workflowInstanceId column directly instead "
+              + "of an FQN-hash derived from the definition name. By default every stage the "
+              + "workflow entered is returned, including internal automation stages (policy "
+              + "enforcement, attribute updates, start/end events). Pass "
+              + "onlyTaskTransitions=true to narrow the response to stages driven by a "
+              + "task transition, identified generically by the presence of a "
+              + "<stageName>_transitionId entry in the stage's variables map, which is written "
+              + "only by user-task nodes when a user resolves the task. Generic across any "
+              + "workflow that has task nodes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Workflow Instance States",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = WorkflowInstanceStateResultList.class)))
+      })
+  public ResultList<WorkflowInstanceState> listByWorkflowInstanceId(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Workflow Instance ID", schema = @Schema(type = "UUID"))
+          @PathParam("workflowInstanceId")
+          UUID workflowInstanceId,
+      @Parameter(
+              description =
+                  "When true, return only stages driven by a task transition — i.e. rows whose "
+                      + "variables map contains a <stageName>_transitionId entry. Defaults to "
+                      + "false, which returns every stage the workflow entered.",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("onlyTaskTransitions")
+          boolean onlyTaskTransitions) {
+    OperationContext operationContext =
+        new OperationContext(Entity.WORKFLOW_DEFINITION, MetadataOperation.VIEW_ALL);
+    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    List<WorkflowInstanceState> states = repository.listAllStatesForInstance(workflowInstanceId);
+    if (onlyTaskTransitions) {
+      states = states.stream().filter(WorkflowInstanceStateResource::isTaskTransition).toList();
+    }
+    return new ResultList<>(states, null, null, states.size());
+  }
+
+  private static boolean isTaskTransition(WorkflowInstanceState state) {
+    Stage stage = state == null ? null : state.getStage();
+    if (stage == null || stage.getName() == null) {
+      return false;
+    }
+    Map<String, Object> variables = stage.getVariables();
+    return variables != null && variables.containsKey(stage.getName() + "_transitionId");
   }
 
   @GET
