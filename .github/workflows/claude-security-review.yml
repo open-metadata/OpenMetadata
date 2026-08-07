@@ -305,11 +305,16 @@ jobs:
     runs-on: ubuntu-latest
     environment: security-scan
     steps:
+      # Pinned to the default branch on purpose. This job holds the security-scan
+      # environment's Slack credentials, and it executes scripts/*.py — checking out
+      # the PR merge ref instead would let a PR edit that script and exfiltrate the
+      # token. The renderer must always be the trusted, merged version.
       - name: Checkout (renderer only)
         uses: actions/checkout@v7
         with:
           show-progress: false
           fetch-depth: 1
+          ref: ${{ github.event.repository.default_branch }}
 
       - name: Download all slice reports
         uses: actions/download-artifact@v7
