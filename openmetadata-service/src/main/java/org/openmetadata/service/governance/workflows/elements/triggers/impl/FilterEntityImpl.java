@@ -57,6 +57,18 @@ public class FilterEntityImpl implements JavaDelegate {
     String entityLinkStr =
         (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
 
+    // eventBasedEntity triggers get relatedEntity from the change event that started them; a
+    // null value here means the trigger was invoked without one (e.g. the manual trigger REST
+    // endpoint for a workflow type that expects an event context). Short-circuit with
+    // passesFilter=false so the workflow does not advance, instead of NPE'ing in the parser.
+    if (entityLinkStr == null || entityLinkStr.isBlank()) {
+      log.debug(
+          "Trigger {} - no relatedEntity in variables; skipping",
+          WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
+      execution.setVariable(PASSES_FILTER_VARIABLE, false);
+      return;
+    }
+
     // Parse entity type from entity link to determine which filter to use
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();

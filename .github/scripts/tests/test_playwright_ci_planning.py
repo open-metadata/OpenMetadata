@@ -1489,6 +1489,126 @@ def test_coverage_verifier_reconciles_zero_attempt_skips_in_output(
     assert coverage["zeroAttemptSkippedTests"][0]["reason"] == "unknown"
 
 
+def test_is_lifecycle_test_matches_setup_projects():
+    # Every project in playwright.config.ts that appears as a `dependencies:`
+    # value on another project — those tests run once per shard-invocation
+    # instead of once per plan.
+    verifier = load_script("verify_playwright_coverage")
+
+    for project in [
+        "setup",
+        "entity-data-setup",
+        "entity-data-teardown",
+        "data-insight-application",
+        "search-rbac-setup",
+        "search-rbac-teardown",
+    ]:
+        assert verifier.is_lifecycle_test({"id": "x", "project": project}), project
+
+    for project in ["chromium", "Basic", "ImportExport", "SearchRBAC"]:
+        assert not verifier.is_lifecycle_test({"id": "x", "project": project}), project
+
+
+def test_coverage_verifier_ignores_lifecycle_executions(tmp_path, monkeypatch):
+    # Reproduces merge_group run 31083026904's failure: two @data-insight spec
+    # files were assigned to different chromium shards, so Playwright ran the
+    # `data-insight-application` setup project on both. The setup test is not
+    # planned (it isn't in FULL_PROJECTS), but its per-invocation duplication
+    # in the timings used to trip `unexpected + duplicate execution`.
+    verifier = load_script("verify_playwright_coverage")
+    plan_a = {
+        "shardId": "chromium-04",
+        "testIds": ["real-test-a"],
+    }
+    plan_b = {
+        "shardId": "chromium-17",
+        "testIds": ["real-test-b"],
+    }
+    # Both shards' timing artifacts include the data-insight setup test
+    # (same test ID) — that's the pattern the checker used to false-positive.
+    timing_a = {
+        "tests": [
+            {"id": "real-test-a", "project": "chromium"},
+            {"id": "data-insight-setup", "project": "data-insight-application"},
+        ],
+    }
+    timing_b = {
+        "tests": [
+            {"id": "real-test-b", "project": "chromium"},
+            {"id": "data-insight-setup", "project": "data-insight-application"},
+        ],
+    }
+    (tmp_path / "plan-a.json").write_text(json.dumps(plan_a))
+    (tmp_path / "plan-b.json").write_text(json.dumps(plan_b))
+    (tmp_path / "timing-a.json").write_text(json.dumps(timing_a))
+    (tmp_path / "timing-b.json").write_text(json.dumps(timing_b))
+    output = tmp_path / "coverage.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "verify_playwright_coverage.py",
+            "--plan-glob",
+            str(tmp_path / "plan-*.json"),
+            "--timing-glob",
+            str(tmp_path / "timing-*.json"),
+            "--output",
+            str(output),
+        ],
+    )
+
+    verifier.main()
+
+    coverage = json.loads(output.read_text())
+    # The data-insight setup test is filtered from `executed` — no unexpected,
+    # no duplicate, no missing.
+    assert coverage["duplicateExecutionTestIds"] == []
+    assert coverage["unexpectedTestIds"] == []
+    assert coverage["missingTestIds"] == []
+    assert coverage["plannedTests"] == 2
+    assert coverage["executedTests"] == 2
+
+
+def test_coverage_verifier_still_flags_real_test_duplicates_and_unexpected(
+    tmp_path, monkeypatch
+):
+    # Guard against the fix being too permissive — a real test executed on a
+    # shard that didn't plan it, or executed twice on one shard, must still
+    # fire the mismatch.
+    verifier = load_script("verify_playwright_coverage")
+    plan = {"shardId": "chromium-01", "testIds": ["planned-only"]}
+    timing = {
+        "tests": [
+            {"id": "planned-only", "project": "chromium"},
+            {"id": "planned-only", "project": "chromium"},  # duplicate execution
+            {"id": "stowaway", "project": "chromium"},       # unexpected
+        ]
+    }
+    (tmp_path / "plan.json").write_text(json.dumps(plan))
+    (tmp_path / "timing.json").write_text(json.dumps(timing))
+    output = tmp_path / "coverage.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "verify_playwright_coverage.py",
+            "--plan-glob",
+            str(tmp_path / "plan.json"),
+            "--timing-glob",
+            str(tmp_path / "timing.json"),
+            "--output",
+            str(output),
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="Playwright coverage mismatch"):
+        verifier.main()
+
+    coverage = json.loads(output.read_text())
+    assert coverage["duplicateExecutionTestIds"] == ["planned-only"]
+    assert coverage["unexpectedTestIds"] == ["stowaway"]
+
+
 def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
     requests = load_script("summarize_playwright_requests")
     accumulator = requests.RequestAccumulator()
@@ -2027,6 +2147,43 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
         "playwright/e2e/Features/OntologyImportRdf.spec.ts"
         in impact_map["delegatedSpecs"]
     )
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        "playwright/e2e/Pages/DataInsight.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+    ],
+)
+def test_changed_data_insight_specs_are_selected_for_pr(spec, tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(f"{selector.UI_ROOT}{spec}\n")
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    selected_specs = {entry["spec"] for entry in selection["selectors"]}
+    assert spec in selected_specs
+    assert spec not in selection["delegatedChangedSpecs"]
 
 
 def test_visual_regression_specs_are_not_selected_by_the_main_workflow():
