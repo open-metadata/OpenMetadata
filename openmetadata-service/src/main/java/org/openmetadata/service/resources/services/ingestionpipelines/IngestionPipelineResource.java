@@ -918,8 +918,8 @@ public class IngestionPipelineResource
 
   private Response forceDelete(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean hardDelete) {
-    validateForceDelete(hardDelete);
     authorizeForceDelete(securityContext, id);
+    validateForceDelete(hardDelete);
     String userName = securityContext.getUserPrincipal().getName();
     ForcedDeleteResult result = repository.forceDelete(userName, id);
     limits.invalidateCache(entityType);

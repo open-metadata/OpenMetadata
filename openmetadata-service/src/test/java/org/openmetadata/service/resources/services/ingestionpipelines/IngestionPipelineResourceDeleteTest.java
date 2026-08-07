@@ -44,7 +44,7 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 class IngestionPipelineResourceDeleteTest {
 
   @Test
-  void forceDeleteRequiresAdministratorAccess() {
+  void forceDeleteAuthorizesBeforeValidatingHardDelete() {
     IngestionPipelineRepository repository = mock(IngestionPipelineRepository.class);
     Authorizer authorizer = mock(Authorizer.class);
     SecurityContext securityContext = securityContext("operator");
@@ -59,7 +59,7 @@ class IngestionPipelineResourceDeleteTest {
 
       assertThrows(
           AuthorizationException.class,
-          () -> resource.delete(null, securityContext, true, true, pipelineId));
+          () -> resource.delete(null, securityContext, false, true, pipelineId));
 
       verify(repository, never()).forceDelete(any(), any());
     }
@@ -80,7 +80,7 @@ class IngestionPipelineResourceDeleteTest {
           () -> resource.delete(null, securityContext, false, true, UUID.randomUUID()));
 
       verify(repository, never()).forceDelete(any(), any());
-      verify(authorizer, never()).authorizeAdmin(any(SecurityContext.class));
+      verify(authorizer).authorizeAdmin(any(SecurityContext.class));
     }
   }
 
