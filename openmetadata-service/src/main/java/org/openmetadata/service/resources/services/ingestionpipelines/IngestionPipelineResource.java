@@ -36,6 +36,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -85,6 +86,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository.ForcedDeleteResult;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
@@ -104,6 +106,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.RestUtil;
 
 // TODO merge with workflows
 @Slf4j
@@ -118,6 +121,8 @@ public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
+  static final String RUNNER_CLEANUP_HEADER = "X-OpenMetadata-Runner-Cleanup";
+  static final String RUNNER_CLEANUP_SKIPPED = "skipped-unavailable";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";
@@ -883,6 +888,8 @@ public class IngestionPipelineResource
       description = "Delete an ingestion pipeline by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "400", description = "Force requires hardDelete=true"),
+        @ApiResponse(responseCode = "403", description = "Force requires administrator access"),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response delete(
@@ -892,10 +899,57 @@ public class IngestionPipelineResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description =
+                  "Allow an administrator to hard-delete metadata when the ingestion runner is unavailable. "
+                      + "The external workflow might require manual cleanup. (Default = `false`)")
+          @QueryParam("force")
+          @DefaultValue("false")
+          boolean force,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response =
+        force
+            ? forceDelete(uriInfo, securityContext, id, hardDelete)
+            : delete(uriInfo, securityContext, id, false, hardDelete);
+    return response;
+  }
+
+  private Response forceDelete(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean hardDelete) {
+    validateForceDelete(hardDelete);
+    authorizeForceDelete(securityContext, id);
+    String userName = securityContext.getUserPrincipal().getName();
+    ForcedDeleteResult result = repository.forceDelete(userName, id);
+    limits.invalidateCache(entityType);
+    addHref(uriInfo, result.response().entity());
+    return toForceDeleteResponse(result);
+  }
+
+  private void authorizeForceDelete(SecurityContext securityContext, UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContext.Operation.DELETE));
+    authorizer.authorizeAdmin(securityContext);
+  }
+
+  static void validateForceDelete(boolean hardDelete) {
+    if (!hardDelete) {
+      throw new BadRequestException(
+          "Force deleting an ingestion pipeline requires hardDelete=true");
+    }
+  }
+
+  private Response toForceDeleteResponse(ForcedDeleteResult result) {
+    RestUtil.DeleteResponse<IngestionPipeline> deleteResponse = result.response();
+    Response.ResponseBuilder responseBuilder = Response.fromResponse(deleteResponse.toResponse());
+    if (result.wasRunnerCleanupSkipped()) {
+      responseBuilder.header(RUNNER_CLEANUP_HEADER, RUNNER_CLEANUP_SKIPPED);
+    }
+    return responseBuilder.build();
   }
 
   @DELETE
