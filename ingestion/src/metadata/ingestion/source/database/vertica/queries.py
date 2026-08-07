@@ -14,35 +14,22 @@ SQL Queries used during ingestion
 
 import textwrap
 
-# Column comments in Vertica can only happen on Projections
-#   https://forum.vertica.com/discussion/238945/vertica-try-to-create-comment
-# And Vertica projections follow this naming:
-#   https://www.vertica.com/docs/9.2.x/HTML/Content/Authoring/AdministratorsGuide/Projections/WorkingWithProjections.htm
-# So to fetch column comments we need to concat the table_name + projection infix + column name.
-# Example: querying `v_catalog.comments` we find an object_name for a column in the table vendor_dimension as
-# `vendor_dimension_super.vendor_name`. Note how this is the `_super` projection.
-# Then, our join looks for the match in `vendor_dimension_super.vendor_name`.
-# In case there are more than one projections available for a table then we pick up
-# comments from any one projection available for table
-# Note: This might not suit for all column scenarios, but currently we did not find a better way to join
-# v_catalog.comments with v_catalog.columns.
+# Column metadata is read from v_catalog.columns / v_catalog.view_columns only.
+# Column comments used to be resolved here with a per-table
+# `LEFT JOIN v_catalog.comments`, which cost 1-13s per table and dominated the
+# ingestion time (see issue #29429). They are now fetched in a single bulk query
+# (`VERTICA_COLUMN_COMMENTS`) and looked up from an in-memory cache, mirroring how
+# table comments are handled by `get_all_table_comments`.
 VERTICA_GET_COLUMNS = textwrap.dedent(
     """
-        select
+        SELECT
           column_name,
           data_type,
           column_default,
           is_nullable,
-          comment 
-        from 
-          v_catalog.columns col
-          LEFT JOIN v_catalog.comments cm
-          ON col.table_schema = cm.object_schema
-          AND col.table_name = cm.object_name
-          AND col.column_name = cm.child_object
-          AND cm.object_type = 'COLUMN'
-        WHERE 
-          lower(table_name) = '{table}'
+          table_schema
+        FROM v_catalog.columns
+        WHERE lower(table_name) = '{table}'
           AND {schema_condition}
         UNION ALL
         SELECT
@@ -50,20 +37,26 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
           data_type,
           '' AS column_default,
           true AS is_nullable,
-          ''  AS comment
+          table_schema
         FROM v_catalog.view_columns
         WHERE lower(table_name) = '{table}'
-        AND {schema_condition}
-    """  # noqa: W291
+          AND {schema_condition}
+    """
 )
 
-VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
+# Bulk-fetch every column comment in one shot. `v_catalog.comments` only holds a
+# row per object that actually has a comment, so the result set is bounded by the
+# number of commented columns (sparse) rather than the total column count.
+# For a COLUMN row: object_schema = schema, object_name = table, child_object = column.
+VERTICA_COLUMN_COMMENTS = textwrap.dedent(
     """
-        SELECT column_name
-        FROM v_catalog.primary_keys
-        WHERE lower(table_name) = '{table}'
-        AND constraint_type = 'p'
-        AND {schema_condition}
+    SELECT
+      object_schema AS schema,
+      object_name   AS table_name,
+      child_object  AS column_name,
+      comment       AS column_comment
+    FROM v_catalog.comments
+    WHERE object_type = 'COLUMN'
     """
 )
 

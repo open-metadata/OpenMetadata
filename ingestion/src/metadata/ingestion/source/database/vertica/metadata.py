@@ -35,8 +35,8 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.vertica.queries import (
+    VERTICA_COLUMN_COMMENTS,
     VERTICA_GET_COLUMNS,
-    VERTICA_GET_PRIMARY_KEYS,
     VERTICA_LIST_DATABASES,
     VERTICA_SCHEMA_COMMENTS,
     VERTICA_TABLE_COMMENTS,
@@ -46,7 +46,9 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
+    get_all_column_comments,
     get_all_table_comments,
+    get_column_comment_wrapper,
     get_schema_descriptions,
     get_table_comment_wrapper,
 )
@@ -76,7 +78,13 @@ ischema_names.update(
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=too-many-locals,unused-argument
     """
-    Method to handle column details
+    Method to handle column details.
+
+    Column comments are resolved from an in-memory cache populated by a single
+    bulk query (see `get_all_column_comments`), instead of joining
+    `v_catalog.comments` per table. The internal primary-key lookup was removed:
+    its result was never consumed downstream (primary keys are read via
+    `get_pk_constraint`), so it was a redundant catalog query per table.
     """
     if schema is not None:
         schema_condition = f"lower(table_schema) = '{schema.lower()}'"
@@ -87,17 +95,24 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
         dedent(VERTICA_GET_COLUMNS.format(table=table_name.lower(), schema_condition=schema_condition))
     )
 
-    spk = sql.text(dedent(VERTICA_GET_PRIMARY_KEYS.format(table=table_name.lower(), schema_condition=schema_condition)))
-
-    pk_columns = [x[0] for x in connection.execute(spk)]
     columns = {}
     for row in connection.execute(sql_query):
         name = row.column_name
         dtype = row.data_type.lower()
-        primary_key = name in pk_columns
         default = row.column_default
         nullable = row.is_nullable
-        comment = row.comment
+        # Key the comment lookup by the row's own schema rather than the reflection
+        # argument: when get_columns is called with schema=None the query spans all
+        # schemas, so only the per-row table_schema aligns with the cache key (the
+        # old per-table join matched schema-to-schema, and this preserves that).
+        comment = get_column_comment_wrapper(
+            self,
+            connection,
+            query=VERTICA_COLUMN_COMMENTS,
+            table_name=table_name,
+            column_name=name,
+            schema=row.table_schema,
+        )
 
         column_info = self._get_column_info(  # pylint: disable=protected-access
             name,
@@ -107,7 +122,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
             schema,
             comment,
         )
-        column_info.update({"primary_key": primary_key})
         if columns.get(name) is None or comment:
             columns[name] = column_info
     return columns.values()
@@ -253,7 +267,13 @@ VerticaDialect.get_columns = get_columns
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
 VerticaDialect.get_view_definition = get_view_definition
 VerticaDialect.get_all_table_comments = get_all_table_comments
+VerticaDialect.get_all_column_comments = get_all_column_comments
 VerticaDialect.get_table_comment = get_table_comment
+
+# The reflection queries used during ingestion embed their literal values into the
+# statement text, so enabling SQLAlchemy's compiled-statement cache is safe and
+# avoids recompiling every statement (matching the MSSQL dialect behaviour).
+VerticaDialect.supports_statement_cache = True
 
 
 class VerticaSource(CommonDbSourceService, MultiDBSource):
