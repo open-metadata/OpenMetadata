@@ -2546,6 +2546,54 @@ class ODCSConverterTest {
         "Exported contract authoritativeDefinitions do not match the imported ones");
   }
 
+  @Test
+  void testRoundTrip_PreservesObjectAuthoritativeDefinitionsWhenObjectIsRenamed() {
+    // toODCS names the exported schema object after the OpenMetadata entity, so an anchor captured
+    // from the imported object name no longer matches. The attributes must still survive, exactly
+    // as an unplaceable quality rule falls back to the contract level.
+    ODCSAuthoritativeDefinition objectLink = new ODCSAuthoritativeDefinition();
+    objectLink.setUrl(URI.create("http://localhost:8585/glossary/Finance-Glossary.Ledger"));
+    objectLink.setType("businessDefinition");
+
+    ODCSSchemaElement ledgerObject =
+        objectWithProperties("ledger-topic.v1", propertyNamed("BusinessIdentifier"));
+    ledgerObject.setAuthoritativeDefinitions(List.of(objectLink));
+
+    ODCSDataContract source = newODCSContract();
+    source.setSchema(List.of(ledgerObject));
+
+    DataContract contract = ODCSConverter.fromODCS(source, tableRef("ledger_table_in_om"));
+    ODCSDataContract exported = ODCSConverter.toODCS(contract);
+
+    assertTrue(
+        allAuthoritativeDefinitions(exported).stream()
+            .anyMatch(definition -> objectLink.getUrl().equals(definition.getUrl())),
+        "Object-level authoritativeDefinitions were dropped because the exported object was renamed");
+  }
+
+  private static List<ODCSAuthoritativeDefinition> allAuthoritativeDefinitions(
+      ODCSDataContract odcs) {
+    List<ODCSAuthoritativeDefinition> found = new ArrayList<>();
+    if (odcs.getAuthoritativeDefinitions() != null) {
+      found.addAll(odcs.getAuthoritativeDefinitions());
+    }
+    collectAuthoritativeDefinitions(odcs.getSchema(), found);
+    return found;
+  }
+
+  private static void collectAuthoritativeDefinitions(
+      List<ODCSSchemaElement> elements, List<ODCSAuthoritativeDefinition> found) {
+    if (elements == null) {
+      return;
+    }
+    for (ODCSSchemaElement element : elements) {
+      if (element.getAuthoritativeDefinitions() != null) {
+        found.addAll(element.getAuthoritativeDefinitions());
+      }
+      collectAuthoritativeDefinitions(element.getProperties(), found);
+    }
+  }
+
   private static ODCSDataContract newODCSContract() {
     ODCSDataContract odcs = new ODCSDataContract();
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);

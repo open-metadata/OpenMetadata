@@ -2893,6 +2893,54 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         "Replacing odcsQualityRules produced no change description entry");
   }
 
+  @Test
+  void testODCSReplaceModeClearsPassthrough(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract imported = importODCSWithPassthrough(ns, table);
+    assertFalse(
+        nullOrEmpty(imported.getOdcsQualityRules()),
+        "ODCS import did not persist odcsQualityRules");
+    assertFalse(
+        nullOrEmpty(imported.getOdcsElementExtensions()),
+        "ODCS import did not persist odcsElementExtensions");
+
+    // Re-importing in replace mode with a document that declares neither is the documented way to
+    // clear the passthrough, and is the only write path that still can. The document is identical
+    // to the imported one apart from the passthrough, so nothing else can drive the write.
+    ODCSDataContract stripped = new ODCSDataContract();
+    stripped.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    stripped.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    stripped.setId(imported.getId().toString());
+    stripped.setName(imported.getName());
+    stripped.setVersion("1.0.0");
+    stripped.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription sameDescription = new ODCSDescription();
+    sameDescription.setPurpose("Contract imported from ODCS");
+    stripped.setDescription(sameDescription);
+
+    ODCSSchemaElement plainEmail = new ODCSSchemaElement();
+    plainEmail.setName("email");
+    plainEmail.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName(table.getName());
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    tableObject.setProperties(List.of(plainEmail));
+    stripped.setSchema(List.of(tableObject));
+
+    SdkClients.adminClient()
+        .dataContracts()
+        .createOrUpdateFromODCS(stripped, table.getId(), "table", "replace");
+
+    DataContract refetched = getEntityByName(imported.getFullyQualifiedName());
+    assertTrue(
+        nullOrEmpty(refetched.getOdcsQualityRules()),
+        "PUT /odcs?mode=replace did not clear odcsQualityRules");
+    assertTrue(
+        nullOrEmpty(refetched.getOdcsElementExtensions()),
+        "PUT /odcs?mode=replace did not clear odcsElementExtensions");
+  }
+
   private DataContract importODCSWithPassthrough(TestNamespace ns, Table table) {
     ODCSDataContract odcs = new ODCSDataContract();
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);

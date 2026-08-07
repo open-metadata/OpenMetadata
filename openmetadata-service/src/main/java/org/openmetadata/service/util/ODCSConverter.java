@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.data.Policy;
 import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.api.data.Retention;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSElementExtension;
@@ -910,23 +911,38 @@ public class ODCSConverter {
     return extension;
   }
 
+  /**
+   * Reattaches preserved attributes to the elements they came from. An anchor that matches nothing
+   * in the exported schema — which happens for object-level attributes, because the exported object
+   * is renamed after the OpenMetadata entity — falls back to the contract level rather than being
+   * dropped, mirroring how an unplaceable quality rule falls back to the contract-level quality
+   * block.
+   */
   private static void distributeElementExtensions(
       ODCSDataContract odcs, List<ODCSElementExtension> extensions) {
+    List<ODCSAuthoritativeDefinition> contractDefinitions = new ArrayList<>();
+
     for (ODCSElementExtension extension : extensions) {
-      if (nullOrEmpty(extension.getElement())) {
-        odcs.setAuthoritativeDefinitions(extension.getAuthoritativeDefinitions());
-      } else if (odcs.getSchema() != null) {
-        applyElementExtension(odcs.getSchema(), extension);
+      boolean placed =
+          !nullOrEmpty(extension.getElement())
+              && odcs.getSchema() != null
+              && applyElementExtension(odcs.getSchema(), extension);
+      if (!placed && !nullOrEmpty(extension.getAuthoritativeDefinitions())) {
+        contractDefinitions.addAll(extension.getAuthoritativeDefinitions());
       }
+    }
+
+    if (!contractDefinitions.isEmpty()) {
+      odcs.setAuthoritativeDefinitions(contractDefinitions);
     }
   }
 
-  private static void applyElementExtension(
+  private static boolean applyElementExtension(
       List<ODCSSchemaElement> schemaElements, ODCSElementExtension extension) {
     ODCSSchemaElement target = findSchemaElement(schemaElements, extension.getElement());
     if (target == null) {
       LOG.debug(
-          "Dropping ODCS attributes for element '{}': no matching element in the exported schema",
+          "No exported schema element named '{}'; its ODCS attributes fall back to contract level",
           extension.getElement());
     } else {
       if (!nullOrEmpty(extension.getAuthoritativeDefinitions())) {
@@ -936,6 +952,7 @@ public class ODCSConverter {
         target.setTransformSourceObjects(extension.getTransformSourceObjects());
       }
     }
+    return target != null;
   }
 
   /**
