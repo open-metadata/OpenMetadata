@@ -84,6 +84,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -647,6 +648,38 @@ public final class Entity {
     }
   }
 
+  /**
+   * Same as {@link #getEntity(String, UUID, String, Include)} but yields {@code null} instead of
+   * throwing when the entity is gone. Use it on best-effort paths that run after the entity may have
+   * been deleted — asynchronous alert filtering, for instance — where a missing entity is an
+   * expected outcome rather than an error.
+   */
+  public static <T> T getEntityOrNull(String entityType, UUID id, String fields, Include include) {
+    return getEntityOrNull(entityType, id, fields, RelationIncludes.fromInclude(include));
+  }
+
+  /**
+   * Same as {@link #getEntityOrNull(String, UUID, String, Include)} but with per-relation include
+   * control, so a caller can tolerate a deleted subject entity without also widening which related
+   * entities its relationship fields resolve to.
+   */
+  @SuppressWarnings("unchecked")
+  public static <T> T getEntityOrNull(
+      String entityType, UUID id, String fields, RelationIncludes relationIncludes) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    T entity;
+    try {
+      entity =
+          (T)
+              entityRepository.get(
+                  null, id, entityRepository.getFields(fields), relationIncludes, true);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("{} {} not found while reading fields '{}'", entityType, id, fields);
+      entity = null;
+    }
+    return entity;
+  }
+
   public static <T> T getEntity(EntityLink link, String fields, Include include) {
     return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
@@ -753,10 +786,9 @@ public final class Entity {
 
   /**
    * Whether an entity instance should be embedded into the vector/semantic index, per its
-   * repository's {@link EntityRepository#isVectorEmbeddable} policy (e.g. {@code
-   * ContextMemoryRepository} keeps non-org-wide memories out because the vector query path carries
-   * no per-document visibility filter). Defaults and null-handling match {@link
-   * #isSearchIndexable}.
+   * repository's {@link EntityRepository#isVectorEmbeddable} policy. An entity type may opt out when
+   * its chunk documents cannot carry the filters its privacy model requires. Defaults and
+   * null-handling match {@link #isSearchIndexable}.
    */
   public static boolean isVectorEmbeddable(EntityInterface entity) {
     return repositoryPolicyAllows(entity, EntityRepository::isVectorEmbeddable);
