@@ -191,8 +191,8 @@ public class PermissionsResource {
     if (Entity.TASK.equals(resource)) {
       Task task =
           id != null
-              ? Entity.getEntity(Entity.TASK, id, TASK_AUTH_FIELDS, Include.NON_DELETED)
-              : Entity.getEntityByName(Entity.TASK, name, TASK_AUTH_FIELDS, Include.NON_DELETED);
+              ? Entity.getEntity(Entity.TASK, id, TASK_AUTH_FIELDS, Include.ALL)
+              : Entity.getEntityByName(Entity.TASK, name, TASK_AUTH_FIELDS, Include.ALL);
       resourceContext = new TaskResourceContext(task);
     } else {
       resourceContext = new ResourceContext<>(resource, id, name);
