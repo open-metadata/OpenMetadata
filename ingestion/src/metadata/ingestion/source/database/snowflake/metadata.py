@@ -15,7 +15,6 @@ Snowflake source module
 import json  # noqa: I001
 import threading
 import traceback
-from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
@@ -41,7 +40,6 @@ from metadata.generated.schema.entity.data.storedProcedure import (
 )
 from metadata.generated.schema.entity.data.table import (
     Column,
-    DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
@@ -68,14 +66,12 @@ from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.topology import NodeStage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -119,10 +115,18 @@ from metadata.ingestion.source.database.snowflake.queries import (
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     build_metric_request,
 )
-from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.ingestion.source.database.snowflake.utils import (
+    INFO_SCHEMA_TOO_MUCH_DATA,
+    SEMANTIC_CATALOG_CACHE_SIZE,
+    SEMANTIC_CATALOG_VIEWS,
+    SEMANTIC_DIMENSIONS,
+    SEMANTIC_FACTS,
+    SEMANTIC_METRICS,
+    SEMANTIC_VIEW_COLUMN_KINDS,
+    SemanticCatalog,
     _current_database_schema,
     _get_schema_unique_constraints,
+    build_semantic_view_column,
     get_columns,
     get_foreign_keys,
     get_pk_constraint,
@@ -144,11 +148,13 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_definition,
     get_view_names,
     get_view_names_reflection,
+    merge_semantic_view_column,
     normalize_names,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_table_ddls,
@@ -226,95 +232,6 @@ def _show_column(row, name: str):
     return result
 
 
-# The three INFORMATION_SCHEMA catalog views backing a semantic view.
-SEMANTIC_DIMENSIONS = "semantic_dimensions"
-SEMANTIC_FACTS = "semantic_facts"
-SEMANTIC_METRICS = "semantic_metrics"
-SEMANTIC_CATALOG_VIEWS = (SEMANTIC_DIMENSIONS, SEMANTIC_FACTS, SEMANTIC_METRICS)
-
-# Which catalog views become columns on the semantic view Table, and the kind label
-# used to deduplicate a name that appears as both a dimension and a fact. Metrics are
-# excluded: they are Metric entities, not columns.
-SEMANTIC_VIEW_COLUMN_KINDS = (
-    ("Dimension", SEMANTIC_DIMENSIONS),
-    ("Fact", SEMANTIC_FACTS),
-)
-
-# Snowflake errno for "Information schema query returned too much data", the same
-# signal get_schema_columns uses to fall back to per-object reflection.
-_INFO_SCHEMA_TOO_MUCH_DATA = 90030
-
-SEMANTIC_CATALOG_CACHE_SIZE = snowflake_settings.semantic_catalog_cache_size
-
-# A schema's semantic catalog: {catalog_view: {view_name: [row, ...]}}
-SemanticCatalog = Dict[str, Dict[str, List[tuple]]]  # noqa: UP006
-
-
-def _resolve_semantic_column_type(data_type: Optional[str]):  # noqa: UP045
-    """Map a Snowflake INFORMATION_SCHEMA data_type string to a SQLAlchemy type.
-
-    Falls back to NullType (OpenMetadata maps this to DataType.UNKNOWN) when the
-    base type is unrecognized so a semantic view is never dropped over an exotic type.
-    """
-    resolved = sqltypes.NullType()
-    if data_type:
-        base_type = data_type.strip().split("(")[0].split()[0].upper()
-        type_class = ischema_names.get(base_type)
-        if type_class is not None:
-            try:
-                resolved = type_class()
-            except Exception:  # pylint: disable=broad-except
-                resolved = sqltypes.NullType()
-    return resolved
-
-
-def _merge_semantic_view_column(merged: Dict[str, dict], kind: str, row) -> None:  # noqa: UP006
-    """Accumulate a dimension/fact row under its column name.
-
-    ``kind`` is unused: the semantic classification, owning logical table and
-    synonyms are carried by the Metric entity's ``dimensions``/``measures``, not
-    by the column. The merge still deduplicates names that appear in both the
-    dimension and the fact catalog.
-    """
-    name, data_type, expression, comment = row[1], row[2], row[3], row[4]
-    if name not in merged:
-        merged[name] = {
-            "name": name,
-            "data_type": data_type,
-            "expression": expression,
-            "comment": comment,
-        }
-
-
-def _build_semantic_view_column(entry: dict) -> dict:
-    """Convert an accumulated semantic object into an OpenMetadata column dict.
-
-    The description is the raw Snowflake ``COMMENT`` only. The semantic detail
-    (kind, logical table, synonyms, defining expression) lives on the Metric
-    entity so the column stays a plain, readable column.
-    """
-    return {
-        "name": entry["name"],
-        "type": _resolve_semantic_column_type(entry["data_type"]),
-        "system_data_type": entry["data_type"] or DataType.UNKNOWN.value,
-        "nullable": True,
-        "default": None,
-        "autoincrement": False,
-        "comment": entry["comment"] or None,
-        "primary_key": False,
-    }
-
-
-_SNOWFLAKE_TOPOLOGY = DatabaseServiceTopology()
-_SNOWFLAKE_TOPOLOGY.table.stages.append(
-    NodeStage(  # pyright: ignore[reportCallIssue]
-        type_=CreateMetricRequest,
-        processor="yield_semantic_view_metrics",
-        nullable=True,
-    )
-)
-
-
 # pylint: disable=too-many-public-methods
 class SnowflakeSource(
     ExternalTableLineageMixin,
@@ -327,7 +244,6 @@ class SnowflakeSource(
     """
 
     service_connection: SnowflakeConnection
-    topology = _SNOWFLAKE_TOPOLOGY
 
     def __init__(
         self,
@@ -1205,21 +1121,22 @@ class SnowflakeSource(
         merged: dict[str, dict] = {}
         for kind, catalog_view in SEMANTIC_VIEW_COLUMN_KINDS:
             for row in self._semantic_rows(catalog_view, schema, semantic_view):
-                _merge_semantic_view_column(merged, kind, row)
-        return [_build_semantic_view_column(entry) for entry in merged.values()]
+                merge_semantic_view_column(merged, kind, row)
+        return [build_semantic_view_column(entry) for entry in merged.values()]
 
-    def _semantic_catalog_lru(self) -> "OrderedDict[str, SemanticCatalog | None]":
+    def _semantic_catalog_cache(self) -> "LRUCache[SemanticCatalog | None]":
         """Bounded, per-thread LRU of schema-wide semantic catalogs.
 
         Per-thread because the ``databaseSchema`` topology node runs with
-        ``threads=True`` and each worker walks a different schema: a shared cache
-        would need a lock and would thrash between schemas. Bounded because a
-        schema with very many semantic objects would otherwise be retained for the
-        whole database run (``info_cache`` only clears between databases).
+        ``threads=True`` and each worker walks a different schema: at the default
+        capacity of 2 a shared cache would thrash, every worker evicting the
+        others' schema. Bounded because a schema with very many semantic objects
+        would otherwise be retained for the whole database run (``info_cache``
+        only clears between databases).
         """
-        if not hasattr(self._semantic_catalog_local, "lru"):
-            self._semantic_catalog_local.lru = OrderedDict()
-        return self._semantic_catalog_local.lru
+        if not hasattr(self._semantic_catalog_local, "cache"):
+            self._semantic_catalog_local.cache = LRUCache(SEMANTIC_CATALOG_CACHE_SIZE)
+        return self._semantic_catalog_local.cache
 
     def _semantic_catalog(self, schema: str) -> Optional[SemanticCatalog]:  # noqa: UP045
         """Every semantic object in ``schema``, in three queries total.
@@ -1228,10 +1145,9 @@ class SnowflakeSource(
         round-trips for N semantic views. Returns ``None`` when Snowflake refuses
         the bulk query with errno 90030, signalling the per-view fallback.
         """
-        lru = self._semantic_catalog_lru()
-        if schema in lru:
-            lru.move_to_end(schema)
-            return lru[schema]
+        cache = self._semantic_catalog_cache()
+        if schema in cache:
+            return cache.get(schema)
 
         catalog: Optional[SemanticCatalog] = {}  # noqa: UP045
         try:
@@ -1244,7 +1160,7 @@ class SnowflakeSource(
                     by_view.setdefault(row[0], []).append(row[1:])
                 catalog[catalog_view] = by_view
         except sa_exc.ProgrammingError as p_err:
-            if getattr(p_err.orig, "errno", None) != _INFO_SCHEMA_TOO_MUCH_DATA:
+            if getattr(p_err.orig, "errno", None) != INFO_SCHEMA_TOO_MUCH_DATA:
                 raise
             logger.warning(
                 f"Schema-wide semantic catalog query for [{schema}] returned too much data; "
@@ -1252,18 +1168,10 @@ class SnowflakeSource(
             )
             catalog = None
 
-        self._store_semantic_catalog(schema, catalog)
+        # The ``None`` 90030 sentinel is cached too, so we do not re-run the bulk
+        # query for every view in the schema just to fail again.
+        cache.put(schema, catalog)
         return catalog
-
-    def _store_semantic_catalog(self, schema: str, catalog: Optional[SemanticCatalog]) -> None:  # noqa: UP045
-        """Cache ``catalog`` (or the ``None`` 90030 sentinel, so we do not re-run the
-        bulk query for every view in the schema just to fail again), evicting the
-        least recently used schema past the configured bound."""
-        lru = self._semantic_catalog_lru()
-        lru[schema] = catalog
-        lru.move_to_end(schema)
-        while len(lru) > SEMANTIC_CATALOG_CACHE_SIZE:
-            lru.popitem(last=False)
 
     def _execute_semantic_query(self, query: str) -> List[tuple]:  # noqa: UP006
         """Run a semantic catalog query and materialize the rows as plain tuples."""
@@ -1289,7 +1197,7 @@ class SnowflakeSource(
             reference = EntityReference(id=entity.id.root, type="table")  # pyright: ignore[reportCallIssue]
         return reference
 
-    def yield_semantic_view_metrics(
+    def yield_table_metrics(
         self,
         table_name_and_type: Tuple[str, TableType],  # noqa: UP006
     ) -> Iterable[Either[CreateMetricRequest]]:
