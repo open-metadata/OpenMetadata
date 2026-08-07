@@ -98,9 +98,9 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -1458,6 +1458,20 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       compareAndUpdate("schema", () -> updateSchema(original, updated));
       compareAndUpdate("qualityExpectations", () -> updateQualityExpectations(original, updated));
       compareAndUpdate("semantics", () -> updateSemantics(original, updated));
+      compareAndUpdate(
+          "odcsQualityRules",
+          () ->
+              recordChange(
+                  "odcsQualityRules",
+                  original.getOdcsQualityRules(),
+                  updated.getOdcsQualityRules()));
+      compareAndUpdate(
+          "odcsElementExtensions",
+          () ->
+              recordChange(
+                  "odcsElementExtensions",
+                  original.getOdcsElementExtensions(),
+                  updated.getOdcsElementExtensions()));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
