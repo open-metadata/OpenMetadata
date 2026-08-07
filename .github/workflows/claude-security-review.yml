@@ -1,0 +1,260 @@
+name: Claude Security Review
+
+# Claude-driven CODE (SAST) security review — injection, XSS, broken authz, SSRF,
+# unsafe deserialization, path traversal, secrets and crypto misuse in first-party
+# Java (openmetadata-service), TypeScript (openmetadata-ui) and Python (ingestion)
+# code. It complements the checks already in place: CodeQL (codeql.yml, pattern
+# SAST), Snyk/Retire.js (security-scan.yml, dependency CVEs) and Trivy (images).
+# The rubric, scope and JSON output contract live in ./SECURITY-REVIEW.md.
+#
+# Runs in three situations:
+#   1. A same-repo PR is opened / marked ready — reviews the diff, posts inline +
+#      summary comments. Fork PRs are skipped: pull_request has no secrets on a
+#      fork, so the token would be empty. Use "@claude security-review" to review
+#      a fork PR from a maintainer's comment instead.
+#   2. Someone with write access comments "@claude security-review" on a PR.
+#   3. Nightly (and on manual dispatch) — a best-effort sweep of first-party code.
+# In every case the report is rendered to the Job Summary, uploaded as an artifact,
+# and (unless opted out) posted to Slack via the security-scan environment.
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+  issue_comment:
+    types: [created]
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC nightly
+  workflow_dispatch:
+    inputs:
+      SEND_SLACK_NOTIFICATION:
+        description: "Post results to Slack (uncheck for test runs)"
+        type: boolean
+        required: false
+        default: true
+
+env:
+  # Override with a CLAUDE_REVIEW_MODEL repo/org variable without editing this file.
+  CLAUDE_REVIEW_MODEL: ${{ vars.CLAUDE_REVIEW_MODEL || 'claude-sonnet-5' }}
+  # Manual runs may opt out of Slack; schedule/PR (inputs unset) always send.
+  SEND_SLACK_NOTIFICATION: ${{ github.event.inputs.SEND_SLACK_NOTIFICATION == '' && 'true' || github.event.inputs.SEND_SLACK_NOTIFICATION }}
+
+concurrency:
+  group: claude-security-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+jobs:
+  security-review:
+    # The author_association gate is a security control: issue_comment runs in the
+    # base repo with access to the token, so only write-access authors may trigger
+    # it. pull_request is limited to same-repo (non-fork) PRs — fork PRs receive no
+    # secrets and would fail for lack of a token.
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.draft == false &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       github.event.issue.state == 'open' &&
+       startsWith(github.event.comment.body, '@claude security-review') &&
+       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+      review_outcome: ${{ steps.review.outcome }}
+      high_critical: ${{ steps.summary.outputs.high_critical }}
+    steps:
+      - name: Determine mode
+        id: mode
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: |
+          if [ "$EVENT" = "pull_request" ] || [ "$EVENT" = "issue_comment" ]; then
+            echo "mode=pr" >> "$GITHUB_OUTPUT"
+            echo "track=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=scheduled" >> "$GITHUB_OUTPUT"
+            echo "track=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "pr=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
+          fetch-depth: 1
+
+      - name: Check out PR head
+        if: steps.mode.outputs.mode == 'pr'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr checkout ${{ steps.mode.outputs.pr }}
+
+      - name: Security review
+        id: review
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          track_progress: ${{ steps.mode.outputs.track }}
+          prompt: "${{ steps.mode.outputs.mode == 'pr' && 'Read ./SECURITY-REVIEW.md and treat it as your highest-priority instructions. MODE: PULL REQUEST. Review this PR diff (use `gh pr diff`) for the vulnerability classes in that file, in first-party OpenMetadata code (Java in openmetadata-service, TypeScript under openmetadata-ui, Python under ingestion). Post each confirmed finding as an inline comment (mcp__github_inline_comment__create_inline_comment, confirmed: true) and ALWAYS post a `gh pr comment` summary opening with a severity tally, even when clean. Finally, write ./security-review-report.json using the exact schema in SECURITY-REVIEW.md — this is required and must be your last action.' || 'Read ./SECURITY-REVIEW.md and treat it as your highest-priority instructions. MODE: NIGHTLY SWEEP. Perform the best-effort first-party security sweep described there across openmetadata-service (Java), openmetadata-ui (TypeScript) and ingestion (Python); skip all generated code. Finally, write ./security-review-report.json using the exact schema in SECURITY-REVIEW.md — this is required and must be your last action.' }}"
+          # allowedTools is a superset for both modes: the gh-pr posting tools are
+          # simply unused in the nightly sweep (no PR). Write is needed for the JSON
+          # report. Omitting this list silently denies every posting path.
+          claude_args: |
+            --model ${{ env.CLAUDE_REVIEW_MODEL }}
+            --max-turns 80
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,mcp__github_comment__update_claude_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(git log:*),Bash(git diff:*),Bash(rg:*),Read,Grep,Glob,Write,Task,TodoWrite"
+
+      - name: Render report summary
+        id: summary
+        if: always()
+        run: |
+          python3 scripts/claude_security_summary.py security-review-report.json \
+            --counts-file _sec_counts.json \
+            --slack-file _sec_slack.txt \
+            >> "$GITHUB_STEP_SUMMARY"
+          if [ -f _sec_counts.json ]; then
+            echo "high_critical=$(jq '.high + .critical' _sec_counts.json)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: claude-security-report
+          path: |
+            security-review-report.json
+            _sec_counts.json
+            _sec_slack.txt
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Post review status
+        if: always() && steps.mode.outputs.mode == 'pr'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ steps.mode.outputs.pr }}
+          OUTCOME: ${{ steps.review.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          case "$OUTCOME" in
+            success) STATUS="finished the security review. Its own summary comment carries the verdict; if no summary was posted, treat this PR as **not reviewed** and check the run log." ;;
+            *)       STATUS="**did not complete the security review** (\`$OUTCOME\`). Nothing here has been checked." ;;
+          esac
+          MARKER='<!-- claude-security-status -->'
+          BODY=$(printf '%s\n🛡️ Claude %s\n\n<sub>[run log](%s) · `%s`</sub>' \
+            "$MARKER" "$STATUS" "$RUN_URL" "$CLAUDE_REVIEW_MODEL")
+          ID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+                 --jq "[.[] | select(.body | startswith(\"$MARKER\")) | .id] | first")
+          if [ -n "$ID" ] && [ "$ID" != "null" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$ID" -f body="$BODY" >/dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$BODY" >/dev/null
+          fi
+
+      - name: Fail if the review did not complete
+        if: always() && steps.review.outcome != 'success'
+        run: |
+          echo "::error::Claude security review did not complete (${{ steps.review.outcome }}). Nothing has been checked."
+          exit 1
+
+      # Optional hard gate — off by default. LLM SAST findings warrant human triage,
+      # so a finding does not block merge; flip this on for a strict gate.
+      # - name: Fail on high/critical findings
+      #   if: always() && steps.summary.outputs.high_critical != '' && steps.summary.outputs.high_critical != '0'
+      #   run: |
+      #     echo "::error::Security review found ${{ steps.summary.outputs.high_critical }} high/critical issues (see Job Summary)."
+      #     exit 1
+
+  # Slack lives in its own job so the security-scan environment (which holds the
+  # Slack secrets) is isolated from the review. Mirrors security-scan.yml's notify.
+  notify:
+    runs-on: ubuntu-latest
+    environment: security-scan
+    needs: [security-review]
+    if: always() && needs.security-review.result != 'skipped'
+    steps:
+      - name: Download security report
+        uses: actions/download-artifact@v7
+        with:
+          name: claude-security-report
+          path: report
+        continue-on-error: true
+
+      - name: Build Slack payload
+        id: build
+        if: env.SEND_SLACK_NOTIFICATION == 'true'
+        env:
+          REVIEW_OUTCOME: ${{ needs.security-review.outputs.review_outcome }}
+          MODE: ${{ needs.security-review.outputs.mode }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_IDS }}
+        run: |
+          python3 - <<'PY' > payload.json
+          import json, os, pathlib
+
+          def load(path, default):
+              p = pathlib.Path(path)
+              if not p.exists():
+                  return default
+              try:
+                  return json.loads(p.read_text())
+              except Exception:
+                  return default
+
+          counts = load("report/_sec_counts.json", {})
+          body_p = pathlib.Path("report/_sec_slack.txt")
+          body = body_p.read_text().strip() if body_p.exists() else "*🛡️ Claude Security Review (SAST)*\n> ⚠️ No report produced — see run log."
+
+          outcome = os.environ.get("REVIEW_OUTCOME", "")
+          mode = os.environ.get("MODE", "")
+          ref = os.environ.get("REF_NAME", "")
+          run_url = os.environ.get("RUN_URL", "")
+          channel = os.environ.get("SLACK_CHANNEL_ID", "")
+
+          hi = counts.get("critical", 0) + counts.get("high", 0)
+          total = sum(v for k, v in counts.items() if k != "total")
+          if outcome != "success":
+              icon = "❌"
+          elif hi > 0:
+              icon = "🚨"
+          elif total > 0:
+              icon = "⚠️"
+          else:
+              icon = "🟢"
+
+          label = "PR review" if mode == "pr" else "nightly sweep"
+          header = (
+              f"{icon}  *Claude Security Review (SAST)* — *OpenMetadata Repo* ({label})\n"
+              f"_branch_ `{ref}`  ·  <{run_url}|Open run details>"
+          )
+          payload = {
+              "channel": channel,
+              "text": f"{icon} Claude Security Review — OpenMetadata {ref}. {run_url}",
+              "blocks": [
+                  {"type": "section", "text": {"type": "mrkdwn", "text": header}},
+                  {"type": "section", "text": {"type": "mrkdwn", "text": body}},
+              ],
+          }
+          print(json.dumps(payload))
+          PY
+
+      - name: Send Slack
+        if: env.SEND_SLACK_NOTIFICATION == 'true' && steps.build.outcome == 'success'
+        uses: slackapi/slack-github-action@v4
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          payload-file-path: payload.json
