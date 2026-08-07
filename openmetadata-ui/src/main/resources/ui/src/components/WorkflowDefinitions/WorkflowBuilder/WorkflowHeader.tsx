@@ -27,10 +27,10 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeaderProps } from '../../../interface/workflow-builder-components.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { WorkflowControls } from './WorkflowControls';
 
 export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
