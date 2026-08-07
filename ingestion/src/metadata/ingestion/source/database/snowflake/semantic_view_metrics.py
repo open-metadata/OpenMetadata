@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.data.metric import (
     MetricType,
     Type,
 )
+from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.utils import fqn
@@ -170,7 +171,7 @@ def build_metric_request(
     metric_expression = MetricExpression(language=Language.SQL, code=expression) if expression else None
     assets = EntityReferenceList(root=[view_ref]) if view_ref is not None else None
     return CreateMetricRequest(  # pyright: ignore[reportCallIssue]
-        name=build_metric_name(service, database, schema, view, metric),
+        name=EntityName(build_metric_name(service, database, schema, view, metric)),
         displayName=metric,
         description=metric_row[SEMANTIC_COMMENT_IDX] or None,
         metricType=infer_metric_type(expression),

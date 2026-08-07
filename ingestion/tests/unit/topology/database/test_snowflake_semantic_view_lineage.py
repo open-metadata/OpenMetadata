@@ -14,6 +14,7 @@
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
+from metadata.generated.schema.type.basic import Uuid
 from metadata.ingestion.source.database.snowflake import semantic_view_lineage as svl
 from metadata.ingestion.source.database.snowflake.semantic_view_lineage import (
     SnowflakeSemanticViewLineage,
@@ -144,12 +145,14 @@ def test_iter_database_lineage_emits_table_and_column_edges():
     view_id = UUID("11111111-1111-1111-1111-111111111111")
     orders_id = UUID("22222222-2222-2222-2222-222222222222")
     customers_id = UUID("33333333-3333-3333-3333-333333333333")
+    # ``id`` must be a real Uuid, matching Table.id: the production code passes the
+    # whole field to EntityReference, not its unwrapped ``root``.
     view_entity = MagicMock()
-    view_entity.id.root = view_id
+    view_entity.id = Uuid(root=view_id)
     orders_entity = MagicMock()
-    orders_entity.id.root = orders_id
+    orders_entity.id = Uuid(root=orders_id)
     customers_entity = MagicMock()
-    customers_entity.id.root = customers_id
+    customers_entity.id = Uuid(root=customers_id)
 
     def resolve(table_fqn):
         if "SALES_ANALYSIS" in table_fqn:
@@ -183,9 +186,9 @@ def test_iter_database_lineage_emits_table_level_edge_without_columns():
     view_id = UUID("44444444-4444-4444-4444-444444444444")
     base_id = UUID("55555555-5555-5555-5555-555555555555")
     view_entity = MagicMock()
-    view_entity.id.root = view_id
+    view_entity.id = Uuid(root=view_id)
     base_entity = MagicMock()
-    base_entity.id.root = base_id
+    base_entity.id = Uuid(root=base_id)
 
     def resolve(table_fqn):
         if "SALES_ANALYSIS" in table_fqn:
@@ -249,9 +252,9 @@ def test_view_to_metric_edge_emitted():
     )
 
     view_entity = MagicMock()
-    view_entity.id.root = UUID("11111111-1111-1111-1111-111111111111")
+    view_entity.id = Uuid(root=UUID("11111111-1111-1111-1111-111111111111"))
     metric_entity = MagicMock()
-    metric_entity.id.root = UUID("22222222-2222-2222-2222-222222222222")
+    metric_entity.id = Uuid(root=UUID("22222222-2222-2222-2222-222222222222"))
 
     extractor = SnowflakeSemanticViewLineage(
         service_name="snowflake_svc",

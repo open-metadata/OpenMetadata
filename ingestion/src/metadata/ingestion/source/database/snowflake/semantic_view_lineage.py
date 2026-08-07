@@ -28,6 +28,7 @@ from sqlalchemy import text
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -152,7 +153,7 @@ def resolve_base_columns(
 
 def _table_reference(entity: Table) -> EntityReference:
     """Build a table EntityReference for a lineage edge endpoint."""
-    return EntityReference(id=entity.id.root, type="table")  # pyright: ignore[reportCallIssue]
+    return EntityReference(id=entity.id, type="table")  # pyright: ignore[reportCallIssue]
 
 
 class SnowflakeSemanticViewLineage:
@@ -295,7 +296,7 @@ class SnowflakeSemanticViewLineage:
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=_table_reference(view_entity),
-                                toEntity=EntityReference(id=metric.id.root, type="metric"),  # pyright: ignore[reportCallIssue]
+                                toEntity=EntityReference(id=metric.id, type="metric"),  # pyright: ignore[reportCallIssue]
                                 lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
                                     source=LineageSource.ViewLineage,
                                 ),
@@ -379,7 +380,10 @@ class SnowflakeSemanticViewLineage:
                 if from_fqn not in sources:
                     sources.append(from_fqn)
         return [
-            ColumnLineage(fromColumns=sources, toColumn=to_fqn)  # pyright: ignore[reportCallIssue]
+            ColumnLineage(  # pyright: ignore[reportCallIssue]
+                fromColumns=[FullyQualifiedEntityName(source) for source in sources],
+                toColumn=FullyQualifiedEntityName(to_fqn),
+            )
             for to_fqn, sources in grouped.items()
         ]
 
