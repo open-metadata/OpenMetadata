@@ -4851,23 +4851,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete the extension data storing custom properties
               removeExtension(entityInterface);
 
-              // Cancel any governance workflow instances tied to this entity before the row
-              // goes away, so downstream nodes do not throw EntityNotFoundException. The
-              // Flowable query and cancel calls must never abort the delete transaction —
-              // a stray engine failure here shouldn't wedge entity deletes on a data plane
-              // the workflow engine has no authority over.
-              if (WorkflowHandler.isInitialized()) {
-                try {
-                  WorkflowHandler.getInstance()
-                      .cancelInstancesForEntity(entityInterface.getId(), "Entity deleted");
-                } catch (Exception cancelEx) {
-                  LOG.warn(
-                      "Failed to cancel workflow instances for entity {}: {}",
-                      entityInterface.getId(),
-                      cancelEx.getMessage());
-                }
-              }
-
               // Delete all the threads that are about this entity
               Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
@@ -4881,6 +4864,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               return null;
             });
+    // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
+    // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
+    // workflow queries out of the entity transaction's lock-hold time.
+    cancelWorkflowInstances(List.of(entityInterface.getId()));
     // Re-invalidate after the transaction commits. Any read that slipped in between the
     // pre-delete invalidate and the commit could have re-populated the cache from the
     // still-visible DB row; clearing again here guarantees the next read goes back to the
@@ -6851,6 +6838,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (jdbi == null) {
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
+      cancelWorkflowInstances(entityIds(entities));
       return;
     }
     jdbi.inTransaction(
@@ -6859,6 +6847,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
           bulkDeleteEntityRows(entities);
           return null;
         });
+    // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
+    cancelWorkflowInstances(entityIds(entities));
+  }
+
+  private List<UUID> entityIds(List<T> entities) {
+    List<UUID> entityIds = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      entityIds.add(entity.getId());
+    }
+    return entityIds;
+  }
+
+  private void cancelWorkflowInstances(Collection<UUID> entityIds) {
+    // Workflow-engine failures must never wedge a hard-delete; the entity rows are the source of
+    // truth and the workflow cleanup is best effort.
+    if (!WorkflowHandler.isInitialized()) {
+      return;
+    }
+    try (var ignored = phase("bulkHardDeleteWorkflows")) {
+      WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
+    } catch (Exception cancelEx) {
+      LOG.warn(
+          "Failed to cancel workflow instances for {} entities: {}",
+          entityIds.size(),
+          cancelEx.getMessage());
+    }
   }
 
   private void bulkCleanupReferences(List<T> entities) {
@@ -6896,20 +6910,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // entity_usage is keyed by id (not covered by the root's FQN-prefix cleanup), so descendants
       // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
       daoCollection.usageDAO().deleteByIds(entityIds);
-    }
-    try (var ignored = phase("bulkHardDeleteWorkflows")) {
-      // Workflow-engine failures must never wedge a bulk hard-delete; the workflow
-      // instances are best-effort cleanup, the entity rows are the source of truth.
-      if (WorkflowHandler.isInitialized()) {
-        try {
-          WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
-        } catch (Exception cancelEx) {
-          LOG.warn(
-              "Failed to cancel workflow instances for {} entities: {}",
-              entityIds.size(),
-              cancelEx.getMessage());
-        }
-      }
     }
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
       Entity.getFeedRepository().deleteByAbout(entityIds);
