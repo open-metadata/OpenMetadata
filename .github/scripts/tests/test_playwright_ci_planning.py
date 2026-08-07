@@ -2177,6 +2177,43 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     )
 
 
+@pytest.mark.parametrize(
+    "spec",
+    [
+        "playwright/e2e/Pages/DataInsight.spec.ts",
+        "playwright/e2e/Pages/DataInsightSettings.spec.ts",
+    ],
+)
+def test_changed_data_insight_specs_are_selected_for_pr(spec, tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(f"{selector.UI_ROOT}{spec}\n")
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    selected_specs = {entry["spec"] for entry in selection["selectors"]}
+    assert spec in selected_specs
+    assert spec not in selection["delegatedChangedSpecs"]
+
+
 def test_visual_regression_specs_are_not_selected_by_the_main_workflow():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()

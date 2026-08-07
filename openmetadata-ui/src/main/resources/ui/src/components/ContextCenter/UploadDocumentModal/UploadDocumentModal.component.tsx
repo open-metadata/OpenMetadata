@@ -25,6 +25,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { uploadDriveFile } from '../../../rest/assetAPI';
+import { runWithConcurrencyLimit } from '../../../utils/AsyncUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import {
   QueuedFile,
@@ -33,6 +34,9 @@ import {
 
 const getFileExt = (name: string) =>
   name.split('.').pop()?.toLowerCase() ?? 'empty';
+
+// Cap simultaneous uploads so a large batch does not fire one request per file at once.
+const UPLOAD_CONCURRENCY = 3;
 
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
@@ -125,17 +129,15 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     cancelledRef.current = false;
     setIsUploading(true);
 
-    const batchFiles: ContextFile[] = [];
-    for (const entry of pending) {
-      if (cancelledRef.current) {
-        break;
-      }
-
-      const contextFile = await uploadSingleFile(entry);
-      if (contextFile) {
-        batchFiles.push(contextFile);
-      }
-    }
+    const results = await runWithConcurrencyLimit(
+      pending,
+      UPLOAD_CONCURRENCY,
+      (entry) => uploadSingleFile(entry),
+      () => cancelledRef.current
+    );
+    const batchFiles = results.filter((file): file is ContextFile =>
+      Boolean(file)
+    );
 
     if (!cancelledRef.current) {
       setIsUploading(false);

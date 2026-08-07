@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "닫기",
+    "close-navigation-menu": "탐색 메뉴 닫기",
+    "copy-link": "링크 복사",
+    "current-page": "현재 페이지",
+    "date-range-picker": "날짜 범위 선택기",
+    "delete": "삭제",
+    "edit": "편집",
+    "expand-navigation-menu": "탐색 메뉴 확장",
+    "field-documentation": "필드 문서",
+    "hidden-breadcrumbs": "숨겨진 이동 경로",
+    "loading": "로드 중…",
+    "next-page": "다음 페이지로 이동",
+    "open-menu": "메뉴 열기",
+    "page": "페이지",
+    "pagination": "페이지 매김",
+    "pagination-navigation": "페이지 매김 탐색",
+    "previous-page": "이전 페이지로 이동",
+    "records": "레코드",
+    "remove-filter": "필터 제거",
+    "select-dates": "날짜 선택",
+    "show-hidden-breadcrumbs": "숨겨진 이동 경로 표시",
+    "today": "오늘"
+  }
+}

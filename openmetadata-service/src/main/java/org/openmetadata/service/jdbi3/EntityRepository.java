@@ -273,6 +273,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.RequestEntityCache;
@@ -4980,6 +4981,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete the extension data storing custom properties
               removeExtension(entityInterface);
 
+              // Cancel any governance workflow instances tied to this entity before the row
+              // goes away, so downstream nodes do not throw EntityNotFoundException. The
+              // Flowable query and cancel calls must never abort the delete transaction —
+              // a stray engine failure here shouldn't wedge entity deletes on a data plane
+              // the workflow engine has no authority over.
+              if (WorkflowHandler.isInitialized()) {
+                try {
+                  WorkflowHandler.getInstance()
+                      .cancelInstancesForEntity(entityInterface.getId(), "Entity deleted");
+                } catch (Exception cancelEx) {
+                  LOG.warn(
+                      "Failed to cancel workflow instances for entity {}: {}",
+                      entityInterface.getId(),
+                      cancelEx.getMessage());
+                }
+              }
+
               // Delete all the threads that are about this entity
               Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
@@ -5429,7 +5447,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected String serializeForStorage(T entity) {
-    return storageJsonNode(entity).toString();
+    return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
   }
 
   protected String serializeForVersionHistory(T entity) {
@@ -7021,6 +7039,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // entity_usage is keyed by id (not covered by the root's FQN-prefix cleanup), so descendants
       // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
       daoCollection.usageDAO().deleteByIds(entityIds);
+    }
+    try (var ignored = phase("bulkHardDeleteWorkflows")) {
+      // Workflow-engine failures must never wedge a bulk hard-delete; the workflow
+      // instances are best-effort cleanup, the entity rows are the source of truth.
+      if (WorkflowHandler.isInitialized()) {
+        try {
+          WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
+        } catch (Exception cancelEx) {
+          LOG.warn(
+              "Failed to cancel workflow instances for {} entities: {}",
+              entityIds.size(),
+              cancelEx.getMessage());
+        }
+      }
     }
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
       Entity.getFeedRepository().deleteByAbout(entityIds);
