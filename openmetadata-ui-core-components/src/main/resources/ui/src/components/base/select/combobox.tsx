@@ -165,7 +165,7 @@ export const ComboBox = ({
   });
 
   return (
-    <SelectContext.Provider value={{ size }}>
+    <SelectContext.Provider value={{ size, fontSize: 'md' }}>
       <AriaComboBox menuTrigger="focus" {...otherProps}>
         {(state) => (
           <div className="tw:flex tw:flex-col tw:gap-1.5">
