@@ -205,6 +205,8 @@ test.describe(
                 message:
                   `Term ${term.name} must have an open approval task for the inherited ` +
                   `reviewer`,
+                timeout: STATUS_TIMEOUT,
+                intervals: [3_000, 5_000, 10_000],
               }
             )
             .toBeGreaterThan(0);
