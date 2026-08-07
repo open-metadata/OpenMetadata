@@ -236,9 +236,9 @@ describe('useCurrentUserStore', () => {
         const { result } = renderHook(() => useCurrentUserPreferences());
         result.current.setPreference({ appMode: 'ai' });
 
-        expect(
-          usePersistentStorage.getState().preferences.alice.appMode
-        ).toBe('classic');
+        expect(usePersistentStorage.getState().preferences.alice.appMode).toBe(
+          'classic'
+        );
       });
 
       it('setPreference({ isSidebarCollapsed }) still writes (per-key guard)', () => {

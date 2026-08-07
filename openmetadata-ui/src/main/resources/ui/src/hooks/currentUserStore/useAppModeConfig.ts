@@ -45,7 +45,7 @@ export const useAppModeConfig = create<AppModeConfigStore>((set) => ({
  */
 const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
   [DefaultAppMode.Classic]: DEFAULT_APP_MODE,
-  [DefaultAppMode.Ai]: AI_APP_MODE,
+  [DefaultAppMode.AI]: AI_APP_MODE,
 };
 
 /**
