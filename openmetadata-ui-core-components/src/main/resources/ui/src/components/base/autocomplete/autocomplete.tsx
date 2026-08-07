@@ -415,10 +415,7 @@ export const AutocompleteBase = ({
 
   useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
 
-  const selectContextValue = useMemo(
-    () => ({ size: 'sm' as const, fontSize: 'sm' as const }),
-    []
-  );
+  const selectContextValue = useMemo(() => ({ size: 'sm' as const }), []);
 
   const autocompleteContextValue = useMemo(
     () => ({
