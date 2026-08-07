@@ -55,6 +55,10 @@ BASE_CONNECTION_CONFIG = {
     "scope": ["https://analysis.windows.net/powerbi/api/.default"],
 }
 
+# Distinguishes "key absent, take the schema default" from an explicit null, which is a
+# value the connection schema accepts and the client therefore has to survive.
+OMIT = object()
+
 # The client prefixes every path with the ``v1.0`` api version.
 RE_GROUPS = re.compile(r"^/v1\.0/myorg/(?:admin/)?groups$")
 RE_SCAN_INFO = re.compile(r"^/v1\.0/myorg/admin/workspaces/getInfo$")
@@ -228,7 +232,7 @@ def powerbi_api_client(powerbi_server):
             "expires_in": 3600,
         }
 
-        def build(page_size: int | None = None, use_admin_apis: bool = False) -> PowerBiApiClient:
+        def build(page_size: int | None = OMIT, use_admin_apis: bool = False) -> PowerBiApiClient:
             return PowerBiApiClient(PowerBIConnection(**_connection_config(powerbi_server, page_size, use_admin_apis)))
 
         yield build
@@ -278,6 +282,6 @@ def powerbi_source(powerbi_server, powerbi_api_client):
 
 def _connection_config(server: PowerBiMockServer, page_size: int | None, use_admin_apis: bool) -> dict:
     config = dict(BASE_CONNECTION_CONFIG, apiURL=server.url, useAdminApis=use_admin_apis)
-    if page_size is not None:
+    if page_size is not OMIT:
         config["pagination_entity_per_page"] = page_size
     return config

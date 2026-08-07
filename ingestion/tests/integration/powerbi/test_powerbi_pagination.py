@@ -36,6 +36,8 @@ import pytest
 
 from metadata.ingestion.source.dashboard.powerbi.client import GETGROUPS_DEFAULT_PARAMS
 
+from .conftest import OMIT  # noqa: TID252
+
 # The ``$top`` ceiling documented for GetGroups / GetGroupsAsAdmin.
 GROUPS_PAGE_SIZE_CEILING = 5000
 
@@ -64,6 +66,10 @@ class TestPaginationPageSizeResolution:
     def test_schema_default_is_unchanged(self, powerbi_api_client):
         """An unconfigured service still pages 100 at a time - the raise only widens the ceiling."""
         assert powerbi_api_client().pagination_entity_per_page == SCHEMA_DEFAULT_PAGE_SIZE
+
+    def test_explicit_null_page_size_falls_back_to_the_schema_default(self, powerbi_api_client):
+        """The field is nullable, so clamping has to survive a null instead of raising."""
+        assert powerbi_api_client(page_size=None).pagination_entity_per_page == SCHEMA_DEFAULT_PAGE_SIZE
 
     @pytest.mark.parametrize(
         "configured, expected",
@@ -104,7 +110,7 @@ class TestGroupsEndpointPagination:
     @pytest.mark.parametrize(
         "configured, expected_top, workspace_total",
         [
-            (None, SCHEMA_DEFAULT_PAGE_SIZE, 250),
+            (OMIT, SCHEMA_DEFAULT_PAGE_SIZE, 250),
             (GROUPS_PAGE_SIZE_CEILING, GROUPS_PAGE_SIZE_CEILING, LARGE_TENANT_WORKSPACES),
             (GROUPS_PAGE_SIZE_CEILING + 1, GROUPS_PAGE_SIZE_CEILING, LARGE_TENANT_WORKSPACES),
         ],
@@ -125,7 +131,7 @@ class TestGroupsEndpointPagination:
 
     @pytest.mark.parametrize(
         "configured, expected_pages",
-        [(None, 120), (GROUPS_PAGE_SIZE_CEILING, 3)],
+        [(OMIT, 120), (GROUPS_PAGE_SIZE_CEILING, 3)],
         ids=["default-100", "raised-to-5000"],
     )
     def test_raised_page_size_cuts_the_request_count(
