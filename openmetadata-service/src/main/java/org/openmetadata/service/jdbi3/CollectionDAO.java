@@ -260,6 +260,9 @@ public interface CollectionDAO {
   UserDAO userDAO();
 
   @CreateSqlObject
+  UserPreferencesDAO userPreferencesDAO();
+
+  @CreateSqlObject
   TeamDAO teamDAO();
 
   @CreateSqlObject
@@ -1903,6 +1906,34 @@ public interface CollectionDAO {
   class QueryList {
     private String fqn;
     private Query query;
+  }
+
+  /**
+   * Lightweight, app-managed (no FK) storage for the {@code user_preferences} table. Deliberately
+   * not an {@code EntityDAO} - the preferences bag is not a full entity (no versioning, audit, or
+   * soft-delete); see {@link org.openmetadata.service.jdbi3.UserPreferencesRepository}.
+   */
+  interface UserPreferencesDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO user_preferences (userId, json, updatedAt) VALUES (:userId, :json, :updatedAt) "
+                + "ON DUPLICATE KEY UPDATE json = :json, updatedAt = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO user_preferences (userId, json, updatedAt) VALUES (:userId, (:json :: jsonb), :updatedAt) "
+                + "ON CONFLICT (userId) DO UPDATE SET json = (:json :: jsonb), updatedAt = :updatedAt",
+        connectionType = POSTGRES)
+    void upsert(
+        @BindUUID("userId") UUID userId,
+        @Bind("json") String json,
+        @Bind("updatedAt") long updatedAt);
+
+    @SqlQuery("SELECT json FROM user_preferences WHERE userId = :userId")
+    String findByUserId(@BindUUID("userId") UUID userId);
+
+    @SqlUpdate("DELETE FROM user_preferences WHERE userId = :userId")
+    void deleteByUserId(@BindUUID("userId") UUID userId);
   }
 
   interface EntityRelationshipDAO {

@@ -83,6 +83,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -97,6 +98,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.teams.UserPreferences;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.CreatePersonalToken;
@@ -134,6 +136,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.UserPreferencesRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.limits.Limits;
@@ -184,6 +187,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private final RoleRepository roleRepository;
+  private final UserPreferencesRepository preferencesRepository;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
@@ -210,6 +214,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = Entity.getTokenRepository();
     roleRepository = Entity.getRoleRepository();
+    preferencesRepository = new UserPreferencesRepository();
     UserTokenCache.initialize();
     authHandler = authenticatorHandler;
   }
@@ -1110,6 +1115,74 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
     }
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @GET
+  @Path("/{userId}/preferences")
+  @Operation(
+      operationId = "getUserPreferences",
+      summary = "Get user preferences",
+      description =
+          "Get the opaque per-user UI preferences bag. Users can read their own; admins can read anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences getPreferences(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    Map<String, Object> preferences = preferencesRepository.get(userId);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  @PATCH
+  @Path("/{userId}/preferences")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchUserPreferences",
+      summary = "Update user preferences",
+      description =
+          "Update the opaque per-user UI preferences bag using JsonPatch, applied directly "
+              + "against the preferences map. Users can update their own; admins can update anyone's.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  public UserPreferences patchPreferences(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {@ExampleObject("[{op:add, path:/appMode, value: ai}]")}))
+          JsonPatch patch) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    Map<String, Object> preferences = preferencesRepository.patch(userId, patch);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  /** Users can act on their own preferences; anyone else requires admin. */
+  private void authorizeSelfOrAdmin(UriInfo uriInfo, SecurityContext securityContext, UUID userId) {
+    String authenticatedUserName = securityContext.getUserPrincipal().getName();
+    User authenticatedUser =
+        repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
+    if (!authenticatedUser.getId().equals(userId)) {
+      authorizer.authorizeAdmin(securityContext);
+    }
   }
 
   @DELETE
