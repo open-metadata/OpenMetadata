@@ -1443,12 +1443,26 @@ export const createCustomPropertiesForEntityViaApi = async (
   const propertiesResponse = await apiContext.get(
     '/api/v1/metadata/types?category=field&limit=20'
   );
+
+  if (!propertiesResponse.ok()) {
+    throw new Error(
+      `Failed to fetch field types: ${propertiesResponse.status()} ${propertiesResponse.statusText()}`
+    );
+  }
+
   const properties = await propertiesResponse.json();
 
   const entityTypeName = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
   const entitySchemaResponse = await apiContext.get(
     `/api/v1/metadata/types/name/${entityTypeName}`
   );
+
+  if (!entitySchemaResponse.ok()) {
+    throw new Error(
+      `Failed to fetch entity schema for "${entityTypeName}": ${entitySchemaResponse.status()} ${entitySchemaResponse.statusText()}`
+    );
+  }
+
   const entitySchema = await entitySchemaResponse.json();
   const entityTypeId: string = entitySchema.id;
 
@@ -1480,14 +1494,23 @@ export const createCustomPropertiesForEntityViaApi = async (
 
     const propertyName = `pwcustomproperty${entityTypeName}test${uuid()}`;
 
-    await apiContext.put(`/api/v1/metadata/types/${entityTypeId}`, {
-      data: {
-        name: propertyName,
-        description: propertyName,
-        propertyType: { id: typeInfo.id, type: 'type' },
-        ...(extraConfig ?? {}),
-      },
-    });
+    const putResponse = await apiContext.put(
+      `/api/v1/metadata/types/${entityTypeId}`,
+      {
+        data: {
+          name: propertyName,
+          description: propertyName,
+          propertyType: { id: typeInfo.id, type: 'type' },
+          ...(extraConfig ?? {}),
+        },
+      }
+    );
+
+    if (!putResponse.ok()) {
+      throw new Error(
+        `Failed to create custom property "${propertyName}" (${apiTypeName}): ${putResponse.status()} ${putResponse.statusText()}`
+      );
+    }
 
     propertyListName[displayName] = propertyName;
   }
