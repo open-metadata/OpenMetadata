@@ -1430,7 +1430,7 @@ class PowerbiSource(DashboardServiceSource):
     def _parse_databricks_source(
         self, source_expression: str, datamodel_entity: DashboardDataModel
     ) -> Optional[List[dict]]:  # noqa: UP006, UP045
-        if "Databricks.Catalogs" not in source_expression or "DatabricksMultiCloud.Catalogs" not in source_expression:
+        if "Databricks.Catalogs" not in source_expression and "DatabricksMultiCloud.Catalogs" not in source_expression:
             return None
         dataset = self.state.find_dataset(datamodel_entity.name.root)
         if dataset and dataset.expressions:
