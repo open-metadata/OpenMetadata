@@ -16,8 +16,8 @@ Prefect integration test fixtures
 import time
 from collections.abc import Generator
 
-import httpx
 import pytest
+import requests
 from testcontainers.core.container import DockerContainer
 
 from _openmetadata_testutils.ometa import OM_JWT
@@ -49,8 +49,8 @@ class _PrefectContainer(DockerContainer):
         last_error: Exception = TimeoutError("no attempt made")
         while time.monotonic() < deadline:
             try:
-                httpx.get(f"{self.api_url}/health", timeout=2).raise_for_status()
-            except (httpx.TransportError, httpx.HTTPStatusError) as e:
+                requests.get(f"{self.api_url}/health", timeout=2).raise_for_status()
+            except requests.exceptions.RequestException as e:
                 last_error = e
                 time.sleep(1)
             else:
@@ -75,7 +75,7 @@ def prefect_server() -> Generator[str, None, None]:
         yield container.api_url
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def om_config(prefect_server: str) -> dict:
     """
     OpenMetadata workflow configuration for Prefect connector.

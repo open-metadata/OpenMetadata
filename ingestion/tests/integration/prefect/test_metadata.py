@@ -22,6 +22,7 @@ Requires:
 - OpenMetadata server running locally (http://localhost:8585), default admin creds
 """
 
+import copy
 import time
 
 import pytest
@@ -72,6 +73,18 @@ def _post_with_retry(url, json, timeout=10, attempts=5, backoff=0.5):
             return resp
         time.sleep(backoff)
     return resp
+
+
+def _wait_for_downstream_edges(metadata, fqn: str, timeout: int = 30) -> list:
+    """Poll lineage until the ingestion-produced downstream edge shows up, instead
+    of a fixed sleep that's either flaky under load or slower than it needs to be."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        edges = (metadata.get_lineage_by_name(entity=Table, fqn=fqn) or {}).get("downstreamEdges", [])
+        if edges:
+            return edges
+        time.sleep(0.5)
+    return []
 
 
 @pytest.fixture(scope="module")
@@ -145,13 +158,15 @@ def test_tables(metadata, test_service):
     return table_source, table_destination
 
 
-def test_create_flows_in_prefect(prefect_server):
+@pytest.fixture(scope="module")
+def seeded_prefect_data(prefect_server: str) -> None:
     """
     Seed Prefect with everything the connector reads from: a flow, a
     deployment (the connector's only source of tags/lineage-tags/schedule —
     flow-level tags are never consumed, see metadata.py's _get_all_tags), a
     completed flow run (for pipeline status), and a task run on that run
-    (for the task DAG).
+    (for the task DAG). Runs once per module; every test that needs it
+    depends on this fixture rather than seeding data itself.
     """
     flow_resp = _post_with_retry(
         f"{prefect_server}/flows/",
@@ -216,16 +231,20 @@ def test_create_flows_in_prefect(prefect_server):
     assert "test-simple-flow" in flow_names
 
 
-def test_pipeline_ingestion(metadata, om_config, test_tables):
-    """
-    Test that pipelines are ingested from Prefect into OpenMetadata.
-    """
-    # Run the ingestion workflow
+@pytest.fixture(scope="module")
+def ingested_pipeline(metadata, om_config, test_tables, seeded_prefect_data) -> None:
+    """Run the default ingestion workflow once; tests assert against the
+    OpenMetadata state it produces instead of each re-running the workflow."""
     workflow = MetadataWorkflow.create(om_config)
     workflow.execute()
     workflow.raise_from_status()
     workflow.stop()
 
+
+def test_pipeline_ingestion(metadata, ingested_pipeline):
+    """
+    Test that pipelines are ingested from Prefect into OpenMetadata.
+    """
     # Verify the specific flow we seeded was ingested (not "some pipeline exists" --
     # that'd pass even if this exact flow failed to come through)
     pipeline = metadata.get_by_name(
@@ -246,16 +265,10 @@ def test_pipeline_ingestion(metadata, om_config, test_tables):
     assert "extract" in task_names, f"Task run not ingested into pipeline tasks, got: {task_names}"
 
 
-def test_pipeline_status_ingestion(metadata, om_config, test_tables):
+def test_pipeline_status_ingestion(metadata, ingested_pipeline):
     """
     Test that pipeline run statuses are ingested.
     """
-    # Run the ingestion workflow
-    workflow = MetadataWorkflow.create(om_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.stop()
-
     # Get pipeline with status
     pipeline = metadata.get_by_name(
         entity=Pipeline,
@@ -275,30 +288,11 @@ def test_pipeline_status_ingestion(metadata, om_config, test_tables):
     )
 
 
-def test_lineage_from_tags(metadata, om_config, test_tables):
+def test_lineage_from_tags(metadata, ingested_pipeline, test_tables):
     """
     Test that tag-based lineage is created when flows have om-source/om-destination tags.
     """
     _, table_destination = test_tables
-
-    # Run the ingestion workflow
-    workflow = MetadataWorkflow.create(om_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.stop()
-
-    # Give lineage a moment to be processed
-    time.sleep(2)
-
-    # Check lineage from source table
-    source_fqn = "test-service-prefect-lineage.test-db.test-schema.prefect-lineage-source"
-    lineage = metadata.get_lineage_by_name(
-        entity=Table,
-        fqn=source_fqn,
-    )
-
-    # Verify lineage exists
-    assert lineage is not None, "No lineage found for source table"
 
     # Check downstream edges -- hard assertion: the seeded deployment tags
     # (om-source:.../om-destination:...) must produce a real edge, not just
@@ -306,7 +300,8 @@ def test_lineage_from_tags(metadata, om_config, test_tables):
     # this `if downstream_edges:`, which silently passed even with zero
     # edges -- exactly what happened while tags lived on the flow instead
     # of the deployment (the connector never reads flow-level tags).
-    downstream_edges = lineage.get("downstreamEdges", [])
+    source_fqn = "test-service-prefect-lineage.test-db.test-schema.prefect-lineage-source"
+    downstream_edges = _wait_for_downstream_edges(metadata, source_fqn)
     assert downstream_edges, "No lineage edges found for source table"
 
     # Verify destination table is in lineage
@@ -321,25 +316,25 @@ def test_lineage_from_tags(metadata, om_config, test_tables):
     )
 
 
-def test_lineage_survives_include_tags_false(metadata, om_config, test_tables):
+def test_lineage_survives_include_tags_false(metadata, om_config, test_tables, seeded_prefect_data):
     """
     Lineage must not depend on tag-sync being enabled: yield_pipeline_lineage_details
     reads deployment tags via client.get_deployments, not the persisted Pipeline.tags
     (which stays empty when includeTags=False). See metadata.py's
     yield_pipeline_lineage_details docstring.
     """
-    om_config["source"]["sourceConfig"]["config"]["includeTags"] = False
+    # om_config is module-scoped (shared with ingested_pipeline) -- deep-copy before
+    # mutating so this test's config change doesn't leak into the other tests.
+    config = copy.deepcopy(om_config)
+    config["source"]["sourceConfig"]["config"]["includeTags"] = False
 
-    workflow = MetadataWorkflow.create(om_config)
+    workflow = MetadataWorkflow.create(config)
     workflow.execute()
     workflow.raise_from_status()
     workflow.stop()
 
-    time.sleep(2)
-
     source_fqn = "test-service-prefect-lineage.test-db.test-schema.prefect-lineage-source"
-    lineage = metadata.get_lineage_by_name(entity=Table, fqn=source_fqn)
-    downstream_edges = lineage.get("downstreamEdges", [])
+    downstream_edges = _wait_for_downstream_edges(metadata, source_fqn)
     assert downstream_edges, "No lineage edges found for source table with includeTags=False"
 
 
