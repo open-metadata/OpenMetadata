@@ -272,9 +272,9 @@ test.describe(
         await term.create(apiContext);
 
         await test.step('Term exposes the inherited reviewer and reaches In Review', async () => {
-          expect(await waitForSettledStatus(apiContext, term.responseData.id)).toBe(
-            'In Review'
-          );
+          expect(
+            await waitForSettledStatus(apiContext, term.responseData.id)
+          ).toBe('In Review');
           await waitForInheritedReviewer(
             apiContext,
             term.responseData.id,
@@ -283,7 +283,9 @@ test.describe(
         });
 
         await page.goto(
-          `/glossary/${encodeURIComponent(term.responseData.fullyQualifiedName)}`
+          `/glossary/${encodeURIComponent(
+            term.responseData.fullyQualifiedName
+          )}`
         );
 
         await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
