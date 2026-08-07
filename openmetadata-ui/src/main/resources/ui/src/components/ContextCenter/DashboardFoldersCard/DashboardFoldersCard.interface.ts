@@ -17,5 +17,4 @@ export interface DashboardFoldersCardProps {
   isLoading?: boolean;
   onCreateFolder?: () => void;
   onOpenFile: (fileId: string) => void;
-  onOpenFolder: (folderId: string) => void;
 }

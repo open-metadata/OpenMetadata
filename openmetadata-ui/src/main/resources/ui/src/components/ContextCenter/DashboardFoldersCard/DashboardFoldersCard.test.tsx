@@ -51,11 +51,7 @@ const MOCK_FOLDERS: Folder[] = [
 describe('DashboardFoldersCard', () => {
   it('renders the folder list with children count badges', () => {
     render(
-      <DashboardFoldersCard
-        folders={MOCK_FOLDERS}
-        onOpenFile={jest.fn()}
-        onOpenFolder={jest.fn()}
-      />
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={jest.fn()} />
     );
 
     expect(screen.getByText('Reports')).toBeInTheDocument();
@@ -64,13 +60,7 @@ describe('DashboardFoldersCard', () => {
   });
 
   it('renders the empty state when there are no folders', () => {
-    render(
-      <DashboardFoldersCard
-        folders={[]}
-        onOpenFile={jest.fn()}
-        onOpenFolder={jest.fn()}
-      />
-    );
+    render(<DashboardFoldersCard folders={[]} onOpenFile={jest.fn()} />);
 
     expect(
       screen.getByText('message.no-folders-yet-create-one')
@@ -84,7 +74,6 @@ describe('DashboardFoldersCard', () => {
         folders={[]}
         onCreateFolder={onCreateFolder}
         onOpenFile={jest.fn()}
-        onOpenFolder={jest.fn()}
       />
     );
 
@@ -101,11 +90,7 @@ describe('DashboardFoldersCard', () => {
 
   it('does not fetch children until a folder is expanded', () => {
     render(
-      <DashboardFoldersCard
-        folders={MOCK_FOLDERS}
-        onOpenFile={jest.fn()}
-        onOpenFolder={jest.fn()}
-      />
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={jest.fn()} />
     );
 
     expect(listContextFiles).not.toHaveBeenCalled();
@@ -113,11 +98,7 @@ describe('DashboardFoldersCard', () => {
 
   it('fetches children when the folder name/row is clicked', () => {
     render(
-      <DashboardFoldersCard
-        folders={MOCK_FOLDERS}
-        onOpenFile={jest.fn()}
-        onOpenFolder={jest.fn()}
-      />
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={jest.fn()} />
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Reports' }));
@@ -130,11 +111,7 @@ describe('DashboardFoldersCard', () => {
 
   it('fetches children when the expand chevron is clicked', () => {
     render(
-      <DashboardFoldersCard
-        folders={MOCK_FOLDERS}
-        onOpenFile={jest.fn()}
-        onOpenFolder={jest.fn()}
-      />
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={jest.fn()} />
     );
 
     const folderNameButton = screen.getByRole('button', { name: 'Reports' });
@@ -155,11 +132,7 @@ describe('DashboardFoldersCard', () => {
   it('calls onOpenFile with the file id when a child file row is clicked', async () => {
     const onOpenFile = jest.fn();
     render(
-      <DashboardFoldersCard
-        folders={MOCK_FOLDERS}
-        onOpenFile={onOpenFile}
-        onOpenFolder={jest.fn()}
-      />
+      <DashboardFoldersCard folders={MOCK_FOLDERS} onOpenFile={onOpenFile} />
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Reports' }));

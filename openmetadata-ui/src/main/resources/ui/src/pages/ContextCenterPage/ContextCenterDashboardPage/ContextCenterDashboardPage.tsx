@@ -318,17 +318,6 @@ const ContextCenterDashboardPage: FC = () => {
     [navigate]
   );
 
-  const handleOpenFolder = useCallback(
-    (folderId: string) => {
-      navigate(
-        `${contextCenterClassBase.getDocumentsListPath()}?folder=${encodeURIComponent(
-          folderId
-        )}`
-      );
-    },
-    [navigate]
-  );
-
   const articlesRecentItems = useMemo(
     () =>
       articles.map((article) => {
@@ -636,7 +625,6 @@ const ContextCenterDashboardPage: FC = () => {
                     : undefined
                 }
                 onOpenFile={handleOpenDocument}
-                onOpenFolder={handleOpenFolder}
               />
 
               <ContextSimplePillarCard
