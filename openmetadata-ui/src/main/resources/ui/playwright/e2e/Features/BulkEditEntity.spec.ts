@@ -128,12 +128,18 @@ test.describe('Bulk Edit Entity', () => {
       tableResult,
       glossaryTermResult,
     ] = await Promise.all([
-      createCustomPropertiesForEntityViaApi(apiContext, EntityTypeEndpoint.Database),
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.Database
+      ),
       createCustomPropertiesForEntityViaApi(
         apiContext,
         EntityTypeEndpoint.DatabaseSchema
       ),
-      createCustomPropertiesForEntityViaApi(apiContext, EntityTypeEndpoint.Table),
+      createCustomPropertiesForEntityViaApi(
+        apiContext,
+        EntityTypeEndpoint.Table
+      ),
       createCustomPropertiesForEntityViaApi(
         apiContext,
         EntityTypeEndpoint.GlossaryTerm
@@ -159,10 +165,10 @@ test.describe('Bulk Edit Entity', () => {
   test.afterAll('cleanup custom properties', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await Promise.all([
-      databaseCustomPropertiesCleanup(apiContext),
-      databaseSchemaCustomPropertiesCleanup(apiContext),
-      tableCustomPropertiesCleanup(apiContext),
-      glossaryTermCustomPropertiesCleanup(apiContext),
+      databaseCustomPropertiesCleanup?.(apiContext),
+      databaseSchemaCustomPropertiesCleanup?.(apiContext),
+      tableCustomPropertiesCleanup?.(apiContext),
+      glossaryTermCustomPropertiesCleanup?.(apiContext),
     ]);
     await afterAction();
   });
