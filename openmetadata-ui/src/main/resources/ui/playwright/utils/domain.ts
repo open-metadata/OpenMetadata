@@ -1686,16 +1686,77 @@ export const navigateToPortsTab = async (page: Page) => {
 };
 
 /**
+ * Waits for a port row to appear in the ports list, reloading if it does not.
+ *
+ * The ports endpoint sources its rows and its total from two separate queries
+ * and drops records whose entity cannot be resolved without adjusting the
+ * total, so it can answer with no rows next to a non-zero total. The list
+ * fetches only on mount, so that empty result is held until the component
+ * remounts — waiting alone can never recover, but a reload can.
+ */
+export const waitForPortRow = async (page: Page, portId: string) => {
+  const portRow = page.getByTestId(`port-actions-${portId}`);
+
+  await expect
+    .poll(
+      async () => {
+        if (await portRow.isVisible()) {
+          return true;
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+
+        if (!(await page.getByTestId('input-output-ports-tab').isVisible())) {
+          await navigateToPortsTab(page);
+        }
+
+        return portRow.isVisible();
+      },
+      { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
+};
+
+/**
  * Expands the lineage section in the InputOutputPortsTab.
- * Only expands if currently collapsed.
+ * No-op when the section is already expanded.
  */
 export const expandLineageSection = async (page: Page) => {
-  const portsViewRes = page.waitForResponse((response) =>
-    response.url().includes('/portsView')
-  );
-  await page.getByTestId('toggle-lineage-collapse').click();
-  await portsViewRes;
+  const header = page.getByTestId('toggle-lineage-collapse');
+  await header.waitFor({ state: 'visible' });
+
+  // The header is a toggle, so clicking it while the section is already
+  // expanded collapses it — and no /portsView request follows, which left the
+  // response wait below hanging until the test timeout.
+  const alreadyExpanded =
+    (await header.getAttribute('aria-expanded')) === 'true';
+
+  if (!alreadyExpanded) {
+    // Match only the lineage fetch. The port-count probe hits the same
+    // /portsView endpoint but always carries pagination params, so matching on
+    // '/portsView' alone can resolve against the counts response while the
+    // lineage request is still in flight.
+    const lineageResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/portsView') &&
+        !response.url().includes('inputLimit=')
+    );
+
+    await header.click();
+    await lineageResponse;
+  }
+
   await waitForAllLoadersToDisappear(page);
+
+  // Settle on the rendered end state. A loader count alone can pass vacuously
+  // when React has not yet mounted the loader, letting callers act on a panel
+  // that is still loading.
+  await page
+    .getByTestId('ports-lineage-view')
+    .or(page.locator('.ports-lineage-view-empty'))
+    .first()
+    .waitFor({ state: 'visible' });
 };
 
 /**
