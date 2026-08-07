@@ -87,6 +87,36 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }) => <span {...rest}>{children}</span>,
 }));
 
+jest.mock('../../common/HeaderShell/HeaderShell.component', () => ({
+  __esModule: true,
+  default: ({
+    breadcrumb,
+    leading,
+    title,
+    subtitle,
+    badge,
+    actions,
+    'data-testid': dataTestId,
+  }: {
+    breadcrumb?: React.ReactNode;
+    leading?: React.ReactNode;
+    title?: React.ReactNode;
+    subtitle?: React.ReactNode;
+    badge?: React.ReactNode;
+    actions?: React.ReactNode;
+    'data-testid'?: string;
+  }) => (
+    <div data-testid={dataTestId}>
+      {breadcrumb}
+      {leading}
+      {title}
+      {badge}
+      {subtitle}
+      {actions}
+    </div>
+  ),
+}));
+
 jest.mock('../../../assets/svg/edit-new.svg', () => ({
   ReactComponent: () => null,
 }));
