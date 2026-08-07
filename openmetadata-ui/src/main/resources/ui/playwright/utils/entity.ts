@@ -32,6 +32,7 @@ import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
   closeFirstPopupAlert,
+  closeWelcomeScreenIfVisible,
   descriptionBox,
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
@@ -94,14 +95,7 @@ export const visitEntityPage = async (data: {
 
   await waitForAllLoadersToDisappear(page);
 
-  // Dismiss welcome screen if visible
-  const isWelcomeScreenVisible = await page
-    .getByTestId('welcome-screen')
-    .isVisible();
-
-  if (isWelcomeScreenVisible) {
-    await page.getByTestId('welcome-screen-close-btn').click();
-  }
+  await closeWelcomeScreenIfVisible(page);
 
   const searchResponse = page.waitForResponse(
     (response) =>
