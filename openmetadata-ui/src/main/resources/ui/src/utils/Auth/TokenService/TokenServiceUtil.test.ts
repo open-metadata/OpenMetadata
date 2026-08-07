@@ -202,14 +202,15 @@ describe('TokenService', () => {
       // MSAL/Okta/Auth0 silent renew can return the same id_token (forceRefresh
       // only refreshes the access token); storage is unchanged but the renewer
       // resolving is still success — must NOT return null (which logs the user out).
+      const sameToken = 'same-token';
       jest.useRealTimers();
-      (getOidcToken as jest.Mock).mockResolvedValue('same-token');
+      (getOidcToken as jest.Mock).mockResolvedValue(sameToken);
       tokenService.updateRenewToken(mockRenewToken);
-      mockRenewToken.mockResolvedValue('same-token');
+      mockRenewToken.mockResolvedValue(sameToken);
 
       const result = await tokenService.refreshToken();
 
-      expect(result).toBe('same-token');
+      expect(result).toBe(sameToken);
 
       jest.useFakeTimers();
     });
@@ -236,6 +237,7 @@ describe('TokenService', () => {
     });
 
     it('should return null and clear the flag when no renewer is configured', async () => {
+      jest.useRealTimers();
       (getOidcToken as jest.Mock).mockResolvedValue('valid-token');
 
       const result = await tokenService.refreshToken();
@@ -243,13 +245,13 @@ describe('TokenService', () => {
       expect(mockRenewToken).not.toHaveBeenCalled();
       expect(result).toBeNull();
       expect(localStorage.getItem('refreshInProgress')).toBeNull();
+
+      jest.useFakeTimers();
     });
 
     it('should log a warning and resolve to null on renewal failure', async () => {
+      jest.useRealTimers();
       (getOidcToken as jest.Mock).mockResolvedValue('token');
-      (extractDetailsFromToken as jest.Mock).mockReturnValue({
-        isExpired: true,
-      });
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockRejectedValue(new Error('Refresh failed'));
       const warnSpy = jest
@@ -265,6 +267,25 @@ describe('TokenService', () => {
       expect(localStorage.getItem('refreshInProgress')).toBeNull();
 
       warnSpy.mockRestore();
+      jest.useFakeTimers();
+    });
+
+    it('should succeed when a null-returning renew delivers the token via callback (public OIDC)', async () => {
+      // OidcAuthenticator.signInSilently resolves without returning the token; it
+      // lands asynchronously in storage via the silent-callback iframe. A null
+      // renew result must NOT be read as failure when a fresh token shows up.
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('callback-token');
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue(null);
+
+      const result = await tokenService.refreshToken();
+
+      expect(result).toBe('callback-token');
+
+      jest.useFakeTimers();
     });
   });
 

@@ -115,27 +115,28 @@ class TokenService {
 
     this.setRefreshInProgress();
     const renewResult = await this.fetchNewToken();
-    if (renewResult === null) {
-      // The renewer threw, or none is configured — a genuine refresh failure.
+
+    // A value renewer (MSAL/Okta/Auth0/Basic/Generic) returns the token directly
+    // and has already awaited setOidcToken — that is success even if the SAME
+    // id_token is re-issued (forceRefresh only refreshes the access token), so we
+    // must not require the stored token to change. Public OIDC silent renew
+    // instead returns null/void and delivers the new token asynchronously via an
+    // iframe callback (OidcAuthenticator.signInSilently), so its result tells us
+    // nothing — fall back to whatever actually lands in storage. Only a falsy
+    // result with no token landing in the window is a genuine failure.
+    const refreshedToken =
+      renewResult || (await this.waitForTokenPersistence(oldToken));
+    if (!refreshedToken) {
       // fetchNewToken only clears the flag when a renewer actually ran.
       this.clearRefreshInProgress();
 
       return null;
     }
-
-    // Success is the renewer resolving without throwing — NOT a token *change*:
-    // MSAL/Okta/Auth0 silent renew can legitimately re-issue the same id_token.
-    // A void-returning renewer (OIDC silent renew) writes the token via an iframe
-    // side effect, so wait (bounded) for it to land before callers retry; a value
-    // renewer already awaited setOidcToken, so this resolves on the first poll.
-    if (renewResult === undefined) {
-      await this.waitForTokenPersistence(oldToken);
-    }
     this.refreshSuccessCallback?.();
     // Notify all tabs that the token has been refreshed.
     localStorage.setItem(REFRESHED_KEY, 'true');
 
-    return (await getOidcToken()) || renewResult;
+    return (await getOidcToken()) || refreshedToken;
   }
 
   // Call renewal method according to the provider
