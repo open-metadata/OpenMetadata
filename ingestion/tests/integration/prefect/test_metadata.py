@@ -328,12 +328,22 @@ def test_lineage_survives_include_tags_false(metadata, om_config, test_tables, s
     config = copy.deepcopy(om_config)
     config["source"]["sourceConfig"]["config"]["includeTags"] = False
 
+    source_fqn = "test-service-prefect-lineage.test-db.test-schema.prefect-lineage-source"
+    destination_fqn = "test-service-prefect-lineage.test-db.test-schema.prefect-lineage-destination"
+    # test_lineage_from_tags already created this edge with includeTags=True -- clear it
+    # first so this assertion can't pass on stale lineage if includeTags=False produces none.
+    metadata.delete_lineage_by_name(
+        from_entity_fqn=source_fqn,
+        from_entity_type="table",
+        to_entity_fqn=destination_fqn,
+        to_entity_type="table",
+    )
+
     workflow = MetadataWorkflow.create(config)
     workflow.execute()
     workflow.raise_from_status()
     workflow.stop()
 
-    source_fqn = "test-service-prefect-lineage.test-db.test-schema.prefect-lineage-source"
     downstream_edges = _wait_for_downstream_edges(metadata, source_fqn)
     assert downstream_edges, "No lineage edges found for source table with includeTags=False"
 
