@@ -818,18 +818,16 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
-          <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-start tw:justify-between">
+          <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
             <div className="tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
                 breadcrumb={[]}
-                displayNameClassName="entity-header-title-wrap"
                 entityData={{ ...dataProduct, displayName, name }}
                 entityType={EntityType.DATA_PRODUCT}
                 handleFollowingClick={handleFollowingClick}
                 icon={iconData}
                 isFollowing={isFollowing}
                 isFollowingLoading={isFollowingLoading}
-                nameClassName="entity-header-title-wrap"
                 serviceName=""
                 suffix={
                   <>
