@@ -234,6 +234,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.EntityRelationshipNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
@@ -4931,6 +4932,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
               Entity.getConversationRepository()
                   .deleteByEntity(entityType, List.of(entityInterface.getId()));
 
+              // Cancel any governance workflow instances tied to this entity before the row
+              // goes away, so downstream nodes do not throw EntityNotFoundException. The
+              // Flowable query and cancel calls must never abort the delete transaction —
+              // a stray engine failure here shouldn't wedge entity deletes on a data plane
+              // the workflow engine has no authority over.
+              if (WorkflowHandler.isInitialized()) {
+                try {
+                  WorkflowHandler.getInstance()
+                      .cancelInstancesForEntity(entityInterface.getId(), "Entity deleted");
+                } catch (Exception cancelEx) {
+                  LOG.warn(
+                      "Failed to cancel workflow instances for entity {}: {}",
+                      entityInterface.getId(),
+                      cancelEx.getMessage());
+                }
+              }
+
               // Drop cached state before the DB row goes away. A concurrent read arriving
               // between this invalidate and the dao.delete below would still observe the
               // entity in the DB; the post-commit invalidate below closes that window.
@@ -6959,6 +6977,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     try (var ignored = phase("bulkHardDeleteConversations")) {
       Entity.getConversationRepository().deleteByEntity(entityType, entityIds);
+    }
+    try (var ignored = phase("bulkHardDeleteWorkflows")) {
+      // Workflow-engine failures must never wedge a bulk hard-delete; the workflow
+      // instances are best-effort cleanup, the entity rows are the source of truth.
+      if (WorkflowHandler.isInitialized()) {
+        try {
+          WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
+        } catch (Exception cancelEx) {
+          LOG.warn(
+              "Failed to cancel workflow instances for {} entities: {}",
+              entityIds.size(),
+              cancelEx.getMessage());
+        }
+      }
     }
   }
 

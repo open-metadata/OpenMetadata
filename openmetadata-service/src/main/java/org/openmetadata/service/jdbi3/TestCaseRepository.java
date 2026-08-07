@@ -42,8 +42,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -127,9 +125,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       "internal.testCase.testSuitesRevision";
   public static final String TEST_SUITES_REVISION_FIELD = "testSuitesRevision";
   private static final String TEST_SUITES_REVISION_SCHEMA = "testSuitesRevision";
-  private final ExecutorService asyncExecutor =
-      Executors.newFixedThreadPool(
-          1, java.lang.Thread.ofPlatform().name("om-test-case-async").factory());
 
   public TestCaseRepository() {
     super(
@@ -1131,15 +1126,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void deleteAllTestCaseResults(String fqn) {
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    testCaseResultRepository.deleteAllTestCaseResults(fqn);
-    asyncExecutor.submit(
-        () -> {
-          try {
-            testCaseResultRepository.deleteAllTestCaseResults(fqn);
-          } catch (Exception e) {
-            LOG.error("Error deleting test case results for test case {}", fqn, e);
-          }
-        });
+    AsyncService.getInstance()
+        .execute(
+            () -> {
+              try {
+                testCaseResultRepository.deleteAllTestCaseResults(fqn);
+              } catch (RuntimeException e) {
+                LOG.error("Error deleting test case results for test case {}", fqn, e);
+              }
+            });
   }
 
   @SneakyThrows

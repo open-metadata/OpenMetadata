@@ -15,9 +15,10 @@ import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Thread } from '../../../../generated/entity/feed/thread';
+import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
-import { Task } from '../../../../rest/tasksAPI';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -99,12 +100,11 @@ export type TestCaseAction = {
 
 export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
-  data: Record<string, string | number | undefined | Task | number[]>[];
+  data: Record<
+    string,
+    string | number | undefined | Task | Thread | number[]
+  >[];
 };
-
-export interface LineChartRef {
-  container: HTMLElement;
-}
 
 export type TestCasePermission = OperationPermission & {
   fullyQualifiedName?: string;

@@ -449,8 +449,10 @@ const KnowledgePagesHierarchy = forwardRef<
 
         onPageDelete?.(deletedPages);
 
-        await getResourceLimit('knowledgeCenter', true, true);
-        await fetchKnowledgePagesTotalCount();
+        await Promise.all([
+          getResourceLimit('knowledgeCenter', true, true),
+          fetchKnowledgePagesTotalCount(),
+        ]);
 
         updateKnowledgeCenterRecentViewed(
           recentlyViewed.filter(
