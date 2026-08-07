@@ -779,13 +779,8 @@ class TableauSource(DashboardServiceSource):
         """
         Close the connection for tableau
         """
-        try:
-            self.client.sign_out()
-        except ConnectionError as err:
-            logger.debug(f"Error closing connection - {err}")
-
         self.metadata.compute_percentile(Dashboard, self.today)
-        self.metadata.close()
+        super().close()
 
     def _get_table_entities_from_api(
         self,

@@ -146,7 +146,7 @@ const RolesDetailPage = () => {
     const patch = compare(role, { ...role, description });
     try {
       const data = await patchRole(patch, role.id);
-      setRole({ ...role, description: data.description });
+      setRole((prev) => ({ ...prev, description: data.description }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

@@ -21,18 +21,18 @@
   background: var(--tw-color-bg-primary);
   border: 1px solid @border-color;
   user-select: none;
-  transition: all 0.3s ease;
+  transition: all var(--om-duration-300) ease;
 
   &:hover {
     border-color: @border-color-2;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-05);
   }
 
   &.ProseMirror-selectednode {
     outline: none;
     background: var(--tw-color-bg-primary);
     border: 1px solid @primary-color;
-    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+    box-shadow: 0 0 0 2px var(--om-legacy-color-24-144-255-0-1);
   }
 
   &.uploading {
@@ -43,7 +43,7 @@
   .file-content,
   .media-content {
     padding: @padding-sm;
-    transition: all 0.3s;
+    transition: all var(--om-duration-300);
     background: var(--tw-color-bg-primary);
     position: relative;
   }
@@ -66,8 +66,8 @@
 
   .file-icon {
     color: @grey-4;
-    font-size: 24px;
-    transition: all 0.3s;
+    font-size: var(--om-font-size-display-xs);
+    transition: all var(--om-duration-300);
   }
 
   .file-details {
@@ -80,7 +80,7 @@
   .file-link {
     text-decoration: none;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--om-duration-300) ease;
     max-width: 100%;
     display: block;
 
@@ -105,7 +105,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: all 0.3s;
+    transition: all var(--om-duration-300);
 
     &:hover {
       color: @primary-color;
@@ -123,7 +123,7 @@
       flex: 1;
       height: 2px;
       background-color: @grey-3;
-      border-radius: 1px;
+      border-radius: var(--om-radius-1);
       overflow: hidden;
 
       &::after {
@@ -131,7 +131,7 @@
         display: block;
         height: 100%;
         background-color: @primary-color;
-        transition: width 0.3s ease;
+        transition: width var(--om-duration-300) ease;
       }
     }
   }
@@ -151,7 +151,7 @@
     justify-content: center;
     cursor: pointer;
     padding: @padding-xss;
-    transition: all 0.3s;
+    transition: all var(--om-duration-300);
     border-radius: @border-rad-base;
     width: 28px;
     height: 28px;
@@ -171,7 +171,7 @@
     font-size: @font-size-base + 2;
     cursor: pointer;
     padding: @padding-xss;
-    transition: all 0.3s;
+    transition: all var(--om-duration-300);
     border-radius: @border-rad-base;
     width: 28px;
     height: 28px;
@@ -204,23 +204,23 @@
         background: @black;
         display: block;
         outline: none;
-        transition: box-shadow 0.3s ease;
+        transition: box-shadow var(--om-duration-300) ease;
 
         &:hover {
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-15);
         }
 
         &::-webkit-media-controls-panel {
           background: linear-gradient(
             to top,
-            rgba(0, 0, 0, 0.8) 0%,
-            rgba(0, 0, 0, 0) 100%
+            var(--om-legacy-color-0-0-0-0-8) 0%,
+            var(--om-legacy-color-0-0-0-0) 100%
           );
           padding: @padding-sm @padding-md;
         }
 
         &::-webkit-media-controls-timeline {
-          margin-bottom: 8px;
+          margin-bottom: var(--om-space-8);
           height: 4px;
 
           &:hover {
@@ -231,7 +231,7 @@
         &::-webkit-media-controls-current-time-display,
         &::-webkit-media-controls-time-remaining-display {
           color: var(--tw-color-text-white);
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          text-shadow: 0 1px 2px var(--om-legacy-color-0-0-0-0-5);
           padding: 0 @padding-xs;
         }
 
@@ -270,7 +270,7 @@
         &::-webkit-media-controls-timeline {
           height: 4px;
           margin: 0 @padding-md;
-          transition: height 0.2s ease;
+          transition: height var(--om-duration-200) ease;
 
           &:hover {
             height: 6px;
@@ -280,7 +280,7 @@
         &::-webkit-media-controls-volume-slider {
           width: 80px;
           height: 4px;
-          transition: height 0.2s ease;
+          transition: height var(--om-duration-200) ease;
 
           &:hover {
             height: 6px;
@@ -307,21 +307,21 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: var(--om-legacy-color-255-255-255-0-8);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1;
+    z-index: var(--om-z-1);
 
     .upload-spinner {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: var(--om-space-8);
       color: @text-color;
 
       .upload-text {
-        font-size: 14px;
+        font-size: var(--om-font-size-sm);
       }
     }
   }
@@ -332,8 +332,8 @@
     left: 0;
     height: 4px;
     background-color: @primary-color;
-    transition: width 0.3s ease;
-    z-index: 2;
+    transition: width var(--om-duration-300) ease;
+    z-index: var(--om-z-2);
   }
 
   .image-placeholder {
@@ -341,13 +341,13 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: var(--om-space-12);
     padding: 0;
     background-color: @grey-1;
     border: 1px dashed @border-color;
     border-radius: @border-rad-base;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--om-duration-300) ease;
     min-height: 125px;
     width: 100%;
 
@@ -357,13 +357,13 @@
     }
 
     .anticon {
-      font-size: 32px;
+      font-size: var(--om-font-size-32);
       color: @grey-4;
     }
 
     .ant-typography {
       color: @grey-4;
-      font-size: 16px;
+      font-size: var(--om-font-size-md);
       margin: 0;
       text-align: center;
     }
@@ -372,7 +372,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: var(--om-space-8);
       color: @grey-4;
 
       .ant-typography {
@@ -399,7 +399,7 @@
   position: relative;
   width: 100%;
   max-width: 100%;
-  margin: 8px 0;
+  margin: var(--om-space-8) 0;
 
   .image-container {
     position: relative;
@@ -408,12 +408,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f5f5f5;
-    border-radius: 4px;
+    background: var(--om-color-gray-100);
+    border-radius: var(--om-radius-sm);
     overflow: hidden;
 
     &.loading-state {
-      background: #fafafa;
+      background: var(--om-color-gray-50);
     }
 
     .loading-overlay {
@@ -425,7 +425,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 255, 255, 0.8);
+      background: var(--om-legacy-color-255-255-255-0-8);
     }
 
     img {
@@ -433,7 +433,7 @@
       height: auto;
       display: block;
       margin: 0 auto;
-      border-radius: 4px;
+      border-radius: var(--om-radius-sm);
     }
   }
 
@@ -443,17 +443,17 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.8);
+    background: var(--om-legacy-color-255-255-255-0-8);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
+    border-radius: var(--om-radius-sm);
 
     .upload-spinner {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: var(--om-space-8);
     }
   }
 
@@ -462,7 +462,7 @@
     bottom: 0;
     left: 0;
     height: 4px;
-    background: #1890ff;
-    transition: width 0.3s ease;
+    background: var(--om-legacy-color-1890ff);
+    transition: width var(--om-duration-300) ease;
   }
 }

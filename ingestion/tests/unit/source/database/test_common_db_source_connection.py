@@ -75,6 +75,20 @@ def test_owned_connection_closed_when_test_connection_fails(owned_connection):
     owned_connection.close.assert_called_once()
 
 
+def test_legacy_engine_disposed_when_test_connection_fails():
+    """A connector with no connection_class gets its engine from the legacy seam.
+    Nobody owns it, so the source disposes it itself when the test step fails."""
+    with (
+        patch("metadata.ingestion.source.database.common_db_source.create_connection", return_value=None),
+        patch("metadata.ingestion.source.database.common_db_source.get_connection") as mock_get_connection,
+        patch.object(MysqlSource, "test_connection", side_effect=RuntimeError("cannot connect")),
+        pytest.raises(RuntimeError),
+    ):
+        MysqlSource.create(MYSQL_CONFIG, MagicMock())
+
+    mock_get_connection.return_value.dispose.assert_called_once()
+
+
 def test_set_inspector_disposes_previous_connection(owned_connection):
     with patch("metadata.ingestion.source.database.database_service.run_test_connection"):
         source = PostgresSource.create(POSTGRES_CONFIG, MagicMock())

@@ -12,7 +12,7 @@
  */
 
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
-import type { ServicesUpdateRequest, ServiceTypes } from 'Models';
+import type { ServicesUpdateRequest } from 'Models';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -36,6 +36,7 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import type { DataObj, ServicesType } from '../interface/service.interface';
+import connectionsRouterClassBase from './ConnectionsRouterClassBase';
 import { getDayCron } from './CronExpressionUtils';
 import i18n from './i18next/LocalUtil';
 import { getSchemaByWorkflowType } from './IngestionWorkflowUtils';
@@ -45,10 +46,7 @@ import {
   getSettingsPathWithFqn,
 } from './RouterUtils';
 import { getFilteredSchema } from './ServiceConnectionUtils';
-import {
-  getReadableCountString,
-  getServiceRouteFromServiceType,
-} from './ServicePureUtils';
+import { getReadableCountString } from './ServicePureUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 
 export const getIngestionHeadingName = (
@@ -112,9 +110,8 @@ export const getBreadCrumbsArray = (
       ...[
         {
           name: startCase(serviceCategory),
-          url: getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+          url: connectionsRouterClassBase.getSettingsServicesPath(
+            serviceCategory
           ),
         },
         {
@@ -173,7 +170,8 @@ export const getSupportedPipelineTypes = (
 
       if (
         key === 'supportsProfiler' &&
-        serviceCategory === ServiceCategory.STORAGE_SERVICES
+        (serviceCategory === ServiceCategory.STORAGE_SERVICES ||
+          serviceCategory === ServiceCategory.MESSAGING_SERVICES)
       ) {
         types = [PipelineType.AutoClassification];
       }

@@ -366,10 +366,30 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   entityType VARCHAR(128) NOT NULL,
   retryCount INT NOT NULL DEFAULT 0,
   claimedAt TIMESTAMP NULL DEFAULT NULL,
+  claimToken VARCHAR(36) DEFAULT NULL,
   PRIMARY KEY (entityId, entityFqn),
   KEY idx_search_index_retry_queue_status (status),
   KEY idx_search_index_retry_queue_claimed_at (claimedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Migration statements are deduplicated by checksum. Use a block-specific prepared statement
+-- name so earlier PREPARE/EXECUTE helpers in this file cannot suppress this ALTER.
+SET @search_index_retry_claim_token_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_retry_queue'
+        AND column_name = 'claimToken'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_retry_queue ADD COLUMN claimToken VARCHAR(36) DEFAULT NULL'
+  )
+);
+PREPARE search_index_retry_claim_token_stmt FROM @search_index_retry_claim_token_ddl;
+EXECUTE search_index_retry_claim_token_stmt;
+DEALLOCATE PREPARE search_index_retry_claim_token_stmt;
 
 -- ContextMemory entity - reusable Context Center memory.
 CREATE TABLE IF NOT EXISTS context_memory (
@@ -481,3 +501,66 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters). MySQL has no `CREATE INDEX IF NOT EXISTS`, so guard via
+-- information_schema (mirrors the approvedById guard earlier in this file).
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'workflow_instance_state_time_series'
+        AND index_name = 'idx_wf_instance_state_execution_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_wf_instance_state_execution_id ON workflow_instance_state_time_series (workflowInstanceExecutionId)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.token'),
+    '$.connection.config.authType',
+    JSON_OBJECT(
+        'token',
+        JSON_EXTRACT(json, '$.connection.config.token')
+    )
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND JSON_EXTRACT(json, '$.connection.config.token') IS NOT NULL
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.connection.config.authType');
+
+-- Services overview endpoint (/v1/services/overview) - OpenMetadata 2.0.0
+
+-- The (deleted, name) composite that lets `WHERE deleted = FALSE ORDER BY name, id` be served
+-- index-only. Nine service tables got it in 1.8.2; these four were added later and were missed,
+-- so the overview endpoint's per-type key scan would full-scan them.
+CREATE INDEX idx_security_service_entity_deleted_name ON security_service_entity(deleted, name);
+CREATE INDEX idx_drive_service_entity_deleted_name ON drive_service_entity(deleted, name);
+CREATE INDEX idx_llm_service_entity_deleted_name ON llm_service_entity(deleted, name);
+CREATE INDEX idx_mcp_service_entity_deleted_name ON mcp_service_entity(deleted, name);
+
+-- The overview endpoint derives both the per-entity-type total and the per-connector breakdown
+-- from one `GROUP BY serviceType` per service table. Without a (deleted, serviceType) composite
+-- that grouping reads the table; with it the aggregate is index-only.
+CREATE INDEX idx_dbservice_entity_deleted_service_type ON dbservice_entity(deleted, serviceType);
+CREATE INDEX idx_dashboard_service_entity_deleted_service_type ON dashboard_service_entity(deleted, serviceType);
+CREATE INDEX idx_messaging_service_entity_deleted_service_type ON messaging_service_entity(deleted, serviceType);
+CREATE INDEX idx_metadata_service_entity_deleted_service_type ON metadata_service_entity(deleted, serviceType);
+CREATE INDEX idx_mlmodel_service_entity_deleted_service_type ON mlmodel_service_entity(deleted, serviceType);
+CREATE INDEX idx_pipeline_service_entity_deleted_service_type ON pipeline_service_entity(deleted, serviceType);
+CREATE INDEX idx_search_service_entity_deleted_service_type ON search_service_entity(deleted, serviceType);
+CREATE INDEX idx_storage_service_entity_deleted_service_type ON storage_service_entity(deleted, serviceType);
+CREATE INDEX idx_api_service_entity_deleted_service_type ON api_service_entity(deleted, serviceType);
+CREATE INDEX idx_security_service_entity_deleted_service_type ON security_service_entity(deleted, serviceType);
+CREATE INDEX idx_drive_service_entity_deleted_service_type ON drive_service_entity(deleted, serviceType);
+CREATE INDEX idx_llm_service_entity_deleted_service_type ON llm_service_entity(deleted, serviceType);
+CREATE INDEX idx_mcp_service_entity_deleted_service_type ON mcp_service_entity(deleted, serviceType);

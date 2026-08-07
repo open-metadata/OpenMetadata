@@ -444,7 +444,9 @@ describe('DataQualityDashboard', () => {
         expect.objectContaining({
           redirectPath: {
             pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-            search: 'testCaseStatus=Success',
+            search: expect.stringContaining(
+              'testCaseStatus=Success&lastRunRange'
+            ),
           },
         })
       );
@@ -454,7 +456,9 @@ describe('DataQualityDashboard', () => {
         expect.objectContaining({
           redirectPath: {
             pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-            search: 'testCaseStatus=Failed',
+            search: expect.stringContaining(
+              'testCaseStatus=Failed&lastRunRange'
+            ),
           },
         })
       );
@@ -1245,7 +1249,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        container.querySelectorAll(String.raw`.tw\:ring-0.tw\:shadow-none`)
+        container.querySelectorAll(String.raw`.tw\:shadow-none`)
       ).toHaveLength(4);
     });
 
@@ -1255,7 +1259,7 @@ describe('DataQualityDashboard', () => {
       });
 
       expect(
-        container.querySelector(String.raw`.tw\:ring-0.tw\:shadow-none`)
+        container.querySelector(String.raw`.tw\:shadow-none`)
       ).not.toBeInTheDocument();
     });
 

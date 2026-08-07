@@ -17,8 +17,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public interface ColumnIndex extends SearchIndex {
   default void parseColumns(
       List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
-    parseColumns(
-        columns, flattenColumns, parentColumn, 1, SearchFieldLimits.forEntity(getEntityTypeName()));
+    parseColumns(columns, flattenColumns, parentColumn, 1, SearchFieldLimits.active());
   }
 
   private void parseColumns(

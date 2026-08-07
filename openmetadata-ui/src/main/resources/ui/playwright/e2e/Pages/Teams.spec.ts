@@ -154,7 +154,9 @@ const test = base.extend<{
     await page.close();
   },
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
     await afterAction();
   },
@@ -1044,7 +1046,7 @@ test.describe('Teams Page with Data Consumer User', () => {
       dataConsumerPage.getByTestId('add-placeholder-button')
     ).not.toBeVisible();
     await expect(
-      dataConsumerPage.getByTestId('no-data-placeholder')
+      dataConsumerPage.getByText('No assets linked yet')
     ).toBeVisible();
 
     // Role Tab

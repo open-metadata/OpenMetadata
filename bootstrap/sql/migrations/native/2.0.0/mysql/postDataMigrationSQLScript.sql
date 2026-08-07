@@ -260,3 +260,63 @@ SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality
 WHERE extension LIKE 'app.version.%'
   AND json->>'$.name' = 'DataInsightsApplication'
   AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', JSON_ARRAY('Topic'),
+        'operations', JSON_ARRAY('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'AutoClassificationBotRule-Allow-Topic'), '$.rules');
+
+-- MCP configuration lives solely in the mcpConfiguration setting. Drop the app-level copy, which
+-- no code reads, and hide the now empty configure step.
+UPDATE installed_apps
+SET json = JSON_SET(JSON_REMOVE(json, '$.appConfiguration'), '$.allowConfiguration', CAST('false' AS JSON))
+WHERE name = 'McpApplication';
+
+UPDATE apps_marketplace
+SET json = JSON_SET(JSON_REMOVE(json, '$.appConfiguration'), '$.allowConfiguration', CAST('false' AS JSON))
+WHERE name = 'McpApplication';
+
+UPDATE entity_extension
+SET json = JSON_SET(JSON_REMOVE(json, '$.appConfiguration'), '$.allowConfiguration', CAST('false' AS JSON))
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'McpApplication';
+
+-- Anchor the CVV recognizer regex to the whole sampled value.
+-- `\b\d{3,4}\b` matched the `125` inside values like `SCN-125`, so any column whose name carries a
+-- CvvRecognizer context word (`code`, `card`, `cvv`, ...) and whose values contain a 3-4 digit run
+-- was tagged PII.Sensitive -- `scenario_code`, `error_code`. The context boost sets the score
+-- straight to MAX_SCORE, so a 0.5 "3-4 digits" pattern became a certain match. `\A..\Z` (not `^..$`)
+-- because the recognizer sets the MULTILINE flag, under which `^..$` still matches a single line of
+-- a multi-line value.
+-- Idempotent: the join finds nothing once the regex is anchored, so a re-run touches no rows.
+-- The recognizer is located by a join rather than by an `EXISTS (SELECT ... FROM JSON_TABLE(json,...))`
+-- in the WHERE clause: that form does not correlate reliably inside an UPDATE and silently matches
+-- zero rows, leaving the migration a no-op.
+UPDATE tag t
+JOIN (
+    SELECT t2.id AS tag_id, jt.idx AS rec_idx
+    FROM tag t2,
+         JSON_TABLE(t2.json, '$.recognizers[*]' COLUMNS (
+             idx FOR ORDINALITY,
+             rec_name VARCHAR(256) PATH '$.name',
+             rec_regex VARCHAR(512) PATH '$.recognizerConfig.patterns[0].regex'
+         )) AS jt
+    WHERE JSON_VALUE(t2.json, '$.fullyQualifiedName' RETURNING CHAR) = 'PII.Sensitive'
+      AND jt.rec_name = 'CvvRecognizer'
+      AND jt.rec_regex = _utf8mb4'\\b\\d{3,4}\\b'
+) AS m ON m.tag_id = t.id
+SET t.json = JSON_SET(
+        t.json,
+        CONCAT('$.recognizers[', m.rec_idx - 1, '].recognizerConfig.patterns[0].regex'),
+        _utf8mb4'\\A\\d{3,4}\\Z');

@@ -98,25 +98,26 @@ export const useEntityLogs = ({
   }, [isApplicationType, appRunState, ingestionDetails]);
 
   // --- Ingestion logs: paginated (infinite scroll) + tail polling ---
-  const ingestionId = ingestionDetails?.id ?? '';
+  // Fetch logs by fqn so the backend serves them without a prior id -> fqn lookup.
+  const ingestionFqn = ingestionDetails?.fullyQualifiedName ?? '';
   const ingestionType = ingestionDetails?.pipelineType;
 
   const fetchIngestionPage = useCallback(
     (cursor?: string) =>
-      getIngestionPipelineLogById(ingestionId, cursor).then((res) => ({
+      getIngestionPipelineLogById(ingestionFqn, cursor).then((res) => ({
         content: ingestionType
           ? getLogTaskFieldForType(res.data, ingestionType)
           : '',
         after: res.data.after,
         total: res.data.total,
       })),
-    [ingestionId, ingestionType]
+    [ingestionFqn, ingestionType]
   );
 
   const paginated = usePaginatedLiveLog({
     fetchPage: fetchIngestionPage,
-    resetKey: ingestionId,
-    enabled: !isApplicationType && Boolean(ingestionId),
+    resetKey: ingestionFqn,
+    enabled: !isApplicationType && Boolean(ingestionFqn),
     isLive: !isApplicationType && isLive,
   });
 
@@ -213,7 +214,9 @@ export const useEntityLogs = ({
         return;
       }
 
-      const blob = await downloadIngestionLog(ingestionDetails?.id);
+      const blob = await downloadIngestionLog(
+        ingestionDetails?.fullyQualifiedName
+      );
       if (blob) {
         downloadBlob(
           blob as Blob,

@@ -1002,6 +1002,8 @@ test.describe('Right Panel Test Suite', () => {
     }); // end: Entity validation with shared read-only entities
 
     test.describe('Overview panel - Deleted entity verification', () => {
+      test.describe.configure({ mode: 'default' });
+
       const deletedEntityVerificationEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
@@ -2002,7 +2004,9 @@ test.describe('Right Panel Test Suite', () => {
             adminPage,
           }) => {
             const { page: authenticatedPage, afterAction } =
-              await performAdminLogin(adminPage.context().browser()!);
+              await performAdminLogin(adminPage.context().browser()!, {
+                navigate: true,
+              });
             const rightPanel = new RightPanelPageObject(authenticatedPage);
             const localOverview = new OverviewPageObject(rightPanel);
 
@@ -2080,7 +2084,9 @@ test.describe('Right Panel Test Suite', () => {
         adminPage,
       }) => {
         const { page: authenticatedPage, afterAction } =
-          await performAdminLogin(adminPage.context().browser()!);
+          await performAdminLogin(adminPage.context().browser()!, {
+            navigate: true,
+          });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 
@@ -2144,7 +2150,9 @@ test.describe('Right Panel Test Suite', () => {
           page: authenticatedPage,
           apiContext,
           afterAction,
-        } = await performAdminLogin(adminPage.context().browser()!);
+        } = await performAdminLogin(adminPage.context().browser()!, {
+          navigate: true,
+        });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 

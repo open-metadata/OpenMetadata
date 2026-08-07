@@ -76,7 +76,8 @@ class LoggingConfigurationYamlTest {
     if (formatOverride == null) {
       return factory.build(
           new SubstitutingSourceProvider(
-              new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+              new FileConfigurationSourceProvider(),
+              new EnvironmentVariableSubstitutor(false, true)),
           path);
     }
 
@@ -86,7 +87,8 @@ class LoggingConfigurationYamlTest {
           tempFile, Files.readString(Path.of(path)).replace("${LOG_FORMAT:-text}", formatOverride));
       return factory.build(
           new SubstitutingSourceProvider(
-              new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+              new FileConfigurationSourceProvider(),
+              new EnvironmentVariableSubstitutor(false, true)),
           tempFile.toString());
     } finally {
       Files.deleteIfExists(tempFile);

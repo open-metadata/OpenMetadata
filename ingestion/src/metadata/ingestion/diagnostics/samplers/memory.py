@@ -276,7 +276,7 @@ class MemoryTracker:
 
 def _import_psutil():
     try:
-        import psutil  # noqa: PLC0415  optional dependency probe
+        import psutil
     except ImportError:
         return None
     return psutil

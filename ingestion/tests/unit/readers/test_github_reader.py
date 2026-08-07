@@ -35,17 +35,3 @@ class TestGitHubReader(TestCase):
         reader = GitHubReader(creds)
 
         self.assertEqual(reader.auth_headers, {"Authorization": "Bearer token"})
-
-    def x_test_read(self):
-        """
-        We can read the OM README
-
-        disabling this test as it is flakey and fails with error rate limit exceeded
-        """
-        creds = GitHubCredentials(
-            repositoryName="OpenMetadata",
-            repositoryOwner="open-metadata",
-        )
-
-        reader = GitHubReader(creds)
-        self.assertIsNotNone(reader.read("README.md"))

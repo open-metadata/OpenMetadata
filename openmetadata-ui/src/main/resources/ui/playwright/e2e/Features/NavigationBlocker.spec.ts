@@ -50,6 +50,8 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.describe.configure({ mode: 'default' });
+
   test.beforeEach(async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
     await setUserDefaultPersona(adminPage, persona.responseData.displayName);

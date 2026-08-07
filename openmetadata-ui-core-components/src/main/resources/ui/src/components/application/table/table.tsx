@@ -78,7 +78,7 @@ const TableCardRoot = ({
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-secondary',
+          'tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:shadow-xs tw:outline-1 tw:outline-secondary',
           className
         )}>
         {children}
@@ -259,7 +259,11 @@ const TableHead = ({
       {...props}
       className={(state) =>
         cx(
-          'tw:relative tw:p-0 tw:px-6 tw:py-2 tw:outline-hidden tw:focus-visible:z-1 tw:focus-visible:ring-2 tw:focus-visible:ring-focus-ring tw:focus-visible:ring-offset-bg-primary tw:focus-visible:ring-inset',
+          // Focus indicator drawn with outline, not a ring (WebKit does not pixel-snap
+          // box-shadow). `outline-hidden` is gone — it would suppress this indicator.
+          // `ring-offset-bg-primary` is dropped: it set an offset *colour* while
+          // --tw-ring-offset-width defaults to 0px, so it never rendered.
+          'tw:relative tw:p-0 tw:px-6 tw:py-2 tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-focus-ring',
           selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
           state.allowsSorting && 'tw:cursor-pointer',
           typeof className === 'function' ? className(state) : className

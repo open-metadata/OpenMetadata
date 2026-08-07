@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton, Table } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+  Table,
+} from '@openmetadata/ui-core-components';
+import { ShieldTick } from '@untitledui/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -31,7 +37,6 @@ import {
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
-import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
@@ -229,7 +234,14 @@ const IncidentManagerTable = ({
         data-testid="test-case-incident-manager-table"
         size="sm">
         <Table.Header columns={columns}>
-          {(col) => <Table.Head id={col.id} key={col.id} label={col.label} />}
+          {(col) => (
+            <Table.Head
+              id={col.id}
+              isRowHeader={col.id === 'name'}
+              key={col.id}
+              label={col.label}
+            />
+          )}
         </Table.Header>
         <Table.Body
           dependencies={[
@@ -243,9 +255,14 @@ const IncidentManagerTable = ({
             testCaseListData.isLoading ? (
               loadingSkeletons
             ) : (
-              <FilterTablePlaceHolder
-                placeholderText={t('message.no-incident-found')}
-              />
+              <Box className="tw:relative tw:min-h-80 tw:w-full">
+                <EmptyPlaceholder
+                  description={t('message.no-active-incidents-description')}
+                  icon={<ShieldTick className="tw:text-fg-brand-primary" />}
+                  title={t('message.no-active-incidents')}
+                  variant="blank"
+                />
+              </Box>
             )
           }>
           {(record) => renderRow(record)}

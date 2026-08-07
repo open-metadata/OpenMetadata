@@ -216,7 +216,7 @@ class OpenlineageSource(PipelineServiceSource):
         self._db_service_type_map: Dict[str, str] = self._build_db_service_type_map()  # noqa: UP006
 
     def close(self) -> None:
-        self.metadata.compute_percentile(Pipeline, self.today)
+        super().close()
         self.metadata.close()
 
     @staticmethod

@@ -123,7 +123,7 @@ def test_sql_engine_is_never_built_when_no_warehouse_step_runs():
     # without an httpPath must never pay for an engine it does not use.
     with (
         patch(f"{CONNECTION_MODULE}.get_connection"),
-        patch(f"{CONNECTION_MODULE}.tcp_probe"),
+        patch("metadata.core.connections.test_connection.network.tcp_probe"),
         patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
     ):
         provider = UnityCatalogConnection(_config()).checks()
@@ -186,7 +186,7 @@ class TestHostNormalization:
 class TestCheckAccess:
     def test_probes_the_host_before_listing_catalogs(self):
         client = MagicMock()
-        with patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe:
+        with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
             evidence = _checks(client).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
@@ -194,7 +194,7 @@ class TestCheckAccess:
         assert evidence.command == "catalogs.list()"
 
     def test_defaults_to_port_443_when_host_port_omits_the_port(self):
-        with patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe:
+        with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
             _checks(MagicMock(), hostPort="my-workspace.cloud.databricks.com").check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
@@ -208,7 +208,7 @@ class TestCheckAccess:
         ],
     )
     def test_normalizes_a_pasted_workspace_url_before_probing(self, host_port):
-        with patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe:
+        with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
             _checks(MagicMock(), hostPort=host_port).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
@@ -216,7 +216,10 @@ class TestCheckAccess:
     def test_unreachable_host_fails_before_the_client_is_used(self):
         client = MagicMock()
         with (
-            patch(f"{CONNECTION_MODULE}.tcp_probe", side_effect=NetworkUnreachableError("down")),
+            patch(
+                "metadata.core.connections.test_connection.network.tcp_probe",
+                side_effect=NetworkUnreachableError("down"),
+            ),
             pytest.raises(CheckError) as failure,
         ):
             _checks(client).check_access()
@@ -227,7 +230,7 @@ class TestCheckAccess:
     def test_rejected_credentials_surface_as_a_check_error_with_the_command(self):
         client = MagicMock()
         client.catalogs.list.side_effect = Unauthenticated("invalid access token")
-        with patch(f"{CONNECTION_MODULE}.tcp_probe"), pytest.raises(CheckError) as failure:
+        with patch("metadata.core.connections.test_connection.network.tcp_probe"), pytest.raises(CheckError) as failure:
             _checks(client).check_access()
 
         assert failure.value.evidence.command == "catalogs.list()"

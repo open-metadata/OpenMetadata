@@ -14,15 +14,15 @@
 
 .white-label-config-card {
   background-color: @grey-6;
-  padding: 16px;
-  border-radius: 10px;
+  padding: var(--om-space-16);
+  border-radius: var(--om-radius-10);
   .ant-card-head {
     border-bottom: none;
     .ant-card-head-wrapper {
       .ant-card-head-title {
         color: @text-color;
-        font-size: 16px;
-        font-weight: 500;
+        font-size: var(--om-font-size-md);
+        font-weight: var(--om-font-weight-medium);
       }
     }
   }
@@ -36,22 +36,22 @@
 .white-label-card-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--om-space-24);
 }
 
 .preview-image {
   background-color: var(--tw-color-bg-primary);
   border: 1px dashed @grey-7;
-  padding: 8px;
-  border-radius: 4px;
+  padding: var(--om-space-8);
+  border-radius: var(--om-radius-sm);
 }
 
 .theme-preview {
   .ant-card-body {
     display: flex;
     flex-direction: row;
-    gap: 16px;
-    padding: 8px 0px;
+    gap: var(--om-space-16);
+    padding: var(--om-space-8) 0;
   }
 }
 
@@ -59,8 +59,8 @@
   .ant-badge-count {
     background-color: @primary-color;
     color: var(--tw-color-text-white);
-    padding: 0 4px;
-    margin-left: 2px;
-    font-size: 10px;
+    padding: 0 var(--om-space-4);
+    margin-left: var(--om-space-2);
+    font-size: var(--om-font-size-10);
   }
 }

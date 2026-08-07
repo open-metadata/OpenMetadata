@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.NonNull;
@@ -740,6 +741,41 @@ public final class Entity {
   }
 
   /**
+   * Whether an entity instance should be written to the search index, per its repository's {@link
+   * EntityRepository#isSearchIndexable} policy. Defaults to {@code true} for entity types with no
+   * regular entity repository (index-only / time-series sub-entities), so the live index paths
+   * never throw on an indexable but repository-less type. Returns {@code false} when the entity or
+   * its reference is missing.
+   */
+  public static boolean isSearchIndexable(EntityInterface entity) {
+    return repositoryPolicyAllows(entity, EntityRepository::isSearchIndexable);
+  }
+
+  /**
+   * Whether an entity instance should be embedded into the vector/semantic index, per its
+   * repository's {@link EntityRepository#isVectorEmbeddable} policy. An entity type may opt out when
+   * its chunk documents cannot carry the filters its privacy model requires. Defaults and
+   * null-handling match {@link #isSearchIndexable}.
+   */
+  public static boolean isVectorEmbeddable(EntityInterface entity) {
+    return repositoryPolicyAllows(entity, EntityRepository::isVectorEmbeddable);
+  }
+
+  private static boolean repositoryPolicyAllows(
+      EntityInterface entity,
+      BiPredicate<EntityRepository<? extends EntityInterface>, EntityInterface> policy) {
+    boolean allowed = false;
+    EntityReference entityReference = entity == null ? null : entity.getEntityReference();
+    String entityType = entityReference == null ? null : entityReference.getType();
+    if (entityType != null) {
+      EntityRepository<? extends EntityInterface> repository =
+          ENTITY_REPOSITORY_MAP.get(entityType);
+      allowed = repository == null || policy.test(repository, entity);
+    }
+    return allowed;
+  }
+
+  /**
    * Returns true when {@code entityTypeOrAlias} maps to an {@link EntityTimeSeriesInterface}
    * (append-only, no top-level {@code deleted} field). Backed by
    * {@link EntityIndexCapabilityRegistry}; the legacy {@code ENTITY_TS_REPOSITORY_MAP} fallback
@@ -775,6 +811,16 @@ public final class Entity {
           CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
     return entityRepository;
+  }
+
+  /**
+   * Entity type names of every service entity, e.g. {@code databaseService}. This is the single
+   * source of truth for "what is a service" — callers that need to iterate all service types must
+   * use it rather than hardcoding a list, which is how entity/utils/servicesCount.json drifted to
+   * covering only 7 of the 13 service types.
+   */
+  public static List<String> getServiceEntityTypes() {
+    return List.copyOf(SERVICE_TYPE_ENTITY_MAP.values());
   }
 
   public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {

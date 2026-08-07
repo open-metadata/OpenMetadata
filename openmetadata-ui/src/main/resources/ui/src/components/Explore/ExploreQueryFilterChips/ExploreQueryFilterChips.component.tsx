@@ -157,7 +157,7 @@ const ExploreQueryFilterChips = ({
 
       {hasFilterChips && onClearAll && (
         <Button
-          className="text-primary tw:ml-auto tw:self-center tw:cursor-pointer tw:bg-transparent tw:p-0! tw:font-medium tw:shadow-none tw:ring-0 tw:hover:bg-transparent"
+          className="text-primary tw:ml-auto tw:self-center tw:cursor-pointer tw:bg-transparent tw:p-0! tw:font-medium tw:shadow-none tw:after:outline-0 tw:hover:bg-transparent"
           color="tertiary"
           data-testid="clear-all-chips"
           size="sm"
