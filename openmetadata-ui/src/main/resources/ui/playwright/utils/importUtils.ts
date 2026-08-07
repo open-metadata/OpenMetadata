@@ -1466,7 +1466,9 @@ export const createCustomPropertiesForEntityViaApi = async (
   const entitySchema = await entitySchemaResponse.json();
   const entityTypeId: string = entitySchema.id;
 
-  const typeMapping: Array<[string, string, Record<string, unknown> | undefined]> = [
+  const typeMapping: Array<
+    [string, string, Record<string, unknown> | undefined]
+  > = [
     [CUSTOM_PROPERTIES_TYPES.STRING, 'string', undefined],
     [CUSTOM_PROPERTIES_TYPES.MARKDOWN, 'markdown', undefined],
     [CUSTOM_PROPERTIES_TYPES.SQL_QUERY, 'sqlQuery', undefined],
@@ -1519,7 +1521,9 @@ export const createCustomPropertiesForEntityViaApi = async (
     await Promise.all(
       Object.values(propertyListName).map((propertyName) =>
         cleanupApiContext.delete(
-          `/api/v1/metadata/types/${entityTypeId}/customProperties/${encodeURIComponent(propertyName)}`
+          `/api/v1/metadata/types/${entityTypeId}/customProperties/${encodeURIComponent(
+            propertyName
+          )}`
         )
       )
     );
