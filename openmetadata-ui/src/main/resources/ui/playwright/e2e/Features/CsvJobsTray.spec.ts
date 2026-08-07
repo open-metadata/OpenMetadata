@@ -14,7 +14,10 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 
 import { performAdminLogin } from '../../utils/admin';
-import { getExportModalContent, openExportScopeModal } from '../../utils/explore';
+import {
+  getExportModalContent,
+  openExportScopeModal,
+} from '../../utils/explore';
 import { test } from '../fixtures/pages';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -54,7 +57,10 @@ const waitForJobCompleted = async (
 
         if (!Array.isArray(jobs)) {
           throw new Error(
-            `Unexpected response ${res.status()}: ${JSON.stringify(jobs).slice(0, 200)}`
+            `Unexpected response ${res.status()}: ${JSON.stringify(jobs).slice(
+              0,
+              200
+            )}`
           );
         }
 
@@ -212,7 +218,9 @@ test.describe.serial('CsvJobsTray', () => {
       timeout: 30_000,
     });
     await expect(
-      jobItem(page, jobId).filter({ has: page.locator('.csv-jobs-tray-item-success') })
+      jobItem(page, jobId).filter({
+        has: page.locator('.csv-jobs-tray-item-success'),
+      })
     ).toBeVisible({ timeout: 30_000 });
 
     await page.locator('.csv-jobs-tray-clear').click();
