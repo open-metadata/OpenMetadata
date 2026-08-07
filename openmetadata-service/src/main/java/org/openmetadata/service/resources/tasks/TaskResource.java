@@ -25,7 +25,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonString;
+import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -70,6 +73,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -111,7 +115,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   public static final String COLLECTION_PATH = "v1/tasks/";
   static final String FIELDS =
-      "assignees,reviewers,watchers,about,domains,comments,createdBy,payload";
+      "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,availableTransitions";
 
   /**
    * Lightweight default for list endpoints — enough for the UI card (assignee, target entity,
@@ -915,6 +919,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTask create) {
+    // Report M11: POST /tasks with an empty body arrived as create=null, hit an NPE inside
+    // getTask, and surfaced as a 500 whose class/method leaked in the log line. Convert the
+    // "no body" case to a clean 400 up front.
+    if (create == null) {
+      throw BadRequestException.of("Request body is required to create a task.");
+    }
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
@@ -943,6 +953,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTask create) {
+    if (create == null) {
+      throw BadRequestException.of("Request body is required to create or update a task.");
+    }
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
@@ -1070,7 +1083,21 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                             "[{\"op\": \"add\", \"path\": \"/status\", \"value\": \"InProgress\"}]")
                       }))
           JsonPatch patch) {
+    // Only status is read here to decide the payload/about freeze in validatePatchOperations;
+    // avoid pulling comments / assignees / availableTransitions / payload just to reject a
+    // forged JSON-Patch (Copilot review, 2026-08-03). status is a generated column on the base
+    // row so EMPTY_FIELDS is enough.
+    // workflowInstanceId is on the base row via a generated column, but we need it plus
+    // status to decide H4/H5/H6. Small extra field cost vs. the alternative of pulling
+    // FIELDS which includes payload/comments/availableTransitions.
+    Task task = repository.get(uriInfo, id, EntityUtil.Fields.EMPTY_FIELDS);
+    validatePatchOperations(task, patch, isAdmin(securityContext));
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  private boolean isAdmin(SecurityContext securityContext) {
+    SubjectContext subject = getSubjectContext(securityContext);
+    return subject != null && subject.isAdmin();
   }
 
   @POST
@@ -1102,15 +1129,31 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
     validateTaskCanBeResolved(task);
 
-    // Use TaskWorkflowHandler to resolve the task and apply entity changes
+    // Use TaskWorkflowHandler to resolve the task and apply entity changes. The strict-transition
+    // validation only fires when the caller explicitly named a transitionId — legacy callers that
+    // pass resolutionType alone stay on the workflow handler's positive/negative default path (used
+    // heavily by generic-workflow ITs and the recognizer-feedback flow). H1 still rejects the
+    // empty-body exploit below via requireExplicitResolveIntent.
+    //
+    // Normalize blank transitionId to null once up-front so requireExplicitResolveIntent (which
+    // rejects blank) and the follow-up "did the caller name a transitionId?" branches (which
+    // used to only null-check) agree — otherwise transitionId="" + a valid resolutionType would
+    // land in a 400 from validateTransition instead of the intended resolutionType-only path.
+    String requestedTransitionId =
+        nullOrEmpty(resolveTask.getTransitionId()) ? null : resolveTask.getTransitionId();
+    requireExplicitResolveIntent(task, requestedTransitionId, resolveTask.getResolutionType());
     String transitionId =
-        resolveTask.getTransitionId() != null
-            ? resolveTask.getTransitionId()
+        requestedTransitionId != null
+            ? requestedTransitionId
             : TaskWorkflowLifecycleResolver.defaultTransitionId(
                 task, resolveTask.getResolutionType());
+    if (requestedTransitionId != null) {
+      validateTransition(task, requestedTransitionId, resolveTask.getResolutionType());
+    }
     String newValue = resolveTask.getNewValue();
     Object resolvedPayload = resolveTask.getPayload();
     String comment = resolveTask.getComment();
+    validateTransitionComment(task, transitionId, comment);
 
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
@@ -1295,6 +1338,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = repository.get(uriInfo, id, fields);
 
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
+    validateTaskCanBeClosed(task);
 
     Task closedTask = repository.closeTask(task, userName, comment);
     // Change-event header so close fires task alerts.
@@ -1382,14 +1426,25 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
     validateTaskCanBeResolved(task);
 
+    // Match /resolve's guard: validateTransition only fires when defaultTransitionId resolves
+    // to a concrete id the workflow actually exposes. A task that has not yet stamped
+    // availableTransitions (still at PENDING_WORKFLOW_START_STAGE_ID, or a workflow whose
+    // approve/reject transition is named differently) returns null / an unmatchable literal
+    // here — findTransition would then throw 400 and break approvals that used to succeed.
+    String suggestionApproveTransitionId =
+        TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
+    if (suggestionApproveTransitionId != null) {
+      validateTransition(task, suggestionApproveTransitionId, TaskResolutionType.Approved);
+    }
+    validateTransitionComment(task, suggestionApproveTransitionId, comment);
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
             task,
-            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved),
+            suggestionApproveTransitionId,
             TaskResolutionType.Approved,
             null,
             null,
-            null,
+            comment,
             userName);
     // Change-event header so resolve fires task alerts.
     return Response.ok(resolvedTask)
@@ -1488,26 +1543,28 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       case Approve -> {
         repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
         validateTaskCanBeResolved(task);
+        String approveTransitionId =
+            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
+        // Same guard as /resolve — only validate when defaultTransitionId resolved. See the
+        // comment on applySuggestion for the exact scenarios this covers.
+        if (approveTransitionId != null) {
+          validateTransition(task, approveTransitionId, TaskResolutionType.Approved);
+        }
+        validateTransitionComment(task, approveTransitionId, comment);
         repository.resolveTaskWithWorkflow(
-            task,
-            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved),
-            TaskResolutionType.Approved,
-            null,
-            null,
-            comment,
-            userName);
+            task, approveTransitionId, TaskResolutionType.Approved, null, null, comment, userName);
       }
       case Reject -> {
         repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
         validateTaskCanBeResolved(task);
+        String rejectTransitionId =
+            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Rejected);
+        if (rejectTransitionId != null) {
+          validateTransition(task, rejectTransitionId, TaskResolutionType.Rejected);
+        }
+        validateTransitionComment(task, rejectTransitionId, comment);
         repository.resolveTaskWithWorkflow(
-            task,
-            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Rejected),
-            TaskResolutionType.Rejected,
-            null,
-            null,
-            comment,
-            userName);
+            task, rejectTransitionId, TaskResolutionType.Rejected, null, null, comment, userName);
       }
       case Assign -> {
         if (params == null || params.getAssignees() == null || params.getAssignees().isEmpty()) {
@@ -1535,6 +1592,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       }
       case Cancel -> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
+        validateTaskCanBeClosed(task);
         repository.closeTask(task, userName, comment);
       }
     }
@@ -1568,6 +1626,248 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   private void validateCsvAgainstAccessType(String csv) {
     validateCsvAgainstEnum("accessType", csv, DataAccessType.class);
+  }
+
+  /**
+   * Rejects unknown transitionIds at the API boundary and cross-checks that any caller-supplied
+   * {@code resolutionType} matches the transition's declared resolutionType. Without this the
+   * resolve endpoint accepted an empty transitionId (silently approving via the workflow's
+   * "positive" default) and allowed {@code {"transitionId":"reject","resolutionType":"Approved"}}
+   * to override the intended action and approve a request through the reject button.
+   */
+  private void validateTransition(
+      final Task task,
+      final String transitionId,
+      final TaskResolutionType requestedResolutionType) {
+    final TaskAvailableTransition transition =
+        TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
+    if (transition == null) {
+      throw BadRequestException.of(
+          "Transition '%s' is not available for task '%s'.".formatted(transitionId, task.getId()));
+    }
+    final TaskResolutionType declared = transition.getResolutionType();
+    if (requestedResolutionType != null
+        && declared != null
+        && requestedResolutionType != declared) {
+      throw BadRequestException.of(
+          "Transition '%s' resolves as '%s'; resolutionType '%s' conflicts."
+              .formatted(transitionId, declared, requestedResolutionType));
+    }
+  }
+
+  /**
+   * Reject an empty resolve body ({@code POST /resolve} with no {@code transitionId} and no
+   * {@code resolutionType}) — that used to fall through to the workflow handler's positive default
+   * and silently approve. Any caller must state intent by naming a transition or a resolutionType;
+   * the workflow handler still picks the concrete transition when only resolutionType is supplied
+   * so legacy generic-workflow callers keep working.
+   */
+  private void requireExplicitResolveIntent(
+      final Task task,
+      final String requestedTransitionId,
+      final TaskResolutionType requestedResolutionType) {
+    boolean anyIntent =
+        (requestedTransitionId != null && !requestedTransitionId.isBlank())
+            || requestedResolutionType != null;
+    if (!anyIntent) {
+      throw BadRequestException.of(
+          "Task '%s' resolve requires a transitionId or resolutionType.".formatted(task.getId()));
+    }
+  }
+
+  /**
+   * Enforces the workflow's {@code requiresComment=true} contract at the API boundary. Workflow
+   * definitions (e.g. DataAccessRequestTaskWorkflow) mark reject / revoke transitions as
+   * comment-required so the requester learns why their access was declined; before this check the
+   * backend accepted resolve requests with an empty comment and silently stored the resolution
+   * without a reason.
+   */
+  private void validateTransitionComment(
+      final Task task, final String transitionId, final String comment) {
+    final TaskAvailableTransition transition =
+        TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
+    if (transition != null
+        && Boolean.TRUE.equals(transition.getRequiresComment())
+        && (comment == null || comment.isBlank())) {
+      throw BadRequestException.of(
+          String.format(
+              "Transition '%s' on task '%s' requires a non-empty comment.",
+              transitionId, task.getId()));
+    }
+  }
+
+  /**
+   * Top-level JSON-Patch paths that only the workflow engine, the resolve/close endpoints, or
+   * the audit chain may mutate. A client PATCH that touches any of these can push the task into
+   * an inconsistent state (e.g. status=Granted while workflowStageId=review — no access was
+   * actually granted) or replay/impersonate the audit trail, so we reject those operations at
+   * the API boundary.
+   */
+  private static final Set<String> WORKFLOW_OR_AUDIT_OWNED_TOP_LEVEL_FIELDS =
+      Set.of(
+          // Forge-attribution fields: /resolution names the "Approved by" type + comment,
+          // /approvedBy* names the approver. If a user PATCHes these, the audit trail lies.
+          "resolution",
+          "approvedBy",
+          "approvedById",
+          "approvedAt",
+          // /aboutFqnHash is the dup-check key. Rewriting it decouples the check from the real
+          // /about.
+          "aboutFqnHash");
+
+  /**
+   * Statuses that mean an authorization / resolution decision has been made. PATCH must not be
+   * allowed to land the task in any of these — that would skip the workflow's side-effects
+   * (PolicyAgent grant / revoke, revoke boundary timer, notifications). The workflow drives
+   * these transitions through {@code /resolve} and {@code /close}. Other statuses (Open,
+   * InProgress, Pending) are progress markers and can be PATCHed by admin state-repair /
+   * test setup without skipping any authorization gate.
+   */
+  private static final Set<TaskEntityStatus> WORKFLOW_DECISION_STATUSES =
+      Set.of(
+          TaskEntityStatus.Approved,
+          TaskEntityStatus.Rejected,
+          TaskEntityStatus.Granted,
+          TaskEntityStatus.ManualRevoke,
+          TaskEntityStatus.Cancelled,
+          TaskEntityStatus.Completed,
+          TaskEntityStatus.Failed,
+          TaskEntityStatus.Revoked,
+          TaskEntityStatus.Expired);
+
+  /**
+   * Reject JSON-Patch operations that would either forge workflow/audit state (H4) or edit
+   * task details that must be frozen once the task has left {@code Open} (H5 for payload, H6
+   * for the target entity). Applied at the API boundary so the underlying updater in
+   * {@link TaskRepository} can rely on the invariant that these fields only change through the
+   * resolve/close paths.
+   */
+  private void validatePatchOperations(
+      final Task task, final JsonPatch patch, final boolean callerIsAdmin) {
+    if (patch == null) {
+      return;
+    }
+    // jakarta.json exposes the patch as an untyped JsonArray of JsonObject ops; we walk each op
+    // and inspect its "path" pointer, which is why the JsonValue instanceof-check is required.
+    for (JsonValue op : patch.toJsonArray()) {
+      if (op instanceof JsonObject opObj) {
+        rejectRestrictedPatchOp(task, opObj, callerIsAdmin);
+      }
+    }
+  }
+
+  private void rejectRestrictedPatchOp(
+      final Task task, final JsonObject op, final boolean callerIsAdmin) {
+    final String rawPath = op.containsKey("path") ? op.getString("path", "") : "";
+    checkRestrictedTarget(task, rawPath, callerIsAdmin);
+    checkStatusPatchIsNotWorkflowDecision(task, op, rawPath);
+    // move/copy operations carry a second pointer that names the SOURCE. A restricted
+    // source is just as unsafe as a restricted target — {"op":"move","from":"/payload/x",
+    // "path":"/foo"} would silently strip a field out of the frozen payload while the
+    // target /foo doesn't touch any restricted top-level. Check both.
+    if (op.containsKey("from")) {
+      checkRestrictedTarget(task, op.getString("from", ""), callerIsAdmin);
+    }
+  }
+
+  /**
+   * H4: PATCH of {@code /status} is allowed for progress markers (Open, InProgress, Pending)
+   * — this covers the legit "start work" seed used in test setup and admin state-repair. It
+   * is rejected when the destination is a workflow-decision status
+   * ({@link #WORKFLOW_DECISION_STATUSES}) because those transitions carry authorization
+   * side-effects (PolicyAgent, revoke timers) that only the workflow can run. Callers must
+   * take those steps through {@code /resolve} or {@code /close}.
+   */
+  private void checkStatusPatchIsNotWorkflowDecision(
+      final Task task, final JsonObject op, final String rawPath) {
+    if (rawPath == null || !rawPath.equals("/status")) {
+      return;
+    }
+    JsonValue value = op.get("value");
+    if (!(value instanceof JsonString jsonStr)) {
+      return;
+    }
+    TaskEntityStatus target = null;
+    try {
+      target = TaskEntityStatus.fromValue(jsonStr.getString());
+    } catch (IllegalArgumentException unknownStatus) {
+      // Unknown status value — the underlying updater will reject it with its own 400; nothing
+      // to add from H4's perspective since the caller has not landed the task in a decision
+      // state.
+      target = null;
+    }
+    if (target != null && WORKFLOW_DECISION_STATUSES.contains(target)) {
+      throw BadRequestException.of(
+          ("Status '%s' can only be reached through the workflow /resolve or /close endpoints"
+                  + " — PATCH cannot skip the authorization / notification side-effects those"
+                  + " transitions run.")
+              .formatted(target));
+    }
+  }
+
+  private void checkRestrictedTarget(
+      final Task task, final String rawPath, final boolean callerIsAdmin) {
+    if (rawPath == null) {
+      return;
+    }
+    // RFC 6901: an empty JSON-Pointer ("") targets the whole document, so a client could
+    // wholesale replace the task JSON (including workflow-owned fields) and bypass every
+    // top-level restriction below. Reject explicitly (Copilot review, 2026-08-04).
+    if (rawPath.isEmpty()) {
+      throw BadRequestException.of(
+          "PATCH with an empty JSON-Pointer is not allowed — targets must name a field.");
+    }
+    final String topLevel = topLevelField(rawPath);
+    if (WORKFLOW_OR_AUDIT_OWNED_TOP_LEVEL_FIELDS.contains(topLevel)) {
+      throw BadRequestException.of(
+          "Field '/%s' is workflow- or audit-owned and cannot be changed via PATCH."
+              .formatted(topLevel));
+    }
+    // /availableTransitions is the input to validateTransition's transitionId check on resolve.
+    // A regular user PATCHing it to add a fake {id: "grant", resolutionType: "Approved"} could
+    // pass validateTransition and land the task in Approved via the workflow handler's positive-
+    // default fallback — the exact H1 bypass Copilot's review flagged. Non-admin cannot write.
+    // Admin retains the ability so OSS "resolve when the workflow has not stamped transitions"
+    // regression tests (which use adminClient().tasks().update() to seed an empty transitions
+    // list) still work; admin already has broader footguns.
+    if (!callerIsAdmin && "availableTransitions".equals(topLevel)) {
+      throw BadRequestException.of(
+          "Field '/availableTransitions' is workflow-owned and cannot be changed via PATCH.");
+    }
+    if (task.getStatus() != TaskEntityStatus.Open
+        && ("payload".equals(topLevel) || "about".equals(topLevel))) {
+      throw BadRequestException.of(
+          "Field '/%s' is frozen once task '%s' has left status Open (currently '%s')."
+              .formatted(topLevel, task.getId(), task.getStatus()));
+    }
+  }
+
+  private String topLevelField(final String jsonPointerPath) {
+    // JSON-Patch paths look like "/status" or "/payload/accessType"; grab the first segment.
+    final String trimmed = jsonPointerPath.startsWith("/") ? jsonPointerPath.substring(1) : "";
+    final int slash = trimmed.indexOf('/');
+    return slash < 0 ? trimmed : trimmed.substring(0, slash);
+  }
+
+  /**
+   * A {@code Granted} DAR still holds live access on the source system, so "close" is not a
+   * valid teardown path — the caller must go through the {@code revoke} transition on
+   * {@code /resolve} which drives the PolicyAgent revoke enforcement. Closing a Granted task
+   * used to mark it {@code Cancelled} while leaving access on and wedging the task so no
+   * further transition would fire. Same argument for {@code Approved} / {@code ManualRevoke}
+   * whose workflows still expose open transitions.
+   */
+  private void validateTaskCanBeClosed(final Task task) {
+    final TaskEntityStatus status = task.getStatus();
+    final boolean liveOrPendingRevoke =
+        status == TaskEntityStatus.Granted
+            || status == TaskEntityStatus.Approved
+            || status == TaskEntityStatus.ManualRevoke;
+    if (liveOrPendingRevoke) {
+      throw BadRequestException.of(
+          "Task '%s' is '%s' — close is not allowed; use the revoke transition instead."
+              .formatted(task.getId(), status));
+    }
   }
 
   private void validateTaskCanBeResolved(Task task) {
@@ -1621,6 +1921,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
+
+    // Report M4 note: QA flagged that this endpoint returns the full Task with private
+    // payload / assignee / comment history to whoever calls it. That is a *view-side*
+    // information-disclosure concern that belongs on the GET / listing paths, not here — add-
+    // comment is intentionally open (any collaborator can add a comment, same as the feed),
+    // so we do NOT gate this on EDIT_TASK. Follow-up: redact `payload` on GET responses for
+    // callers that don't hold viewer-level permission on the DAR's target entity.
 
     TaskComment comment =
         new TaskComment()
