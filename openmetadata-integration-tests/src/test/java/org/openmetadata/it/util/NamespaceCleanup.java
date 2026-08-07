@@ -3,6 +3,8 @@ package org.openmetadata.it.util;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.openmetadata.it.util.TestNamespace.EntityRoot;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
@@ -99,29 +101,35 @@ public final class NamespaceCleanup {
   private static boolean awaitGone(
       final HttpClient http, final String collection, final EntityRoot root) {
     final String path = "/v1/" + collection + "/" + root.id();
-    final long deadline = System.nanoTime() + CASCADE_TIMEOUT.toNanos();
-    while (System.nanoTime() < deadline) {
-      try {
-        http.execute(HttpMethod.GET, path, null, Object.class);
-      } catch (final OpenMetadataException e) {
-        if (e.getStatusCode() == 404) {
-          return true;
-        }
-        // Anything else (auth blip, 5xx mid-cascade) is not proof of deletion — keep polling.
-        LOG.debug("Cleanup poll for {} {} got {}", root.entityType(), root.id(), e.getStatusCode());
-      }
-      try {
-        Thread.sleep(CASCADE_POLL.toMillis());
-      } catch (final InterruptedException interrupted) {
-        Thread.currentThread().interrupt();
-        return false;
-      }
+    boolean gone = true;
+    try {
+      Awaitility.await("cleanup cascade for " + root.entityType() + " " + root.id())
+          .atMost(CASCADE_TIMEOUT)
+          .pollInterval(CASCADE_POLL)
+          .until(() -> isGone(http, path));
+    } catch (final ConditionTimeoutException stillRunning) {
+      LOG.warn(
+          "Cleanup cascade for {} {} still running after {} — the next test seeds on top of it",
+          root.entityType(),
+          root.id(),
+          CASCADE_TIMEOUT);
+      gone = false;
     }
-    LOG.warn(
-        "Cleanup cascade for {} {} still running after {} — the next test seeds on top of it",
-        root.entityType(),
-        root.id(),
-        CASCADE_TIMEOUT);
-    return false;
+    return gone;
+  }
+
+  /**
+   * A 404 is the only answer that proves the root is gone. A 5xx thrown mid-cascade, or a transient
+   * auth blip, must read as "keep polling" — treating any failure as success would hand the next
+   * test the very cluster state this wait exists to prevent.
+   */
+  private static boolean isGone(final HttpClient http, final String path) {
+    boolean gone = false;
+    try {
+      http.execute(HttpMethod.GET, path, null, Object.class);
+    } catch (final OpenMetadataException e) {
+      gone = e.getStatusCode() == 404;
+    }
+    return gone;
   }
 }
