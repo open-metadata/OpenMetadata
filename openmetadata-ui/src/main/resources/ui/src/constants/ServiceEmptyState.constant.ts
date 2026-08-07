@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholderIcon } from '@openmetadata/ui-core-components';
 import {
   BarChartSquare02,
   Brackets,
@@ -25,13 +24,24 @@ import {
   Server01,
   Shield01,
 } from '@untitledui/icons';
+import { FC } from 'react';
 import { ServiceCategory } from '../enums/service.enum';
 
 export interface ServiceEmptyStateConfig {
-  icon: EmptyPlaceholderIcon;
+  icon: FC<{ className?: string }>;
   titleKey: string;
   descriptionKey: string;
 }
+
+/**
+ * Brand color for the placeholder icons, matching the design.
+ *
+ * Applied by the consumer when it renders the icon element
+ * (`<Icon className={SERVICE_EMPTY_STATE_ICON_CLASS} />`) rather than stored per-config: a bare
+ * component reference — which is what this `.ts` module holds, so it stays free of JSX — has
+ * nowhere to carry a className, and `EmptyPlaceholder` merges the class off the rendered element.
+ */
+export const SERVICE_EMPTY_STATE_ICON_CLASS = 'tw:text-fg-brand-primary';
 
 /**
  * First-run placeholder shown on a service listing that has no services yet — one entry per

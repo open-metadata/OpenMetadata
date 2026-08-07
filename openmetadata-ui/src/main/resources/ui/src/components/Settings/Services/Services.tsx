@@ -28,7 +28,10 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { OPEN_METADATA } from '../../../constants/Services.constant';
-import { getServiceEmptyStateConfig } from '../../../constants/ServiceEmptyState.constant';
+import {
+  getServiceEmptyStateConfig,
+  SERVICE_EMPTY_STATE_ICON_CLASS,
+} from '../../../constants/ServiceEmptyState.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -312,8 +315,11 @@ const Services = ({ serviceName }: ServicesProps) => {
       );
     }
 
-    const { icon, titleKey, descriptionKey } =
-      getServiceEmptyStateConfig(serviceName);
+    const {
+      icon: EmptyStateIcon,
+      titleKey,
+      descriptionKey,
+    } = getServiceEmptyStateConfig(serviceName);
 
     return (
       // EmptyPlaceholder fills its nearest positioned ancestor, so the host has to be relative.
@@ -339,7 +345,7 @@ const Services = ({ serviceName }: ServicesProps) => {
               </LimitWrapper>
             )
           }
-          icon={icon}
+          icon={<EmptyStateIcon className={SERVICE_EMPTY_STATE_ICON_CLASS} />}
           title={t(titleKey)}
           variant="blank"
         />

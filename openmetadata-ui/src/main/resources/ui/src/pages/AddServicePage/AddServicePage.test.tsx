@@ -14,6 +14,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ALL_SERVICES_CATEGORY } from '../../constants/Services.constant';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
@@ -28,6 +29,7 @@ const mockParam = {
 };
 
 const mockNavigate = jest.fn();
+let mockLocationState: unknown = null;
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
@@ -45,6 +47,10 @@ jest.mock('../../context/AirflowStatusProvider/AirflowStatusProvider', () => ({
 jest.mock('../../utils/ServiceUtilClassBase', () => ({
   getExtraInfo: jest.fn(),
   getServiceConfigData: jest.fn(),
+  getSupportedServiceFromList: jest.fn().mockReturnValue({
+    databaseServices: ['mysql'],
+    dashboardServices: ['Looker'],
+  }),
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
@@ -55,6 +61,10 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParam),
+  useLocation: () =>
+    mockLocationState === null
+      ? jest.requireActual('react-router-dom').useLocation()
+      : { pathname: '/add-service', state: mockLocationState },
 }));
 
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () => {
@@ -108,10 +118,23 @@ jest.mock(
     return jest
       .fn()
       .mockImplementation(
-        ({ handleServiceTypeClick, serviceCategoryHandler }) => (
+        ({
+          handleServiceTypeClick,
+          serviceCategory,
+          serviceCategoryHandler,
+        }) => (
           <div>
-            <button onClick={() => handleServiceTypeClick('mysql')}>
+            {/* The real step always reports which category the clicked card belongs to. */}
+            <button
+              onClick={() => handleServiceTypeClick('mysql', serviceCategory)}>
               Select MySQL
+            </button>
+            {/* A card from another category, only reachable in the flattened `all` grid. */}
+            <button
+              onClick={() =>
+                handleServiceTypeClick('Looker', 'dashboardServices')
+              }>
+              Select Cross-Category Looker
             </button>
             <button onClick={() => serviceCategoryHandler('messagingServices')}>
               Change Category
@@ -242,6 +265,22 @@ jest.mock('../../utils/ServicePureUtils', () => ({
 
 jest.mock('../../utils/ServiceUtils', () => ({
   getAddServiceEntityBreadcrumb: jest.fn().mockReturnValue([]),
+  getValidatedServiceType: (state: unknown, serviceCategory: string) => {
+    const requested = (state as { serviceType?: string } | null)?.serviceType;
+    if (!requested) {
+      return '';
+    }
+    // requireMock, not requireActual: the connector list must come from this suite's own
+    // ServiceUtilClassBase stub so deep-link cases resolve against the same fixture data.
+    const serviceUtilMock = jest.requireMock(
+      '../../utils/ServiceUtilClassBase'
+    );
+    const supported = ((
+      serviceUtilMock.default ?? serviceUtilMock
+    ).getSupportedServiceFromList?.() ?? {})[serviceCategory];
+
+    return (supported ?? []).includes(requested) ? requested : '';
+  },
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -774,5 +813,124 @@ describe('AddServicePage', () => {
 
     expect(document.getElementById).toHaveBeenCalledWith('service-name');
     expect(mockFocus).toHaveBeenCalled();
+  });
+
+  describe('category-agnostic all-services entry point', () => {
+    afterEach(() => {
+      mockParam.serviceCategory = 'databaseServices';
+      mockLocationState = null;
+    });
+
+    it('renders the connector grid for the all sentinel without throwing', async () => {
+      mockParam.serviceCategory = ALL_SERVICES_CATEGORY;
+
+      await act(async () => {
+        render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+      });
+
+      // Step 1 (the flattened grid) is showing, not the Connect step.
+      expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'label.add-new-entity'
+      );
+    });
+
+    it('continues in the clicked connector own category when it differs from the URL', async () => {
+      mockParam.serviceCategory = ALL_SERVICES_CATEGORY;
+
+      await act(async () => {
+        render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Select Cross-Category Looker'));
+      });
+
+      // Deep-links the connector so the destination page opens straight on Connect.
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/add-service/dashboardServices',
+        { state: { serviceType: 'Looker' } }
+      );
+    });
+
+    it('advances to the Connect step when the same route re-renders with a new category', async () => {
+      // Reproduces the reported bug: /all -> /dashboardServices is a re-render, not a remount, so
+      // mount-time initial state cannot be what puts the user on the Connect step.
+      mockParam.serviceCategory = ALL_SERVICES_CATEGORY;
+
+      let rerender: ((ui: React.ReactElement) => void) | undefined;
+      await act(async () => {
+        ({ rerender } = render(<AddServicePage {...mockProps} />, {
+          wrapper: MemoryRouter,
+        }));
+      });
+
+      expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+
+      mockParam.serviceCategory = 'dashboardServices';
+      mockLocationState = { serviceType: 'Looker' };
+
+      await act(async () => {
+        rerender?.(<AddServicePage {...mockProps} />);
+      });
+
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'Looker label.service'
+      );
+      expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
+    });
+
+    it('advances in place when the clicked connector matches the URL category', async () => {
+      await act(async () => {
+        render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Select MySQL'));
+      });
+
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'mysql label.service'
+      );
+    });
+
+    it('opens on the Connect step for a deep-linked connector', async () => {
+      await act(async () => {
+        render(<AddServicePage {...mockProps} />, {
+          wrapper: ({ children }) => (
+            <MemoryRouter
+              initialEntries={[
+                { pathname: '/add-service', state: { serviceType: 'mysql' } },
+              ]}>
+              {children}
+            </MemoryRouter>
+          ),
+        });
+      });
+
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'mysql label.service'
+      );
+      expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
+    });
+
+    it('ignores a deep-linked connector that is not valid for the category', async () => {
+      await act(async () => {
+        render(<AddServicePage {...mockProps} />, {
+          wrapper: ({ children }) => (
+            <MemoryRouter
+              initialEntries={[
+                { pathname: '/add-service', state: { serviceType: 'Looker' } },
+              ]}>
+              {children}
+            </MemoryRouter>
+          ),
+        });
+      });
+
+      // Looker is a dashboard connector, so on the databases page it must not skip the grid.
+      expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+    });
   });
 });
