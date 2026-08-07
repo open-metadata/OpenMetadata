@@ -55,7 +55,11 @@ class MssqlSampler(SQASampler):
         """Period columns are catalogued but kept out of the sample: they are row-validity
         bookkeeping, not user data, and classifying them adds noise (issue #21329).
         """
-        if columns:
-            temporal_cols = get_temporal_column_names(self)
-            columns = [col for col in columns if col.name not in temporal_cols]
-        return super().fetch_sample_data(columns)
+        if not columns:
+            return super().fetch_sample_data(columns)
+        temporal_cols = get_temporal_column_names(self)
+        sampled = [col for col in columns if col.name not in temporal_cols]
+        if not sampled:
+            # The base method reads an empty list as "caller gave me nothing, use them all"
+            return TableData(columns=[], rows=[])
+        return super().fetch_sample_data(sampled)

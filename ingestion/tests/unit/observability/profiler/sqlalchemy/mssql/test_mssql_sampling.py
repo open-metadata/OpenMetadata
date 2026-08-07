@@ -257,3 +257,33 @@ class SampleTest(TestCase):
         passed_names = {col.name for col in columns_passed_to_super}
 
         assert passed_names == {"id", "name"}
+
+    def test_all_columns_filtered_returns_no_sample(self, sampler_mock):
+        """
+        When the filter empties the column list there is nothing left to sample.
+        Handing [] to super() reads as "caller gave me nothing, use them all", which
+        puts the period columns straight back into the query.
+        """
+        from unittest.mock import MagicMock
+
+        sampler = MssqlSampler(
+            service_connection_config=self.mssql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+        )
+
+        valid_from_col = MagicMock()
+        valid_from_col.name = "valid_from"
+
+        with (
+            patch(
+                "metadata.sampler.sqlalchemy.mssql.sampler.get_temporal_column_names",
+                return_value=frozenset({"valid_from"}),
+            ),
+            patch.object(SQASampler, "fetch_sample_data") as super_fetch,
+        ):
+            table_data = sampler.fetch_sample_data(columns=[valid_from_col])
+
+        assert table_data.columns == []
+        assert table_data.rows == []
+        super_fetch.assert_not_called()

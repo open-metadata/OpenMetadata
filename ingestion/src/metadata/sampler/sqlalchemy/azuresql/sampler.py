@@ -59,13 +59,15 @@ class AzureSQLSampler(SQASampler):
         return query.cte(f"{self.get_sampler_table_name()}_sample")
 
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
-        sqa_columns = []
-        if columns:
-            temporal_cols = get_temporal_column_names(self)
-            for col in columns:
-                if col.type.__class__.__name__ in self.NOT_COMPUTE_PYODBC:
-                    continue
-                if col.name in temporal_cols:
-                    continue
-                sqa_columns.append(col)
-        return super().fetch_sample_data(sqa_columns if columns is not None else None)
+        if not columns:
+            return super().fetch_sample_data(columns)
+        temporal_cols = get_temporal_column_names(self)
+        sqa_columns = [
+            col
+            for col in columns
+            if col.type.__class__.__name__ not in self.NOT_COMPUTE_PYODBC and col.name not in temporal_cols
+        ]
+        if not sqa_columns:
+            # The base method reads an empty list as "caller gave me nothing, use them all"
+            return TableData(columns=[], rows=[])
+        return super().fetch_sample_data(sqa_columns)

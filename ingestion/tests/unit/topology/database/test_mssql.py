@@ -602,6 +602,60 @@ class TestMssqlForeignKeyReferredDatabase:
         assert key["referred_columns"] == ["id", "region"]
 
 
+class TestMssqlTemporalPeriodColumns:
+    """``get_columns`` must reflect SYSTEM_TIME period columns.
+
+    Skipping them left system-versioned tables missing their SysStartTime/SysEndTime
+    pair from the catalogue entirely.
+    """
+
+    @staticmethod
+    def _row(name, data_type="datetime2", generated_always_type=0):
+        values = {
+            "column_name": name,
+            "data_type": data_type,
+            "is_nullable": "NO",
+            "character_maximum_length": None,
+            "numeric_precision": None,
+            "numeric_scale": None,
+            "column_default": None,
+            "collation_name": None,
+            "generated_always_type": generated_always_type,
+        }
+
+        class _Mapping:
+            """Rows come back keyed by the column expression, as cursor.mappings() gives them."""
+
+            def __getitem__(self, key):
+                return values.get(getattr(key, "key", key))
+
+        return _Mapping()
+
+    def _get_columns(self, rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = rows
+
+        return mssql_dialet.get_columns(MSDialect(), connection, "orders", schema="sales")
+
+    def test_period_columns_are_reflected(self):
+        cols = self._get_columns(
+            [
+                self._row("id", data_type="int"),
+                self._row("SysStartTime", generated_always_type=1),
+                self._row("SysEndTime", generated_always_type=2),
+            ]
+        )
+
+        assert [col["name"] for col in cols] == ["id", "SysStartTime", "SysEndTime"]
+
+    def test_a_table_without_period_columns_is_unaffected(self):
+        cols = self._get_columns([self._row("id", data_type="int"), self._row("name", data_type="varchar")])
+
+        assert [col["name"] for col in cols] == ["id", "name"]
+
+
 class TestMssqlQueryStoreSelection:
     """Auto-detection of Query Store vs plan-cache DMVs for MSSQL lineage and usage."""
 

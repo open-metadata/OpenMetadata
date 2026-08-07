@@ -190,7 +190,7 @@ class TestQueryLineage(unittest.TestCase):
 
         with (
             patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]),
-            patch("metadata.ingestion.source.database.lineage_source.logger") as mock_logger,
+            patch("metadata.ingestion.source.database.query_parser_source.logger") as mock_logger,
         ):
             list(self.lineage_source.yield_table_query())
 
@@ -206,7 +206,7 @@ class TestQueryLineage(unittest.TestCase):
 
         with (
             patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]),
-            patch("metadata.ingestion.source.database.lineage_source.logger") as mock_logger,
+            patch("metadata.ingestion.source.database.query_parser_source.logger") as mock_logger,
         ):
             queries = list(self.lineage_source.yield_table_query())
 
