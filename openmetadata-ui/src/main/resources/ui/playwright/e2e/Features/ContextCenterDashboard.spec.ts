@@ -301,13 +301,16 @@ test.describe('Context Center - Dashboard', () => {
       const childRow = tree.getByRole('row', { name: fileName });
       await expect(childRow).toBeVisible();
 
-      await navigateToDashboard(page);
+      await childRow.getByRole('button', { name: fileName }).click();
+      await expect(page).toHaveURL(
+        new RegExp(`/context-center/documents\\?document=${file.id}`)
+      );
 
-      const folderNameLink = tree
-        .getByRole('row', { name: folderName })
-        .getByRole('button', { name: folderName });
-      await folderNameLink.click();
-      await expect(page).toHaveURL(/\/context-center\/documents\?folder=/);
+      const panel = page.getByTestId('document-preview-panel');
+      await expect(panel).toBeVisible();
+      await expect(panel.getByTestId('preview-file-name')).toHaveText(
+        fileName
+      );
     });
   });
 
@@ -396,19 +399,19 @@ test.describe('Context Center - Dashboard', () => {
 
       await test.step('Articles card redirects to /context-center/articles', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('article-detail-card').click();
+        await page.getByTestId('article-detail-card').getByRole('button', { name: 'View All Articles' }).click();
         await expect(page).toHaveURL(/\/context-center\/articles/);
       });
 
       await test.step('Documents card redirects to /context-center/documents', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('document-detail-card').click();
+        await page.getByTestId('document-detail-card').getByRole('button', { name: 'View All Documents' }).first().click();
         await expect(page).toHaveURL(/\/context-center\/documents/);
       });
 
       await test.step('Memories card redirects to /context-center/memories', async () => {
         await navigateToDashboard(page);
-        await page.getByTestId('memory-detail-card').click();
+        await page.getByTestId('memory-detail-card').getByRole('button', { name: 'View All Memories' }).click();
         await expect(page).toHaveURL(/\/context-center\/memories/);
         await waitForAllLoadersToDisappear(page);
       });

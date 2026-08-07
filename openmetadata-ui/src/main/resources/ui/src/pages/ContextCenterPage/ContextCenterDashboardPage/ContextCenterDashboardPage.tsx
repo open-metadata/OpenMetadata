@@ -635,6 +635,7 @@ const ContextCenterDashboardPage: FC = () => {
                     ? () => setIsCreateFolderModalOpen(true)
                     : undefined
                 }
+                onOpenFile={handleOpenDocument}
                 onOpenFolder={handleOpenFolder}
               />
 
