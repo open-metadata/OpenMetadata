@@ -77,24 +77,26 @@ export const fillTableColumnInputDetails = async (
   text: string,
   columnName: string
 ) => {
-  await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
+  // The grid strips every non-[a-zA-Z0-9-_] character from the column name to
+  // build the cell class (EditTableTypePropertyModal.tsx), so 'Sr No' renders as
+  // `rdg-cell-SrNo`. Interpolating the raw name yields invalid CSS.
+  const cellClass = `rdg-cell-${columnName.replace(/[^a-zA-Z0-9-_]/g, '')}`;
+
+  await page.locator(`div.${cellClass}`).last().dblclick();
 
   const isInputVisible = await page
-    .locator(`div.rdg-editor-container.rdg-cell-${columnName}`)
+    .locator(`div.rdg-editor-container.${cellClass}`)
     .isVisible();
 
   if (!isInputVisible) {
-    await page.locator(`div.rdg-cell-${columnName}`).last().dblclick();
+    await page.locator(`div.${cellClass}`).last().dblclick();
   }
   await page
     .getByTestId('edit-table-type-property-modal')
     .getByRole('textbox')
     .fill(text);
 
-  await page
-    .locator(`div.rdg-cell-${columnName}`)
-    .last()
-    .press('Enter', { delay: 100 });
+  await page.locator(`div.${cellClass}`).last().press('Enter', { delay: 100 });
 };
 
 export const setValueForProperty = async (data: {

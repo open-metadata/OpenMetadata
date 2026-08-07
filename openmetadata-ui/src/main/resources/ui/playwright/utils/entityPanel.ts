@@ -27,29 +27,35 @@ export const getEntityFqn = (
 
 const findOptionByScrolling = async (page: Page, endpoint: string) => {
   let tries = 0;
-  const maxTries = 5; // Limit the number of scroll attempts to prevent infinite loops
+  // The options are populated progressively, and rc-virtual-list only mounts the
+  // rows in view. So each attempt gives the option a moment to appear, and only
+  // scrolls on to the next chunk of the list if it has not. That covers both
+  // reasons it can be absent — not rendered yet, and not scrolled to yet —
+  // without assuming which one it is.
+  const maxTries = 8;
+  const perTryTimeout = 2000;
   const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
   const dropdown = page
     .getByTestId('global-search-select-dropdown')
     .locator('.rc-virtual-list-holder');
   const option = page.getByTestId(`global-search-select-option-${filterName}`);
-  while (tries < maxTries) {
-    if (await option.isVisible()) {
-      await option.click();
-      return;
+
+  // toPass re-runs this until it succeeds or the overall budget is spent, so a
+  // step is only scrolled past once the option has had `perTryTimeout` to show
+  // up there. The final failure surfaces the real assertion, not a swallowed one.
+  await expect(async () => {
+    if (tries > 0) {
+      // Scroll the dropdown to load more options
+      await dropdown.evaluate((element) => {
+        element.scrollBy(0, 100); // Adjust scroll amount as needed
+      });
     }
-    // Scroll the dropdown to load more options
-    await dropdown.evaluate((element) => {
-      element.scrollBy(0, 100); // Adjust scroll amount as needed
-    });
     tries++;
-  }
-  await dropdown.evaluate((element) => {
-    element.scrollTop = 0;
-  });
-  throw new Error(
-    `Unable to find global search filter option "${filterName}" for endpoint "${endpoint}" after ${maxTries} scroll attempts.`
-  );
+
+    await expect(option).toBeVisible({ timeout: perTryTimeout });
+  }).toPass({ timeout: maxTries * perTryTimeout, intervals: [100] });
+
+  await option.click();
 };
 
 export const openEntitySummaryPanel = async ({

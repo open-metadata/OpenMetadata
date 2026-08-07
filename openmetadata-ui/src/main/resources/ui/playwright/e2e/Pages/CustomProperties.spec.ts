@@ -23,6 +23,22 @@
  *
  * Entity setup (prepareCustomProperty) is done in beforeAll, not inside tests,
  * so cleanup always runs in afterAll even when a test fails mid-way.
+ *
+ * That serialisation only holds within this file. `PUT /api/v1/metadata/types/{id}`
+ * is read-modify-write on a single global row per entity type, so a spec writing
+ * the same row from another worker makes one side's property vanish while the API
+ * still answers 200. Two rules keep that from happening:
+ *
+ *   1. A spec that only *uses* custom properties must read the shared fixtures —
+ *      `EntityDataClass.customProperties[entityType][typeKey]` — rather than
+ *      create its own. entity-data.setup.ts creates every property type on every
+ *      entity type, sequentially, before any test runs.
+ *   2. A spec that must create or delete custom properties belongs in this file,
+ *      inside the describe.serial for its entity type. The exception is any spec
+ *      that Playwright already runs in isolation (the IntakeForm suites have
+ *      their own serial project), which cannot overlap with this file by design.
+ *
+ * Never PUT/PATCH `/api/v1/metadata/types/*` from a spec that runs in parallel.
  */
 
 import { APIRequestContext, expect, test } from '@playwright/test';

@@ -15,6 +15,10 @@ import { expect } from '@playwright/test';
 import { EntityStatus } from '../../../src/generated/entity/data/searchIndex';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { DOMAIN_TAGS } from '../../constant/config';
+import {
+  LAZY_LOAD_ENUM_FIRST_PAGE_VALUE,
+  LAZY_LOAD_ENUM_SECOND_PAGE_VALUE,
+} from '../../constant/customPropertyAdvancedSearch';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -1557,67 +1561,28 @@ test.describe(
   'Custom property enum lazy load in Advanced Search',
   { tag: ['@advanced-search'] },
   () => {
-    // 150 values: initial asyncFetch returns items 0-99, scroll triggers items 100-149
-    const ENUM_VALUES = Array.from(
-      { length: 150 },
-      (_, i) => `enum_val_${String(i).padStart(3, '0')}`
-    );
-    const FIRST_PAGE_VALUE = 'enum_val_000';
-    const SECOND_PAGE_VALUE = 'enum_val_100';
-
-    let enumCPName: string;
-    let enumCPId: string;
-    let lazyLoadTable: TableClass;
-
-    test.beforeAll(
-      'Setup enum custom property with 150 values on table',
-      async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        try {
-          lazyLoadTable = new TableClass();
-          await lazyLoadTable.create(apiContext);
-
-          const cpMetadataTypeRes = await apiContext.get(
-            '/api/v1/metadata/types/name/table?fields=customProperties'
-          );
-          const cpMetadataType = await cpMetadataTypeRes.json();
-
-          const typesRes = await apiContext.get(
-            '/api/v1/metadata/types?category=field&limit=20'
-          );
-          const types = (await typesRes.json()).data as {
-            name: string;
-            id: string;
-          }[];
-          const enumTypeId =
-            types.find((t: { name: string }) => t.name === 'enum')?.id ?? '';
-
-          enumCPName = `enum-lazy-${uuid()}`;
-
-          const cpRes = await apiContext.put(
-            `/api/v1/metadata/types/${cpMetadataType.id}`,
-            {
-              data: {
-                name: enumCPName,
-                description: 'Enum CP for lazy load test',
-                propertyType: { name: 'enum', type: 'type', id: enumTypeId },
-                customPropertyConfig: {
-                  config: { values: ENUM_VALUES, multiSelect: true },
-                },
-              },
-            }
-          );
-          const cpData = await cpRes.json();
-          enumCPId = cpData.id;
-        } finally {
-          await afterAction();
-        }
-      }
-    );
+    // Created once, sequentially, by entity-data.setup.ts. Specs must never PUT
+    // /api/v1/metadata/types/{id} themselves — it is read-modify-write on a
+    // shared row and concurrent writers silently lose each other's properties.
+    // Resolved per call so it reads the fixture data the setup project wrote,
+    // not whatever was loaded when this module was first evaluated.
+    const getEnumCPName = () =>
+      (
+        EntityDataClass.customProperties['table']?.['enumLazy'] as
+          | { name: string }
+          | undefined
+      )?.name ?? '';
 
     const openEnumValueDropdown = async (
       page: Parameters<typeof redirectToHomePage>[0]
     ) => {
+      const enumCPName = getEnumCPName();
+
+      expect(
+        enumCPName,
+        'lazy-load enum CP missing from entity-data setup'
+      ).not.toBe('');
+
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.EXPLORE);
       await showAdvancedSearchDialog(page);
@@ -1671,10 +1636,10 @@ test.describe(
 
       // Page 1 items present; page-2 item not yet visible
       await expect(
-        dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
+        dropdown.locator(`[title="${LAZY_LOAD_ENUM_FIRST_PAGE_VALUE}"]`)
       ).toBeVisible({ timeout: 10000 });
       await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+        dropdown.locator(`[title="${LAZY_LOAD_ENUM_SECOND_PAGE_VALUE}"]`)
       ).not.toBeVisible();
 
       // "Load more..." button visible at the bottom of the list
@@ -1694,7 +1659,9 @@ test.describe(
       await virtualListHolder.hover();
 
       // Wheel-scroll in small increments until the page-2 item comes into view
-      const secondPageItem = dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`);
+      const secondPageItem = dropdown.locator(
+        `[title="${LAZY_LOAD_ENUM_SECOND_PAGE_VALUE}"]`
+      );
       let found = await secondPageItem.isVisible();
 
       for (let i = 0; i < 20 && !found; i++) {
@@ -1714,10 +1681,10 @@ test.describe(
 
       // Page 1 items load; page-2 item is not yet visible
       await expect(
-        dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
+        dropdown.locator(`[title="${LAZY_LOAD_ENUM_FIRST_PAGE_VALUE}"]`)
       ).toBeVisible({ timeout: 10000 });
       await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+        dropdown.locator(`[title="${LAZY_LOAD_ENUM_SECOND_PAGE_VALUE}"]`)
       ).not.toBeVisible();
 
       // Type to search — asyncFetch filters the full values array, not just the loaded page
@@ -1725,11 +1692,11 @@ test.describe(
         '.rule--widget .ant-select-selection-search-input'
       );
 
-      await searchInput.fill(SECOND_PAGE_VALUE);
+      await searchInput.fill(LAZY_LOAD_ENUM_SECOND_PAGE_VALUE);
 
       // Item appears immediately without clicking Load more
       await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+        dropdown.locator(`[title="${LAZY_LOAD_ENUM_SECOND_PAGE_VALUE}"]`)
       ).toBeVisible({ timeout: 10000 });
     });
   }
