@@ -15,7 +15,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage, uuid } from '../../../utils/common';
+import { uuid } from '../../../utils/common';
 
 /**
  * Reproduction for the Glossary Approval bug where a term whose reviewers are INHERITED from its
@@ -35,6 +35,8 @@ import { redirectToHomePage, uuid } from '../../../utils/common';
 
 const REVIEWER_ADDED_PROBE_COUNT = 6;
 const STATUS_TIMEOUT = 120_000;
+
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const reviewer = new UserClass();
 const glossary = new Glossary();
@@ -195,10 +197,17 @@ test.describe(
               `inherited-reviewer bug.`
           ).toBe('In Review');
 
-          expect(
-            await getOpenApprovalTaskCount(apiContext, term.fullyQualifiedName),
-            `Term ${term.name} must have an open approval task for the inherited reviewer`
-          ).toBeGreaterThan(0);
+          await expect
+            .poll(
+              () =>
+                getOpenApprovalTaskCount(apiContext, term.fullyQualifiedName),
+              {
+                message:
+                  `Term ${term.name} must have an open approval task for the inherited ` +
+                  `reviewer`,
+              }
+            )
+            .toBeGreaterThan(0);
         }
       });
 
@@ -220,8 +229,9 @@ test.describe(
       await waitForSettledStatus(apiContext, term.responseData.id);
       await afterAction();
 
-      await redirectToHomePage(page);
-      await term.visitEntityPage(page);
+      await page.goto(
+        `/glossary/${encodeURIComponent(term.responseData.fullyQualifiedName)}`
+      );
 
       await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
 
@@ -234,7 +244,7 @@ test.describe(
       });
 
       await test.step('Term reached In Review, not Draft', async () => {
-        await expect(page.getByTestId('status-badge')).toContainText(
+        await expect(page.locator('.status-badge-label')).toContainText(
           'In Review'
         );
       });
