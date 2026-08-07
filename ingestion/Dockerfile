@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.2.2-python3.10
+FROM apache/airflow:3.2.2-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -89,6 +89,17 @@ COPY --chown=airflow:0 --chmod=775 ingestion/ingestion_dependency.sh /opt/airflo
 COPY --chown=airflow:0 ingestion/examples/sample_data /home/airflow/ingestion/examples/sample_data
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
+
+# Refresh the interpreter-level pip before dropping privileges. The per-user
+# pip upgrade below only reaches ~/.local, leaving the base image's
+# own copy (/usr/python/lib/python3.12/site-packages, pip 25.0.1) on disk for image
+# scanners (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
+# The explicit interpreter path is required, not stylistic: as root, `pip` resolves to
+# airflow's /root/bin/pip wrapper, which exits 1 (and for non-root execs ~/.local/bin/pip),
+# and bare `python` resolves to /home/airflow/.local/bin/python. Both would miss the very
+# copy this line exists to fix.
+RUN /usr/local/bin/python -m pip install --no-cache-dir --upgrade "pip>=26.2,<27"
+
 USER airflow
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
@@ -101,18 +112,12 @@ ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.10.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
-# Patch CVE-vulnerable jars bundled inside PySpark and strip the spaCy scanner fixture.
-# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale. Runs after the
-# final pip install; fails the build on a broken pyspark install rather than shipping
-# unpatched jars.
-COPY --chown=airflow:0 ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
-RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
