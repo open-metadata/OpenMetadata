@@ -19,24 +19,20 @@ import {
   MAX_COLUMN_NAVIGATION_RETRIES,
   RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
-import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
+import { EntityDataClass } from '../support/entity/EntityDataClass';
 import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
   uuid,
 } from './common';
-import {
-  addCustomPropertiesForEntity,
-  fillTableColumnInputDetails,
-} from './customProperty';
+import { fillTableColumnInputDetails } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
-import { settingClick, SettingOptionsType } from './sidebar';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
@@ -922,58 +918,52 @@ export const pressKeyXTimes = async (
   }
 };
 
-export const createCustomPropertiesForEntity = async (
-  page: Page,
+const SETTING_OPTION_TO_ENTITY_TYPE: Partial<
+  Record<GlobalSettingOptions, string>
+> = {
+  [GlobalSettingOptions.DATABASES]: 'database',
+  [GlobalSettingOptions.DATABASE_SCHEMA]: 'databaseSchema',
+  [GlobalSettingOptions.TABLES]: 'table',
+  [GlobalSettingOptions.GLOSSARY_TERM]: 'glossaryTerm',
+};
+
+/**
+ * Returns the String/Markdown/Sql Query/Table custom properties that
+ * entity-data.setup.ts already created on the shared entity type, keyed exactly
+ * as the old createCustomPropertiesForEntity keyed them.
+ *
+ * Read-only on purpose: PUT /api/v1/metadata/types/{id} is read-modify-write on
+ * a single global row per entity type, so two specs adding a property to the
+ * same type in parallel silently lose one of them.
+ */
+export const getSetupCustomPropertiesForEntity = (
   type: GlobalSettingOptions
-) => {
-  let entity;
-  const propertyListName: Record<string, string> = {};
+): Record<string, string> => {
+  const entityTypeName = SETTING_OPTION_TO_ENTITY_TYPE[type];
 
-  switch (type) {
-    case GlobalSettingOptions.DATABASES:
-      entity = CUSTOM_PROPERTIES_ENTITIES.entity_database;
-
-      break;
-    case GlobalSettingOptions.DATABASE_SCHEMA:
-      entity = CUSTOM_PROPERTIES_ENTITIES.entity_databaseSchema;
-
-      break;
-    case GlobalSettingOptions.TABLES:
-      entity = CUSTOM_PROPERTIES_ENTITIES.entity_table;
-
-      break;
-    case GlobalSettingOptions.GLOSSARY_TERM:
-      entity = CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm;
-
-      break;
-    default:
-      break;
+  if (!entityTypeName) {
+    return {};
   }
 
-  if (!entity) {
-    return propertyListName;
-  }
+  const setupProperties =
+    EntityDataClass.customProperties[entityTypeName] ?? {};
+  const nameFor = (key: string) => {
+    const name = (setupProperties[key] as { name?: string } | undefined)?.name;
 
-  const propertiesList = Object.values(CUSTOM_PROPERTIES_TYPES);
+    expect(
+      name,
+      `custom property "${key}" missing for "${entityTypeName}" — entity-data setup did not run or its fixture is stale`
+    ).toBeTruthy();
 
-  for (const property of propertiesList) {
-    const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
-    propertyListName[property] = propertyName;
+    return name as string;
+  };
 
-    await settingClick(page, type as SettingOptionsType, true);
-
-    await addCustomPropertiesForEntity({
-      page,
-      propertyName,
-      customPropertyData: entity,
-      customType: property,
-      tableConfig: {
-        columns: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns,
-      },
-    });
-  }
-
-  return propertyListName;
+  return {
+    [CUSTOM_PROPERTIES_TYPES.STRING]: nameFor('string'),
+    [CUSTOM_PROPERTIES_TYPES.MARKDOWN]: nameFor('markdown'),
+    [CUSTOM_PROPERTIES_TYPES.SQL_QUERY]: nameFor('sqlQuery'),
+    [CUSTOM_PROPERTIES_TYPES.TABLE]: nameFor('table-cp'),
+  };
 };
 
 export const fillRecursiveEntityTypeFQNDetails = async (
