@@ -268,12 +268,11 @@ export const ActivityFeedTab = ({
           : { assignee: fqn, domain }
         : { aboutEntity: fqn, view: 'entity' as const, domain };
 
+      const taskCounts = await getTaskCounts(taskCountParams);
+
       if (isUserEntity) {
-        // Task counts and feed counts are independent — fetch in parallel.
-        const [taskCounts, res] = await Promise.all([
-          getTaskCounts(taskCountParams),
-          getFeedCount(getEntityUserLink(fqn)),
-        ]);
+        // Also get feed counts for conversations and mentions
+        const res = await getFeedCount(getEntityUserLink(fqn));
         setCountData((prev) => ({
           ...prev,
           data: {
@@ -288,7 +287,6 @@ export const ActivityFeedTab = ({
         }));
       } else {
         // For non-user entities, get conversation counts and combine with task counts
-        const taskCounts = await getTaskCounts(taskCountParams);
         await getFeedCounts(entityType, fqn, domain, (feedData) => {
           handleFeedCount({
             ...feedData,
