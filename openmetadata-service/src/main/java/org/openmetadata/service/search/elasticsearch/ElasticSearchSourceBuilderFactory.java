@@ -31,7 +31,6 @@ import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
@@ -326,7 +325,12 @@ public class ElasticSearchSourceBuilderFactory
     }
 
     if (isColumnIndex(indexName)) {
-      return buildColumnSearchBuilderV2(searchQuery, fromOffset, size);
+      // Column docs carry fqnParts and structured search fields (the "tableColumn"
+      // AssetTypeConfiguration). Route through the data-asset builder so an FQN query
+      // matches precisely (operator AND over fqnParts) instead of OR-matching every
+      // column that merely shares a parent-name token.
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     if (isServiceIndex(indexName)) {
@@ -367,27 +371,6 @@ public class ElasticSearchSourceBuilderFactory
           query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
-  }
-
-  public ElasticSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder;
-    if (nullOrEmpty(query) || "*".equals(query.trim())) {
-      queryBuilder =
-          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(q -> q.matchAll(m -> m));
-    } else {
-      Map<String, Float> fields = ColumnSearchIndex.getFields();
-      queryBuilder =
-          ElasticQueryBuilder.multiMatchQuery(
-              query,
-              fields,
-              es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.BestFields,
-              es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
-              String.valueOf(DEFAULT_TIE_BREAKER),
-              "0");
-    }
-    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
-        buildHighlightsV2(List.of("name", "displayName", "description"));
-    return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildServiceSearchBuilderV2(String query, int from, int size) {

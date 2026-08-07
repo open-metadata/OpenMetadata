@@ -28,7 +28,6 @@ import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
@@ -307,7 +306,12 @@ public class OpenSearchSourceBuilderFactory
     }
 
     if (isColumnIndex(indexName)) {
-      return buildColumnSearchBuilderV2(searchQuery, fromOffset, size);
+      // Column docs carry fqnParts and structured search fields (the "tableColumn"
+      // AssetTypeConfiguration). Route through the data-asset builder so an FQN query
+      // matches precisely (operator AND over fqnParts) instead of OR-matching every
+      // column that merely shares a parent-name token.
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     if (isServiceIndex(indexName)) {
@@ -366,27 +370,6 @@ public class OpenSearchSourceBuilderFactory
         buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
     os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
         buildHighlightsV2(new ArrayList<>());
-    return searchBuilderV2(queryBuilder, highlighter, from, size);
-  }
-
-  public OpenSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
-    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder;
-    if (nullOrEmpty(query) || "*".equals(query.trim())) {
-      queryBuilder =
-          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(q -> q.matchAll(m -> m));
-    } else {
-      Map<String, Float> fields = ColumnSearchIndex.getFields();
-      queryBuilder =
-          OpenSearchQueryBuilder.multiMatchQuery(
-              query,
-              fields,
-              os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType.BestFields,
-              os.org.opensearch.client.opensearch._types.query_dsl.Operator.Or,
-              String.valueOf(DEFAULT_TIE_BREAKER),
-              "0");
-    }
-    os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
-        buildHighlightsV2(List.of("name", "displayName", "description"));
     return searchBuilderV2(queryBuilder, highlighter, from, size);
   }
 
