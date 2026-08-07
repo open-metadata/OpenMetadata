@@ -42,6 +42,11 @@ import org.openmetadata.sdk.fluent.collections.GlossaryTermCollection;
  * list()
  *     .limit(50)
  *     .forEach(glossaryTerm -> process(glossaryTerm));
+ *
+ * // Typed relations — see {@link GlossaryRelationTypes} for the available types
+ * find(hcpId).relateTo(drugFqn).as("prescribes").apply();
+ * find(hcpId).unrelateFrom(drugFqn).as("prescribes").apply();
+ * find(hcpId).relations().depth(2).ofTypes("prescribes").fetch();
  * </pre>
  */
 public final class GlossaryTerms {
@@ -236,6 +241,14 @@ public final class GlossaryTerms {
     public GlossaryTermRelator relateTo(String toTermIdentifier) {
       return new GlossaryTermRelator(client, identifier, isFqn, toTermIdentifier);
     }
+
+    public GlossaryTermUnrelator unrelateFrom(String toTermIdentifier) {
+      return new GlossaryTermUnrelator(client, identifier, isFqn, toTermIdentifier);
+    }
+
+    public GlossaryTermRelationsFinder relations() {
+      return new GlossaryTermRelationsFinder(client, identifier, isFqn);
+    }
   }
 
   // ==================== Deleter ====================
@@ -302,27 +315,108 @@ public final class GlossaryTerms {
     }
 
     public GlossaryTerm apply() {
-      UUID fromId = resolve(fromIdentifier, fromIsFqn);
-      UUID toId = resolve(toIdentifier, !isUuid(toIdentifier));
+      UUID fromId = resolveTermId(client, fromIdentifier, fromIsFqn);
+      UUID toId = resolveTermId(client, toIdentifier, !isUuid(toIdentifier));
       return client.glossaryTerms().addRelation(fromId, toId, relationType);
     }
+  }
 
-    private UUID resolve(String identifier, boolean isFqn) {
-      return isFqn
-          ? client.glossaryTerms().getByName(identifier).getId()
-          : UUID.fromString(identifier);
+  // ==================== Unrelator ====================
+
+  /**
+   * Fluent builder for removing a typed relation between two glossary terms. Without {@code as(...)}
+   * every relation between the two terms is removed.
+   *
+   * <pre>
+   * GlossaryTerms.find(hcpId).unrelateFrom(drugFqn).as("prescribes").apply();
+   * GlossaryTerms.find(hcpId).unrelateFrom(drugFqn).apply(); // all relation types
+   * </pre>
+   */
+  public static class GlossaryTermUnrelator {
+    private final OpenMetadataClient client;
+    private final String fromIdentifier;
+    private final boolean fromIsFqn;
+    private final String toIdentifier;
+    private String relationType;
+
+    GlossaryTermUnrelator(
+        OpenMetadataClient client, String fromIdentifier, boolean fromIsFqn, String toIdentifier) {
+      this.client = client;
+      this.fromIdentifier = fromIdentifier;
+      this.fromIsFqn = fromIsFqn;
+      this.toIdentifier = toIdentifier;
     }
 
-    private boolean isUuid(String value) {
-      boolean result;
-      try {
-        UUID.fromString(value);
-        result = true;
-      } catch (IllegalArgumentException notAUuid) {
-        result = false;
-      }
-      return result;
+    public GlossaryTermUnrelator as(String relationType) {
+      this.relationType = relationType;
+      return this;
     }
+
+    public GlossaryTerm apply() {
+      UUID fromId = resolveTermId(client, fromIdentifier, fromIsFqn);
+      UUID toId = resolveTermId(client, toIdentifier, !isUuid(toIdentifier));
+      return client.glossaryTerms().removeRelation(fromId, toId, relationType);
+    }
+  }
+
+  // ==================== Relations Finder ====================
+
+  /**
+   * Fluent builder for the relation graph rooted at a glossary term. Returns the raw {@code nodes}
+   * and {@code edges} map the server produces.
+   *
+   * <pre>
+   * Map&lt;String, Object&gt; graph =
+   *     GlossaryTerms.find(hcpId).relations().depth(2).ofTypes("prescribes", "treats").fetch();
+   * </pre>
+   */
+  public static class GlossaryTermRelationsFinder {
+    private static final int DEFAULT_DEPTH = 1;
+
+    private final OpenMetadataClient client;
+    private final String identifier;
+    private final boolean isFqn;
+    private final List<String> relationTypes = new ArrayList<>();
+    private int depth = DEFAULT_DEPTH;
+
+    GlossaryTermRelationsFinder(OpenMetadataClient client, String identifier, boolean isFqn) {
+      this.client = client;
+      this.identifier = identifier;
+      this.isFqn = isFqn;
+    }
+
+    public GlossaryTermRelationsFinder depth(int depth) {
+      this.depth = depth;
+      return this;
+    }
+
+    /** Restrict the traversal to these relation types; all types when unset. */
+    public GlossaryTermRelationsFinder ofTypes(String... relationTypes) {
+      this.relationTypes.addAll(Arrays.asList(relationTypes));
+      return this;
+    }
+
+    public Map<String, Object> fetch() {
+      UUID rootId = resolveTermId(client, identifier, isFqn);
+      return client.glossaryTerms().relationGraph(rootId, depth, relationTypes);
+    }
+  }
+
+  private static UUID resolveTermId(OpenMetadataClient client, String identifier, boolean isFqn) {
+    return isFqn
+        ? client.glossaryTerms().getByName(identifier).getId()
+        : UUID.fromString(identifier);
+  }
+
+  private static boolean isUuid(String value) {
+    boolean result;
+    try {
+      UUID.fromString(value);
+      result = true;
+    } catch (IllegalArgumentException notAUuid) {
+      result = false;
+    }
+    return result;
   }
 
   // ==================== Lister ====================
