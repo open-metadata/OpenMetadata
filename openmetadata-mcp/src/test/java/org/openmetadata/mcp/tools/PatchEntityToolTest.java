@@ -10,7 +10,10 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.ws.rs.core.Response;
+import java.io.StringReader;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -188,5 +193,80 @@ class PatchEntityToolTest {
     assertThatThrownBy(
             () -> new PatchEntityTool().execute(authorizer, null, securityContext, Map.of()))
         .isInstanceOf(UnsupportedOperationException.class);
+  }
+
+  private static JsonArray patchOf(String json) {
+    return Json.createReader(new StringReader(json)).readArray();
+  }
+
+  @Test
+  void rewriteDeprecatedPaths_mapsStatusToEntityStatusOnGlossaryTerm() {
+    PatchEntityTool.PatchRewrite rewrite =
+        PatchEntityTool.rewriteDeprecatedPaths(
+            patchOf("[{\"op\":\"add\",\"path\":\"/status\",\"value\":\"Approved\"}]"),
+            GlossaryTerm.class);
+
+    assertThat(rewrite.patch().getJsonObject(0).getString("path")).isEqualTo("/entityStatus");
+    assertThat(rewrite.warnings()).hasSize(1);
+    assertThat(rewrite.warnings().getFirst())
+        .contains("'/status' is deprecated")
+        .contains("applied as '/entityStatus'");
+  }
+
+  @Test
+  void rewriteDeprecatedPaths_leavesStatusAloneWhenEntityGenuinelyHasIt() {
+    // Workflow has a real, unrelated top-level "status" field and no entityStatus. Rewriting it
+    // would corrupt the patch, so the alias must not fire here.
+    PatchEntityTool.PatchRewrite rewrite =
+        PatchEntityTool.rewriteDeprecatedPaths(
+            patchOf("[{\"op\":\"add\",\"path\":\"/status\",\"value\":\"Active\"}]"),
+            Workflow.class);
+
+    assertThat(rewrite.patch().getJsonObject(0).getString("path")).isEqualTo("/status");
+    assertThat(rewrite.warnings()).isEmpty();
+  }
+
+  @Test
+  void rewriteDeprecatedPaths_leavesCorrectFieldNameUntouched() {
+    PatchEntityTool.PatchRewrite rewrite =
+        PatchEntityTool.rewriteDeprecatedPaths(
+            patchOf("[{\"op\":\"add\",\"path\":\"/entityStatus\",\"value\":\"Approved\"}]"),
+            GlossaryTerm.class);
+
+    assertThat(rewrite.patch().getJsonObject(0).getString("path")).isEqualTo("/entityStatus");
+    assertThat(rewrite.warnings()).isEmpty();
+  }
+
+  @Test
+  void rewriteDeprecatedPaths_doesNotTouchUnrelatedFields() {
+    PatchEntityTool.PatchRewrite rewrite =
+        PatchEntityTool.rewriteDeprecatedPaths(
+            patchOf("[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"hello\"}]"),
+            GlossaryTerm.class);
+
+    assertThat(rewrite.patch().getJsonObject(0).getString("path")).isEqualTo("/description");
+    assertThat(rewrite.warnings()).isEmpty();
+  }
+
+  @Test
+  void rewriteDeprecatedPaths_rewritesMoveFromPointerToo() {
+    PatchEntityTool.PatchRewrite rewrite =
+        PatchEntityTool.rewriteDeprecatedPaths(
+            patchOf("[{\"op\":\"move\",\"from\":\"/status\",\"path\":\"/description\"}]"),
+            GlossaryTerm.class);
+
+    assertThat(rewrite.patch().getJsonObject(0).getString("from")).isEqualTo("/entityStatus");
+    assertThat(rewrite.patch().getJsonObject(0).getString("path")).isEqualTo("/description");
+    assertThat(rewrite.warnings()).hasSize(1);
+  }
+
+  @Test
+  void rewriteDeprecatedPaths_isANoOpForAnEmptyPatch() {
+    JsonArray empty = patchOf("[]");
+    PatchEntityTool.PatchRewrite rewrite =
+        PatchEntityTool.rewriteDeprecatedPaths(empty, GlossaryTerm.class);
+
+    assertThat(rewrite.patch()).isSameAs(empty);
+    assertThat(rewrite.warnings()).isEmpty();
   }
 }
