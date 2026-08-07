@@ -187,7 +187,7 @@ class DatabaseServiceTopology(ServiceTopology):
             # layers (Snowflake semantic views, Databricks metric views) expose named
             # measures that belong to the table they are declared on. Runs after the
             # Table stage so the Metric can reference the table it came from.
-            NodeStage(
+            NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=Metric,
                 processor="yield_table_metrics",
                 nullable=True,
@@ -874,6 +874,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         semantic layer. No-op by default -- the stage is in the shared topology, so a
         source that does not override this must still resolve the processor.
         """
+        yield from ()
 
     def clear_schema_tag_scope(self):
         """Drop tag-registry state for the current schema scope."""
