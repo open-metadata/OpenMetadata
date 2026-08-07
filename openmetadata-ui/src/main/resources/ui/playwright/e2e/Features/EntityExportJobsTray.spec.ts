@@ -22,36 +22,15 @@ import { getApiContext, redirectToHomePage } from '../../utils/common';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const buildRunningExportJob = (jobId: string, entityType: string) => ({
-  jobId,
-  operation: 'EXPORT',
-  entityType,
-  createdBy: 'admin',
-  status: 'RUNNING',
-  progress: 4,
-  total: 12,
-});
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-const stubExportAsync = (page: Page, jobId: string) =>
-  page.route('**/exportAsync**', (route) =>
-    route.fulfill({ contentType: 'application/json', json: { jobId } })
-  );
-
-const mockCsvJobsPolling = (
-  page: Page,
-  jobs: Record<string, unknown>[]
-): Promise<void> =>
-  page.route('**/api/v1/csvAsyncJobs**', (route) =>
-    route.fulfill({ contentType: 'application/json', json: jobs })
-  );
-
-// Trigger export from a data asset's Manage menu (databaseService, database,
-// databaseSchema, table all share this dropdown + button).
-const triggerDataAssetExport = async (page: Page) => {
+// Trigger export from a data asset's Manage menu and return the real jobId.
+const triggerDataAssetExport = async (page: Page): Promise<string> => {
   const exportResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/exportAsync') &&
-      response.request().method() === 'GET'
+      response.request().method() === 'GET' &&
+      response.ok()
   );
 
   await page.getByTestId('manage-button').click();
@@ -60,18 +39,19 @@ const triggerDataAssetExport = async (page: Page) => {
     .waitFor({ state: 'visible' });
   await page.getByTestId('export-button-title').click();
 
-  // Assert the real button issued the async export request (its response is the
-  // stubbed job object).
-  expect((await exportResponse).ok()).toBeTruthy();
+  const { jobId } = (await (await exportResponse).json()) as { jobId: string };
+
+  return jobId;
 };
 
 // Glossary uses its own Manage dropdown container and export button test id.
-const triggerGlossaryExport = async (page: Page) => {
+const triggerGlossaryExport = async (page: Page): Promise<string> => {
   const exportResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/glossaries/name/') &&
       response.url().includes('/exportAsync') &&
-      response.request().method() === 'GET'
+      response.request().method() === 'GET' &&
+      response.ok()
   );
 
   await page.getByTestId('manage-button').click();
@@ -81,52 +61,51 @@ const triggerGlossaryExport = async (page: Page) => {
   await expect(manageDropdown).toBeVisible();
   await manageDropdown.getByTestId('export-button').click();
 
-  expect((await exportResponse).ok()).toBeTruthy();
+  const { jobId } = (await (await exportResponse).json()) as { jobId: string };
+
+  return jobId;
 };
 
-const assertRunningExportInTray = async (page: Page) => {
-  const tray = page.locator('.csv-jobs-tray');
-  await expect(tray).toBeVisible({ timeout: 30_000 });
+// Assert that the specific job surfaces in the tray.  Scoped by jobId via
+// data-testid so parallel workers sharing the admin user cannot interfere.
+const assertExportJobInTray = async (page: Page, jobId: string) => {
+  // Tray renders once the component picks up the job from its first poll
+  // (triggered by the csv-jobs-refresh event the export button fires).
+  await expect(page.locator('.csv-jobs-tray')).toBeVisible({ timeout: 30_000 });
 
-  const popover = page.locator('.csv-jobs-tray-popover');
-  if (!(await popover.isVisible())) {
+  // If the tray hasn't auto-opened yet (job still active), open it manually.
+  if (!(await page.locator('.csv-jobs-tray-popover').isVisible())) {
     await page.locator('.csv-jobs-tray-launcher').click();
   }
 
-  await expect(popover).toBeVisible();
-  await expect(page.locator('.csv-jobs-tray-item-running')).toHaveCount(1);
-  await expect(popover.getByText(/Exporting/i).first()).toBeVisible();
+  await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
+
+  await expect(
+    page.locator(`[data-testid="csv-jobs-tray-item-${jobId}"]`)
+  ).toBeVisible({ timeout: 30_000 });
+
+  await expect(page.getByText(/Exporting/i).first()).toBeVisible();
 };
+
+// ── suite ─────────────────────────────────────────────────────────────────────
 
 test.describe('Export jobs tray surfaces entity exports', () => {
   test.slow();
 
   test.beforeEach(async ({ page }) => {
-    // The tray is a global, user-scoped widget that polls /csvAsyncJobs from
-    // the moment the app loads. Mock it BEFORE any navigation so a real
-    // RUNNING job created by a parallel worker (all CI workers share the
-    // admin user) can never leak into this page's tray state. Per-test mocks
-    // registered later take precedence (Playwright matches routes LIFO).
-    await mockCsvJobsPolling(page, []);
     await redirectToHomePage(page);
   });
 
   test('Database service export appears in the jobs tray', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const dbService = new DatabaseServiceClass();
-    const jobId = 'pw-tray-dbservice-export';
 
     try {
       await dbService.create(apiContext);
-
-      await stubExportAsync(page, jobId);
-      await mockCsvJobsPolling(page, [
-        buildRunningExportJob(jobId, 'databaseService'),
-      ]);
       await dbService.visitEntityPage(page);
 
-      await triggerDataAssetExport(page);
-      await assertRunningExportInTray(page);
+      const jobId = await triggerDataAssetExport(page);
+      await assertExportJobInTray(page, jobId);
     } finally {
       await dbService.delete(apiContext);
       await afterAction();
@@ -136,19 +115,13 @@ test.describe('Export jobs tray surfaces entity exports', () => {
   test('Database export appears in the jobs tray', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const database = new DatabaseClass();
-    const jobId = 'pw-tray-database-export';
 
     try {
       await database.create(apiContext);
-
-      await stubExportAsync(page, jobId);
-      await mockCsvJobsPolling(page, [
-        buildRunningExportJob(jobId, 'database'),
-      ]);
       await database.visitEntityPage(page);
 
-      await triggerDataAssetExport(page);
-      await assertRunningExportInTray(page);
+      const jobId = await triggerDataAssetExport(page);
+      await assertExportJobInTray(page, jobId);
     } finally {
       await database.delete(apiContext);
       await afterAction();
@@ -158,19 +131,13 @@ test.describe('Export jobs tray surfaces entity exports', () => {
   test('Database schema export appears in the jobs tray', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const schema = new DatabaseSchemaClass();
-    const jobId = 'pw-tray-schema-export';
 
     try {
       await schema.create(apiContext);
-
-      await stubExportAsync(page, jobId);
-      await mockCsvJobsPolling(page, [
-        buildRunningExportJob(jobId, 'databaseSchema'),
-      ]);
       await schema.visitEntityPage(page);
 
-      await triggerDataAssetExport(page);
-      await assertRunningExportInTray(page);
+      const jobId = await triggerDataAssetExport(page);
+      await assertExportJobInTray(page, jobId);
     } finally {
       await schema.delete(apiContext);
       await afterAction();
@@ -180,17 +147,13 @@ test.describe('Export jobs tray surfaces entity exports', () => {
   test('Table export appears in the jobs tray', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass();
-    const jobId = 'pw-tray-table-export';
 
     try {
       await table.create(apiContext);
-
-      await stubExportAsync(page, jobId);
-      await mockCsvJobsPolling(page, [buildRunningExportJob(jobId, 'table')]);
       await table.visitEntityPage(page);
 
-      await triggerDataAssetExport(page);
-      await assertRunningExportInTray(page);
+      const jobId = await triggerDataAssetExport(page);
+      await assertExportJobInTray(page, jobId);
     } finally {
       await table.delete(apiContext);
       await afterAction();
@@ -200,19 +163,13 @@ test.describe('Export jobs tray surfaces entity exports', () => {
   test('Glossary export appears in the jobs tray', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
-    const jobId = 'pw-tray-glossary-export';
 
     try {
       await glossary.create(apiContext);
-
-      await stubExportAsync(page, jobId);
-      await mockCsvJobsPolling(page, [
-        buildRunningExportJob(jobId, 'glossaryTerm'),
-      ]);
       await glossary.visitEntityPage(page);
 
-      await triggerGlossaryExport(page);
-      await assertRunningExportInTray(page);
+      const jobId = await triggerGlossaryExport(page);
+      await assertExportJobInTray(page, jobId);
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
