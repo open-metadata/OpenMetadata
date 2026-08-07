@@ -8,11 +8,14 @@
     "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
     "playwright/e2e/Features/OntologyImportRdf.spec.ts",
     "playwright/e2e/VisualRegression/**",
-    "playwright/e2e/Features/EntityExportJobsTray.spec.ts"
+    "playwright/e2e/Features/EntityExportJobsTray.spec.ts",
+    "playwright/e2e/Features/CsvJobsTray.spec.ts"
   ],
   "smoke": [
     {
-      "projects": ["Basic"],
+      "projects": [
+        "Basic"
+      ],
       "specs": [
         "playwright/e2e/Pages/Login.spec.ts",
         "playwright/e2e/Flow/Navbar.spec.ts",
@@ -25,48 +28,92 @@
   ],
   "canary": [
     {
-      "projects": ["chromium"],
-      "specs": ["playwright/e2e/Pages/Entity.spec.ts"]
+      "projects": [
+        "chromium"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Entity.spec.ts"
+      ]
     },
     {
-      "projects": ["Ingestion"],
-      "specs": ["playwright/e2e/Pages/HealthCheck.spec.ts"]
+      "projects": [
+        "Ingestion"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/HealthCheck.spec.ts"
+      ]
     },
     {
-      "projects": ["DataAssetRulesEnabled"],
-      "specs": ["playwright/e2e/Features/DataAssetRulesEnabled.spec.ts"]
+      "projects": [
+        "DataAssetRulesEnabled"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts"
+      ]
     },
     {
-      "projects": ["DataAssetRulesDisabled"],
-      "specs": ["playwright/e2e/Features/DataAssetRulesDisabled.spec.ts"]
+      "projects": [
+        "DataAssetRulesDisabled"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts"
+      ]
     },
     {
-      "projects": ["SearchRBAC"],
-      "specs": ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
+      "projects": [
+        "SearchRBAC"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/SearchRBAC.spec.ts"
+      ]
     },
     {
-      "projects": ["DomainIsolation"],
-      "specs": ["playwright/e2e/Features/DomainIsolation/**/*.spec.ts"]
+      "projects": [
+        "DomainIsolation"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DomainIsolation/**/*.spec.ts"
+      ]
     },
     {
-      "projects": ["search-nightly"],
-      "specs": ["playwright/e2e/Search/SearchRelevance.spec.ts"]
+      "projects": [
+        "search-nightly"
+      ],
+      "specs": [
+        "playwright/e2e/Search/SearchRelevance.spec.ts"
+      ]
     },
     {
-      "projects": ["Reindex"],
-      "specs": ["playwright/e2e/Features/SearchSeparation/ExploreFilterSeparation.spec.ts"]
+      "projects": [
+        "Reindex"
+      ],
+      "specs": [
+        "playwright/e2e/Features/SearchSeparation/ExploreFilterSeparation.spec.ts"
+      ]
     },
     {
-      "projects": ["GlobalSettings"],
-      "specs": ["playwright/e2e/Pages/SearchSettings.spec.ts"]
+      "projects": [
+        "GlobalSettings"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
+      ]
     },
     {
-      "projects": ["SystemCertificationTags"],
-      "specs": ["playwright/e2e/Features/SystemCertificationTags.spec.ts"]
+      "projects": [
+        "SystemCertificationTags"
+      ],
+      "specs": [
+        "playwright/e2e/Features/SystemCertificationTags.spec.ts"
+      ]
     },
     {
-      "projects": ["IntakeForm"],
-      "specs": ["playwright/e2e/Pages/IntakeForm.spec.ts"]
+      "projects": [
+        "IntakeForm"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/IntakeForm.spec.ts"
+      ]
     }
   ],
   "sharedInfrastructure": [
@@ -93,15 +140,22 @@
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.teardown.ts"
       ],
-      "projects": ["SearchRBAC"],
-      "specs": ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
+      "projects": [
+        "SearchRBAC"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/SearchRBAC.spec.ts"
+      ]
     },
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": [
+        "chromium",
+        "Basic"
+      ],
       "specs": [
         "playwright/e2e/Pages/Lineage/**/*.spec.ts",
         "playwright/e2e/Flow/*Lineage*.spec.ts"
@@ -164,7 +218,13 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinitionRepository.java",
         "openmetadata-spec/src/main/resources/json/schema/tests/**"
       ],
-      "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
+      "projects": [
+        "chromium",
+        "Basic",
+        "Ingestion",
+        "Reindex",
+        "ImportExport"
+      ],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
@@ -187,7 +247,9 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/TestSuiteIngestionPage/**"
       ],
-      "projects": ["Ingestion"],
+      "projects": [
+        "Ingestion"
+      ],
       "specs": [
         "playwright/e2e/Features/AutoPilot.spec.ts",
         "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
@@ -211,7 +273,11 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
-      "projects": ["chromium", "Basic", "ImportExport"],
+      "projects": [
+        "chromium",
+        "Basic",
+        "ImportExport"
+      ],
       "specs": [
         "playwright/e2e/Features/Glossary/**/*.spec.ts",
         "playwright/e2e/Pages/*Glossary*.spec.ts",
@@ -225,7 +291,12 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
-      "projects": ["chromium", "Basic", "DomainIsolation", "Reindex"],
+      "projects": [
+        "chromium",
+        "Basic",
+        "DomainIsolation",
+        "Reindex"
+      ],
       "specs": [
         "playwright/e2e/**/*Domain*.spec.ts",
         "playwright/e2e/**/*DataProduct*.spec.ts",
@@ -237,7 +308,11 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Settings/**"
       ],
-      "projects": ["chromium", "Basic", "GlobalSettings"],
+      "projects": [
+        "chromium",
+        "Basic",
+        "GlobalSettings"
+      ],
       "specs": [
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
@@ -257,7 +332,12 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport"],
+      "projects": [
+        "chromium",
+        "Basic",
+        "SearchRBAC",
+        "ImportExport"
+      ],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",
@@ -269,7 +349,10 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/TypeRegistry.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TypeRepository.java"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": [
+        "chromium",
+        "Basic"
+      ],
       "specs": [
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts"
@@ -281,7 +364,10 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/**"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": [
+        "chromium",
+        "Basic"
+      ],
       "specs": [
         "playwright/e2e/Pages/Entity.spec.ts",
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
@@ -291,8 +377,13 @@
       ]
     },
     {
-      "sources": ["openmetadata-ui-core-components/**"],
-      "projects": ["chromium", "Basic"],
+      "sources": [
+        "openmetadata-ui-core-components/**"
+      ],
+      "projects": [
+        "chromium",
+        "Basic"
+      ],
       "specs": [
         "playwright/e2e/Flow/Navbar.spec.ts",
         "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
@@ -327,7 +418,9 @@
         "openmetadata-spec/src/main/resources/json/schema/api/data/createContextFile.json",
         "openmetadata-spec/src/main/resources/json/schema/api/data/moveContextFileRequest.json"
       ],
-      "projects": ["chromium"],
+      "projects": [
+        "chromium"
+      ],
       "specs": [
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
@@ -355,8 +448,12 @@
         "openmetadata-spec/src/main/resources/json/schema/governance/workflows/**",
         "openmetadata-spec/src/main/resources/json/schema/api/governance/**"
       ],
-      "projects": ["chromium"],
-      "specs": ["playwright/e2e/Features/Workflows/**/*.spec.ts"]
+      "projects": [
+        "chromium"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Workflows/**/*.spec.ts"
+      ]
     },
     {
       "sources": [
@@ -369,8 +466,12 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
         "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
       ],
-      "projects": ["chromium"],
-      "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"]
+      "projects": [
+        "chromium"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyExplorer*.spec.ts"
+      ]
     },
     {
       "sources": [
@@ -388,7 +489,10 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServicesOverview*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServiceHealthProvider.java"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": [
+        "chromium",
+        "Basic"
+      ],
       "specs": [
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
@@ -415,7 +519,9 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServicesOverview*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServiceHealthProvider.java"
       ],
-      "projects": ["Ingestion"],
+      "projects": [
+        "Ingestion"
+      ],
       "specs": [
         "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts"
@@ -426,7 +532,10 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Tag/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/InteractiveTargetUtils.ts"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": [
+        "chromium",
+        "Basic"
+      ],
       "specs": [
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -443,7 +552,9 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityExportModalProvider/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/csvAPI.ts"
       ],
-      "projects": ["chromium"],
+      "projects": [
+        "chromium"
+      ],
       "specs": [
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
         "playwright/e2e/Features/EntityExportJobsTray.spec.ts"
