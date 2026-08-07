@@ -65,7 +65,10 @@
     },
     {
       "projects": ["IntakeForm"],
-      "specs": ["playwright/e2e/Pages/IntakeForm.spec.ts"]
+      "specs": [
+        "playwright/e2e/**/*IntakeForm*.spec.ts",
+        "playwright/e2e/**/*IntakeForm*/**/*.spec.ts"
+      ]
     }
   ],
   "sharedInfrastructure": [

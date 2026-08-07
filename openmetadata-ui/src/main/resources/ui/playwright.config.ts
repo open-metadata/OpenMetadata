@@ -44,6 +44,7 @@ const hasDedicatedIngestionLane =
 const hasDedicatedImportExportLane =
   Boolean(shardPlan) || process.env.PW_DEDICATED_IMPORT_EXPORT === 'true';
 const isPlannedShard = Boolean(shardPlan);
+const isIsolatedEnv = isPlannedShard || process.env.PW_ISOLATED_ENV === 'true';
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
 const authDependencies = hasPreseededState ? [] : ['setup'];
 const entityDependencies = hasPreseededState
@@ -58,6 +59,10 @@ const dedicatedStateTestIgnore = hasDedicatedIngestionLane
       '**/*AfterReindex.spec.ts',
     ]
   : [];
+const intakeFormSpecs = [
+  '**/*IntakeForm*.spec.ts',
+  '**/*IntakeForm*/**/*.spec.ts',
+];
 const combineGrep = (base?: RegExp) => {
   if (!base) {
     return shardGrep;
@@ -207,7 +212,7 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
-        '**/IntakeForm.spec.ts',
+        ...intakeFormSpecs,
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
         '**/VisualRegression/**',
@@ -408,11 +413,12 @@ export default defineConfig({
     },
     {
       name: 'IntakeForm',
-      testMatch: '**/IntakeForm.spec.ts',
+      testMatch: intakeFormSpecs,
       use: { ...devices['Desktop Chrome'] },
-      dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
+      dependencies: isIsolatedEnv ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
+      workers: 1,
     },
   ],
 
