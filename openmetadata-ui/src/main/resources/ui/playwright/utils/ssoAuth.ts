@@ -125,7 +125,6 @@ export const swapSecurityConfig = async (
   override: ProviderConfigOverride
 ): Promise<() => Promise<void>> => {
   const { apiContext, afterAction, token } = await performAdminLogin(browser);
-  let snapshot: SecurityConfigSnapshot | undefined;
 
   try {
     if (!token) {
@@ -134,24 +133,22 @@ export const swapSecurityConfig = async (
       );
     }
 
-    snapshot = await fetchSecurityConfig(apiContext);
+    const snapshot = await fetchSecurityConfig(apiContext);
 
     await applyProviderConfig(apiContext, snapshot, override);
+
+    return async () => {
+      const adminContext = await getAuthContext(token);
+
+      try {
+        await restoreSecurityConfig(adminContext, snapshot);
+      } finally {
+        await adminContext.dispose();
+      }
+    };
   } finally {
     await afterAction();
   }
-
-  const capturedSnapshot = snapshot;
-
-  return async () => {
-    const adminContext = await getAuthContext(token);
-
-    try {
-      await restoreSecurityConfig(adminContext, capturedSnapshot);
-    } finally {
-      await adminContext.dispose();
-    }
-  };
 };
 
 export const verifyLoggedInUserMatches = async (
