@@ -170,11 +170,11 @@ def _rows_for(query):
     return [(VIEW, *row) for row in rows]
 
 
-def test_yield_semantic_view_metrics_yields_one_per_metric():
+def test_yield_table_metrics_yields_one_per_metric():
     source = _make_source()
     source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
 
-    results = list(source.yield_semantic_view_metrics(("sales_analysis", TableType.SemanticView)))
+    results = list(source.yield_table_metrics(("sales_analysis", TableType.SemanticView)))
     requests = [r.right for r in results if r.right is not None]
     assert len(requests) == 2
     names = {r.displayName for r in requests}
@@ -185,17 +185,17 @@ def test_yield_semantic_view_metrics_yields_one_per_metric():
     assert [m.name for m in revenue.measures] == ["line_amount"]
 
 
-def test_yield_semantic_view_metrics_skips_non_semantic_tables():
+def test_yield_table_metrics_skips_non_semantic_tables():
     source = _make_source()
-    results = list(source.yield_semantic_view_metrics(("regular_table", TableType.Regular)))
+    results = list(source.yield_table_metrics(("regular_table", TableType.Regular)))
     assert results == []
     source.connection.execute.assert_not_called()
 
 
-def test_yield_semantic_view_metrics_warns_and_continues_on_error():
+def test_yield_table_metrics_warns_and_continues_on_error():
     source = _make_source()
     source.connection.execute.side_effect = Exception("boom")
-    results = list(source.yield_semantic_view_metrics(("sales_analysis", TableType.SemanticView)))
+    results = list(source.yield_table_metrics(("sales_analysis", TableType.SemanticView)))
     assert results == []
 
 
@@ -212,7 +212,7 @@ def test_metric_stage_consumes_the_producer_tuple_contract():
     source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
 
     produced_entity = ("sales_analysis", TableType.SemanticView)
-    results = list(source.yield_semantic_view_metrics(produced_entity))
+    results = list(source.yield_table_metrics(produced_entity))
     assert [r.right.displayName for r in results if r.right is not None] == [
         "total_revenue",
         "order_count",

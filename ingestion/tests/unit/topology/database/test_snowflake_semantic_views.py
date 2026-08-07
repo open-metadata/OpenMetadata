@@ -24,11 +24,14 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
     SnowflakeConnection,
 )
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
-from metadata.ingestion.source.database.snowflake.metadata import (
-    SnowflakeSource,
-    _resolve_semantic_column_type,
-)
+from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
 from metadata.ingestion.source.database.snowflake.utils import (
+    SEMANTIC_CATALOG_CACHE_SIZE,
+    SEMANTIC_CATALOG_VIEWS,
+    SEMANTIC_METRICS,
+    SEMANTIC_VIEW_COLUMN_KINDS,
+    _resolve_semantic_column_type,
+    build_semantic_view_column,
     get_semantic_view_definition,
     get_semantic_view_names,
 )
@@ -94,11 +97,7 @@ def _executed_catalog_views(source):
 def test_semantic_column_description_is_the_raw_comment_only():
     """The kind, logical table, synonyms and expression all live on the Metric
     entity's dimensions/measures, so the column carries only Snowflake's COMMENT."""
-    from metadata.ingestion.source.database.snowflake.metadata import (
-        _build_semantic_view_column,
-    )
-
-    column = _build_semantic_view_column(
+    column = build_semantic_view_column(
         {
             "name": "REGION",
             "data_type": "VARCHAR",
@@ -111,11 +110,7 @@ def test_semantic_column_description_is_the_raw_comment_only():
 
 
 def test_semantic_column_description_is_none_without_a_comment():
-    from metadata.ingestion.source.database.snowflake.metadata import (
-        _build_semantic_view_column,
-    )
-
-    column = _build_semantic_view_column({"name": "REGION", "data_type": "VARCHAR", "expression": "x", "comment": None})
+    column = build_semantic_view_column({"name": "REGION", "data_type": "VARCHAR", "expression": "x", "comment": None})
 
     assert column["comment"] is None
 
@@ -123,12 +118,6 @@ def test_semantic_column_description_is_none_without_a_comment():
 def test_semantic_view_columns_exclude_metrics():
     """Metrics are Metric entities, not columns, so only dimensions and facts feed
     the semantic view Table's column list -- even though the batch fetches all three."""
-    from metadata.ingestion.source.database.snowflake.metadata import (
-        SEMANTIC_CATALOG_VIEWS,
-        SEMANTIC_METRICS,
-        SEMANTIC_VIEW_COLUMN_KINDS,
-    )
-
     assert {kind for kind, _ in SEMANTIC_VIEW_COLUMN_KINDS} == {"Dimension", "Fact"}
     assert SEMANTIC_METRICS not in {view for _, view in SEMANTIC_VIEW_COLUMN_KINDS}
     assert SEMANTIC_METRICS in SEMANTIC_CATALOG_VIEWS
@@ -263,15 +252,11 @@ def test_semantic_catalog_refetches_for_a_different_schema():
 def test_semantic_catalog_cache_is_bounded():
     """A schema with very many semantic objects must not be retained for the whole
     database run -- the LRU evicts past SEMANTIC_CATALOG_CACHE_SIZE."""
-    from metadata.ingestion.source.database.snowflake.metadata import (
-        SEMANTIC_CATALOG_CACHE_SIZE,
-    )
-
     source = _semantic_source()
     for index in range(SEMANTIC_CATALOG_CACHE_SIZE + 3):
         source._fetch_semantic_view_columns(f"SCHEMA_{index}", "SALES_SEMANTIC")
 
-    assert len(source._semantic_catalog_lru()) == SEMANTIC_CATALOG_CACHE_SIZE
+    assert len(source._semantic_catalog_cache()) == SEMANTIC_CATALOG_CACHE_SIZE
 
 
 def test_semantic_catalog_falls_back_to_per_view_on_too_much_data():
@@ -288,7 +273,7 @@ def test_semantic_catalog_falls_back_to_per_view_on_too_much_data():
 
     assert [c["name"] for c in columns] == ["CUSTOMER_NAME"]
     # the None sentinel is cached, so the bulk query is not retried per view
-    assert source._semantic_catalog_lru()["PUBLIC"] is None
+    assert source._semantic_catalog_cache().get("PUBLIC") is None
 
 
 def test_semantic_catalog_reraises_other_programming_errors():
