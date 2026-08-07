@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import math
 import re
 import statistics
@@ -17,6 +18,7 @@ from typing import Any, Iterable
 FULL_PROJECTS = {
     "chromium",
     "Basic",
+    "Data Insight",
     "Ingestion",
     "DataAssetRulesEnabled",
     "DataAssetRulesDisabled",
@@ -31,6 +33,7 @@ FULL_PROJECTS = {
 PROJECT_LANES = {
     "chromium": "chromium",
     "Basic": "chromium",
+    "Data Insight": "chromium",
     "Ingestion": "ingestion",
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
