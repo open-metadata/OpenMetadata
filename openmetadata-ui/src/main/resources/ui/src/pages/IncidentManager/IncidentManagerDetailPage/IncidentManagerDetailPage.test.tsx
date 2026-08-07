@@ -19,6 +19,7 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
+import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
@@ -204,7 +205,9 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1709424034000),
   getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
-  getNextCronRunTimestamp: jest.fn().mockReturnValue(1_786_002_200_000),
+}));
+jest.mock('../../../utils/CronUtils', () => ({
+  getNextCronRunTimestamp: jest.fn().mockResolvedValue(1_786_002_200_000),
 }));
 const Wrapper = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
@@ -293,6 +296,9 @@ describe('IncidentManagerDetailPage', () => {
   });
 
   it('should show the next run from the enabled test suite schedule', async () => {
+    const dateNowSpy = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(1_786_000_820_000);
     mockUseTestCase.testCase = {
       ...mockTestCaseData,
       testCaseResult: undefined,
@@ -308,12 +314,15 @@ describe('IncidentManagerDetailPage', () => {
       pipelineType: ['TestSuite'],
       testSuite: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
     });
+    expect(getNextCronRunTimestamp).toHaveBeenCalledWith('10 * * * *', 'UTC');
     expect(await screen.findByTestId('test-case-next-run')).toHaveTextContent(
       'label.next · label.in-lowercase 23m'
     );
     expect(
       await screen.findByTestId('test-case-last-run-status')
     ).toHaveTextContent('label.not-run-yet');
+
+    dateNowSpy.mockRestore();
   });
 
   it('should not render the last run banner inside the incident tab', async () => {
