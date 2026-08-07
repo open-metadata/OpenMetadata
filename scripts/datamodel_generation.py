@@ -119,7 +119,22 @@ for file_path in DATETIME_AWARE_FILE_PATHS:
 # `type` in openmetadata-spec/.../metadataIngestion/workflow.json, which would
 # resolve the union deterministically for the Java and TypeScript consumers too.
 UNION_MODE_FILE = f"{ingestion_path}src/metadata/generated/schema/metadataIngestion/workflow.py"
-SOURCE_CONFIG_BLOCK = re.compile(r"(class SourceConfig\(BaseModel\):.*?\n    \) )= None\n", re.DOTALL)
+# datamodel-code-generator formats its output with whatever black the environment
+# resolves (it only requires black>=19.10b0), and black renders this annotation two
+# different ways depending on its version. 23.x+ parenthesizes the annotation; 22.3.0
+# cannot split it, so it leaves the annotation on one line and wraps the value instead:
+#   black >= 23.x    ->  config: (\n        A\n        | B\n    ) = None
+#   black == 22.3.0  ->  config: A | B | None = None
+#                    ->  config: A | B | None = (\n        None\n    )   # very long lines
+# 1.13 pins black==22.3.0 while main uses ruff and resolves the latest black, so the
+# pattern has to accept both. The `(?!\nclass )` guards keep the match inside
+# SourceConfig, so a genuinely new layout still fails loudly below instead of
+# silently pinning union_mode on some other class's `config` field.
+SOURCE_CONFIG_BLOCK = re.compile(
+    r"(class SourceConfig\(BaseModel\):(?:(?!\nclass ).)*?\n    config: (?:(?!\nclass ).)*?)"
+    r"= (?:None|\(\s*None\s*\))\n",
+    re.DOTALL,
+)
 
 with open(UNION_MODE_FILE, "r", encoding=UTF_8) as f:
     content = f.read()
