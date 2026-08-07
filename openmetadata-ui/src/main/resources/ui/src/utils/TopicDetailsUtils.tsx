@@ -28,7 +28,6 @@ import { Field } from '../generated/type/schema';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
 import { TopicDetailPageTabProps } from './TopicClassBase';
-
 const ContractTab = withSuspenseFallback(
   lazy(() =>
     import('../components/DataContract/ContractTab/ContractTab').then(
