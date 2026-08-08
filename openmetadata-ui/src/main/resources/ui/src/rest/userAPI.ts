@@ -19,6 +19,7 @@ import {
   AuthenticationMechanism,
   CreateUser,
 } from '../generated/api/teams/createUser';
+import { UserPreferences } from '../generated/api/teams/userPreferences';
 import { PersonalAccessToken } from '../generated/auth/personalAccessToken';
 import { JWTTokenExpiry, User } from '../generated/entity/teams/user';
 import { Include } from '../generated/type/include';
@@ -90,6 +91,37 @@ export const getUserById = async (id: string, params?: ListParams) => {
 
 export const getLoggedInUser = async (params?: ListParams) => {
   const response = await APIClient.get<User>('/users/loggedInUser', { params });
+
+  return response.data;
+};
+
+/**
+ * Opaque per-user UI preferences bag (e.g. the boot-time `appMode`
+ * preference). Backed by a lightweight side table, not the `User` entity —
+ * see `hooks/currentUserStore/useCurrentUserStore.ts` for the debounced
+ * write path that calls `patchUserPreferences`.
+ */
+export const getUserPreferences = async (userId: string) => {
+  const response = await APIClient.get<UserPreferences>(
+    `/users/${userId}/preferences`
+  );
+
+  return response.data;
+};
+
+/**
+ * JSON-Patch ops are applied directly against the `preferences` map, e.g.
+ * `{ op: 'add', path: '/appMode', value: 'ai' }` — NOT prefixed with
+ * `/preferences/`.
+ */
+export const patchUserPreferences = async (
+  userId: string,
+  data: Operation[]
+) => {
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<UserPreferences>
+  >(`/users/${userId}/preferences`, data);
 
   return response.data;
 };
