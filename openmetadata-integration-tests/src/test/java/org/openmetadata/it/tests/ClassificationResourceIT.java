@@ -24,9 +24,12 @@ import org.openmetadata.schema.api.classification.AutoClassificationConfig;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
@@ -135,6 +138,64 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   @Override
   protected ListResponse<Classification> listEntities(ListParams params) {
     return SdkClients.adminClient().classifications().list(params);
+  }
+
+  @Test
+  void test_listWithDomainFilter(TestNamespace ns) {
+    Domain domainA = createTestDomain(ns, "domainA");
+    Domain domainB = createTestDomain(ns, "domainB");
+
+    Classification classificationA1 =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("classificationInDomainA1"))
+                .withDomains(List.of(domainA.getFullyQualifiedName())));
+    Classification classificationA2 =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("classificationInDomainA2"))
+                .withDomains(List.of(domainA.getFullyQualifiedName())));
+    Classification classificationB =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("classificationInDomainB"))
+                .withDomains(List.of(domainB.getFullyQualifiedName())));
+
+    String nsPrefix = ns.prefix("");
+
+    List<Classification> listedForA =
+        listEntities(new ListParams().withDomain(domainA.getFullyQualifiedName()).withLimit(1000))
+            .getData()
+            .stream()
+            .filter(c -> c.getName().contains(nsPrefix))
+            .toList();
+
+    assertTrue(listedForA.stream().anyMatch(c -> c.getName().equals(classificationA1.getName())));
+    assertTrue(listedForA.stream().anyMatch(c -> c.getName().equals(classificationA2.getName())));
+    assertFalse(
+        listedForA.stream().anyMatch(c -> c.getName().equals(classificationB.getName())),
+        "Classification from domain B must not be listed when filtering by domain A");
+
+    List<Classification> listedForB =
+        listEntities(new ListParams().withDomain(domainB.getFullyQualifiedName()).withLimit(1000))
+            .getData()
+            .stream()
+            .filter(c -> c.getName().contains(nsPrefix))
+            .toList();
+
+    assertTrue(listedForB.stream().anyMatch(c -> c.getName().equals(classificationB.getName())));
+    assertFalse(
+        listedForB.stream().anyMatch(c -> c.getName().equals(classificationA1.getName())),
+        "Classification from domain A must not be listed when filtering by domain B");
+  }
+
+  private Domain createTestDomain(TestNamespace ns, String suffix) {
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(ns.prefix(suffix))
+            .withDescription("Test domain " + suffix)
+            .withDomainType(DomainType.AGGREGATE);
+    return SdkClients.adminClient().domains().create(createDomain);
   }
 
   @Override

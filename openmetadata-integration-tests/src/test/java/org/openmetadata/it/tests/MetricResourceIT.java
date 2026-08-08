@@ -27,9 +27,12 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
@@ -134,6 +137,64 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   @Override
   protected ListResponse<Metric> listEntities(ListParams params) {
     return SdkClients.adminClient().metrics().list(params);
+  }
+
+  @Test
+  void test_listWithDomainFilter(TestNamespace ns) {
+    Domain domainA = createTestDomain(ns, "domainA");
+    Domain domainB = createTestDomain(ns, "domainB");
+
+    Metric metricA1 =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("metricInDomainA1"))
+                .withDomains(List.of(domainA.getFullyQualifiedName())));
+    Metric metricA2 =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("metricInDomainA2"))
+                .withDomains(List.of(domainA.getFullyQualifiedName())));
+    Metric metricB =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("metricInDomainB"))
+                .withDomains(List.of(domainB.getFullyQualifiedName())));
+
+    String nsPrefix = ns.prefix("");
+
+    List<Metric> listedForA =
+        listEntities(new ListParams().withDomain(domainA.getFullyQualifiedName()).withLimit(1000))
+            .getData()
+            .stream()
+            .filter(m -> m.getName().contains(nsPrefix))
+            .toList();
+
+    assertTrue(listedForA.stream().anyMatch(m -> m.getName().equals(metricA1.getName())));
+    assertTrue(listedForA.stream().anyMatch(m -> m.getName().equals(metricA2.getName())));
+    assertFalse(
+        listedForA.stream().anyMatch(m -> m.getName().equals(metricB.getName())),
+        "Metric from domain B must not be listed when filtering by domain A");
+
+    List<Metric> listedForB =
+        listEntities(new ListParams().withDomain(domainB.getFullyQualifiedName()).withLimit(1000))
+            .getData()
+            .stream()
+            .filter(m -> m.getName().contains(nsPrefix))
+            .toList();
+
+    assertTrue(listedForB.stream().anyMatch(m -> m.getName().equals(metricB.getName())));
+    assertFalse(
+        listedForB.stream().anyMatch(m -> m.getName().equals(metricA1.getName())),
+        "Metric from domain A must not be listed when filtering by domain B");
+  }
+
+  private Domain createTestDomain(TestNamespace ns, String suffix) {
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName(ns.prefix(suffix))
+            .withDescription("Test domain " + suffix)
+            .withDomainType(DomainType.AGGREGATE);
+    return SdkClients.adminClient().domains().create(createDomain);
   }
 
   @Override

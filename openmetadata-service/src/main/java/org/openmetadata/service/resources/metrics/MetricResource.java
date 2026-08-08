@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.metrics;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -120,6 +123,11 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(
+              description = "Filter metrics by domain name or fully qualified name",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
       @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
@@ -142,6 +150,11 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
+    if (!nullOrEmpty(domain)) {
+      EntityReference domainReference =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
