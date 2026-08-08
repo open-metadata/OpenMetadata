@@ -385,6 +385,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     EntityUtil.populateEntityReferences(request.getAssets());
 
+    EntityReference domainRef = isAdd ? getEntityReferenceById(DOMAIN, entityId, ALL) : null;
     for (EntityReference ref : request.getAssets()) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
@@ -399,7 +400,6 @@ public class DomainRepository extends EntityRepository<Domain> {
 
       if (isAdd) {
         addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
-        EntityReference domainRef = getEntityReferenceById(DOMAIN, entityId, ALL);
         LineageUtil.addDomainLineage(entityId, ref.getType(), domainRef);
       }
 
@@ -414,6 +414,14 @@ public class DomainRepository extends EntityRepository<Domain> {
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
       searchRepository.updateEntity(ref);
+    }
+
+    // Only the add/move path propagates: it sets a known new domain the inherited descendants
+    // follow. On remove the asset's effective domain is re-derived (it may re-inherit from its own
+    // parent, not become empty), so clearing descendants here would be wrong — leave the remove
+    // path as it was before this change.
+    if (isAdd && !dryRun) {
+      searchRepository.propagateInheritedDomainsToChildren(request.getAssets(), List.of(domainRef));
     }
 
     result.withSuccessRequest(success);
