@@ -21,6 +21,7 @@ import {
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import * as DataAssetSummaryPanelV1Module from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockApplicationEntityDetails } from './mocks/ApplicationSummary.mock';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
@@ -1250,11 +1251,9 @@ describe('EntitySummaryPanel component tests', () => {
           </div>
         ));
 
-      (
-        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
-      ).mockReturnValue({
-        [EntityType.TABLE]: CapturingSummaryPanel,
-      });
+      jest
+        .spyOn(DataAssetSummaryPanelV1Module, 'DataAssetSummaryPanelV1')
+        .mockImplementation(CapturingSummaryPanel);
       mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
 
       render(
