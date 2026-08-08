@@ -80,15 +80,11 @@ jest.mock('../../../pages/TasksPage/shared/DescriptionTaskNew', () => {
   return jest.fn().mockImplementation(() => <p>DescriptionTaskNew</p>);
 });
 
-jest.mock('../../../utils/TaskActionUtils', () => ({
-  ...jest.requireActual('../../../utils/TaskActionUtils'),
+jest.mock('../../../utils/TasksUtils', () => ({
+  ...jest.requireActual('../../../utils/TasksUtils'),
+  getTaskDetailPath: jest.fn().mockReturnValue('/tasks/1'),
   isTagsTask: jest.fn().mockReturnValue(true),
   isDescriptionTask: jest.fn().mockReturnValue(false),
-}));
-
-jest.mock('../../../utils/TaskNavigationUtils', () => ({
-  ...jest.requireActual('../../../utils/TaskNavigationUtils'),
-  getTaskDetailPath: jest.fn().mockReturnValue('/tasks/1'),
 }));
 
 jest.mock('../../../utils/FeedUtilsPure', () => ({
@@ -185,7 +181,7 @@ describe('TaskFeedCardNew Component', () => {
     const {
       isTagsTask,
       isDescriptionTask,
-    } = require('../../../utils/TaskActionUtils');
+    } = require('../../../utils/TasksUtils');
     isTagsTask.mockReturnValue(false);
     isDescriptionTask.mockReturnValue(true);
 
