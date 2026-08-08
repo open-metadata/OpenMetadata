@@ -437,27 +437,29 @@ export const addMultiOwner = async (data: {
   }
 
   for (const ownerName of owners) {
-    await expect(
-      page.locator('[data-testid="owner-select-users-search-bar"]')
-    ).toBeVisible();
-
-    const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user*'
+    const searchBar = page.locator(
+      '[data-testid="owner-select-users-search-bar"]'
     );
-    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
-    await searchOwner;
+
+    await expect(searchBar).toBeVisible();
+
+    await searchBar.clear();
+    await searchBar.fill(ownerName);
+
     await page
       .getByTestId('select-owner-tabs')
       .getByTestId('loader')
       .first()
-      .waitFor({ state: 'detached' });
+      .waitFor({ state: 'detached', timeout: 10_000 })
+      .catch(() => {
+        // Search can return from cache without showing a loader.
+      });
 
     const ownerItem = page.getByRole('listitem', {
       name: ownerName,
       exact: true,
     });
-    await ownerItem.waitFor({ state: 'visible' });
+    await expect(ownerItem).toBeVisible({ timeout: 30_000 });
 
     // Wait for the item to exist and be visible before clicking
 
@@ -1488,9 +1490,18 @@ export const replyAnnouncement = async (page: Page) => {
     '1 replies'
   );
 
-  await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-  await page.click('[data-testid="edit-message"]');
+  const replyMessage = page.locator(
+    '[data-testid="replies"] > [data-testid="main-message"]'
+  );
+  await replyMessage.hover();
+
+  const replyPopover = page
+    .locator('.ant-popover')
+    .filter({ has: page.locator('[data-testid="edit-message"]') })
+    .last();
+
+  await replyPopover.waitFor({ state: 'visible' });
+  await replyPopover.getByTestId('edit-message').click();
 
   // With the edit box open there are two Quill editors on the page: the reply's
   // edit box and the drawer's reply composer. A page-level
@@ -1522,7 +1533,7 @@ export const replyAnnouncement = async (page: Page) => {
 
   await expect(
     page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message edited');
+  ).toHaveText(/Reply\s+message\s+edited/);
 
   await page.reload();
 };

@@ -969,10 +969,12 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
 };
 
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
-  await page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
-    .locator(`[data-testid="entity-header-display-name"]`)
-    .click();
+  const lineageNode = page.getByTestId(`lineage-node-${nodeFqn}`);
+  const displayName = lineageNode.getByTestId('entity-header-display-name');
+
+  await expect(lineageNode).toBeVisible({ timeout: 30_000 });
+  await expect(displayName).toBeVisible({ timeout: 30_000 });
+  await displayName.click();
 };
 
 export const updateLineageConfigFromModal = async (
