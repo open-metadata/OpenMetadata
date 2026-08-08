@@ -163,7 +163,10 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     <>
       <div className="version-data">
         {selectedData && (
-          <KnowledgePageVersion knowledgePage={selectedData} loading={loading} />
+          <KnowledgePageVersion
+            knowledgePage={selectedData}
+            loading={loading}
+          />
         )}
       </div>
       {getVersionTimeLineElement()}
