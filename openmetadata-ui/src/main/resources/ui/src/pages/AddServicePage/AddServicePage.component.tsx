@@ -28,7 +28,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
@@ -42,6 +42,7 @@ import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
+  ServiceCategoryParam,
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -61,7 +62,10 @@ import {
   getServiceType,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { getAddServiceEntityBreadcrumb } from '../../utils/ServiceUtils';
+import {
+  getAddServiceEntityBreadcrumb,
+  getValidatedServiceType,
+} from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
@@ -84,19 +88,31 @@ const ServiceDocPanel = lazy(
 const AddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { serviceCategory } = useRequiredParams<{
-    serviceCategory: ServiceCategory;
+  const { serviceCategory: serviceCategoryParam } = useRequiredParams<{
+    serviceCategory: ServiceCategoryParam;
   }>();
+  // Safe cast: picking a card in the flattened `all` grid navigates to a concrete-category URL
+  // first (see handleServiceTypeClick), so the sentinel never reaches step 2 or the save path.
+  const serviceCategory = serviceCategoryParam as ServiceCategory;
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
+  const { state: locationState } = useLocation();
+  // A connector deep-linked via router state (from the flattened `all` grid, or the onboarding
+  // picker) skips the connector grid and opens straight on the Connect step.
+  const preselectedServiceType = useMemo(
+    () => getValidatedServiceType(locationState, serviceCategory),
+    [locationState, serviceCategory]
+  );
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP
   );
-  const [activeServiceStep, setActiveServiceStep] = useState(1);
+  const [activeServiceStep, setActiveServiceStep] = useState(
+    preselectedServiceType ? 2 : 1
+  );
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
     name: '',
     description: '',
-    serviceType: '',
+    serviceType: preselectedServiceType,
     connection: {
       config: {},
     },
@@ -181,7 +197,48 @@ const AddServicePage = () => {
     []
   );
 
-  const handleServiceTypeClick = (type: string) => {
+  // Picking a card in the flattened `all` grid navigates to this same route with a different
+  // category, so the component re-renders rather than remounting and the initial state above
+  // never re-runs. Sync the deep-linked connector on arrival so the user lands on the Connect
+  // step instead of just watching the URL change.
+  useEffect(() => {
+    if (
+      !preselectedServiceType ||
+      preselectedServiceType === serviceConfig.serviceType
+    ) {
+      return;
+    }
+
+    resetNameValidation();
+    setIsConnectionVerified(false);
+    setServiceConfig({
+      name: '',
+      description: '',
+      serviceType: preselectedServiceType,
+      connection: {
+        config: {},
+      },
+    });
+    setActiveServiceStep(2);
+    // Only the arriving connector should retrigger this — including serviceConfig.serviceType
+    // would fight the user's own edits on the Connect step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselectedServiceType]);
+
+  const handleServiceTypeClick = (
+    type: string,
+    clickedCategory: ServiceCategory
+  ) => {
+    // Only possible from the flattened `all` grid: the connector belongs to a different category
+    // than the URL, so continue in that category's own wizard with the connector deep-linked.
+    if (clickedCategory !== serviceCategory) {
+      navigate(connectionsRouterClassBase.getAddServicePath(clickedCategory), {
+        state: { serviceType: type },
+      });
+
+      return;
+    }
+
     resetNameValidation();
     setIsConnectionVerified(false);
     setServiceConfig({
@@ -411,7 +468,7 @@ const AddServicePage = () => {
               {activeServiceStep === 1 && (
                 <SelectServiceType
                   handleServiceTypeClick={handleServiceTypeClick}
-                  serviceCategory={serviceCategory}
+                  serviceCategory={serviceCategoryParam}
                   serviceCategoryHandler={handleServiceCategoryChange}
                   showError={showErrorMessage.serviceType}
                 />
