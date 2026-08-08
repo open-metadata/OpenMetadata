@@ -195,6 +195,37 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   }
 
   @Test
+  void list_testDefinitionsByEntityType_caseInsensitive(TestNamespace ns) {
+      // Create a COLUMN test definition
+      CreateTestDefinition columnRequest = new CreateTestDefinition();
+      columnRequest.setName(ns.prefix("testdef_column_case"));
+      columnRequest.setDescription("Column test definition for case insensitivity check");
+      columnRequest.setEntityType(TestDefinitionEntityType.COLUMN);
+      columnRequest.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+      TestDefinition createdColumn = createEntity(columnRequest);
+
+      // Create a TABLE test definition
+      CreateTestDefinition tableRequest = new CreateTestDefinition();
+      tableRequest.setName(ns.prefix("testdef_table_case"));
+      tableRequest.setDescription("Table test definition for case insensitivity check");
+      tableRequest.setEntityType(TestDefinitionEntityType.TABLE);
+      tableRequest.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+      TestDefinition createdTable = createEntity(tableRequest);
+
+      assertTrue(
+          listEntities(new ListParams().addQueryParam("entityType", "Column"))
+              .getData().stream()
+              .anyMatch(td -> td.getId().equals(createdColumn.getId())),
+          "Mixed case 'Column' should return the created COLUMN definition");
+      
+      assertTrue(
+          listEntities(new ListParams().addQueryParam("entityType", "Table"))
+              .getData().stream()
+              .anyMatch(td -> td.getId().equals(createdTable.getId())),
+          "Mixed case 'Table' should return the created TABLE definition");
+  }
+
+  @Test
   void post_testDefinitionWithMultiplePlatforms_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -255,4 +286,5 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
         () -> createEntity(request2),
         "Creating duplicate test definition should fail");
   }
+
 }
