@@ -189,6 +189,81 @@ export const getDiffDisplayValue = (diff: {
   }
 };
 
+/**
+ * Like getTextDiff but safe for TipTap HTML content: extracts block-level
+ * file-attachment nodes before word-diffing so their attribute strings are
+ * never split across diff chunks. Restored blocks carry a data-diff-state
+ * attribute ("added" | "removed") so FileNodeView can style them visually.
+ */
+export const getRichTextDiff = (
+  oldHtml: string,
+  newHtml: string,
+  fallback?: string
+): string => {
+  if (isEmpty(oldHtml) && isEmpty(newHtml)) {
+    return fallback ?? '';
+  }
+
+  const FILE_BLOCK_RE =
+    /<div[^>]*data-type="file-attachment"[^>]*>[\s\S]*?<\/div>/g;
+  const oldBlocks: string[] = [];
+  const newBlocks: string[] = [];
+
+  const oldTokenized = oldHtml.replace(FILE_BLOCK_RE, (match) => {
+    oldBlocks.push(match);
+
+    return `FILEBLOCK${oldBlocks.length - 1}`;
+  });
+
+  const newTokenized = newHtml.replace(FILE_BLOCK_RE, (match) => {
+    newBlocks.push(match);
+
+    return `FILEBLOCK${newBlocks.length - 1}`;
+  });
+
+  const diffArr = diffWords(oldTokenized, newTokenized);
+
+  return diffArr
+    .flatMap((chunk) =>
+      chunk.value.split(/(FILEBLOCK\d+)/).map((part) => {
+        const tokenMatch = part.match(/^FILEBLOCK(\d+)$/);
+
+        if (tokenMatch) {
+          const idx = parseInt(tokenMatch[1]);
+
+          if (chunk.added) {
+            return (newBlocks[idx] ?? '').replace(
+              /<div/,
+              '<div data-diff-state="added"'
+            );
+          }
+          if (chunk.removed) {
+            return (oldBlocks[idx] ?? '').replace(
+              /<div/,
+              '<div data-diff-state="removed"'
+            );
+          }
+
+          return newBlocks[idx] ?? oldBlocks[idx] ?? '';
+        }
+
+        const value = part.trim().replaceAll('\n', '<br>');
+        if (!value) {
+          return '';
+        }
+        if (chunk.added) {
+          return `<span data-diff="true" class="diff-added text-underline tw:bg-success-primary" data-testid="diff-added">${value}</span>`;
+        }
+        if (chunk.removed) {
+          return `<span data-diff="true" class="text-grey-muted text-line-through tw:bg-error-primary" data-testid="diff-removed">${value}</span>`;
+        }
+
+        return `<span data-diff="true" data-testid="diff-normal">${value}</span>`;
+      })
+    )
+    .join('');
+};
+
 export const getUpdatedExtensionDiffFields = (
   entityDetails: ExtentionEntities[ExtentionEntitiesKeys],
   extensionDiff: EntityDiffProps
