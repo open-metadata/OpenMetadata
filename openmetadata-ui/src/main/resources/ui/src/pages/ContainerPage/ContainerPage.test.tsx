@@ -203,17 +203,18 @@ jest.mock('../../rest/storageAPI');
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
-  getEntityMissingError: jest
-    .fn()
-    .mockImplementation((entity: string, fqn: string) => `${entity} ${fqn}`),
   getFeedCounts: jest.fn().mockReturnValue(0),
 }));
+
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+}));
+
 jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
 }));
-
 jest.mock('../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,
