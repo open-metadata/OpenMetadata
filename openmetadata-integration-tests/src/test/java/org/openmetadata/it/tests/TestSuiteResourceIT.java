@@ -718,7 +718,8 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
-  void test_summaryTotalIncludesLogicalSuiteTestsWithoutResults(TestNamespace ns) throws Exception {
+  void test_summaryTotalIncludesUnexecutedAndExcludesDeletedTests(TestNamespace ns)
+      throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTableForBasicTestSuite(ns, "table_partial_results");
     List<TestCase> testCases = createTestCases(client, ns, table, 3);
@@ -739,6 +740,16 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(() -> assertSummaryCounts(searchTestSuite(client, logicalSuite), 3, 1));
+
+    client.testCases().delete(testCases.get(2).getId().toString());
+
+    TestSuite afterDelete = client.testSuites().get(logicalSuite.getId().toString(), "summary");
+    assertSummaryCounts(afterDelete, 2, 1);
+
+    Awaitility.await("search list summary excludes soft-deleted tests")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(() -> assertSummaryCounts(searchTestSuite(client, logicalSuite), 2, 1));
 
     TestSuite emptySuite =
         createEntity(

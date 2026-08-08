@@ -685,7 +685,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
             chunk ->
                 daoCollection
                     .relationshipDAO()
-                    .countFindTo(chunk, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE));
+                    .countNonDeletedTestCasesBatch(
+                        chunk, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE));
     return counts.stream()
         .collect(
             Collectors.toMap(
