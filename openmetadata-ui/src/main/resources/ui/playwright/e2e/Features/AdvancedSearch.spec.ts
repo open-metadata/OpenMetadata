@@ -86,7 +86,9 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
     ]) {
       await expect(async () => {
         const res = await apiContext.get(
-          `api/v1/search/aggregate?index=databaseSchema&field=displayName.keyword&value=.*${encodeURIComponent(schemaName)}.*&q=&deleted=false`
+          `api/v1/search/aggregate?index=databaseSchema&field=displayName.keyword&value=.*${encodeURIComponent(
+            schemaName
+          )}.*&q=&deleted=false`
         );
         const data = await res.json();
         const buckets: Array<{ key: string }> =
