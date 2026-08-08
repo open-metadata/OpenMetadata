@@ -187,6 +187,7 @@ export interface ListActivityParams {
   entityId?: string;
   actorId?: string;
   domains?: string;
+  domain?: string;
   days?: number;
   limit?: number;
 }
@@ -250,6 +251,19 @@ export const getMyActivityFeed = async (params?: {
     data: ActivityEvent[];
     paging: Paging;
   }>(`${ACTIVITY_BASE_URL}/my-feed`, { params });
+
+  return response.data;
+};
+
+export const getFollowingActivityFeed = async (params?: {
+  days?: number;
+  limit?: number;
+  domain?: string;
+}) => {
+  const response = await APIClient.get<{
+    data: ActivityEvent[];
+    paging: Paging;
+  }>(`${ACTIVITY_BASE_URL}/following`, { params });
 
   return response.data;
 };

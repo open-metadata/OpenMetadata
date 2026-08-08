@@ -168,6 +168,70 @@ export const DummyEntityActivityFeedComponent = () => {
   );
 };
 
+export const DummyFollowingActivityComponent = () => {
+  const { t } = useTranslation();
+  const { fetchFollowingActivity, activityEvents, isActivityLoading } =
+    useActivityFeedProvider();
+
+  useEffect(() => {
+    fetchFollowingActivity({ days: 7, limit: 20 });
+  }, []);
+
+  if (isActivityLoading) {
+    return <p data-testid="following-activity-loading">{t('label.loading')}</p>;
+  }
+
+  return (
+    <div data-testid="following-activity-feed">
+      <span data-testid="following-activity-count">
+        {activityEvents.length}
+      </span>
+      {activityEvents.map((activity) => (
+        <span data-testid="following-activity-summary" key={activity.id}>
+          {activity.summary}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * Drives the widget's filter switch from a test: the three activity fetchers
+ * share one sequence counter, so this is how a superseded response is exercised.
+ */
+export const DummyActivityFilterSwitchComponent = () => {
+  const { t } = useTranslation();
+  const {
+    fetchActivityEvents,
+    fetchMyActivityFeed,
+    fetchFollowingActivity,
+    activityEvents,
+  } = useActivityFeedProvider();
+
+  return (
+    <div>
+      <button
+        data-testid="fetch-all"
+        onClick={() => fetchActivityEvents({ limit: 20 })}>
+        {t('label.all')}
+      </button>
+      <button
+        data-testid="fetch-owner"
+        onClick={() => fetchMyActivityFeed({ limit: 20 })}>
+        {t('label.my-data')}
+      </button>
+      <button
+        data-testid="fetch-following"
+        onClick={() => fetchFollowingActivity({ limit: 20 })}>
+        {t('label.following')}
+      </button>
+      <span data-testid="activity-summaries">
+        {activityEvents.map((activity) => activity.summary).join(',')}
+      </span>
+    </div>
+  );
+};
+
 export const DummyActivityReactionComponent = () => {
   const { t } = useTranslation();
   const { updateActivityReaction } = useActivityFeedProvider();
