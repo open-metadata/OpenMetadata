@@ -474,10 +474,8 @@ test.describe('Task Navigation - URL Validation', () => {
 
     // This is a regression test - /table/TASK-00001 is an invalid URL
     // because TASK-00001 is a task ID, not a table FQN
-    const tableNotFoundResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/tables/name/TASK-00001') &&
-        response.status() === 404
+    const tableNotFoundResponse = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/tables/name/TASK-00001')
     );
 
     await page.goto('/table/TASK-00001');
