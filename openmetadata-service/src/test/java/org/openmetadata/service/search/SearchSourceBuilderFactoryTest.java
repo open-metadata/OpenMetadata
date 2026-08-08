@@ -25,6 +25,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.common.utils.CommonUtil;
@@ -54,11 +55,29 @@ public class SearchSourceBuilderFactoryTest {
   private static final String FUZZY_STAGE_QUERY_NAME = "ranking:fuzzyName";
   private static final String CLOSE_NAME_STAGE_QUERY_NAME = "ranking:closeName";
 
+  /**
+   * The ranking stages under test are defined in the shipped searchSettings.json, not in the
+   * hand-built fixture below — a fixture without them silently exercises the unranked legacy path,
+   * so assertions on ranking stages would pass vacuously. Loaded once per class because resolving
+   * it scans the classpath; the source builders only read it.
+   */
+  private static SearchSettings shippedSearchSettings;
+
   private SearchSettings searchSettings;
   private AssetTypeConfiguration tableConfig;
   private AssetTypeConfiguration topicConfig;
   private AssetTypeConfiguration contextFileConfig;
   private AssetTypeConfiguration defaultConfig;
+
+  @BeforeAll
+  public static void loadShippedSearchSettings() throws IOException {
+    List<String> jsonDataFiles =
+        EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
+    String json =
+        CommonUtil.getResourceAsStream(
+            EntityRepository.class.getClassLoader(), jsonDataFiles.getFirst());
+    shippedSearchSettings = JsonUtils.readValue(json, SearchSettings.class);
+  }
 
   @BeforeEach
   public void setUp() {
@@ -381,7 +400,7 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
-  public void testFqnQueryDropsTheRecallWideningFuzzyStage() throws IOException {
+  public void testFqnQueryDropsTheRecallWideningFuzzyStage() {
     // Ranking stages sit under a `should` with minimum_should_match:1, so each one widens recall,
     // not just the score. On a single-token FQN getFuzziness() already degrades the fuzzy stage to
     // fuzziness 0, leaving an OR multi_match at 70% token coverage: no typo tolerance, but it
@@ -389,56 +408,49 @@ public class SearchSourceBuilderFactoryTest {
     // one-column FQN, all of them matching via `ranking:fuzzyName` alone (issue #31227). Only the
     // exact, phrase and tokenCoverage stages may decide recall for an identifier lookup.
     String columnFqn = "svc_a.db_a.schema_a.table_a.user_id";
+    String osQuery = rankedOpenSearchQuery(columnFqn);
+    String esQuery = rankedElasticSearchQuery(columnFqn);
 
-    assertFalse(rankedOpenSearchQuery(columnFqn).contains(FUZZY_STAGE_QUERY_NAME));
-    assertFalse(rankedElasticSearchQuery(columnFqn).contains(FUZZY_STAGE_QUERY_NAME));
+    assertFalse(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
+    assertFalse(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
     // The precise stages still match, so the target column is still found.
-    assertTrue(rankedOpenSearchQuery(columnFqn).contains(CLOSE_NAME_STAGE_QUERY_NAME));
-    assertTrue(rankedElasticSearchQuery(columnFqn).contains(CLOSE_NAME_STAGE_QUERY_NAME));
+    assertTrue(osQuery.contains(CLOSE_NAME_STAGE_QUERY_NAME), osQuery);
+    assertTrue(esQuery.contains(CLOSE_NAME_STAGE_QUERY_NAME), esQuery);
   }
 
   @Test
-  public void testMultiTermQueryKeepsTheFuzzyStage() throws IOException {
+  public void testMultiTermQueryKeepsTheFuzzyStage() {
     // The narrowing above is scoped to single-term identifier lookups. A multi-word search still
     // needs the fuzzy stage's partial token coverage across terms, so it must survive there.
     String phrase = "sample_data table";
+    String osQuery = rankedOpenSearchQuery(phrase);
+    String esQuery = rankedElasticSearchQuery(phrase);
 
-    assertTrue(rankedOpenSearchQuery(phrase).contains(FUZZY_STAGE_QUERY_NAME));
-    assertTrue(rankedElasticSearchQuery(phrase).contains(FUZZY_STAGE_QUERY_NAME));
+    assertTrue(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
+    assertTrue(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
   }
 
   @Test
-  public void testShortQueryKeepsRealTypoTolerance() throws IOException {
+  public void testShortQueryKeepsRealTypoTolerance() {
     // Fuzziness is only disabled past two sub-tokens; a short name search keeps both the stage and
     // a non-zero fuzziness, which is the stage's documented purpose.
-    assertTrue(rankedOpenSearchQuery("custmer").contains(FUZZY_STAGE_QUERY_NAME));
-    assertTrue(rankedElasticSearchQuery("custmer").contains(FUZZY_STAGE_QUERY_NAME));
+    String osQuery = rankedOpenSearchQuery("custmer");
+    String esQuery = rankedElasticSearchQuery("custmer");
+
+    assertTrue(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
+    assertTrue(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
   }
 
-  /**
-   * Builds against the shipped searchSettings.json rather than the hand-built fixture above: the
-   * ranking stages under test live in that file, and a fixture without them silently exercises the
-   * unranked legacy path instead.
-   */
-  private static SearchSettings shippedSearchSettings() throws IOException {
-    List<String> jsonDataFiles =
-        EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
-    String json =
-        CommonUtil.getResourceAsStream(
-            EntityRepository.class.getClassLoader(), jsonDataFiles.getFirst());
-    return JsonUtils.readValue(json, SearchSettings.class);
-  }
-
-  private static String rankedOpenSearchQuery(String query) throws IOException {
+  private static String rankedOpenSearchQuery(String query) {
     OpenSearchSourceBuilderFactory factory =
-        new OpenSearchSourceBuilderFactory(shippedSearchSettings());
+        new OpenSearchSourceBuilderFactory(shippedSearchSettings);
     return serializeOpenSearchRequest(
         factory.getSearchSourceBuilderV2(Entity.TABLE_COLUMN, query, 0, 15));
   }
 
-  private static String rankedElasticSearchQuery(String query) throws IOException {
+  private static String rankedElasticSearchQuery(String query) {
     ElasticSearchSourceBuilderFactory factory =
-        new ElasticSearchSourceBuilderFactory(shippedSearchSettings());
+        new ElasticSearchSourceBuilderFactory(shippedSearchSettings);
     return factory.getSearchSourceBuilderV2(Entity.TABLE_COLUMN, query, 0, 15).query().toString();
   }
 
