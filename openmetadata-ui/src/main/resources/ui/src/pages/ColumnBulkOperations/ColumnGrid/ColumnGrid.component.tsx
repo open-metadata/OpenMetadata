@@ -2140,14 +2140,24 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
                 isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
                 isSelected={columnGridListing.isSelected(entity.id)}
                 key={entity.id}
-                renderColumnNameCell={renderColumnNameCellFinal}
-                renderDescriptionCell={renderDescriptionCellAdapter}
-                renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
-                renderPathCell={renderPathCellAdapter}
-                renderTagsCell={renderTagsCellAdapter}
                 showParentChildColors={isChildRow || isParentExpanded}
-                tableColumns={tableColumns}
-              />
+                tableColumns={tableColumns}>
+                <ColumnGridTableRow.Cell columnId="columnName">
+                  {renderColumnNameCellFinal(entity)}
+                </ColumnGridTableRow.Cell>
+                <ColumnGridTableRow.Cell columnId="path">
+                  {renderPathCellAdapter(entity)}
+                </ColumnGridTableRow.Cell>
+                <ColumnGridTableRow.Cell columnId="description">
+                  {renderDescriptionCellAdapter(entity)}
+                </ColumnGridTableRow.Cell>
+                <ColumnGridTableRow.Cell columnId="tags">
+                  {renderTagsCellAdapter(entity)}
+                </ColumnGridTableRow.Cell>
+                <ColumnGridTableRow.Cell columnId="glossaryTerms">
+                  {renderGlossaryTermsCellAdapter(entity)}
+                </ColumnGridTableRow.Cell>
+              </ColumnGridTableRow>
             );
           }}
         </Table.Body>
