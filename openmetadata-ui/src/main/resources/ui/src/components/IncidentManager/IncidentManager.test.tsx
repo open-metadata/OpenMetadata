@@ -538,6 +538,23 @@ describe('IncidentManagerPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('should align and wrap incident filters at constrained widths', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(await screen.findByTestId('incident-filter-bar')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-end',
+      'tw:gap-y-4'
+    );
+    expect(screen.getByTestId('incident-filter-controls')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-end',
+      'tw:gap-y-4'
+    );
+  });
+
   it('should call list incident API on page load', async () => {
     await act(async () => {
       render(<IncidentManager />);
