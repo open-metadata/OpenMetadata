@@ -357,6 +357,59 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.pagingData.paging.total).toBe(2);
   });
 
+  it('should preserve a filtered search total after bulk add', async () => {
+    const { result } = renderHook(() => useTestSuiteDetailsPage());
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+      expect(result.current.pagingData.paging.total).toBe(1);
+    });
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [
+        { id: 'tc-1', type: 'testCase' },
+        { id: 'tc-9', type: 'testCase' },
+      ],
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-9', name: 'tc_9' }],
+        paging: { total: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-9', name: 'tc_9' }],
+        paging: { total: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-9', name: 'tc_9' }],
+        paging: { total: 1 },
+      });
+
+    await act(async () => {
+      await result.current.handleAddTestCaseSubmit({
+        selectAll: false,
+        includeIds: ['tc-9'],
+        excludeIds: [],
+      });
+    });
+
+    expect(result.current.pagingData.paging.total).toBe(2);
+
+    await act(async () => {
+      await result.current.fetchTestCases({ q: 'tc_9' });
+    });
+
+    expect(result.current.pagingData.paging.total).toBe(1);
+
+    await act(async () => {
+      await result.current.fetchTestCases();
+    });
+
+    expect(result.current.pagingData.paging.total).toBe(2);
+  });
+
   it('should ignore a bulk add that finishes after navigating to another suite', async () => {
     let resolveBulkAdd!: () => void;
     const bulkAdd = new Promise<void>((resolve) => {

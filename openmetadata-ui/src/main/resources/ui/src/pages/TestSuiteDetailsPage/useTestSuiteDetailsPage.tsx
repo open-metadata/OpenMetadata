@@ -73,6 +73,19 @@ import {
 import { ExtraTestCaseDropdownOptions } from '../../utils/TestCaseUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+const NON_FILTERING_TEST_CASE_PARAMS = new Set<
+  keyof ListTestCaseParamsBySearch
+>(['testSuiteId', 'offset', 'sortField', 'sortType']);
+
+const isUnfilteredTestCaseRequest = (param?: ListTestCaseParamsBySearch) =>
+  Object.entries(param ?? {}).every(
+    ([key, value]) =>
+      value === undefined ||
+      NON_FILTERING_TEST_CASE_PARAMS.has(
+        key as keyof ListTestCaseParamsBySearch
+      )
+  );
+
 export interface UseTestSuiteDetailsPageResult {
   testSuite: TestSuite | undefined;
   testSuiteDescription: string;
@@ -297,7 +310,9 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         }
 
         const authoritativeSnapshot = authoritativeTestCaseCount.current;
+        const isUnfilteredRequest = isUnfilteredTestCaseRequest(param);
         const shouldUseAuthoritativeTotal =
+          isUnfilteredRequest &&
           authoritativeSnapshot?.testSuiteFQN === testSuiteFQN &&
           response.paging.total < authoritativeSnapshot.total;
         setIngestionPipelineCount(ingestionPipelinePaging.total);
@@ -309,7 +324,11 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             : response.paging.total,
         });
 
-        if (authoritativeSnapshot && !shouldUseAuthoritativeTotal) {
+        if (
+          authoritativeSnapshot &&
+          isUnfilteredRequest &&
+          !shouldUseAuthoritativeTotal
+        ) {
           authoritativeTestCaseCount.current = undefined;
         }
       } catch {
