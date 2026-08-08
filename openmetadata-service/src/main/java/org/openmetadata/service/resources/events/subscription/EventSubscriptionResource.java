@@ -157,7 +157,7 @@ public class EventSubscriptionResource
       EventsSubscriptionRegistry.initialize(
           listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
-      repository.initSeedDataFromResources();
+      repository.initSeedDataFromResourcesOnStartup();
       initializeEventSubscriptions();
       // Schedule the audit log consumer to read from change_event and write to audit_log
       EventSubscriptionScheduler.getInstance().scheduleAuditLogConsumer();

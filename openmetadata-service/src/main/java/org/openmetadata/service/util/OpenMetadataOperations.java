@@ -139,6 +139,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.dbtune.AutoTuner;
 import org.openmetadata.service.util.dbtune.DbTuneDiagnosis;
 import org.openmetadata.service.util.dbtune.DbTuneReport;
@@ -1529,6 +1530,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       SettingsCache.initialize(config);
       initializeSecurityConfig();
       ApplicationHandler.initialize(config);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
@@ -1623,6 +1625,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.initialize();
       var omConfig = OpenMetadataApplicationConfigHolder.getInstance();
       ApplicationHandler.initialize(omConfig);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance()
           .loadSeedData(Entity.getJdbi(), omConfig, null, null, null, true);
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
@@ -2170,6 +2173,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       SettingsCache.initialize(config);
       initializeSecurityConfig();
       ApplicationHandler.initialize(config);
+      SeedDataGate.getInstance().forceSeedData();
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
