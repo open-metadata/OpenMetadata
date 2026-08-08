@@ -21,21 +21,38 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import Loader from '../components/common/Loader/Loader';
-import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
+import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import type { ChartType } from '../components/Dashboard/DashboardDetails/DashboardDetails.interface';
+import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { PageType } from '../generated/system/ui/page';
 import { Include } from '../generated/type/include';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { getChartById } from '../rest/chartAPI';
-import { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
+import type { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
 import { t } from './i18next/LocalUtil';
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
+);
+
+const GenericTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Customization/GenericTab/GenericTab').then(
+      (module) => ({ default: module.GenericTab })
+    )
+  )
+);
+
+const CommonWidgets = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataAssets/CommonWidgets/CommonWidgets').then(
+      (module) => ({ default: module.CommonWidgets })
+    )
+  )
+);
 
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>

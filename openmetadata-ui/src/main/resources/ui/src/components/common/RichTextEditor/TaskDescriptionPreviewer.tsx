@@ -12,13 +12,20 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { FC, useEffect, useRef, useState } from 'react';
+import { FC, lazy, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
-import { formatContent } from '../../../utils/BlockEditorUtils';
-import BlockEditor from '../../BlockEditor/BlockEditor';
+import {
+  formatClientContent,
+  isDescriptionContentEmpty,
+} from '../../../utils/BlockEditorPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
+
+const BlockEditor = withSuspenseFallback(
+  lazy(() => import('../../BlockEditor/BlockEditor'))
+);
+
 const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
   markdown = '',
   className = '',
@@ -33,7 +40,7 @@ const TaskDescriptionPreviewer: FC<PreviewerProp> = ({
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setContent(formatContent(markdown, 'client'));
+    setContent(formatClientContent(markdown));
   }, [markdown]);
 
   useEffect(() => {
