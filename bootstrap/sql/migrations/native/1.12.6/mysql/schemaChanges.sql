@@ -1,1 +1,0 @@
--- Placeholder for 1.12.6 MySQL schema changes

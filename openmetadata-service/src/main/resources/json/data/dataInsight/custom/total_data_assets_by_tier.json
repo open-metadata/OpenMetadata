@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "groupBy" : "tier.keyword",
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "count(k='id.keyword')"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "deleted" : false,
+  "fullyQualifiedName" : "total_data_assets_by_tier",
+  "isSystemChart" : true,
+  "name" : "total_data_assets_by_tier"
+}

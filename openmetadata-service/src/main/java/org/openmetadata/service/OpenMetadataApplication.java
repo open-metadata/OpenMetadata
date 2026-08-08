@@ -860,7 +860,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
-            conf.getMigrationConfiguration().getFlywayPath(),
             conf,
             false);
     migrationWorkflow.loadMigrations();

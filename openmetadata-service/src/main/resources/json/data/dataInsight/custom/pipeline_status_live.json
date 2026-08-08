@@ -1,0 +1,18 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "groupBy" : "pipelineStatuses.pipelineState",
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "count(k='id.keyword')"
+    } ],
+    "searchIndex" : "ingestionPipeline",
+    "type" : "LineChart",
+    "xAxisField" : "service.name.keyword"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "pipeline_status_live",
+  "isSystemChart" : true,
+  "name" : "pipeline_status_live"
+}

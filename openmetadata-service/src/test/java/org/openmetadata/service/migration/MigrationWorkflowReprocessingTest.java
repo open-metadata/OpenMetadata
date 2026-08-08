@@ -2,7 +2,6 @@ package org.openmetadata.service.migration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -22,7 +21,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
-import org.openmetadata.service.migration.utils.FlywayMigrationFile;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -137,7 +135,7 @@ class MigrationWorkflowReprocessingTest {
     List<String> executed = List.of("1.12.1", "1.12.2", "1.12.3");
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", config, false);
     List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
 
     assertEquals(1, toApply.size());
@@ -155,7 +153,7 @@ class MigrationWorkflowReprocessingTest {
     List<String> executed = List.of("1.12.2", "1.12.3");
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", config, false);
     List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
 
     assertEquals(2, toApply.size());
@@ -176,7 +174,7 @@ class MigrationWorkflowReprocessingTest {
     List<String> executed = List.of("1.12.1", "1.12.2");
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", config, false);
     List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
 
     assertEquals(2, toApply.size());
@@ -196,7 +194,7 @@ class MigrationWorkflowReprocessingTest {
     List<String> executed = List.of("1.12.1", "1.12.2", "1.12.3");
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", config, false);
     List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
 
     assertEquals(1, toApply.size());
@@ -220,7 +218,7 @@ class MigrationWorkflowReprocessingTest {
     List<String> executed = List.of("1.12.3");
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", config, false);
     List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
 
     assertEquals(2, toApply.size());
@@ -250,7 +248,7 @@ class MigrationWorkflowReprocessingTest {
     List<String> executed = List.of("1.12.3", "1.12.3-collate");
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", config, false);
     List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
 
     assertEquals(1, toApply.size());
@@ -267,36 +265,12 @@ class MigrationWorkflowReprocessingTest {
     List<String> executed = new ArrayList<>();
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", config, false);
     List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
 
     assertEquals(2, toApply.size());
     assertFalse(toApply.get(0).isReprocessing());
     assertFalse(toApply.get(1).isReprocessing());
-  }
-
-  // --- FlywayMigrationFile tests ---
-
-  @Test
-  void testFlywayMigrationFileCopyWithReprocessing() throws IOException {
-    Path sqlFile = tempDir.resolve("V1__init.sql");
-    Files.writeString(sqlFile, "CREATE TABLE test (id INT);");
-
-    FlywayMigrationFile original =
-        new FlywayMigrationFile(sqlFile.toFile(), migrationDAO, ConnectionType.MYSQL, config);
-
-    original.getSchemaChanges().add("CREATE TABLE test (id INT)");
-    original.getPostDDLScripts().add("ALTER TABLE test ADD INDEX idx_id (id)");
-
-    MigrationFile copy = original.copyWithReprocessing(true);
-
-    assertInstanceOf(FlywayMigrationFile.class, copy);
-    assertTrue(copy.isReprocessing());
-    assertEquals(1, copy.getSchemaChanges().size());
-    assertEquals("CREATE TABLE test (id INT)", copy.getSchemaChanges().get(0));
-    assertEquals(1, copy.getPostDDLScripts().size());
-    assertEquals("ALTER TABLE test ADD INDEX idx_id (id)", copy.getPostDDLScripts().get(0));
-    assertFalse(original.isReprocessing());
   }
 
   // --- Continuous deployment scenario tests ---
@@ -352,7 +326,7 @@ class MigrationWorkflowReprocessingTest {
     List<String> executed = List.of("1.12.3");
 
     MigrationWorkflow workflow =
-        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", "", config, false);
+        new MigrationWorkflow(jdbi, "", ConnectionType.MYSQL, "", config, false);
     List<MigrationFile> toApply = workflow.getMigrationsToApply(executed, available);
 
     // v1123 is included as reprocessing candidate

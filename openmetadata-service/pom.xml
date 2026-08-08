@@ -498,16 +498,6 @@
       <version>0.16.0</version>
     </dependency>
 
-    <!-- Flyway dependencies - only for SQL parsing, not migration management -->
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-mysql</artifactId>
-    </dependency>
-
     <!-- Micrometer Core -->
     <dependency>
       <groupId>io.micrometer</groupId>

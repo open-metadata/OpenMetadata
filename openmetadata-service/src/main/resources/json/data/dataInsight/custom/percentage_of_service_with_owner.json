@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "groupBy" : "service.name.keyword",
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "deleted" : false,
+  "fullyQualifiedName" : "percentage_of_service_with_owner",
+  "isSystemChart" : true,
+  "name" : "percentage_of_service_with_owner"
+}

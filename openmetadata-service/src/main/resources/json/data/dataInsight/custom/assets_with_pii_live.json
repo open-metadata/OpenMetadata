@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ ],
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "(count(q='columns.tags.tagFQN: pii.*')/count(k='id.keyword'))*100"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "service.name.keyword"
+  },
+  "chartType" : "LineChart",
+  "deleted" : false,
+  "fullyQualifiedName" : "assets_with_pii_live",
+  "isSystemChart" : true,
+  "name" : "assets_with_pii_live"
+}

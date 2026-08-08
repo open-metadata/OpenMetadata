@@ -1,0 +1,16 @@
+{
+  "chartDetails" : {
+    "excludeGroups" : [ "tag", "glossaryTerm" ],
+    "groupBy" : "entityType.keyword",
+    "includeGroups" : [ ],
+    "metrics" : [ {
+      "formula" : "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100"
+    } ],
+    "type" : "LineChart",
+    "xAxisField" : "@timestamp"
+  },
+  "deleted" : false,
+  "fullyQualifiedName" : "percentage_of_data_asset_with_owner",
+  "isSystemChart" : true,
+  "name" : "percentage_of_data_asset_with_owner"
+}
