@@ -28,13 +28,13 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
   return (
     <Fragment>
       <Space className="w-full justify-between">
-        <label
+        <span
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </label>
+        </span>
 
         {schema.additionalProperties && (
           <Button

@@ -84,7 +84,7 @@ const Searchbar = ({
         'm-b-md': !removeMargin,
       })}
       data-testid="search-bar-container">
-      {label !== '' && <label>{label}</label>}
+      {label !== '' && <span>{label}</span>}
       <div className="flex relative">
         <Input
           allowClear={showClearSearch}

@@ -354,6 +354,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       <div
         className="tw:flex tw:flex-col tw:gap-1.5"
         data-testid="sql-expression"
+        role="presentation"
         onClick={() => handleActiveField('root/sqlExpression')}
         {...sqlExpressionDoc}>
         <FormItemLabel
@@ -363,6 +364,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         {isReadOnlyField ? (
           <textarea
             disabled
+            aria-label={t('label.sql-query')}
             className="tw:min-h-30 tw:w-full tw:resize-y tw:rounded-lg tw:border tw:border-solid tw:border-secondary tw:bg-secondary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary"
             placeholder={t('label.sql-query')}
             rows={8}
@@ -387,6 +389,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       <div
         className="tw:flex tw:flex-col tw:gap-3"
         data-testid="parameter-definition"
+        role="presentation"
         onClick={() => handleActiveField('root/parameterDefinition')}
         {...parameterDefinitionDoc}>
         <FormItemLabel

@@ -135,7 +135,14 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
     .fn()
     .mockImplementation(({ children, onUpdate, placeHolder, ...rest }) => (
-      <div {...rest} data-testid="owner-component" onClick={onUpdate}>
+      <div
+        {...rest}
+        aria-label="Owner"
+        data-testid="owner-component"
+        role="button"
+        tabIndex={0}
+        onClick={onUpdate}
+        onKeyDown={onUpdate}>
         <div data-testid="placeholder">{placeHolder}</div>
         {children}
       </div>
@@ -148,6 +155,7 @@ jest.mock('../Severity/Severity.component', () => {
       <div data-testid="severity-header">{headerName}</div>
       <div>Severity.component</div>
       <button
+        aria-label="Update severity"
         data-testid="update-severity"
         onClick={() => onSubmit(Severities.Severity4)}
       />
@@ -161,6 +169,7 @@ jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
       <div data-testid="status-header">{headerName}</div>
       <div>TestCaseIncidentManagerStatus.component</div>
       <button
+        aria-label="Update status"
         data-testid="test-case-incident-manager-status"
         onClick={() => onSubmit(MOCK_TEST_CASE_RESOLUTION_STATUS[1])}
       />

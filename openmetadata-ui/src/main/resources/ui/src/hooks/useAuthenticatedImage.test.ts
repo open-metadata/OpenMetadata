@@ -217,7 +217,7 @@ describe('useAuthenticatedImage', () => {
     const blobA = 'blob:http://localhost/blob-a';
     const blobB = 'blob:http://localhost/blob-b';
 
-    let resolveA: (blob: Blob) => void = () => undefined;
+    let resolveA: (blob: Blob) => void = (_blob) => undefined;
     const deferredA = new Promise<Blob>((resolve) => {
       resolveA = resolve;
     });

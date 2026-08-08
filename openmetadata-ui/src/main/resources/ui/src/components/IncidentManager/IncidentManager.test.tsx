@@ -94,7 +94,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
         data-testid="date-field-dropdown-trigger"
         role="button"
         tabIndex={0}
-        onClick={() => onOpenChange(!isOpen)}>
+        onClick={() => onOpenChange(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onOpenChange(!isOpen);
+          }
+        }}>
         {children[0]}
       </div>
       {isOpen && children[1]}

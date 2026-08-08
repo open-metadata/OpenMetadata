@@ -269,6 +269,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         })}
         id="block-editor-wrapper"
         ref={editorWrapperRef}
+        role="presentation"
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={(e) => e.preventDefault()}
