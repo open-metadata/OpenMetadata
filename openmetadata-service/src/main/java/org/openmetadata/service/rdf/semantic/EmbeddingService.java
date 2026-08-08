@@ -1,5 +1,17 @@
 package org.openmetadata.service.rdf.semantic;
 
+import ai.djl.Application;
+import ai.djl.MalformedModelException;
+import ai.djl.huggingface.translator.TextEmbeddingTranslatorFactory;
+import ai.djl.inference.Predictor;
+import ai.djl.repository.zoo.Criteria;
+import ai.djl.repository.zoo.ModelNotFoundException;
+import ai.djl.repository.zoo.ZooModel;
+import ai.djl.translate.TranslateException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -94,25 +106,110 @@ public class EmbeddingService {
   }
 
   /**
-   * Sentence Transformers provider using ONNX runtime
+   * Sentence Transformers provider using DJL (Deep Java Library).
+   *
+   * <p>Loads models following the same pattern as
+   * {@link org.openmetadata.service.search.vector.client.DjlEmbeddingClient}:
+   *
+   * <ol>
+   *   <li>If {@code openmetadata-finetuned-encoder/} exists → load it as a local PyTorch model
+   *   <li>Otherwise → load {@code sentence-transformers/all-MiniLM-L6-v2} from HuggingFace via DJL
+   * </ol>
    */
-  public static class SentenceTransformerProvider implements EmbeddingProvider {
-    private final String modelPath;
+  public static class SentenceTransformerProvider implements EmbeddingProvider, AutoCloseable {
+
+    private static final String FINETUNED_MODEL_DIR = "openmetadata-finetuned-encoder";
+    private static final String FALLBACK_MODEL =
+        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2";
+
+    private final ZooModel<String, float[]> model;
+    private final String resolvedModelName;
+    private final int dimension;
 
     public SentenceTransformerProvider(String modelPath) {
-      this.modelPath = modelPath;
+      String pathToUse = (modelPath != null && !modelPath.isBlank()) ? modelPath : null;
+
+      // Check for fine-tuned model on disk
+      if (pathToUse == null) {
+        Path fineTunedDir = Paths.get(FINETUNED_MODEL_DIR);
+        if (Files.isDirectory(fineTunedDir)) {
+          pathToUse = fineTunedDir.toAbsolutePath().toString();
+          LOG.info("Found fine-tuned model at: {}", pathToUse);
+        }
+      }
+
+      try {
+        Criteria<String, float[]> criteria;
+        if (pathToUse != null && Files.isDirectory(Paths.get(pathToUse))) {
+          // Load local fine-tuned model
+          this.resolvedModelName = pathToUse;
+          criteria =
+              Criteria.builder()
+                  .setTypes(String.class, float[].class)
+                  .optModelPath(Paths.get(pathToUse))
+                  .optEngine("PyTorch")
+                  .optTranslatorFactory(new TextEmbeddingTranslatorFactory())
+                  .optApplication(Application.NLP.TEXT_EMBEDDING)
+                  .build();
+        } else {
+          // Load fallback model from HuggingFace via DJL
+          this.resolvedModelName = FALLBACK_MODEL;
+          criteria =
+              Criteria.builder()
+                  .setTypes(String.class, float[].class)
+                  .optModelUrls("djl://" + FALLBACK_MODEL)
+                  .optEngine("PyTorch")
+                  .optTranslatorFactory(new TextEmbeddingTranslatorFactory())
+                  .optApplication(Application.NLP.TEXT_EMBEDDING)
+                  .build();
+        }
+
+        this.model = criteria.loadModel();
+        this.dimension = detectDimension();
+
+        LOG.info(
+            "SentenceTransformerProvider initialized: model={}, dimension={}",
+            resolvedModelName,
+            dimension);
+      } catch (ModelNotFoundException | MalformedModelException | IOException e) {
+        throw new RuntimeException(
+            "Failed to initialize SentenceTransformerProvider with model: " + pathToUse, e);
+      }
+    }
+
+    private int detectDimension() {
+      try (Predictor<String, float[]> pred = model.newPredictor()) {
+        float[] sample = pred.predict("dimension probe");
+        return sample.length;
+      } catch (TranslateException e) {
+        throw new RuntimeException(
+            "Failed to detect embedding dimension for model: " + resolvedModelName, e);
+      }
     }
 
     @Override
     public float[] generateEmbedding(String text) {
-      // TODO: Implement ONNX runtime inference
-      // For now, fallback to local provider
-      return new LocalEmbeddingProvider().generateEmbedding(text);
+      if (text == null || text.isBlank()) {
+        return new float[dimension];
+      }
+      try (Predictor<String, float[]> pred = model.newPredictor()) {
+        return pred.predict(text);
+      } catch (TranslateException e) {
+        LOG.error("DJL embedding generation failed for model {}: {}", resolvedModelName, e.getMessage(), e);
+        return new float[dimension];
+      }
     }
 
     @Override
     public int getDimension() {
-      return EMBEDDING_DIMENSION;
+      return dimension;
+    }
+
+    @Override
+    public void close() {
+      if (model != null) {
+        model.close();
+      }
     }
   }
 
@@ -124,9 +221,18 @@ public class EmbeddingService {
     this.executorService =
         Executors.newFixedThreadPool(4, Thread.ofPlatform().name("om-embedding-", 0).factory());
 
-    // For now, always use local provider
-    // TODO: Add configuration support for different providers
-    this.provider = new LocalEmbeddingProvider();
+    // Try SentenceTransformerProvider (DJL-backed) first, fall back to hash-based local provider
+    EmbeddingProvider resolved;
+    try {
+      resolved = new SentenceTransformerProvider(null);
+      LOG.info("Successfully initialized SentenceTransformerProvider via DJL");
+    } catch (Exception e) {
+      LOG.warn(
+          "SentenceTransformerProvider init failed ({}). Falling back to LocalEmbeddingProvider.",
+          e.getMessage());
+      resolved = new LocalEmbeddingProvider();
+    }
+    this.provider = resolved;
 
     LOG.info(
         "Initialized embedding service with provider: {}", provider.getClass().getSimpleName());
