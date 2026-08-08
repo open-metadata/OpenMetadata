@@ -46,7 +46,9 @@ jest.mock('../../../../../utils/EntityUtilClassBase', () => ({
 }));
 
 jest.mock('../../../../../utils/FeedUtilsPure', () => ({
-  getEntityFQN: jest.fn(() => 'service::entity'),
+  getEntityFQN: jest.fn((entityLink: string) =>
+    entityLink ? 'service::entity' : undefined
+  ),
   getEntityType: jest.fn(() => 'table'),
 }));
 
@@ -124,5 +126,14 @@ describe('AnnouncementCardV1', () => {
     fireEvent.click(screen.getByTestId('announcement-card-v1-1'));
 
     expect(mockOnClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders without an entity link when entityLink is empty or invalid', () => {
+    renderAnnouncementCardV1({ ...mockAnnouncement, entityLink: '' });
+
+    expect(screen.getByTestId('announcement-card-v1-1')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('announcement-entity-link')
+    ).not.toBeInTheDocument();
   });
 });
