@@ -56,6 +56,7 @@ import com.nimbusds.openid.connect.sdk.OIDCTokenResponseParser;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import com.nimbusds.openid.connect.sdk.token.OIDCTokens;
 import com.nimbusds.openid.connect.sdk.validators.BadJWTExceptions;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -128,6 +129,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
           ClientAuthenticationMethod.PRIVATE_KEY_JWT,
           ClientAuthenticationMethod.NONE);
+
+  // OIDC spec error codes meaning "silent auth not possible; interactive login required"
+  private static final Set<String> SILENT_AUTH_ERRORS =
+      Set.of(
+          "login_required",
+          "interaction_required",
+          "consent_required",
+          "account_selection_required");
 
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
@@ -468,8 +477,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     try {
       HttpSession session = getHttpSession(req, false);
       if (session == null) {
-        LOG.error("No session found for callback, redirecting to login");
-        throw new TechnicalException("No session found for callback, redirecting to login");
+        // Hotfix #30304: the session backing this cookie is gone (invalidated or restarted).
+        // A 500 strands the browser on a dead cookie in a login loop; clear the cookie and
+        // send the user to interactive signin instead.
+        LOG.warn("No session found for callback, clearing session cookie, redirecting to signin");
+        clearSessionCookie(req, resp);
+        resp.sendRedirect(serverUrl + "/signin");
+        return;
       }
 
       LOG.debug("Performing Auth Callback For User Session: {} ", session.getId());
@@ -490,6 +504,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (response instanceof AuthenticationErrorResponse authenticationErrorResponse) {
         LOG.error(
             "Bad authentication response, error={}", authenticationErrorResponse.getErrorObject());
+        // Hotfix #30304: login_required & friends are the IdP's spec-defined "silent auth not
+        // possible" replies (e.g. prompt=none with no IdP session). Fall back to interactive
+        // signin instead of a 500 the frontend cannot recover from.
+        String errorCode = authenticationErrorResponse.getErrorObject().getCode();
+        if (SILENT_AUTH_ERRORS.contains(errorCode)) {
+          resp.sendRedirect(serverUrl + "/signin");
+          return;
+        }
         throw new TechnicalException("Bad authentication response");
       }
 
@@ -564,8 +586,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     try {
       HttpSession session = getHttpSession(httpServletRequest, false);
       if (session == null) {
-        LOG.error("No session found for refresh, redirecting to login");
-        throw new TechnicalException("No session found for refresh, redirecting to login");
+        // Hotfix #30304: no server-side session for this cookie (invalidated or restarted).
+        // Respond 401 (not 500) and clear the dead cookie so the frontend re-logins cleanly
+        // instead of looping on a cookie that can never resolve again.
+        LOG.warn("No session found for refresh, clearing session cookie, responding 401");
+        clearSessionCookie(httpServletRequest, httpServletResponse);
+        respondRefreshUnauthorized(httpServletResponse);
+        return;
       }
 
       LOG.debug("Performing Auth Refresh For User Session: {} ", session.getId());
@@ -584,9 +611,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
                 .getEpochSecond());
         writeJsonResponse(httpServletResponse, JsonUtils.pojoToJson(jwtResponse));
       } else {
-        LOG.debug(
-            "Credentials Not Found For User Session: {}, Redirect to Logout ", session.getId());
-        this.handleLogout(httpServletRequest, httpServletResponse);
+        // Hotfix #30304: do NOT logout/invalidate here. A login may be in flight on this very
+        // session (the cookie is set at /login but credentials only arrive at /callback); a
+        // concurrent tab's refresh timer landing in that window would invalidate the pending
+        // login and loop the user (Okta/WebAuthn completes -> callback finds no session).
+        // Respond 401 and leave the session AND cookie intact.
+        LOG.warn("Credentials not found for user session: {}, responding 401", session.getId());
+        respondRefreshUnauthorized(httpServletResponse);
       }
     } catch (Exception e) {
       getErrorMessage(httpServletResponse, new TechnicalException(e));
@@ -847,6 +878,25 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     LOG.error("[Auth Callback Servlet] Failed in Auth Login", e);
     resp.getOutputStream()
         .println("<p> [Auth Callback Servlet] Authentication failed. Please try again. </p>");
+  }
+
+  private static void respondRefreshUnauthorized(HttpServletResponse response) throws IOException {
+    // Write the body directly: SecurityUtil.writeJsonResponse ends with setStatus(SC_OK),
+    // which would silently turn this 401 into a 200 on an uncommitted response.
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    response.getOutputStream().print("{\"error\":\"Session expired. Please login again.\"}");
+    response.getOutputStream().flush();
+  }
+
+  private static void clearSessionCookie(HttpServletRequest request, HttpServletResponse response) {
+    Cookie deadCookie = new Cookie("JSESSIONID", "");
+    deadCookie.setPath("/");
+    deadCookie.setMaxAge(0);
+    deadCookie.setHttpOnly(true);
+    deadCookie.setSecure(request.isSecure());
+    response.addCookie(deadCookie);
   }
 
   private void sendRedirectWithToken(
