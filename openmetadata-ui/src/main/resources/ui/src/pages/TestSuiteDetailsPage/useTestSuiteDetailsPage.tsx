@@ -13,7 +13,14 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isArray, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -122,6 +129,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const { getEntityPermissionByFqn, permissions: globalPermissions } =
     usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
+  const activeTestSuiteFQN = useRef(testSuiteFQN);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<string>(EntityTabs.TEST_CASES);
   const { showModal } = useEntityExportModalProvider();
@@ -129,6 +137,12 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(true);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
+  const testCaseRequestId = useRef(0);
+  const testSuiteRequestId = useRef(0);
+  const authoritativeTestCaseCount = useRef<{
+    testSuiteFQN: string;
+    total: number;
+  }>();
 
   const {
     currentPage,
@@ -249,6 +263,11 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
   const fetchTestCases = useCallback(
     async (param?: ListTestCaseParamsBySearch) => {
+      const requestId = ++testCaseRequestId.current;
+      const requestedTestSuiteFQN = testSuiteFQN;
+      const isCurrentRequest = () =>
+        requestId === testCaseRequestId.current &&
+        requestedTestSuiteFQN === activeTestSuiteFQN.current;
       setIsTestCaseLoading(true);
       try {
         const response = await getListTestCaseBySearch({
@@ -272,10 +291,32 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             limit: 0,
           }
         );
+
+        if (!isCurrentRequest()) {
+          return;
+        }
+
+        const authoritativeSnapshot = authoritativeTestCaseCount.current;
+        const shouldUseAuthoritativeTotal =
+          authoritativeSnapshot?.testSuiteFQN === testSuiteFQN &&
+          response.paging.total < authoritativeSnapshot.total;
         setIngestionPipelineCount(ingestionPipelinePaging.total);
         setTestCaseResult(response.data);
-        handlePagingChange(response.paging);
+        handlePagingChange({
+          ...response.paging,
+          total: shouldUseAuthoritativeTotal
+            ? authoritativeSnapshot.total
+            : response.paging.total,
+        });
+
+        if (authoritativeSnapshot && !shouldUseAuthoritativeTotal) {
+          authoritativeTestCaseCount.current = undefined;
+        }
       } catch {
+        if (!isCurrentRequest()) {
+          return;
+        }
+
         setTestCaseResult([]);
         showErrorToast(
           t('server.entity-fetch-error', {
@@ -283,7 +324,9 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
           })
         );
       } finally {
-        setIsTestCaseLoading(false);
+        if (isCurrentRequest()) {
+          setIsTestCaseLoading(false);
+        }
       }
     },
     [testSuiteId, testSuiteFQN, sortOptions, pageSize, handlePagingChange, t]
@@ -299,6 +342,12 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
   );
 
   const fetchTestSuiteByName = useCallback(async () => {
+    const requestId = ++testSuiteRequestId.current;
+    const requestedTestSuiteFQN = testSuiteFQN;
+    const isCurrentRequest = () =>
+      requestId === testSuiteRequestId.current &&
+      requestedTestSuiteFQN === activeTestSuiteFQN.current;
+
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
         fields: [
@@ -308,6 +357,11 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         ],
         include: Include.All,
       });
+
+      if (!isCurrentRequest()) {
+        return;
+      }
+
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
@@ -322,7 +376,13 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         },
       ]);
       setTestSuite(response);
+
+      return response;
     } catch (error) {
+      if (!isCurrentRequest()) {
+        return;
+      }
+
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
@@ -342,15 +402,47 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       if (!testSuiteId) {
         return;
       }
+      const submittedTestSuiteFQN = testSuiteFQN;
+      const isCurrentTestSuite = () =>
+        submittedTestSuiteFQN === activeTestSuiteFQN.current;
+
       try {
         await addTestCasesToLogicalTestSuiteBulk(testSuiteId, payload);
+
+        if (!isCurrentTestSuite()) {
+          return;
+        }
+
         setIsTestCaseModalOpen(false);
-        await Promise.all([fetchTestSuiteByName(), fetchTestCases()]);
+        const updatedTestSuite = await fetchTestSuiteByName();
+
+        if (!isCurrentTestSuite()) {
+          return;
+        }
+
+        if (updatedTestSuite?.tests) {
+          const total = updatedTestSuite.tests.length;
+          authoritativeTestCaseCount.current = { testSuiteFQN, total };
+          handlePagingChange((currentPaging) => ({
+            ...currentPaging,
+            total,
+          }));
+        }
+
+        await fetchTestCases();
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (isCurrentTestSuite()) {
+          showErrorToast(error as AxiosError);
+        }
       }
     },
-    [testSuiteId, fetchTestSuiteByName, fetchTestCases]
+    [
+      testSuiteId,
+      testSuiteFQN,
+      fetchTestSuiteByName,
+      fetchTestCases,
+      handlePagingChange,
+    ]
   );
 
   const updateTestSuiteData = async (updatedTestSuite: TestSuite) => {
@@ -463,6 +555,13 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       );
     }
   }, []);
+
+  useLayoutEffect(() => {
+    activeTestSuiteFQN.current = testSuiteFQN;
+    testCaseRequestId.current += 1;
+    testSuiteRequestId.current += 1;
+    authoritativeTestCaseCount.current = undefined;
+  }, [testSuiteFQN]);
 
   useEffect(() => {
     if (permissions.hasViewPermission) {
