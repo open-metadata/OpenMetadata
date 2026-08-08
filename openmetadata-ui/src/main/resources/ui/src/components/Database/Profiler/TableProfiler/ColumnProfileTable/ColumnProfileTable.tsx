@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
+import { Skeleton, Table, Typography } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -64,6 +64,14 @@ interface FlatRow {
   depth: number;
   hasChildren: boolean;
 }
+
+const LOADING_SKELETON_IDS = [
+  'column-profile-loading-row-1',
+  'column-profile-loading-row-2',
+  'column-profile-loading-row-3',
+  'column-profile-loading-row-4',
+  'column-profile-loading-row-5',
+];
 
 const ColumnProfileTable = () => {
   const location = useCustomLocation();
@@ -464,6 +472,7 @@ const ColumnProfileTable = () => {
           <div className="p-x-md p-y-md">
             <Searchbar
               removeMargin
+              containerClassName="tw:w-1/2"
               placeholder={t('message.find-in-table')}
               searchValue={searchText}
               typingInterval={500}
@@ -492,7 +501,20 @@ const ColumnProfileTable = () => {
               <Table.Body
                 items={isColumnsLoading || isLoading ? [] : flatRows}
                 renderEmptyState={() =>
-                  isColumnsLoading || isLoading ? null : (
+                  isColumnsLoading || isLoading ? (
+                    <div
+                      className="tw:p-4"
+                      data-testid="column-profile-table-loading-skeletons">
+                      {LOADING_SKELETON_IDS.map((skeletonId) => (
+                        <Skeleton
+                          className="tw:mb-2"
+                          height={40}
+                          key={skeletonId}
+                          width="100%"
+                        />
+                      ))}
+                    </div>
+                  ) : (
                     <FilterTablePlaceHolder />
                   )
                 }>
