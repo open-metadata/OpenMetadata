@@ -206,48 +206,50 @@ export const getRichTextDiff = (
 
   const FILE_BLOCK_RE =
     /<div[^>]*data-type="file-attachment"[^>]*>[\s\S]*?<\/div>/g;
-  const oldBlocks: string[] = [];
-  const newBlocks: string[] = [];
 
-  const oldTokenized = oldHtml.replace(FILE_BLOCK_RE, (match) => {
-    oldBlocks.push(match);
+  // Shared content-keyed registry: identical blocks share a token so diffWords
+  // correctly marks them unchanged; genuinely different blocks get distinct tokens.
+  const blockToToken = new Map<string, string>();
+  const tokenToBlock = new Map<string, string>();
 
-    return `FILEBLOCK${oldBlocks.length - 1}`;
-  });
+  const tokenize = (html: string) =>
+    html.replace(FILE_BLOCK_RE, (match) => {
+      let token = blockToToken.get(match);
 
-  const newTokenized = newHtml.replace(FILE_BLOCK_RE, (match) => {
-    newBlocks.push(match);
+      if (!token) {
+        token = `FILEBLOCK${blockToToken.size}`;
+        blockToToken.set(match, token);
+        tokenToBlock.set(token, match);
+      }
 
-    return `FILEBLOCK${newBlocks.length - 1}`;
-  });
+      return token;
+    });
+
+  const oldTokenized = tokenize(oldHtml);
+  const newTokenized = tokenize(newHtml);
 
   const diffArr = diffWords(oldTokenized, newTokenized);
 
   return diffArr
     .flatMap((chunk) =>
       chunk.value.split(/(FILEBLOCK\d+)/).map((part) => {
-        const tokenMatch = part.match(/^FILEBLOCK(\d+)$/);
+        const tokenMatch = part.match(/^FILEBLOCK\d+$/);
 
         if (tokenMatch) {
-          const idx = parseInt(tokenMatch[1]);
+          const block = tokenToBlock.get(part) ?? '';
 
           if (chunk.added) {
-            return (newBlocks[idx] ?? '').replace(
-              /<div/,
-              '<div data-diff-state="added"'
-            );
+            return block.replace(/<div/, '<div data-diff-state="added"');
           }
           if (chunk.removed) {
-            return (oldBlocks[idx] ?? '').replace(
-              /<div/,
-              '<div data-diff-state="removed"'
-            );
+            return block.replace(/<div/, '<div data-diff-state="removed"');
           }
 
-          return newBlocks[idx] ?? oldBlocks[idx] ?? '';
+          return block;
         }
 
-        const value = part.trim().replaceAll('\n', '<br>');
+        // Preserve spaces — only skip the empty strings emitted by split at boundaries.
+        const value = part.replaceAll('\n', '<br>');
         if (!value) {
           return '';
         }
