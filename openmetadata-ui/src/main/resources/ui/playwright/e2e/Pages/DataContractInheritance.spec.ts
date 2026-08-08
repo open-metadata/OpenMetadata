@@ -99,13 +99,13 @@ const fillSemanticsForm = async (
   const ruleLocator = page.locator('.group').nth(0);
   await selectOption(
     page,
-    ruleLocator.locator('.group--field .ant-select'),
+    ruleLocator.locator('.group--field'),
     semanticsData.rules[0].field,
     true
   );
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator .ant-select'),
+    ruleLocator.locator('.rule--operator'),
     semanticsData.rules[0].operator
   );
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,8 +19,8 @@ import {
   ImmutableTree,
   Query,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
-import '@react-awesome-query-builder/antd/css/styles.css';
+} from '@react-awesome-query-builder/ui';
+import '@react-awesome-query-builder/ui/css/styles.css';
 import { WidgetProps } from '@rjsf/utils';
 import {
   Alert,
