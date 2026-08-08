@@ -61,6 +61,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class AlertsRuleEvaluator {
   private static final String FIELD_TEST_SUITES_AND_OWNERS =
       Entity.FIELD_TEST_SUITES + "," + Entity.FIELD_OWNERS;
+  private static final String FIELD_TEST_SUITES_AND_DOMAINS =
+      Entity.FIELD_TEST_SUITES + "," + Entity.FIELD_DOMAINS;
 
   /**
    * Resolves the change-event entity itself even once it is soft-deleted — a delete event must still
@@ -509,8 +511,12 @@ public class AlertsRuleEvaluator {
     boolean matched = matchesAnyDomainFqn(domains, domainFqns);
     if (!matched && TEST_CASE.equals(changeEvent.getEntityType())) {
       // If we did not match on the domain and are dealing with a test case,
-      // check if the match happens on the test suite domain
-      matched = testSuiteMatcher(listOrEmpty(((TestCase) entity).getTestSuites()), domainFqns);
+      // check if the match happens on the test suite domain. The suites are re-read rather than
+      // taken from the payload because testSuiteMatcher needs their domains, which the serialized
+      // change event does not carry.
+      matched =
+          testSuiteMatcher(
+              resolveTestSuites((TestCase) entity, FIELD_TEST_SUITES_AND_DOMAINS), domainFqns);
     }
     return matched;
   }
