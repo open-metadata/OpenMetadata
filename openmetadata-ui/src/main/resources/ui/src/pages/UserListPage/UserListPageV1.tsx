@@ -250,6 +250,9 @@ const UserListPageV1 = () => {
   }, [searchValue, currentPage, isDeleted]);
 
   useEffect(() => {
+    if (pageSize !== pagingCursor.pageSize) {
+      return;
+    }
     if (searchValue) {
       return;
     }

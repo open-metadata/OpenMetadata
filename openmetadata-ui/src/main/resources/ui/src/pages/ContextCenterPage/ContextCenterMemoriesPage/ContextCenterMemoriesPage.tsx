@@ -129,6 +129,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [debouncedAuthorSearch, setDebouncedAuthorSearch] = useState('');
   const isAuthorSearchMounted = useRef(false);
+  const isViewModalOpenRef = useRef(isViewModalOpen);
+  isViewModalOpenRef.current = isViewModalOpen;
 
   const SORT_OPTIONS = useMemo(
     () => [
@@ -448,7 +450,7 @@ const ContextCenterMemoriesPage: FC = () => {
 
   useEffect(() => {
     const memoryName = searchParams.get('memory');
-    if (!memoryName || isViewModalOpen) {
+    if (!memoryName || isViewModalOpenRef.current) {
       return;
     }
 
@@ -462,7 +464,10 @@ const ContextCenterMemoriesPage: FC = () => {
           return prev;
         });
       });
-  }, [isViewModalOpen, searchParams, handleViewMemory, setSearchParams]);
+  }, [searchParams, handleViewMemory, setSearchParams]);
+  // isViewModalOpen intentionally removed — read via ref to prevent the effect
+  // from re-firing when the modal closes (isViewModalOpen → false), which would
+  // reopen it while searchParams still holds the stale memory name (react-router v7 startTransition)
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();

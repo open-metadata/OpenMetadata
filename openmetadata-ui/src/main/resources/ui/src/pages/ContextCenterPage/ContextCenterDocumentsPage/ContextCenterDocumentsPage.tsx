@@ -99,6 +99,8 @@ const ContextCenterDocumentsPage: FC = () => {
   const isLoadingMoreRef = useRef(false);
   const isLoadingMoreFoldersRef = useRef(false);
   const folderViewRef = useRef<DocumentFolderViewHandle>(null);
+  const previewFileRef = useRef<ContextFile | undefined>(undefined);
+  previewFileRef.current = previewFile;
 
   const fetchGlobalFileCount = useCallback(async () => {
     try {
@@ -295,7 +297,7 @@ const ContextCenterDocumentsPage: FC = () => {
 
   useEffect(() => {
     const documentId = searchParams.get('document');
-    if (!documentId || isDocumentsLoading || previewFile) {
+    if (!documentId || isDocumentsLoading || previewFileRef.current) {
       return;
     }
     const match = allDocuments.find((d) => d.id === documentId);
@@ -334,10 +336,12 @@ const ContextCenterDocumentsPage: FC = () => {
   }, [
     allDocuments,
     isDocumentsLoading,
-    previewFile,
     searchParams,
     t,
     setSearchParams,
+    // previewFile intentionally removed — read via previewFileRef to prevent the effect
+    // from re-firing when the panel closes (previewFile → undefined), which would reopen
+    // it while searchParams still holds the stale document ID (react-router v7 startTransition)
   ]);
 
   const handleDeleteFile = useCallback((file: ContextFile) => {

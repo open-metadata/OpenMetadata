@@ -84,6 +84,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
+  const selectedColumnRef = useRef<ColumnOrTask | null>(null);
   const [layout, setLayout] = useState<WidgetConfig[]>(
     getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
   );
@@ -95,6 +96,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const [selectedColumn, setSelectedColumn] = useState<ColumnOrTask | null>(
     null
   );
+  selectedColumnRef.current = selectedColumn;
 
   // State to store the displayed columns (sorted/filtered) from SchemaTable
   const [displayedColumns, setDisplayedColumns] = useState<ColumnOrTask[]>([]);
@@ -137,7 +139,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // Sync selected column from prop (deep link)
   useEffect(() => {
-    // If we have a direct columnFqn from props, try to find and select it
     if (columnFqn && extractedColumns.length > 0) {
       const col = findFieldByFQN(extractedColumns as Column[], columnFqn);
       if (col) {
@@ -229,8 +230,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     (column: ColumnOrTask) => {
       const columnFqn = column.fullyQualifiedName;
 
-      // If the column is already selected, don't do anything to avoid loops
-      if (selectedColumn?.fullyQualifiedName === columnFqn) {
+      // Read via ref so this callback is not recreated when selectedColumn changes.
+      // Without this, closeColumnDetailPanel (setSelectedColumn null) would recreate
+      // this callback, causing useFqnDeepLink to re-fire with stale URL params and
+      // reopen the panel (react-router v7 defers navigate() via startTransition).
+      if (selectedColumnRef.current?.fullyQualifiedName === columnFqn) {
         return;
       }
 
@@ -253,7 +257,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       tab,
       navigate,
       location.pathname,
-      selectedColumn?.fullyQualifiedName,
+      // selectedColumn?.fullyQualifiedName intentionally omitted — read via selectedColumnRef
     ]
   );
 

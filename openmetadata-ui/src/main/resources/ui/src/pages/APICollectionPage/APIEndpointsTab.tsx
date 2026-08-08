@@ -239,6 +239,9 @@ function APIEndpointsTab({
   }, [searchValue, currentPage, filters.showDeletedEndpoints]);
 
   useEffect(() => {
+    if (pageSize !== pagingCursor.pageSize) {
+      return;
+    }
     if (searchValue) {
       return;
     }

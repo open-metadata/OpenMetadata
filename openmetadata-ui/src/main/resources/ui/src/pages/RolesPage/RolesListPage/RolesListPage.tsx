@@ -275,6 +275,9 @@ const RolesListPage = () => {
   };
 
   useEffect(() => {
+    if (pageSize !== pagingCursor.pageSize) {
+      return;
+    }
     const { cursorType, cursorValue } = pagingCursor ?? {};
 
     if (cursorType && cursorValue) {
