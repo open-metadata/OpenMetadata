@@ -34,6 +34,7 @@ export interface SchemaEditorProps {
   };
   editorClass?: string;
   showCopyButton?: boolean;
+  copyButtonClassName?: string;
   onChange?: (value: string) => void;
   onFocus?: () => void;
   title?: ReactNode;
