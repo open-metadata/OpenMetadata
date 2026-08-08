@@ -33,6 +33,7 @@ import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.elasticsearch.core.GetResponse;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
+import es.co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
@@ -473,22 +474,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params =
-          convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
-
-      client.updateByQuery(
-          u ->
-              u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                  .query(exactFieldQuery(fieldAndValue))
-                  .conflicts(Conflicts.Proceed)
-                  .script(
-                      s ->
-                          s.source(ss -> ss.scriptString(updates.getKey()))
-                              .lang(ScriptLanguage.Painless)
-                              .params(params))
-                  .refresh(true));
-
-      LOG.info("Successfully updated children in ElasticSearch for index: {}", indexName);
+      submitChildUpdate(
+          List.of(Entity.getSearchRepository().getIndexOrAliasName(indexName)),
+          fieldAndValue,
+          updates);
+      LOG.info("Successfully submitted child update in ElasticSearch for index: {}", indexName);
     } catch (IOException | ElasticsearchException e) {
       SearchIndexRetryQueue.enqueue(
           null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
@@ -506,22 +496,44 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
       return;
     }
+    submitChildUpdate(indexNames, fieldAndValue, updates);
+    LOG.info("Successfully submitted child update in ElasticSearch for indices: {}", indexNames);
+  }
+
+  private void submitChildUpdate(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
+  }
+
+  /**
+   * Builds the inherited-field child propagation as an async update-by-query
+   * ({@code wait_for_completion=false}). A synchronous update-by-query over a large child set (for
+   * example a test suite with thousands of test cases) holds one socket open for the entire scan
+   * and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException}; submitting
+   * it as a background task returns immediately and lets the cluster finish the propagation and the
+   * post-task {@code refresh} on its own.
+   */
+  UpdateByQueryRequest buildUpdateChildrenRequest(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
-
-    client.updateByQuery(
+    return UpdateByQueryRequest.of(
         u ->
             u.index(indexNames)
                 .query(exactFieldQuery(fieldAndValue))
                 .conflicts(Conflicts.Proceed)
+                .waitForCompletion(false)
                 .script(
                     s ->
                         s.source(ss -> ss.scriptString(updates.getKey()))
                             .lang(ScriptLanguage.Painless)
                             .params(params))
                 .refresh(true));
-
-    LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
   }
 
   @Override
