@@ -55,6 +55,8 @@ public final class SearchUtils {
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
+  private static final String FUZZINESS_DISABLED = "0";
+  private static final String FUZZINESS_ENABLED = "1";
   private static final String EXACT_AGG_SUFFIX = "__exact";
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
@@ -809,9 +811,9 @@ public final class SearchUtils {
    */
   public static String getFuzziness(String query) {
     if (query == null || query.isBlank()) {
-      return "1";
+      return FUZZINESS_ENABLED;
     }
-    return analyzedSubTokenCount(query) > 2 ? "0" : "1";
+    return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
   }
 
   /**
@@ -823,5 +825,20 @@ public final class SearchUtils {
       return 10;
     }
     return analyzedSubTokenCount(query) > 2 ? 1 : 10;
+  }
+
+  /**
+   * Whether a fuzzy ranking stage still earns the recall it buys. Ranking stages are combined
+   * under a {@code should} with {@code minimum_should_match: 1}, so every stage widens recall,
+   * not just the score. {@link #getFuzziness} turns fuzziness off past 2 sub-tokens, and for a
+   * single-term query that leaves an OR multi_match at 70% token coverage: it can no longer
+   * correct a typo, it only admits every document sharing 70% of the query's tokens. On an
+   * identifier such as a fully-qualified name those are exactly its siblings under the same
+   * parent, so drop the stage and let exact/phrase/token-coverage decide recall. Multi-term
+   * queries keep it — spanning a phrase with partial token coverage is the stage's purpose.
+   */
+  public static boolean isFuzzyStageUseful(String query) {
+    boolean fuzzinessDisabled = FUZZINESS_DISABLED.equals(getFuzziness(query));
+    return !(fuzzinessDisabled && SearchRankingHelper.queryTerms(query).size() == 1);
   }
 }
