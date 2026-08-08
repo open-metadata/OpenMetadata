@@ -282,12 +282,7 @@ test.describe('Activity Feed - Filters', () => {
 
       // All items should be task cards
       const taskCards = feedWidget.locator('[data-testid="task-feed-card"]');
-      const messageContainers = feedWidget.locator(
-        '[data-testid="message-container"]:not([data-testid="task-feed-card"])'
-      );
-
       const taskCount = await taskCards.count();
-      const messageCount = await messageContainers.count();
 
       // When tasks filter is active, should show mostly tasks
       expect(taskCount).toBeGreaterThanOrEqual(0);
@@ -549,7 +544,7 @@ test.describe('Activity Feed - Entity Page', () => {
     const mentionsResponse = page.waitForResponse((response) => {
       if (
         response.request().method() !== 'GET' ||
-        !response.url().includes('/api/v1/feed')
+        !response.url().includes('/api/v1/conversations')
       ) {
         return false;
       }

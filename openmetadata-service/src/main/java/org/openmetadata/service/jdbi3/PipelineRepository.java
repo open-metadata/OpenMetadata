@@ -17,10 +17,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.OWNS;
-import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
@@ -49,7 +47,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
@@ -72,19 +69,15 @@ import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TableObservabilityData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.util.EntityUtil;
@@ -128,60 +121,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setFullyQualifiedName(
         FullyQualifiedName.add(pipeline.getService().getFullyQualifiedName(), pipeline.getName()));
     setTaskFQN(pipeline.getFullyQualifiedName(), pipeline.getTasks());
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals(TASKS_FIELD)) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new TaskDescriptionWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new TaskTagWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class TaskDescriptionWorkflow extends DescriptionTaskWorkflow {
-    private final Task task;
-
-    TaskDescriptionWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Pipeline pipeline =
-          Entity.getEntity(CONTAINER, threadContext.getAboutEntity().getId(), "tasks", ALL);
-      threadContext.setAboutEntity(pipeline);
-      task = findTask(pipeline.getTasks(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      task.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class TaskTagWorkflow extends TagTaskWorkflow {
-    private final Task task;
-
-    TaskTagWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      Pipeline pipeline =
-          Entity.getEntity(CONTAINER, threadContext.getAboutEntity().getId(), "tasks,tags", ALL);
-      threadContext.setAboutEntity(pipeline);
-      task = findTask(pipeline.getTasks(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      task.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
   }
 
   @Override

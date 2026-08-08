@@ -18,13 +18,13 @@ import static org.openmetadata.service.formatter.util.FormatterUtil.transformMes
 
 import java.util.List;
 import org.openmetadata.schema.entity.data.Query;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 
 public class QueryFormatter implements EntityFormatter {
@@ -33,7 +33,7 @@ public class QueryFormatter implements EntityFormatter {
   @Override
   public String format(
       MessageDecorator<?> messageFormatter,
-      Thread thread,
+      FormattedMessage thread,
       FieldChange fieldChange,
       FormatterUtil.CHANGE_TYPE changeType) {
     if (QUERY_USED_IN_FIELD.equals(fieldChange.getName())) {
@@ -44,7 +44,7 @@ public class QueryFormatter implements EntityFormatter {
 
   private String transformQueryUsedIn(
       MessageDecorator<?> messageFormatter,
-      Thread thread,
+      FormattedMessage thread,
       FieldChange fieldChange,
       FormatterUtil.CHANGE_TYPE changeType) {
     String newVal = getFieldValue(fieldChange.getNewValue(), messageFormatter, thread);
@@ -58,7 +58,7 @@ public class QueryFormatter implements EntityFormatter {
 
   @SuppressWarnings("unchecked")
   private static String getFieldValue(
-      Object fieldValue, MessageDecorator<?> messageFormatter, Thread thread) {
+      Object fieldValue, MessageDecorator<?> messageFormatter, FormattedMessage thread) {
     Query query =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);

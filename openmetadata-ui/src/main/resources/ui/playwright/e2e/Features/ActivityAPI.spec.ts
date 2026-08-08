@@ -182,6 +182,7 @@ test.describe(
     let commentsTable: TableClass;
     let commentFeedText: string;
     let layoutFeedText: string;
+    let adminDisplayName: string;
 
     test.beforeAll('Setup: create table and feed items', async () => {
       const { apiContext, afterAction } = await createAdminApiContext();
@@ -202,6 +203,9 @@ test.describe(
           commentsTable,
           layoutFeedText
         );
+        const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
+        const adminUser = await userResponse.json();
+        adminDisplayName = adminUser.displayName ?? adminUser.name;
       } finally {
         await afterAction();
       }
@@ -225,6 +229,183 @@ test.describe(
         await feedItem.click();
         await waitForAllLoadersToDisappear(page);
         await postActivityComment(page, commentText);
+      });
+    });
+
+    test('creates exactly one reply and isolates activities with the same about', async ({
+      page,
+    }) => {
+      const firstActivityText = `First isolated activity ${uuid()}`;
+      const secondActivityText = `Second isolated activity ${uuid()}`;
+      const firstReply = `First activity reply ${uuid()}`;
+      const subsequentReply = `Subsequent activity reply ${uuid()}`;
+      const editedFirstReply = `Edited activity reply ${uuid()}`;
+      let firstActivityId = '';
+      let secondActivityId = '';
+
+      await test.step('Seed two activities for the same entity', async () => {
+        const { apiContext, afterAction } = await getApiContext(page);
+
+        try {
+          firstActivityId = await insertActivityEventForTest(
+            apiContext,
+            commentsTable,
+            firstActivityText
+          );
+          secondActivityId = await insertActivityEventForTest(
+            apiContext,
+            commentsTable,
+            secondActivityText
+          );
+        } finally {
+          await afterAction();
+        }
+      });
+
+      await test.step('Post first and subsequent replies through the activity route', async () => {
+        const activityReplyRequests: string[] = [];
+        const conversationCreateRequests: string[] = [];
+
+        page.on('request', (request) => {
+          if (request.method() !== 'POST') {
+            return;
+          }
+          if (
+            request
+              .url()
+              .includes(`/api/v1/activity/${firstActivityId}/replies`)
+          ) {
+            activityReplyRequests.push(request.url());
+          }
+          if (/\/api\/v1\/conversations(?:\?|$)/.test(request.url())) {
+            conversationCreateRequests.push(request.url());
+          }
+        });
+
+        await visitTableActivityFeed(page, commentsTable);
+        const firstActivity = await getFeedItemByText(page, firstActivityText);
+        await firstActivity.click();
+        await waitForAllLoadersToDisappear(page);
+
+        await postActivityComment(page, firstReply);
+        await expect(
+          page.getByTestId('feed-reply-card').filter({ hasText: firstReply })
+        ).toHaveCount(1);
+        expect(activityReplyRequests).toHaveLength(1);
+        expect(conversationCreateRequests).toHaveLength(0);
+
+        await postActivityComment(page, subsequentReply);
+        await expect(
+          page
+            .getByTestId('feed-reply-card')
+            .filter({ hasText: subsequentReply })
+        ).toHaveCount(1);
+        expect(activityReplyRequests).toHaveLength(2);
+        expect(conversationCreateRequests).toHaveLength(0);
+      });
+
+      await test.step('Edit, react to, and delete an activity reply', async () => {
+        const firstReplyCard = page
+          .getByTestId('feed-reply-card')
+          .filter({ hasText: firstReply });
+        await firstReplyCard.hover();
+        await firstReplyCard.getByTestId('edit-message').click();
+
+        const editingReplyCard = page
+          .getByTestId('feed-reply-card')
+          .filter({ has: page.locator('.is_edit_post') });
+        const replyEditor = editingReplyCard.locator(
+          '[data-testid="editor-wrapper"] [contenteditable="true"]'
+        );
+        await replyEditor.fill(editedFirstReply);
+        const editResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(`/api/v1/conversations/${firstActivityId}/replies/`) &&
+            response.request().method() === 'PATCH'
+        );
+        await editingReplyCard.getByTestId('send-button').click();
+        await editResponse;
+
+        const editedReplyCard = page
+          .getByTestId('feed-reply-card')
+          .filter({ hasText: editedFirstReply });
+        await expect(editedReplyCard).toHaveCount(1);
+        await editedReplyCard.getByTestId('add-reactions').click();
+        const reactionResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(`/api/v1/conversations/${firstActivityId}/replies/`) &&
+            response.url().endsWith('/reaction/rocket') &&
+            response.request().method() === 'PUT'
+        );
+        await page.locator('[title="rocket"]:visible').click();
+        await reactionResponse;
+
+        await editedReplyCard.getByTestId('emoji-button').hover();
+        await expect(
+          page
+            .getByTestId('popover-content')
+            .filter({ hasText: adminDisplayName })
+            .last()
+        ).toContainText(adminDisplayName);
+
+        await editedReplyCard.hover();
+        await editedReplyCard.getByTestId('delete-message').click();
+        const deleteResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes(`/api/v1/conversations/${firstActivityId}/replies/`) &&
+            response.request().method() === 'DELETE'
+        );
+        await page.locator('.ant-modal').getByTestId('save-button').click();
+        await deleteResponse;
+
+        await expect(editedReplyCard).toHaveCount(0);
+        await expect(
+          page
+            .getByTestId('feed-reply-card')
+            .filter({ hasText: subsequentReply })
+        ).toHaveCount(1);
+      });
+
+      await test.step('Verify the second activity has an independent reply container', async () => {
+        const { apiContext, afterAction } = await getApiContext(page);
+
+        try {
+          const firstResponse = await apiContext.get(
+            `/api/v1/activity/${firstActivityId}/replies`
+          );
+          const secondResponse = await apiContext.get(
+            `/api/v1/activity/${secondActivityId}/replies`
+          );
+          const firstPayload = await firstResponse.json();
+          const secondPayload = await secondResponse.json();
+
+          expect(firstResponse.ok()).toBeTruthy();
+          expect(secondResponse.ok()).toBeTruthy();
+          expect(firstPayload.data).toHaveLength(1);
+          expect(firstPayload.data[0].message.replace(/\s+/g, ' ')).toBe(
+            subsequentReply
+          );
+          expect(secondPayload.data).toHaveLength(0);
+        } finally {
+          await afterAction();
+        }
+
+        await visitTableActivityFeed(page, commentsTable);
+        const secondActivity = await getFeedItemByText(
+          page,
+          secondActivityText
+        );
+        await secondActivity.click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByText(editedFirstReply)).not.toBeVisible();
+        await expect(page.getByText(subsequentReply)).not.toBeVisible();
       });
     });
 

@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -75,6 +76,7 @@ import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -96,10 +98,13 @@ public class MigrationUtil {
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
   private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+  private static final String CREATE_CONVERSATION_RULE_NAME =
+      "DataConsumerPolicy-CreateConversation-Rule";
   private static final String RDF_INDEX_APP_NAME = "RdfIndexApp";
   private static final String RDF_OLD_DAILY_CRON = "0 0 * * *";
   private static final String RDF_WEEKLY_CRON = "0 0 * * 6";
   private static final String ADMIN_USER_NAME = "admin";
+  private static final int LEGACY_THREAD_BATCH_SIZE = 500;
 
   /**
    * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
@@ -353,6 +358,43 @@ public class MigrationUtil {
     }
   }
 
+  /** Add the Conversation V2 create grant to existing DataConsumer policies. */
+  public static void addCreateConversationRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists =
+          policy.getRules().stream()
+              .anyMatch(rule -> CREATE_CONVERSATION_RULE_NAME.equals(rule.getName()));
+      if (!ruleExists) {
+        Rule rule =
+            new Rule()
+                .withName(CREATE_CONVERSATION_RULE_NAME)
+                .withDescription("Allow authenticated users to create conversations and replies.")
+                .withResources(List.of(Entity.CONVERSATION))
+                .withOperations(List.of(MetadataOperation.CREATE))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(rule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", CREATE_CONVERSATION_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("{} not found, skipping Conversation rule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to add {} to {}: {}",
+          CREATE_CONVERSATION_RULE_NAME,
+          DATA_CONSUMER_POLICY,
+          ex.getMessage(),
+          ex);
+    }
+  }
+
   private static final String TASK_RULE_NAME = "DataConsumerPolicy-TaskRule";
 
   /**
@@ -360,7 +402,7 @@ public class MigrationUtil {
    * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
    * policies are create-if-not-exists, so without this migration upgraded deployments would lose
    * the ability for non-admin users to file or patch task threads (the new authorization wired into
-   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
+   * legacy task endpoints would reject them with 403).
    */
   public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
@@ -618,14 +660,9 @@ public class MigrationUtil {
    */
   public static void migrateThreadTasksToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of thread-based tasks to task_entity");
-    String threadTable;
-    if (tableExists(handle, "thread_entity")) {
-      threadTable = "thread_entity";
-    } else if (tableExists(handle, "thread_entity_legacy")) {
-      threadTable = "thread_entity_legacy";
-    } else {
-      LOG.info(
-          "Neither thread_entity nor thread_entity_legacy exists, skipping thread task migration");
+    String threadTable = ConversationMigration.findLegacyThreadTable(handle);
+    if (threadTable == null) {
+      LOG.info("No legacy thread table exists, skipping thread task migration");
       return;
     }
     List<Map<String, Object>> threads =
@@ -916,49 +953,90 @@ public class MigrationUtil {
       Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of legacy thread activity to activity_stream");
 
-    if (!tableExists(handle, "thread_entity")) {
-      LOG.info("thread_entity table does not exist, skipping activity stream migration");
-      return;
-    }
-
-    List<Map<String, Object>> rows = listLegacyActivityThreadRows(handle);
-
-    if (rows.isEmpty()) {
-      LOG.info("No legacy conversation rows found to inspect for activity migration");
+    String threadTable = ConversationMigration.findLegacyThreadTable(handle);
+    if (threadTable == null) {
+      LOG.info("No legacy thread table exists, skipping activity stream migration");
       return;
     }
 
     int migrated = 0;
     int skipped = 0;
+    String afterId = "";
+    boolean hasMore = true;
 
-    for (Map<String, Object> row : rows) {
-      try {
-        String json = row.get("json").toString();
-        Thread legacyThread = JsonUtils.readValue(json, Thread.class);
-        JsonNode legacyThreadJson = JsonUtils.readTree(json);
-        ActivityEvent event =
-            buildActivityEventFromLegacyThread(handle, legacyThread, legacyThreadJson);
-
-        if (event == null) {
-          skipped++;
-          continue;
-        }
-
-        if (activityEventExists(handle, event.getId(), event.getTimestamp())) {
-          skipped++;
-          continue;
-        }
-
-        insertActivityEvent(handle, event, connectionType);
-        migrated++;
-      } catch (Exception e) {
-        LOG.warn("Error migrating legacy activity thread to activity_stream: {}", e.getMessage());
-        skipped++;
+    while (hasMore) {
+      List<Map<String, Object>> rows = listLegacyActivityThreadBatch(handle, threadTable, afterId);
+      for (Map<String, Object> row : rows) {
+        ActivityRowOutcome outcome =
+            migrateLegacyActivityThreadRow(handle, connectionType, row.get("json").toString());
+        migrated += outcome == ActivityRowOutcome.MIGRATED ? 1 : 0;
+        skipped += outcome == ActivityRowOutcome.SKIPPED ? 1 : 0;
+      }
+      hasMore = rows.size() == LEGACY_THREAD_BATCH_SIZE;
+      if (hasMore) {
+        afterId = rows.getLast().get("id").toString();
       }
     }
 
     LOG.info(
         "Legacy activity thread migration complete: migrated={}, skipped={}", migrated, skipped);
+  }
+
+  private static ActivityRowOutcome migrateLegacyActivityThreadRow(
+      Handle handle, ConnectionType connectionType, String json) {
+    ActivityRowOutcome outcome = ActivityRowOutcome.SKIPPED;
+    try {
+      Thread legacyThread = JsonUtils.readValue(json, Thread.class);
+      if (legacyThread.getGeneratedBy() != Thread.GeneratedBy.SYSTEM) {
+        outcome = ActivityRowOutcome.NOT_ACTIVITY;
+      } else {
+        outcome = migrateSystemThread(handle, connectionType, legacyThread, json);
+      }
+    } catch (Exception e) {
+      LOG.warn("Error migrating legacy activity thread to activity_stream: {}", e.getMessage());
+    }
+    return outcome;
+  }
+
+  private static ActivityRowOutcome migrateSystemThread(
+      Handle handle, ConnectionType connectionType, Thread legacyThread, String json) {
+    ActivityRowOutcome outcome = ActivityRowOutcome.SKIPPED;
+    ActivityEvent event =
+        buildActivityEventFromLegacyThread(handle, legacyThread, JsonUtils.readTree(json));
+    if (event != null && !activityEventExists(handle, event.getId(), event.getTimestamp())) {
+      insertActivityEvent(handle, event, connectionType);
+      outcome = ActivityRowOutcome.MIGRATED;
+    }
+    return outcome;
+  }
+
+  /** A user conversation on the scanned page is neither migrated here nor a failure. */
+  private enum ActivityRowOutcome {
+    MIGRATED,
+    SKIPPED,
+    NOT_ACTIVITY
+  }
+
+  public static ConversationMigration.MigrationSummary
+      migrateThreadConversationsToConversationEntity(Handle handle, ConnectionType connectionType) {
+    return ConversationMigration.migrate(handle, connectionType);
+  }
+
+  public static ConversationReferenceMigration.MigrationSummary
+      migrateThreadReferencesToConversation(Handle handle, ConnectionType connectionType) {
+    return ConversationReferenceMigration.migrate(handle, connectionType);
+  }
+
+  public static void refreshConversationNotificationTemplates() {
+    try {
+      NotificationTemplateRepository repository =
+          (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
+      repository.initOrUpdateSeedDataFromResources();
+    } catch (Exception exception) {
+      LOG.warn(
+          "Could not refresh Conversation V2 system notification templates: {}",
+          exception.getMessage());
+    }
   }
 
   private static void setAboutFromEntityLink(
@@ -1400,22 +1478,25 @@ public class MigrationUtil {
     }
   }
 
-  private static List<Map<String, Object>> listLegacyActivityThreadRows(Handle handle) {
-    String postgresQuery =
-        "SELECT json FROM thread_entity "
-            + "WHERE type = 'Conversation' AND json->>'generatedBy' = 'system' "
-            + "ORDER BY updatedAt ASC, createdAt ASC";
-    String mysqlQuery =
-        "SELECT json FROM thread_entity "
-            + "WHERE type = 'Conversation' "
-            + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.generatedBy')) = 'system' "
-            + "ORDER BY updatedAt ASC, createdAt ASC";
-
-    try {
-      return handle.createQuery(postgresQuery).mapToMap().list();
-    } catch (Exception ignored) {
-      return handle.createQuery(mysqlQuery).mapToMap().list();
-    }
+  /**
+   * Keyset pagination on the primary key so the backfill holds one batch of legacy threads at a
+   * time rather than every system thread in the catalog. generatedBy is deliberately filtered in
+   * Java rather than in SQL: it is a json expression with no statistics, so adding it here makes
+   * Postgres abandon the primary-key scan for a bitmap scan plus top-N sort that re-reads every
+   * matching row on every page.
+   */
+  private static List<Map<String, Object>> listLegacyActivityThreadBatch(
+      Handle handle, String threadTable, String afterId) {
+    return handle
+        .createQuery(
+            "SELECT id, json FROM "
+                + threadTable
+                + " WHERE type = :type AND id > :afterId ORDER BY id LIMIT :limit")
+        .bind("type", ThreadType.Conversation.value())
+        .bind("afterId", afterId)
+        .bind("limit", LEGACY_THREAD_BATCH_SIZE)
+        .mapToMap()
+        .list();
   }
 
   private static String truncateActivityValue(Object value) {

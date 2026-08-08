@@ -55,19 +55,22 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import { Conversation } from '../../../generated/entity/feed/conversation';
+import { ConversationFilterType } from '../../../generated/type/conversationFilterType';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
-import { getFeedCount } from '../../../rest/feedsAPI';
+import { listConversations } from '../../../rest/conversationsAPI';
 import { getTaskCounts, Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
-import { getEntityUserLink } from '../../../utils/EntityPureUtils';
+import {
+  getEntityFeedLink,
+  getEntityUserLink,
+} from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getFeedCounts } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -267,42 +270,44 @@ export const ActivityFeedTab = ({
           ? { view: 'visible' as const, domain }
           : { assignee: fqn, domain }
         : { aboutEntity: fqn, view: 'entity' as const, domain };
+      const conversationParams = isUserEntity
+        ? {
+            entityLink: getEntityUserLink(fqn),
+            filterType: ConversationFilterType.OwnerOrFollows,
+            userId,
+            limit: 1,
+          }
+        : { entityLink: getEntityFeedLink(entityType, fqn), limit: 1 };
+      const mentionRequest = isUserEntity
+        ? listConversations({
+            filterType: ConversationFilterType.Mentions,
+            userId,
+            limit: 1,
+          })
+        : Promise.resolve(undefined);
+      const [taskCounts, conversations, mentions] = await Promise.all([
+        getTaskCounts(taskCountParams),
+        listConversations(conversationParams),
+        mentionRequest,
+      ]);
+      const mentionCount = mentions?.paging.total ?? 0;
+      const conversationCount = conversations.paging.total;
 
-      const taskCounts = await getTaskCounts(taskCountParams);
-
-      if (isUserEntity) {
-        // Also get feed counts for conversations and mentions
-        const res = await getFeedCount(getEntityUserLink(fqn));
-        setCountData((prev) => ({
-          ...prev,
-          data: {
-            conversationCount: res[0].conversationCount ?? 0,
-            totalTasksCount: taskCounts.total,
-            openTaskCount: taskCounts.open ?? 0,
-            closedTaskCount: taskCounts.completed ?? 0,
-            totalCount:
-              (res[0].conversationCount ?? 0) + (taskCounts.total ?? 0),
-            mentionCount: res[0].mentionCount ?? 0,
-          },
-        }));
-      } else {
-        // For non-user entities, get conversation counts and combine with task counts
-        await getFeedCounts(entityType, fqn, domain, (feedData) => {
-          handleFeedCount({
-            ...feedData,
-            totalTasksCount: taskCounts.total,
-            openTaskCount: taskCounts.open ?? 0,
-            closedTaskCount: taskCounts.completed ?? 0,
-          });
-        });
-      }
+      handleFeedCount({
+        conversationCount,
+        totalTasksCount: taskCounts.total ?? 0,
+        openTaskCount: taskCounts.open ?? 0,
+        closedTaskCount: taskCounts.completed ?? 0,
+        totalCount: conversationCount + (taskCounts.total ?? 0),
+        mentionCount,
+      });
     } catch (err) {
       showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
     }
     setCountData((prev) => ({ ...prev, loading: false }));
   };
 
-  const { feedFilter, feedThreadType } = useMemo(() => {
+  const feedFilter = useMemo(() => {
     const currentFilter =
       isAdminUser &&
       [currentUser?.name, currentUser?.fullyQualifiedName].includes(fqn) &&
@@ -311,14 +316,9 @@ export const ActivityFeedTab = ({
         : FeedFilter.OWNER_OR_FOLLOWS;
     const filter = isUserEntity ? currentFilter : undefined;
 
-    return {
-      feedThreadType:
-        activeTab === ActivityFeedTabs.ALL
-          ? ThreadType.Conversation
-          : undefined,
-      feedFilter:
-        activeTab === ActivityFeedTabs.MENTIONS ? FeedFilter.MENTIONS : filter,
-    };
+    return activeTab === ActivityFeedTabs.MENTIONS
+      ? FeedFilter.MENTIONS
+      : filter;
   }, [activeTab, isAdminUser, currentUser, fqn, isUserEntity]);
 
   const handleFeedFetchFromFeedList = useCallback(
@@ -327,14 +327,7 @@ export const ActivityFeedTab = ({
       if (isTaskActiveTab) {
         getTaskData(feedFilter, after, entityType, fqn, taskFilter);
       } else {
-        getFeedData(
-          feedFilter,
-          after,
-          feedThreadType,
-          entityType,
-          fqn,
-          taskFilter
-        );
+        getFeedData(feedFilter, after, entityType, fqn);
       }
     },
     [
@@ -345,7 +338,6 @@ export const ActivityFeedTab = ({
       taskFilter,
       getFeedData,
       getTaskData,
-      feedThreadType,
     ]
   );
 
@@ -354,19 +346,11 @@ export const ActivityFeedTab = ({
       if (isTaskActiveTab) {
         getTaskData(feedFilter, undefined, entityType, fqn, taskFilter);
       } else {
-        getFeedData(
-          feedFilter,
-          undefined,
-          feedThreadType,
-          entityType,
-          fqn,
-          taskFilter
-        );
+        getFeedData(feedFilter, undefined, entityType, fqn);
       }
     }
   }, [
     feedFilter,
-    feedThreadType,
     fqn,
     activeDomain,
     entityType,
@@ -424,32 +408,24 @@ export const ActivityFeedTab = ({
     }
   }, [feedCount, activeDomain]);
 
-  useEffect(() => {
-    if (activityEvents && activityEvents.length > 0) {
-      setCountData((prev) => {
-        const activityCount = activityEvents.length;
-        const newData = {
-          ...prev.data,
-          conversationCount: activityCount,
-          totalCount: activityCount + (prev.data.totalTasksCount ?? 0),
-        };
-        onUpdateFeedCount?.(newData);
-
-        return { ...prev, data: newData };
-      });
-    }
-  }, [activityEvents, onUpdateFeedCount]);
-
   const handleFeedClick = useCallback(
-    (feed: Thread) => {
+    (feed: Conversation) => {
       if (!feed && (isTaskActiveTab || isMentionTabSelected)) {
         setIsFullWidth(false);
       }
-      if (selectedThread?.id !== feed?.id) {
+      if (selectedActivity || selectedThread?.id !== feed?.id) {
+        setActiveActivity(undefined);
         setActiveThread(feed);
       }
     },
-    [setActiveThread, isTaskActiveTab, isMentionTabSelected, selectedThread]
+    [
+      setActiveActivity,
+      setActiveThread,
+      isTaskActiveTab,
+      isMentionTabSelected,
+      selectedActivity,
+      selectedThread,
+    ]
   );
 
   const handleTaskClick = useCallback(
@@ -618,7 +594,7 @@ export const ActivityFeedTab = ({
   };
 
   const getRightPanelContent = () => {
-    if ((isTaskActiveTab || isMentionTabSelected) && selectedTask) {
+    if (isTaskActiveTab && selectedTask) {
       return (
         <div id="task-panel">
           {entityType === EntityType.TABLE ? (
@@ -826,7 +802,7 @@ export const ActivityFeedTab = ({
             {TaskToggle()}
           </div>
         )}
-        {isTaskActiveTab || isMentionTabSelected ? (
+        {isTaskActiveTab ? (
           <TaskListV1
             activeFeedId={selectedTask?.id}
             emptyPlaceholderText={placeholderText}
@@ -841,15 +817,22 @@ export const ActivityFeedTab = ({
         ) : (
           <ActivityFeedListV1New
             hidePopover
-            activeFeedId={selectedThread?.id}
-            activityList={activityEvents}
+            activeFeedId={selectedActivity?.id ?? selectedThread?.id}
+            activityList={
+              activeTab === ActivityFeedTabs.ALL ? activityEvents : undefined
+            }
             componentsVisibility={componentsVisibility}
             emptyPlaceholderText={placeholderText}
             feedList={entityThread}
             handlePanelResize={handlePanelResize}
             isForFeedTab={false}
             isFullWidth={isFullWidth}
-            isLoading={(isFirstLoad && loading) || (isActivityLoading ?? false)}
+            isLoading={
+              (isFirstLoad && loading) ||
+              (activeTab === ActivityFeedTabs.ALL &&
+                (isActivityLoading ?? false))
+            }
+            selectedActivity={selectedActivity}
             selectedThread={selectedThread}
             showThread={false}
             onActivityClick={handleActivityClick}
@@ -858,9 +841,11 @@ export const ActivityFeedTab = ({
           />
         )}
         {!isFirstLoad && loader}
-        {!isEmpty(
-          isTaskActiveTab || isMentionTabSelected ? tasks : entityThread
-        ) &&
+        {!(isTaskActiveTab
+          ? isEmpty(tasks)
+          : activeTab === ActivityFeedTabs.ALL
+          ? isEmpty(activityEvents) && isEmpty(entityThread)
+          : isEmpty(entityThread)) &&
           !loading && (
             <div
               className="w-full"

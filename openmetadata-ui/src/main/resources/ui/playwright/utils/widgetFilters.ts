@@ -40,13 +40,11 @@ export const verifyActivityFeedFilters = async (
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
 
-  // Wait for either old or new feed API response with timeout
   const myDataFilter = Promise.race([
     page.waitForResponse(
       (response) =>
-        (response.url().includes('/api/v1/feed') ||
-          response.url().includes('/api/v1/activities')) &&
-        response.url().includes('filterType=OWNER')
+        response.url().includes('/api/v1/activity') &&
+        response.url().includes('/my-feed')
     ),
     page.waitForTimeout(5000),
   ]);
@@ -61,9 +59,8 @@ export const verifyActivityFeedFilters = async (
   const followingFilter = Promise.race([
     page.waitForResponse(
       (response) =>
-        (response.url().includes('/api/v1/feed') ||
-          response.url().includes('/api/v1/activities')) &&
-        response.url().includes('filterType=FOLLOWS')
+        response.url().includes('/api/v1/activity') &&
+        response.url().includes('/my-feed')
     ),
     page.waitForTimeout(5000),
   ]);
@@ -76,10 +73,8 @@ export const verifyActivityFeedFilters = async (
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
   const allActivityFilter = Promise.race([
-    page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/feed') ||
-        response.url().includes('/api/v1/activities')
+    page.waitForResponse((response) =>
+      response.url().includes('/api/v1/activity')
     ),
     page.waitForTimeout(5000),
   ]);
@@ -280,16 +275,11 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
 };
 
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
-  const waitForTaskFilterResponse = (filterType: string) =>
+  const waitForTaskResponse = (predicate: (url: URL) => boolean) =>
     page.waitForResponse((response) => {
-      const url = response.url();
+      const url = new URL(response.url());
 
-      return (
-        url.includes('/api/v1/tasks') ||
-        (url.includes('/api/v1/feed') &&
-          url.includes('type=Task') &&
-          url.includes(`filterType=${filterType}`))
-      );
+      return response.request().method() === 'GET' && predicate(url);
     });
 
   const widget = await getWidgetForFilters(page, widgetKey);
@@ -297,7 +287,10 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   await expect(widget.getByTestId('task-feed-card').first()).toBeVisible();
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
-  const mentionsTaskFilter = waitForTaskFilterResponse('MENTIONS');
+  const mentionsTaskFilter = waitForTaskResponse(
+    (url) =>
+      url.pathname === '/api/v1/tasks' && url.searchParams.has('mentionedUser')
+  );
   await page.getByRole('menuitem', { name: 'Mentions' }).click();
   await mentionsTaskFilter;
   await widget.locator('entity-list-skeleton').waitFor({
@@ -305,7 +298,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   });
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
-  const assignedTasksFilter = waitForTaskFilterResponse('ASSIGNED_TO');
+  const assignedTasksFilter = waitForTaskResponse(
+    (url) => url.pathname === '/api/v1/tasks/assigned'
+  );
   await page.getByRole('menuitem', { name: 'Assigned' }).click();
   await assignedTasksFilter;
   await widget.locator('entity-list-skeleton').waitFor({
@@ -313,7 +308,9 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   });
 
   await widget.getByTestId('widget-sort-by-dropdown').click();
-  const allTasksFilter = waitForTaskFilterResponse('OWNER_OR_FOLLOWS');
+  const allTasksFilter = waitForTaskResponse(
+    (url) => url.pathname === '/api/v1/tasks/visible'
+  );
   await page.getByRole('menuitem', { name: 'All' }).click();
   await allTasksFilter;
   await widget.locator('entity-list-skeleton').waitFor({

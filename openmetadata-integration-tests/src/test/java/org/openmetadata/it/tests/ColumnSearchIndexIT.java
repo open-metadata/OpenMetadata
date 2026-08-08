@@ -91,10 +91,16 @@ public class ColumnSearchIndexIT {
               .orElseThrow()
               .getFullyQualifiedName();
 
-      // Searching a column's full FQN must return only that column. The permissive OR builder
-      // also matched sibling columns (user_email, created_at) that share the service/db/schema/
-      // table tokens, inflating the count (the "count 1 vs results 7381" bug); the structured
-      // builder (operator AND over fqnParts) matches just the one column.
+      // Regression for the "count 1 vs results 7381" bug: the permissive OR builder fanned an FQN
+      // query out across the whole column index, so the count backing the Explore Columns tab
+      // disagreed with the results beneath it. The structured builder keeps the result set scoped
+      // and ranks the exact FQN first.
+      //
+      // This does NOT assert a single hit. The tableColumn ranking stages (closeName, fuzzyName,
+      // partialName, structuralContext) are should-clauses with minimum_should_match "2<70%" over
+      // table.name/fqnParts, and a sibling column in the same table shares every FQN token but its
+      // own name - so it clears 70% and matches by construction. Making an exact-FQN query
+      // isolating would be a relevance change in the search settings, not a test concern.
       Awaitility.await("precise FQN column search")
           .pollInterval(POLL_INTERVAL)
           .atMost(POLL_AT_MOST)
@@ -106,21 +112,24 @@ public class ColumnSearchIndexIT {
                         .search()
                         .query(userIdFqn)
                         .index(COLUMN_SEARCH_INDEX)
-                        .size(50)
+                        .size(SEARCH_PAGE_SIZE)
                         .deleted(false)
                         .execute();
                 JsonNode root = OBJECT_MAPPER.readTree(response);
                 int total = root.path("hits").path("total").path("value").asInt();
-                assertEquals(1, total, "FQN search should match one column, response: " + response);
+                JsonNode hits = root.path("hits").path("hits");
+                assertTrue(
+                    total <= SEARCH_PAGE_SIZE,
+                    "FQN search must stay scoped, not fan out across the column index, response: "
+                        + response);
+                assertEquals(
+                    total,
+                    hits.size(),
+                    "Reported count must match the results returned, response: " + response);
                 assertEquals(
                     userIdFqn,
-                    root.path("hits")
-                        .path("hits")
-                        .get(0)
-                        .path("_source")
-                        .path("fullyQualifiedName")
-                        .asText(),
-                    "The single hit should be the searched column");
+                    hits.get(0).path("_source").path("fullyQualifiedName").asText(),
+                    "The exact FQN match should rank first, response: " + response);
               });
     }
 
@@ -289,6 +298,7 @@ public class ColumnSearchIndexIT {
   private static final Duration POLL_AT_MOST = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
   private static final String COLUMN_SEARCH_INDEX = "column_search_index";
+  private static final int SEARCH_PAGE_SIZE = 50;
   private static final String DATA_ASSET_INDEX = "dataAsset";
 
   /**

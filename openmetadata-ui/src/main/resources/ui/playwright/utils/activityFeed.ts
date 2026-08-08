@@ -81,7 +81,9 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
 
   await page.locator('[role="dialog"].ant-modal').waitFor();
 
-  const deleteResponse = page.waitForResponse('/api/v1/feed/*/posts/*');
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/conversations/*/replies/*'
+  );
 
   await page.getByTestId('save-button').click();
 
@@ -107,7 +109,9 @@ export const reactOnFeed = async (page: Page, feedNumber: number) => {
       .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
       .waitFor({ state: 'visible' });
 
-    const waitForReactionResponse = page.waitForResponse('/api/v1/feed/*');
+    const waitForReactionResponse = page.waitForResponse(
+      '/api/v1/conversations/*'
+    );
     await page
       .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
       .click();
@@ -121,9 +125,7 @@ export const addMentionCommentInFeed = async (
   isReply = false
 ) => {
   if (!isReply) {
-    const fetchFeedResponse = page.waitForResponse(
-      '/api/v1/feed?type=Conversation*'
-    );
+    const fetchFeedResponse = page.waitForResponse('/api/v1/conversations*');
     await removeLandingBanner(page);
     await fetchFeedResponse;
   }
@@ -167,7 +169,7 @@ export const addMentionCommentInFeed = async (
     .waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
-        /\/api\/v1\/feed\/[^/]+\/posts(?:\?|$)/.test(response.url()),
+        /\/api\/v1\/conversations\/[^/]+\/replies(?:\?|$)/.test(response.url()),
       { timeout: 5000 }
     )
     .catch(() => null);
@@ -215,9 +217,8 @@ export const reactOnActivity = async (
     // Activity API uses /api/v1/activity/*/reaction/* endpoint
     const waitForReactionResponse = page.waitForResponse(
       (response) =>
-        (response.url().includes('/api/v1/activity') &&
-          response.url().includes('/reaction')) ||
-        response.url().includes('/api/v1/feed')
+        response.url().includes('/api/v1/activity') &&
+        response.url().includes('/reaction')
     );
 
     await page
@@ -270,7 +271,7 @@ export const postActivityComment = async (page: Page, commentText: string) => {
 
   await expect(sendButton).toBeEnabled();
 
-  const postResponse = page.waitForResponse('/api/v1/feed/*/posts');
+  const postResponse = page.waitForResponse('/api/v1/activity/*/replies');
   await sendButton.click();
   await postResponse;
 

@@ -923,24 +923,18 @@ public class WorkflowHandler {
   }
 
   public boolean resolveTask(UUID customTaskId, Map<String, Object> variables) {
-    return resolveTaskInternal(customTaskId, variables, false);
+    return resolveTaskInternal(customTaskId, variables);
   }
 
-  public boolean resolveLegacyThreadTask(UUID customTaskId, Map<String, Object> variables) {
-    return resolveTaskInternal(customTaskId, variables, true);
-  }
-
-  private boolean resolveTaskInternal(
-      UUID customTaskId, Map<String, Object> variables, boolean legacyThreadTask) {
+  private boolean resolveTaskInternal(UUID customTaskId, Map<String, Object> variables) {
     // Completing a user task continues the workflow inline, re-running the attribute gates that
     // decide the entity's next status — same freshness requirement as triggerWithSignal.
     try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
-      return resolveTaskWithFreshReads(customTaskId, variables, legacyThreadTask);
+      return resolveTaskWithFreshReads(customTaskId, variables);
     }
   }
 
-  private boolean resolveTaskWithFreshReads(
-      UUID customTaskId, Map<String, Object> variables, boolean legacyThreadTask) {
+  private boolean resolveTaskWithFreshReads(UUID customTaskId, Map<String, Object> variables) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
     // Admission control: bound how many resolutions touch Flowable at once so an approval burst
@@ -982,11 +976,7 @@ public class WorkflowHandler {
             LOG.debug(
                 "[WorkflowTask] SUCCESS: Multi-approval task '{}' recorded vote, waiting for more votes",
                 customTaskId);
-            if (legacyThreadTask) {
-              removeTaskFromVoterFeedForLegacyThread(task, customTaskId, variables);
-            } else {
-              removeTaskFromVoterFeedForTaskEntity(task, customTaskId, variables);
-            }
+            removeTaskFromVoterFeedForTaskEntity(task, customTaskId, variables);
           }
         } else {
           // Single approval - original behavior
@@ -1023,92 +1013,6 @@ public class WorkflowHandler {
       return false;
     } finally {
       taskResolutionPermits.release();
-    }
-  }
-
-  private void removeTaskFromVoterFeedForLegacyThread(
-      Task flowableTask, UUID customTaskId, Map<String, Object> variables) {
-    try {
-      // Extract the current user from variables
-      String currentUser = extractCurrentUser(variables);
-      if (currentUser == null) {
-        LOG.warn("[WorkflowTask] Could not determine current user to remove from task feed");
-        return;
-      }
-
-      LOG.info(
-          "[WorkflowTask] Removing task '{}' from feed for user '{}'", customTaskId, currentUser);
-
-      // Get the FeedRepository to work with Thread entities
-      org.openmetadata.service.jdbi3.FeedRepository feedRepository = Entity.getFeedRepository();
-
-      // Find the Thread entity by the customTaskId
-      org.openmetadata.schema.entity.feed.Thread taskThread = null;
-      try {
-        taskThread = feedRepository.get(customTaskId);
-      } catch (Exception e) {
-        LOG.debug(
-            "[WorkflowTask] Could not find thread with ID '{}', trying alternative lookup",
-            customTaskId);
-      }
-
-      if (taskThread != null && taskThread.getTask() != null) {
-        // Update the Thread entity to remove the current user from assignees
-        List<EntityReference> currentAssignees =
-            new ArrayList<>(taskThread.getTask().getAssignees());
-
-        // Find and remove the user from assignees
-        boolean removed =
-            currentAssignees.removeIf(
-                assignee -> {
-                  // Check by name (username)
-                  if (assignee.getName() != null && assignee.getName().equals(currentUser)) {
-                    return true;
-                  }
-                  // Also check if it's a user entity reference with matching name
-                  if (Entity.USER.equals(assignee.getType())) {
-                    try {
-                      // Try to get the actual user entity to compare
-                      User user =
-                          Entity.getEntity(Entity.USER, assignee.getId(), "", Include.NON_DELETED);
-                      return user.getName().equals(currentUser);
-                    } catch (Exception ex) {
-                      LOG.debug("Could not fetch user entity for assignee: {}", ex.getMessage());
-                    }
-                  }
-                  return false;
-                });
-
-        if (removed) {
-          // Update the thread with new assignees list
-          taskThread.getTask().setAssignees(currentAssignees);
-          taskThread.withUpdatedBy(currentUser).withUpdatedAt(System.currentTimeMillis());
-
-          // Route through FeedRepository so the write targets the resolver-picked legacy table
-          // (thread_entity_legacy on 2.0, thread_entity_archived on 2.1+) instead of the pre-2.0
-          // hardcoded 'thread_entity' overload which no longer exists after migration.
-          feedRepository.updateLegacyThread(taskThread);
-
-          LOG.info(
-              "[WorkflowTask] Successfully removed user '{}' from Thread '{}' assignees. Remaining assignees: {}",
-              currentUser,
-              taskThread.getId(),
-              currentAssignees.size());
-        } else {
-          LOG.debug(
-              "[WorkflowTask] User '{}' was not in the assignees list for Thread '{}'",
-              currentUser,
-              taskThread.getId());
-        }
-      }
-      updateFlowableVoteTracking(flowableTask, currentUser);
-    } catch (Exception e) {
-      LOG.error(
-          "[WorkflowTask] Failed to update task voter information for task '{}': {}",
-          customTaskId,
-          e.getMessage(),
-          e);
-      // Don't throw - this is a non-critical operation
     }
   }
 

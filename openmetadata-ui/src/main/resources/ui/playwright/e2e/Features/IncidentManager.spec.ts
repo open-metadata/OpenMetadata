@@ -638,11 +638,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         await getApiContext(actorPage);
 
       try {
-        await actorApiContext.post('/api/v1/feed', {
+        await actorApiContext.post('/api/v1/conversations', {
           data: {
             message: 'Can you resolve this thread for me? <#E::user::admin>',
             about: `<#E::testCase::${get(testCase, 'fullyQualifiedName')}>`,
-            type: 'Conversation',
           },
         });
       } finally {
@@ -655,7 +654,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       const mentionResponse = adminPage.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
+          response.url().includes('/api/v1/conversations') &&
           response.url().includes('filterType=MENTIONS') &&
           response.request().method() === 'GET'
       );
@@ -678,7 +677,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           .poll(
             async () => {
               const mentionsResponse = await adminApiContext.get(
-                '/api/v1/feed',
+                '/api/v1/conversations',
                 {
                   params: {
                     userId: loggedInUser.id,

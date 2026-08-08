@@ -320,3 +320,18 @@ SET t.json = JSON_SET(
         t.json,
         CONCAT('$.recognizers[', m.rec_idx - 1, '].recognizerConfig.patterns[0].regex'),
         _utf8mb4'\\A\\d{3,4}\\Z');
+
+-- Activity comments are retained indefinitely unless an administrator explicitly configures a
+-- positive retention period. Preserve any value already chosen by an administrator.
+UPDATE installed_apps
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE name = 'DataRetentionApplication';
+
+UPDATE apps_marketplace
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE name = 'DataRetentionApplication';
+
+UPDATE entity_extension
+SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'DataRetentionApplication';

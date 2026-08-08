@@ -23,8 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -62,13 +61,12 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
     try {
       String entityType = event.getEntityType();
 
-      // Special handling for Thread entities
-      if (Entity.THREAD.equalsIgnoreCase(entityType)) {
-        Thread thread = AlertsRuleEvaluator.getThread(event);
-        if (thread == null) {
+      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
+        Conversation conversation = AlertsRuleEvaluator.getConversation(event);
+        if (conversation == null) {
           return Collections.emptySet();
         }
-        return resolveOwnersFromThread(thread, destination);
+        return resolveOwnersFromConversation(conversation, destination);
       }
 
       // Standard handling for other entities
@@ -95,10 +93,9 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionDestination destination) {
 
     try {
-      // Special handling for Thread entities
-      if (Entity.THREAD.equalsIgnoreCase(entityType)) {
-        Thread thread = Entity.getFeedRepository().get(entityId);
-        return resolveOwnersFromThread(thread, destination);
+      if (Entity.CONVERSATION.equalsIgnoreCase(entityType)) {
+        Conversation conversation = Entity.getConversationRepository().getEventPayload(entityId);
+        return resolveOwnersFromConversation(conversation, destination);
       }
 
       // Standard handling for other entities
@@ -116,42 +113,31 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
     }
   }
 
-  private @NotNull Set<Recipient> resolveOwnersFromThread(
-      Thread thread, SubscriptionDestination destination) {
+  private @NotNull Set<Recipient> resolveOwnersFromConversation(
+      Conversation conversation, SubscriptionDestination destination) {
     Set<Recipient> recipients = new HashSet<>();
 
-    if (thread == null) {
+    if (conversation == null) {
       return recipients;
     }
 
-    // 1. Thread owner is the creator - fetch user by name
-    if (thread.getCreatedBy() != null) {
-      try {
-        User creator =
-            Entity.getEntityByName(
-                Entity.USER, thread.getCreatedBy(), "id,profile,email", Include.NON_DELETED);
-        if (creator != null) {
-          addIfResolved(recipients, Recipient.fromUser(creator, destination.getType()));
-        }
-      } catch (Exception e) {
-        LOG.debug("Thread creator user not found: {}", thread.getCreatedBy(), e);
-      }
+    if (conversation.getCreatedBy() != null) {
+      recipients.addAll(resolveEntityReferences(List.of(conversation.getCreatedBy()), destination));
     }
 
-    // 2. Also resolve owners from the parent entity (what the thread is about)
-    if (thread.getEntityRef() != null) {
+    if (conversation.getEntityRef() != null) {
       try {
         EntityInterface parentEntity =
             Entity.getEntity(
-                thread.getEntityRef().getType(),
-                thread.getEntityRef().getId(),
+                conversation.getEntityRef().getType(),
+                conversation.getEntityRef().getId(),
                 "owners",
                 Include.NON_DELETED);
         if (parentEntity != null && parentEntity.getOwners() != null) {
           recipients.addAll(resolveEntityReferences(parentEntity.getOwners(), destination));
         }
       } catch (Exception e) {
-        LOG.debug("Failed to resolve parent entity owners for thread", e);
+        LOG.debug("Failed to resolve parent entity owners for conversation", e);
       }
     }
 

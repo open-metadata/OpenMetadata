@@ -81,6 +81,8 @@ class EntityLinkGrammarTest {
           // Internal entities - used for feeds/suggestions, not linkable targets
           Entity.THREAD,
           Entity.SUGGESTION,
+          // Standalone UUID-addressed resource; its about field links to the target entity instead
+          Entity.CONVERSATION,
           // Feed entity derived from scheduling windows, not addressed via EntityLinks
           Entity.ANNOUNCEMENT,
           // Admin-only task form configuration entity, not a content entity link target

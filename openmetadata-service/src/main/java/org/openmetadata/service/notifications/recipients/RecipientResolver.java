@@ -27,12 +27,12 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.notifications.recipients.downstream.EntityLineageResolver;
+import org.openmetadata.service.notifications.recipients.downstream.impl.ConversationLineageResolver;
 import org.openmetadata.service.notifications.recipients.downstream.impl.DataContractLineageResolver;
 import org.openmetadata.service.notifications.recipients.downstream.impl.DefaultLineageResolver;
 import org.openmetadata.service.notifications.recipients.downstream.impl.LineageBasedDownstreamHandler;
 import org.openmetadata.service.notifications.recipients.downstream.impl.TestCaseLineageResolver;
 import org.openmetadata.service.notifications.recipients.downstream.impl.TestSuiteLineageResolver;
-import org.openmetadata.service.notifications.recipients.downstream.impl.ThreadLineageResolver;
 import org.openmetadata.service.notifications.recipients.strategy.RecipientResolutionStrategy;
 import org.openmetadata.service.notifications.recipients.strategy.impl.AdminRecipientResolver;
 import org.openmetadata.service.notifications.recipients.strategy.impl.AssigneeRecipientResolver;
@@ -89,7 +89,7 @@ public class RecipientResolver {
     LINEAGE_RESOLVERS =
         Map.ofEntries(
             Map.entry(Entity.TEST_CASE, new TestCaseLineageResolver()),
-            Map.entry(Entity.THREAD, new ThreadLineageResolver()),
+            Map.entry(Entity.CONVERSATION, new ConversationLineageResolver()),
             Map.entry(Entity.TEST_SUITE, new TestSuiteLineageResolver()),
             Map.entry(Entity.DATA_CONTRACT, new DataContractLineageResolver()),
             Map.entry("*", new DefaultLineageResolver())); // Catch-all
@@ -173,6 +173,10 @@ public class RecipientResolver {
     Object config = destination.getConfig();
     if (config == null) {
       return null;
+    }
+
+    if (config instanceof SubscriptionAction action) {
+      return action;
     }
 
     return switch (destination.getType()) {

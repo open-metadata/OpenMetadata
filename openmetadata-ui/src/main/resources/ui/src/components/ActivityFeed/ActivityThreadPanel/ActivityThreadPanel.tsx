@@ -13,11 +13,9 @@
 
 import { Drawer, Tabs } from 'antd';
 import classNames from 'classnames';
-import { isEqual } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
@@ -26,25 +24,23 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   className,
   onCancel,
   open,
-  postFeedHandler,
-  createThread,
-  deletePostHandler,
-  updateThreadHandler,
-  threadType,
+  initialView = 'conversations',
 }) => {
   const { t } = useTranslation();
   const { TabPane } = Tabs;
-  const [activeTab, setActiveTab] = useState<PanelTab>(PanelTab.TASKS);
+  const [activeTab, setActiveTab] = useState<PanelTab>(
+    initialView === 'conversations' ? PanelTab.CONVERSATIONS : PanelTab.TASKS
+  );
 
   const onTabChange = (key: string) => {
     setActiveTab(key as PanelTab);
   };
 
   useEffect(() => {
-    if (isEqual(threadType, ThreadType.Conversation)) {
-      setActiveTab(PanelTab.CONVERSATIONS);
-    }
-  }, [threadType]);
+    setActiveTab(
+      initialView === 'conversations' ? PanelTab.CONVERSATIONS : PanelTab.TASKS
+    );
+  }, [initialView]);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -64,11 +60,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           onChange={onTabChange}>
           <TabPane key={PanelTab.TASKS} tab={t('label.task-plural')}>
             <ActivityThreadPanelBody
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              postFeedHandler={postFeedHandler}
               threadLink={threadLink}
-              updateThreadHandler={updateThreadHandler}
               view="tasks"
               onCancel={onCancel}
             />
@@ -77,11 +69,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
             key={PanelTab.CONVERSATIONS}
             tab={t('label.conversation-plural')}>
             <ActivityThreadPanelBody
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              postFeedHandler={postFeedHandler}
               threadLink={threadLink}
-              updateThreadHandler={updateThreadHandler}
               view="conversations"
               onCancel={onCancel}
             />
