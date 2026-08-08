@@ -14,7 +14,12 @@ import java.util.Map;
  * <p>For example if a jdbc url requires to retrieve and authorized token this interface shall be implemented to
  * retrieve the token.
  */
-public interface DatabaseAuthenticationProvider {
+public interface DatabaseAuthenticationProvider extends AutoCloseable {
+
+  @Override
+  default void close() throws Exception {
+    // Default no-op
+  }
 
   /**
    * Authenticate a user for the given jdbc url.
