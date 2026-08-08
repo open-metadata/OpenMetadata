@@ -421,15 +421,15 @@ export const QualityTab = () => {
               className="new-form-style tw:ml-auto tw:shrink-0"
               data-testid="quality-tab-filter-controls"
               layout="inline">
-              <Space align="end" className="w-full justify-end" size={12}>
-                <Form.Item className="m-0 w-44" label={t('label.type')}>
+              <Space align="end" className="tw:w-full tw:justify-end" size={12}>
+                <Form.Item className="tw:m-0 tw:w-44" label={t('label.type')}>
                   <Select
                     options={TEST_CASE_TYPE_OPTION}
                     value={selectedTestType}
                     onChange={handleTestCaseTypeChange}
                   />
                 </Form.Item>
-                <Form.Item className="m-0 w-44" label={t('label.status')}>
+                <Form.Item className="tw:m-0 tw:w-44" label={t('label.status')}>
                   <Select
                     options={TEST_CASE_STATUS_OPTION}
                     value={selectedTestCaseStatus}

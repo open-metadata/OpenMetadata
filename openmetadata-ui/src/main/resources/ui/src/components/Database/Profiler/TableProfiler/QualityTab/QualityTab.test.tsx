@@ -280,11 +280,17 @@ describe('QualityTab', () => {
     );
 
     const filterControls = screen.getByTestId('quality-tab-filter-controls');
+    const filterSpace = filterControls.querySelector('.ant-space-align-end');
+    const filterItems = filterControls.querySelectorAll('.ant-form-item');
 
     expect(filterControls).toHaveClass('tw:ml-auto', 'tw:shrink-0');
-    expect(
-      filterControls.querySelector('.ant-space-align-end')
-    ).toBeInTheDocument();
+    expect(filterSpace).toBeInTheDocument();
+    expect(filterSpace).toHaveClass('tw:w-full', 'tw:justify-end');
+    expect(filterItems).toHaveLength(2);
+
+    filterItems.forEach((item) => {
+      expect(item).toHaveClass('tw:m-0', 'tw:w-44');
+    });
   });
 
   it("Pagination should be called with 'handlePageChange'", async () => {
