@@ -35,8 +35,8 @@ class DataMarketplaceClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS]: 1,
-      [DetailPageWidgetKeys.MARKETPLACE_DOMAINS]: 1,
+      [DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS]: 2,
+      [DetailPageWidgetKeys.MARKETPLACE_DOMAINS]: 2,
     };
   }
 

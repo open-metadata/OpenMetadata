@@ -12,6 +12,7 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
+import { Globe01 } from '@untitledui/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -42,6 +43,7 @@ import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.inter
 import { DomainFormType } from '../../Domain/DomainPage.interface';
 import '../marketplace-widget-shared.less';
 import MarketplaceItemCard from '../MarketplaceItemCard/MarketplaceItemCard.component';
+import MarketplaceWidgetEmptyState from '../MarketplaceWidgetEmptyState/MarketplaceWidgetEmptyState.component';
 
 const DISPLAY_COUNT = 3;
 
@@ -239,11 +241,20 @@ const MarketplaceDomainsWidget = ({
         )}
       </div>
       {isEmpty(domains) ? (
-        <div className="tw:flex tw:items-center tw:justify-center tw:min-h-16">
-          <Typography as="span" className="tw:text-sm tw:text-text-tertiary">
-            {t('label.no-entity', { entity: t('label.domain-plural') })}
-          </Typography>
-        </div>
+        <MarketplaceWidgetEmptyState
+          actionLabel={
+            !isEditView && permissions.domain?.Create
+              ? t('label.new-entity', { entity: t('label.domain') })
+              : undefined
+          }
+          dataTestId="marketplace-domains-empty-state"
+          description={t('label.no-domains-yet-description')}
+          icon={
+            <Globe01 className="tw:text-brand-600" height={24} width={24} />
+          }
+          title={t('label.no-domains-yet')}
+          onAction={openDrawer}
+        />
       ) : (
         cardList
       )}
