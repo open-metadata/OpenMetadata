@@ -203,6 +203,16 @@ describe('Test ColumnProfileTable component', () => {
     expect(await screen.findByTestId('searchbar')).toBeInTheDocument();
   });
 
+  it('should render the search bar at half width', async () => {
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    expect(await screen.findByTestId('search-bar-container')).toHaveClass(
+      'tw:w-1/2'
+    );
+  });
+
   it('should mark the name column as the row header', async () => {
     await act(async () => {
       render(<ColumnProfileTable />, { wrapper: MemoryRouter });
