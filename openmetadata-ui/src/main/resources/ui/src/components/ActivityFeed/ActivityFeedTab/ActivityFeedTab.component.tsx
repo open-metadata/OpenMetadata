@@ -64,12 +64,13 @@ import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
-import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityUserLink,
 } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getFeedCounts } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';

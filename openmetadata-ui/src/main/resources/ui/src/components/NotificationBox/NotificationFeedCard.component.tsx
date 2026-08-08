@@ -21,7 +21,7 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityLinkFromType } from '../../utils/EntityBreadcrumbUtils';
+import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtilsPure';
 import Fqn from '../../utils/Fqn';

@@ -32,7 +32,7 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../utils/EntityVersionUtils';
+} from '../../utils/EntityVersionUtilsPure';
 import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
@@ -44,7 +44,6 @@ import { GenericProvider } from '../Customization/GenericProvider/GenericProvide
 import DataProductsContainer from '../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import VersionTable from '../Entity/VersionTable/VersionTable.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
-
 const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   version,
   currentVersionData,

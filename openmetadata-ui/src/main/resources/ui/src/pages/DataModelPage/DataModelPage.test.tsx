@@ -127,6 +127,9 @@ jest.mock('../../rest/dataModelsAPI', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../utils/CommonUtils'),
   addToRecentViewed: jest.fn(),
+}));
+
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
 }));
 

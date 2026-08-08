@@ -42,16 +42,15 @@ import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { entityChartColor } from '../../utils/CommonUtils';
 import {
-  CustomTooltip,
   getGraphDataByEntityType,
   sortEntityByValue,
-} from '../../utils/DataInsightUtils';
+} from '../../utils/DataInsightPureUtils';
+import { CustomTooltip } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';
-
 interface Props {
   chartFilter: ChartFilter;
   selectedDays: number;

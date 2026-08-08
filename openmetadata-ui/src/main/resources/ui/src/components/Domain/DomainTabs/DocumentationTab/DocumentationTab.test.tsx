@@ -58,7 +58,7 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Domain Name'),
 }));
 
-jest.mock('../../../../utils/EntityVersionUtils', () => ({
+jest.mock('../../../../utils/EntityVersionUtilsPure', () => ({
   getEntityVersionByField: jest.fn().mockReturnValue('1'),
 }));
 

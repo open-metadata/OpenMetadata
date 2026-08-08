@@ -137,8 +137,11 @@ jest.mock('../../rest/serviceAPI', () => ({
 }));
 
 jest.mock('../../utils/EntityDisplayUtils', () => ({
-  getEntityMissingError: jest.fn(),
   getServiceLogo: jest.fn().mockReturnValue(''),
+}));
+
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn(),
 }));
 
 jest.mock('../../utils/EntityNameUtils', () => ({
@@ -157,7 +160,7 @@ jest.mock('../../utils/ServiceUtilClassBase', () => ({
 
 const mockGetServiceType = jest.fn().mockReturnValue('database');
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
   getServiceType: jest.fn((category) => mockGetServiceType(category)),
 }));

@@ -78,7 +78,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
-
 const PlatformLineage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();

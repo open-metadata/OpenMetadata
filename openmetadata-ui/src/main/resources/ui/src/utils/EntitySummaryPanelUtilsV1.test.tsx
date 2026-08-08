@@ -99,8 +99,8 @@ jest.mock('../components/common/Loader/Loader', () => ({
   default: jest.fn(() => <div data-testid="loader">Loading...</div>),
 }));
 
-jest.mock('../utils/TableUtils', () => ({
-  ...jest.requireActual('../utils/TableUtils'),
+jest.mock('../utils/TablePureUtils', () => ({
+  ...jest.requireActual('../utils/TablePureUtils'),
   pruneEmptyChildren: jest.fn((columns) => columns),
 }));
 

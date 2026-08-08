@@ -70,7 +70,7 @@ import {
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
-import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import { getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -78,6 +78,7 @@ import {
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
