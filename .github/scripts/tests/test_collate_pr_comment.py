@@ -237,7 +237,7 @@ def test_failure_excerpt_is_bounded(tmp_path: Path):
     assert len(created["body"]) < 4_000
 
 
-def test_workflow_aligns_refs_reports_failure_and_propagates_result():
+def test_workflow_dispatches_collate_main_reports_failure_and_propagates_result():
     workflow = yaml.load(WORKFLOW.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
     job = workflow["jobs"]["maven-collate-ci"]
     steps = job["steps"]
@@ -245,10 +245,7 @@ def test_workflow_aligns_refs_reports_failure_and_propagates_result():
     steps_by_name = {step["name"]: step for step in steps}
 
     assert workflow["permissions"]["pull-requests"] == "write"
-    assert (
-        job["env"]["COLLATE_REF"]
-        == "${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.ref || github.ref_name }}"
-    )
+    assert "COLLATE_REF" not in job.get("env", {})
 
     checkout = steps_by_name["Checkout trusted workflow helpers"]
     assert (
@@ -263,7 +260,7 @@ def test_workflow_aligns_refs_reports_failure_and_propagates_result():
 
     dispatch = steps_by_id["collate-dispatch"]
     assert dispatch["continue-on-error"] == "true"
-    assert dispatch["with"]["ref"] == "${{ env.COLLATE_REF }}"
+    assert dispatch["with"]["ref"] == "main"
     assert "github.event.pull_request.head.sha" in dispatch["env"]["SHA"]
 
     collect = steps_by_name["Collect Collate failure diagnostics"]

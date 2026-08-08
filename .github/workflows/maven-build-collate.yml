@@ -56,8 +56,6 @@ jobs:
   maven-collate-ci:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
-    env:
-      COLLATE_REF: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.ref || github.ref_name }}
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
@@ -95,7 +93,7 @@ jobs:
           SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha || github.sha }}
         with:
           workflow: OpenMetadata Collate Test
-          ref: ${{ env.COLLATE_REF }}
+          ref: main
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
