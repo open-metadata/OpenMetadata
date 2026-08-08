@@ -103,12 +103,10 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
       </Link>
     );
 
-    if (isTeam) {
-      return linkContent;
-    }
-
     return (
-      <UserPopOverCard userName={owner.name ?? ''}>
+      <UserPopOverCard
+        type={isTeam ? OwnerType.TEAM : OwnerType.USER}
+        userName={owner.name ?? ''}>
         {linkContent}
       </UserPopOverCard>
     );
@@ -136,12 +134,10 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
       </Link>
     );
 
-    if (isTeam) {
-      return linkContent;
-    }
-
     return (
-      <UserPopOverCard userName={owner.name ?? ''}>
+      <UserPopOverCard
+        type={isTeam ? OwnerType.TEAM : OwnerType.USER}
+        userName={owner.name ?? ''}>
         {linkContent}
       </UserPopOverCard>
     );
