@@ -23,7 +23,7 @@ import {
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isNil, isNumber } from 'lodash';
-import { WebStorageStateStore } from 'oidc-client';
+import type { WebStorageStateStore } from 'oidc-client';
 import {
   ComponentType,
   createContext,
