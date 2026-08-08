@@ -4310,7 +4310,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate ETag if If-Match header is provided
     boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
     if (useOptimisticLocking) {
-      LOG.info(
+      LOG.debug(
           "PATCH with ETag validation - entity: {}, version: {}, updatedAt: {}, provided ETag: {}",
           original.getId(),
           original.getVersion(),
@@ -4372,7 +4372,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate ETag if If-Match header is provided
     boolean useOptimisticLocking = ifMatchHeader != null && !ifMatchHeader.isEmpty();
     if (useOptimisticLocking) {
-      LOG.info(
+      LOG.debug(
           "PATCH with ETag validation - entity: {}, version: {}, updatedAt: {}, provided ETag: {}",
           original.getId(),
           original.getVersion(),
