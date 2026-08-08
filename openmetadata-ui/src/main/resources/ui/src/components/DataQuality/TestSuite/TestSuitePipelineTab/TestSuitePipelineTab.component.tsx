@@ -14,6 +14,7 @@
 import {
   Box,
   EmptyPlaceholder,
+  Skeleton,
   Table,
   TableCard,
   Tooltip,
@@ -91,6 +92,14 @@ interface PipelineTableRow extends IngestionPipeline {
   runStatus?: StepSummary;
   pipelinePermissions?: OperationPermission;
 }
+
+const LOADING_SKELETON_IDS = [
+  'pipeline-loading-row-1',
+  'pipeline-loading-row-2',
+  'pipeline-loading-row-3',
+  'pipeline-loading-row-4',
+  'pipeline-loading-row-5',
+];
 
 const TestSuitePipelineTab = ({
   testSuite,
@@ -469,7 +478,24 @@ const TestSuitePipelineTab = ({
 
             <Table.Body
               items={isLoading ? [] : dataSource}
-              renderEmptyState={() => (isLoading ? <></> : emptyPlaceholder)}>
+              renderEmptyState={() =>
+                isLoading ? (
+                  <div
+                    className="tw:p-4"
+                    data-testid="pipeline-table-loading-skeletons">
+                    {LOADING_SKELETON_IDS.map((skeletonId) => (
+                      <Skeleton
+                        className="tw:mb-2"
+                        height={40}
+                        key={skeletonId}
+                        width="100%"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  emptyPlaceholder
+                )
+              }>
               {(item) => {
                 const record = item;
                 const testCasesCount =
