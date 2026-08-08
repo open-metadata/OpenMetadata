@@ -386,8 +386,8 @@ public class SearchSourceBuilderFactoryTest {
     // not just the score. On a single-token FQN getFuzziness() already degrades the fuzzy stage to
     // fuzziness 0, leaving an OR multi_match at 70% token coverage: no typo tolerance, but it
     // admits every sibling column under the same table — ColumnSearchIndexIT saw 21 hits for a
-    // one-column FQN, all of them matching via `ranking:fuzzyName` alone. Only the exact, phrase
-    // and tokenCoverage stages may decide recall for an identifier lookup.
+    // one-column FQN, all of them matching via `ranking:fuzzyName` alone (issue #31227). Only the
+    // exact, phrase and tokenCoverage stages may decide recall for an identifier lookup.
     String columnFqn = "svc_a.db_a.schema_a.table_a.user_id";
 
     assertFalse(rankedOpenSearchQuery(columnFqn).contains(FUZZY_STAGE_QUERY_NAME));
