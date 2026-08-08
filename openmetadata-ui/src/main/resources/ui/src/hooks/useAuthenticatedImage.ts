@@ -22,6 +22,7 @@ export const useAuthenticatedImage = (src: string) => {
   const [imageSrc, setImageSrc] = useState<string>(src);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const isMounted = useRef(true);
+  const objectUrlRef = useRef<string | null>(null);
 
   const fetchImage = async () => {
     if (!src?.includes('/api/v1/attachments/')) {
@@ -66,6 +67,9 @@ export const useAuthenticatedImage = (src: string) => {
     try {
       const objectUrl = await request;
       if (isMounted.current) {
+        if (objectUrl.startsWith('blob:')) {
+          objectUrlRef.current = objectUrl;
+        }
         setImageSrc(objectUrl);
       }
     } catch (error) {
@@ -87,8 +91,9 @@ export const useAuthenticatedImage = (src: string) => {
     fetchImage();
 
     return () => {
-      if (imageSrc.startsWith('blob:')) {
-        URL.revokeObjectURL(imageSrc);
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
       }
     };
   }, [src]);

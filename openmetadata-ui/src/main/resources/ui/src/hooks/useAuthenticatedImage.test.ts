@@ -127,6 +127,23 @@ describe('useAuthenticatedImage', () => {
     expect(result.current.imageSrc).toBe(src);
   });
 
+  it('revokes the blob URL on unmount', async () => {
+    const src = attachmentSrc('attachment-id-unmount');
+    const { unmount, result } = renderHook(() => useAuthenticatedImage(src));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.imageSrc).toBe(BLOB_URL);
+    expect(revokeObjectURLMock).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(revokeObjectURLMock).toHaveBeenCalledWith(BLOB_URL);
+  });
+
   it('does not revoke anything on unmount when the src was never resolved to a blob URL', async () => {
     const { unmount } = renderHook(() =>
       useAuthenticatedImage('/static/image.png')
