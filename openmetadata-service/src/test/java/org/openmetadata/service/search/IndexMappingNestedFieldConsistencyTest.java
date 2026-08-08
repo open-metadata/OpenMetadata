@@ -21,7 +21,7 @@ import org.openmetadata.search.IndexMappingLoader;
 
 class IndexMappingNestedFieldConsistencyTest {
 
-  private static final List<String> LANGUAGES = List.of("en", "jp", "ru", "zh");
+  private static final List<String> LANGUAGES = List.of("en", "jp", "ko", "ru", "zh");
   private static Map<String, JsonNode> allMappings;
 
   @BeforeAll
