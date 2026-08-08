@@ -235,6 +235,14 @@ export default defineConfig(async ({ mode }) => {
           __dirname,
           'node_modules/luxon/build/es6/luxon.mjs'
         ),
+        // @openmetadata/ui-core-components is linked via `link:` and has its
+        // own node_modules/react-hook-form (devDependency). Vite's `dedupe`
+        // alone isn't sufficient for link: packages — it deduplicates to
+        // whichever copy it finds first, which can be the linked package's
+        // local copy. An explicit alias authoritatively pins every import to
+        // the main app's copy, preventing the dual-instance mismatch that
+        // causes useForm's internal useRef call to fail with a null dispatcher.
+        'react-hook-form': path.resolve(__dirname, 'node_modules/react-hook-form'),
       },
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.less', '.svg'],
       dedupe: [
