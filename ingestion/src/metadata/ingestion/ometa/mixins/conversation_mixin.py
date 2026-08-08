@@ -46,9 +46,13 @@ class OMetaConversationMixin:
 
     @staticmethod
     def _result_list(
-        response: dict[str, Any],
+        response: Any,
         model: type[T],
     ) -> EntityList[T]:
+        # REST.get is untyped and can hand back a raw Response or None; the paged
+        # endpoints only ever return a decoded body.
+        if not isinstance(response, dict):
+            return EntityList(entities=[], total=0)
         return EntityList(
             entities=[model.model_validate(item) for item in response["data"]],
             total=response["paging"]["total"],
