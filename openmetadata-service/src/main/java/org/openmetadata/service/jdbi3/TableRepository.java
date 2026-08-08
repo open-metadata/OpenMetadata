@@ -345,7 +345,7 @@ public class TableRepository extends EntityRepository<Table> {
             ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
             : "retentionPeriod";
     DatabaseSchema schema =
-        getOrLoadInheritanceParent(
+        loadInheritanceParentLeniently(
             table.getDatabaseSchema(), inheritanceFields, DatabaseSchema.class);
     if (schema == null) {
       return;

@@ -261,6 +261,7 @@ import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LineageUtil;
@@ -333,8 +334,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private static final int BULK_HARD_DELETE_TXN_CHUNK_SIZE = 500;
 
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
-
-  private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
 
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
@@ -597,9 +596,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Set by {@link #preloadParentsForBulk(List)} and cleared after use.
    */
   private final ThreadLocal<Map<UUID, EntityInterface>> parentCacheForPrepare = new ThreadLocal<>();
-
-  private static final ThreadLocal<Map<InheritanceCacheKey, EntityInterface>>
-      inheritanceParentCache = ThreadLocal.withInitial(HashMap::new);
 
   protected final ChangeSummarizer<T> changeSummarizer;
 
@@ -949,19 +945,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @SuppressWarnings("unused")
   protected void setInheritedFields(T entity, Fields fields) {
-    if (!requiresParentForInheritance(entity, fields)) {
-      return;
-    }
-    String inheritableFields = getInheritableFields();
-    EntityReference parentRef = getParentReference(entity);
-    EntityInterface parent = getCachedInheritanceParent(parentRef, inheritableFields);
-    if (parent == null) {
-      parent = resolveInheritanceParentLeniently(entity, inheritableFields);
-      cacheInheritanceParent(parentRef, inheritableFields, parent);
-    }
-    if (parent != null) {
-      // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
-      applyInheritance(entity, fields, parent);
+    if (requiresParentForInheritance(entity, fields)) {
+      EntityInterface parent = resolveInheritanceParentLeniently(entity, getInheritableFields());
+      if (parent != null) {
+        // Keep single-entity inheritance path aligned with batch/recursive inheritance path.
+        applyInheritance(entity, fields, parent);
+      }
     }
   }
 
@@ -1167,51 +1156,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Clear the parent cache after bulk prepare. */
   public void clearParentCache() {
     parentCacheForPrepare.remove();
-    inheritanceParentCache.remove();
   }
 
-  public static void clearInheritanceParentCache() {
-    inheritanceParentCache.remove();
-  }
-
-  private EntityInterface getCachedInheritanceParent(EntityReference parentRef, String fields) {
-    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
-      return null;
-    }
-    Map<InheritanceCacheKey, EntityInterface> cache = inheritanceParentCache.get();
-    InheritanceCacheKey directKey = inheritanceCacheKey(parentRef, fields);
-    EntityInterface direct = cache.get(directKey);
-    if (direct != null) {
-      return direct;
-    }
-
-    // Reuse a superset entry when the same parent was already loaded with broader fields
-    // (for example "owners,domains,retentionPeriod" can serve "owners,domains").
-    Set<String> requestedFields = parseFieldSet(directKey.fieldsKey());
-    for (Entry<InheritanceCacheKey, EntityInterface> entry : cache.entrySet()) {
-      InheritanceCacheKey cachedKey = entry.getKey();
-      if (!cachedKey.entityType().equals(parentRef.getType())
-          || !cachedKey.entityId().equals(parentRef.getId())) {
-        continue;
-      }
-      if (parseFieldSet(cachedKey.fieldsKey()).containsAll(requestedFields)) {
-        return entry.getValue();
-      }
-    }
-    return null;
-  }
-
-  protected final <P extends EntityInterface> P getOrLoadInheritanceParent(
+  /**
+   * Loads an inheritance parent, tolerating a parent that has been hard-deleted since the child was
+   * read. Returns null (skip inheritance) rather than propagating, matching {@link
+   * #resolveInheritanceParentLeniently}.
+   */
+  protected final <P extends EntityInterface> P loadInheritanceParentLeniently(
       EntityReference parentRef, String fields, Class<P> parentClass) {
-    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
-      return null;
-    }
-    EntityInterface parent = getCachedInheritanceParent(parentRef, fields);
-    if (parent == null) {
+    P result = null;
+    if (parentRef != null && parentRef.getId() != null && !nullOrEmpty(parentRef.getType())) {
       try {
-        parent =
+        EntityInterface parent =
             Entity.getEntityForInheritance(parentRef.getType(), parentRef.getId(), fields, ALL);
-        cacheInheritanceParent(parentRef, fields, parent);
+        if (parentClass.isInstance(parent)) {
+          result = parentClass.cast(parent);
+        }
       } catch (EntityNotFoundException e) {
         LOG.debug(
             "Inheritance parent {} {} no longer exists; skipping inheritance",
@@ -1219,52 +1180,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             parentRef.getId());
       }
     }
-    if (!parentClass.isInstance(parent)) {
-      return null;
-    }
-    return parentClass.cast(parent);
-  }
-
-  private void cacheInheritanceParent(
-      EntityReference parentRef, String fields, EntityInterface parent) {
-    if (parentRef == null || parentRef.getId() == null || nullOrEmpty(parentRef.getType())) {
-      return;
-    }
-    if (parent == null || parent.getId() == null) {
-      return;
-    }
-    inheritanceParentCache.get().put(inheritanceCacheKey(parentRef, fields), parent);
-  }
-
-  private InheritanceCacheKey inheritanceCacheKey(EntityReference parentRef, String fields) {
-    return new InheritanceCacheKey(
-        parentRef.getType(), parentRef.getId(), normalizeFieldList(fields));
-  }
-
-  private String normalizeFieldList(String fields) {
-    if (fields == null || fields.isBlank()) {
-      return "";
-    }
-    // Canonicalize field order so cache keys are stable across equivalent requests
-    // (e.g. "owners,domains" and "domains, owners" should share the same parent entry).
-    return fields
-        .lines()
-        .flatMap(line -> Stream.of(line.split(",")))
-        .map(String::trim)
-        .filter(field -> !field.isEmpty())
-        .distinct()
-        .sorted()
-        .collect(Collectors.joining(","));
-  }
-
-  private Set<String> parseFieldSet(String fields) {
-    if (fields == null || fields.isBlank()) {
-      return Collections.emptySet();
-    }
-    return Stream.of(fields.split(","))
-        .map(String::trim)
-        .filter(field -> !field.isEmpty())
-        .collect(Collectors.toSet());
+    return result;
   }
 
   /**
@@ -1298,32 +1214,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var refsByType =
         parentRefMap.values().stream().collect(Collectors.groupingBy(EntityReference::getType));
 
+    // One bulk load per parent type keeps list endpoints off an N+1, which is what the removed
+    // thread-local parent cache was really buying on this path.
     var loadedParents = new HashMap<UUID, EntityInterface>();
-    var missingRefsByType = new HashMap<String, List<EntityReference>>();
     for (var entry : refsByType.entrySet()) {
-      var missingRefs = new ArrayList<EntityReference>();
-      for (var ref : entry.getValue()) {
-        var cachedParent = getCachedInheritanceParent(ref, inheritableFields);
-        if (cachedParent != null) {
-          loadedParents.put(ref.getId(), cachedParent);
-        } else {
-          missingRefs.add(ref);
-        }
-      }
-      if (!missingRefs.isEmpty()) {
-        missingRefsByType.put(entry.getKey(), missingRefs);
-      }
-    }
-
-    for (var entry : missingRefsByType.entrySet()) {
       List<? extends EntityInterface> parents =
           Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
       for (var parent : parents) {
         loadedParents.put(parent.getId(), parent);
-        var parentRef = parentRefMap.get(parent.getId());
-        if (parentRef != null) {
-          cacheInheritanceParent(parentRef, inheritableFields, parent);
-        }
       }
     }
 
@@ -1533,18 +1431,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Fields fields,
       RelationIncludes relationIncludes,
       boolean fromCache) {
+    final boolean useCache = cacheAllowed(fromCache);
     T requestCachedEntity =
-        RequestEntityCache.getById(
-            entityType, id, fields, relationIncludes, fromCache, entityClass);
+        RequestEntityCache.getById(entityType, id, fields, relationIncludes, useCache, entityClass);
     if (requestCachedEntity != null) {
       return withHref(uriInfo, requestCachedEntity);
     }
 
-    if (!fromCache) {
+    if (!useCache) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
     T entity =
-        withPhase("entityLookup", () -> find(id, relationIncludes.getDefaultInclude(), fromCache));
+        withPhase("entityLookup", () -> find(id, relationIncludes.getDefaultInclude(), useCache));
     ReadPlan readPlan =
         withPhase("readCreatePlan", () -> createReadPlan(entity, fields, relationIncludes));
     ReadBundle readBundle = withPhase("buildReadBundle", () -> buildReadBundle(entity, readPlan));
@@ -1561,7 +1459,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         "requestCachePutById",
         () ->
             RequestEntityCache.putById(
-                entityType, id, fields, relationIncludes, fromCache, hydratedEntity, entityClass));
+                entityType, id, fields, relationIncludes, useCache, hydratedEntity, entityClass));
     if (hydratedEntity.getFullyQualifiedName() != null) {
       withPhase(
           "requestCachePutByName",
@@ -1571,7 +1469,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                   hydratedEntity.getFullyQualifiedName(),
                   fields,
                   relationIncludes,
-                  fromCache,
+                  useCache,
                   hydratedEntity,
                   entityClass));
     }
@@ -1619,7 +1517,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return find(id, include, true);
   }
 
+  /**
+   * Callers ask for cached reads by default; a fresh-read scope overrides them. Governance workflows
+   * open that scope because their reads drive gating decisions, where a stale answer routes an entity
+   * to the wrong terminal status silently.
+   */
+  private static boolean cacheAllowed(boolean fromCache) {
+    return fromCache && !FreshReadScope.isActive();
+  }
+
   public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
+    fromCache = cacheAllowed(fromCache);
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
       // On the explicit-bypass path the L1 cache is being skipped entirely, so checking the
@@ -1749,6 +1657,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Fields fields,
       RelationIncludes relationIncludes,
       boolean fromCache) {
+    fromCache = cacheAllowed(fromCache);
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     T requestCachedEntity =
         RequestEntityCache.getByName(
@@ -2265,6 +2174,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T findByName(String fqn, Include include, boolean fromCache) {
+    fromCache = cacheAllowed(fromCache);
     fqn = quoteFqn ? quoteName(fqn) : fqn;
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
@@ -4933,23 +4843,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               Entity.getConversationRepository()
                   .deleteByEntity(entityType, List.of(entityInterface.getId()));
 
-              // Cancel any governance workflow instances tied to this entity before the row
-              // goes away, so downstream nodes do not throw EntityNotFoundException. The
-              // Flowable query and cancel calls must never abort the delete transaction —
-              // a stray engine failure here shouldn't wedge entity deletes on a data plane
-              // the workflow engine has no authority over.
-              if (WorkflowHandler.isInitialized()) {
-                try {
-                  WorkflowHandler.getInstance()
-                      .cancelInstancesForEntity(entityInterface.getId(), "Entity deleted");
-                } catch (Exception cancelEx) {
-                  LOG.warn(
-                      "Failed to cancel workflow instances for entity {}: {}",
-                      entityInterface.getId(),
-                      cancelEx.getMessage());
-                }
-              }
-
               // Drop cached state before the DB row goes away. A concurrent read arriving
               // between this invalidate and the dao.delete below would still observe the
               // entity in the DB; the post-commit invalidate below closes that window.
@@ -4960,6 +4853,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               return null;
             });
+    // Flowable uses a separate transaction. Cancelling only after this one commits prevents a
+    // rolled-back entity delete from leaving a live entity without its workflow, and keeps the
+    // workflow queries out of the entity transaction's lock-hold time.
+    cancelWorkflowInstances(List.of(entityInterface.getId()));
     // Re-invalidate after the transaction commits. Any read that slipped in between the
     // pre-delete invalidate and the commit could have re-populated the cache from the
     // still-visible DB row; clearing again here guarantees the next read goes back to the
@@ -6930,6 +6827,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (jdbi == null) {
       bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
+      cancelWorkflowInstances(entityIds(entities));
       return;
     }
     jdbi.inTransaction(
@@ -6938,6 +6836,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
           bulkDeleteEntityRows(entities);
           return null;
         });
+    // Keep Flowable's separate transaction outside the entity delete transaction. See cleanup().
+    cancelWorkflowInstances(entityIds(entities));
+  }
+
+  private List<UUID> entityIds(List<T> entities) {
+    List<UUID> entityIds = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      entityIds.add(entity.getId());
+    }
+    return entityIds;
+  }
+
+  private void cancelWorkflowInstances(Collection<UUID> entityIds) {
+    // Workflow-engine failures must never wedge a hard-delete; the entity rows are the source of
+    // truth and the workflow cleanup is best effort.
+    if (!WorkflowHandler.isInitialized()) {
+      return;
+    }
+    try (var ignored = phase("bulkHardDeleteWorkflows")) {
+      WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
+    } catch (Exception cancelEx) {
+      LOG.warn(
+          "Failed to cancel workflow instances for {} entities: {}",
+          entityIds.size(),
+          cancelEx.getMessage());
+    }
   }
 
   private void bulkCleanupReferences(List<T> entities) {
@@ -6978,20 +6902,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     try (var ignored = phase("bulkHardDeleteConversations")) {
       Entity.getConversationRepository().deleteByEntity(entityType, entityIds);
-    }
-    try (var ignored = phase("bulkHardDeleteWorkflows")) {
-      // Workflow-engine failures must never wedge a bulk hard-delete; the workflow
-      // instances are best-effort cleanup, the entity rows are the source of truth.
-      if (WorkflowHandler.isInitialized()) {
-        try {
-          WorkflowHandler.getInstance().cancelInstancesForEntities(entityIds, "Entity deleted");
-        } catch (Exception cancelEx) {
-          LOG.warn(
-              "Failed to cancel workflow instances for {} entities: {}",
-              entityIds.size(),
-              cancelEx.getMessage());
-        }
-      }
     }
   }
 
