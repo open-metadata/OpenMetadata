@@ -43,15 +43,17 @@ import {
 import {
   getTestCaseVersionDetails,
   getTestCaseVersionList,
+  restoreTestCase,
   updateTestCaseById,
 } from '../../../rest/testAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import testCaseClassBase, { TestCaseTabType } from './TestCaseClassBase';
@@ -96,6 +98,7 @@ export interface UseTestCaseDetailPageResult {
   handleDisplayNameChange: (entityName?: EntityName) => Promise<void>;
   getEntityFeedCount: () => void;
   setTestCase: (testCase: TestCase) => void;
+  handleRestore: () => Promise<void>;
 }
 
 /**
@@ -355,6 +358,23 @@ export const useTestCaseDetailPage = ({
     []
   );
 
+  const handleRestore = useCallback(async () => {
+    if (!testCase?.id) {
+      return;
+    }
+    try {
+      const restoredTestCase = await restoreTestCase(testCase.id);
+      setEntityDetails(restoredTestCase);
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: getEntityName(testCase),
+        })
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [testCase, setEntityDetails, t]);
+
   const onVersionClick = () => {
     navigate(
       isVersionPage
@@ -475,5 +495,6 @@ export const useTestCaseDetailPage = ({
     handleDisplayNameChange,
     getEntityFeedCount,
     setTestCase,
+    handleRestore,
   };
 };

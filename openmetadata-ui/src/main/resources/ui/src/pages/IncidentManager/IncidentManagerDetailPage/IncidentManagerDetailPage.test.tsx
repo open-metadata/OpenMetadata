@@ -98,6 +98,11 @@ jest.mock('../../../rest/testAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockTestCaseData })),
   updateTestCaseById: jest.fn(),
+  restoreTestCase: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ ...mockTestCaseData, deleted: false })
+    ),
   TestCaseType: {
     all: 'all',
     table: 'table',

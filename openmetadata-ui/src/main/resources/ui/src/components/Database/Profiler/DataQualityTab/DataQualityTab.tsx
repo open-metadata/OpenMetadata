@@ -44,8 +44,10 @@ import {
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
-import { deleteEntity } from '../../../../rest/miscAPI';
-import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
+import {
+  removeTestCaseFromTestSuite,
+  restoreTestCase,
+} from '../../../../rest/testAPI';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
@@ -56,7 +58,7 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
-import DeleteModal from '../../../common/DeleteModal/DeleteModal';
+import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -124,6 +126,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   removeTableBorder = false,
   enableBulkActions = false,
   editVariant = getDefaultTestCaseFormVariant(),
+  allowSoftDelete = false,
   hasActiveFilters = false,
   emptyStateAction,
 }: DataQualityTabProps) => {
@@ -137,7 +140,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   >([]);
   const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
     useState(false);
-  const [isDeletingTestCase, setIsDeletingTestCase] = useState(false);
+  const [isRestoringTestCase, setIsRestoringTestCase] = useState(false);
   const [isPermissionLoading, setIsPermissionLoading] = useState(true);
   const [testCasePermissions, setTestCasePermissions] = useState<
     TestCasePermission[]
@@ -230,6 +233,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     setActiveRecordId(null);
   };
 
+  const handleRestore = (record: TestCase) => {
+    setSelectedTestCase({ data: record, action: 'RESTORE' });
+    setActiveRecordId(null);
+  };
+
   const handleConfirmClick = async () => {
     setIsTestCaseRemovalLoading(true);
     if (isUndefined(removeFromTestSuite)) {
@@ -249,16 +257,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
-  const handleDeleteTestCase = async () => {
+  const handleConfirmRestore = async () => {
     const entityId = selectedTestCase?.data?.id;
     if (!entityId) {
       return;
     }
-    setIsDeletingTestCase(true);
+    setIsRestoringTestCase(true);
     try {
-      await deleteEntity('dataQuality/testCases', entityId, true, true);
+      await restoreTestCase(entityId);
       showSuccessToast(
-        t('server.entity-deleted-successfully', {
+        t('message.restore-entities-success', {
           entity: getEntityName(selectedTestCase?.data),
         })
       );
@@ -267,7 +275,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsDeletingTestCase(false);
+      setIsRestoringTestCase(false);
     }
   };
 
@@ -534,24 +542,35 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     const hasAnyPermission = testCaseEditPermission || testCaseDeletePermission;
 
-    const menuItems = [
-      {
-        id: 'edit',
-        isDisabled: !testCaseEditPermission,
-        label: t('label.edit'),
-        onAction: () => handleEdit(record),
-        testId: `edit-${record.name}`,
-      },
-      {
-        id: removeFromTestSuite ? 'remove' : 'delete',
-        isDisabled: !testCaseDeletePermission,
-        label: deleteBtnLabel,
-        onAction: () => handleDelete(record),
-        testId: removeFromTestSuite
-          ? `remove-${record.name}`
-          : `delete-${record.name}`,
-      },
-    ];
+    const menuItems =
+      record.deleted && !removeFromTestSuite
+        ? [
+            {
+              id: 'restore',
+              isDisabled: !testCaseEditPermission,
+              label: t('label.restore'),
+              onAction: () => handleRestore(record),
+              testId: `restore-${record.name}`,
+            },
+          ]
+        : [
+            {
+              id: 'edit',
+              isDisabled: !testCaseEditPermission,
+              label: t('label.edit'),
+              onAction: () => handleEdit(record),
+              testId: `edit-${record.name}`,
+            },
+            {
+              id: removeFromTestSuite ? 'remove' : 'delete',
+              isDisabled: !testCaseDeletePermission,
+              label: deleteBtnLabel,
+              onAction: () => handleDelete(record),
+              testId: removeFromTestSuite
+                ? `remove-${record.name}`
+                : `delete-${record.name}`,
+            },
+          ];
 
     return (
       <div className="tw:flex tw:items-center tw:justify-end tw:gap-5">
@@ -918,17 +937,29 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onConfirm={handleConfirmClick}
         />
       ) : (
-        <DeleteModal
-          entityTitle={getEntityName(selectedTestCase?.data)}
-          isDeleting={isDeletingTestCase}
-          message={t('message.delete-entity-message', {
-            entity: getEntityName(selectedTestCase?.data),
-          })}
-          open={selectedTestCase?.action === 'DELETE'}
+        <DeleteEntityModal
+          isRecursiveDelete
+          afterDeleteAction={() => afterDeleteAction?.()}
+          allowSoftDelete={allowSoftDelete}
+          entityId={selectedTestCase?.data.id ?? ''}
+          entityName={getEntityName(selectedTestCase?.data)}
+          entityType={EntityType.TEST_CASE}
+          visible={selectedTestCase?.action === 'DELETE'}
           onCancel={handleCancel}
-          onDelete={handleDeleteTestCase}
         />
       )}
+      <ConfirmationModal
+        bodyText={t('message.are-you-want-to-restore', {
+          entity: getEntityName(selectedTestCase?.data),
+        })}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.restore')}
+        header={t('label.restore-entity', { entity: t('label.test-case') })}
+        isLoading={isRestoringTestCase}
+        visible={selectedTestCase?.action === 'RESTORE'}
+        onCancel={handleCancel}
+        onConfirm={handleConfirmRestore}
+      />
     </div>
   );
 };
