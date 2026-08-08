@@ -135,7 +135,7 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
         )
         return ssl_context  # noqa: RET504
 
-    return ssl._create_unverified_context()  # pylint: disable=protected-access
+    return ssl.create_default_context()
 
 
 def _cleanup_staging_dir(staging_dir: str | None) -> None:

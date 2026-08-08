@@ -24,11 +24,13 @@ from metadata.generated.schema.security.secrets.secretsManagerClientLoader impor
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.secrets.aws_based_secrets_manager import (
     NULL_VALUE,
     AWSBasedSecretsManager,
 )
-from metadata.utils.secrets.secrets_manager import logger
+
+logger = ingestion_logger()
 
 
 class AWSSecretsManager(AWSBasedSecretsManager):
@@ -55,7 +57,7 @@ class AWSSecretsManager(AWSBasedSecretsManager):
             logger.debug("Got value for secret %s.", secret_id)
         except ClientError as err:
             logger.debug(traceback.format_exc())
-            logger.error(f"Couldn't get value for secret [{secret_id}]: {err}")
+            logger.error(f"Couldn't get value for secret [{secret_id}] from secrets manager: {err}")
             raise err  # noqa: TRY201
         if "SecretString" in response:
             return response["SecretString"] if response["SecretString"] != NULL_VALUE else None
