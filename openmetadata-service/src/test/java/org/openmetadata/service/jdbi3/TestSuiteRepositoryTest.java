@@ -10,9 +10,33 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.schema.tests.ResultSummary;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.service.Entity;
 
 class TestSuiteRepositoryTest {
+
+  @Test
+  void summaryTotalIncludesTestsWithoutResults() {
+    List<ResultSummary> results = List.of(new ResultSummary().withStatus(TestCaseStatus.Success));
+
+    TestSummary summary = TestSuiteRepository.computeSimpleSummary(results, 3);
+
+    assertEquals(1, summary.getSuccess());
+    assertEquals(3, summary.getTotal());
+  }
+
+  @Test
+  void emptySuiteHasZeroSummaryCounts() {
+    TestSummary summary = TestSuiteRepository.computeSimpleSummary(List.of(), 0);
+
+    assertEquals(0, summary.getSuccess());
+    assertEquals(0, summary.getFailed());
+    assertEquals(0, summary.getAborted());
+    assertEquals(0, summary.getQueued());
+    assertEquals(0, summary.getTotal());
+  }
 
   @Test
   void readsPersistedTestsRelationshipRevisions() {

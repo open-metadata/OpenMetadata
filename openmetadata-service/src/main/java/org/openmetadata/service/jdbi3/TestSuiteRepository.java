@@ -223,10 +223,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         fields.contains(SUMMARY_FIELD)
             ? getResultSummary(entity.getId())
             : entity.getTestCaseResultSummary());
-    entity.setSummary(
-        fields.contains(SUMMARY_FIELD)
-            ? getTestSummary(entity.getTestCaseResultSummary())
-            : entity.getSummary());
+    if (fields.contains(SUMMARY_FIELD)) {
+      TestSummary summary = getTestSummary(entity.getTestCaseResultSummary());
+      summary.setTotal(
+          batchGetTestCaseCounts(List.of(entity.getId())).getOrDefault(entity.getId(), 0));
+      entity.setSummary(summary);
+    }
 
     // Ensure tests is never null, default to empty list
     if (entity.getTests() == null) {
@@ -526,7 +528,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return getTestSummary(testCaseResults, entityLinkMap);
   }
 
-  private TestSummary createTestSummary(Map<String, Integer> summaryMap) {
+  private static TestSummary createTestSummary(Map<String, Integer> summaryMap) {
     TestSummary summary = new TestSummary();
     summary.setSuccess(summaryMap.getOrDefault("Success", 0));
     summary.setFailed(summaryMap.getOrDefault("Failed", 0));
@@ -617,23 +619,29 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     List<UUID> suiteIds = testSuites.stream().map(TestSuite::getId).toList();
     Map<UUID, List<ResultSummary>> testCaseResultSummaryMap = batchGetResultSummary(suiteIds);
+    Map<UUID, Integer> testCaseCountMap = batchGetTestCaseCounts(suiteIds);
 
     Map<UUID, TestSummary> testSummaryMap = new HashMap<>();
-    testCaseResultSummaryMap.forEach(
-        (id, results) -> testSummaryMap.put(id, computeSimpleSummary(results)));
+    suiteIds.forEach(
+        id ->
+            testSummaryMap.put(
+                id,
+                computeSimpleSummary(
+                    testCaseResultSummaryMap.getOrDefault(id, List.of()),
+                    testCaseCountMap.getOrDefault(id, 0))));
 
     setFieldFromMap(
         true, testSuites, testCaseResultSummaryMap, TestSuite::setTestCaseResultSummary);
     setFieldFromMap(true, testSuites, testSummaryMap, TestSuite::setSummary);
   }
 
-  private TestSummary computeSimpleSummary(List<ResultSummary> results) {
+  static TestSummary computeSimpleSummary(List<ResultSummary> results, int totalTests) {
     Map<String, Integer> statusCounts = new HashMap<>();
     for (ResultSummary r : results) {
       statusCounts.merge(r.getStatus().toString(), 1, Integer::sum);
     }
     TestSummary summary = createTestSummary(statusCounts);
-    summary.setTotal(results.size());
+    summary.setTotal(totalTests);
     return summary;
   }
 
@@ -665,6 +673,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     TestCaseResultRepository repository =
         (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     return repository.listResultSummariesForTestSuites(testSuiteIds);
+  }
+
+  private Map<UUID, Integer> batchGetTestCaseCounts(List<UUID> testSuiteIds) {
+    if (testSuiteIds == null || testSuiteIds.isEmpty()) {
+      return Map.of();
+    }
+    List<CollectionDAO.EntityRelationshipCount> counts =
+        EntityDAO.queryInChunks(
+            testSuiteIds.stream().map(UUID::toString).toList(),
+            chunk ->
+                daoCollection
+                    .relationshipDAO()
+                    .countFindTo(chunk, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE));
+    return counts.stream()
+        .collect(
+            Collectors.toMap(
+                CollectionDAO.EntityRelationshipCount::getId,
+                CollectionDAO.EntityRelationshipCount::getCount));
   }
 
   private TestSummary getTestSummary(

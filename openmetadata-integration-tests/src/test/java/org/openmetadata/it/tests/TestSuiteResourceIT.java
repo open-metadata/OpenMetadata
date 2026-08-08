@@ -718,6 +718,40 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void test_summaryTotalIncludesLogicalSuiteTestsWithoutResults(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableForBasicTestSuite(ns, "table_partial_results");
+    List<TestCase> testCases = createTestCases(client, ns, table, 3);
+
+    TestSuite logicalSuite =
+        createEntity(
+            new CreateTestSuite()
+                .withName(ns.prefix("logical_suite_partial_results"))
+                .withDescription("Logical suite with partially executed tests"));
+    addTestCasesToLogicalTestSuite(
+        logicalSuite.getId(), testCases.stream().map(TestCase::getId).toList());
+    recordTestCaseResults(client, testCases, 1, 0);
+
+    TestSuite fetched = client.testSuites().get(logicalSuite.getId().toString(), "summary");
+    assertSummaryCounts(fetched, 3, 1);
+
+    Awaitility.await("search list summary includes unexecuted tests")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(() -> assertSummaryCounts(searchTestSuite(client, logicalSuite), 3, 1));
+
+    TestSuite emptySuite =
+        createEntity(
+            new CreateTestSuite()
+                .withName(ns.prefix("logical_suite_without_tests"))
+                .withDescription("Empty logical suite"));
+    Awaitility.await("search list returns a zero summary for an empty suite")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(() -> assertSummaryCounts(searchTestSuite(client, emptySuite), 0, 0));
+  }
+
+  @Test
   void test_addTestCasesToBasicTestSuite_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -1278,6 +1312,35 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
                     .parameter("value", "100")
                     .create())
         .toList();
+  }
+
+  private TestSuite searchTestSuite(OpenMetadataClient client, TestSuite testSuite)
+      throws Exception {
+    String encodedFqn =
+        java.net.URLEncoder.encode(testSuite.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    TestSuiteResource.TestSuiteList result =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/dataQuality/testSuites/search/list"
+                    + "?fields=summary&limit=10&offset=0&q="
+                    + encodedFqn
+                    + "&includeEmptyTestSuites=true&testSuiteType=logical",
+                null,
+                TestSuiteResource.TestSuiteList.class,
+                RequestOptions.builder().build());
+    return result.getData().stream()
+        .filter(suite -> suite.getId().equals(testSuite.getId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  private void assertSummaryCounts(TestSuite testSuite, int total, int success) {
+    assertNotNull(testSuite.getSummary());
+    assertAll(
+        () -> assertEquals(total, testSuite.getSummary().getTotal()),
+        () -> assertEquals(success, testSuite.getSummary().getSuccess()));
   }
 
   private void recordTestCaseResults(
