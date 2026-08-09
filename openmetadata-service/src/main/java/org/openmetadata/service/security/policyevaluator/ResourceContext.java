@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -20,7 +21,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -189,7 +189,6 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private EntityInterface resolveEntity() {
     if (entity == null) {
       Fields fieldList;
-      String fields = "";
       RelationIncludes relationIncludesToUse = relationIncludes;
       if (operation == ResourceContextInterface.Operation.PATCH) {
         fieldList = entityRepository.getPatchFields();
@@ -198,20 +197,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       } else if (requestedFields != null) {
         fieldList = requestedFields;
       } else {
-        if (entityRepository.isSupportsOwners()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
-        }
-        if (entityRepository.isSupportsTags()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
-        }
-        if (entityRepository.isSupportsDomains()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
-        }
-        if (entityRepository.isSupportsReviewers()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
-        }
-        fieldList = entityRepository.getFields(fields);
+        fieldList = Fields.EMPTY_FIELDS;
       }
+      fieldList = withPolicyEvaluationFields(fieldList);
 
       Include includeToUse = resolveInclude();
       boolean fromCache = useRepositoryCache();
@@ -231,6 +219,23 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       }
     }
     return entity;
+  }
+
+  Fields withPolicyEvaluationFields(Fields requested) {
+    Set<String> fields = new HashSet<>(requested.getFieldList());
+    if (entityRepository.isSupportsOwners()) {
+      fields.add(Entity.FIELD_OWNERS);
+    }
+    if (entityRepository.isSupportsTags()) {
+      fields.add(Entity.FIELD_TAGS);
+    }
+    if (entityRepository.isSupportsDomains()) {
+      fields.add(Entity.FIELD_DOMAINS);
+    }
+    if (entityRepository.isSupportsReviewers()) {
+      fields.add(Entity.FIELD_REVIEWERS);
+    }
+    return new Fields(fields);
   }
 
   private Include resolveInclude() {

@@ -14,7 +14,7 @@ hand-edit; run `make generate-entity-index` (or `make generate-reference-docs`).
 - **REST resource** is joined from `extends EntityResource<Entity, …>`; `—` means no dedicated
   `EntityResource` was found (the entity may be exposed via a shared or non-`EntityResource` route).
 
-**81 entities** · 58 with a dedicated `EntityResource`.
+**82 entities** · 59 with a dedicated `EntityResource`.
 
 ## entity/(root)
 
@@ -92,6 +92,7 @@ hand-edit; run `make generate-entity-index` (or `make generate-reference-docs`).
 | Glossary | `openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json` | `org.openmetadata.schema.entity.data.Glossary` | `metadata.generated.schema.entity.data.glossary` | `openmetadata-ui/src/main/resources/ui/src/generated/entity/data/glossary.ts` | `org.openmetadata.service.resources.glossary.GlossaryResource` |
 | GlossaryTerm | `openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json` | `org.openmetadata.schema.entity.data.GlossaryTerm` | `metadata.generated.schema.entity.data.glossaryTerm` | `openmetadata-ui/src/main/resources/ui/src/generated/entity/data/glossaryTerm.ts` | `org.openmetadata.service.resources.glossary.GlossaryTermResource` |
 | Metric | `openmetadata-spec/src/main/resources/json/schema/entity/data/metric.json` | `org.openmetadata.schema.entity.data.Metric` | `metadata.generated.schema.entity.data.metric` | `openmetadata-ui/src/main/resources/ui/src/generated/entity/data/metric.ts` | `org.openmetadata.service.resources.metrics.MetricResource` |
+| MetricGroup | `openmetadata-spec/src/main/resources/json/schema/entity/data/metricGroup.json` | `org.openmetadata.schema.entity.data.MetricGroup` | `metadata.generated.schema.entity.data.metricGroup` | `openmetadata-ui/src/main/resources/ui/src/generated/entity/data/metricGroup.ts` | `org.openmetadata.service.resources.metrics.MetricGroupResource` |
 | MlModel | `openmetadata-spec/src/main/resources/json/schema/entity/data/mlmodel.json` | `org.openmetadata.schema.entity.data.MlModel` | `metadata.generated.schema.entity.data.mlmodel` | `openmetadata-ui/src/main/resources/ui/src/generated/entity/data/mlmodel.ts` | `org.openmetadata.service.resources.mlmodels.MlModelResource` |
 | Page | `openmetadata-spec/src/main/resources/json/schema/entity/data/page.json` | `org.openmetadata.schema.entity.data.Page` | `metadata.generated.schema.entity.data.page` | `openmetadata-ui/src/main/resources/ui/src/generated/entity/data/page.ts` | `org.openmetadata.service.resources.knowledge.KnowledgePageResource` |
 | PageHierarchy | `openmetadata-spec/src/main/resources/json/schema/entity/data/pageHierarchy.json` | `org.openmetadata.schema.entity.data.PageHierarchy` | `metadata.generated.schema.entity.data.pageHierarchy` | `openmetadata-ui/src/main/resources/ui/src/generated/entity/data/pageHierarchy.ts` | — |

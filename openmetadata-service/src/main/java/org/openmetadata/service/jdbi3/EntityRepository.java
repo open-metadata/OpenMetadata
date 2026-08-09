@@ -4049,6 +4049,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
+      CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     ListCountCache.invalidate(entityType);
   }
@@ -4562,7 +4563,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityLifecycleEventDispatcher.getInstance()
           .onEntitySoftDeletedOrRestored(entity, false, null);
     }
+    postRestoreFromSearch(entity);
   }
+
+  /**
+   * Runs after a restored entity's search document is updated. Both synchronous and asynchronous
+   * resource paths invoke {@link #restoreFromSearch(EntityInterface)} only after the database
+   * restore returns, so relationship-derived documents can be rebuilt from committed state here.
+   */
+  protected void postRestoreFromSearch(T entity) {}
 
   public ResultList<T> listFromSearchWithOffset(
       UriInfo uriInfo,

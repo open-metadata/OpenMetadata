@@ -36,6 +36,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.MetricDimension;
+import org.openmetadata.schema.api.data.MetricMeasure;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
@@ -893,5 +896,28 @@ class LineageRepositoryTest {
     org.mockito.Mockito.verify(relationshipDAO)
         .deleteLineageBySourcePipeline(
             entityId, LineageDetails.Source.OPEN_LINEAGE.value(), Relationship.UPSTREAM.ordinal());
+  }
+
+  @Test
+  void metricChildNamesPreserveDimensionAndMeasureNamespaces() {
+    Metric metric =
+        new Metric()
+            .withFullyQualifiedName("revenue")
+            .withDimensions(
+                List.of(
+                    new MetricDimension()
+                        .withName("region")
+                        .withFullyQualifiedName("revenue.dimension.region"),
+                    new MetricDimension()
+                        .withName("foreign")
+                        .withFullyQualifiedName("anotherMetric.dimension.foreign")))
+            .withMeasures(
+                List.of(
+                    new MetricMeasure()
+                        .withName("amount")
+                        .withFullyQualifiedName("revenue.measure.amount")));
+
+    assertEquals(
+        Set.of("dimension.region", "measure.amount"), LineageRepository.metricChildNames(metric));
   }
 }

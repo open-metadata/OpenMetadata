@@ -18,7 +18,7 @@ import {
   Card,
   Dropdown,
 } from '@openmetadata/ui-core-components';
-import { ColumnsType } from 'antd/es/table';
+import type { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';

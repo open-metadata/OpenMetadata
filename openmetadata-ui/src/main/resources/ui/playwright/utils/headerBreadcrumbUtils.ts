@@ -12,8 +12,11 @@
  */
 import { expect, Page } from '@playwright/test';
 
-export const expectBreadcrumbCrumbsUnique = async (page: Page) => {
-  const breadcrumb = page.getByTestId('breadcrumb');
+export const expectBreadcrumbCrumbsUnique = async (
+  page: Page,
+  breadcrumbTestId = 'breadcrumb'
+) => {
+  const breadcrumb = page.getByTestId(breadcrumbTestId);
 
   await expect(breadcrumb).toBeVisible();
 

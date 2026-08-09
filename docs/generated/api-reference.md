@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1748 endpoints** across 73 resource packages · 1738 carry a summary.
+**1770 endpoints** across 73 resource packages · 1760 carry a summary.
 
 ## (root)
 
@@ -748,6 +748,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/dataQuality/testCases/search/list` | List test cases using search service |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus` | List the test case failure statuses |
 | `POST` | `/v1/dataQuality/testCases/testCaseIncidentStatus` | Create a new test case failure status |
+| `PUT` | `/v1/dataQuality/testCases/testCaseIncidentStatus/bulk` | Bulk create test case failure statuses |
+| `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/incidentGroups` | List open incident counts grouped by a dimension |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/search/list` | List test case resolution status using search service |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/{stateId}` | Get test case failure statuses for a sequence id |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/{id}` | Get test case failure status by id |
@@ -1224,6 +1226,20 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/metricGroups` | List metric groups |
+| `POST` | `/v1/metricGroups` | Create a metric group |
+| `PUT` | `/v1/metricGroups` | Create or update a metric group |
+| `DELETE` | `/v1/metricGroups/name/{fqn}` | Delete a metric group by fully qualified name |
+| `GET` | `/v1/metricGroups/name/{fqn}` | Get a metric group by fully qualified name |
+| `PUT` | `/v1/metricGroups/restore` | Restore a soft deleted metric group |
+| `DELETE` | `/v1/metricGroups/{id}` | Delete a metric group by Id |
+| `GET` | `/v1/metricGroups/{id}` | Get a metric group by Id |
+| `PATCH` | `/v1/metricGroups/{id}` | Update a metric group |
+| `GET` | `/v1/metricGroups/{id}/metrics` | List Metrics in a Metric Group |
+| `GET` | `/v1/metricGroups/{id}/versions` | List metric group versions |
+| `GET` | `/v1/metricGroups/{id}/versions/{version}` | Get a version of the metric group |
+| `PUT` | `/v1/metricGroups/{name}/metrics/add` | Add metrics to a group |
+| `PUT` | `/v1/metricGroups/{name}/metrics/remove` | Remove metrics from a group |
 | `GET` | `/v1/metrics` | List metrics |
 | `POST` | `/v1/metrics` | Create a Metric |
 | `PUT` | `/v1/metrics` | Create or update a metric |
@@ -1231,6 +1247,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/metrics/bulk` | Bulk create or update metrics |
 | `GET` | `/v1/metrics/customUnits` | Get list of custom units of measurement |
 | `GET` | `/v1/metrics/documentation/csv` | Get CSV documentation for metric import/export |
+| `GET` | `/v1/metrics/hierarchy` | List top-level Metric hierarchy entries |
 | `DELETE` | `/v1/metrics/name/{fqn}` | Delete a Metric by fully qualified name |
 | `GET` | `/v1/metrics/name/{fqn}` | Get a Metric by fully qualified name. |
 | `PATCH` | `/v1/metrics/name/{fqn}` | Update a Metric using name. |
@@ -1242,11 +1259,16 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/metrics/{id}` | Delete a Metric by id |
 | `GET` | `/v1/metrics/{id}` | Get a metric by Id |
 | `PATCH` | `/v1/metrics/{id}` | Update a Metric |
+| `GET` | `/v1/metrics/{id}/assets` | List a metric's linked assets with their lineage direction |
 | `PUT` | `/v1/metrics/{id}/followers` | Add a follower |
 | `DELETE` | `/v1/metrics/{id}/followers/{userId}` | Remove a follower |
+| `GET` | `/v1/metrics/{id}/hierarchy` | Get the hierarchy context for one Metric |
+| `GET` | `/v1/metrics/{id}/observability` | Get a metric's health rollup |
 | `GET` | `/v1/metrics/{id}/versions` | List Metric versions |
 | `GET` | `/v1/metrics/{id}/versions/{version}` | Get a version of the Metric |
 | `PUT` | `/v1/metrics/{id}/vote` | Update Vote for a Metric |
+| `PUT` | `/v1/metrics/{name}/assets/add` | Link data assets to a metric |
+| `PUT` | `/v1/metrics/{name}/assets/remove` | Unlink data assets from a metric |
 
 ## mlmodels
 

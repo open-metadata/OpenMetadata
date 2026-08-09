@@ -35,3 +35,26 @@ CREATE INDEX IF NOT EXISTS idx_tci_status_fqn ON test_case_incident (testCaseRes
 CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
+
+-- Metric hierarchy is stored as CONTAINS rows in entity_relationship. Metric Group
+-- membership is stored as HAS relationships so deleting a group leaves metrics intact.
+CREATE TABLE IF NOT EXISTS metric_group_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    fqnHash VARCHAR(768) DEFAULT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS metric_group_entity_name_index ON metric_group_entity (name);
+CREATE INDEX IF NOT EXISTS idx_metric_group_entity_deleted_name_id ON metric_group_entity (deleted, name, id);
+
+-- A Metric can belong to only one Metric Group while every other HAS relationship remains
+-- unconstrained by this partial index.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_metric_group_single_membership
+    ON entity_relationship (toId)
+    WHERE fromEntity = 'metricGroup' AND toEntity = 'metric' AND relation = 10;

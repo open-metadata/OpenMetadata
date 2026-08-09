@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.http.HttpResponse;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
@@ -26,12 +27,13 @@ import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 
 /**
- * Full lifecycle coverage for the metric → asset relationship ({@code Metric.assets}, an APPLIED_TO
- * edge): adding on create, adding/replacing/removing/clearing via PATCH, and referential cleanup
- * when an asset is deleted. Complements AIContextMcpIT, which covers how the edge surfaces as
- * context; this class exercises the CRUD mechanics of the edge itself.
+ * Full lifecycle coverage for the metric → asset APPLIED_TO relationship through the bounded
+ * Metric assets API: adding, replacing, removing, clearing, and referential cleanup when an asset
+ * is deleted. Complements AIContextMcpIT, which covers how the edge surfaces as context.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MetricAssetsIT extends McpTestBase {
@@ -53,10 +55,11 @@ class MetricAssetsIT extends McpTestBase {
   private static Metric createMetric(String name, Table... assets) throws Exception {
     CreateMetric create =
         new CreateMetric().withName(name).withDescription("Metric assets lifecycle: " + name);
+    Metric metric = post("metrics", create, Metric.class);
     if (assets.length > 0) {
-      create.withAssets(List.of(assets).stream().map(MetricAssetsIT::assetRef).toList());
+      addAssets(metric, assets);
     }
-    return post("metrics", create, Metric.class);
+    return metric;
   }
 
   private static EntityReference assetRef(Table table) {
@@ -64,31 +67,46 @@ class MetricAssetsIT extends McpTestBase {
   }
 
   private static JsonNode assetsOf(Metric metric) throws Exception {
-    return get("metrics/name/" + metric.getName() + "?fields=assets", JsonNode.class).get("assets");
+    return get("metrics/" + metric.getId() + "/assets?limit=100&offset=0", JsonNode.class)
+        .path("data");
   }
 
-  private static void patchAssets(Metric metric, Table... assets) throws Exception {
-    StringBuilder value = new StringBuilder("[");
-    for (int i = 0; i < assets.length; i++) {
-      if (i > 0) {
-        value.append(',');
-      }
-      value.append(String.format("{\"id\":\"%s\",\"type\":\"table\"}", assets[i].getId()));
+  private static void addAssets(Metric metric, Table... assets) throws Exception {
+    put(
+        "metrics/" + metric.getName() + "/assets/add",
+        new BulkAssets().withAssets(Arrays.stream(assets).map(MetricAssetsIT::assetRef).toList()),
+        BulkOperationResult.class);
+  }
+
+  private static void replaceAssets(Metric metric, Table... assets) throws Exception {
+    List<EntityReference> existing =
+        StreamSupport.stream(assetsOf(metric).spliterator(), false)
+            .map(node -> node.path("asset"))
+            .map(
+                node ->
+                    new EntityReference()
+                        .withId(UUID.fromString(node.path("id").asText()))
+                        .withType(node.path("type").asText()))
+            .toList();
+    if (!existing.isEmpty()) {
+      put(
+          "metrics/" + metric.getName() + "/assets/remove",
+          new BulkAssets().withAssets(existing),
+          BulkOperationResult.class);
     }
-    value.append(']');
-    patch(
-        "metrics/" + metric.getId(),
-        String.format("[{\"op\":\"add\",\"path\":\"/assets\",\"value\":%s}]", value));
+    if (assets.length > 0) {
+      addAssets(metric, assets);
+    }
   }
 
   private static boolean containsAsset(JsonNode assets, Table table) {
     return assets != null
         && StreamSupport.stream(assets.spliterator(), false)
-            .anyMatch(a -> a.get("id").asText().equals(table.getId().toString()));
+            .anyMatch(a -> a.path("asset").path("id").asText().equals(table.getId().toString()));
   }
 
   @Test
-  void create_withAssets_persistsTheEdges() throws Exception {
+  void bulkAdd_persistsTheEdges() throws Exception {
     Metric metric = createMetric("metricassets_create_" + suffix, assetA, assetB);
     JsonNode assets = assetsOf(metric);
     assertThat(assets.size()).isEqualTo(2);
@@ -104,9 +122,9 @@ class MetricAssetsIT extends McpTestBase {
   }
 
   @Test
-  void update_addAssetViaPatch() throws Exception {
+  void bulkAdd_appendsAnAsset() throws Exception {
     Metric metric = createMetric("metricassets_add_" + suffix, assetA);
-    patchAssets(metric, assetA, assetB);
+    addAssets(metric, assetB);
     JsonNode assets = assetsOf(metric);
     assertThat(assets.size()).isEqualTo(2);
     assertThat(containsAsset(assets, assetA)).isTrue();
@@ -114,9 +132,9 @@ class MetricAssetsIT extends McpTestBase {
   }
 
   @Test
-  void update_replaceAssetsViaPatch() throws Exception {
+  void bulkOperations_replaceAssets() throws Exception {
     Metric metric = createMetric("metricassets_replace_" + suffix, assetA);
-    patchAssets(metric, assetB);
+    replaceAssets(metric, assetB);
     JsonNode assets = assetsOf(metric);
     assertThat(assets.size()).isEqualTo(1);
     assertThat(containsAsset(assets, assetB)).isTrue();
@@ -124,9 +142,9 @@ class MetricAssetsIT extends McpTestBase {
   }
 
   @Test
-  void update_removeOneAssetViaPatch() throws Exception {
+  void bulkOperations_removeOneAsset() throws Exception {
     Metric metric = createMetric("metricassets_remove_" + suffix, assetA, assetB);
-    patchAssets(metric, assetA);
+    replaceAssets(metric, assetA);
     JsonNode assets = assetsOf(metric);
     assertThat(assets.size()).isEqualTo(1);
     assertThat(containsAsset(assets, assetA)).isTrue();
@@ -134,9 +152,9 @@ class MetricAssetsIT extends McpTestBase {
   }
 
   @Test
-  void update_clearAllAssetsViaPatch() throws Exception {
+  void bulkRemove_clearsAllAssets() throws Exception {
     Metric metric = createMetric("metricassets_clear_" + suffix, assetA, assetB);
-    patchAssets(metric);
+    replaceAssets(metric);
     JsonNode assets = assetsOf(metric);
     assertThat(assets == null || assets.isEmpty()).isTrue();
   }

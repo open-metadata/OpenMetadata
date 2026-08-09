@@ -1,0 +1,330 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.jdbi3;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RequestEntityCache;
+
+class MetricGroupRepositoryTest {
+  private CollectionDAO.MetricGroupDAO groupDAO;
+  private CollectionDAO.EntityRelationshipDAO relationshipDAO;
+  private MetricGroupRepository repository;
+
+  @BeforeEach
+  void setUp() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    groupDAO = mock(CollectionDAO.MetricGroupDAO.class);
+    relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.metricGroupDAO()).thenReturn(groupDAO);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    Entity.setCollectionDAO(collectionDAO);
+    Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
+    repository = new MetricGroupRepository();
+  }
+
+  @AfterEach
+  void tearDown() {
+    Entity.cleanup();
+  }
+
+  @Test
+  void genericFieldsRejectUnboundedMembershipHydration() {
+    assertFalse(repository.getAllowedFields().contains("metrics"));
+    assertThrows(IllegalArgumentException.class, () -> repository.getFields("metrics"));
+  }
+
+  @Test
+  void metricCountUsesCountQueryWithoutHydratingMembers() {
+    MetricGroup group = group("large_group");
+    when(groupDAO.countNonDeletedMembers(group.getId(), Relationship.HAS.ordinal()))
+        .thenReturn(12_345);
+
+    repository.setFields(group, new Fields(Set.of("metricCount")), null);
+
+    assertEquals(12_345, group.getMetricCount());
+    verify(relationshipDAO, never())
+        .findTo(group.getId(), Entity.METRIC_GROUP, Relationship.HAS.ordinal(), Entity.METRIC);
+  }
+
+  @Test
+  void metricCountBulkHydrationUsesBoundedDaoChunks() {
+    List<MetricGroup> groups = new ArrayList<>();
+    for (int index = 0; index < 1001; index++) {
+      groups.add(group("group_" + index));
+    }
+    when(groupDAO.countNonDeletedMembersBatch(anyList(), anyInt()))
+        .thenAnswer(
+            invocation ->
+                invocation.<List<String>>getArgument(0).stream()
+                    .map(
+                        id ->
+                            CollectionDAO.EntityRelationshipCount.builder()
+                                .id(UUID.fromString(id))
+                                .count(7)
+                                .build())
+                    .toList());
+
+    repository.setFieldsInBulk(new Fields(Set.of("metricCount")), groups);
+
+    groups.forEach(group -> assertEquals(7, group.getMetricCount()));
+    ArgumentCaptor<List<String>> chunks = ArgumentCaptor.forClass(List.class);
+    verify(groupDAO, times(3)).countNonDeletedMembersBatch(chunks.capture(), anyInt());
+    assertEquals(List.of(500, 500, 1), chunks.getAllValues().stream().map(List::size).toList());
+  }
+
+  @Test
+  void visibleMetricCountUsesMemberJsonWithoutASecondEntityLookup() {
+    UUID groupId = UUID.randomUUID();
+    Metric visible = metric("visible");
+    Metric hidden = metric("hidden");
+    when(groupDAO.listMemberJsons(groupId, Relationship.HAS.ordinal(), "%", 500, 0))
+        .thenReturn(List.of(JsonUtils.pojoToJson(visible), JsonUtils.pojoToJson(hidden)));
+
+    int count =
+        repository.visibleMetricCount(
+            groupId, reference -> visible.getId().equals(reference.getId()));
+
+    assertEquals(1, count);
+    verify(groupDAO, times(1)).listMemberJsons(groupId, Relationship.HAS.ordinal(), "%", 500, 0);
+  }
+
+  @Test
+  void transactionBoundSubtreeAssignmentPropagatesMidMutationFailures() {
+    EntityReference originalGroup = group("original").getEntityReference();
+    EntityReference targetGroup = group("target").getEntityReference();
+    EntityReference root = metric("root").getEntityReference();
+    EntityReference child = metric("child").getEntityReference();
+    CollectionDAO.EntityRelationshipRecord originalMembership =
+        CollectionDAO.EntityRelationshipRecord.builder()
+            .id(originalGroup.getId())
+            .type(Entity.METRIC_GROUP)
+            .build();
+    when(relationshipDAO.findFrom(
+            root.getId(), Entity.METRIC, Relationship.HAS.ordinal(), Entity.METRIC_GROUP))
+        .thenReturn(List.of(originalMembership));
+    when(relationshipDAO.findFrom(
+            child.getId(), Entity.METRIC, Relationship.HAS.ordinal(), Entity.METRIC_GROUP))
+        .thenReturn(List.of(originalMembership));
+    doThrow(new IllegalStateException("database rejected child membership"))
+        .when(relationshipDAO)
+        .insert(
+            targetGroup.getId(),
+            child.getId(),
+            Entity.METRIC_GROUP,
+            Entity.METRIC,
+            Relationship.HAS.ordinal());
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            MetricGroupRepository.assignHierarchyGroup(
+                relationshipDAO, List.of(root, child), targetGroup));
+
+    verify(relationshipDAO)
+        .delete(
+            originalGroup.getId(),
+            Entity.METRIC_GROUP,
+            root.getId(),
+            Entity.METRIC,
+            Relationship.HAS.ordinal());
+    verify(relationshipDAO)
+        .insert(
+            targetGroup.getId(),
+            root.getId(),
+            Entity.METRIC_GROUP,
+            Entity.METRIC,
+            Relationship.HAS.ordinal());
+    verify(relationshipDAO)
+        .insert(
+            targetGroup.getId(),
+            child.getId(),
+            Entity.METRIC_GROUP,
+            Entity.METRIC,
+            Relationship.HAS.ordinal());
+  }
+
+  @Test
+  void repeatedPreparationAcceptsAnAlreadyExpandedRootSubtree() {
+    EntityReference root = metric("root").getEntityReference();
+    EntityReference child = metric("child").getEntityReference();
+
+    MetricGroupRepository.validateRequestedHierarchyMembers(
+        List.of(root, child), Set.of(root.getId(), child.getId()));
+  }
+
+  @Test
+  void hierarchySelectionRejectsAChildWithoutItsRoot() {
+    EntityReference child = metric("child").getEntityReference();
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                MetricGroupRepository.validateRequestedHierarchyMembers(List.of(child), Set.of()));
+
+    assertEquals("Metric 'child' is not a hierarchy root", exception.getMessage());
+  }
+
+  @Test
+  void putPreparationRecognizesExistingMembershipByStableNameBeforeIdIsKnown() {
+    MetricGroup target = new MetricGroup().withName("profitability");
+    EntityReference sameByName =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.METRIC_GROUP)
+            .withName("profitability")
+            .withFullyQualifiedName("profitability");
+    EntityReference other =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.METRIC_GROUP)
+            .withName("growth")
+            .withFullyQualifiedName("growth");
+
+    assertEquals(true, MetricGroupRepository.referencesTargetGroup(sameByName, target));
+    assertEquals(false, MetricGroupRepository.referencesTargetGroup(other, target));
+
+    target.setId(sameByName.getId());
+    target.setName("renamed-after-resolution");
+    assertEquals(true, MetricGroupRepository.referencesTargetGroup(sameByName, target));
+  }
+
+  @Test
+  void hardDeleteRetainsMembersForPostCommitRefresh() {
+    MetricGroup group = group("deleted_group");
+    EntityReference member = metric("member").getEntityReference();
+    List<EntityReference> queriedMembers = new ArrayList<>(List.of(member));
+
+    MetricGroupRepository.retainMembersForPostDelete(group, queriedMembers);
+    queriedMembers.clear();
+
+    assertEquals(List.of(member), group.getMetrics());
+  }
+
+  @Test
+  void restoredGroupSearchDispatchPrecedesItsMemberRefresh() {
+    MetricGroup group = group("restored_group").withDeleted(false);
+    EntityReference member = metric("member").getEntityReference();
+    group.setMetrics(List.of(member));
+    when(relationshipDAO.findFrom(
+            member.getId(), Entity.METRIC, Relationship.HAS.ordinal(), Entity.METRIC_GROUP))
+        .thenReturn(List.of());
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<EntityRepository> cache = mockStatic(EntityRepository.class);
+        MockedStatic<RequestEntityCache> requestCache = mockStatic(RequestEntityCache.class);
+        MockedStatic<RdfUpdater> rdf = mockStatic(RdfUpdater.class)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+
+      repository.restoreFromSearch(group);
+
+      InOrder restoreDispatch = inOrder(dispatcher);
+      restoreDispatch.verify(dispatcher).onEntitySoftDeletedOrRestored(group, false, null);
+      restoreDispatch.verify(dispatcher).onEntityUpdated(member, null);
+      verify(dispatcher, never()).onEntityUpdated(group.getEntityReference(), null);
+      cache.verify(
+          () ->
+              EntityRepository.invalidateCacheForEntity(
+                  Entity.METRIC, member.getId(), member.getFullyQualifiedName()));
+      requestCache.verify(
+          () ->
+              RequestEntityCache.invalidate(
+                  Entity.METRIC, member.getId(), member.getFullyQualifiedName()));
+      cache.verify(
+          () ->
+              EntityRepository.invalidateCacheForEntity(Entity.METRIC_GROUP, group.getId(), null));
+    }
+  }
+
+  @Test
+  void replacingMembersRefreshesTheEditedGroupSearchDocument() {
+    EntityReference originalMember =
+        metric("original_member").getEntityReference().withType(Entity.METRIC);
+    EntityReference replacementMember =
+        metric("replacement_member").getEntityReference().withType(Entity.METRIC);
+    MetricGroup original =
+        group("edited_group").withUpdatedBy("admin").withMetrics(List.of(originalMember));
+    MetricGroup updated =
+        new MetricGroup()
+            .withId(original.getId())
+            .withName(original.getName())
+            .withFullyQualifiedName(original.getFullyQualifiedName())
+            .withUpdatedBy("admin")
+            .withMetrics(List.of(replacementMember));
+    when(relationshipDAO.findFrom(
+            updated.getMetrics().getFirst().getId(),
+            Entity.METRIC,
+            Relationship.HAS.ordinal(),
+            Entity.METRIC_GROUP))
+        .thenReturn(List.of());
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<EntityRepository> cache = mockStatic(EntityRepository.class);
+        MockedStatic<RequestEntityCache> requestCache = mockStatic(RequestEntityCache.class);
+        MockedStatic<RdfUpdater> rdf = mockStatic(RdfUpdater.class)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+      MetricGroupRepository.MetricGroupUpdater updater =
+          repository.new MetricGroupUpdater(original, updated, EntityRepository.Operation.PUT);
+
+      updater.entitySpecificUpdate(false);
+      updater.runDeferredReactOperations();
+
+      verify(dispatcher).onEntityUpdated(updated.getEntityReference(), null);
+    }
+  }
+
+  private MetricGroup group(String name) {
+    return new MetricGroup().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(name);
+  }
+
+  private Metric metric(String name) {
+    return new Metric().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(name);
+  }
+}
