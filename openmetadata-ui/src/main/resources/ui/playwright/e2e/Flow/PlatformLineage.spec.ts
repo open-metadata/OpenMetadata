@@ -27,6 +27,15 @@ test('Verify Platform Lineage View', async ({ page }) => {
   // the download event — the test timed out mid-render every time.
   test.slow();
 
+  // Keep PNG rendering within the download-event budget on CI runners.
+  const MAX_NODES = 100;
+
+  await page.route('**/api/v1/lineage/scene?*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    requestUrl.searchParams.set('size', String(MAX_NODES));
+    await route.continue({ url: requestUrl.toString() });
+  });
+
   await redirectToHomePage(page);
   const lineageRes = page.waitForResponse(
     (response) =>

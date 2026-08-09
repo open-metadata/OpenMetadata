@@ -1513,7 +1513,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         await removeEdgeHandler(selectedEdge as Edge, true);
       }
 
+      // Close the modal and drop the selection in the same batch so the
+      // floating edit/delete button in EdgeInteractionOverlay unmounts
+      // right after removal. Doing this here (rather than inside the
+      // handlers) keeps `selectedEdge` populated while the confirmation
+      // modal is still mounted — getModalBodyText() destructures it
+      // during render and would crash the LineageProvider tree if
+      // `selectedEdge` were cleared before the modal unmounts.
       setShowDeleteModal(false);
+      setSelectedEdge(undefined);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -2240,7 +2248,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           </SlideoutMenu>
         )}
 
-        {showDeleteModal && (
+        {showDeleteModal && selectedEdge && (
           <ModalOverlay
             isDismissable={!deletionState.loading}
             isOpen={showDeleteModal}
@@ -2254,7 +2262,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               <Dialog data-testid="delete-edge-confirmation-modal" width={400}>
                 <Dialog.Header title={t('message.remove-lineage-edge')} />
                 <Dialog.Content>
-                  {getModalBodyText(selectedEdge as Edge)}
+                  {getModalBodyText(selectedEdge)}
                 </Dialog.Content>
                 <Dialog.Footer>
                   <Button
