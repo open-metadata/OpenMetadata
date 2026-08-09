@@ -92,6 +92,31 @@ public class MigrationWorkflow {
   }
 
   /**
+   * @param ignoredFlywayPath no longer used — the legacy Flyway scripts and their replay path are
+   *     gone.
+   * @deprecated use the six-argument constructor. Retained so downstream builds that still pass a
+   *     Flyway path keep compiling; this repository is a library for them, and dropping a public
+   *     constructor parameter would otherwise break their build before they can adapt.
+   */
+  @Deprecated(forRemoval = true)
+  public MigrationWorkflow(
+      Jdbi jdbi,
+      String nativeSQLScriptRootPath,
+      ConnectionType connectionType,
+      String extensionSQLScriptRootPath,
+      String ignoredFlywayPath,
+      OpenMetadataApplicationConfig config,
+      boolean forceMigrations) {
+    this(
+        jdbi,
+        nativeSQLScriptRootPath,
+        connectionType,
+        extensionSQLScriptRootPath,
+        config,
+        forceMigrations);
+  }
+
+  /**
    * The baseline and the upgrade gate are production concerns, keyed off the presence of a
    * migration configuration. Tests that drive the engine directly with synthetic version
    * directories pass no configuration and are therefore exempt, which is what lets them keep using
