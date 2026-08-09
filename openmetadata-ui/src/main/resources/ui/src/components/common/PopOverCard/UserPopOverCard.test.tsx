@@ -11,13 +11,48 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { OwnerType } from '../../../enums/user.enum';
+import { getTeamByName } from '../../../rest/teamsAPI';
+import { getUserByName } from '../../../rest/userAPI';
 import UserPopOverCard from './UserPopOverCard';
+
+const mockStoreState = {
+  userProfilePics: {},
+  updateUserProfilePics: jest.fn(),
+};
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
   Link: jest.fn().mockImplementation(({ children }) => children),
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest
+    .fn()
+    .mockImplementation((selector) =>
+      selector ? selector(mockStoreState) : mockStoreState
+    ),
+}));
+
+jest.mock('../../../rest/userAPI', () => ({
+  getUserByName: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ name: 'testUser', displayName: 'Test User' })
+    ),
+}));
+
+jest.mock('../../../rest/teamsAPI', () => ({
+  getTeamByName: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ name: 'testTeam', displayName: 'Test Team' })
+    ),
+}));
+
+jest.mock('../../../utils/UserDataUtils', () => ({
+  getUserWithImage: jest.fn().mockImplementation((user) => user),
 }));
 
 jest.mock('../ProfilePicture/ProfilePicture', () => {
@@ -45,6 +80,10 @@ jest.mock('./TeamPopoverTitle.component', () => ({
 }));
 
 describe('UserPopOverCard Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render with default props', () => {
     render(<UserPopOverCard userName="testUser" />);
 
@@ -89,5 +128,52 @@ describe('UserPopOverCard Component', () => {
     render(<UserPopOverCard type={OwnerType.TEAM} userName="testUser" />);
 
     expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
+  });
+
+  it('should not fetch anything until the popover is opened', () => {
+    render(<UserPopOverCard userName="testUser" />);
+
+    expect(getUserByName).not.toHaveBeenCalled();
+    expect(getTeamByName).not.toHaveBeenCalled();
+  });
+
+  it('should fetch once for the shared title and content, even across re-hovers', async () => {
+    render(
+      <UserPopOverCard userName="testUser">
+        <span data-testid="owner-chip">testUser</span>
+      </UserPopOverCard>
+    );
+
+    const chip = screen.getByTestId('owner-chip');
+
+    fireEvent.mouseEnter(chip);
+
+    await waitFor(() => expect(getUserByName).toHaveBeenCalledTimes(1));
+
+    fireEvent.mouseLeave(chip);
+    fireEvent.mouseEnter(chip);
+
+    await waitFor(() =>
+      expect(screen.getByText('PopoverTitle')).toBeInTheDocument()
+    );
+
+    expect(getUserByName).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('PopoverContent')).toBeInTheDocument();
+  });
+
+  it('should fetch team details once for a team owner', async () => {
+    render(
+      <UserPopOverCard type={OwnerType.TEAM} userName="testTeam">
+        <span data-testid="owner-chip">testTeam</span>
+      </UserPopOverCard>
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId('owner-chip'));
+
+    await waitFor(() => expect(getTeamByName).toHaveBeenCalledTimes(1));
+
+    expect(getUserByName).not.toHaveBeenCalled();
+    expect(screen.getByText('TeamPopoverTitle')).toBeInTheDocument();
+    expect(screen.getByText('TeamPopoverContent')).toBeInTheDocument();
   });
 });

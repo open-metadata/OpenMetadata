@@ -14,17 +14,14 @@
 import { isEmpty } from 'lodash';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OwnerType } from '../../../enums/user.enum';
-import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import Loader from '../Loader/Loader';
 import { PopoverContentProps } from './UserPopOverCard.interface';
 import { UserRoles } from './UserRoles.component';
 import { UserTeams } from './UserTeams.component';
 
 export const PopoverContent = React.memo(
-  ({ userName, type = OwnerType.USER }: PopoverContentProps) => {
+  ({ userName, user, loading = false }: PopoverContentProps) => {
     const { t } = useTranslation();
-    const { data: user, loading } = useEntityPopoverData(userName, type);
 
     return (
       <Fragment>

@@ -16,9 +16,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
-import { OwnerType } from '../../../enums/user.enum';
-import { Team } from '../../../generated/entity/teams/team';
-import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTeamAndUserDetailsPath } from '../../../utils/RouterUtils';
 import Loader from '../Loader/Loader';
@@ -26,10 +23,8 @@ import RichTextEditorPreviewerNew from '../RichTextEditor/RichTextEditorPreviewN
 import { TeamPopoverContentProps } from './UserPopOverCard.interface';
 
 export const TeamPopoverContent = React.memo(
-  ({ teamName }: TeamPopoverContentProps) => {
+  ({ team, loading = false }: TeamPopoverContentProps) => {
     const { t } = useTranslation();
-    const { data, loading } = useEntityPopoverData(teamName, OwnerType.TEAM);
-    const team = data as Team | undefined;
 
     if (loading) {
       return <Loader size="small" />;

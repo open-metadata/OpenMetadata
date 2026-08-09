@@ -12,7 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { getTeamByName } from '../../../rest/teamsAPI';
+import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { TeamPopoverContent } from './TeamPopoverContent.component';
 
 const mockTeamData = {
@@ -20,16 +20,10 @@ const mockTeamData = {
   name: 'testTeam',
   displayName: 'Test Team',
   description: 'Team description',
-  teamType: 'Group',
+  teamType: TeamType.Group,
   userCount: 5,
   parents: [{ id: 'parent-1', name: 'parentTeam', displayName: 'Parent Team' }],
-};
-
-jest.mock('../../../rest/teamsAPI', () => ({
-  getTeamByName: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockTeamData)),
-}));
+} as Team;
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => children),
@@ -50,15 +44,10 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewNew', () => {
 });
 
 describe('TeamPopoverContent Component', () => {
-  it('should render team details after fetch', async () => {
-    render(<TeamPopoverContent teamName="testTeam" />);
+  it('should render team details from props', () => {
+    render(<TeamPopoverContent team={mockTeamData} />);
 
-    expect(
-      await screen.findByTestId('team-popover-content')
-    ).toBeInTheDocument();
-    expect(getTeamByName).toHaveBeenCalledWith('testTeam', {
-      fields: ['parents', 'userCount'],
-    });
+    expect(screen.getByTestId('team-popover-content')).toBeInTheDocument();
     expect(screen.getByText('Team description')).toBeInTheDocument();
     expect(screen.getByTestId('team-type')).toHaveTextContent('Group');
     expect(screen.getByTestId('team-user-count')).toHaveTextContent(
@@ -68,37 +57,34 @@ describe('TeamPopoverContent Component', () => {
     expect(screen.getByText('Parent Team')).toBeInTheDocument();
   });
 
-  it('should show no data message when team fetch fails', async () => {
-    (getTeamByName as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject(new Error('not found'))
-    );
+  it('should show loader while loading', () => {
+    render(<TeamPopoverContent loading />);
 
-    render(<TeamPopoverContent teamName="missingTeam" />);
-
+    expect(screen.getByText('Loader')).toBeInTheDocument();
     expect(
-      await screen.findByText('message.no-data-available')
-    ).toBeInTheDocument();
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
   });
 
-  it('should use singular user label when team has one user', async () => {
-    (getTeamByName as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ ...mockTeamData, userCount: 1 })
-    );
+  it('should show no data message when team is missing', () => {
+    render(<TeamPopoverContent />);
 
-    render(<TeamPopoverContent teamName="singleUserTeam" />);
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+  });
 
-    expect(await screen.findByTestId('team-user-count')).toHaveTextContent(
+  it('should use singular user label when team has one user', () => {
+    render(<TeamPopoverContent team={{ ...mockTeamData, userCount: 1 }} />);
+
+    expect(screen.getByTestId('team-user-count')).toHaveTextContent(
       '1 label.user'
     );
   });
 
-  it('should show no description placeholder when description is empty', async () => {
-    (getTeamByName as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ ...mockTeamData, description: undefined })
+  it('should show no description placeholder when description is empty', () => {
+    render(
+      <TeamPopoverContent team={{ ...mockTeamData, description: undefined }} />
     );
 
-    render(<TeamPopoverContent teamName="noDescriptionTeam" />);
-
-    expect(await screen.findByText('label.no-description')).toBeInTheDocument();
+    expect(screen.getByText('label.no-description')).toBeInTheDocument();
   });
 });

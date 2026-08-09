@@ -13,6 +13,8 @@
 
 import { HTMLAttributes, ReactNode } from 'react';
 import { OwnerType } from '../../../enums/user.enum';
+import { Team } from '../../../generated/entity/teams/team';
+import { User } from '../../../generated/entity/teams/user';
 
 export interface UserTeamsProps {
   userName: string;
@@ -25,21 +27,26 @@ export interface UserRolesProps {
 export interface PopoverContentProps {
   userName: string;
   type: OwnerType;
+  user?: User;
+  loading?: boolean;
 }
 
 export interface PopoverTitleProps {
   userName: string;
   profilePicture: JSX.Element;
   type: OwnerType;
+  user?: User;
 }
 
 export interface TeamPopoverContentProps {
-  teamName: string;
+  team?: Team;
+  loading?: boolean;
 }
 
 export interface TeamPopoverTitleProps {
   teamName: string;
   profilePicture: JSX.Element;
+  team?: Team;
 }
 
 export interface UserPopOverCardProps extends HTMLAttributes<HTMLDivElement> {

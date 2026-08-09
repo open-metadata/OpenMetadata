@@ -31,48 +31,11 @@ const TEAM_POPOVER_FIELDS = [
   TabSpecificField.USER_COUNT,
 ];
 
-type PopoverEntity = Team | User;
-
-/**
- * De-duplicates concurrent identical fetches, keyed by `${type}:${name}`.
- *
- * The owner popover renders its title and content as two separate antd subtrees, so both
- * call {@link useEntityPopoverData} for the same owner in the same tick. Without sharing, that
- * fires two identical conditional (ETag/304) requests at once, which collide in the browser's
- * HTTP cache (Chrome: {@code ERR_CACHE_OPERATION_NOT_SUPPORTED}); the failed one leaves the
- * component with no data and it falls back to "No data available". Handing both callers the
- * same in-flight promise collapses them into a single request. The entry is dropped once the
- * request settles, so a later hover still re-fetches (no stale-cache concerns).
- */
-const inFlightRequests = new Map<string, Promise<PopoverEntity>>();
-
-const fetchPopoverEntity = (
-  name: string,
-  isTeam: boolean
-): Promise<PopoverEntity> => {
-  const key = `${isTeam ? OwnerType.TEAM : OwnerType.USER}:${name}`;
-  const pending = inFlightRequests.get(key);
-
-  if (pending) {
-    return pending;
-  }
-
-  const request = (async (): Promise<PopoverEntity> => {
-    if (isTeam) {
-      return getTeamByName(name, { fields: TEAM_POPOVER_FIELDS });
-    }
-
-    return getUserWithImage(
-      await getUserByName(name, { fields: USER_POPOVER_FIELDS })
-    );
-  })().finally(() => {
-    inFlightRequests.delete(key);
-  });
-
-  inFlightRequests.set(key, request);
-
-  return request;
-};
+interface PopoverDataResult {
+  name: string;
+  type: OwnerType;
+  data?: Team | User;
+}
 
 /**
  * Central entry for the owner popover quick-info. Both user and team owners fetch their
@@ -81,56 +44,57 @@ const fetchPopoverEntity = (
  * from the existing cache.
  *
  * NOTE: the 1.13 branch has no React Query provider wired into the app tree, so this uses a
- * plain effect-driven fetch (with {@link inFlightRequests} de-duplication) instead of
- * {@code useQuery}. The return shape ({@code data}, {@code loading}) is kept stable so popover
- * consumers stay unchanged.
+ * plain effect-driven fetch instead of {@code useQuery}. The return shape
+ * ({@code data}, {@code loading}) is kept stable so popover consumers stay unchanged.
  */
 export const useEntityPopoverData = (name: string, type: OwnerType) => {
   const updateUserProfilePics = useApplicationStore(
     (state) => state.updateUserProfilePics
   );
 
-  const [data, setData] = useState<PopoverEntity>();
-  const [loading, setLoading] = useState<boolean>(Boolean(name));
+  const [result, setResult] = useState<PopoverDataResult>();
 
   useEffect(() => {
     if (!name) {
-      setData(undefined);
-      setLoading(false);
+      setResult(undefined);
 
       return;
     }
 
     let active = true;
     const isTeam = type === OwnerType.TEAM;
-    setLoading(true);
 
-    fetchPopoverEntity(name, isTeam)
-      .then((result) => {
-        if (!active) {
-          return;
-        }
+    const fetchPopoverData = async () => {
+      let data: Team | User | undefined;
 
-        if (!isTeam) {
-          updateUserProfilePics({ id: name, user: result as User });
+      try {
+        if (isTeam) {
+          data = await getTeamByName(name, { fields: TEAM_POPOVER_FIELDS });
+        } else {
+          const user = getUserWithImage(
+            await getUserByName(name, { fields: USER_POPOVER_FIELDS })
+          );
+          updateUserProfilePics({ id: name, user });
+          data = user;
         }
-        setData(result);
-      })
-      .catch(() => {
-        if (active) {
-          setData(undefined);
-        }
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false);
-        }
-      });
+      } catch {
+        data = undefined;
+      }
+
+      if (active) {
+        setResult({ name, type, data });
+      }
+    };
+
+    fetchPopoverData();
 
     return () => {
       active = false;
     };
   }, [name, type, updateUserProfilePics]);
 
-  return { data, loading };
+  const isResultCurrent = result?.name === name && result?.type === type;
+  const loading = Boolean(name) && !isResultCurrent;
+
+  return { data: isResultCurrent ? result?.data : undefined, loading };
 };

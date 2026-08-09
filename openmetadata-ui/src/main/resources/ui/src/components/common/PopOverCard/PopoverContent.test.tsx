@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
-import { noop } from 'lodash';
+import { render, screen } from '@testing-library/react';
 import { OwnerType } from '../../../enums/user.enum';
-import { getTeamByName } from '../../../rest/teamsAPI';
-import { getUserByName } from '../../../rest/userAPI';
+import { User } from '../../../generated/entity/teams/user';
 import { PopoverContent } from './PopoverContent.component';
 
 const mockUserData = {
@@ -24,12 +22,11 @@ const mockUserData = {
   teams: [{ id: '1', name: 'Team 1', deleted: false }],
   roles: [{ id: '1', name: 'Role 1' }],
   isAdmin: true,
-};
+} as unknown as User;
 
-const mockUpdateUserProfilePics = jest.fn();
 const mockStoreState = {
   userProfilePics: { testUser: mockUserData },
-  updateUserProfilePics: mockUpdateUserProfilePics,
+  updateUserProfilePics: jest.fn(),
 };
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -38,20 +35,6 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
     .mockImplementation((selector) =>
       selector ? selector(mockStoreState) : mockStoreState
     ),
-}));
-
-jest.mock('../../../rest/userAPI', () => ({
-  getUserByName: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockUserData)),
-}));
-
-jest.mock('../../../rest/teamsAPI', () => ({
-  getTeamByName: jest.fn().mockImplementation(() => Promise.resolve({})),
-}));
-
-jest.mock('../../../utils/UserDataUtils', () => ({
-  getUserWithImage: jest.fn().mockImplementation((user) => user),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -65,68 +48,36 @@ jest.mock('../Loader/Loader', () => {
 });
 
 describe('PopoverContent Component', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('should show loader while loading', () => {
-    (getUserByName as jest.Mock).mockImplementationOnce(
-      () => new Promise(noop)
-    );
-
     render(
-      <PopoverContent type={OwnerType.USER} userName="testUser" />
+      <PopoverContent loading type={OwnerType.USER} userName="testUser" />
     );
 
     expect(screen.getByText('Loader')).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
   });
 
-  it('should show no data message when user data is empty', async () => {
-    (getUserByName as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({})
-    );
+  it('should show no data message when user data is empty', () => {
+    render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
 
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+  });
+
+  it('should render teams and roles when user data is provided', () => {
     render(
-      <PopoverContent type={OwnerType.USER} userName="testUser" />
+      <PopoverContent
+        type={OwnerType.USER}
+        user={mockUserData}
+        userName="testUser"
+      />
     );
 
     expect(
-      await screen.findByText('message.no-data-available')
-    ).toBeInTheDocument();
-  });
-
-  it('should fetch additional user details with the expected fields', async () => {
-    render(
-      <PopoverContent type={OwnerType.USER} userName="testUser" />
-    );
-
-    await waitFor(() =>
-      expect(getUserByName).toHaveBeenCalledWith('testUser', {
-        fields: ['teams', 'roles', 'profile'],
-      })
-    );
-  });
-
-  it('should mirror the fetched user into the profile-pic store', async () => {
-    render(
-      <PopoverContent type={OwnerType.USER} userName="testUser" />
-    );
-
-    await waitFor(() =>
-      expect(mockUpdateUserProfilePics).toHaveBeenCalledWith({
-        id: 'testUser',
-        user: mockUserData,
-      })
-    );
-  });
-
-  it('should not fetch user details for team type', async () => {
-    render(
-      <PopoverContent type={OwnerType.TEAM} userName="testTeam" />
-    );
-
-    await waitFor(() => expect(getTeamByName).toHaveBeenCalled());
-
-    expect(getUserByName).not.toHaveBeenCalled();
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('label.team-plural')).toBeInTheDocument();
+    expect(screen.getByText('Team 1')).toBeInTheDocument();
   });
 });

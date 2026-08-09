@@ -12,24 +12,19 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { Team } from '../../../generated/entity/teams/team';
 import { TeamPopoverTitle } from './TeamPopoverTitle.component';
 
 const mockTeamData = {
   id: 'team-id-1',
   name: 'testTeam',
   displayName: 'Test Team',
-};
+} as Team;
 
 const mockPush = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockPush),
-}));
-
-jest.mock('../../../rest/teamsAPI', () => ({
-  getTeamByName: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockTeamData)),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -39,24 +34,27 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
 }));
 
 describe('TeamPopoverTitle Component', () => {
-  it('should render team display name and navigate to team page on click', async () => {
-    mockPush.mockClear();
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
+  it('should render team display name and navigate to team page on click', () => {
     render(
       <TeamPopoverTitle
         profilePicture={<div>ProfilePicture</div>}
+        team={mockTeamData}
         teamName="testTeam"
       />
     );
 
-    expect(await screen.findByText('Test Team')).toBeInTheDocument();
+    expect(screen.getByText('Test Team')).toBeInTheDocument();
 
     screen.getByTestId('team-name').click();
 
     expect(mockPush).toHaveBeenCalledWith('/settings/members/teams/testTeam');
   });
 
-  it('should fall back to team name before data loads', () => {
+  it('should fall back to team name when no team data is provided', () => {
     render(
       <TeamPopoverTitle
         profilePicture={<div>ProfilePicture</div>}

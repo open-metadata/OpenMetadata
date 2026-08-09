@@ -14,17 +14,14 @@
 import { Button } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTeamAndUserDetailsPath } from '../../../utils/RouterUtils';
 import { TeamPopoverTitleProps } from './UserPopOverCard.interface';
 
 export const TeamPopoverTitle = React.memo(
-  ({ teamName, profilePicture }: TeamPopoverTitleProps) => {
+  ({ teamName, profilePicture, team }: TeamPopoverTitleProps) => {
     const navigate = useNavigate();
-    const { data: team } = useEntityPopoverData(teamName, OwnerType.TEAM);
     const name = team?.name ?? teamName;
     const displayName = getEntityName(team as unknown as EntityReference);
 

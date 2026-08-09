@@ -93,4 +93,37 @@ describe('useEntityPopoverData', () => {
     expect(getUserByName).not.toHaveBeenCalled();
     expect(getTeamByName).not.toHaveBeenCalled();
   });
+
+  it('should report loading on the first render after the name becomes non-empty', async () => {
+    const { result, rerender } = renderHook(
+      ({ name }: { name: string }) =>
+        useEntityPopoverData(name, OwnerType.USER),
+      { initialProps: { name: '' } }
+    );
+
+    expect(result.current.loading).toBe(false);
+
+    rerender({ name: 'testUser' });
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.data).toBeUndefined();
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.data).toEqual(mockUser);
+  });
+
+  it('should keep data undefined and stop loading when the fetch fails', async () => {
+    (getTeamByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject(new Error('not found'))
+    );
+
+    const { result } = renderHook(() =>
+      useEntityPopoverData('missingTeam', OwnerType.TEAM)
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.data).toBeUndefined();
+  });
 });

@@ -13,9 +13,12 @@
 
 import { Popover } from 'antd';
 import classNames from 'classnames';
-import { FC, ReactNode } from 'react';
+import { FC, ReactNode, useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
+import { Team } from '../../../generated/entity/teams/team';
+import { User } from '../../../generated/entity/teams/user';
+import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
@@ -38,6 +41,19 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   profileWidth = 24,
 }) => {
   const isTeam = type === OwnerType.TEAM;
+
+  const [hasOpened, setHasOpened] = useState(false);
+  const { data, loading } = useEntityPopoverData(
+    hasOpened ? userName : '',
+    type
+  );
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      setHasOpened(true);
+    }
+  }, []);
+
   const profilePicture = (
     <ProfilePicture
       avatarType="outlined"
@@ -52,9 +68,17 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
       align={{ targetOffset: [0, -10] }}
       content={
         isTeam ? (
-          <TeamPopoverContent teamName={userName} />
+          <TeamPopoverContent
+            loading={loading}
+            team={data as Team | undefined}
+          />
         ) : (
-          <PopoverContent type={type} userName={userName} />
+          <PopoverContent
+            loading={loading}
+            type={type}
+            user={data as User | undefined}
+            userName={userName}
+          />
         )
       }
       overlayClassName="ant-popover-card"
@@ -62,17 +86,20 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
         isTeam ? (
           <TeamPopoverTitle
             profilePicture={profilePicture}
+            team={data as Team | undefined}
             teamName={userName}
           />
         ) : (
           <PopoverTitle
             profilePicture={profilePicture}
             type={type}
+            user={data as User | undefined}
             userName={userName}
           />
         )
       }
-      trigger="hover">
+      trigger="hover"
+      onOpenChange={handleOpenChange}>
       {(children as ReactNode) ?? (
         <Link
           className={classNames(
