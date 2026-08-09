@@ -158,15 +158,28 @@ class BaselineWorkflowTest {
   void resumeRefusesToWipeWhenEntityRowsExist() {
     FakeDatabaseBaselineWorkflow workflow = workflow();
     workflow.existingTables.add(MigrationHistoryTable.SERVER_CHANGE_LOG);
-    workflow.existingTables.add(BaselineWorkflow.WIPE_GUARD_TABLE);
+    workflow.existingTables.add(BaselineWorkflow.WIPE_GUARD_TABLES.getFirst());
     workflow.historyVersions = List.of(BASELINE_VERSION);
     workflow.baselineStarted = true;
     workflow.guardTableRows = 42;
     IllegalStateException failure =
         assertThrows(IllegalStateException.class, workflow::runIfRequired);
-    assertEquals(BaselineWorkflow.WIPE_GUARD_ERROR, failure.getMessage());
+    assertTrue(failure.getMessage().startsWith(BaselineWorkflow.WIPE_GUARD_ERROR));
     assertFalse(workflow.wiped);
     assertFalse(workflow.executed);
+  }
+
+  /** The guard must not depend on which entity table happens to hold the rows. */
+  @Test
+  void resumeRefusesWhenRowsAreOnlyInALaterGuardTable() {
+    FakeDatabaseBaselineWorkflow workflow = workflow();
+    workflow.existingTables.add(MigrationHistoryTable.SERVER_CHANGE_LOG);
+    workflow.existingTables.add(BaselineWorkflow.WIPE_GUARD_TABLES.getLast());
+    workflow.historyVersions = List.of(BASELINE_VERSION);
+    workflow.baselineStarted = true;
+    workflow.guardTableRows = 7;
+    assertThrows(IllegalStateException.class, workflow::runIfRequired);
+    assertFalse(workflow.wiped);
   }
 
   @Test

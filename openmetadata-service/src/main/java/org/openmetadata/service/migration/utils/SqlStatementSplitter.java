@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /**
@@ -39,14 +40,38 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * matching for already-applied migrations.
  *
  * <p>Deliberately unsupported: MySQL {@code DELIMITER} redefinition (stored
- * procedure/function/trigger bodies). Migration SQL must not use it.
+ * procedure/function/trigger bodies). Splitting such a script on its interior semicolons would
+ * produce fragments that execute as broken SQL, so encountering the directive throws rather than
+ * silently corrupting the migration.
  */
 public final class SqlStatementSplitter {
+
+  /** {@code DELIMITER} as a line-leading client directive, not the word inside some expression. */
+  private static final Pattern DELIMITER_DIRECTIVE =
+      Pattern.compile("(?im)^[ \\t]*DELIMITER[ \\t]+\\S");
 
   private SqlStatementSplitter() {}
 
   public static List<String> splitStatements(String sql, ConnectionType connectionType) {
-    return new Splitter(sql, connectionType).splitAll();
+    List<String> statements = new Splitter(sql, connectionType).splitAll();
+    if (connectionType == ConnectionType.MYSQL) {
+      statements.forEach(SqlStatementSplitter::rejectDelimiterDirective);
+    }
+    return statements;
+  }
+
+  /**
+   * A {@code DELIMITER} line is a client directive, not SQL: the server rejects it, and its purpose
+   * is to change how the rest of the file is split — which this splitter does not honour. Failing
+   * here turns an unsupported script into an obvious error instead of a half-applied migration.
+   */
+  private static void rejectDelimiterDirective(String statement) {
+    if (DELIMITER_DIRECTIVE.matcher(statement).find()) {
+      throw new IllegalArgumentException(
+          "Migration SQL uses the MySQL DELIMITER directive, which is not supported —"
+              + " express stored procedure/trigger logic as a Java migration instead. Statement: "
+              + statement.substring(0, Math.min(statement.length(), 120)));
+    }
   }
 
   public static List<String> splitFile(Path file, ConnectionType connectionType) {

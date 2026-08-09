@@ -13,6 +13,7 @@
 package org.openmetadata.service.migration.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
@@ -187,6 +188,34 @@ class SqlStatementSplitterTest {
     String sql = "# header\nSELECT 1; # trailing note\nSELECT 2;";
     List<String> statements = SqlStatementSplitter.splitStatements(sql, MYSQL);
     assertEquals(List.of("# header\nSELECT 1", "# trailing note\nSELECT 2"), statements);
+  }
+
+  /**
+   * Silently splitting a procedure body on its interior semicolons would execute broken fragments,
+   * so the unsupported directive has to fail loudly.
+   */
+  @Test
+  void mysqlDelimiterDirectiveIsRejected() {
+    String sql =
+        """
+        DELIMITER $$
+        CREATE PROCEDURE p()
+        BEGIN
+          SELECT 1;
+        END$$
+        DELIMITER ;
+        """;
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class, () -> SqlStatementSplitter.splitStatements(sql, MYSQL));
+    assertTrue(failure.getMessage().contains("DELIMITER"));
+  }
+
+  @Test
+  void delimiterAsAnOrdinaryIdentifierIsNotRejected() {
+    List<String> statements =
+        SqlStatementSplitter.splitStatements("UPDATE t SET delimiter = ',' WHERE id = 1;", MYSQL);
+    assertEquals(List.of("UPDATE t SET delimiter = ',' WHERE id = 1"), statements);
   }
 
   @Test

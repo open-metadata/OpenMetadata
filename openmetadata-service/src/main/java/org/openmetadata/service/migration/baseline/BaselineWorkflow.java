@@ -54,7 +54,22 @@ public class BaselineWorkflow {
 
   public static final String FLYWAY_HISTORY_TABLE = "DATABASE_CHANGE_LOG";
   static final String SENTINEL_ENTITY_TABLE = "entity_relationship";
-  static final String WIPE_GUARD_TABLE = "table_entity";
+
+  /**
+   * Tables checked before the resume wipe. A crashed baseline install cannot have created entity
+   * rows, so any row here means the database is something other than what RESUME assumes and must
+   * not be dropped. Spread across unrelated entity families so a partially-populated database is
+   * caught even when one particular table happens to be empty.
+   */
+  static final List<String> WIPE_GUARD_TABLES =
+      List.of(
+          "table_entity",
+          "entity_relationship",
+          "user_entity",
+          "database_entity",
+          "dbservice_entity",
+          "team_entity");
+
   static final String COVERED_RANGE = "flyway v000-v015 + native 1.1.0-1.13.4";
 
   static final String INCONSISTENT_STATE_ERROR =
@@ -156,7 +171,7 @@ public class BaselineWorkflow {
 
   private void ensureTrackingTables(Handle handle) {
     handle.execute(MigrationHistoryTable.createServerChangeLogDdl(connectionType));
-    handle.execute(MigrationHistoryTable.createSqlLogsDdl(connectionType));
+    handle.execute(MigrationHistoryTable.createSqlLogsDdl());
   }
 
   private void markBaseline(MigrationStatus status, int statementCount) {
@@ -181,9 +196,20 @@ public class BaselineWorkflow {
   }
 
   private void assertResumeWipeIsSafe() {
-    if (tableExists(WIPE_GUARD_TABLE) && countRows(WIPE_GUARD_TABLE) > 0) {
-      throw new IllegalStateException(WIPE_GUARD_ERROR);
+    String populated = firstPopulatedGuardTable();
+    if (populated != null) {
+      throw new IllegalStateException(WIPE_GUARD_ERROR + " (found rows in " + populated + ")");
     }
+  }
+
+  private String firstPopulatedGuardTable() {
+    String result = null;
+    for (String table : WIPE_GUARD_TABLES) {
+      if (result == null && tableExists(table) && countRows(table) > 0) {
+        result = table;
+      }
+    }
+    return result;
   }
 
   /** Adapted from OpenMetadataOperations.dropAllTables — only reachable for a crashed baseline. */

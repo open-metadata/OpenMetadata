@@ -94,7 +94,11 @@ public final class MigrationHistoryTable {
         : CREATE_SERVER_CHANGE_LOG_POSTGRES;
   }
 
-  public static String createSqlLogsDdl(ConnectionType connectionType) {
+  /**
+   * Unlike the change-log DDL, this one is identical on both dialects — every type and default it
+   * uses means the same thing to MySQL and PostgreSQL — so it takes no connection type.
+   */
+  public static String createSqlLogsDdl() {
     return CREATE_SQL_LOGS;
   }
 }
