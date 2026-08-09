@@ -30,9 +30,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.ResultList;
@@ -46,8 +44,6 @@ import org.openmetadata.service.security.policyevaluator.PermissionDebugService;
 import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 
 @Path("/v1/permissions")
@@ -55,9 +51,6 @@ import org.openmetadata.service.util.EntityUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "permissions")
 public class PermissionsResource {
-  private static final String TASK_AUTH_FIELDS =
-      "assignees,reviewers,watchers,about,domains,createdBy";
-
   private final Authorizer authorizer;
   private final PermissionDebugService debugService;
 
@@ -149,8 +142,8 @@ public class PermissionsResource {
           String resource,
       @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return authorizer.getPermission(
-        securityContext, user, buildResourceContext(resource, id, null));
+    ResourceContext<?> resourceContext = new ResourceContext(resource, id, null);
+    return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
   @GET
@@ -182,22 +175,8 @@ public class PermissionsResource {
       @Parameter(description = "Name of the entity", schema = @Schema(type = "String"))
           @PathParam("name")
           String name) {
-    return authorizer.getPermission(
-        securityContext, user, buildResourceContext(resource, null, name));
-  }
-
-  private ResourceContextInterface buildResourceContext(String resource, UUID id, String name) {
-    ResourceContextInterface resourceContext;
-    if (Entity.TASK.equals(resource)) {
-      Task task =
-          id != null
-              ? Entity.getEntity(Entity.TASK, id, TASK_AUTH_FIELDS, Include.ALL)
-              : Entity.getEntityByName(Entity.TASK, name, TASK_AUTH_FIELDS, Include.ALL);
-      resourceContext = new TaskResourceContext(task);
-    } else {
-      resourceContext = new ResourceContext<>(resource, id, name);
-    }
-    return resourceContext;
+    ResourceContext<?> resourceContext = new ResourceContext(resource, null, name);
+    return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
   @GET
