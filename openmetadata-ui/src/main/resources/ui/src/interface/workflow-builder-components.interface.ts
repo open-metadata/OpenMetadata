@@ -289,6 +289,7 @@ export interface WorkflowControlsProps {
 }
 
 export interface WorkflowHeaderProps {
+  breadcrumb?: React.ReactNode;
   title: string;
   workflowName?: string;
   children?: React.ReactNode;
