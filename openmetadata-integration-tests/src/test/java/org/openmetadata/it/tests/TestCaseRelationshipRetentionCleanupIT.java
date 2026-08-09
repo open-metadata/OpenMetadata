@@ -104,10 +104,6 @@ public class TestCaseRelationshipRetentionCleanupIT {
                     0,
                     resultRowCount(broken.getFullyQualifiedName()),
                     "broken test case's results must be cascaded away"));
-    assertEquals(
-        0,
-        resultRowCount(broken.getFullyQualifiedName()),
-        "broken test case's results must be cascaded away");
 
     // Healthy test case and its results survive — the cleanup is selective.
     assertEquals(1, testCaseRowCount(healthy.getId().toString()), "healthy test case must survive");
