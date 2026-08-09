@@ -203,20 +203,10 @@ jobs:
       fail-fast: false
       matrix:
         lane:
-          # The parallel lane carries the entity ResourceITs (TableResourceIT alone is ~37 min of
-          # work) and was overrunning the 65m step budget at 4 workers, with no failures - it was
-          # still starting classes when the timeout fired. These tests are I/O-bound against the
-          # app, DB and search, so they idle on the 4 vCPUs rather than saturating them. The
-          # max-pool-size below (JUnit's compensation ceiling, 16) already covers 8. Other lanes
-          # are far shorter and stay at 4, so this cannot destabilise checks that are green today.
           - name: parallel
-            parallelism: 8
           - name: global-state
-            parallelism: 4
           - name: multi-node
-            parallelism: 4
           - name: retry-queue
-            parallelism: 4
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -298,7 +288,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IT_LANE: ${{ matrix.lane.name }}
-          IT_PARALLELISM: ${{ matrix.lane.parallelism }}
+          IT_PARALLELISM: '4'
           IT_MAX_POOL_SIZE: '16'
         run: |
           {
