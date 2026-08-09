@@ -20,8 +20,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { UserRolesProps } from './UserPopOverCard.interface';
 
 export const UserRoles = React.memo(({ userName }: UserRolesProps) => {
-  const { userProfilePics } = useApplicationStore();
-  const userData = userProfilePics[userName];
+  const userData = useApplicationStore(
+    (state) => state.userProfilePics[userName]
+  );
   const roles = userData?.roles;
   const isAdmin = userData?.isAdmin;
   const { t } = useTranslation();

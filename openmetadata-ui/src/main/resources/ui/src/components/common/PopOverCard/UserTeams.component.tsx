@@ -20,8 +20,9 @@ import { getNonDeletedTeams } from '../../../utils/TeamUtils';
 import { UserTeamsProps } from './UserPopOverCard.interface';
 
 export const UserTeams = React.memo(({ userName }: UserTeamsProps) => {
-  const { userProfilePics } = useApplicationStore();
-  const userData = userProfilePics[userName];
+  const userData = useApplicationStore(
+    (state) => state.userProfilePics[userName]
+  );
   const teams = getNonDeletedTeams(userData?.teams ?? []);
   const { t } = useTranslation();
 

@@ -23,10 +23,16 @@ const mockUserData = {
   ],
 };
 
+const mockStoreState = {
+  userProfilePics: { testUser: mockUserData },
+};
+
 jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    userProfilePics: { testUser: mockUserData },
-  })),
+  useApplicationStore: jest
+    .fn()
+    .mockImplementation((selector) =>
+      selector ? selector(mockStoreState) : mockStoreState
+    ),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
