@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 
-CREATE FUNCTION public.to_tz_timestamp(text) RETURNS timestamp with time zone
+CREATE OR REPLACE FUNCTION public.to_tz_timestamp(text) RETURNS timestamp with time zone
     LANGUAGE sql IMMUTABLE
     AS $_$
 select to_timestamp($1, '%Y-%m-%dT%T.%fZ')::timestamptz;

@@ -77,7 +77,9 @@ public class BaselineWorkflow {
           + " empty). Refusing to install the baseline over it — restore the database from a"
           + " backup, or drop all tables (`./bootstrap/openmetadata-ops.sh drop-create`) for a"
           + " fresh install.";
-  static final String WIPE_GUARD_ERROR =
+
+  /** Operator-facing; asserted by the crash-resume integration test. */
+  public static final String WIPE_GUARD_ERROR =
       "Refusing to resume a crashed baseline install: the database contains entity rows, which a"
           + " baseline install never creates. Restore from a backup instead.";
 

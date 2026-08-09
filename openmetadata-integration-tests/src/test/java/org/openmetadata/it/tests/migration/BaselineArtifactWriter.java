@@ -201,6 +201,9 @@ class BaselineArtifactWriter {
         processed =
             processed.replaceFirst(
                 "^CREATE EXTENSION (?!IF NOT EXISTS)", "CREATE EXTENSION IF NOT EXISTS ");
+        // PostgreSQL has no CREATE FUNCTION IF NOT EXISTS. A function survives the table-only wipe
+        // that resume performs, so a bare CREATE would make the second attempt fail.
+        processed = processed.replaceFirst("^CREATE FUNCTION ", "CREATE OR REPLACE FUNCTION ");
         lines.add(processed);
       }
     }
