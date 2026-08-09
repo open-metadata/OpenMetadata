@@ -23,6 +23,8 @@ import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -42,6 +44,7 @@ import org.openmetadata.schema.api.data.MetricObservability;
 import org.openmetadata.schema.api.data.MetricObservabilityReasonCode;
 import org.openmetadata.schema.api.data.MetricSourceCoverage;
 import org.openmetadata.schema.api.data.MetricTestStatusCounts;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Severity;
@@ -129,6 +132,23 @@ class MetricObservabilityBuilderTest {
     assertEquals(MetricObservabilityReasonCode.UNAVAILABLE, result.getReasonCode());
     assertEquals(1, registry.get("om_metric_observability_duration").timer().count());
     assertEquals(1.0, registry.get("om_metric_observability_failures_total").counter().count());
+  }
+
+  @Test
+  void buildUsesPrefetchedLinkedAssetsWithoutResolvingLineageAgain() {
+    UUID metricId = UUID.randomUUID();
+    Metric metric = new Metric().withId(metricId).withName("revenue");
+    MetricRepository repository = mock(MetricRepository.class);
+    Fields fields = new Fields(Set.of("id"));
+    when(repository.getFields("id")).thenReturn(fields);
+    when(repository.get(null, metricId, fields)).thenReturn(metric);
+    MetricObservabilityBuilder builder =
+        new MetricObservabilityBuilder(repository, new SimpleMeterRegistry());
+
+    MetricObservability result = builder.build(metricId, List.of(), Set.of());
+
+    assertEquals(MetricHealth.UNKNOWN, result.getHealth());
+    verify(repository, never()).getAssetsWithDirection(metricId);
   }
 
   @Test

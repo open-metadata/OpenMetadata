@@ -113,9 +113,15 @@ from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.sqlalchemy_utils import is_complex_type
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
+
+# The databaseSchema node runs multi-threaded, so these caches are shared across schemas
+# being processed concurrently and must be keyed by the fully qualified name.
+DATASET_OBJ_CACHE_SIZE = 512
+TABLE_OBJ_CACHE_SIZE = 2048
 
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,
@@ -241,8 +247,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self.incremental = incremental_configuration
         self.incremental_table_processor: Optional[BigQueryIncrementalTableProcessor] = None  # noqa: UP045
 
-        self._current_schema_tables = {}
-        self._current_dataset_obj = None
+        self._table_obj_cache: LRUCache = LRUCache(capacity=TABLE_OBJ_CACHE_SIZE)
+        self._dataset_obj_cache: LRUCache = LRUCache(capacity=DATASET_OBJ_CACHE_SIZE)
         self._policy_tag_cache = {}
         self._taxonomy_cache = {}
         self._taxonomy_to_tags = {}
@@ -366,8 +372,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         database = self.context.get().database
         dataset_ref = f"{database}.{schema_name}"
 
-        self._current_schema_tables.clear()
-        self._current_dataset_obj = None
         self._prefetch_table_ddls(schema_name)
         clear_constraint_cache_for_schema(database, schema_name)
 
@@ -416,11 +420,24 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return super().get_table_description(schema_name=schema_name, table_name=table_name, inspector=inspector)
 
     def get_dataset_obj(self, schema_name: str):
-        """Get dataset object with per-schema caching"""
-        if self._current_dataset_obj is None:
-            database = self.context.get().database
-            self._current_dataset_obj = self.client.get_dataset(f"{database}.{schema_name}")
-        return self._current_dataset_obj
+        """Get dataset object with per-schema caching.
+
+        Keyed by `project.dataset`: the schema node emits tags and the schema entity before
+        its table child node runs, so a cache that is not keyed hands one schema's
+        description and labels to the next one.
+        """
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        dataset_ref = f"{database}.{schema_name}"
+        try:
+            # Read in one locked operation: a check-then-get would let a concurrent
+            # eviction drop the key in between and raise on the read.
+            return self._dataset_obj_cache.get(dataset_ref)
+        except KeyError:
+            pass
+
+        dataset_obj = self.client.get_dataset(dataset_ref)  # pyright: ignore[reportOptionalMemberAccess]
+        self._dataset_obj_cache.put(dataset_ref, dataset_obj)
+        return dataset_obj
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
@@ -742,16 +759,19 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
-        if table_name in self._current_schema_tables:
-            return self._current_schema_tables[table_name]
-
         schema_name = self.context.get().database_schema
         database = self.context.get().database
-        logger.debug(f"Fetching table object for {database}.{schema_name}.{table_name} using BigQuery API")
+        cache_key = f"{database}.{schema_name}.{table_name}"
+        try:
+            return self._table_obj_cache.get(cache_key)
+        except KeyError:
+            pass
+
+        logger.debug(f"Fetching table object for {cache_key} using BigQuery API")
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         table_obj = self.client.get_table(bq_table_fqn)
 
-        self._current_schema_tables[table_name] = table_obj
+        self._table_obj_cache.put(cache_key, table_obj)
         return table_obj
 
     def yield_table_tags(self, table_name_and_type: Tuple[str, str]):  # noqa: UP006

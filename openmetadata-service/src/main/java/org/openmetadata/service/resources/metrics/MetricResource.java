@@ -1155,13 +1155,14 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     repository.get(null, id, repository.getFields("id"));
+    List<MetricAssetDirection> linkedAssets = repository.getAssetsWithDirection(id);
     Set<UUID> visibleAssets = new HashSet<>();
-    for (MetricAssetDirection linked : repository.getAssetsWithDirection(id)) {
+    for (MetricAssetDirection linked : linkedAssets) {
       if (canViewAsset(securityContext, linked.getAsset())) {
         visibleAssets.add(linked.getAsset().getId());
       }
     }
-    return repository.getObservability(id, visibleAssets);
+    return repository.getObservability(id, linkedAssets, visibleAssets);
   }
 
   private boolean canViewAsset(SecurityContext securityContext, EntityReference asset) {

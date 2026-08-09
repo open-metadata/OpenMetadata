@@ -80,8 +80,10 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Slf4j
 public class TaskWorkflowHandler {
 
-  private static final int DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS = 100;
-  private static final long DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS = 100L;
+  static final int DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS = 6;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS = 50L;
+  static final long DEFAULT_RUNTIME_TASK_READINESS_WAIT_MILLIS =
+      (DEFAULT_RUNTIME_TASK_READINESS_ATTEMPTS - 1) * DEFAULT_RUNTIME_TASK_READINESS_DELAY_MILLIS;
 
   private static TaskWorkflowHandler instance;
   private final int runtimeTaskReadinessAttempts;
@@ -136,6 +138,7 @@ public class TaskWorkflowHandler {
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
     TaskResolutionType effectiveResolutionType =
         resolveResolutionType(task, requestedResolutionType, selectedTransition);
+    validateResolutionComment(selectedTransition, comment);
     validateMetricRejectionComment(task, effectiveResolutionType, comment);
     LOG.info(
         "[TaskWorkflowHandler] Resolving task: id='{}', transitionId='{}', resolutionType='{}', user='{}'",
@@ -173,6 +176,14 @@ public class TaskWorkflowHandler {
   static void validateMetricRejectionComment(
       Task task, TaskResolutionType resolutionType, String comment) {
     if (isMetricApprovalRejection(task, resolutionType) && (comment == null || comment.isBlank())) {
+      throw new IllegalArgumentException("A rejection comment is required");
+    }
+  }
+
+  static void validateResolutionComment(TaskAvailableTransition transition, String comment) {
+    if (transition != null
+        && Boolean.TRUE.equals(transition.getRequiresComment())
+        && (comment == null || comment.isBlank())) {
       throw new IllegalArgumentException("A rejection comment is required");
     }
   }

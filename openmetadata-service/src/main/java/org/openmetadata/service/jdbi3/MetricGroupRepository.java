@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -70,7 +71,7 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
   static final String FIELD_METRICS = "metrics";
   static final String FIELD_METRIC_COUNT = "metricCount";
   private static final int COUNT_BATCH_SIZE = 500;
-  private static final int MEMBER_SCAN_BATCH_SIZE = 200;
+  private static final int MEMBER_SCAN_BATCH_SIZE = 500;
 
   public MetricGroupRepository() {
     super(
@@ -402,24 +403,21 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     List<UUID> page = new ArrayList<>();
     int relationshipOffset = 0;
     int visible = 0;
-    List<UUID> batch;
+    List<EntityReference> batch;
     do {
       batch =
-          memberIds(
+          memberReferences(
               groupDAO,
               groupId,
               MEMBER_SCAN_BATCH_SIZE,
               relationshipOffset,
               rootOnly ? "%" : nameLike,
               rootOnly);
-      Map<UUID, EntityReference> references = loadMetricReferences(batch);
-      for (UUID id : batch) {
-        EntityReference reference = references.get(id);
-        if (reference != null
-            && isVisible.test(reference)
-            && (!rootOnly || subtreeMatchesQuery(id, query, isVisible))) {
+      for (EntityReference reference : batch) {
+        if (isVisible.test(reference)
+            && (!rootOnly || subtreeMatchesQuery(reference.getId(), query, isVisible))) {
           if (visible >= offset && page.size() < limit) {
-            page.add(id);
+            page.add(reference.getId());
           }
           visible++;
         }
@@ -434,28 +432,19 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     CollectionDAO.MetricGroupDAO groupDAO = (CollectionDAO.MetricGroupDAO) dao;
     String nameLike = buildNameLike(query);
     int relationshipOffset = 0;
-    List<UUID> batch;
+    List<EntityReference> batch;
     do {
       batch =
-          memberIds(groupDAO, groupId, MEMBER_SCAN_BATCH_SIZE, relationshipOffset, nameLike, false);
-      Map<UUID, EntityReference> references = loadMetricReferences(batch);
-      for (UUID id : batch) {
-        EntityReference reference = references.get(id);
-        if (reference != null && isVisible.test(reference)) {
+          memberReferences(
+              groupDAO, groupId, MEMBER_SCAN_BATCH_SIZE, relationshipOffset, nameLike, false);
+      for (EntityReference reference : batch) {
+        if (isVisible.test(reference)) {
           return true;
         }
       }
       relationshipOffset += batch.size();
     } while (batch.size() == MEMBER_SCAN_BATCH_SIZE);
     return false;
-  }
-
-  private Map<UUID, EntityReference> loadMetricReferences(List<UUID> ids) {
-    if (ids.isEmpty()) {
-      return Map.of();
-    }
-    return Entity.getEntityReferencesByIds(METRIC, ids, NON_DELETED).stream()
-        .collect(Collectors.toMap(EntityReference::getId, ref -> ref));
   }
 
   private boolean subtreeMatchesQuery(
@@ -480,24 +469,27 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     return value != null && value.toLowerCase(Locale.ROOT).contains(normalizedQuery);
   }
 
-  private List<UUID> memberIds(
+  private List<EntityReference> memberReferences(
       CollectionDAO.MetricGroupDAO groupDAO,
       UUID groupId,
       int limit,
       int offset,
       String nameLike,
       boolean rootOnly) {
-    List<String> ids =
+    List<String> memberJsons =
         rootOnly
-            ? groupDAO.listRootMemberIdsPage(
+            ? groupDAO.listRootMemberJsonsPage(
                 groupId,
                 Relationship.HAS.ordinal(),
                 Relationship.CONTAINS.ordinal(),
                 nameLike,
                 limit,
                 offset)
-            : groupDAO.listMemberIds(groupId, Relationship.HAS.ordinal(), nameLike, limit, offset);
-    return ids.stream().map(UUID::fromString).toList();
+            : groupDAO.listMemberJsons(
+                groupId, Relationship.HAS.ordinal(), nameLike, limit, offset);
+    return memberJsons.stream()
+        .map(json -> JsonUtils.readValue(json, Metric.class).getEntityReference())
+        .toList();
   }
 
   public List<EntityReference> hierarchySubtree(EntityReference requested) {

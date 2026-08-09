@@ -131,6 +131,35 @@ class TaskWorkflowHandlerTest {
   }
 
   @Test
+  void testTransitionRequiringCommentRejectsBlankResolutionComments() {
+    TaskAvailableTransition transition =
+        new TaskAvailableTransition().withId("reject").withRequiresComment(true);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> TaskWorkflowHandler.validateResolutionComment(transition, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> TaskWorkflowHandler.validateResolutionComment(transition, "   "));
+    assertDoesNotThrow(
+        () -> TaskWorkflowHandler.validateResolutionComment(transition, "Missing ownership"));
+  }
+
+  @Test
+  void testTransitionWithoutCommentRequirementAcceptsMissingComment() {
+    TaskAvailableTransition transition =
+        new TaskAvailableTransition().withId("approve").withRequiresComment(false);
+
+    assertDoesNotThrow(() -> TaskWorkflowHandler.validateResolutionComment(transition, null));
+    assertDoesNotThrow(() -> TaskWorkflowHandler.validateResolutionComment(null, null));
+  }
+
+  @Test
+  void testDefaultRuntimeTaskReadinessWaitIsBoundedBelowOneSecond() {
+    assertTrue(TaskWorkflowHandler.DEFAULT_RUNTIME_TASK_READINESS_WAIT_MILLIS < 1_000L);
+  }
+
+  @Test
   void testSupportsMultiApprovalUsesRuntimeTaskWhenWorkflowInstanceIdMissing() {
     Task task = new Task().withId(UUID.randomUUID());
     TaskWorkflowHandler handler = TaskWorkflowHandler.getInstance();
@@ -486,7 +515,13 @@ class TaskWorkflowHandlerTest {
       Task result =
           TaskWorkflowHandler.getInstance()
               .resolveTask(
-                  task, "complete", TaskResolutionType.Completed, null, null, null, "alice");
+                  task,
+                  "complete",
+                  TaskResolutionType.Completed,
+                  null,
+                  null,
+                  "Resolution details",
+                  "alice");
 
       assertSame(refreshedTask, result);
       verify(taskRepository).resolveTask(eq(task), any(TaskResolution.class), eq("alice"));

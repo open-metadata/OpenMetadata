@@ -48,4 +48,41 @@ describe('MetricDetailsClassBase', () => {
       metricDetails.getDefaultLayout(EntityTabs.CUSTOM_PROPERTIES)
     ).toEqual([]);
   });
+
+  it('stacks dimensions and measures inside the wide left panel', () => {
+    const layout = metricDetails.getDefaultLayout(EntityTabs.OVERVIEW);
+    const leftPanel = layout.find(
+      (widget) => widget.i === DetailPageWidgetKeys.LEFT_PANEL
+    );
+
+    expect(leftPanel?.w).toBe(6);
+
+    const childKeys = leftPanel?.children?.map((child) => child.i);
+
+    expect(childKeys).toEqual([
+      DetailPageWidgetKeys.METRIC_HIERARCHY,
+      DetailPageWidgetKeys.DESCRIPTION,
+      DetailPageWidgetKeys.METRIC_DEFINITION,
+      DetailPageWidgetKeys.METRIC_DIMENSIONS,
+      DetailPageWidgetKeys.METRIC_MEASURES,
+    ]);
+  });
+
+  it('offers both widgets in the customization widget list', () => {
+    const widgetKeys = metricDetails
+      .getCommonWidgetList()
+      .map((widget) => widget.fullyQualifiedName);
+
+    expect(widgetKeys).toContain(DetailPageWidgetKeys.METRIC_DIMENSIONS);
+    expect(widgetKeys).toContain(DetailPageWidgetKeys.METRIC_MEASURES);
+  });
+
+  it('returns a configured height for both widgets', () => {
+    expect(
+      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_DIMENSIONS)
+    ).toBeGreaterThan(1);
+    expect(
+      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_MEASURES)
+    ).toBeGreaterThan(1);
+  });
 });

@@ -954,6 +954,11 @@ public class MetricRepository extends EntityRepository<Metric> {
     return observabilityBuilder.build(metricId, visibleAssetIds);
   }
 
+  public MetricObservability getObservability(
+      UUID metricId, List<MetricAssetDirection> linkedAssets, Set<UUID> visibleAssetIds) {
+    return observabilityBuilder.build(metricId, linkedAssets, visibleAssetIds);
+  }
+
   public ResultList<MetricHierarchyItem> listHierarchy(int limit, int offset, String query) {
     return listHierarchy(limit, offset, query, ignored -> true, ignored -> true);
   }

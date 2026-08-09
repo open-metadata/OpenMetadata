@@ -66,6 +66,32 @@ export const visitEntityPage = async (data: {
 }) => {
   const { page, searchTerm, dataTestId } = data;
 
+  // This helper drives the global search box, which only exists inside the app.
+  // Callers reaching here through TableClass.visitEntityPage's fallback branch
+  // may not have navigated at all — the `page` fixture hands out a
+  // browser.newPage(), which sits on about:blank — and that branch runs
+  // precisely when direct navigation was not possible. Without a search box the
+  // fill below waits until the enclosing timeout.
+  //
+  // Probe for the search box rather than inferring from page.url(): a URL check
+  // only tells us whether this is a web page, not whether it is an app page
+  // that renders the global header. Use .first() so the probe reports presence
+  // rather than throwing on strict-mode ambiguity.
+  //
+  // Navigating inline rather than via redirectToHomePage: utils/common.ts
+  // already imports from this module, so importing it back would be circular.
+  const hasSearchBox = await page
+    .getByTestId('searchBox')
+    .first()
+    .waitFor({ state: 'attached', timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!hasSearchBox) {
+    await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
+
   await waitForAllLoadersToDisappear(page);
 
   // Dismiss welcome screen if visible

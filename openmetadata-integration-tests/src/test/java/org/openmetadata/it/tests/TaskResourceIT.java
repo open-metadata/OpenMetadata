@@ -579,6 +579,31 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testResolveTaskRejectsMissingRequiredTransitionComment(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, dbSchema.getFullyQualifiedName());
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("resolve-reject-comment-required"))
+                .withDescription("Task whose rejection requires a comment")
+                .withCategory(TaskCategory.Approval)
+                .withType(TaskEntityType.GlossaryApproval)
+                .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                .withAssignees(List.of(SharedEntities.get().USER1.getFullyQualifiedName())));
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    ResolveTask resolveRequest = new ResolveTask().withResolutionType(TaskResolutionType.Rejected);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest));
+
+    Task unchanged = SdkClients.adminClient().tasks().get(task.getId().toString());
+    assertEquals(TaskEntityStatus.Open, unchanged.getStatus());
+  }
+
+  @Test
   void testListTasksByStatus(TestNamespace ns) {
     CreateTask request1 =
         new CreateTask()

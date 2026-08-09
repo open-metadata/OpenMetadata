@@ -4,8 +4,6 @@
     "playwright/e2e/Auth/**",
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
-    "playwright/e2e/Pages/DataInsight.spec.ts",
-    "playwright/e2e/Pages/DataInsightSettings.spec.ts",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
     "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
     "playwright/e2e/Features/OntologyImportRdf.spec.ts",
@@ -157,6 +155,9 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/Alerts/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/Observability*",
         "openmetadata-ui/src/main/resources/ui/playwright/utils/incidentManager.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/alert.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/observabilityAlert.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/notificationAlert.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/events/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/events/subscription/**",
@@ -302,6 +303,17 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/locale/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/i18next/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/Login.spec.ts",
+        "playwright/e2e/Flow/Navbar.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/**",
         "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeCenter/**",
         "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ContextCenterRouter/**",
@@ -372,6 +384,71 @@
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AddServicePage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/EditConnectionFormPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/SettingsRouter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/rest/serviceAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtils.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtilClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityDataBreadcrumbUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityServiceBreadcrumbUtils.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServicesOverview*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServiceHealthProvider.java"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/ServiceEntity.spec.ts",
+        "playwright/e2e/Pages/ServiceListing.spec.ts",
+        "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
+        "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
+        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
+        "playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Same service sources as above, but these two specs carry PLAYWRIGHT_INGESTION_TAG_OBJ, so they only run in the Ingestion project. Listing them under chromium/Basic selects them but the shard planner drops them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/AddServicePage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/EditConnectionFormPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/SettingsRouter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/rest/serviceAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtils.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtilClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityDataBreadcrumbUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityServiceBreadcrumbUtils.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServicesOverview*.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServiceHealthProvider.java"
+      ],
+      "projects": ["Ingestion"],
+      "specs": [
+        "playwright/e2e/Flow/ServiceForm.spec.ts",
+        "playwright/e2e/Flow/ApiServiceRest.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Tag/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/InteractiveTargetUtils.ts"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/Tag.spec.ts",
+        "playwright/e2e/Pages/Tags.spec.ts",
+        "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
+        "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts",
+        "playwright/e2e/Features/TagsSuggestion.spec.ts",
+        "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
+        "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts"
+      ]
     }
   ]
 }

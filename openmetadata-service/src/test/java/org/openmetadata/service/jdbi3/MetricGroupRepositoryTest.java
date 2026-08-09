@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.rdf.RdfUpdater;
@@ -112,6 +113,22 @@ class MetricGroupRepositoryTest {
     ArgumentCaptor<List<String>> chunks = ArgumentCaptor.forClass(List.class);
     verify(groupDAO, times(3)).countNonDeletedMembersBatch(chunks.capture(), anyInt());
     assertEquals(List.of(500, 500, 1), chunks.getAllValues().stream().map(List::size).toList());
+  }
+
+  @Test
+  void visibleMetricCountUsesMemberJsonWithoutASecondEntityLookup() {
+    UUID groupId = UUID.randomUUID();
+    Metric visible = metric("visible");
+    Metric hidden = metric("hidden");
+    when(groupDAO.listMemberJsons(groupId, Relationship.HAS.ordinal(), "%", 500, 0))
+        .thenReturn(List.of(JsonUtils.pojoToJson(visible), JsonUtils.pojoToJson(hidden)));
+
+    int count =
+        repository.visibleMetricCount(
+            groupId, reference -> visible.getId().equals(reference.getId()));
+
+    assertEquals(1, count);
+    verify(groupDAO, times(1)).listMemberJsons(groupId, Relationship.HAS.ordinal(), "%", 500, 0);
   }
 
   @Test

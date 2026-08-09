@@ -60,6 +60,8 @@ type MetricWidgetKeys =
   | DetailPageWidgetKeys.RELATED_METRICS
   | DetailPageWidgetKeys.METRIC_HIERARCHY
   | DetailPageWidgetKeys.METRIC_DEFINITION
+  | DetailPageWidgetKeys.METRIC_DIMENSIONS
+  | DetailPageWidgetKeys.METRIC_MEASURES
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
@@ -75,6 +77,8 @@ class MetricDetailsClassBase {
       [DetailPageWidgetKeys.RELATED_METRICS]: 1.5,
       [DetailPageWidgetKeys.METRIC_HIERARCHY]: 3,
       [DetailPageWidgetKeys.METRIC_DEFINITION]: 4,
+      [DetailPageWidgetKeys.METRIC_DIMENSIONS]: 3,
+      [DetailPageWidgetKeys.METRIC_MEASURES]: 3,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
@@ -117,6 +121,8 @@ class MetricDetailsClassBase {
           this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
           this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_HIERARCHY] +
           this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DEFINITION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DIMENSIONS] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_MEASURES] +
           0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
@@ -145,6 +151,22 @@ class MetricDetailsClassBase {
             w: 1,
             x: 0,
             y: 2,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DIMENSIONS],
+            i: DetailPageWidgetKeys.METRIC_DIMENSIONS,
+            w: 1,
+            x: 0,
+            y: 3,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_MEASURES],
+            i: DetailPageWidgetKeys.METRIC_MEASURES,
+            w: 1,
+            x: 0,
+            y: 4,
             static: false,
           },
         ],
@@ -231,6 +253,20 @@ class MetricDetailsClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.METRIC_DIMENSIONS,
+        name: i18n.t('label.dimension-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.METRIC_MEASURES,
+        name: i18n.t('label.measure-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
       CUSTOM_PROPERTIES_WIDGET,
       KNOWLEDGE_ARTICLE_WIDGET,
     ];
@@ -256,6 +292,10 @@ class MetricDetailsClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_HIERARCHY];
       case DetailPageWidgetKeys.METRIC_DEFINITION:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DEFINITION];
+      case DetailPageWidgetKeys.METRIC_DIMENSIONS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_DIMENSIONS];
+      case DetailPageWidgetKeys.METRIC_MEASURES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.METRIC_MEASURES];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:

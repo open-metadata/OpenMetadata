@@ -26,57 +26,57 @@ export const getEntityFqn = (
 };
 
 const findOptionByScrolling = async (page: Page, endpoint: string) => {
+  const maxTries = 12; // Bound the scan; the list is ~25 options over ~3 viewports.
   const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
   const dropdown = page
     .getByTestId('global-search-select-dropdown')
     .locator('.rc-virtual-list-holder');
   const option = page.getByTestId(`global-search-select-option-${filterName}`);
-  let canAdvance = true;
 
-  while (canAdvance) {
-    if (await option.isVisible()) {
+  // The filter list is virtualised, so only the ~11 rows around the current
+  // offset exist in the DOM: every option below "Container" — Stored Procedure,
+  // Data Product, API Endpoint, API Collection, Metric and the rest — is absent
+  // until scrolled into range.
+  //
+  // waitFor() rather than isVisible(): isVisible() resolves immediately and
+  // never retries, so probing it straight after scrollBy() races the re-render
+  // of the virtual window. That is why every entity type past the initial
+  // window was flaky under CI load while those inside it never were. When the
+  // option is already rendered this resolves instantly, so the timeout is only
+  // ever paid once per scroll step.
+  for (let tries = 0; tries < maxTries; tries++) {
+    const appeared = await option
+      .waitFor({ state: 'visible', timeout: 1_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (appeared) {
       await option.click();
 
-      return;
+      return true;
     }
 
-    const scrollState = await dropdown.evaluate(async (element) => {
-      const previousScrollTop = element.scrollTop;
-      const maxScrollTop = Math.max(
-        0,
-        element.scrollHeight - element.clientHeight
-      );
-      const nextScrollTop = Math.min(
-        maxScrollTop,
-        previousScrollTop + element.clientHeight
-      );
-      element.scrollTop = nextScrollTop;
+    // Advance a whole viewport so the scan covers the list in a few steps, and
+    // detect the end from the clamped scrollTop rather than a fixed try count.
+    const movedBy = await dropdown.evaluate((element) => {
+      const before = element.scrollTop;
+      element.scrollBy(0, element.clientHeight);
 
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
-
-      return {
-        advanced: element.scrollTop > previousScrollTop,
-        atEnd: element.scrollTop >= maxScrollTop,
-      };
+      return element.scrollTop - before;
     });
 
-    canAdvance = scrollState.advanced && !scrollState.atEnd;
-  }
-
-  if (await option.isVisible()) {
-    await option.click();
-
-    return;
+    if (movedBy === 0) {
+      break; // Already at the bottom: the option is not in this list.
+    }
   }
 
   await dropdown.evaluate((element) => {
     element.scrollTop = 0;
   });
-  throw new Error(
-    `Unable to find global search filter option "${filterName}" for endpoint "${endpoint}" after scanning the complete dropdown.`
-  );
+
+  // Returned rather than thrown: the caller runs this inside an expect.poll,
+  // and a thrown error aborts that poll outright instead of letting it retry.
+  return false;
 };
 
 export const openEntitySummaryPanel = async ({
@@ -103,7 +103,9 @@ export const openEntitySummaryPanel = async ({
       await page.getByTestId('global-search-select-dropdown').waitFor({
         state: 'visible',
       });
-      await findOptionByScrolling(page, endpoint);
+      if (!(await findOptionByScrolling(page, endpoint))) {
+        return false;
+      }
     }
     const searchResponsePromise = page.waitForResponse((response) =>
       response.url().includes('/api/v1/search/query')
@@ -125,6 +127,8 @@ export const openEntitySummaryPanel = async ({
       await tab.click();
       await waitForAllLoadersToDisappear(page);
     }
+
+    return true;
   };
 
   const entityResultCard = fullyQualifiedName
@@ -138,8 +142,12 @@ export const openEntitySummaryPanel = async ({
 
   if (dataAssetTypeLeftPanelTestId) {
     // The knowledge-center card is only revealed after selecting the KC item
-    // below, so it cannot gate the retry — issue a single search here.
-    await runSearch();
+    // below, so it cannot gate the retry — issue a single search here. No poll
+    // wraps this branch, so a filter option that never rendered is fatal.
+    expect(
+      await runSearch(),
+      `Unable to select global search filter for endpoint "${endpoint}"`
+    ).toBe(true);
   } else {
     // Search indexing is eventually consistent and lags further under CI load, so
     // a freshly created entity may not surface on the first query. Retry the
@@ -154,7 +162,12 @@ export const openEntitySummaryPanel = async ({
             await waitForAllLoadersToDisappear(page);
           }
           hasSearched = true;
-          await runSearch();
+
+          // A filter option that has not rendered yet is transient: let the
+          // poll reload and retry rather than failing the test outright.
+          if (!(await runSearch())) {
+            return false;
+          }
 
           return entityResultCard.isVisible();
         },

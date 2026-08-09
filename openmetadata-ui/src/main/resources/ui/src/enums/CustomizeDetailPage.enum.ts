@@ -49,6 +49,8 @@ export enum DetailPageWidgetKeys {
   RELATED_METRICS = 'KnowledgePanel.RelatedMetrics',
   METRIC_HIERARCHY = 'KnowledgePanel.MetricHierarchy',
   METRIC_DEFINITION = 'KnowledgePanel.MetricDefinition',
+  METRIC_DIMENSIONS = 'KnowledgePanel.MetricDimensions',
+  METRIC_MEASURES = 'KnowledgePanel.MetricMeasures',
   ML_MODEL_FEATURES = 'KnowledgePanel.MlModelFeatures',
   CONTAINER_SCHEMA = 'KnowledgePanel.ContainerSchema',
   DIRECTORY_CHILDREN = 'KnowledgePanel.DirectoryChildren',

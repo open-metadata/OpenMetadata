@@ -107,15 +107,20 @@ public class MetricObservabilityBuilder {
   }
 
   public MetricObservability build(UUID metricId) {
-    return build(metricId, null);
+    return build(metricId, null, null);
   }
 
   public MetricObservability build(UUID metricId, Set<UUID> visibleAssetIds) {
+    return build(metricId, null, visibleAssetIds);
+  }
+
+  public MetricObservability build(
+      UUID metricId, List<MetricAssetDirection> linkedAssets, Set<UUID> visibleAssetIds) {
     MetricObservability result;
     boolean failed = false;
     long startedAt = System.nanoTime();
     try {
-      result = compute(metricId, visibleAssetIds);
+      result = compute(metricId, linkedAssets, visibleAssetIds);
     } catch (RuntimeException exception) {
       failed = true;
       LOG.warn("Failed to compute Metric observability for {}", metricId, exception);
@@ -152,9 +157,13 @@ public class MetricObservabilityBuilder {
     return value == null ? 0 : value;
   }
 
-  private MetricObservability compute(UUID metricId, Set<UUID> visibleAssetIds) {
+  private MetricObservability compute(
+      UUID metricId, List<MetricAssetDirection> prefetchedLinkedAssets, Set<UUID> visibleAssetIds) {
     Metric metric = metricRepository.get(null, metricId, metricRepository.getFields("id"));
-    List<MetricAssetDirection> linkedAssets = metricRepository.getAssetsWithDirection(metricId);
+    List<MetricAssetDirection> linkedAssets =
+        prefetchedLinkedAssets == null
+            ? metricRepository.getAssetsWithDirection(metricId)
+            : List.copyOf(prefetchedLinkedAssets);
     List<EntityReference> upstreamTables = directUpstreamTables(linkedAssets);
     List<Observation> observations = loadObservations(upstreamTables);
     Set<UUID> visibleUpstream = visibleAssets(upstreamTables, visibleAssetIds);

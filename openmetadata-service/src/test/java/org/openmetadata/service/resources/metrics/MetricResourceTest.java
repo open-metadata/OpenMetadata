@@ -42,8 +42,10 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.api.data.MetricHierarchyContext;
 import org.openmetadata.schema.api.data.MetricHierarchyItem;
+import org.openmetadata.schema.api.data.MetricObservability;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -302,7 +304,38 @@ class MetricResourceTest {
 
       assertEquals(missing, thrown);
       verify(fixture.repository(), never()).getAssetsWithDirection(metricId);
-      verify(fixture.repository(), never()).getObservability(eq(metricId), any());
+      verify(fixture.repository(), never()).getObservability(eq(metricId), any(), any());
+    }
+  }
+
+  @Test
+  void observabilityReusesTheAuthorizedLinkedAssets() {
+    UUID metricId = UUID.randomUUID();
+    EntityReference table =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.TABLE)
+            .withName("orders")
+            .withFullyQualifiedName("service.database.schema.orders");
+    List<MetricAssetDirection> linkedAssets =
+        List.of(
+            new MetricAssetDirection()
+                .withAsset(table)
+                .withDirection(MetricAssetDirection.Direction.UPSTREAM));
+    MetricObservability expected = new MetricObservability();
+    try (ResourceFixture fixture = resourceFixture()) {
+      when(fixture.repository().get(any(), eq(metricId), any()))
+          .thenReturn(new Metric().withId(metricId).withName("revenue"));
+      when(fixture.repository().getAssetsWithDirection(metricId)).thenReturn(linkedAssets);
+      when(fixture.repository().getObservability(metricId, linkedAssets, Set.of(table.getId())))
+          .thenReturn(expected);
+
+      MetricObservability actual =
+          fixture.resource().getObservability(null, mock(SecurityContext.class), metricId);
+
+      assertEquals(expected, actual);
+      verify(fixture.repository(), times(1)).getAssetsWithDirection(metricId);
+      verify(fixture.repository()).getObservability(metricId, linkedAssets, Set.of(table.getId()));
     }
   }
 

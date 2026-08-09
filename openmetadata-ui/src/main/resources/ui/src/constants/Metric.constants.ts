@@ -19,6 +19,7 @@ import {
   MetricType,
   State,
   TagSource,
+  Type,
   UnitOfMeasurement,
 } from '../generated/entity/data/metric';
 
@@ -35,6 +36,28 @@ export const METRIC_DUMMY_DATA: Metric = {
   metricType: MetricType.Percentage,
   unitOfMeasurement: UnitOfMeasurement.Percentage,
   granularity: MetricGranularity.Year,
+  dimensions: [
+    {
+      name: 'order_date',
+      type: Type.Time,
+      expression: "DATE_TRUNC('day', o.created_at)",
+      description: 'Day the order was placed.',
+    },
+    {
+      name: 'region',
+      type: Type.Categorical,
+      expression: 'c.region',
+      description: 'Customer billing region.',
+    },
+  ],
+  measures: [
+    {
+      name: 'engagements',
+      aggregation: 'SUM',
+      expression: 'likes + comments + shares',
+      description: 'Total interactions across all engagement types.',
+    },
+  ],
   relatedMetrics: [
     {
       id: 'aa80b81d-c033-4cb4-b00c-3adbf6ec5cd5',

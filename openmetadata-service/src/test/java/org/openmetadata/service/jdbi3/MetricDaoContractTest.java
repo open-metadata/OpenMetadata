@@ -114,7 +114,7 @@ class MetricDaoContractTest {
   void groupMembershipListAndCountUseTheSameDialectSpecificSearchPredicate() throws Exception {
     Method listMembers =
         CollectionDAO.MetricGroupDAO.class.getDeclaredMethod(
-            "listMemberIds", UUID.class, int.class, String.class, int.class, int.class);
+            "listMemberJsons", UUID.class, int.class, String.class, int.class, int.class);
     Method countMembers =
         CollectionDAO.MetricGroupDAO.class.getDeclaredMethod(
             "countMembers", UUID.class, int.class, String.class);
@@ -123,6 +123,7 @@ class MetricDaoContractTest {
 
     assertEquals(2, listQueries.size());
     assertEquals(2, countQueries.size());
+    listQueries.values().forEach(query -> assertTrue(query.value().contains("SELECT me.json")));
     assertTrue(
         listQueries.get(MYSQL).value().contains(CollectionDAO.MetricGroupDAO.MEMBER_MATCH_MYSQL));
     assertTrue(
