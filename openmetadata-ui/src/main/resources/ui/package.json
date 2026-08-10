@@ -74,7 +74,7 @@
     "@auth0/auth0-react": "^1.9.0",
     "@azure/msal-browser": "^3.25.0",
     "@azure/msal-react": "^2.1.1",
-    "@dagrejs/dagre": "^1.1.2",
+    "@dagrejs/dagre": "^3.1.0",
     "@deuex-solutions/react-tour": "^1.2.6",
     "@fontsource-variable/geist-mono": "^5.2.8",
     "@fontsource-variable/inter": "^5.2.8",
