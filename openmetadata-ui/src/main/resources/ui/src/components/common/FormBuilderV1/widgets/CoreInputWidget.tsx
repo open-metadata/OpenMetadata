@@ -97,7 +97,7 @@ const CoreInputWidget = ({
           </Tooltip>
         </div>
       ) : null}
-      {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+      {}
       <Input
         aria-label={showTooltipRow ? widgetLabel : undefined}
         autoFocus={autofocus}
