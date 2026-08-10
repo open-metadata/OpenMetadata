@@ -62,6 +62,13 @@ API_RESPONSE_MESSAGE_KEY = "message"
 AUTH_TOKEN_MAX_RETRIES = 5
 AUTH_TOKEN_RETRY_WAIT = 120
 
+# GetGroupsAsAdmin caps $top at 5000 and is rate limited to 50 requests/hour per
+# tenant, so paging in the largest allowed chunks keeps the shared quota intact.
+# https://learn.microsoft.com/en-us/rest/api/power-bi/admin/groups-get-groups-as-admin#limitations
+MAX_PAGINATION_ENTITY_PER_PAGE = 5000
+# Mirrors the schema default, applied when the connection sets the field to null.
+DEFAULT_PAGINATION_ENTITY_PER_PAGE = 100
+
 # Bounds the error body kept in the step's error log.
 ERROR_DETAIL_LIMIT = 200
 
@@ -94,7 +101,10 @@ class PowerBiApiClient:
 
     def __init__(self, config: PowerBIConnection):
         self.config = config
-        self.pagination_entity_per_page = min(100, self.config.pagination_entity_per_page)
+        self.pagination_entity_per_page = min(
+            MAX_PAGINATION_ENTITY_PER_PAGE,
+            self.config.pagination_entity_per_page or DEFAULT_PAGINATION_ENTITY_PER_PAGE,
+        )
         self.msal_client = msal.ConfidentialClientApplication(
             client_id=self.config.clientId,
             client_credential=self.config.clientSecret.get_secret_value(),

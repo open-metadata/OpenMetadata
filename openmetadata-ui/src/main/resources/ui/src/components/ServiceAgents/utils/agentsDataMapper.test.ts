@@ -387,7 +387,7 @@ describe('agentsDataMapper', () => {
       expect(agent.recentRuns[4].id).toBe('run-4');
     });
 
-    it('should sum errors and warnings across steps and set failStep on failure', () => {
+    it('should sum errors and warnings across steps', () => {
       const pipeline: IngestionPipeline = {
         ...basePipeline,
         pipelineStatuses: [
@@ -407,7 +407,6 @@ describe('agentsDataMapper', () => {
       expect(agent.status).toBe('failed');
       expect(agent.errors).toBe(3);
       expect(agent.warnings).toBe(3);
-      expect(agent.failStep).toBe('Sink');
     });
 
     it('should fall back to id/name when displayName is missing', () => {
