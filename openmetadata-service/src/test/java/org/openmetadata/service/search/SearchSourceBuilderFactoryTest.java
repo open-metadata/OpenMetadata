@@ -400,45 +400,56 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
-  public void testFqnQueryDropsTheRecallWideningFuzzyStage() {
+  public void testFuzzyNameStageDoesNotRankOnFullyQualifiedName() {
     // Ranking stages sit under a `should` with minimum_should_match:1, so each one widens recall,
-    // not just the score. On a single-token FQN getFuzziness() already degrades the fuzzy stage to
-    // fuzziness 0, leaving an OR multi_match at 70% token coverage: no typo tolerance, but it
-    // admits every sibling column under the same table — ColumnSearchIndexIT saw 21 hits for a
-    // one-column FQN, all of them matching via `ranking:fuzzyName` alone (issue #31227). Only the
-    // exact, phrase and tokenCoverage stages may decide recall for an identifier lookup.
+    // not just the score. fuzzyName is an OR multi_match at 70% token coverage, and an FQN carries
+    // its entire parent path — so querying one entity's FQN clears 70% against every sibling and
+    // child under the same parent. That is the "count 1 vs results 7381" bug (#31227): in CI the
+    // sibling column matched via `ranking:fuzzyName` alone, nothing else. Exact and phrase identity
+    // on an FQN belong to exactName/phraseName, which match it precisely, so fuzzyName must not
+    // list fullyQualifiedName among its fields.
+    RankingStage fuzzyName = shippedRankingStage("fuzzyName");
+
+    assertFalse(
+        fuzzyName.getFields().contains("fullyQualifiedName"),
+        "fuzzyName must not rank on fullyQualifiedName — 70% coverage over a parent path matches "
+            + "every sibling: "
+            + fuzzyName.getFields());
+  }
+
+  @Test
+  public void testFuzzyNameStageStillRanksOnNameFields() {
+    // The previous attempt at #31227 dropped the whole stage for single-term identifier queries.
+    // That also removed the only source of partial-token recall for name searches, and cost
+    // SearchResourceIT both mid-type autocomplete ("xqz_lhr__i") and one-char typo tolerance
+    // ("incaming" for "incoming"). The stage has to survive on the name fields; only its reach
+    // into fullyQualifiedName is the defect.
+    RankingStage fuzzyName = shippedRankingStage("fuzzyName");
+
+    assertTrue(fuzzyName.getFields().contains("name"), fuzzyName.getFields().toString());
+    assertTrue(fuzzyName.getFields().contains("displayName"), fuzzyName.getFields().toString());
+  }
+
+  @Test
+  public void testIdentifierQueryKeepsTheFuzzyStageForNameRecall() {
+    // Behavioural counterpart to the two config assertions: an identifier lookup must still build
+    // the fuzzy stage (it is what finds a mistyped or half-typed name), alongside the precise
+    // stages that resolve an exact FQN.
     String columnFqn = "svc_a.db_a.schema_a.table_a.user_id";
     String osQuery = rankedOpenSearchQuery(columnFqn);
     String esQuery = rankedElasticSearchQuery(columnFqn);
 
-    assertFalse(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
-    assertFalse(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
-    // The precise stages still match, so the target column is still found.
+    assertTrue(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
+    assertTrue(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
     assertTrue(osQuery.contains(CLOSE_NAME_STAGE_QUERY_NAME), osQuery);
     assertTrue(esQuery.contains(CLOSE_NAME_STAGE_QUERY_NAME), esQuery);
   }
 
-  @Test
-  public void testMultiTermQueryKeepsTheFuzzyStage() {
-    // The narrowing above is scoped to single-term identifier lookups. A multi-word search still
-    // needs the fuzzy stage's partial token coverage across terms, so it must survive there.
-    String phrase = "sample_data table";
-    String osQuery = rankedOpenSearchQuery(phrase);
-    String esQuery = rankedElasticSearchQuery(phrase);
-
-    assertTrue(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
-    assertTrue(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
-  }
-
-  @Test
-  public void testShortQueryKeepsRealTypoTolerance() {
-    // Fuzziness is only disabled past two sub-tokens; a short name search keeps both the stage and
-    // a non-zero fuzziness, which is the stage's documented purpose.
-    String osQuery = rankedOpenSearchQuery("custmer");
-    String esQuery = rankedElasticSearchQuery("custmer");
-
-    assertTrue(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
-    assertTrue(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
+  private static RankingStage shippedRankingStage(String stageName) {
+    return shippedSearchSettings.getDefaultConfiguration().getRanking().getStages().stream()
+        .filter(stage -> stageName.equals(stage.getName()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("No '" + stageName + "' ranking stage is shipped"));
   }
 
   private static String rankedOpenSearchQuery(String query) {
