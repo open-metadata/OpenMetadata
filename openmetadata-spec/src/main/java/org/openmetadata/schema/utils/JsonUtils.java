@@ -478,8 +478,11 @@ public final class JsonUtils {
   }
 
   private static String unknownFieldMessage(UnrecognizedPropertyException e, Class<?> clz) {
+    // getKnownPropertyIds() is documented to return null when the property set is unavailable;
+    // an NPE here would turn this client error back into the 500 this path exists to prevent.
+    Collection<Object> knownIds = e.getKnownPropertyIds();
     List<String> knownFields =
-        e.getKnownPropertyIds().stream().map(String::valueOf).sorted().toList();
+        knownIds == null ? List.of() : knownIds.stream().map(String::valueOf).sorted().toList();
     String rejectedField = e.getPropertyName();
     String suggested = closestKnownField(rejectedField, knownFields);
     String hint = suggested == null ? "" : String.format(" Did you mean '%s'?", suggested);
