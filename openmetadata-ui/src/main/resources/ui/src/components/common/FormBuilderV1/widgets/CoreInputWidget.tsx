@@ -44,6 +44,7 @@ const CoreInputWidget = ({
   label,
   hideLabel,
   placeholder,
+  autofocus,
   rawErrors,
   schema,
   options,
@@ -96,8 +97,10 @@ const CoreInputWidget = ({
           </Tooltip>
         </div>
       ) : null}
+      {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
       <Input
         aria-label={showTooltipRow ? widgetLabel : undefined}
+        autoFocus={autofocus}
         className={showTooltipRow ? 'tw:w-[86%]' : undefined}
         hint={hint}
         hintClassName="tw:text-xs"
