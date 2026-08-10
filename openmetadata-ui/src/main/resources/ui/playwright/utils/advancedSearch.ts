@@ -12,7 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { escapeESReservedCharacters, getEncodedFqn } from './entity';
+import { getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
@@ -310,14 +310,15 @@ export const fillRule = async (
         '.widget--widget input[role="combobox"]'
       );
 
+      // Match the raw URL-encoded search term — the backend sends the search
+      // value as a plain URL parameter (no ES escaping). Using
+      // escapeESReservedCharacters first turns dashes into "\-" which
+      // encodeURIComponent then renders as "%5C-", which never matches the
+      // literal "-" in the actual aggregate URL.
       const aggregateRes2 = page.waitForResponse(
         (response) =>
           response.url().includes(`/api/v1/search/aggregate`) &&
-          response
-            .url()
-            .includes(
-              encodeURIComponent(escapeESReservedCharacters(searchData))
-            )
+          response.url().includes(encodeURIComponent(searchData))
       );
 
       await dropdownInput.fill(searchData);
