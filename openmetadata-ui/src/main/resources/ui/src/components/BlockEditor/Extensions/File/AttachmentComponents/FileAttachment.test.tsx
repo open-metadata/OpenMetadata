@@ -16,6 +16,9 @@ import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.consta
 import { bytesToSize } from '../../../../../utils/StringUtils';
 import FileAttachment from './FileAttachment';
 
+const DOWNLOAD_TEST_ID = 'download-file-attachment';
+const TEST_FILE_NAME = 'test.pdf';
+
 describe('FileAttachment', () => {
   // Create a minimal mock that only includes what the component needs
   const createMockNode = (attrs: unknown) =>
@@ -36,7 +39,7 @@ describe('FileAttachment', () => {
 
   const mockNode = createMockNode({
     url: uploadedFileUrl,
-    fileName: 'test.pdf',
+    fileName: TEST_FILE_NAME,
     fileSize: 1024 * 1024, // 1MB
     mimeType: 'application/pdf',
   });
@@ -56,19 +59,19 @@ describe('FileAttachment', () => {
     render(<FileAttachment {...mockProps} />);
 
     // Check if file name is displayed
-    expect(screen.getByText('test.pdf')).toBeInTheDocument();
+    expect(screen.getByText(TEST_FILE_NAME)).toBeInTheDocument();
 
     // Check if file size is displayed correctly
     expect(screen.getByText(bytesToSize(1024 * 1024))).toBeInTheDocument();
 
     // Check if download button is present for an uploaded asset
-    expect(screen.getByTestId('download-file-attachment')).toBeInTheDocument();
+    expect(screen.getByTestId(DOWNLOAD_TEST_ID)).toBeInTheDocument();
   });
 
   it('handles file click correctly', () => {
     render(<FileAttachment {...mockProps} />);
 
-    const fileLink = screen.getByText('test.pdf');
+    const fileLink = screen.getByText(TEST_FILE_NAME);
     fireEvent.click(fileLink);
 
     expect(mockProps.onFileClick).toHaveBeenCalled();
@@ -104,7 +107,7 @@ describe('FileAttachment', () => {
   it('disables the download button when isFileLoading is true', () => {
     render(<FileAttachment {...mockProps} isFileLoading />);
 
-    const downloadButton = screen.getByTestId('download-file-attachment');
+    const downloadButton = screen.getByTestId(DOWNLOAD_TEST_ID);
 
     expect(downloadButton).toBeDisabled();
   });
@@ -117,9 +120,7 @@ describe('FileAttachment', () => {
 
     render(<FileAttachment {...mockProps} node={urlOnlyNode} />);
 
-    expect(
-      screen.queryByTestId('download-file-attachment')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(DOWNLOAD_TEST_ID)).not.toBeInTheDocument();
   });
 
   it('renders without throwing when mimeType and tempFile are both empty', () => {
@@ -133,7 +134,7 @@ describe('FileAttachment', () => {
       render(<FileAttachment {...mockProps} node={noMimeTypeNode} />)
     ).not.toThrow();
 
-    expect(screen.getByText('test.pdf')).toBeInTheDocument();
+    expect(screen.getByText(TEST_FILE_NAME)).toBeInTheDocument();
   });
 
   it('uses tempFile details when available', () => {
