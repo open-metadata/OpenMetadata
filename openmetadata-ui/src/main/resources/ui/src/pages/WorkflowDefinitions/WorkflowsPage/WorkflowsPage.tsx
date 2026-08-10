@@ -314,7 +314,8 @@ const WorkflowsPage = () => {
         paddingRight: 0,
         ...(isAiMode ? { paddingBottom: 0 } : {}),
       }}
-      pageTitle={t('label.workflow-plural')}>
+      pageTitle={t('label.workflow-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
       <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-2 tw:gap-4">
         {isAiMode ? (
           <HeaderShell

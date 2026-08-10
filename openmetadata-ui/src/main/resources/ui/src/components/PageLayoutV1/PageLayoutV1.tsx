@@ -23,7 +23,6 @@ import {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
-import { useIsAiMode } from '../../hooks/useAppMode';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
@@ -62,17 +61,14 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
   fullHeight = false,
-  variant,
+  variant = 'default',
 }: PageLayoutProp) => {
   const location = useLocation();
-  const isAiMode = useIsAiMode();
 
-  // AI mode uses a uniform 8px page padding everywhere; classic mode keeps
-  // the 20px horizontal gutter. An explicit `variant` prop always wins so a
-  // page can opt out of the mode default.
-  const resolvedVariant = variant ?? (isAiMode ? 'compact' : 'default');
-
-  const paddingClassName = resolvedVariant === 'compact' ? 'tw:p-2' : 'p-x-box';
+  // `compact` (uniform 8px) is for pages whose header is a HeaderShell —
+  // the calling component decides. Everything else gets the default 16px
+  // horizontal gutter.
+  const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'tw:px-4';
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -86,22 +82,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
-  const finalPageContainerStyle = useMemo(() => {
-    if (fullHeight && !pageContainerStyle.height) {
-      return {
-        // The shell (classic navbar, AI content pane, …) owns
-        // --ant-navbar-height; never hardcode the chrome offset here. The
-        // fallback keeps the rule valid in shells that never define the
-        // variable and matches the classic default from temp.css :root.
-        height: 'calc(100vh - var(--ant-navbar-height, 80px))',
-        overflow: 'hidden',
-        ...pageContainerStyle,
-      };
-    }
-
-    return pageContainerStyle;
-  }, [fullHeight, pageContainerStyle]);
-
   const isFullScreen = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
 
@@ -112,10 +92,12 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={classNames(paddingClassName, className)}
+        className={classNames(paddingClassName, className, {
+          'page-layout-v1-full-height': fullHeight,
+        })}
         data-testid="page-layout-v1"
-        data-variant={resolvedVariant}
-        style={{ ...pageContainerStyles, ...finalPageContainerStyle }}
+        data-variant={variant}
+        style={{ ...pageContainerStyles, ...pageContainerStyle }}
         wrap={false}>
         {leftPanel && (
           <Col

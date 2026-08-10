@@ -337,8 +337,12 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 };
 
 const DomainListPageWithLayout: FC<DomainListPageProps> = (props) => {
+  const isAiMode = useIsAiMode();
+
   return (
-    <PageLayoutV1 pageTitle={props.pageTitle}>
+    <PageLayoutV1
+      pageTitle={props.pageTitle}
+      variant={isAiMode ? 'compact' : 'default'}>
       <DomainListPage {...props} />
     </PageLayoutV1>
   );

@@ -447,7 +447,8 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     <PageLayoutV1
       fullHeight
       mainContainerClassName="workflow-builder-layout"
-      pageTitle={t('label.workflow-plural')}>
+      pageTitle={t('label.workflow-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
       {isConnectionModalOpen && (
         <div className="tw:fixed tw:inset-0 tw:bg-black/30 tw:z-9999" />
       )}

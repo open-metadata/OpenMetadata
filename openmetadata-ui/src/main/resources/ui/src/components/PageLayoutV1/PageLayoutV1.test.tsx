@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { useIsAiMode } from '../../hooks/useAppMode';
 import PageLayoutV1 from './PageLayoutV1';
 
 jest.mock('../common/DocumentTitle/DocumentTitle', () =>
@@ -23,12 +22,6 @@ jest.mock('react-router-dom', () => ({
     pathname: '/',
   }),
 }));
-
-jest.mock('../../hooks/useAppMode', () => ({
-  useIsAiMode: jest.fn().mockReturnValue(false),
-}));
-
-const mockUseIsAiMode = useIsAiMode as jest.Mock;
 
 describe('PageLayoutV1', () => {
   it('Should render with the left panel, center content, and right panel', () => {
@@ -100,10 +93,8 @@ describe('PageLayoutV1', () => {
 
     const pageLayout = getByTestId('page-layout-v1');
 
-    // jsdom's CSSOM drops `calc(100vh - var(--ant-navbar-height))`, so the
-    // height itself can't be read back here; the wrapper + overflow are the
-    // observable fullHeight effects.
     expect(container.querySelector('.full-height-wrapper')).toBeInTheDocument();
+    expect(pageLayout).toHaveClass('page-layout-v1-full-height');
     expect(pageLayout).toHaveStyle({ overflow: 'hidden' });
   });
 
@@ -132,17 +123,18 @@ describe('PageLayoutV1', () => {
 
     const pageLayout = getByTestId('page-layout-v1');
 
+    expect(pageLayout).not.toHaveClass('page-layout-v1-full-height');
     expect(pageLayout.style.height).toBe('');
   });
 
-  it('Should apply the default 20px padding class when no variant is provided', () => {
+  it('Should apply the default 16px horizontal padding class when no variant is provided', () => {
     const { getByTestId } = render(
       <PageLayoutV1 pageTitle="Test Page">Center content</PageLayoutV1>
     );
 
     const pageLayout = getByTestId('page-layout-v1');
 
-    expect(pageLayout).toHaveClass('p-x-box');
+    expect(pageLayout).toHaveClass('tw:px-4');
     expect(pageLayout).not.toHaveClass('tw:p-2');
     expect(pageLayout).toHaveAttribute('data-variant', 'default');
   });
@@ -157,7 +149,7 @@ describe('PageLayoutV1', () => {
     const pageLayout = getByTestId('page-layout-v1');
 
     expect(pageLayout).toHaveClass('tw:p-2');
-    expect(pageLayout).not.toHaveClass('p-x-box');
+    expect(pageLayout).not.toHaveClass('tw:px-4');
     expect(pageLayout).toHaveAttribute('data-variant', 'compact');
   });
 
@@ -174,36 +166,10 @@ describe('PageLayoutV1', () => {
 
     const pageLayout = getByTestId('page-layout-v1');
 
+    expect(pageLayout).toHaveClass('page-layout-v1-full-height');
     expect(pageLayout).toHaveStyle({
       overflow: 'hidden',
       backgroundColor: 'red',
     });
-  });
-
-  it('Should default to the compact variant in AI mode', () => {
-    mockUseIsAiMode.mockReturnValueOnce(true);
-    const { getByTestId } = render(
-      <PageLayoutV1 pageTitle="Test Page">Center content</PageLayoutV1>
-    );
-
-    const pageLayout = getByTestId('page-layout-v1');
-
-    expect(pageLayout).toHaveClass('tw:p-2');
-    expect(pageLayout).not.toHaveClass('p-x-box');
-    expect(pageLayout).toHaveAttribute('data-variant', 'compact');
-  });
-
-  it('Should let an explicit variant override the AI-mode default', () => {
-    mockUseIsAiMode.mockReturnValueOnce(true);
-    const { getByTestId } = render(
-      <PageLayoutV1 pageTitle="Test Page" variant="default">
-        Center content
-      </PageLayoutV1>
-    );
-
-    const pageLayout = getByTestId('page-layout-v1');
-
-    expect(pageLayout).toHaveClass('p-x-box');
-    expect(pageLayout).toHaveAttribute('data-variant', 'default');
   });
 });

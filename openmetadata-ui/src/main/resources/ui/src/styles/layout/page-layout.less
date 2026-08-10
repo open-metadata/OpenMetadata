@@ -20,9 +20,17 @@
   overflow-x: hidden;
 }
 
-// fullHeight mode: the page container is pinned to the viewport
-// (100vh - var(--ant-navbar-height)) and the center column becomes a
-// flex chain so the last content row absorbs the remaining height.
+// fullHeight mode: the page container is pinned to the viewport minus the
+// shell chrome (--ant-navbar-height, owned by the shell; 80px classic
+// default from temp.css). An explicit pageContainerStyle height still wins
+// because inline styles out-rank this class.
+.page-layout-v1-full-height {
+  height: calc(100vh - var(--ant-navbar-height, 80px));
+  overflow: hidden;
+}
+
+// fullHeight mode: the center column becomes a flex chain so the last
+// content row absorbs the remaining height.
 .full-height-wrapper {
   .page-layout-v1-center.page-layout-v1-vertical-scroll {
     overflow: hidden;
