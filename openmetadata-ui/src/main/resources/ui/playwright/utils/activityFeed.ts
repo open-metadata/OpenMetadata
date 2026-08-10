@@ -134,7 +134,10 @@ export const reactOnFeedCard = async (page: Page, message: Locator) => {
 };
 
 export const reactOnFeed = async (page: Page, feedNumber: number) => {
-  await reactOnFeedCard(page, getNthFeedMessage(page, Math.max(0, feedNumber - 1)));
+  await reactOnFeedCard(
+    page,
+    getNthFeedMessage(page, Math.max(0, feedNumber - 1))
+  );
 };
 
 export const addMentionCommentInFeed = async (

@@ -194,15 +194,18 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup: delete the activity seed table', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
+test.afterAll(
+  'Cleanup: delete the activity seed table',
+  async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
 
-  try {
-    await activitySeedTable.delete(apiContext);
-  } finally {
-    await afterAction();
+    try {
+      await activitySeedTable.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   }
-});
+);
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
