@@ -26,6 +26,7 @@ import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStor
 import { useApplicationStore } from './useApplicationStore';
 import {
   clearAppModeSessionOnly,
+  getAppDefaultMode,
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
@@ -77,7 +78,9 @@ const resolvePersonaAppMode = (
  *      re-runs leave the user's chosen mode alone.
  *   3. Persona's `appMode` if set.
  *   4. User preference (`usePersistentStorage[user].appMode`).
- *   5. `DEFAULT_APP_MODE`.
+ *   5. Tenant-wide app-mode default (`appConfiguration.defaultAppMode`,
+ *      cached via `setAppDefaultMode` — see `AuthProvider`'s bootstrap).
+ *   6. `DEFAULT_APP_MODE`.
  *
  * The install gate is applied on top of the candidate: if a non-default
  * candidate is not registered in `useAppRoutesRegistry`, the resolver
@@ -231,7 +234,10 @@ export const useResolvedAppMode = (): void => {
 
     const preferredMode = preferences.appMode ?? null;
     const candidate =
-      currentPersonaAppMode ?? preferredMode ?? DEFAULT_APP_MODE;
+      currentPersonaAppMode ??
+      preferredMode ??
+      getAppDefaultMode() ??
+      DEFAULT_APP_MODE;
 
     // Install gate: refuse to write a non-default mode that isn't
     // registered yet. When the route registers later, this effect

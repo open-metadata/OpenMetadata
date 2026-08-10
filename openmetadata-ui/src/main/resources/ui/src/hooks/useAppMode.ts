@@ -14,11 +14,13 @@
 import { isUndefined } from 'lodash';
 import { create } from 'zustand';
 import {
+  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+import { DefaultAppMode } from '../generated/api/configuration/appConfiguration';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 
 /**
@@ -366,3 +368,59 @@ export const resolveInitialAppMode = (userName?: string): string => {
 
   return DEFAULT_APP_MODE;
 };
+
+/**
+ * Translate the yaml/DB-facing `appConfiguration.defaultAppMode` wire value
+ * ("ai" | "classic") into the runtime mode string consumed by `useAppMode` /
+ * `useResolvedAppMode`. Core has always used `DEFAULT_APP_MODE` ("default")
+ * for Classic, while the Collate plugin registers its routes under
+ * `AI_APP_MODE` ("ai"). The wire value stays the readable "ai"/"classic"
+ * pair for admins; this map is the only place that needs to know the
+ * runtime strings differ.
+ */
+export const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
+  [DefaultAppMode.Classic]: DEFAULT_APP_MODE,
+  [DefaultAppMode.AI]: AI_APP_MODE,
+};
+
+/**
+ * Safe wrapper around {@link CONFIG_MODE_TO_RUNTIME} for the nullable wire
+ * value returned by `getAppConfiguration()` / `AppConfiguration.defaultAppMode`.
+ */
+export const translateWireMode = (
+  wireMode: string | null | undefined
+): string | null =>
+  wireMode ? CONFIG_MODE_TO_RUNTIME[wireMode] ?? null : null;
+
+/**
+ * Resolve the effective app mode at boot from the fallback chain, highest
+ * precedence first:
+ *
+ *   1. `userPref`    — the user's own stored preference (`user_preferences`).
+ *   2. `personaMode` — the admin-curated persona app mode, when known.
+ *   3. `appDefault`  — the tenant-wide "first impression" default
+ *                       (`appConfiguration.defaultAppMode`, translated).
+ *   4. `DEFAULT_APP_MODE` — the hardcoded constant, last resort.
+ *
+ * Pure — no side effects, no storage reads. Callers are responsible for
+ * supplying each signal (see `AuthProvider`'s bootstrap wiring).
+ */
+export const resolveEffectiveAppMode = (
+  userPref: string | null | undefined,
+  personaMode: string | null | undefined,
+  appDefault: string | null | undefined
+): string => userPref ?? personaMode ?? appDefault ?? DEFAULT_APP_MODE;
+
+// In-memory cache of the tenant-wide app-mode default (already translated
+// to the runtime string), populated once at boot from `getAppConfiguration()`
+// by `AuthProvider`. Deliberately NOT persisted anywhere — it is a soft
+// fallback consulted only when neither the user's preference nor the
+// persona have an opinion. See `resolveEffectiveAppMode` and
+// `useResolvedAppMode`, which both consult it as the third-priority signal.
+let appDefaultMode: string | null = null;
+
+export const setAppDefaultMode = (mode: string | null): void => {
+  appDefaultMode = mode;
+};
+
+export const getAppDefaultMode = (): string | null => appDefaultMode;
