@@ -99,4 +99,36 @@ public class URLValidatorTest {
     assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://"));
     assertThrows(BadRequestException.class, () -> URLValidator.validateURL("://example.com"));
   }
+
+  /**
+   * Internal targets whose host text does not look like a private IP, so the literal-form pattern
+   * never matches them and only address resolution catches them. All of these were accepted before
+   * resolution was added: {@code localhost} and {@code 2130706433} both reach 127.0.0.1, and
+   * {@code 0.0.0.0} is the wildcard address. None of them needs DNS — {@code localhost} comes from
+   * the hosts file and the other two are parsed as literals — so this holds on an offline machine.
+   */
+  @Test
+  void testInternalHostsMissedByLiteralPatternAreRejected() {
+    assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://localhost"));
+    assertThrows(
+        BadRequestException.class, () -> URLValidator.validateURL("http://localhost:8586/api"));
+    assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://2130706433"));
+    assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://0.0.0.0"));
+  }
+
+  /**
+   * Deployments that genuinely webhook to a loopback sidecar can opt out, but only for hosts that
+   * need resolving — a URL written as a literal private IP stays blocked either way, so the opt-out
+   * cannot be used to turn the check off wholesale.
+   */
+  @Test
+  void testInternalTargetsAllowedWhenOptedOut() {
+    System.setProperty("OPENMETADATA_ALLOW_INTERNAL_URL_TARGETS", "true");
+    try {
+      assertDoesNotThrow(() -> URLValidator.validateURL("http://localhost:8585/api"));
+      assertThrows(BadRequestException.class, () -> URLValidator.validateURL("http://127.0.0.1"));
+    } finally {
+      System.clearProperty("OPENMETADATA_ALLOW_INTERNAL_URL_TARGETS");
+    }
+  }
 }
