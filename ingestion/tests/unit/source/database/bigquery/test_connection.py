@@ -219,9 +219,13 @@ def test_get_tags_counts_policy_tags():
     tag_client = MagicMock()
     tag_client.list_taxonomies.return_value = [MagicMock(name="tax")]
     tag_client.list_policy_tags.return_value = [object(), object()]
-    with patch(f"{_CONNECTION_MODULE}.PolicyTagManagerClient", return_value=tag_client):
+    with patch(f"{_CONNECTION_MODULE}.get_policy_tag_client", return_value=tag_client) as mock_get_client:
         evidence = checks.get_tags()
     assert evidence.summary == "2 policy tags enumerated"
+    # the client must come from the impersonation-aware helper, not a bare
+    # PolicyTagManagerClient() that would authenticate as the source account
+    mock_get_client.assert_called_once_with(checks.service_connection)
+    tag_client.transport.close.assert_called_once()
 
 
 def test_probe_table_view_enumeration_tolerates_deleted_dataset():

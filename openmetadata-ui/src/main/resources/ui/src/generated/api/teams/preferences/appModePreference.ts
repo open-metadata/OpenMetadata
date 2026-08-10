@@ -10,26 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { ReactNode } from 'react';
-
-export interface ColumnDef {
-  id: string;
-  label: string;
+/**
+ * User preference for app-mode boot behavior (AI vs Classic).
+ */
+export interface AppModePreference {
+    config: Config;
+    type:   Type;
 }
 
-export interface EntityListingTableProps<
-  T extends { id: string; name: string }
-> {
-  entities: T[];
-  loading: boolean;
-  columns: ColumnDef[];
-  renderCell: (entity: T, columnId: string) => ReactNode;
-  selectedEntities: string[];
-  onSelectAll: (checked: boolean) => void;
-  onSelect: (id: string, checked: boolean) => void;
-  onEntityClick?: (entity: T) => void;
-  ariaLabel: string;
-  emptyMessage?: string;
-  containerClassName?: string;
+export interface Config {
+    value: Value | null;
+}
+
+export enum Value {
+    AI = "ai",
+    Classic = "classic",
+}
+
+export enum Type {
+    AppMode = "appMode",
 }

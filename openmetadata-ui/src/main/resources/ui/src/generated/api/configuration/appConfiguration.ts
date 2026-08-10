@@ -10,26 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { ReactNode } from 'react';
-
-export interface ColumnDef {
-  id: string;
-  label: string;
+/**
+ * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
+ * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ */
+export interface AppConfiguration {
+    /**
+     * Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have
+     * not chosen one; user preference and persona-level app mode still win over this default.
+     * Null means no tenant default is configured.
+     */
+    defaultAppMode?: DefaultAppMode | null;
 }
 
-export interface EntityListingTableProps<
-  T extends { id: string; name: string }
-> {
-  entities: T[];
-  loading: boolean;
-  columns: ColumnDef[];
-  renderCell: (entity: T, columnId: string) => ReactNode;
-  selectedEntities: string[];
-  onSelectAll: (checked: boolean) => void;
-  onSelect: (id: string, checked: boolean) => void;
-  onEntityClick?: (entity: T) => void;
-  ariaLabel: string;
-  emptyMessage?: string;
-  containerClassName?: string;
+export enum DefaultAppMode {
+    AI = "ai",
+    Classic = "classic",
 }
