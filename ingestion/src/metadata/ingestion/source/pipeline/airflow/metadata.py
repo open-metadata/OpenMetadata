@@ -751,6 +751,17 @@ class AirflowSource(PipelineServiceSource):
         """
         return PipelineState[pipeline_details.state]
 
+    @staticmethod
+    def _task_description(task: BaseOperator) -> Markdown | None:
+        """
+        Pick the first populated doc field Airflow exposes for a task.
+        """
+        doc = next(
+            (doc for doc in (task.doc_md, task.doc, task.doc_json, task.doc_yaml, task.doc_rst) if doc),
+            None,
+        )
+        return Markdown(doc) if doc else None
+
     def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:  # noqa: UP006
         """
         Obtain the tasks from a SerializedDAG
@@ -761,10 +772,7 @@ class AirflowSource(PipelineServiceSource):
         return [
             Task(  # pyright: ignore[reportCallIssue]
                 name=task.task_id,
-                description=next(
-                    (doc for doc in (task.doc_md, task.doc, task.doc_json, task.doc_yaml, task.doc_rst) if doc),
-                    None,
-                ),
+                description=self._task_description(task),
                 sourceUrl=SourceUrl(
                     (  # noqa: UP034
                         f"{clean_uri(host_port)}/dags/{quote(dag.dag_id)}/tasks/{quote(task.task_id)}"
