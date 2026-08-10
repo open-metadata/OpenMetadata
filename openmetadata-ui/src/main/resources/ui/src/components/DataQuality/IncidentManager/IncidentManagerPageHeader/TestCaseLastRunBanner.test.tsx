@@ -187,7 +187,7 @@ describe('TestCaseLastRunBanner', () => {
           'test-case-incident-actions'
         );
 
-        expect(incidentActions).toHaveClass('tw:lg:w-80');
+        expect(incidentActions).toHaveClass('tw:lg:w-52');
         expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveClass(
           TEXT_XS_CLASS,
           'tw:font-semibold'
