@@ -444,7 +444,10 @@ class TableauSource(DashboardServiceSource):
                 for to_column in to_columns:
                     if from_column and to_column:
                         column_lineage.append(  # noqa: PERF401
-                            ColumnLineage(fromColumns=[from_column], toColumn=to_column)  # pyright: ignore[reportCallIssue]
+                            ColumnLineage(
+                                fromColumns=[FullyQualifiedEntityName(from_column)],
+                                toColumn=FullyQualifiedEntityName(to_column),
+                            )
                         )
             return column_lineage  # noqa: TRY300
         except Exception as exc:
