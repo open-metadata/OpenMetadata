@@ -182,9 +182,12 @@ describe('TestCaseLastRunBanner', () => {
         expect(
           screen.getByTestId('test-case-incident-text').nextElementSibling
         ).toBe(screen.getByTestId(INCIDENT_STATUS_TEST_ID));
-        expect(screen.getByTestId('test-case-incident-actions')).toHaveClass(
-          'tw:lg:w-auto'
+
+        const incidentActions = screen.getByTestId(
+          'test-case-incident-actions'
         );
+
+        expect(incidentActions).toHaveClass('tw:lg:w-80');
         expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveClass(
           TEXT_XS_CLASS,
           'tw:font-semibold'

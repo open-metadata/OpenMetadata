@@ -81,7 +81,7 @@ const IncidentDetails = ({
         )}
       </div>
       <div
-        className="tw:flex tw:w-full tw:items-start tw:lg:w-auto tw:lg:shrink-0"
+        className="tw:flex tw:w-full tw:items-start tw:lg:w-80 tw:lg:shrink-0"
         data-testid="test-case-incident-actions">
         <Button
           className="tw:ml-auto tw:shrink-0"
