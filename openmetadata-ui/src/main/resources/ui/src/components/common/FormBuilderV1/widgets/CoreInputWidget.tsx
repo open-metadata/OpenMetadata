@@ -62,19 +62,24 @@ const CoreInputWidget = ({
     onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
-  const description = schema.description ?? options.help;
+  const description = (options.help as string | undefined) ?? schema.description;
   const showAsTooltip = Boolean(options.showDescriptionAsTooltip);
-  const hint = rawErrors?.[0] ?? (showAsTooltip ? undefined : description);
-  const tooltip = showAsTooltip ? (description as string | undefined) : undefined;
   const widgetLabel = getWidgetLabel({ hideLabel, label });
+  // Only show tooltip when there is a label to anchor it; otherwise fall back
+  // to inline hint so the description is not silently lost.
+  const showTooltipRow = showAsTooltip && Boolean(widgetLabel);
+  const hint = rawErrors?.[0] ?? (showTooltipRow ? undefined : description);
+  const tooltip = showTooltipRow ? (description as string | undefined) : undefined;
 
   return (
     <div>
-      {tooltip && widgetLabel ? (
+      {showTooltipRow ? (
         <div className="tw:mb-1.5 tw:flex tw:cursor-default tw:items-center tw:gap-1.5">
-          <span className="tw:text-sm tw:font-medium tw:text-secondary">
+          <label
+            className="tw:text-sm tw:font-medium tw:text-secondary"
+            htmlFor={id}>
             {widgetLabel}
-          </span>
+          </label>
           {required && (
             <span className="tw:text-error-primary">*</span>
           )}
@@ -87,14 +92,14 @@ const CoreInputWidget = ({
       ) : null}
       <Input
         autoFocus={autofocus}
-        className={tooltip ? 'tw:w-[86%]' : undefined}
+        className={showTooltipRow ? 'tw:w-[86%]' : undefined}
         hint={hint}
         hintClassName="tw:text-xs"
         id={id}
         isDisabled={disabled || readonly}
         isInvalid={!!rawErrors?.length}
         isRequired={required}
-        label={tooltip ? undefined : widgetLabel}
+        label={showTooltipRow ? undefined : widgetLabel}
         placeholder={placeholder}
         type={inputType}
         value={value ?? ''}
