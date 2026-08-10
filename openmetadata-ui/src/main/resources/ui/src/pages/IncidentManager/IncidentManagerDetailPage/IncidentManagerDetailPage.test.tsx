@@ -31,6 +31,7 @@ const TEST_SUITE_FQN = 'sample_data.ecommerce_db.shopify.dim_address.testSuite';
 const ERROR_PLACEHOLDER_TEST_ID = 'error-placeholder';
 const HEADER_BREADCRUMB_TEST_ID = 'header-breadcrumb';
 const INCIDENT_MANAGER_HEADER_TEST_ID = 'incident-manager-page-header';
+const LAST_RUN_SUCCESS_BANNER_TEST_ID = 'test-case-last-run-banner-success';
 
 const mockTestCaseData = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
@@ -311,7 +312,7 @@ describe('IncidentManagerDetailPage', () => {
     });
 
     expect(await screen.findByTestId('tabs')).toContainElement(
-      await screen.findByTestId('test-case-last-run-banner')
+      await screen.findByTestId(LAST_RUN_SUCCESS_BANNER_TEST_ID)
     );
   });
 
@@ -356,7 +357,7 @@ describe('IncidentManagerDetailPage', () => {
     });
 
     expect(
-      screen.queryByTestId('test-case-last-run-banner')
+      screen.queryByTestId(LAST_RUN_SUCCESS_BANNER_TEST_ID)
     ).not.toBeInTheDocument();
   });
 
