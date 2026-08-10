@@ -187,6 +187,8 @@ class KafkaConnectClient:
         # Detect if this is Confluent Cloud (managed connectors)
         parsed_url = urlparse(url)
         self.is_confluent_cloud = parsed_url.hostname == "api.confluent.cloud"
+        # None until the /topics endpoint has been probed once for this cluster
+        self._topics_endpoint_supported = None
 
     def _infer_cdc_topics_from_server_name(self, database_server_name: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
         """
@@ -389,12 +391,42 @@ class KafkaConnectClient:
 
         return None
 
+    def _list_topics_from_api(self, connector: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+        """
+        Ask the Connect runtime which topics the connector actually produced (KIP-558).
+
+        This is the only reliable source for a connector whose destination topic is
+        computed at runtime — a Debezium outbox EventRouter routing by a row value has
+        no static topic name anywhere in its config.
+
+        Not every deployment implements the endpoint, so a failure is downgraded to a
+        one-time probe: after the first rejection we stop asking for the rest of the run
+        rather than issuing a doomed request per connector.
+        """
+        if self._topics_endpoint_supported is False:
+            return None
+        try:
+            result = self.client.list_connector_topics(connector=connector).get(connector)
+            self._topics_endpoint_supported = True
+            if result:
+                return [KafkaConnectTopics(name=topic) for topic in result.get("topics") or []]
+        except Exception as exc:
+            if self._topics_endpoint_supported is None:
+                self._topics_endpoint_supported = False
+                logger.info(
+                    f"Connect /connectors/{{name}}/topics is unavailable on this cluster ({exc}); "
+                    "falling back to topic names declared in connector configs. Connectors that route "
+                    "by row value (e.g. a Debezium outbox EventRouter) cannot be resolved this way."
+                )
+            logger.debug(traceback.format_exc())
+        return None
+
     def get_connector_topics(self, connector: str) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
         """
         Get the list of topics for a connector.
 
-        For Confluent Cloud, the /topics endpoint is not supported, so we extract
-        topics from the connector configuration instead.
+        Prefers what the Connect runtime reports, falling back to the topic names
+        declared in the connector configuration.
 
         Args:
             connector (str): The name of the connector.
@@ -406,30 +438,25 @@ class KafkaConnectClient:
                                             or an error occurs.
         """
         try:
-            if self.is_confluent_cloud:
-                # Confluent Cloud doesn't support /connectors/{name}/topics endpoint
-                # Extract topics from connector config instead
-                config = self.get_connector_config(connector=connector)
-                if config:
-                    topics = []
-                    # Check common topic configuration keys
-                    for key in ConnectorConfigKeys.TOPIC_KEYS:
-                        if key in config:
-                            topic_value = config[key]
-                            # Handle single topic or comma-separated list
-                            if isinstance(topic_value, str):
-                                topic_list = [t.strip() for t in topic_value.split(",")]
-                                topics.extend([KafkaConnectTopics(name=topic) for topic in topic_list])
+            topics = self._list_topics_from_api(connector)
+            if topics:
+                return topics
 
-                    if topics:
-                        logger.info(f"Extracted {len(topics)} topics from Confluent Cloud connector config")
-                        return topics
-            else:
-                # Self-hosted Kafka Connect supports /topics endpoint
-                result = self.client.list_connector_topics(connector=connector).get(connector)
-                if result:
-                    topics = [KafkaConnectTopics(name=topic) for topic in result.get("topics") or []]
-                    return topics  # noqa: RET504
+            config = self.get_connector_config(connector=connector)
+            if config:
+                topics = []
+                # Check common topic configuration keys
+                for key in ConnectorConfigKeys.TOPIC_KEYS:
+                    if key in config:
+                        topic_value = config[key]
+                        # Handle single topic or comma-separated list
+                        if isinstance(topic_value, str):
+                            topic_list = [t.strip() for t in topic_value.split(",")]
+                            topics.extend([KafkaConnectTopics(name=topic) for topic in topic_list])
+
+                if topics:
+                    logger.info(f"Extracted {len(topics)} topics from connector config for {connector}")
+                    return topics
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get connector Topics {exc}")
