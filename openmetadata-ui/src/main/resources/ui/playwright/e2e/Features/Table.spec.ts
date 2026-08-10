@@ -224,22 +224,22 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-    await page
-      .getByTestId('page-size-selection-dropdown')
-      .scrollIntoViewIfNeeded();
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
+    await page.waitForLoadState('domcontentloaded');
+    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    await pageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(pageSizeDropdown).toBeVisible();
+    await expect(pageSizeDropdown).toBeEnabled();
+    await pageSizeDropdown.click();
 
-    await expect(
-      page.getByRole('menuitem', { name: '15 / Page' })
-    ).toBeVisible();
-
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+    const pageSizeOption = page
+      .getByRole('menuitem', { name: '15 / Page' });
+    await expect(pageSizeOption).toBeVisible();
+    await pageSizeOption.click();
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);
-    const entityApiResponse = page.waitForResponse(
-      '/api/v1/permissions/table/name/*'
+    const entityApiResponse = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/permissions/table/name/')
     );
     await linkInColumn.click();
 
