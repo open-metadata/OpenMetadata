@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -23,6 +24,7 @@ import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallbac
 import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -37,7 +39,10 @@ import {
   AnnouncementEntity,
   getActiveAnnouncements,
 } from '../../rest/announcementsAPI';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import {
+  docStoreQueryFn,
+  docStoreQueryKey,
+} from '../../rest/queries/docStoreQuery';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
 import customizeMyDataPageClassBase from '../../utils/CustomizeMyDataPageClassBase';
@@ -75,18 +80,52 @@ const MyDataPage = () => {
     useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>(
-    getDefaultLandingPageLayout
-  );
-
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const [isAnnouncementLoading, setIsAnnouncementLoading] =
     useState<boolean>(true);
   const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
-  const [personaPreferences, setPersonaPreferences] = useState<
-    PersonaPreferences[]
-  >([]);
+
+  const personaFqn = selectedPersona?.fullyQualifiedName
+    ? `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`
+    : null;
+
+  const { data: docData, isPending: isDocPending } = useQuery({
+    queryKey: docStoreQueryKey(personaFqn ?? ''),
+    queryFn: docStoreQueryFn(personaFqn ?? ''),
+    enabled: !!personaFqn,
+    retry: false,
+  });
+
+  const isLoading = !!personaFqn && isDocPending;
+
+  const personaPreferences = useMemo<PersonaPreferences[]>(
+    () => docData?.data?.personPreferences ?? [],
+    [docData]
+  );
+
+  const layout = useMemo<Array<WidgetConfig>>(() => {
+    if (!docData || !selectedPersona) {
+      return getDefaultLandingPageLayout();
+    }
+    const pageData = docData.data?.pages?.find(
+      (p: Page) => p.pageType === PageType.LandingPage
+    ) ?? { layout: [], pageType: PageType.LandingPage };
+    const filteredLayout = (pageData.layout as WidgetConfig[])
+      .filter(
+        (widget: WidgetConfig) =>
+          !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
+          !isEmpty(widget.config)
+      )
+      .map((widget: WidgetConfig) => ({
+        ...widget,
+        w: getConstrainedWidgetWidth(widget.w),
+        h: 3,
+      }));
+
+    return isEmpty(filteredLayout)
+      ? getDefaultLandingPageLayout()
+      : filteredLayout;
+  }, [docData, selectedPersona]);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
@@ -115,49 +154,6 @@ const MyDataPage = () => {
     return userPersonaBackgroundColor ?? adminPersonaBackgroundColor;
   }, [userPersonaBackgroundColor, adminPersonaBackgroundColor]);
 
-  const fetchDocument = async () => {
-    setIsLoading(true);
-
-    try {
-      if (selectedPersona) {
-        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
-        const docData = await getDocumentByFQN(pageFQN);
-
-        setPersonaPreferences(docData.data?.personPreferences ?? []);
-
-        const pageData = docData.data?.pages?.find(
-          (p: Page) => p.pageType === PageType.LandingPage
-        ) ?? { layout: [], pageType: PageType.LandingPage };
-
-        const filteredLayout = pageData.layout
-          .filter(
-            (widget: WidgetConfig) =>
-              !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
-              !isEmpty(widget.config)
-          )
-          .map((widget: WidgetConfig) => {
-            return {
-              ...widget,
-              w: getConstrainedWidgetWidth(widget.w),
-              h: 3,
-            };
-          });
-
-        setLayout(
-          isEmpty(filteredLayout)
-            ? getDefaultLandingPageLayout()
-            : filteredLayout
-        );
-      } else {
-        setLayout(getDefaultLandingPageLayout());
-      }
-    } catch {
-      setLayout(getDefaultLandingPageLayout());
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const updateWelcomeScreen = (show: boolean) => {
     if (loggedInUserName) {
       const arr = storageData ? storageData.split(',') : [];
@@ -168,10 +164,6 @@ const MyDataPage = () => {
     }
     setShowWelcomeScreen(show);
   };
-
-  useEffect(() => {
-    fetchDocument();
-  }, [selectedPersona]);
 
   useEffect(() => {
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
