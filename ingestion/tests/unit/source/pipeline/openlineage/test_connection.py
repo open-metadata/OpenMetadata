@@ -13,6 +13,8 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from metadata.generated.schema.entity.services.connections.messaging.saslMechanismType import (
     SaslMechanismType,
 )
@@ -26,6 +28,7 @@ from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
 )
 from metadata.generated.schema.security.ssl.verifySSLConfig import SslConfig
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.pipeline.openlineage.connection import (
     OpenLineageConnection,
     _get_kafka_connection,
@@ -79,6 +82,20 @@ def test_kafka_ssl_ca_content_is_materialized_as_temp_file():
     assert config["ssl.key.location"] is not None
     assert ssl_manager is not None
     ssl_manager.cleanup_temp_files()
+
+
+def test_kafka_ssl_temp_files_cleaned_up_when_consumer_fails():
+    """If the consumer cannot be built, the materialized cert temp files must still be
+    torn down so repeated failed connects do not orphan cert material in the temp dir."""
+    broker = _ssl_broker()
+    ssl_manager = MagicMock()
+    with (
+        patch(f"{CONNECTION_MODULE}.SSLManager", return_value=ssl_manager),
+        patch(f"{CONNECTION_MODULE}.KafkaConsumer", side_effect=Exception("boom")),
+        pytest.raises(SourceConnectionException),
+    ):
+        _get_kafka_connection(broker)
+    ssl_manager.cleanup_temp_files.assert_called_once()
 
 
 def test_kafka_sasl_password_is_read_from_secret():
