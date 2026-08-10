@@ -208,6 +208,19 @@ SET json = jsonb_set(
 WHERE serviceType = 'Databricks'
   AND json::jsonb #> '{connection,config,policyAgentConfig,supportsMaskedAccess}' = 'true'::jsonb;
 
+-- Unity Catalog: same defaults as Databricks (enabled/Full true, Column and Masked false).
+-- The field is new for this serviceType, so every existing row is missing the object
+-- entirely — one full-object write, no guarded flips.
+UPDATE dbservice_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{connection,config,policyAgentConfig}',
+    '{"enabled":true,"supportsColumnAccess":false,"supportsFullAccess":true,"supportsMaskedAccess":false}'::jsonb,
+    true
+)
+WHERE serviceType = 'UnityCatalog'
+  AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NULL;
+
 -- Postgres no longer declares policyAgentConfig. Earlier this script backfilled the
 -- object onto Postgres rows; remove it so the stored shape matches the schema.
 UPDATE dbservice_entity
