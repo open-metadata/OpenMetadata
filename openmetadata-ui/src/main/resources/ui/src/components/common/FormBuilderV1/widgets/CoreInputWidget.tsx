@@ -11,14 +11,25 @@
  *  limitations under the License.
  */
 
-import {
-  Input,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
+import { Input, Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { HelpCircle } from '@untitledui/icons';
 import { getWidgetLabel } from './coreWidgetUtils';
+
+const parseNumericValue = (
+  nextValue: string,
+  schemaType: string | string[] | undefined
+): number | undefined => {
+  if (nextValue === '') {
+    return undefined;
+  }
+  const parsed =
+    schemaType === 'integer'
+      ? Number.parseInt(nextValue, 10)
+      : Number.parseFloat(nextValue);
+
+  return Number.isNaN(parsed) ? undefined : parsed;
+};
 
 const CoreInputWidget = ({
   id,
@@ -29,7 +40,6 @@ const CoreInputWidget = ({
   label,
   hideLabel,
   placeholder,
-  autofocus,
   rawErrors,
   schema,
   options,
@@ -43,21 +53,8 @@ const CoreInputWidget = ({
 
   const handleChange = (nextValue: string) => {
     if (schema.type === 'number' || schema.type === 'integer') {
-      if (nextValue === '') {
-        onChange(options.emptyValue ?? undefined);
-
-        return;
-      }
-
-      const parsedValue =
-        schema.type === 'integer'
-          ? Number.parseInt(nextValue, 10)
-          : Number.parseFloat(nextValue);
-
       onChange(
-        Number.isNaN(parsedValue)
-          ? options.emptyValue ?? undefined
-          : parsedValue
+        parseNumericValue(nextValue, schema.type) ?? options.emptyValue ?? undefined
       );
 
       return;
@@ -66,27 +63,22 @@ const CoreInputWidget = ({
     onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
-  const description =
-    (options.help as string | undefined) ?? schema.description;
+  const description = (options.help as string | undefined) ?? schema.description;
   const showAsTooltip = Boolean(options.showDescriptionAsTooltip);
   const widgetLabel = getWidgetLabel({ hideLabel, label });
-  // Only show tooltip when there is a label to anchor it; otherwise fall back
-  // to inline hint so the description is not silently lost.
   const showTooltipRow = showAsTooltip && Boolean(widgetLabel);
   const hint = rawErrors?.[0] ?? (showTooltipRow ? undefined : description);
-  const tooltip = showTooltipRow
-    ? (description as string | undefined)
-    : undefined;
+  const tooltip = showTooltipRow ? (description as string | undefined) : undefined;
 
   return (
     <div>
       {showTooltipRow ? (
         <div className="tw:mb-1.5 tw:flex tw:cursor-default tw:items-center tw:gap-1.5">
-          <label
-            className="tw:text-sm tw:font-medium tw:text-secondary"
-            htmlFor={id}>
+          <span
+            aria-hidden
+            className="tw:text-sm tw:font-medium tw:text-secondary">
             {widgetLabel}
-          </label>
+          </span>
           {required && <span className="tw:text-error-primary">*</span>}
           <Tooltip placement="top" title={tooltip}>
             <TooltipTrigger className="tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover">
@@ -96,7 +88,7 @@ const CoreInputWidget = ({
         </div>
       ) : null}
       <Input
-        autoFocus={autofocus}
+        aria-label={showTooltipRow ? widgetLabel : undefined}
         className={showTooltipRow ? 'tw:w-[86%]' : undefined}
         hint={hint}
         hintClassName="tw:text-xs"

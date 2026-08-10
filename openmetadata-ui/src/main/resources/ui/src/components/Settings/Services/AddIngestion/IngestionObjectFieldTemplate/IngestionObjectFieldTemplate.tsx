@@ -344,6 +344,16 @@ const SectionCard = ({
   );
 };
 
+const getCompactAdvancedSection = (
+  isRootLevel: boolean,
+  uiSchema: ObjectFieldTemplateProps['uiSchema']
+): boolean =>
+  isRootLevel &&
+  Boolean(
+    (uiSchema?.['ui:options'] as Record<string, unknown> | undefined)
+      ?.compactAdvancedSection
+  );
+
 export const IngestionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = ({
@@ -355,12 +365,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
 }: ObjectFieldTemplateProps) => {
   const { t } = useTranslation();
   const isRootLevel = idSchema.$id === 'root';
-  const compactAdvancedSection =
-    isRootLevel &&
-    Boolean(
-      (uiSchema?.['ui:options'] as Record<string, unknown> | undefined)
-        ?.compactAdvancedSection
-    );
+  const compactAdvancedSection = getCompactAdvancedSection(isRootLevel, uiSchema);
 
   if (!isRootLevel) {
     const nonRootSchemaProperties = (schema.properties ?? {}) as Record<

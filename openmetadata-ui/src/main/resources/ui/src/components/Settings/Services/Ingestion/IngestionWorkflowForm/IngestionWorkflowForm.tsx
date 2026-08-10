@@ -238,7 +238,13 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     return commonSchema;
-  }, [pipeLineType, operationType, hideFooter]);
+  }, [
+    hideFooter,
+    isElasticSearchPipeline,
+    isIncrementalExtractionSupported,
+    operationType,
+    pipeLineType,
+  ]);
 
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
