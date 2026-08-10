@@ -19,6 +19,8 @@ https://github.com/open-metadata/OpenMetadata/issues/28204
 https://github.com/open-metadata/OpenMetadata/issues/30964
 """
 
+import threading
+import time
 from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
@@ -479,6 +481,7 @@ def _prefetch_source(taxonomy_project_ids=None, database="proj-key") -> Bigquery
     source._taxonomy_cache = {}
     source._taxonomy_to_tags = {}
     source._policy_tag_prefetch_key = None
+    source._policy_tag_lock = threading.Lock()
     source._policy_tag_client = MagicMock()
     source._policy_tag_client.list_policy_tags.return_value = []
     return source
@@ -551,4 +554,44 @@ def test_prefetch_policy_tags_does_not_retry_a_denied_project_per_schema():
     source._prefetch_policy_tags()
     source._prefetch_policy_tags()
 
+    source._policy_tag_client.list_taxonomies.assert_called_once()
+
+
+def test_prefetch_policy_tags_never_exposes_a_half_built_cache_to_a_second_thread():
+    """
+    The databaseSchema node runs with threads=True, so schemas prefetch
+    concurrently on one source instance. A thread that skips the fetch must still
+    observe a fully populated cache - ``yield_tag`` iterates ``_taxonomy_cache``
+    the moment this returns, and a partial read silently emits zero or missing
+    policy tags for that schema.
+    """
+    source = _prefetch_source()
+    taxonomies = [_taxonomy(f"t/{i}", f"PII-{i}") for i in range(25)]
+    started = threading.Event()
+
+    def slow_list_taxonomies(parent):
+        started.set()
+        time.sleep(0.2)  # hold the lock across the "network" call
+        return iter(taxonomies)
+
+    source._policy_tag_client.list_taxonomies.side_effect = slow_list_taxonomies
+    source._policy_tag_client.list_policy_tags.side_effect = lambda parent: iter([])
+
+    observed = []
+
+    def prefetch_then_consume():
+        source._prefetch_policy_tags()
+        # exactly what yield_tag does with the caches on return
+        observed.append(dict(source._taxonomy_cache))
+
+    first = threading.Thread(target=prefetch_then_consume)
+    first.start()
+    started.wait(timeout=5)
+    second = threading.Thread(target=prefetch_then_consume)
+    second.start()
+    first.join(timeout=5)
+    second.join(timeout=5)
+
+    expected = {f"t/{i}": f"PII-{i}" for i in range(25)}
+    assert observed == [expected, expected]
     source._policy_tag_client.list_taxonomies.assert_called_once()

@@ -14,6 +14,7 @@ Bigquery source module
 """
 
 import os
+import threading
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
@@ -255,6 +256,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._table_ddl_cache = {}
         self._policy_tag_client = None
         self._policy_tag_prefetch_key: Optional[Tuple[str, ...]] = None  # noqa: UP045, UP006
+        self._policy_tag_lock = threading.Lock()
 
         if self.service_connection.includePolicyTags:
             try:
@@ -523,42 +525,52 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         # project list (not a done-flag) keeps a multi-project run from ever
         # serving one project's taxonomies to another.
         prefetch_key = tuple(list_project_ids)
-        if prefetch_key == self._policy_tag_prefetch_key:
-            return
 
-        self._policy_tag_cache.clear()
-        self._taxonomy_cache.clear()
-        self._taxonomy_to_tags.clear()
-        # Claimed up front so a project that fails below is not retried for every
-        # remaining dataset: a denied taxonomy read will not start succeeding
-        # later in the same run, it only repeats the warning.
-        self._policy_tag_prefetch_key = prefetch_key
+        # The databaseSchema node fans out across threads (threads=True in
+        # database_service.py), so schemas reach this concurrently on one source
+        # instance. The lock makes a losing thread wait for a fully built cache
+        # instead of reading one mid-population, and the caches are swapped in
+        # rather than mutated so a consumer holding a reference never observes a
+        # half-filled dict.
+        with self._policy_tag_lock:
+            if prefetch_key == self._policy_tag_prefetch_key:
+                return
 
-        if not self._policy_tag_client:
-            logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
-            return
+            policy_tag_cache: Dict[str, Dict[str, str]] = {}  # noqa: UP006
+            taxonomy_cache: Dict[str, str] = {}  # noqa: UP006
+            taxonomy_to_tags: Dict[str, List[str]] = {}  # noqa: UP006
 
-        for project_id in list_project_ids:
-            try:
-                parent = f"projects/{project_id}/locations/{self.service_connection.taxonomyLocation}"
-                taxonomies = list(self._policy_tag_client.list_taxonomies(parent=parent))
+            if self._policy_tag_client:
+                for project_id in list_project_ids:
+                    try:
+                        parent = f"projects/{project_id}/locations/{self.service_connection.taxonomyLocation}"
+                        taxonomies = list(self._policy_tag_client.list_taxonomies(parent=parent))
 
-                for taxonomy in taxonomies:
-                    self._taxonomy_cache[taxonomy.name] = taxonomy.display_name
+                        for taxonomy in taxonomies:
+                            taxonomy_cache[taxonomy.name] = taxonomy.display_name
+                            taxonomy_to_tags.setdefault(taxonomy.display_name, [])
 
-                    if taxonomy.display_name not in self._taxonomy_to_tags:
-                        self._taxonomy_to_tags[taxonomy.display_name] = []
+                            policy_tags = list(self._policy_tag_client.list_policy_tags(parent=taxonomy.name))
 
-                    policy_tags = list(self._policy_tag_client.list_policy_tags(parent=taxonomy.name))
+                            for tag in policy_tags:
+                                policy_tag_cache[tag.name] = {
+                                    "display_name": tag.display_name,
+                                    "taxonomy": taxonomy.display_name,
+                                }
+                                taxonomy_to_tags[taxonomy.display_name].append(tag.display_name)
+                    except Exception as exc:
+                        logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")
+            else:
+                logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
 
-                    for tag in policy_tags:
-                        self._policy_tag_cache[tag.name] = {
-                            "display_name": tag.display_name,
-                            "taxonomy": taxonomy.display_name,
-                        }
-                        self._taxonomy_to_tags[taxonomy.display_name].append(tag.display_name)
-            except Exception as exc:
-                logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")
+            self._policy_tag_cache = policy_tag_cache
+            self._taxonomy_cache = taxonomy_cache
+            self._taxonomy_to_tags = taxonomy_to_tags
+            # Set last, so a thread released from the lock above always sees
+            # fully built caches. Set even when a project failed: a denied
+            # taxonomy read will not start succeeding later in the same run, and
+            # retrying it per schema only repeats the warning.
+            self._policy_tag_prefetch_key = prefetch_key
 
     def _prefetch_table_ddls(self, schema_name: str):
         """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""

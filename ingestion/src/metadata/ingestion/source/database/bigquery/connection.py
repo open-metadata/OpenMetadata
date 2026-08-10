@@ -95,11 +95,12 @@ class PolicyTagAccessError(Exception):
 BIGQUERY_ERRORS = ErrorPack(
     when(Matchers.exception(PolicyTagAccessError)).diagnose(
         "Cannot read BigQuery policy tags",
-        fix="Data Catalog denied listing taxonomies. Grant the Data Catalog Viewer role "
-        "(datacatalog.taxonomies.list / datacatalog.taxonomies.get) on the taxonomy project. If "
-        "service account impersonation is configured, grant it to the impersonated service "
-        "account, not the source one. Also verify 'taxonomyProjectID' and 'taxonomyLocation' point "
-        "at the project and region where the taxonomies actually live.",
+        fix="Data Catalog denied reading taxonomies or their policy tags. Grant the Data Catalog "
+        "Viewer role (datacatalog.taxonomies.list to enumerate taxonomies, "
+        "datacatalog.taxonomies.get to read a taxonomy and its policy tags) on the taxonomy "
+        "project. If service account impersonation is configured, grant it to the impersonated "
+        "service account, not the source one. Also verify 'taxonomyProjectID' and "
+        "'taxonomyLocation' point at the project and region where the taxonomies actually live.",
     ),
     when(Matchers.exception(InvalidPrivateKeyException)).diagnose(
         "Malformed service account private key",
