@@ -137,7 +137,7 @@ const FileNodeView: FC<NodeViewProps> = ({
 
     if (isMedia) {
       return (
-        <div className="media-wrapper">
+        <div className="tw:w-full">
           {isVideo ? (
             <video controls className="video-player" src={mediaSrc} />
           ) : (

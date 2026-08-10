@@ -10,11 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { DownloadOutlined, FileOutlined } from '@ant-design/icons';
+import {
+  ButtonUtility,
+  FileIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { NodeViewProps } from '@tiptap/react';
-import { Button } from 'antd';
 import React from 'react';
-import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as DownloadIcon } from '../../../../../assets/svg/action-icons/download.svg';
+import { ReactComponent as TrashIcon } from '../../../../../assets/svg/action-icons/trash.svg';
+import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import { bytesToSize } from '../../../../../utils/StringUtils';
 
 const FileAttachment = ({
@@ -28,6 +34,7 @@ const FileAttachment = ({
   deleteNode: () => void;
   onFileClick: (e: React.MouseEvent) => void;
 }) => {
+  const { t } = useTranslation();
   const {
     url,
     fileName,
@@ -37,12 +44,16 @@ const FileAttachment = ({
     uploadProgress,
     tempFile,
   } = node.attrs;
+  const isUploadedAsset = url?.includes(UPLOADED_ASSETS_URL);
 
   return (
     <div className="file-link-container" onClick={(e) => e.preventDefault()}>
-      <div className="file-content-wrapper">
-        <FileOutlined className="file-icon" />
-        <div className="file-details">
+      <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1 tw:relative tw:w-[90%]">
+        <FileIcon
+          className="tw:w-8 tw:h-8 tw:shrink-0"
+          type={mimeType || tempFile?.type || ''}
+        />
+        <div className="tw:flex tw:flex-col tw:min-w-0">
           <a
             className="file-link"
             data-filename={fileName || tempFile?.name}
@@ -52,12 +63,20 @@ const FileAttachment = ({
             data-url={url}
             href="#"
             onClick={onFileClick}>
-            <span className="file-name">{fileName || tempFile?.name}</span>
+            <Typography ellipsis as="p" className="file-name" size="text-sm">
+              {fileName || tempFile?.name || url}
+            </Typography>
           </a>
           <div className="file-meta">
-            <span className="file-size">
-              {bytesToSize(fileSize || tempFile?.size)}
-            </span>
+            {fileSize || tempFile?.size ? (
+              <Typography
+                as="p"
+                className="file-size"
+                color="secondary"
+                size="text-xs">
+                {bytesToSize(fileSize || tempFile?.size)}
+              </Typography>
+            ) : null}
             {isUploading ? (
               <div
                 className="upload-progress"
@@ -65,28 +84,31 @@ const FileAttachment = ({
                 style={{ width: `${uploadProgress || 0}%` }}
               />
             ) : (
-              <>
-                <span className="separator">|</span>
-                <Button
-                  className="file-percentage"
-                  icon={<DownloadOutlined />}
-                  loading={isFileLoading}
-                  size="small"
-                  type="text"
-                  onClick={onFileClick}
-                />
-              </>
+              isUploadedAsset && (
+                <>
+                  <span className="separator">|</span>
+                  <ButtonUtility
+                    color="tertiary"
+                    data-testid="download-file-attachment"
+                    icon={<DownloadIcon height={18} width={18} />}
+                    isDisabled={isFileLoading}
+                    size="sm"
+                    tooltip={t('label.download')}
+                    onClick={onFileClick}
+                  />
+                </>
+              )
             )}
           </div>
         </div>
       </div>
       {!isUploading && (
-        <Icon
-          className="delete-icon"
-          component={IconDelete}
+        <ButtonUtility
+          color="tertiary"
           data-testid="delete-icon"
-          size={14}
-          onClick={(e) => {
+          icon={<TrashIcon height={18} width={18} />}
+          size="sm"
+          onClick={(e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
             deleteNode();

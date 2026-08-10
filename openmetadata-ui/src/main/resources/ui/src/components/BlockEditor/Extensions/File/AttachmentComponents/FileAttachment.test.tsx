@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/react';
+import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import { bytesToSize } from '../../../../../utils/StringUtils';
 import FileAttachment from './FileAttachment';
 
@@ -31,8 +32,10 @@ describe('FileAttachment', () => {
       },
     } as unknown as NodeViewProps['node']); // Type assertion to avoid TipTap Node type complexity
 
+  const uploadedFileUrl = `${UPLOADED_ASSETS_URL}abc-123`;
+
   const mockNode = createMockNode({
-    url: 'https://example.com/file.pdf',
+    url: uploadedFileUrl,
     fileName: 'test.pdf',
     fileSize: 1024 * 1024, // 1MB
     mimeType: 'application/pdf',
@@ -58,8 +61,8 @@ describe('FileAttachment', () => {
     // Check if file size is displayed correctly
     expect(screen.getByText(bytesToSize(1024 * 1024))).toBeInTheDocument();
 
-    // Check if download button is present
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    // Check if download button is present for an uploaded asset
+    expect(screen.getByTestId('download-file-attachment')).toBeInTheDocument();
   });
 
   it('handles file click correctly', () => {
@@ -95,15 +98,42 @@ describe('FileAttachment', () => {
     expect(progressBar).toHaveStyle({ width: '50%' });
 
     // Check if delete button is not present during upload
-    expect(screen.queryByLabelText('delete')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('delete-icon')).not.toBeInTheDocument();
   });
 
-  it('shows loading state on download button when isFileLoading is true', () => {
+  it('disables the download button when isFileLoading is true', () => {
     render(<FileAttachment {...mockProps} isFileLoading />);
 
-    const downloadButton = screen.getByRole('button');
+    const downloadButton = screen.getByTestId('download-file-attachment');
 
-    expect(downloadButton).toHaveClass('ant-btn-loading');
+    expect(downloadButton).toBeDisabled();
+  });
+
+  it('does not show a download button for a plain external URL', () => {
+    const urlOnlyNode = createMockNode({
+      ...mockNode.attrs,
+      url: 'https://example.com/file.pdf',
+    });
+
+    render(<FileAttachment {...mockProps} node={urlOnlyNode} />);
+
+    expect(
+      screen.queryByTestId('download-file-attachment')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders without throwing when mimeType and tempFile are both empty', () => {
+    const noMimeTypeNode = createMockNode({
+      ...mockNode.attrs,
+      mimeType: null,
+      tempFile: null,
+    });
+
+    expect(() =>
+      render(<FileAttachment {...mockProps} node={noMimeTypeNode} />)
+    ).not.toThrow();
+
+    expect(screen.getByText('test.pdf')).toBeInTheDocument();
   });
 
   it('uses tempFile details when available', () => {
