@@ -2462,6 +2462,7 @@
     "static": "静态",
     "status": "状态",
     "status-failed": "失败",
+    "status-plural": "状态",
     "status-running": "运行中",
     "status-success": "成功",
     "stay-ahead": "抢先掌握",

@@ -2462,6 +2462,7 @@
     "static": "Statisch",
     "status": "Status",
     "status-failed": "Fehlgeschlagen",
+    "status-plural": "Status",
     "status-running": "Wird ausgeführt",
     "status-success": "Erfolgreich",
     "stay-ahead": "Immer einen Schritt voraus",

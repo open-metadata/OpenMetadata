@@ -2462,6 +2462,7 @@
     "static": "靜態",
     "status": "狀態",
     "status-failed": "失敗",
+    "status-plural": "狀態",
     "status-running": "執行中",
     "status-success": "成功",
     "stay-ahead": "搶先掌握",

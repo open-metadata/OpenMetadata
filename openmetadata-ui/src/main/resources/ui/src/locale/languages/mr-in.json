@@ -2462,6 +2462,7 @@
     "static": "स्थिर",
     "status": "स्थिती",
     "status-failed": "अयशस्वी",
+    "status-plural": "स्थिती",
     "status-running": "चालू आहे",
     "status-success": "यशस्वी",
     "stay-ahead": "पुढे रहा",

@@ -2462,6 +2462,7 @@
     "static": "Estático",
     "status": "وضعیت",
     "status-failed": "ناموفق",
+    "status-plural": "وضعیت‌ها",
     "status-running": "در حال اجرا",
     "status-success": "موفق",
     "stay-ahead": "پیش‌دستانه عمل کنید",

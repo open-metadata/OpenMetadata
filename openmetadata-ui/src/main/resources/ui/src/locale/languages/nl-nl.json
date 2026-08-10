@@ -2462,6 +2462,7 @@
     "static": "Statisch",
     "status": "Status",
     "status-failed": "Mislukt",
+    "status-plural": "Statussen",
     "status-running": "Actief",
     "status-success": "Geslaagd",
     "stay-ahead": "Blijf voorop",

@@ -2462,6 +2462,7 @@
     "static": "סטטי",
     "status": "סטטוס",
     "status-failed": "נכשל",
+    "status-plural": "סטטוסים",
     "status-running": "פועל",
     "status-success": "הצלחה",
     "stay-ahead": "הישארו צעד קדימה",

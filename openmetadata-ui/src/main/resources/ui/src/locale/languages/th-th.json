@@ -2462,6 +2462,7 @@
     "static": "สถิต",
     "status": "สถานะ",
     "status-failed": "ล้มเหลว",
+    "status-plural": "สถานะ",
     "status-running": "กำลังทำงาน",
     "status-success": "สำเร็จ",
     "stay-ahead": "ก้าวนำหนึ่งก้าว",

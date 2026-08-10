@@ -2462,6 +2462,7 @@
     "static": "Statik",
     "status": "Durum",
     "status-failed": "Başarısız",
+    "status-plural": "Durumlar",
     "status-running": "Çalışıyor",
     "status-success": "Başarılı",
     "stay-ahead": "Önde kalın",

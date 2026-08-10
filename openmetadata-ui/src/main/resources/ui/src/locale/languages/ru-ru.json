@@ -2462,6 +2462,7 @@
     "static": "Статический",
     "status": "Статус",
     "status-failed": "Неудачно",
+    "status-plural": "Статусы",
     "status-running": "Выполняется",
     "status-success": "Успешно",
     "stay-ahead": "Будьте на шаг впереди",

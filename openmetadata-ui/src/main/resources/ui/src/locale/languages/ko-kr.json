@@ -2462,6 +2462,7 @@
     "static": "정적",
     "status": "현황",
     "status-failed": "실패",
+    "status-plural": "현황",
     "status-running": "실행 중",
     "status-success": "성공",
     "stay-ahead": "한발 앞서 대응하세요",
