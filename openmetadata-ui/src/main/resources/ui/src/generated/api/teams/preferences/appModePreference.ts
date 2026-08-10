@@ -11,27 +11,6 @@
  *  limitations under the License.
  */
 /**
- * Per-user UI preferences. Each entry is a typed discriminated union — see
- * preferences/*.json for concrete schemas.
- */
-export interface UserPreferences {
-    /**
-     * List of typed per-user UI preferences (e.g. appMode). Each entry is a discriminated union
-     * keyed by `type`.
-     */
-    preferences: AppModePreference[];
-    /**
-     * Last update time corresponding to the new version of the preferences in Unix epoch time
-     * milliseconds.
-     */
-    updatedAt?: number;
-    /**
-     * Unique identifier of the User this preferences bag belongs to.
-     */
-    userId: string;
-}
-
-/**
  * User preference for app-mode boot behavior (AI vs Classic).
  */
 export interface AppModePreference {
