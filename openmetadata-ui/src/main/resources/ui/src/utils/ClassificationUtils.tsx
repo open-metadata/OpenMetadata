@@ -149,6 +149,7 @@ export const getTagsTableColumn = ({
       key: 'actions',
       width: 120,
       align: 'center',
+      fixed: 'right',
       render: (_, record: Tag) => {
         const { disableDeleteButton, disabledDeleteMessage } =
           getDeleteButtonData(

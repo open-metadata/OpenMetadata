@@ -164,7 +164,7 @@ const PoliciesDetailPage = () => {
     const patch = compare(policy, { ...policy, description });
     try {
       const data = await patchPolicy(patch, policy.id);
-      setPolicy({ ...policy, description: data.description });
+      setPolicy((prev) => ({ ...prev, description: data.description }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

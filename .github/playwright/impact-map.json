@@ -4,8 +4,6 @@
     "playwright/e2e/Auth/**",
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
-    "playwright/e2e/Pages/DataInsight.spec.ts",
-    "playwright/e2e/Pages/DataInsightSettings.spec.ts",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
     "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
     "playwright/e2e/Features/OntologyImportRdf.spec.ts",
@@ -157,6 +155,9 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/Alerts/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/Observability*",
         "openmetadata-ui/src/main/resources/ui/playwright/utils/incidentManager.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/alert.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/observabilityAlert.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/notificationAlert.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/events/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/events/subscription/**",
@@ -298,6 +299,17 @@
         "playwright/e2e/Flow/Navbar.spec.ts",
         "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/locale/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/i18next/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/Login.spec.ts",
+        "playwright/e2e/Flow/Navbar.spec.ts"
       ]
     },
     {

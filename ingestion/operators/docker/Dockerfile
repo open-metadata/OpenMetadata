@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
 # before configuring third-party apt repositories.
@@ -35,7 +35,7 @@ RUN dpkg --configure -a \
     openssl \
     # mysqlclient 2.2+ locates libmysqlclient through pkg-config (2.1.x used
     # mysql_config) and has no Linux wheels, so it always builds from source.
-    # The slim base omits pkg-config, unlike the python:3.10-bookworm base.
+    # The slim base omits pkg-config, unlike the python:3.12-bookworm base.
     pkg-config \
     # To ensure compatibility with unixodbc package
     odbcinst=2.3.11-2+deb12u1 \
@@ -112,6 +112,13 @@ RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
 RUN chown -R openmetadata:openmetadata /ingestion
 ENV HOME=/home/openmetadata
 ENV PATH="/home/openmetadata/.local/bin:${PATH}"
+
+# Refresh the interpreter-level pip before dropping privileges. The per-user
+# pip upgrade below only writes to ~/.local, so the base image's
+# /usr/local copy stays on disk and image scanners keep reporting it
+# (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
+RUN pip install --no-cache-dir --upgrade "pip>=26.2,<27"
+
 USER openmetadata
 
 # Disable pip cache dir
@@ -122,7 +129,7 @@ ENV PIP_QUIET=1
 
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
@@ -136,13 +143,6 @@ RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 RUN [ $(uname -m) = "x86_64" ] \
   && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
   || echo "DB2 not supported on ARM architectures."
-
-# Patch CVE-vulnerable jars bundled inside PySpark and strip the spaCy scanner fixture.
-# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale. Runs after all
-# pip installs so the pyspark/spacy trees exist; the script fails the build on a broken
-# pyspark install rather than silently shipping unpatched jars.
-COPY --chown=openmetadata:openmetadata ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
-RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
