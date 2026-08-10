@@ -694,10 +694,10 @@ class TestFivetranLineage:
 
         with patch.object(source, "metadata") as mock_metadata:
             mock_metadata.search_in_any_service = Mock(return_value=found)
-            result = source._resolve_table(table_name="action", schema_name="cxcases", database_name=None)
+            result = source._resolve_table(table_name="orders", schema_name="crm", database_name=None)
 
         assert result is found
-        assert mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"] == "cxcases.action"
+        assert mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"] == "crm.orders"
 
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
     def test_configured_services_do_not_use_fallback(self, mock_get_services, fivetran_source):
@@ -708,7 +708,7 @@ class TestFivetranLineage:
         with patch.object(source, "metadata") as mock_metadata:
             mock_metadata.get_by_name = Mock(return_value=found)
             mock_metadata.search_in_any_service = Mock()
-            result = source._resolve_table(table_name="action", schema_name="cxcases", database_name="db")
+            result = source._resolve_table(table_name="orders", schema_name="crm", database_name="db")
 
         assert result is found
         mock_metadata.search_in_any_service.assert_not_called()
@@ -721,7 +721,7 @@ class TestFivetranLineage:
         with patch.object(source, "metadata") as mock_metadata:
             mock_metadata.get_by_name = Mock(return_value=None)
             mock_metadata.search_in_any_service = Mock()
-            result = source._resolve_table(table_name="action", schema_name="cxcases", database_name="db")
+            result = source._resolve_table(table_name="orders", schema_name="crm", database_name="db")
 
         assert result is None
         mock_metadata.search_in_any_service.assert_not_called()
@@ -735,12 +735,12 @@ class TestFivetranLineage:
 
         with patch.object(source, "metadata") as mock_metadata:
             mock_metadata.search_in_any_service = Mock(return_value=found)
-            source._resolve_topic(topic_name="fivetran_dex.employee_paystub")
+            source._resolve_topic(topic_name="hr_stream.employee_events")
 
         # Topic FQNs have 2 slots; an unquoted dotted name would be read as service.topic
         assert (
             mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"]
-            == '"fivetran_dex.employee_paystub"'
+            == '"hr_stream.employee_events"'
         )
 
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
@@ -777,8 +777,8 @@ class TestFivetranLineage:
             client.get_connector_schema_details.return_value = {
                 "hr": {
                     "enabled": True,
-                    "name_in_destination": "fivetran_dex",
-                    "tables": {"paystub": {"enabled": True, "name_in_destination": "employee_paystub"}},
+                    "name_in_destination": "hr_stream",
+                    "tables": {"employees": {"enabled": True, "name_in_destination": "employee_events"}},
                 }
             }
             client.get_connector_column_lineage.return_value = {}
@@ -1133,13 +1133,13 @@ class TestSearchAnyService:
 
     def test_padding_contract_matches_real_helper(self, fivetran_source):
         source, _ = fivetran_source
-        search_string = self._capture_search_string(source, Table, [None, "cxcases", "action"])
-        assert prefix_entity_for_wildcard_search(Table, search_string) == "*.*.cxcases.action"
+        search_string = self._capture_search_string(source, Table, [None, "crm", "orders"])
+        assert prefix_entity_for_wildcard_search(Table, search_string) == "*.*.crm.orders"
 
     def test_leading_gap_is_dropped(self, fivetran_source):
         source, _ = fivetran_source
-        search_string = self._capture_search_string(source, Table, [None, "cxcases", "action"])
-        assert search_string == "cxcases.action"
+        search_string = self._capture_search_string(source, Table, [None, "crm", "orders"])
+        assert search_string == "crm.orders"
 
     def test_interior_gap_is_kept_as_wildcard(self, fivetran_source):
         source, _ = fivetran_source
