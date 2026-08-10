@@ -268,13 +268,33 @@ describe('RunHistoryDrawer', () => {
     });
   });
 
-  it('should pad the run history rail on all sides so the selected halo is not clipped', () => {
-    // The selected card's halo is a 4px outline drawn outward, and the rail is a scroll container,
-    // so anything less than symmetric padding clips it — most visibly on the first card.
-    renderDrawer();
+  describe('run history rail', () => {
+    it('should keep the rail free of horizontal padding so the cards stay aligned', () => {
+      // The cards share the drawer's left edge with the heading, the stat tiles and the Steps card.
+      // Any inline padding — or a negative margin compensating for one — breaks that alignment.
+      renderDrawer();
 
-    const rail = screen.getAllByTestId('run-history-item')[0].parentElement;
+      const rail = screen.getAllByTestId('run-history-item')[0].parentElement;
+      const railClass = rail?.className ?? '';
 
-    expect(rail?.className).toContain('tw:p-1');
+      ['tw:p-1', 'tw:px-', 'tw:pl-', 'tw:-mx-', 'tw:-ml-'].forEach((cls) =>
+        expect(railClass).not.toContain(cls)
+      );
+    });
+
+    it('should mark selection with a border of the same width as unselected cards', () => {
+      // A selected card must not change size, and its edge must stay inside the card's own box: the
+      // rail is a scroll container, so an outward glow would be clipped.
+      renderDrawer();
+
+      const [selected, unselected] = screen.getAllByTestId('run-history-item');
+
+      expect(selected.className).toContain('tw:border-2');
+      expect(selected.className).toContain('tw:border-utility-brand-600');
+      expect(selected.className).not.toContain('tw:outline-4');
+
+      expect(unselected.className).toContain('tw:border-2');
+      expect(unselected.className).toContain('tw:border-secondary');
+    });
   });
 });

@@ -19,8 +19,8 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
-import TagsSection from './TagsSection';
 import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
+import TagsSection from './TagsSection';
 
 // Mock @react-awesome-query-builder/antd
 jest.mock('@react-awesome-query-builder/antd', () => ({

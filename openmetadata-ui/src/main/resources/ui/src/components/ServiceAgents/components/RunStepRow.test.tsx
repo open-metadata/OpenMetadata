@@ -56,35 +56,30 @@ describe('RunStepRow copy action', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setClipboard({ writeText: mockWriteText });
+    Object.defineProperty(window, 'isSecureContext', {
+      configurable: true,
+      value: true,
+      writable: true,
+    });
   });
 
-  it('should copy the raw logs alongside the title and message', async () => {
+  it('should copy the raw logs and nothing else', async () => {
     renderRow();
 
     fireEvent.click(screen.getByText('label.copy'));
 
     await waitFor(() => expect(mockWriteText).toHaveBeenCalledTimes(1));
 
-    const copied = mockWriteText.mock.calls[0][0] as string;
-
-    // The whole point of the button: the raw log body has to make it to the clipboard, not just
-    // the one-line summary.
-    expect(copied).toContain(attention.stackTrace);
-    expect(copied).toContain(attention.title);
-    expect(copied).toContain(attention.message);
-    expect(copied).toContain(attention.hint);
+    // The title, message and hint are already on screen; pasting them alongside the log body is
+    // noise, so the clipboard has to hold the log content verbatim.
+    expect(mockWriteText).toHaveBeenCalledWith(attention.stackTrace);
   });
 
-  it('should omit absent parts rather than copying empty gaps', async () => {
-    renderRow({ hint: undefined, stackTrace: undefined });
+  it('should hide the copy button when the step has no raw logs', () => {
+    renderRow({ stackTrace: undefined });
 
-    fireEvent.click(screen.getByText('label.copy'));
-
-    await waitFor(() => expect(mockWriteText).toHaveBeenCalledTimes(1));
-
-    expect(mockWriteText.mock.calls[0][0]).toBe(
-      `${attention.title}\n\n${attention.message}`
-    );
+    expect(screen.queryByText('label.copy')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.show-raw-logs')).not.toBeInTheDocument();
   });
 
   it('should surface copied feedback after a successful write', async () => {
@@ -95,12 +90,25 @@ describe('RunStepRow copy action', () => {
     expect(await screen.findByText('label.copied')).toBeInTheDocument();
   });
 
-  it('should not throw when the clipboard API is unavailable', async () => {
-    setClipboard(undefined);
+  it('should fall back to execCommand outside a secure context', async () => {
+    Object.defineProperty(window, 'isSecureContext', {
+      configurable: true,
+      value: false,
+      writable: true,
+    });
+    const execCommand = jest.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: execCommand,
+      writable: true,
+    });
 
     renderRow();
 
-    expect(() => fireEvent.click(screen.getByText('label.copy'))).not.toThrow();
+    fireEvent.click(screen.getByText('label.copy'));
+
+    expect(await screen.findByText('label.copied')).toBeInTheDocument();
     expect(mockWriteText).not.toHaveBeenCalled();
+    expect(execCommand).toHaveBeenCalledWith('copy');
   });
 });

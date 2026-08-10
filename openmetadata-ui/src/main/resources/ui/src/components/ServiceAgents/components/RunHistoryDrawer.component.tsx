@@ -83,10 +83,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
   const { t } = useTranslation();
 
   return (
-    // `overflow-x-auto` makes the block axis `auto` too, so this clips on every side. The selected
-    // card's halo is a 4px outline drawn outward, so the rail needs at least that much padding all
-    // round or the halo is cut off — most visibly on the first card and along the bottom.
-    <Box className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:p-1">
+    <Box className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:pb-1">
       {runs.map((r) => {
         const m = RUN_META[r.status];
         const label = t(m.labelKey);
@@ -95,9 +92,13 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
 
         return (
           <button
-            className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border tw:px-3 tw:py-2.5 tw:text-left ${
+            // Selection is a 2px brand border rather than an outward glow: the rail is
+            // `overflow-x-auto`, which forces the block axis to `auto` too, so anything drawn outside
+            // the card's box gets clipped. Unselected cards carry the same 2px width so selecting one
+            // doesn't resize it.
+            className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border-2 tw:px-3 tw:py-2.5 tw:text-left ${
               isSelected
-                ? 'tw:border-utility-brand-600 tw:bg-primary tw:outline-4 tw:outline-utility-brand-600/10'
+                ? 'tw:border-utility-brand-600 tw:bg-primary'
                 : 'tw:border-secondary tw:bg-secondary'
             }`}
             data-testid="run-history-item"

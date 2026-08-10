@@ -27,11 +27,11 @@ import {
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
-import { OPEN_METADATA } from '../../../constants/Services.constant';
 import {
   getServiceEmptyStateConfig,
   SERVICE_EMPTY_STATE_ICON_CLASS,
 } from '../../../constants/ServiceEmptyState.constant';
+import { OPEN_METADATA } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';

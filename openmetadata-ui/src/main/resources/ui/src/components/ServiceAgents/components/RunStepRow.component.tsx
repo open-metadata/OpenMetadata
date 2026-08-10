@@ -20,6 +20,7 @@ import {
 } from '@untitledui/icons';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import { RunAttention, RunStep } from '../AgentsPage.interface';
 import { fmtNum } from '../utils/agents.utils';
 import RunGlyph from './RunGlyph.component';
@@ -30,9 +31,11 @@ interface AttentionCardProps {
 
 const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const stackLines = att.stackTrace ? att.stackTrace.split('\n') : [];
+  // Only the raw logs go to the clipboard — the title, message and hint are already on screen, and
+  // pasting them into a ticket or a terminal alongside the log body is noise.
+  const { hasCopied, onCopyToClipBoard } = useClipboard(att.stackTrace ?? '');
   const isError = att.severity === 'error';
   const surfaceClass = isError
     ? 'tw:bg-error-primary tw:border-utility-error-200'
@@ -46,25 +49,6 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
   const accentIconClass = isError
     ? 'tw:text-fg-error-primary'
     : 'tw:text-fg-warning-primary';
-
-  const handleCopy = async () => {
-    if (!navigator.clipboard?.writeText) {
-      return;
-    }
-    // Copying only `message` left the raw logs — the whole reason someone reaches for this button —
-    // out of the clipboard. Unlabelled so the payload stays paste-ready for a ticket or a terminal.
-    const clipboardText = [att.title, att.message, att.hint, att.stackTrace]
-      .filter(Boolean)
-      .join('\n\n');
-
-    try {
-      await navigator.clipboard.writeText(clipboardText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // clipboard write rejected (permission denied / non-secure context)
-    }
-  };
 
   const toggleLog = () => setShowLog((s) => !s);
 
@@ -83,13 +67,15 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
           {isError ? t('label.error') : t('label.warning')}
         </span>
         <span className="tw:flex-1" />
-        <button
-          className="tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:text-xs tw:font-medium tw:text-tertiary"
-          type="button"
-          onClick={handleCopy}>
-          <Copy01 size={13} />
-          {copied ? t('label.copied') : t('label.copy')}
-        </button>
+        {stackLines.length > 0 && (
+          <button
+            className="tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:text-xs tw:font-medium tw:text-tertiary"
+            type="button"
+            onClick={() => onCopyToClipBoard()}>
+            <Copy01 size={13} />
+            {hasCopied ? t('label.copied') : t('label.copy')}
+          </button>
+        )}
       </Box>
       <div className="tw:p-3">
         <div className="tw:break-words tw:font-mono tw:text-xs tw:leading-relaxed tw:text-secondary">
