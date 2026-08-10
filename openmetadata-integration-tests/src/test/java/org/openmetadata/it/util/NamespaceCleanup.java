@@ -31,12 +31,16 @@ public final class NamespaceCleanup {
   private static final Logger LOG = LoggerFactory.getLogger(NamespaceCleanup.class);
 
   // How long to wait for a recursive hard delete to finish cascading. Sized for the scale suite's
-  // 100k-table service, whose cascade ran ~6 minutes on an unloaded cluster; small tests fall
-  // through on the first poll, so a generous cap costs them nothing. Override with
+  // 100k-table service, whose cascade ran ~6 minutes on an unloaded cluster. Override with
   // -Djpw.cleanup.cascadeTimeoutMin.
   private static final Duration CASCADE_TIMEOUT =
       Duration.ofMinutes(Integer.getInteger("jpw.cleanup.cascadeTimeoutMin", 15));
-  private static final Duration CASCADE_POLL = Duration.ofSeconds(5);
+  // Awaitility defaults its poll delay to the poll interval, so a 5s interval meant every root -
+  // including the overwhelming majority whose cascade is already finished - blocked 5s before its
+  // first check. Across a lane's namespaces that dominated the integration budget. The delay is
+  // pinned to zero below; this interval only paces genuinely in-flight cascades, and each poll is
+  // a single cheap 404 probe.
+  private static final Duration CASCADE_POLL = Duration.ofMillis(500);
 
   // OM entity type -> REST collection path. Only top-level (root) types need entries.
   private static final Map<String, String> COLLECTION_PATHS =
@@ -105,6 +109,7 @@ public final class NamespaceCleanup {
     try {
       Awaitility.await("cleanup cascade for " + root.entityType() + " " + root.id())
           .atMost(CASCADE_TIMEOUT)
+          .pollDelay(Duration.ZERO)
           .pollInterval(CASCADE_POLL)
           .until(() -> isGone(http, path));
     } catch (final ConditionTimeoutException stillRunning) {
