@@ -83,7 +83,7 @@ describe('PageLayoutV1', () => {
     ).toBeInTheDocument();
   });
 
-  it('Should apply default height when fullHeight is true and no pageContainerStyle.height is provided', () => {
+  it('Should apply the base and full-height classes when fullHeight is true', () => {
     const centerText = 'Center content';
     const { container, getByTestId } = render(
       <PageLayoutV1 fullHeight pageTitle="Test Page">
@@ -94,28 +94,11 @@ describe('PageLayoutV1', () => {
     const pageLayout = getByTestId('page-layout-v1');
 
     expect(container.querySelector('.full-height-wrapper')).toBeInTheDocument();
+    expect(pageLayout).toHaveClass('page-layout-v1');
     expect(pageLayout).toHaveClass('page-layout-v1-full-height');
-    expect(pageLayout).toHaveStyle({ overflow: 'hidden' });
   });
 
-  it('Should not override pageContainerStyle.height when fullHeight is true and height is already provided', () => {
-    const centerText = 'Center content';
-    const customHeight = '500px';
-    const { getByTestId } = render(
-      <PageLayoutV1
-        fullHeight
-        pageContainerStyle={{ height: customHeight }}
-        pageTitle="Test Page">
-        {centerText}
-      </PageLayoutV1>
-    );
-
-    const pageLayout = getByTestId('page-layout-v1');
-
-    expect(pageLayout).toHaveStyle({ height: customHeight });
-  });
-
-  it('Should not apply fullHeight styles when fullHeight is false', () => {
+  it('Should not apply the full-height class when fullHeight is false', () => {
     const centerText = 'Center content';
     const { getByTestId } = render(
       <PageLayoutV1 pageTitle="Test Page">{centerText}</PageLayoutV1>
@@ -123,8 +106,8 @@ describe('PageLayoutV1', () => {
 
     const pageLayout = getByTestId('page-layout-v1');
 
+    expect(pageLayout).toHaveClass('page-layout-v1');
     expect(pageLayout).not.toHaveClass('page-layout-v1-full-height');
-    expect(pageLayout.style.height).toBe('');
   });
 
   it('Should apply the default 16px horizontal padding class when no variant is provided', () => {
@@ -153,23 +136,18 @@ describe('PageLayoutV1', () => {
     expect(pageLayout).toHaveAttribute('data-variant', 'compact');
   });
 
-  it('Should merge custom pageContainerStyle with fullHeight styles', () => {
+  it('Should append the consumer className after the base classes', () => {
     const centerText = 'Center content';
     const { getByTestId } = render(
-      <PageLayoutV1
-        fullHeight
-        pageContainerStyle={{ backgroundColor: 'red' }}
-        pageTitle="Test Page">
+      <PageLayoutV1 fullHeight className="tw:!h-auto" pageTitle="Test Page">
         {centerText}
       </PageLayoutV1>
     );
 
     const pageLayout = getByTestId('page-layout-v1');
 
+    expect(pageLayout).toHaveClass('page-layout-v1');
     expect(pageLayout).toHaveClass('page-layout-v1-full-height');
-    expect(pageLayout).toHaveStyle({
-      overflow: 'hidden',
-      backgroundColor: 'red',
-    });
+    expect(pageLayout).toHaveClass('tw:!h-auto');
   });
 });

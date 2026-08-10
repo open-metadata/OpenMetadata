@@ -13,14 +13,7 @@
 
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
-import {
-  CSSProperties,
-  FC,
-  Fragment,
-  HTMLAttributes,
-  ReactNode,
-  useMemo,
-} from 'react';
+import { FC, Fragment, HTMLAttributes, ReactNode, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
@@ -34,20 +27,11 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   center?: boolean;
   pageTitle: string;
   mainContainerClassName?: string;
-  pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
   leftPanelWidth?: number;
   fullHeight?: boolean;
   variant?: PageLayoutVariant;
 }
-
-export const pageContainerStyles: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 0,
-  marginLeft: 0,
-  marginRight: 0,
-  overflow: 'hidden',
-};
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
@@ -59,7 +43,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanelWidth = 230,
   rightPanelWidth = 284,
   mainContainerClassName = '',
-  pageContainerStyle = {},
   fullHeight = false,
   variant = 'default',
 }: PageLayoutProp) => {
@@ -92,12 +75,14 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={classNames(paddingClassName, className, {
-          'page-layout-v1-full-height': fullHeight,
-        })}
+        className={classNames(
+          'page-layout-v1',
+          paddingClassName,
+          { 'page-layout-v1-full-height': fullHeight },
+          className
+        )}
         data-testid="page-layout-v1"
         data-variant={variant}
-        style={{ ...pageContainerStyles, ...pageContainerStyle }}
         wrap={false}>
         {leftPanel && (
           <Col

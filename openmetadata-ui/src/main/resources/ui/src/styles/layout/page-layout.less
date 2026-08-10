@@ -20,13 +20,19 @@
   overflow-x: hidden;
 }
 
+// Base page container. Overrides come through the `className` prop as
+// important Tailwind utilities (e.g. tw:!h-auto) — unlayered less rules
+// beat plain tw utilities, so the `!` is required.
+.page-layout-v1 {
+  margin: 0;
+  overflow: hidden;
+}
+
 // fullHeight mode: the page container is pinned to the viewport minus the
 // shell chrome (--ant-navbar-height, owned by the shell; 80px classic
-// default from temp.css). An explicit pageContainerStyle height still wins
-// because inline styles out-rank this class.
+// default from temp.css).
 .page-layout-v1-full-height {
   height: calc(100vh - var(--ant-navbar-height, 80px));
-  overflow: hidden;
 }
 
 // fullHeight mode: the center column becomes a flex chain so the last
