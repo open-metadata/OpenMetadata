@@ -18,10 +18,17 @@ import logging
 import pytest
 
 from metadata.generated.schema.entity.data.searchIndex import DataType
-from metadata.ingestion.source.search.elasticsearch.parser import parse_es_index_mapping
-from metadata.ingestion.source.search.opensearch.parser import parse_os_index_mapping
+from metadata.ingestion.source.search.elasticsearch import parser as es_parser
+from metadata.ingestion.source.search.opensearch import parser as os_parser
+
+parse_es_index_mapping = es_parser.parse_es_index_mapping
+parse_os_index_mapping = os_parser.parse_os_index_mapping
 
 PARSERS = [parse_es_index_mapping, parse_os_index_mapping]
+
+# caplog.at_level() must name this logger: other suites pin "metadata" to INFO via
+# set_loggers_level, and raising only the root logger leaves the debug record filtered.
+PARSER_LOGGER = es_parser.logger.name
 
 MAPPING_WITH_PROPERTIES = {
     "properties": {
@@ -46,7 +53,7 @@ class TestIndexMappingParser:
     @pytest.mark.parametrize("parse", PARSERS)
     @pytest.mark.parametrize("mapping", [None, {}])
     def test_missing_mapping_logs_no_error(self, parse, mapping, caplog):
-        with caplog.at_level(logging.DEBUG):
+        with caplog.at_level(logging.DEBUG, logger=PARSER_LOGGER):
             parse(mapping)
 
         assert not [record for record in caplog.records if record.levelno >= logging.WARNING]
