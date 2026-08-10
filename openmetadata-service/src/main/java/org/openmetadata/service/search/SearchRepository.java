@@ -1881,6 +1881,40 @@ public class SearchRepository {
   }
 
   /**
+   * Re-index a moved asset AND propagate its (re-derived) domains to its inherited descendants in
+   * search. Used by the Domain-page asset add/remove route: on add the re-read domains are the newly
+   * assigned domain; on remove they are whatever the asset now inherits from its own ancestry (or
+   * none). Reuses the same rebuilt-from-DB read {@link #updateEntity(EntityReference)} performs — so
+   * it inherits its deferral (drained post-commit under a flush scope; read-your-writes inline
+   * otherwise) and correctness — then fans the same re-derived domains out to children through the
+   * inherited-guarded {@code ADD_DOMAINS_SCRIPT}, leaving descendants with an explicit domain
+   * untouched.
+   */
+  public void updateEntityAndPropagateInheritedDomainsToChildren(EntityReference entityReference) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntityAndPropagateInheritedDomainsToChildren(entityReference),
+            "updateEntityAndPropagateInheritedDomainsToChildren",
+            entityReference.getId() != null ? entityReference.getId().toString() : null,
+            entityReference.getFullyQualifiedName(),
+            entityReference.getType()))) {
+      return;
+    }
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    String fields =
+        String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
+    EntityInterface entity =
+        entityRepository.get(
+            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+    entity.setChangeDescription(null);
+    updateEntityIndex(entity);
+    propagateInheritedDomainsForType(
+        entityReference.getType(),
+        List.of(entityReference.getId()),
+        listOrEmpty(entity.getDomains()));
+  }
+
+  /**
    * Re-read each referenced entity with the same bounded field set {@link
    * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
    * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many

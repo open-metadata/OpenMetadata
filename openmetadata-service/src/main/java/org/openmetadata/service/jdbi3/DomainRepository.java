@@ -413,15 +413,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      searchRepository.updateEntity(ref);
-    }
-
-    // Only the add/move path propagates: it sets a known new domain the inherited descendants
-    // follow. On remove the asset's effective domain is re-derived (it may re-inherit from its own
-    // parent, not become empty), so clearing descendants here would be wrong — leave the remove
-    // path as it was before this change.
-    if (isAdd && !dryRun) {
-      searchRepository.propagateInheritedDomainsToChildren(request.getAssets(), List.of(domainRef));
+      // Re-index the asset and fan its re-derived domains out to inherited descendants in search.
+      // Uniform for add and remove: on add descendants follow the newly assigned domain; on remove
+      // they follow whatever the asset now inherits from its own ancestry (or are cleared if none),
+      // matching the entity page. Descendants with an explicit domain are left untouched.
+      searchRepository.updateEntityAndPropagateInheritedDomainsToChildren(ref);
     }
 
     result.withSuccessRequest(success);

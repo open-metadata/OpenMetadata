@@ -1594,7 +1594,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   @Test
-  void test_domainAssetRemove_doesNotClearReinheritingDescendantInSearch(TestNamespace ns)
+  void test_domainAssetRemove_descendantReinheritsFromAncestryInSearch(TestNamespace ns)
       throws Exception {
     Domain finance = createDomainForTest(ns, "dom_rm_finance");
     Domain removeDomain = createDomainForTest(ns, "dom_rm_target");
@@ -1621,30 +1621,28 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     removeAssetsFromDomain(
         removeDomain.getFullyQualifiedName(), List.of(schema.getEntityReference()));
 
-    // The schema re-derives its own domain (Finance, from its database) once the explicit domain is
-    // detached.
-    Awaitility.await("Wait for schema to re-inherit Finance after removal")
+    // After detaching removeDomain, the schema re-derives its domain from its database (Finance),
+    // and its inheriting descendants must follow to Finance in search — not stay stale on
+    // removeDomain and not be blanked out. Polled so the assertion holds across the full async
+    // propagation window (guards against a regression that clears/mis-sets the child late).
+    Awaitility.await("Wait for schema and inheriting child to re-inherit Finance after removal")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
         .untilAsserted(
-            () ->
-                assertSingleSearchDomain(
-                    schema.getId(),
-                    finance,
-                    "database_schema_search_index",
-                    "Schema should re-inherit Finance from its database after removal"));
-
-    // The removal must NOT blank out the inherited descendant in search — its ancestry still
-    // carries
-    // a domain, so clearing it would be wrong.
-    List<EntityReference> childDomains =
-        searchDomains(inheritedChild.getId(), "table_search_index");
-    assertNotNull(childDomains, "Child should still be indexed after removal");
-    assertFalse(
-        childDomains.isEmpty(),
-        "Removing the schema from a domain must not clear its inherited descendant's domain in search");
+            () -> {
+              assertSingleSearchDomain(
+                  schema.getId(),
+                  finance,
+                  "database_schema_search_index",
+                  "Schema should re-inherit Finance from its database after removal");
+              assertSingleSearchDomain(
+                  inheritedChild.getId(),
+                  finance,
+                  "table_search_index",
+                  "Inheriting child should re-inherit Finance from the schema's ancestry after removal, not stay on removeDomain or be cleared");
+            });
   }
 
   private Domain createDomainForTest(TestNamespace ns, String suffix) {
