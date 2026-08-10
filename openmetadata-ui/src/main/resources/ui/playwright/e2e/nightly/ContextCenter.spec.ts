@@ -403,8 +403,7 @@ test.describe('Context Center - Article Attachments', () => {
     await afterAction();
     articleFqnsToCleanup.add(article.fullyQualifiedName);
 
-    const fileUrl =
-      'https://example.com/sample.svg';
+    const fileUrl = 'https://example.com/sample.svg';
 
     await test.step('navigate to the article', async () => {
       await navigateToArticle(page, article.fullyQualifiedName);

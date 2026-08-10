@@ -101,7 +101,7 @@ const isFileTypeAccepted = (file: File, accept?: string): boolean => {
 
     if (acceptedType.endsWith('/*')) {
       const typePrefix = acceptedType.split('/')[0];
-      if(typePrefix === '*') {
+      if (typePrefix === '*') {
         return true;
       }
 
