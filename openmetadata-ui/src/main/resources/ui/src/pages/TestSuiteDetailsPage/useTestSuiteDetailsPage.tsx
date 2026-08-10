@@ -76,7 +76,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const NON_FILTERING_TEST_CASE_PARAMS = new Set<
   keyof ListTestCaseParamsBySearch
 >(['testSuiteId', 'offset', 'sortField', 'sortType']);
-const TEST_CASE_LIST_REFRESH_DELAY_MS = 1000;
+const TEST_CASE_LIST_REFRESH_RETRY_DELAY_MS = 500;
+const TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS = 5;
 
 const isUnfilteredTestCaseRequest = (param?: ListTestCaseParamsBySearch) =>
   Object.entries(param ?? {}).every(
@@ -86,6 +87,19 @@ const isUnfilteredTestCaseRequest = (param?: ListTestCaseParamsBySearch) =>
         key as keyof ListTestCaseParamsBySearch
       )
   );
+
+const isTestCaseListSynchronized = (
+  indexedTotal: number | undefined,
+  authoritativeTotal: number | undefined
+) =>
+  indexedTotal === undefined ||
+  authoritativeTotal === undefined ||
+  indexedTotal >= authoritativeTotal;
+
+const shouldResetTestCaseLoading = (
+  isCurrentRequest: () => boolean,
+  keepLoading: boolean
+) => isCurrentRequest() && !keepLoading;
 
 export interface UseTestSuiteDetailsPageResult {
   testSuite: TestSuite | undefined;
@@ -275,8 +289,11 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     }
   };
 
-  const fetchTestCases = useCallback(
-    async (param?: ListTestCaseParamsBySearch) => {
+  const fetchTestCasesWithTotal = useCallback(
+    async (
+      param?: ListTestCaseParamsBySearch,
+      keepLoading = false
+    ): Promise<number | undefined> => {
       const requestId = ++testCaseRequestId.current;
       const requestedTestSuiteFQN = testSuiteFQN;
       const isCurrentRequest = () =>
@@ -332,6 +349,8 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         ) {
           authoritativeTestCaseCount.current = undefined;
         }
+
+        return response.paging.total;
       } catch {
         if (!isCurrentRequest()) {
           return;
@@ -344,12 +363,59 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
           })
         );
       } finally {
-        if (isCurrentRequest()) {
+        if (shouldResetTestCaseLoading(isCurrentRequest, keepLoading)) {
           setIsTestCaseLoading(false);
         }
       }
     },
     [testSuiteId, testSuiteFQN, sortOptions, pageSize, handlePagingChange, t]
+  );
+
+  const fetchTestCases = useCallback(
+    async (param?: ListTestCaseParamsBySearch) => {
+      await fetchTestCasesWithTotal(param);
+    },
+    [fetchTestCasesWithTotal]
+  );
+
+  const refreshTestCasesUntilIndexed = useCallback(
+    async (
+      authoritativeTotal: number | undefined,
+      isCurrentTestSuite: () => boolean
+    ) => {
+      setIsTestCaseLoading(true);
+      try {
+        for (
+          let attempt = 0;
+          attempt < TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS;
+          attempt++
+        ) {
+          if (!isCurrentTestSuite()) {
+            return;
+          }
+
+          const indexedTotal = await fetchTestCasesWithTotal(undefined, true);
+
+          if (
+            !isCurrentTestSuite() ||
+            isTestCaseListSynchronized(indexedTotal, authoritativeTotal)
+          ) {
+            return;
+          }
+
+          if (attempt < TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS - 1) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, TEST_CASE_LIST_REFRESH_RETRY_DELAY_MS)
+            );
+          }
+        }
+      } finally {
+        if (isCurrentTestSuite()) {
+          setIsTestCaseLoading(false);
+        }
+      }
+    },
+    [fetchTestCasesWithTotal]
   );
 
   const handleSortTestCase = useCallback(
@@ -440,24 +506,23 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
           return;
         }
 
-        if (updatedTestSuite?.tests) {
-          const total = updatedTestSuite.tests.length;
-          authoritativeTestCaseCount.current = { testSuiteFQN, total };
+        const authoritativeTotal = updatedTestSuite?.tests?.length;
+
+        if (authoritativeTotal !== undefined) {
+          authoritativeTestCaseCount.current = {
+            testSuiteFQN,
+            total: authoritativeTotal,
+          };
           handlePagingChange((currentPaging) => ({
             ...currentPaging,
-            total,
+            total: authoritativeTotal,
           }));
         }
 
-        await new Promise((resolve) =>
-          setTimeout(resolve, TEST_CASE_LIST_REFRESH_DELAY_MS)
+        await refreshTestCasesUntilIndexed(
+          authoritativeTotal,
+          isCurrentTestSuite
         );
-
-        if (!isCurrentTestSuite()) {
-          return;
-        }
-
-        await fetchTestCases();
       } catch (error) {
         if (isCurrentTestSuite()) {
           showErrorToast(error as AxiosError);
@@ -468,7 +533,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
       testSuiteId,
       testSuiteFQN,
       fetchTestSuiteByName,
-      fetchTestCases,
+      refreshTestCasesUntilIndexed,
       handlePagingChange,
     ]
   );
