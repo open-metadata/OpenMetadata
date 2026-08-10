@@ -770,7 +770,7 @@ test.describe(
           testCaseFqn
         )}/test-case-results`;
         const banners = page.locator(
-          '[data-testid^="test-case-last-run-banner-"]'
+          '[data-testid^="test-case-last-run-banner-"][role="status"]'
         );
         const waitForTestCaseDetails = () =>
           page.waitForResponse((response) =>
@@ -898,7 +898,9 @@ test.describe(
         const banner = await verifyTestCaseLastRunBanner(page, 'failed');
 
         await expect(
-          page.locator('[data-testid^="test-case-last-run-banner-"]')
+          page.locator(
+            '[data-testid^="test-case-last-run-banner-"][role="status"]'
+          )
         ).toHaveCount(1);
         await expect(
           banner.getByTestId('test-case-last-run-icon')
