@@ -295,8 +295,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   return (
     <Box
       className={classNames('tw:min-h-0 tw:flex-1', {
-        'tw:h-[calc(100vh-var(--ant-navbar-height,80px))]':
-          isTreeView && !isAiMode,
+        'tw:h-[var(--om-page-height)]': isTreeView && !isAiMode,
       })}
       direction="col">
       {!renderPageHeader && !isAiMode && (

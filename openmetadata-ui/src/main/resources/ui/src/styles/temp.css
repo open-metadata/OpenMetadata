@@ -118,7 +118,8 @@
   right: 12px;
   display: none;
   top: 0;
-  transition: top var(--om-duration-200), transform var(--om-duration-200) linear;
+  transition: top var(--om-duration-200),
+    transform var(--om-duration-200) linear;
 }
 
 .media:hover > .action-buttons {
@@ -730,6 +731,11 @@ body .list-option.rdw-option-active {
 
 :root {
   --ant-navbar-height: 80px;
+  /* Viewport height available to a page below the shell chrome. Resolved
+   * lazily at use-site, so it adapts to every shell's --ant-navbar-height
+   * (extra-banner, AI content pane, desktop). Use this instead of repeating
+   * calc(100vh - var(--ant-navbar-height)). */
+  --om-page-height: calc(100vh - var(--ant-navbar-height));
 }
 
 :root .extra-banner {

@@ -15,7 +15,7 @@
 @import (reference) 'antd/dist/antd.less';
 
 .page-layout-v1-vertical-scroll {
-  height: calc(100vh - @om-navbar-height);
+  height: var(--om-page-height);
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -28,16 +28,15 @@
   overflow: hidden;
 }
 
-// fullHeight mode: the page container is pinned to the viewport minus the
-// shell chrome (--ant-navbar-height, owned by the shell; 80px classic
-// default from temp.css), and PageLayoutV1's own centre column + its single
-// `<Row><Col>` wrapper become a flex chain so the page's root child absorbs
-// the remaining height and scrolls internally.
+// fullHeight mode: the page container is pinned to --om-page-height (the
+// viewport minus the shell chrome), and PageLayoutV1's own centre column +
+// its single `<Row><Col>` wrapper become a flex chain so the page's root
+// child absorbs the remaining height and scrolls internally.
 //
 // Selectors use the direct-child combinator and stop at that wrapper Col —
 // never reaching antd Row/Col the page renders inside its own content.
 .page-layout-v1-full-height {
-  height: calc(100vh - var(--ant-navbar-height, 80px));
+  height: var(--om-page-height);
 
   > .page-layout-v1-center {
     display: flex;
