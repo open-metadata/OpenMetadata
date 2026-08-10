@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { getDocumentByFQN } from '../DocStoreAPI';
 
@@ -29,3 +31,14 @@ export const docStoreQueryKey = (fqn: string) => ['docStore', fqn] as const;
 
 export const docStoreQueryFn = (fqn: string) => (): Promise<Document> =>
   getDocumentByFQN(fqn);
+
+/**
+ * Derive the docStore FQN for a persona's UICustomization document.
+ * Returns null when the persona has no FQN (disabled query guard).
+ */
+export const personaDocFqn = (persona?: {
+  fullyQualifiedName?: string;
+} | null): string | null =>
+  persona?.fullyQualifiedName
+    ? `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${persona.fullyQualifiedName}`
+    : null;

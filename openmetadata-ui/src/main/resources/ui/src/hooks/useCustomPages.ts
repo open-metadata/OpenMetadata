@@ -11,21 +11,18 @@
  *  limitations under the License.
  */
 import { useQuery } from '@tanstack/react-query';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { EntityType } from '../enums/entity.enum';
 import { Page, PageType } from '../generated/system/ui/page';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
 import {
   docStoreQueryFn,
   docStoreQueryKey,
+  personaDocFqn,
 } from '../rest/queries/docStoreQuery';
 import { useApplicationStore } from './useApplicationStore';
 
 export const useCustomPages = (pageType: PageType | 'Navigation') => {
   const { selectedPersona } = useApplicationStore();
-  const fqn = selectedPersona?.fullyQualifiedName
-    ? `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`
-    : null;
+  const fqn = personaDocFqn(selectedPersona);
 
   const {
     data: doc,

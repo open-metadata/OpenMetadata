@@ -24,7 +24,6 @@ import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallbac
 import DeferredWidget from '../../components/common/DeferredWidget/DeferredWidget.component';
 import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -42,6 +41,7 @@ import {
 import {
   docStoreQueryFn,
   docStoreQueryKey,
+  personaDocFqn,
 } from '../../rest/queries/docStoreQuery';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
@@ -85,9 +85,7 @@ const MyDataPage = () => {
     useState<boolean>(true);
   const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
 
-  const personaFqn = selectedPersona?.fullyQualifiedName
-    ? `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`
-    : null;
+  const personaFqn = personaDocFqn(selectedPersona);
 
   const { data: docData, isPending: isDocPending } = useQuery({
     queryKey: docStoreQueryKey(personaFqn ?? ''),
