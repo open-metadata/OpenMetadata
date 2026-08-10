@@ -131,14 +131,19 @@ const DataMarketplacePage = ({
     fetchDocument();
   }, [fetchDocument]);
 
+  // Depend on the resolved direction, not the i18n instance: the instance
+  // reference survives a language change, so memoising on it would keep a stale
+  // dir if the language ever changes without remounting this route.
+  const direction = i18n.dir();
+
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
-        <div dir={i18n.dir()} key={widget.i}>
+        <div dir={direction} key={widget.i}>
           {getWidgetsFromKey(PageType.DataMarketplace, widget)}
         </div>
       )),
-    [layout, i18n]
+    [layout, direction]
   );
 
   if (isLoading) {
