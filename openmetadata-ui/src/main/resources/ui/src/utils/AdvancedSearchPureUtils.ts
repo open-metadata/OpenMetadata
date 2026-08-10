@@ -253,7 +253,9 @@ export const getOptionsFromAggregationBucket = (
             }
           | undefined;
         const src = topHitsData?.hits?.hits?.[0]?._source;
-        const extracted = src ? extractSourceValue(src, sourceFields) : undefined;
+        const extracted = src
+          ? extractSourceValue(src, sourceFields)
+          : undefined;
         if (extracted) {
           label = extracted;
         }
