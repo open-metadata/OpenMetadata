@@ -105,6 +105,8 @@ export default defineConfig({
         '@react-types/shared',
         '@internationalized/date',
         'tailwindcss-react-aria-components',
+        'i18next',
+        'react-i18next',
       ],
       output: {
         entryFileNames: (chunkInfo) => {
