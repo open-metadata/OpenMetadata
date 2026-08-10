@@ -96,10 +96,11 @@ export const getLoggedInUser = async (params?: ListParams) => {
 };
 
 /**
- * Opaque per-user UI preferences bag (e.g. the boot-time `appMode`
- * preference). Backed by a lightweight side table, not the `User` entity —
- * see `hooks/currentUserStore/useCurrentUserStore.ts` for the debounced
- * write path that calls `patchUserPreferences`.
+ * Per-user UI preferences list (e.g. the boot-time `appMode` preference).
+ * Backed by a lightweight side table, not the `User` entity. Each entry is a
+ * typed discriminated union `{ type, config }` — see
+ * `hooks/currentUserStore/useCurrentUserStore.ts` for the debounced write
+ * path that calls `putUserPreference` / `deleteUserPreference`.
  */
 export const getUserPreferences = async (userId: string) => {
   const response = await APIClient.get<UserPreferences>(
@@ -110,18 +111,28 @@ export const getUserPreferences = async (userId: string) => {
 };
 
 /**
- * JSON-Patch ops are applied directly against the `preferences` map, e.g.
- * `{ op: 'add', path: '/appMode', value: 'ai' }` — NOT prefixed with
- * `/preferences/`.
+ * Creates or replaces the preference entry of the given `type`. `config` is
+ * the type-specific shape (e.g. `{ value: 'ai' }` for `appMode`) — see
+ * `api/teams/preferences/*.json`.
  */
-export const patchUserPreferences = async (
+export const putUserPreference = async (
   userId: string,
-  data: Operation[]
+  type: string,
+  config: unknown
 ) => {
-  const response = await APIClient.patch<
-    Operation[],
-    AxiosResponse<UserPreferences>
-  >(`/users/${userId}/preferences`, data);
+  const response = await APIClient.put<UserPreferences>(
+    `/users/${userId}/preferences/${type}`,
+    { type, config }
+  );
+
+  return response.data;
+};
+
+/** Removes the preference entry of the given `type`, if present. */
+export const deleteUserPreference = async (userId: string, type: string) => {
+  const response = await APIClient.delete<UserPreferences>(
+    `/users/${userId}/preferences/${type}`
+  );
 
   return response.data;
 };

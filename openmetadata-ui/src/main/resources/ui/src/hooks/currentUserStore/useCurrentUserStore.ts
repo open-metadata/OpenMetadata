@@ -12,13 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
-import { Operation } from 'fast-json-patch';
 import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
-import { patchUserPreferences } from '../../rest/userAPI';
+import { deleteUserPreference, putUserPreference } from '../../rest/userAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useApplicationStore } from '../useApplicationStore';
 
@@ -109,24 +108,148 @@ export const usePersistentStorage = create<Store>()(
 );
 
 // Preference keys that are synced to the backend (the standalone
-// `user_preferences` side table, via `patchUserPreferences`) in addition to
-// being persisted locally. Everything else in UserPreferences stays purely
-// on-device. Keep this to a single entry for now — see the task brief for
-// the rollout plan of additional keys.
+// `user_preferences` side table, via `putUserPreference` /
+// `deleteUserPreference`) in addition to being persisted locally. Everything
+// else in UserPreferences stays purely on-device. Keep this to a single entry
+// for now — see the task brief for the rollout plan of additional keys.
 export const BACKEND_SYNCED_KEYS = new Set<keyof UserPreferences>(['appMode']);
 const DEBOUNCE_MS = 300;
 
+/**
+ * A single backend-synced-key entry off the wire, shaped `{ type, config }`
+ * per `api/teams/preferences/*.json`. `config` is intentionally loose here —
+ * each branch in {@link deriveKeyedPreferences} / {@link buildPreferenceConfig}
+ * knows its own concrete shape.
+ */
+interface WirePreferenceEntry {
+  type?: string;
+  config?: { value?: string | null };
+}
+
+/**
+ * Wire discriminator (`type`) for a backend-synced local key. Each key gets
+ * its own branch — mirrors {@link deriveKeyedPreferences} and
+ * {@link buildPreferenceConfig} below. Returns `null` for keys that aren't
+ * backend-synced (callers should have already filtered via
+ * `BACKEND_SYNCED_KEYS`, this is just a safety net).
+ */
+function preferenceTypeFor(key: keyof UserPreferences): string | null {
+  if (key === 'appMode') {
+    return 'appMode';
+  }
+
+  return null;
+}
+
+/** Builds the `config` object for a PUT of the given backend-synced key. */
+function buildPreferenceConfig(
+  key: keyof UserPreferences,
+  value: unknown
+): unknown {
+  if (key === 'appMode') {
+    return { value };
+  }
+
+  return undefined;
+}
+
+/**
+ * Translates the wire-format `preferences` list (list of typed discriminated
+ * unions keyed by `type`) into the local keyed shape consumed by
+ * `useCurrentUserPreferences`. Future preference types get their own branch
+ * here, mirroring `preferenceTypeFor` / `buildPreferenceConfig` above.
+ */
+function deriveKeyedPreferences(
+  entries?: WirePreferenceEntry[]
+): Partial<UserPreferences> {
+  const keyed: Partial<UserPreferences> = {};
+  for (const item of entries ?? []) {
+    if (item?.type === 'appMode') {
+      keyed.appMode = item.config?.value ?? null;
+    }
+    // future preference types get their own branch here.
+  }
+
+  return keyed;
+}
+
+// Exposed so `AuthProvider`'s boot-time resolver can read `appMode` (and any
+// future backend-synced key) straight off the list-shaped `GET .../preferences`
+// response without duplicating the `{type, config}` unwrapping logic.
+export const derivePreferencesFromList = deriveKeyedPreferences;
+
 // Module-level state for the debounced backend sync. `pendingPatch` holds
 // the last-write-wins value per key for the in-flight debounce window
-// (`null` means "emit a JSON-Patch remove"). `previousValues` snapshots what
-// each key's value was immediately before the *first* write in the current
-// batch, so a failed PATCH can roll the local store back to exactly what the
-// user saw beforehand (not to whatever the server last confirmed, which may
-// be stale or absent for keys that were never migrated up).
+// (`null` means "delete this key's preference entry"). `previousValues`
+// snapshots what each key's value was immediately before the *first* write
+// in the current batch, so a failed write can roll the local store back to
+// exactly what the user saw beforehand (not to whatever the server last
+// confirmed, which may be stale or absent for keys that were never migrated
+// up).
 const pendingPatch = new Map<string, unknown>();
 const previousValues = new Map<string, unknown>();
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let serverKnown: Partial<UserPreferences> = {};
+
+/**
+ * PUTs (or, for a `null` write, DELETEs) the given key's backend-synced
+ * preference entry, updates `serverKnown` from the authoritative response,
+ * and rolls back + toasts on failure. Scoped to a single key so one key's
+ * failure can't clobber a sibling key's successful write in the same flush.
+ */
+async function flushOneKey(
+  userName: string,
+  userId: string,
+  key: keyof UserPreferences,
+  value: unknown,
+  previousValue: unknown
+): Promise<void> {
+  const type = preferenceTypeFor(key);
+  if (!type) {
+    return;
+  }
+
+  const isRemoval = value === null;
+  // A DELETE on a key the server never had would be a wasted round trip for
+  // what is semantically already a no-op (and, under the prior JSON-Patch
+  // design, `remove` on an absent member throws per RFC 6902).
+  if (isRemoval && !(key in serverKnown)) {
+    return;
+  }
+
+  try {
+    const updated = isRemoval
+      ? await deleteUserPreference(userId, type)
+      : await putUserPreference(userId, type, buildPreferenceConfig(key, value));
+
+    const keyed = deriveKeyedPreferences(
+      updated?.preferences as WirePreferenceEntry[] | undefined
+    );
+    if (key in keyed) {
+      (serverKnown as Record<string, unknown>)[key] = (
+        keyed as Record<string, unknown>
+      )[key];
+    } else {
+      delete (serverKnown as Record<string, unknown>)[key];
+    }
+  } catch (error) {
+    // A newer write may have landed locally while this request was in
+    // flight (e.g. the user changed the same key again before the rejected
+    // request settled). Only roll back if the local value still equals what
+    // we attempted to persist — if it has diverged, a subsequent write
+    // already superseded this attempt and clobbering it with the
+    // pre-attempt value would silently discard that newer write.
+    const currentSlice = (usePersistentStorage.getState().preferences[
+      userName
+    ] ?? {}) as unknown as Record<string, unknown>;
+    if (currentSlice[key] === value) {
+      usePersistentStorage.getState().setUserPreference(userName, {
+        [key]: previousValue ?? null,
+      } as Partial<UserPreferences>);
+    }
+    showErrorToast(error as AxiosError);
+  }
+}
 
 async function flushPendingPatch(
   userName: string,
@@ -142,74 +265,24 @@ async function flushPendingPatch(
   const attemptedPrevious = new Map(previousValues);
   previousValues.clear();
 
-  // JSON-Patch ops apply directly against the `preferences` map on the
-  // backend (`UserPreferencesRepository.patch`) — paths are NOT prefixed
-  // with `/preferences/`.
-  //
-  // `remove` on an absent member throws per RFC 6902 and would surface as
-  // an error toast + rollback for what is semantically a no-op. Skip
-  // remove ops when the key isn't on `serverKnown` (never persisted, or
-  // already cleared).
-  const ops: Operation[] = Array.from(attempted.entries())
-    .map(([key, value]): Operation | null => {
-      if (value === null) {
-        return key in serverKnown
-          ? ({ op: 'remove', path: `/${key}` } as Operation)
-          : null;
-      }
-
-      const op = key in serverKnown ? 'replace' : 'add';
-
-      return { op, path: `/${key}`, value } as Operation;
-    })
-    .filter((op): op is Operation => op !== null);
-
-  if (ops.length === 0) {
-    return;
-  }
-
-  try {
-    const updated = await patchUserPreferences(userId, ops);
-    const updatedPreferences = (updated?.preferences ?? {}) as Record<
-      string,
-      unknown
-    >;
-    serverKnown = { ...serverKnown, ...updatedPreferences };
-    for (const [key, value] of attempted) {
-      if (value === null) {
-        delete (serverKnown as Record<string, unknown>)[key];
-      }
-    }
-  } catch (error) {
-    // A newer write may have landed locally while this PATCH was in flight
-    // (e.g. the user changed the same key again before the rejected request
-    // settled). Only roll back keys whose local value still equals what we
-    // attempted to persist — if it has diverged, a subsequent write already
-    // superseded this attempt and clobbering it with the pre-attempt value
-    // would silently discard that newer write.
-    const currentSlice = (usePersistentStorage.getState().preferences[
-      userName
-    ] ?? {}) as unknown as Record<string, unknown>;
-    const rollback: Partial<UserPreferences> = {};
-    for (const [key, attemptedValue] of attempted) {
-      if (currentSlice[key] !== attemptedValue) {
-        continue;
-      }
-      (rollback as Record<string, unknown>)[key] =
-        attemptedPrevious.get(key) ?? null;
-    }
-    if (Object.keys(rollback).length > 0) {
-      usePersistentStorage.getState().setUserPreference(userName, rollback);
-    }
-    showErrorToast(error as AxiosError);
-  }
+  await Promise.all(
+    Array.from(attempted.entries()).map(([key, value]) =>
+      flushOneKey(
+        userName,
+        userId,
+        key as keyof UserPreferences,
+        value,
+        attemptedPrevious.get(key)
+      )
+    )
+  );
 }
 
 /**
- * Enqueues a debounced backend PATCH for any backend-synced keys present in
- * `patch`. Non-whitelisted keys are ignored here entirely — they still get
- * written to the local persisted store by the caller, they just never reach
- * the server.
+ * Enqueues a debounced backend PUT/DELETE for any backend-synced keys
+ * present in `patch`. Non-whitelisted keys are ignored here entirely — they
+ * still get written to the local persisted store by the caller, they just
+ * never reach the server.
  *
  * `previous` (when supplied) is the pre-write snapshot of the affected keys,
  * used only to seed the rollback value for this batch. When omitted (e.g.
@@ -256,17 +329,17 @@ export function syncBackendKeys(
  * response as `userPreferences`. Reconciles the freshly-fetched server
  * preferences with whatever is already in the local persisted store:
  *  - server has a value  -> server wins, overwrite local.
- *  - server has no value but local does -> one-shot migration, PATCH it up.
+ *  - server has no value but local does -> one-shot migration, PUT it up.
  *  - neither has a value -> no-op.
  */
 export function hydrateBackendSyncedPreferences(
   user: { id: string; name: string },
-  userPreferences?: { preferences?: Record<string, unknown> }
+  userPreferences?: { preferences?: WirePreferenceEntry[] }
 ): void {
   if (!user?.name || !user.id) {
     return;
   }
-  const server = userPreferences?.preferences ?? {};
+  const server = deriveKeyedPreferences(userPreferences?.preferences);
   serverKnown = { ...server };
 
   const localSlice =
@@ -274,7 +347,7 @@ export function hydrateBackendSyncedPreferences(
     ({} as UserPreferences);
 
   for (const key of BACKEND_SYNCED_KEYS) {
-    const serverValue = server[key];
+    const serverValue = (server as Record<string, unknown>)[key];
     const localValue = (localSlice as unknown as Record<string, unknown>)[key];
 
     if (serverValue !== undefined) {
@@ -327,8 +400,9 @@ export const useCurrentUserPreferences = () => {
       // failed backend sync can roll back to what the user actually saw.
       const previous = usePersistentStorage.getState().preferences[userName];
       setUserPreference(userName, newPreferences);
-      // Backend sync needs the user's id (for the PATCH URL); local-only
-      // users (e.g. not yet resolved) still get the local write above.
+      // Backend sync needs the user's id (for the PUT/DELETE URL);
+      // local-only users (e.g. not yet resolved) still get the local write
+      // above.
       if (currentUserId) {
         syncBackendKeys(userName, currentUserId, newPreferences, previous);
       }
@@ -350,7 +424,7 @@ export const useCurrentUserPreferences = () => {
   };
 };
 
-// Best-effort flush of any still-debounced PATCH when the tab is closing —
+// Best-effort flush of any still-debounced write when the tab is closing —
 // otherwise a write made just before navigation/close would be silently
 // dropped once the debounce timer never gets to fire.
 if (typeof window !== 'undefined') {

@@ -55,6 +55,7 @@ import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
 import {
+  derivePreferencesFromList,
   hydrateBackendSyncedPreferences,
   resetBackendSyncState,
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -149,9 +150,7 @@ const isEmailVerifyField = 'isEmailVerified';
  */
 const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const [prefsRes, appConfig] = await Promise.all([
-    getUserPreferences(user.id).catch(() => ({
-      preferences: {} as Record<string, unknown>,
-    })),
+    getUserPreferences(user.id).catch(() => ({ preferences: [] })),
     getAppConfiguration().catch(() => null),
   ]);
   hydrateBackendSyncedPreferences(user, prefsRes);
@@ -159,8 +158,7 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
 
-  const userPref =
-    (prefsRes.preferences?.appMode as string | null | undefined) ?? null;
+  const userPref = derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
   writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault));
 };
 

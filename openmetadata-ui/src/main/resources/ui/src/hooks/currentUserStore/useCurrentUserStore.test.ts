@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { patchUserPreferences } from '../../rest/userAPI';
+import { deleteUserPreference, putUserPreference } from '../../rest/userAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useApplicationStore } from '../useApplicationStore';
 import {
@@ -31,7 +31,8 @@ jest.mock('../../constants/constants', () => ({
 }));
 
 jest.mock('../../rest/userAPI', () => ({
-  patchUserPreferences: jest.fn(),
+  putUserPreference: jest.fn(),
+  deleteUserPreference: jest.fn(),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -42,7 +43,8 @@ const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
   typeof useApplicationStore
 >;
 
-const patchUserPreferencesMock = patchUserPreferences as jest.Mock;
+const putUserPreferenceMock = putUserPreference as jest.Mock;
+const deleteUserPreferenceMock = deleteUserPreference as jest.Mock;
 const showErrorToastMock = showErrorToast as jest.Mock;
 
 // Test helper: seeds useApplicationStore's currentUser (id + name) and,
@@ -272,7 +274,7 @@ describe('useCurrentUserStore', () => {
 
       hydrateBackendSyncedPreferences(
         { id: 'u1', name: userName },
-        { preferences: { appMode: 'ai' } }
+        { preferences: [{ type: 'appMode', config: { value: 'ai' } }] }
       );
 
       const slice = usePersistentStorage.getState().preferences[userName];
@@ -287,7 +289,7 @@ describe('useCurrentUserStore', () => {
 
       hydrateBackendSyncedPreferences(
         { id: 'u1', name: userName },
-        { preferences: {} }
+        { preferences: [] }
       );
 
       const slice = usePersistentStorage.getState().preferences[userName];
@@ -295,25 +297,25 @@ describe('useCurrentUserStore', () => {
       expect(slice?.appMode ?? null).toBeNull();
     });
 
-    it('debounces a PATCH when appMode is written', async () => {
+    it('debounces a PUT when appMode is written', async () => {
       jest.useFakeTimers();
       seedCurrentUser({ id: 'u1', name: 'alice' });
 
       const { setPreference } = renderUseCurrentUserPreferences();
       setPreference({ appMode: 'ai' });
 
-      expect(patchUserPreferencesMock).not.toHaveBeenCalled();
+      expect(putUserPreferenceMock).not.toHaveBeenCalled();
 
       jest.advanceTimersByTime(300);
       await Promise.resolve();
 
-      expect(patchUserPreferencesMock).toHaveBeenCalledTimes(1);
-      expect(patchUserPreferencesMock).toHaveBeenCalledWith('u1', [
-        { op: 'add', path: '/appMode', value: 'ai' },
-      ]);
+      expect(putUserPreferenceMock).toHaveBeenCalledTimes(1);
+      expect(putUserPreferenceMock).toHaveBeenCalledWith('u1', 'appMode', {
+        value: 'ai',
+      });
     });
 
-    it('coalesces rapid writes into a single PATCH with the last value', async () => {
+    it('coalesces rapid writes into a single PUT with the last value', async () => {
       jest.useFakeTimers();
       seedCurrentUser({ id: 'u1', name: 'alice' });
 
@@ -325,13 +327,13 @@ describe('useCurrentUserStore', () => {
       jest.advanceTimersByTime(300);
       await Promise.resolve();
 
-      expect(patchUserPreferencesMock).toHaveBeenCalledTimes(1);
-      expect(patchUserPreferencesMock).toHaveBeenCalledWith('u1', [
-        { op: 'add', path: '/appMode', value: 'ai' },
-      ]);
+      expect(putUserPreferenceMock).toHaveBeenCalledTimes(1);
+      expect(putUserPreferenceMock).toHaveBeenCalledWith('u1', 'appMode', {
+        value: 'ai',
+      });
     });
 
-    it('does not PATCH when a non-whitelisted key is written', async () => {
+    it('does not PUT when a non-whitelisted key is written', async () => {
       jest.useFakeTimers();
       seedCurrentUser({ id: 'u1', name: 'alice' });
 
@@ -340,23 +342,23 @@ describe('useCurrentUserStore', () => {
       jest.advanceTimersByTime(300);
       await Promise.resolve();
 
-      expect(patchUserPreferencesMock).not.toHaveBeenCalled();
+      expect(putUserPreferenceMock).not.toHaveBeenCalled();
       expect(
         usePersistentStorage.getState().preferences.alice.isSidebarCollapsed
       ).toBe(true);
     });
 
-    it('emits a remove op when appMode is set to null (and server had the key)', async () => {
+    it('emits a DELETE when appMode is set to null (and server had the key)', async () => {
       jest.useFakeTimers();
       seedCurrentUser({
         id: 'u1',
         name: 'alice',
         preferences: { appMode: 'ai' },
       });
-      // Seed serverKnown so the remove op is emitted — see the skip-remove
-      // test below for the absent-key case.
+      // Seed serverKnown so the DELETE is emitted — see the skip-remove test
+      // below for the absent-key case.
       hydrateBackendSyncedPreferences({ id: 'u1', name: 'alice' } as any, {
-        preferences: { appMode: 'ai' },
+        preferences: [{ type: 'appMode', config: { value: 'ai' } }],
       });
 
       const { setPreference } = renderUseCurrentUserPreferences();
@@ -364,15 +366,13 @@ describe('useCurrentUserStore', () => {
       jest.advanceTimersByTime(300);
       await Promise.resolve();
 
-      expect(patchUserPreferencesMock).toHaveBeenCalledWith('u1', [
-        { op: 'remove', path: '/appMode' },
-      ]);
+      expect(deleteUserPreferenceMock).toHaveBeenCalledWith('u1', 'appMode');
+      expect(putUserPreferenceMock).not.toHaveBeenCalled();
     });
 
-    it('skips PATCH entirely when null is set on a key the server never had', async () => {
-      // Regression: JSON-Patch `remove` on an absent object member throws
-      // per RFC 6902. Emitting one caused the backend to reject the whole
-      // patch and surface an error toast for what is semantically a no-op.
+    it('skips the request entirely when null is set on a key the server never had', async () => {
+      // Regression: a DELETE on a key the server never persisted would be a
+      // wasted round trip for what is semantically already a no-op.
       jest.useFakeTimers();
       // Seed hydration with an empty server-known state — no `appMode`.
       seedCurrentUser({
@@ -386,17 +386,18 @@ describe('useCurrentUserStore', () => {
       jest.advanceTimersByTime(300);
       await Promise.resolve();
 
-      expect(patchUserPreferencesMock).not.toHaveBeenCalled();
+      expect(putUserPreferenceMock).not.toHaveBeenCalled();
+      expect(deleteUserPreferenceMock).not.toHaveBeenCalled();
     });
 
-    it('rolls back local state and toasts when the PATCH fails', async () => {
+    it('rolls back local state and toasts when the PUT fails', async () => {
       jest.useFakeTimers();
       seedCurrentUser({
         id: 'u1',
         name: 'alice',
         preferences: { appMode: 'classic' },
       });
-      patchUserPreferencesMock.mockRejectedValue(new Error('boom'));
+      putUserPreferenceMock.mockRejectedValue(new Error('boom'));
 
       const { setPreference } = renderUseCurrentUserPreferences();
       setPreference({ appMode: 'ai' });
@@ -415,20 +416,20 @@ describe('useCurrentUserStore', () => {
       usePersistentStorage
         .getState()
         .setUserPreference('alice', { appMode: 'ai' });
-      patchUserPreferencesMock.mockResolvedValue({
-        preferences: { appMode: 'ai' },
+      putUserPreferenceMock.mockResolvedValue({
+        preferences: [{ type: 'appMode', config: { value: 'ai' } }],
       });
 
       hydrateBackendSyncedPreferences(
         { id: 'u1', name: 'alice' },
-        { preferences: {} }
+        { preferences: [] }
       );
       jest.advanceTimersByTime(300);
       await Promise.resolve();
 
-      expect(patchUserPreferencesMock).toHaveBeenCalledWith('u1', [
-        { op: 'add', path: '/appMode', value: 'ai' },
-      ]);
+      expect(putUserPreferenceMock).toHaveBeenCalledWith('u1', 'appMode', {
+        value: 'ai',
+      });
     });
 
     it('does not migrate when the server already has appMode', async () => {
@@ -439,12 +440,12 @@ describe('useCurrentUserStore', () => {
 
       hydrateBackendSyncedPreferences(
         { id: 'u1', name: 'alice' },
-        { preferences: { appMode: 'classic' } }
+        { preferences: [{ type: 'appMode', config: { value: 'classic' } }] }
       );
       jest.advanceTimersByTime(300);
       await Promise.resolve();
 
-      expect(patchUserPreferencesMock).not.toHaveBeenCalled();
+      expect(putUserPreferenceMock).not.toHaveBeenCalled();
       expect(usePersistentStorage.getState().preferences.alice.appMode).toBe(
         'classic'
       );
@@ -459,7 +460,7 @@ describe('useCurrentUserStore', () => {
       // Simulate logout before the debounce fires.
       resetBackendSyncState();
 
-      // Re-login as a different user; their write should get its own PATCH.
+      // Re-login as a different user; their write should get its own PUT.
       seedCurrentUser({ id: 'u2', name: 'bob' });
       const bobHook = renderUseCurrentUserPreferences();
       bobHook.setPreference({ appMode: 'classic' });
@@ -467,10 +468,10 @@ describe('useCurrentUserStore', () => {
       jest.advanceTimersByTime(300);
       await Promise.resolve();
 
-      expect(patchUserPreferencesMock).toHaveBeenCalledTimes(1);
-      expect(patchUserPreferencesMock).toHaveBeenCalledWith('u2', [
-        { op: 'add', path: '/appMode', value: 'classic' },
-      ]);
+      expect(putUserPreferenceMock).toHaveBeenCalledTimes(1);
+      expect(putUserPreferenceMock).toHaveBeenCalledWith('u2', 'appMode', {
+        value: 'classic',
+      });
     });
 
     it('does not roll back a key whose local value has changed since the failed attempt', async () => {
@@ -481,9 +482,9 @@ describe('useCurrentUserStore', () => {
         preferences: { appMode: 'classic' },
       });
 
-      // First PATCH will hang; capture its resolver so we can reject after a newer write.
+      // First PUT will hang; capture its resolver so we can reject after a newer write.
       let rejectFirst: (e: Error) => void = () => {};
-      patchUserPreferencesMock.mockImplementationOnce(
+      putUserPreferenceMock.mockImplementationOnce(
         () =>
           new Promise((_res, rej) => {
             rejectFirst = rej;
@@ -495,9 +496,9 @@ describe('useCurrentUserStore', () => {
       jest.advanceTimersByTime(300);
       await Promise.resolve(); // let the flush await hit await
 
-      expect(patchUserPreferencesMock).toHaveBeenCalledTimes(1);
+      expect(putUserPreferenceMock).toHaveBeenCalledTimes(1);
 
-      // Newer optimistic write while the earlier PATCH is still in flight.
+      // Newer optimistic write while the earlier PUT is still in flight.
       // Deliberately distinct from both the original seed ('classic') and the
       // in-flight attempt ('ai') so a naive rollback-to-pre-attempt-value is
       // observably wrong: it would clobber 'auto' with 'classic'.
@@ -507,7 +508,7 @@ describe('useCurrentUserStore', () => {
         'auto'
       );
 
-      // Now the earlier PATCH rejects; rollback must NOT restore the
+      // Now the earlier PUT rejects; rollback must NOT restore the
       // pre-attempt value ('classic') because the local value has diverged
       // from what we tried to write ('ai') — a newer write ('auto') landed.
       rejectFirst(new Error('boom'));

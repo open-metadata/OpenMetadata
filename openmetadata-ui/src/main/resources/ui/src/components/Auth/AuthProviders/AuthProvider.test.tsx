@@ -53,7 +53,7 @@ jest.mock('../../../rest/userAPI', () => ({
   updateUser: jest.fn().mockImplementation(() => Promise.resolve()),
   getUserPreferences: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ preferences: {} })),
+    .mockImplementation(() => Promise.resolve({ preferences: [] })),
 }));
 
 jest.mock('../../../rest/settingConfigAPI', () => ({
