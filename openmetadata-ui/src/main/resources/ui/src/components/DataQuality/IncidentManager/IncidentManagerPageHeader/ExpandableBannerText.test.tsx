@@ -18,6 +18,8 @@ const FIRST_TEXT = 'A failure description that does not fit on one line.';
 const SECOND_TEXT = 'Incident details that also overflow their available row.';
 const FAILURE_TEXT_TEST_ID = 'failure-text';
 const FAILURE_MORE_TEST_ID = `${FAILURE_TEXT_TEST_ID}-more-button`;
+const PREFIX_TEST_ID = 'incident-id-prefix';
+const PREFIX_TEXT = 'INC–17, ';
 let scrollWidth = 200;
 
 describe('ExpandableBannerText', () => {
@@ -53,6 +55,7 @@ describe('ExpandableBannerText', () => {
     const more = screen.getByTestId(FAILURE_MORE_TEST_ID);
 
     expect(text).toHaveClass('tw:flex');
+    expect(text).toHaveClass('tw:break-all');
     expect(text).toContainElement(more);
     expect(more.tagName).toBe('BUTTON');
     expect(more).toHaveTextContent('label.more-lowercase');
@@ -74,6 +77,23 @@ describe('ExpandableBannerText', () => {
     expect(text).toHaveTextContent(FIRST_TEXT);
     expect(text).toHaveClass('tw:block');
     expect(text).toContainElement(less);
+  });
+
+  it('keeps a prefix in the same text flow as the expanded content', () => {
+    render(
+      <ExpandableBannerText
+        dataTestId={FAILURE_TEXT_TEST_ID}
+        prefix={<span data-testid={PREFIX_TEST_ID}>{PREFIX_TEXT}</span>}
+        text={FIRST_TEXT}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId(FAILURE_MORE_TEST_ID));
+
+    const content = screen.getByTestId(`${FAILURE_TEXT_TEST_ID}-content`);
+
+    expect(content).toContainElement(screen.getByTestId(PREFIX_TEST_ID));
+    expect(content).toHaveTextContent(`${PREFIX_TEXT}${FIRST_TEXT}`);
   });
 
   it('does not show the more control when the text fits', () => {

@@ -13,18 +13,20 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface ExpandableBannerTextProps {
   className?: string;
   dataTestId: string;
+  prefix?: ReactNode;
   text: string;
 }
 
 const ExpandableBannerText = ({
   className,
   dataTestId,
+  prefix,
   text,
 }: ExpandableBannerTextProps) => {
   const { t } = useTranslation();
@@ -62,7 +64,7 @@ const ExpandableBannerText = ({
   return (
     <p
       className={classNames(
-        'tw:!mb-0 tw:min-w-0 tw:text-xs tw:leading-normal tw:text-secondary',
+        'tw:!mb-0 tw:min-w-0 tw:break-all tw:text-xs tw:leading-normal tw:text-secondary',
         expanded ? 'tw:block' : 'tw:flex tw:items-baseline tw:gap-1',
         className
       )}
@@ -74,7 +76,9 @@ const ExpandableBannerText = ({
             'tw:min-w-0 tw:flex-1 tw:truncate': !expanded,
           }
         )}
+        data-testid={`${dataTestId}-content`}
         ref={textRef}>
+        {prefix}
         {text}
       </span>
       {!expanded && hasOverflow && (

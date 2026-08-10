@@ -37,14 +37,19 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
   selectTestType,
+  waitForIncidentToBeIndexed,
 } from '../../../utils/dataQuality';
-import { getCurrentMillis } from '../../../utils/dateTime';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+} from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { sidebarClick } from '../../../utils/sidebar';
 import {
   deleteTestCase,
   submitTestCaseForm,
   verifyIncidentBreadcrumbsFromTablePageRedirect,
+  verifyTestCaseLastRunBanner,
   visitDataQualityTab,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
@@ -762,7 +767,9 @@ test.describe(
         const testCaseDetailsPath = `/test-case/${encodeURIComponent(
           testCaseFqn
         )}/test-case-results`;
-        const banner = page.getByTestId('test-case-last-run-banner');
+        const banners = page.locator(
+          '[data-testid^="test-case-last-run-banner-"]'
+        );
         const waitForTestCaseDetails = () =>
           page.waitForResponse(
             (response) =>
@@ -775,7 +782,9 @@ test.describe(
           await page.goto(testCaseDetailsPath);
           await testCaseDetailsResponse;
 
-          await expect(banner).toHaveCount(1);
+          const banner = await verifyTestCaseLastRunBanner(page, 'not-run-yet');
+
+          await expect(banners).toHaveCount(1);
           await expect(banner).toContainText('Last Run Not run yet');
           await expect(banner).toContainText(
             'This test has not run yet. Add it to a pipeline to start collecting results.'
@@ -785,11 +794,13 @@ test.describe(
 
         const runResults = [
           {
+            bannerStatus: 'failed' as const,
             result: 'Latest banner failed result',
             testCaseStatus: 'Failed',
             timestamp: getCurrentMillis(),
           },
           {
+            bannerStatus: 'success' as const,
             result: 'Latest banner success result',
             testCaseStatus: 'Success',
             timestamp: getCurrentMillis() + 1_000,
@@ -811,7 +822,12 @@ test.describe(
             await page.reload();
             await testCaseDetailsResponse;
 
-            await expect(banner).toHaveCount(1);
+            const banner = await verifyTestCaseLastRunBanner(
+              page,
+              runResult.bannerStatus
+            );
+
+            await expect(banners).toHaveCount(1);
             await expect(banner).toContainText(
               `Last Run ${runResult.testCaseStatus}`
             );
@@ -828,6 +844,116 @@ test.describe(
         }
       } finally {
         await lastRunTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('shows every section for a scheduled failed test case run', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const failedRunTable = new TableClass();
+      const failureResult =
+        'Found 0 rows, but the scheduled test expected at least 1 row.';
+
+      try {
+        await failedRunTable.create(apiContext);
+        await failedRunTable.createTestSuiteAndPipelines(apiContext);
+
+        const testCase = await failedRunTable.createTestCase(apiContext, {
+          name: `complete_failed_run_banner_${uuid()}`,
+          testDefinition: 'tableRowCountToBeBetween',
+          parameterValues: [
+            { name: 'minValue', value: 1 },
+            { name: 'maxValue', value: 100 },
+          ],
+        });
+        const testCaseFqn = testCase['fullyQualifiedName'];
+        const failedTimestamp = getCurrentMillis();
+
+        await failedRunTable.addTestCaseResult(apiContext, testCaseFqn, {
+          result: failureResult,
+          testCaseStatus: 'Failed',
+          testResultValue: [
+            { name: 'minValue', predictedValue: '1', value: '0' },
+          ],
+          timestamp: failedTimestamp,
+        });
+        await waitForIncidentToBeIndexed(
+          apiContext,
+          testCaseFqn,
+          failedTimestamp
+        );
+
+        const testCaseDetailsResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testCases/name/') &&
+            response.status() === 200
+        );
+        await page.goto(
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+        );
+        await testCaseDetailsResponse;
+
+        const banner = await verifyTestCaseLastRunBanner(page, 'failed');
+
+        await expect(
+          page.locator('[data-testid^="test-case-last-run-banner-"]')
+        ).toHaveCount(1);
+        await expect(
+          banner.getByTestId('test-case-last-run-icon')
+        ).toBeVisible();
+        await expect(
+          banner.getByTestId('test-case-last-run-prefix')
+        ).toHaveText('Last Run');
+        await expect(
+          banner.getByTestId('test-case-last-run-status')
+        ).toHaveText('Failed');
+        await expect(
+          banner.getByTestId('test-case-run-description')
+        ).toHaveText(failureResult);
+        await expect(
+          banner.getByTestId('test-case-result-expected')
+        ).toContainText('Result / Expected');
+        await expect(banner.getByTestId('test-case-result-value')).toHaveText(
+          '0 / 1'
+        );
+        await expect(banner.getByTestId('test-case-last-run-time')).toHaveText(
+          customFormatDateTime(failedTimestamp, 'MMM d, yyyy, h:mm a')
+        );
+        await expect(banner.getByTestId('test-case-next-run')).toContainText(
+          'Next · in '
+        );
+        await expect(
+          banner.getByTestId('test-case-next-run')
+        ).not.toContainText('Not scheduled');
+
+        const incident = banner.getByTestId('test-case-last-run-incident');
+
+        await expect(incident).toBeVisible();
+        await expect(incident.getByTestId('test-case-incident-id')).toHaveText(
+          /INC.*\d,/
+        );
+        await expect(
+          incident.getByTestId('test-case-incident-description')
+        ).toContainText('Request TestCase Failure Resolution for');
+        await expect(
+          incident.getByTestId('test-case-incident-description')
+        ).toContainText(testCase.name);
+        await expect(
+          incident.getByTestId('test-case-incident-status')
+        ).toHaveText('New');
+
+        const viewIncidentButton = incident.getByTestId('view-incident-button');
+
+        await expect(viewIncidentButton).toHaveText('View Incident');
+        await viewIncidentButton.click();
+        await expect(page).toHaveURL(/\/issues$/);
+        await expect(page.getByTestId('issue-tab-container')).toBeVisible();
+      } finally {
+        await failedRunTable.delete(apiContext);
         await afterAction();
       }
     });

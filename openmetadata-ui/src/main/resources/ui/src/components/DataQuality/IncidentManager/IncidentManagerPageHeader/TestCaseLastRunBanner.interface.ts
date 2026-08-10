@@ -18,6 +18,10 @@ import type {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
+import type {
+  IncidentStatusConfig,
+  StatusConfig,
+} from './TestCaseLastRunBanner.constants';
 import type { TaskLinkInfo } from './useTestCaseIncidentHeader';
 
 export interface TestCaseLastRunBannerProps {
@@ -28,4 +32,34 @@ export interface TestCaseLastRunBannerProps {
   testCaseStatus?: TestCaseStatus;
   testCaseStatusData?: TestCaseResolutionStatus;
   taskLinkInfo: TaskLinkInfo | null;
+}
+
+export interface IncidentDetailsProps {
+  config: StatusConfig;
+  description?: string;
+  incidentId?: string;
+  incidentLink: TaskLinkInfo | null;
+  statusConfig?: IncidentStatusConfig;
+}
+
+export interface LastRunTimeProps {
+  nextRunTimestamp?: number;
+  testCaseStatus: TestCaseStatus;
+  timestamp?: number;
+}
+
+export type NoRunBannerProps = Pick<
+  TestCaseLastRunBannerProps,
+  'nextRunTimestamp'
+>;
+
+export interface ResultExpectedProps {
+  config: StatusConfig;
+  expectedValue?: string;
+  resultValue?: string;
+  show: boolean;
+}
+
+export interface RunDescriptionProps {
+  description?: string;
 }

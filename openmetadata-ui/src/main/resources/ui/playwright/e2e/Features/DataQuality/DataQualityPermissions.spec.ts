@@ -32,6 +32,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   visitTestSuiteDetailsPage,
   visitTestSuitesPage,
+  verifyTestCaseLastRunBanner,
   waitForPermissionsResponse,
   waitForTableEntityPermissionsResponse,
   waitForTestCaseDetailsResponse,
@@ -597,6 +598,7 @@ test.describe(
           `/test-case/${encodeURIComponent(testCaseFqn)}`
         );
         await testCaseDetailsPromise;
+        await verifyTestCaseLastRunBanner(viewBasicPage, 'not-run-yet');
 
         await expect(
           viewBasicPage.getByTestId('entity-page-header')

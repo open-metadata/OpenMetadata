@@ -57,7 +57,13 @@ const mockUseActivityFeedProviderValue = {
 const mockOnOwnerUpdate = jest.fn();
 const mockFetchTaskCount = jest.fn();
 const mockNavigate = jest.fn();
-const LAST_RUN_BANNER_TEST_ID = 'test-case-last-run-banner';
+const LAST_RUN_BANNER_TEST_IDS = {
+  [TestCaseStatus.Aborted]: 'test-case-last-run-banner-aborted',
+  [TestCaseStatus.Failed]: 'test-case-last-run-banner-failed',
+  [TestCaseStatus.Queued]: 'test-case-last-run-banner-queued',
+  [TestCaseStatus.Success]: 'test-case-last-run-banner-success',
+} as const;
+const NO_RUN_BANNER_TEST_ID = 'test-case-last-run-banner-not-run-yet';
 const LAST_RUN_INCIDENT_TEST_ID = 'test-case-last-run-incident';
 const OWNER_COMPONENT_TEST_ID = 'owner-component';
 const RESULT_EXPECTED_TEST_ID = 'test-case-result-expected';
@@ -415,15 +421,14 @@ describe('Incident Manager Page Header component', () => {
         ...mockUseTestCaseStore.testCase,
         testCaseResult,
       };
+      const bannerTestId = LAST_RUN_BANNER_TEST_IDS[testCaseStatus];
 
       render(<IncidentManagerPageHeader {...mockProps} />);
 
       expect(await screen.findByText(result)).toBeInTheDocument();
-      expect(screen.getAllByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveLength(1);
-      expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveClass(
-        'tw:font-sans'
-      );
-      expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveTextContent(
+      expect(screen.getAllByTestId(bannerTestId)).toHaveLength(1);
+      expect(screen.getByTestId(bannerTestId)).toHaveClass('tw:font-sans');
+      expect(screen.getByTestId(bannerTestId)).toHaveTextContent(
         `label.last-run label.${testCaseStatus.toLowerCase()}`
       );
       expect(screen.getByTestId('test-case-last-run-status')).toHaveClass(
@@ -440,7 +445,8 @@ describe('Incident Manager Page Header component', () => {
       );
       expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
         'tw:size-8',
-        'tw:rounded-lg'
+        'tw:rounded-lg',
+        'tw:self-start'
       );
       expect(screen.getByTestId('test-case-last-run-summary')).toHaveClass(
         'tw:py-3.5',
@@ -451,6 +457,9 @@ describe('Incident Manager Page Header component', () => {
           [TestCaseStatus.Success]: 'tw:bg-success-primary',
         }[testCaseStatus]
       );
+      expect(
+        screen.getByTestId('test-case-last-run-right-section')
+      ).toHaveClass('tw:lg:w-80');
       expect(screen.getByText(result)).toHaveClass('tw:text-xs');
       expect(
         screen.getByTestId('test-case-run-description')
@@ -503,9 +512,34 @@ describe('Incident Manager Page Header component', () => {
           'New incident for test case: generic description'
         );
         expect(incidentRow).toHaveTextContent('label.acknowledged');
+        expect(screen.getByTestId('test-case-incident-icon')).toHaveClass(
+          'tw:self-start'
+        );
+        expect(screen.getByTestId('test-case-incident-text')).toHaveClass(
+          'tw:flex-1'
+        );
+        expect(screen.getByTestId('test-case-incident-id')).toHaveClass(
+          'tw:text-xs',
+          'tw:font-semibold'
+        );
+        expect(screen.getByTestId('test-case-incident-id')).toHaveTextContent(
+          /INC.*9,/
+        );
         expect(
           screen.getByTestId('test-case-incident-description')
-        ).toBeInTheDocument();
+        ).toHaveClass('tw:text-xs');
+        expect(
+          screen.getByTestId('test-case-incident-description')
+        ).toContainElement(screen.getByTestId('test-case-incident-id'));
+        expect(screen.getByTestId('test-case-incident-actions')).toHaveClass(
+          'tw:lg:w-80'
+        );
+        expect(screen.getByTestId('test-case-incident-status')).toHaveClass(
+          'tw:self-start'
+        );
+        expect(
+          screen.getByTestId('test-case-incident-status').firstElementChild
+        ).toHaveClass('tw:bg-white');
 
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
@@ -545,9 +579,9 @@ describe('Incident Manager Page Header component', () => {
     expect(screen.getByTestId('test-case-last-run-status')).toHaveClass(
       'tw:text-warning-primary'
     );
-    expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).not.toHaveTextContent(
-      'label.failed'
-    );
+    expect(
+      screen.getByTestId(LAST_RUN_BANNER_TEST_IDS[TestCaseStatus.Aborted])
+    ).not.toHaveTextContent('label.failed');
   });
 
   it('should use the matching test parameter when the result omits its predicted value', async () => {
@@ -608,10 +642,12 @@ describe('Incident Manager Page Header component', () => {
     expect(
       await screen.findByText('message.test-case-run-queued')
     ).toBeInTheDocument();
-    expect(screen.getAllByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveLength(1);
-    expect(screen.getByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveTextContent(
-      'label.last-run label.queued'
-    );
+    expect(
+      screen.getAllByTestId(LAST_RUN_BANNER_TEST_IDS[TestCaseStatus.Queued])
+    ).toHaveLength(1);
+    expect(
+      screen.getByTestId(LAST_RUN_BANNER_TEST_IDS[TestCaseStatus.Queued])
+    ).toHaveTextContent('label.last-run label.queued');
     expect(
       screen.queryByTestId(RESULT_EXPECTED_TEST_ID)
     ).not.toBeInTheDocument();
@@ -631,9 +667,9 @@ describe('Incident Manager Page Header component', () => {
 
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    const banner = await screen.findByTestId(LAST_RUN_BANNER_TEST_ID);
+    const banner = await screen.findByTestId(NO_RUN_BANNER_TEST_ID);
 
-    expect(screen.getAllByTestId(LAST_RUN_BANNER_TEST_ID)).toHaveLength(1);
+    expect(screen.getAllByTestId(NO_RUN_BANNER_TEST_ID)).toHaveLength(1);
     expect(banner).toHaveTextContent('label.last-run label.not-run-yet');
     expect(banner).toHaveTextContent('message.test-case-not-run-yet');
     expect(banner).toHaveTextContent('label.next · label.not-scheduled');
@@ -661,7 +697,13 @@ describe('Incident Manager Page Header component', () => {
   it('should not show a negative duration when a cached next run has passed', () => {
     const dateNowSpy = jest.spyOn(Date, 'now').mockReturnValue(2_000);
 
-    render(<TestCaseLastRunBanner nextRunTimestamp={1_000} />);
+    render(
+      <TestCaseLastRunBanner
+        incidentTask={null}
+        nextRunTimestamp={1_000}
+        taskLinkInfo={null}
+      />
+    );
 
     const nextRun = screen.getByTestId('test-case-next-run');
 
