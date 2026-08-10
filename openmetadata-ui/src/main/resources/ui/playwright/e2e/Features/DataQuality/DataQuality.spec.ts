@@ -797,23 +797,26 @@ test.describe(
             bannerStatus: 'failed' as const,
             result: 'Latest banner failed result',
             testCaseStatus: 'Failed',
+            testResultValue: [],
             timestamp: getCurrentMillis(),
           },
           {
             bannerStatus: 'success' as const,
             result: 'Latest banner success result',
             testCaseStatus: 'Success',
+            testResultValue: [],
             timestamp: getCurrentMillis() + 1_000,
           },
         ];
 
         for (const [index, runResult] of runResults.entries()) {
           await test.step(`Replace the banner with ${runResult.testCaseStatus}`, async () => {
+            const { bannerStatus, ...resultPayload } = runResult;
             const resultResponse = await apiContext.post(
               `/api/v1/dataQuality/testCases/testCaseResults/${encodeURIComponent(
                 testCaseFqn
               )}`,
-              { data: runResult }
+              { data: resultPayload }
             );
 
             expect(resultResponse.ok()).toBeTruthy();
@@ -824,7 +827,7 @@ test.describe(
 
             const banner = await verifyTestCaseLastRunBanner(
               page,
-              runResult.bannerStatus
+              bannerStatus
             );
 
             await expect(banners).toHaveCount(1);
