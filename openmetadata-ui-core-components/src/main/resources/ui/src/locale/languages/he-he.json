@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "סגור",
+    "close-navigation-menu": "סגור תפריט ניווט",
+    "copy-link": "העתק קישור",
+    "current-page": "עמוד נוכחי",
+    "date-range-picker": "בוחר טווח תאריכים",
+    "delete": "מחק",
+    "edit": "ערוך",
+    "expand-navigation-menu": "הרחב תפריט ניווט",
+    "field-documentation": "תיעוד שדה",
+    "hidden-breadcrumbs": "פירורי לחם מוסתרים",
+    "loading": "טוען…",
+    "next-page": "עבור לעמוד הבא",
+    "open-menu": "פתח תפריט",
+    "page": "עמוד",
+    "pagination": "מספור עמודים",
+    "pagination-navigation": "ניווט מספור עמודים",
+    "previous-page": "עבור לעמוד הקודם",
+    "records": "רשומות",
+    "remove-filter": "הסר סינון",
+    "select-dates": "בחר תאריכים",
+    "show-hidden-breadcrumbs": "הצג פירורי לחם מוסתרים",
+    "today": "היום"
+  }
+}
