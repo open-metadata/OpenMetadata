@@ -20,25 +20,23 @@ const IMAGE_B =
   '<div data-type="file-attachment" data-url="/api/v1/files/xyz" data-filename="b.png" data-mimetype="image/png" data-is-image="true"></div>';
 
 describe('getRichTextDiff', () => {
-
   describe('empty / fallback', () => {
-
     it('returns empty string when both inputs are empty', () => {
       expect(getRichTextDiff('', '')).toBe('');
     });
 
     it('returns provided fallback when both inputs are empty', () => {
-      expect(getRichTextDiff('', '', 'fallback content')).toBe('fallback content');
+      expect(getRichTextDiff('', '', 'fallback content')).toBe(
+        'fallback content'
+      );
     });
 
     it('returns empty string when fallback is not provided and both inputs are empty', () => {
       expect(getRichTextDiff('', '', undefined)).toBe('');
     });
-
   });
 
   describe('text-only diffs', () => {
-
     it('wraps unchanged text in diff-normal spans', () => {
       const result = getRichTextDiff('<p>hello</p>', '<p>hello</p>');
 
@@ -73,26 +71,25 @@ describe('getRichTextDiff', () => {
     });
 
     it('converts newlines to <br> tags', () => {
-      const result = getRichTextDiff('line one\nline two', 'line one\nline three');
+      const result = getRichTextDiff(
+        'line one\nline two',
+        'line one\nline three'
+      );
 
       expect(result).toContain('<br>');
     });
-
   });
 
   describe('whitespace preservation', () => {
-
     it('preserves spaces between diff chunks so words do not merge', () => {
       const result = getRichTextDiff('one two three', 'one changed three');
 
       expect(result).not.toContain('changedthree');
       expect(result).toContain(' three');
     });
-
   });
 
   describe('file-attachment image diffs', () => {
-
     it('renders unchanged image without a data-diff-state attribute', () => {
       const result = getRichTextDiff(IMAGE_A, IMAGE_A);
 
@@ -135,7 +132,5 @@ describe('getRichTextDiff', () => {
       expect(result).toContain('data-testid="diff-removed"');
       expect(result).toContain('data-testid="diff-added"');
     });
-
   });
-
 });
