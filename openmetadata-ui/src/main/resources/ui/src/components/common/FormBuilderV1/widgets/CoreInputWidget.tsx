@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Input } from '@openmetadata/ui-core-components';
+import { Input, Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
+import { HelpCircle } from '@untitledui/icons';
 import { getWidgetLabel } from './coreWidgetUtils';
 
 const CoreInputWidget = ({
@@ -62,22 +63,39 @@ const CoreInputWidget = ({
   };
 
   const description = schema.description ?? options.help;
-  const hint = rawErrors?.[0] ?? description;
+  const showAsTooltip = Boolean(options.showDescriptionAsTooltip);
+  const hint = rawErrors?.[0] ?? (showAsTooltip ? undefined : description);
+  const tooltip = showAsTooltip ? (description as string | undefined) : undefined;
+  const widgetLabel = getWidgetLabel({ hideLabel, label });
 
   return (
     <div>
+      {tooltip && widgetLabel ? (
+        <div className="tw:mb-1.5 tw:flex tw:cursor-default tw:items-center tw:gap-1.5">
+          <span className="tw:text-sm tw:font-medium tw:text-secondary">
+            {widgetLabel}
+          </span>
+          {required && (
+            <span className="tw:text-error-primary">*</span>
+          )}
+          <Tooltip placement="top" title={tooltip}>
+            <TooltipTrigger className="tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover">
+              <HelpCircle className="tw:size-4" />
+            </TooltipTrigger>
+          </Tooltip>
+        </div>
+      ) : null}
       <Input
         autoFocus={autofocus}
+        className={tooltip ? 'tw:w-[86%]' : undefined}
         hint={hint}
         hintClassName="tw:text-xs"
         id={id}
         isDisabled={disabled || readonly}
         isInvalid={!!rawErrors?.length}
         isRequired={required}
-        label={getWidgetLabel({ hideLabel, label })}
+        label={tooltip ? undefined : widgetLabel}
         placeholder={placeholder}
-        // tooltip={tooltip}
-        tooltipClassName="tw:h-4"
         type={inputType}
         value={value ?? ''}
         onBlur={() => onBlur(id, value)}

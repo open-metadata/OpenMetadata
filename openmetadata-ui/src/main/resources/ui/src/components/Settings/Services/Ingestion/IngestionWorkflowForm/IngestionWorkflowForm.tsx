@@ -15,7 +15,8 @@ import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import { isUndefined, omit, omitBy } from 'lodash';
+import { capitalize, isUndefined, omit, omitBy } from 'lodash';
+import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import {
   forwardRef,
   lazy,
@@ -122,6 +123,14 @@ const ProfileSampleConfigField = lazy(
   () => import('./ProfileSampleConfigField')
 );
 
+const classificationLanguageEnumNames = (
+  (
+    databaseAutoClassificationJson as {
+      properties?: { classificationLanguage?: { enum?: string[] } };
+    }
+  ).properties?.classificationLanguage?.enum ?? []
+).map((v) => capitalize(v));
+
 /**
  * Rendered as a sibling of the RJSF form inside the Suspense boundary, so its
  * effect can only run once every lazy template above has resolved and the form
@@ -204,6 +213,18 @@ const IngestionWorkflowForm = forwardRef<
         profileSampleConfig: {
           'ui:field': 'ProfileSampleConfigField',
         },
+      };
+    }
+
+    if (pipeLineType === PipelineType.AutoClassification) {
+      commonSchema = {
+        ...commonSchema,
+        'ui:options': { compactAdvancedSection: true },
+        classificationLanguage: {
+          'ui:enumNames': classificationLanguageEnumNames,
+        },
+        confidence: { 'ui:options': { showDescriptionAsTooltip: true } },
+        sampleDataCount: { 'ui:options': { showDescriptionAsTooltip: true } },
       };
     }
 
