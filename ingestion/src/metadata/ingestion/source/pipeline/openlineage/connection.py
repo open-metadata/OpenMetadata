@@ -55,6 +55,7 @@ def _get_kafka_connection(
     )
     if requires_ssl and broker.sslConfig is None:
         raise SourceConnectionException("SSL security protocol requires an SSL configuration with a CA certificate.")
+    ssl_manager = None
     try:
         config = {
             "bootstrap.servers": broker.brokersUrl,
@@ -62,7 +63,6 @@ def _get_kafka_connection(
             "auto.offset.reset": broker.consumerOffsets.value,
             "security.protocol": broker.securityProtocol.value,
         }
-        ssl_manager = None
         if requires_ssl:
             # confluent_kafka's ssl.*.location keys take file paths, but the
             # connection config holds the cert/key content (pasted or uploaded).
@@ -98,6 +98,10 @@ def _get_kafka_connection(
 
         return kafka_consumer, ssl_manager  # noqa: TRY300
     except Exception as exc:
+        # The cert material is materialized to temp files before the consumer is
+        # created; tear it down if we never hand the manager to the caller.
+        if ssl_manager is not None:
+            ssl_manager.cleanup_temp_files()
         msg = f"Unknown error connecting with Kafka broker: {exc}."
         raise SourceConnectionException(msg)  # noqa: B904
 
