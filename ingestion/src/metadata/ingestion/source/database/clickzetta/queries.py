@@ -12,10 +12,52 @@
 
 import re
 from datetime import datetime
+from enum import Enum
 
 _IDENTIFIER_PART = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 DEFAULT_QUERY_HISTORY_RESULT_LIMIT = 1000
 NATIVE_CLICKZETTA_QUERY_HISTORY_TABLE = "sys.information_schema.job_history"
+MAX_QUERY_HISTORY_FILTER_CONDITION_LENGTH = 4096
+_QUERY_HISTORY_FILTER_COLUMN = r"(?:database_name|schema_name|query_type|user_name)"
+_QUERY_HISTORY_FILTER_OPERATOR = r"(?:NOT\s+LIKE|LIKE|!=|<>|=)"
+_SQL_STRING_LITERAL = r"'(?:''|[^'])*'"
+_QUERY_HISTORY_FILTER_PREDICATE = (
+    rf"{_QUERY_HISTORY_FILTER_COLUMN}\s*{_QUERY_HISTORY_FILTER_OPERATOR}\s*{_SQL_STRING_LITERAL}"
+)
+_QUERY_HISTORY_FILTER_CONDITION = re.compile(
+    rf"^\s*{_QUERY_HISTORY_FILTER_PREDICATE}(?:\s+AND\s+{_QUERY_HISTORY_FILTER_PREDICATE})*\s*$",
+    re.IGNORECASE,
+)
+
+
+class ClickzettaQueryHistoryMode(str, Enum):
+    """Connector-owned query-history query modes."""
+
+    USAGE = "usage"
+    LINEAGE = "lineage"
+
+
+_QUERY_HISTORY_MODE_FILTERS = {
+    ClickzettaQueryHistoryMode.USAGE: """
+  AND (
+      query_type IS NULL
+      OR upper(query_type) NOT IN (
+          'ALTER', 'CREATE_TABLE', 'CREATE_TABLE_AS_SELECT', 'CREATE_VIEW',
+          'DROP', 'SHOW', 'DESCRIBE', 'USE'
+      )
+  )
+""",
+    ClickzettaQueryHistoryMode.LINEAGE: """
+  AND (
+      upper(query_type) IN (
+          'CREATE_TABLE_AS_SELECT', 'CREATE_VIEW', 'INSERT', 'MERGE', 'UPDATE'
+      )
+      OR lower(query_text) LIKE '%insert%into%select%'
+      OR lower(query_text) LIKE '%create%table%as%select%'
+      OR lower(query_text) LIKE '%merge%into%'
+  )
+""",
+}
 
 
 def validate_query_history_table(query_history_table: str) -> str:
@@ -45,6 +87,33 @@ def _is_native_query_history_table(query_history_table: str) -> bool:
     return query_history_table.casefold() == NATIVE_CLICKZETTA_QUERY_HISTORY_TABLE
 
 
+def validate_query_history_filter_condition(filter_condition: object | None) -> str:
+    """Allow only a constrained user-supplied predicate for query history.
+
+    ``filterCondition`` is service configuration, but it must never become an
+    arbitrary SQL fragment. The supported syntax deliberately covers scoped
+    canonical query-history views while excluding functions, subqueries,
+    comments, statement separators, and broadening ``OR`` expressions.
+    """
+    if filter_condition is None:
+        return ""
+    if not isinstance(filter_condition, str):
+        raise TypeError("ClickZetta filterCondition must be a string")
+
+    condition = filter_condition.strip()
+    if not condition:
+        return ""
+    if len(condition) > MAX_QUERY_HISTORY_FILTER_CONDITION_LENGTH:
+        raise ValueError("ClickZetta filterCondition exceeds the maximum supported length")
+    if not _QUERY_HISTORY_FILTER_CONDITION.fullmatch(condition):
+        raise ValueError(
+            "ClickZetta filterCondition supports only AND-separated =, !=, <>, LIKE, "
+            "or NOT LIKE predicates on database_name, schema_name, query_type, or user_name "
+            "with single-quoted string literals"
+        )
+    return condition
+
+
 def build_clickzetta_query_history_sql(
     *,
     query_history_table: str,
@@ -52,7 +121,8 @@ def build_clickzetta_query_history_sql(
     end_time: datetime,
     database_name: str | None = None,
     database_schema: str | None = None,
-    filters: str = "",
+    query_history_mode: ClickzettaQueryHistoryMode,
+    filter_condition: object | None = None,
     result_limit: int | None = None,
 ) -> str:
     """Build a bounded query against a ClickZetta query-history source.
@@ -65,7 +135,9 @@ def build_clickzetta_query_history_sql(
     """
     table = validate_query_history_table(query_history_table)
     limit = _validate_result_limit(result_limit)
-    extra_filters = f"\n    {filters.strip()}" if filters and filters.strip() else ""
+    user_filter_condition = validate_query_history_filter_condition(filter_condition)
+    mode_filters = _QUERY_HISTORY_MODE_FILTERS[query_history_mode].strip()
+    user_filter = f"\n  AND ({user_filter_condition})" if user_filter_condition else ""
     native_source = _is_native_query_history_table(table)
 
     if native_source:
@@ -98,11 +170,11 @@ def build_clickzetta_query_history_sql(
     cost AS cost
 """
 
-    native_scope_filters = ""
-    if native_source and database_name:
-        native_scope_filters += f"\n  AND database_name = '{_quote_sql_literal(database_name.strip())}'"
-    if native_source and database_schema:
-        native_scope_filters += f"\n  AND schema_name = '{_quote_sql_literal(database_schema.strip())}'"
+    scope_filters = ""
+    if database_name:
+        scope_filters += f"\n  AND database_name = '{_quote_sql_literal(database_name.strip())}'"
+    if database_schema:
+        scope_filters += f"\n  AND schema_name = '{_quote_sql_literal(database_schema.strip())}'"
 
     return f"""
 SELECT
@@ -122,7 +194,8 @@ SELECT{source_projection}FROM {table}
 WHERE start_time >= '{start_time}'
   AND start_time < '{end_time}'
   AND query_text NOT LIKE '/* {{\"app\": \"OpenMetadata\", %}} */%'
-  AND query_text NOT LIKE '/* {{\"app\": \"dbt\", %}} */%'{native_scope_filters}{extra_filters}
+  AND query_text NOT LIKE '/* {{\"app\": \"dbt\", %}} */%'
+  {mode_filters}{scope_filters}{user_filter}
 ORDER BY start_time
 LIMIT {limit}
 """.strip()

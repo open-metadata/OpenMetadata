@@ -16,6 +16,9 @@ from datetime import timedelta
 from sqlalchemy import text
 
 from metadata.generated.schema.type.tableQuery import TableQueries
+from metadata.ingestion.source.database.clickzetta.queries import (
+    ClickzettaQueryHistoryMode,
+)
 from metadata.ingestion.source.database.clickzetta.query_parser import (
     ClickzettaQueryParserSource,
 )
@@ -28,15 +31,7 @@ logger = ingestion_logger()
 class ClickzettaUsageSource(ClickzettaQueryParserSource, UsageSource):
     """Extract bounded query usage from a configured ClickZetta history view."""
 
-    filters = """
-    AND (
-        query_type IS NULL
-        OR upper(query_type) NOT IN (
-            'ALTER', 'CREATE_TABLE', 'CREATE_TABLE_AS_SELECT', 'CREATE_VIEW',
-            'DROP', 'SHOW', 'DESCRIBE', 'USE'
-        )
-    )
-    """
+    query_history_mode = ClickzettaQueryHistoryMode.USAGE
 
     def yield_table_queries(self) -> Iterable[TableQueries]:
         """Read query-history rows in at-most-one-day windows."""
@@ -57,5 +52,6 @@ class ClickzettaUsageSource(ClickzettaQueryParserSource, UsageSource):
                         if queries:
                             yield TableQueries(queries=queries)
             except Exception as exc:
-                logger.error(f"ClickZetta usage query failed: {exc}")
+                logger.exception("ClickZetta usage query failed")
+                raise RuntimeError(f"ClickZetta usage query failed: {exc}") from exc
             window_start = window_end

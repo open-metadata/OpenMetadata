@@ -75,6 +75,13 @@ view must expose these canonical columns:
 `query_text`, `query_type`, `user_name`, `database_name`, `schema_name`,
 `start_time`, `end_time`, `duration`, `aborted`, and `cost`.
 
+If you set the workflow's `filterCondition`, use only `AND`-separated `=`,
+`!=`, `<>`, `LIKE`, or `NOT LIKE` predicates on `database_name`,
+`schema_name`, `query_type`, or `user_name`, with single-quoted string values.
+For example: `schema_name = 'seller_center' AND user_name != 'system'`.
+Arbitrary SQL, functions, subqueries, comments, and `OR` predicates are
+rejected so workflow configuration cannot inject SQL.
+
 Leave this blank when running metadata-only ingestion. For a first validation,
 grant the ingestion identity read access to the native history object and set a
 small query-log result limit. The connector applies a time window and result

@@ -15,6 +15,9 @@ from collections.abc import Iterator
 from sqlalchemy import text
 
 from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.source.database.clickzetta.queries import (
+    ClickzettaQueryHistoryMode,
+)
 from metadata.ingestion.source.database.clickzetta.query_parser import (
     ClickzettaQueryParserSource,
 )
@@ -27,16 +30,7 @@ logger = ingestion_logger()
 class ClickzettaLineageSource(ClickzettaQueryParserSource, LineageSource):
     """Extract lineage-bearing DML/CTAS statements from query history."""
 
-    filters = """
-    AND (
-        upper(query_type) IN (
-            'CREATE_TABLE_AS_SELECT', 'CREATE_VIEW', 'INSERT', 'MERGE', 'UPDATE'
-        )
-        OR lower(query_text) LIKE '%insert%into%select%'
-        OR lower(query_text) LIKE '%create%table%as%select%'
-        OR lower(query_text) LIKE '%merge%into%'
-    )
-    """
+    query_history_mode = ClickzettaQueryHistoryMode.LINEAGE
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """Read one bounded query-history window for SQL lineage parsing."""
@@ -50,4 +44,5 @@ class ClickzettaLineageSource(ClickzettaQueryParserSource, LineageSource):
                         if table_query is not None:
                             yield table_query
             except Exception as exc:
-                logger.error(f"ClickZetta lineage query failed: {exc}")
+                logger.exception("ClickZetta lineage query failed")
+                raise RuntimeError(f"ClickZetta lineage query failed: {exc}") from exc

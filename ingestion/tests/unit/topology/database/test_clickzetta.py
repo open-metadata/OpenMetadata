@@ -312,12 +312,15 @@ def test_build_clickzetta_url_merges_custom_connection_options():
         "virtualcluster",
         "schema",
         "protocol",
+        "VirtualCluster",
+        "Schema",
+        "Protocol",
     ],
 )
 def test_build_clickzetta_url_rejects_reserved_connection_options(
     reserved_key,
 ):
-    with pytest.raises(ValueError, match=reserved_key):
+    with pytest.raises(ValueError, match=reserved_key.casefold()):
         build_clickzetta_url(
             host_port="instance.example.clickzetta.test",
             username="catalog_reader",
