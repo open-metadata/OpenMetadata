@@ -108,6 +108,7 @@ const FileAttachment = ({
           data-testid="delete-icon"
           icon={<TrashIcon height={18} width={18} />}
           size="sm"
+          tooltip={t('label.delete')}
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();

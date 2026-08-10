@@ -404,7 +404,7 @@ test.describe('Context Center - Article Attachments', () => {
     articleFqnsToCleanup.add(article.fullyQualifiedName);
 
     const fileUrl =
-      'https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/openmetadata-docs/images/logo-mark.svg';
+      'https://example.com/sample.svg';
 
     await test.step('navigate to the article', async () => {
       await navigateToArticle(page, article.fullyQualifiedName);
