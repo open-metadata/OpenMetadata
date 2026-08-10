@@ -14,14 +14,10 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -31,23 +27,27 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.teams.UserPreferences;
+import org.openmetadata.schema.api.teams.preferences.AppModePreference;
+import org.openmetadata.schema.api.teams.preferences.Config;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
- * IT tests for the lightweight {@code user_preferences} resource: {@code GET/PATCH
- * /v1/users/{userId}/preferences}, the self-or-admin auth rule, and the delete cascade wired via
- * {@code UserRepository#postDelete}.
+ * IT tests for the lightweight {@code user_preferences} resource: {@code GET/PUT/DELETE
+ * /v1/users/{userId}/preferences[/{type}]}, the self-or-admin auth rule, and the delete cascade
+ * wired via {@code UserRepository#postDelete}. Each preference entry is a typed discriminated
+ * union {@code {type, config}} - only {@code appMode} is wired end-to-end today.
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class UserPreferencesIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String APP_MODE = "appMode";
 
   @Test
-  void getPreferences_default_returnsEmptyMap() throws Exception {
+  void getPreferences_default_returnsEmptyList() throws Exception {
     User user = createUser("prefs-default");
     try {
       OpenMetadataClient self = clientFor(user);
@@ -61,51 +61,52 @@ public class UserPreferencesIT {
   }
 
   @Test
-  void patchPreferences_add_persists() throws Exception {
-    User user = createUser("prefs-add");
+  void putPreference_appMode_persists() throws Exception {
+    User user = createUser("prefs-put");
     try {
       OpenMetadataClient self = clientFor(user);
 
-      UserPreferences patched = patchPreferences(self, user.getId(), addOp("/appMode", "ai"));
-      assertEquals("ai", patched.getPreferences().get("appMode"));
+      UserPreferences putResponse = putAppMode(self, user.getId(), "ai");
+      assertEquals("ai", appModeValue(putResponse));
 
       UserPreferences fetched = getPreferences(self, user.getId());
-      assertEquals("ai", fetched.getPreferences().get("appMode"));
+      assertEquals("ai", appModeValue(fetched));
     } finally {
       deleteUser(user);
     }
   }
 
   @Test
-  void patchPreferences_replace_persists() throws Exception {
+  void putPreference_appMode_updatesExisting() throws Exception {
     User user = createUser("prefs-replace");
     try {
       OpenMetadataClient self = clientFor(user);
-      patchPreferences(self, user.getId(), addOp("/appMode", "ai"));
+      putAppMode(self, user.getId(), "ai");
 
-      UserPreferences patched =
-          patchPreferences(self, user.getId(), replaceOp("/appMode", "classic"));
-      assertEquals("classic", patched.getPreferences().get("appMode"));
+      UserPreferences updated = putAppMode(self, user.getId(), "classic");
+      assertEquals("classic", appModeValue(updated));
+      assertEquals(1, updated.getPreferences().size(), "PUT must replace, not duplicate, by type");
 
       UserPreferences fetched = getPreferences(self, user.getId());
-      assertEquals("classic", fetched.getPreferences().get("appMode"));
+      assertEquals("classic", appModeValue(fetched));
+      assertEquals(1, fetched.getPreferences().size());
     } finally {
       deleteUser(user);
     }
   }
 
   @Test
-  void patchPreferences_remove_clearsKey() throws Exception {
-    User user = createUser("prefs-remove");
+  void deletePreference_appMode_removes() throws Exception {
+    User user = createUser("prefs-delete");
     try {
       OpenMetadataClient self = clientFor(user);
-      patchPreferences(self, user.getId(), addOp("/appMode", "ai"));
+      putAppMode(self, user.getId(), "ai");
 
-      UserPreferences patched = patchPreferences(self, user.getId(), removeOp("/appMode"));
-      assertFalse(patched.getPreferences().containsKey("appMode"));
+      UserPreferences afterDelete = deletePreference(self, user.getId(), APP_MODE);
+      assertTrue(afterDelete.getPreferences().isEmpty());
 
       UserPreferences fetched = getPreferences(self, user.getId());
-      assertFalse(fetched.getPreferences().containsKey("appMode"));
+      assertTrue(fetched.getPreferences().isEmpty());
     } finally {
       deleteUser(user);
     }
@@ -115,9 +116,8 @@ public class UserPreferencesIT {
   void deleteUser_cascadesToPreferences() throws Exception {
     User user = createUser("prefs-cascade");
     OpenMetadataClient self = clientFor(user);
-    patchPreferences(self, user.getId(), addOp("/appMode", "ai"));
-    UserPreferences beforeDelete = getPreferences(self, user.getId());
-    assertEquals("ai", beforeDelete.getPreferences().get("appMode"));
+    UserPreferences beforeDelete = putAppMode(self, user.getId(), "ai");
+    assertEquals("ai", appModeValue(beforeDelete));
 
     deleteUser(user);
 
@@ -129,7 +129,7 @@ public class UserPreferencesIT {
   }
 
   @Test
-  void patchPreferences_nonAdminOtherUser_returns403() throws Exception {
+  void putPreference_nonAdminOtherUser_returns403() throws Exception {
     User userA = createUser("prefs-a");
     User userB = createUser("prefs-b");
     try {
@@ -137,8 +137,8 @@ public class UserPreferencesIT {
 
       assertThrows(
           ForbiddenException.class,
-          () -> patchPreferences(clientA, userB.getId(), addOp("/appMode", "ai")),
-          "A non-admin user must not be able to patch another user's preferences");
+          () -> putAppMode(clientA, userB.getId(), "ai"),
+          "A non-admin user must not be able to put another user's preferences");
     } finally {
       deleteUser(userA);
       deleteUser(userB);
@@ -171,41 +171,40 @@ public class UserPreferencesIT {
             HttpMethod.GET, "/v1/users/" + userId + "/preferences", null, UserPreferences.class);
   }
 
-  private static UserPreferences patchPreferences(
-      OpenMetadataClient client, UUID userId, JsonNode patchOps) {
+  private static UserPreferences putAppMode(OpenMetadataClient client, UUID userId, String value) {
+    AppModePreference preference =
+        new AppModePreference()
+            .withType(AppModePreference.Type.APP_MODE)
+            .withConfig(new Config().withValue(Config.Value.fromValue(value)));
+
     return client
         .getHttpClient()
         .execute(
-            HttpMethod.PATCH,
-            "/v1/users/" + userId + "/preferences",
-            patchOps,
+            HttpMethod.PUT,
+            "/v1/users/" + userId + "/preferences/" + APP_MODE,
+            preference,
             UserPreferences.class);
   }
 
-  private static JsonNode addOp(String path, String value) {
-    return singleOp("add", path, value);
+  private static UserPreferences deletePreference(
+      OpenMetadataClient client, UUID userId, String type) {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.DELETE,
+            "/v1/users/" + userId + "/preferences/" + type,
+            null,
+            UserPreferences.class);
   }
 
-  private static JsonNode replaceOp(String path, String value) {
-    return singleOp("replace", path, value);
-  }
-
-  private static JsonNode removeOp(String path) {
-    ArrayNode ops = MAPPER.createArrayNode();
-    ObjectNode op = MAPPER.createObjectNode();
-    op.put("op", "remove");
-    op.put("path", path);
-    ops.add(op);
-    return ops;
-  }
-
-  private static JsonNode singleOp(String opName, String path, String value) {
-    ArrayNode ops = MAPPER.createArrayNode();
-    ObjectNode op = MAPPER.createObjectNode();
-    op.put("op", opName);
-    op.put("path", path);
-    op.put("value", value);
-    ops.add(op);
-    return ops;
+  /** Pulls the {@code appMode} entry's {@code config.value} out of the typed preferences list. */
+  private static String appModeValue(UserPreferences preferences) {
+    return preferences.getPreferences().stream()
+        .map(entry -> MAPPER.convertValue(entry, Map.class))
+        .filter(entry -> APP_MODE.equals(entry.get("type")))
+        .findFirst()
+        .map(entry -> (Map<?, ?>) entry.get("config"))
+        .map(config -> (String) config.get("value"))
+        .orElse(null);
   }
 }

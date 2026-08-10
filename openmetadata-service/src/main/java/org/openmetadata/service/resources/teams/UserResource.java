@@ -59,6 +59,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -99,6 +100,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.teams.UserPreferences;
+import org.openmetadata.schema.api.teams.preferences.AppModePreference;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.CreatePersonalToken;
@@ -1117,13 +1119,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  /** Preference {@code type} discriminator -> the concrete POJO it deserializes to. */
+  private static final Map<String, Class<?>> PREFERENCE_TYPES =
+      Map.of(AppModePreference.Type.APP_MODE.value(), AppModePreference.class);
+
   @GET
   @Path("/{userId}/preferences")
   @Operation(
       operationId = "getUserPreferences",
       summary = "Get user preferences",
       description =
-          "Get the opaque per-user UI preferences bag. Users can read their own; admins can read anyone's.",
+          "Get the per-user UI preferences list. Users can read their own; admins can read anyone's.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1140,39 +1146,103 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @PathParam("userId")
           UUID userId) {
     authorizeSelfOrAdmin(uriInfo, securityContext, userId);
-    Map<String, Object> preferences = preferencesRepository.get(userId);
+    List<Object> preferences = preferencesRepository.get(userId);
     return new UserPreferences().withUserId(userId).withPreferences(preferences);
   }
 
-  @PATCH
-  @Path("/{userId}/preferences")
-  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @PUT
+  @Path("/{userId}/preferences/{type}")
+  @Consumes(MediaType.APPLICATION_JSON)
   @Operation(
-      operationId = "patchUserPreferences",
-      summary = "Update user preferences",
+      operationId = "putUserPreference",
+      summary = "Create or replace a user preference",
       description =
-          "Update the opaque per-user UI preferences bag using JsonPatch, applied directly "
-              + "against the preferences map. Users can update their own; admins can update anyone's.",
-      externalDocs =
-          @ExternalDocumentation(
-              description = "JsonPatch RFC",
-              url = "https://tools.ietf.org/html/rfc6902"))
-  public UserPreferences patchPreferences(
+          "Create or replace the preference entry of the given `type`. The request body is a "
+              + "typed discriminated union `{type, config}` (see "
+              + "`api/teams/preferences/*.json`). Users can update their own; admins can update "
+              + "anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences putPreference(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId,
+      @Parameter(description = "Discriminator of the preference entry, e.g. `appMode`")
+          @PathParam("type")
+          String type,
       @RequestBody(
-              description = "JsonPatch with array of operations",
+              description = "Typed preference entry `{type, config}`",
               content =
                   @Content(
-                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                      examples = {@ExampleObject("[{op:add, path:/appMode, value: ai}]")}))
-          JsonPatch patch) {
+                      mediaType = MediaType.APPLICATION_JSON,
+                      examples = {
+                        @ExampleObject("{\"type\": \"appMode\", \"config\": {\"value\": \"ai\"}}")
+                      }))
+          Map<String, Object> preference) {
     authorizeSelfOrAdmin(uriInfo, securityContext, userId);
-    Map<String, Object> preferences = preferencesRepository.patch(userId, patch);
+    Object typedPreference = convertPreference(type, preference);
+    List<Object> preferences = preferencesRepository.putByType(userId, type, typedPreference);
     return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  @DELETE
+  @Path("/{userId}/preferences/{type}")
+  @Operation(
+      operationId = "deleteUserPreference",
+      summary = "Delete a user preference",
+      description =
+          "Remove the preference entry of the given `type`, if present. Users can update their "
+              + "own; admins can update anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences deletePreference(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId,
+      @Parameter(description = "Discriminator of the preference entry, e.g. `appMode`")
+          @PathParam("type")
+          String type) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    List<Object> preferences = preferencesRepository.deleteByType(userId, type);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  /**
+   * Converts the raw request body into the concrete POJO registered for {@code type} in {@link
+   * #PREFERENCE_TYPES}, so JAX-RS can accept a single generic body shape for the `{type}`
+   * path-templated endpoint while still storing (and returning) fully typed preference entries.
+   * Adding a new preference type only requires a new schema + a new map entry here.
+   */
+  private static Object convertPreference(String type, Map<String, Object> preference) {
+    Class<?> preferenceClass = PREFERENCE_TYPES.get(type);
+    if (preferenceClass == null) {
+      throw new BadRequestException("Unsupported user preference type: " + type);
+    }
+    Object bodyType = preference == null ? null : preference.get("type");
+    if (!type.equals(bodyType)) {
+      throw new BadRequestException(
+          String.format(
+              "Preference type in path (%s) does not match request body (%s)", type, bodyType));
+    }
+    return JsonUtils.convertValue(preference, preferenceClass);
   }
 
   /** Users can act on their own preferences; anyone else requires admin. */
