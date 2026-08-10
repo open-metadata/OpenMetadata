@@ -27,7 +27,9 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.clickzetta.queries import (
+    ClickzettaQueryHistoryMode,
     build_clickzetta_query_history_sql,
+    validate_query_history_filter_condition,
     validate_query_history_table,
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
@@ -152,6 +154,8 @@ def normalize_clickzetta_query_row(
 class ClickzettaQueryParserSource(QueryParserSource, ABC):
     """Base source for ClickZetta usage and query-lineage extraction."""
 
+    query_history_mode: ClickzettaQueryHistoryMode
+
     @classmethod
     def create(
         cls,
@@ -181,13 +185,21 @@ class ClickzettaQueryParserSource(QueryParserSource, ABC):
         return validate_query_history_table(table)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        try:
+            filter_condition = validate_query_history_filter_condition(
+                getattr(self.source_config, "filterCondition", None)
+            )
+        except (TypeError, ValueError) as exc:
+            raise InvalidSourceException(str(exc)) from exc
+
         return build_clickzetta_query_history_sql(
             query_history_table=self.query_history_table,
             start_time=start_time,
             end_time=end_time,
             database_name=getattr(self.service_connection, "databaseName", None),
             database_schema=getattr(self.service_connection, "databaseSchema", None),
-            filters=self.get_filters(),
+            query_history_mode=self.query_history_mode,
+            filter_condition=filter_condition,
             result_limit=getattr(self.source_config, "resultLimit", None),
         )
 

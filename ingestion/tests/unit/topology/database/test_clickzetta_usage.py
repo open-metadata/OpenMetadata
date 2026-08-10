@@ -45,6 +45,7 @@ from metadata.ingestion.source.database.clickzetta.lineage import (  # noqa: E40
     ClickzettaLineageSource,
 )
 from metadata.ingestion.source.database.clickzetta.queries import (  # noqa: E402
+    ClickzettaQueryHistoryMode,
     build_clickzetta_query_history_sql,
 )
 from metadata.ingestion.source.database.clickzetta.query_parser import (  # noqa: E402
@@ -68,14 +69,15 @@ def test_query_history_sql_is_bounded_and_uses_a_validated_table():
         query_history_table="seller_center.query_history",
         start_time=datetime(2026, 8, 5, tzinfo=timezone.utc),
         end_time=datetime(2026, 8, 6, tzinfo=timezone.utc),
-        filters="AND schema_name = 'seller_center'",
+        query_history_mode=ClickzettaQueryHistoryMode.USAGE,
+        filter_condition="schema_name = 'seller_center'",
         result_limit=2,
     )
 
     assert "FROM seller_center.query_history" in sql
     assert "start_time >= '2026-08-05 00:00:00+00:00'" in sql
     assert "start_time < '2026-08-06 00:00:00+00:00'" in sql
-    assert "AND schema_name = 'seller_center'" in sql
+    assert "AND (schema_name = 'seller_center')" in sql
     assert "ORDER BY start_time" in sql
     assert "LIMIT 2" in sql
     assert "OpenMetadata" in sql
@@ -88,7 +90,7 @@ def test_query_history_sql_rejects_an_unsafe_table_identifier():
             query_history_table="seller_center.query_history; DROP TABLE users",
             start_time=datetime(2026, 8, 5),
             end_time=datetime(2026, 8, 6),
-            filters="",
+            query_history_mode=ClickzettaQueryHistoryMode.USAGE,
             result_limit=2,
         )
 
@@ -99,9 +101,24 @@ def test_query_history_sql_rejects_an_unbounded_result_limit():
             query_history_table="seller_center.query_history",
             start_time=datetime(2026, 8, 5),
             end_time=datetime(2026, 8, 6),
-            filters="",
+            query_history_mode=ClickzettaQueryHistoryMode.USAGE,
             result_limit=0,
         )
+
+
+def test_canonical_query_history_sql_scopes_service_database_and_schema():
+    sql = build_clickzetta_query_history_sql(
+        query_history_table="seller_center.query_history",
+        start_time=datetime(2026, 8, 5, tzinfo=timezone.utc),
+        end_time=datetime(2026, 8, 6, tzinfo=timezone.utc),
+        database_name="quick_start",
+        database_schema="seller_center",
+        query_history_mode=ClickzettaQueryHistoryMode.USAGE,
+        result_limit=1,
+    )
+
+    assert "database_name = 'quick_start'" in sql
+    assert "schema_name = 'seller_center'" in sql
 
 
 def test_native_job_history_sql_maps_columns_and_scopes_seller_center():
@@ -111,7 +128,7 @@ def test_native_job_history_sql_maps_columns_and_scopes_seller_center():
         end_time=datetime(2026, 8, 6, tzinfo=timezone.utc),
         database_name="quick_start",
         database_schema="seller_center",
-        filters="",
+        query_history_mode=ClickzettaQueryHistoryMode.USAGE,
         result_limit=1,
     )
 
@@ -212,6 +229,33 @@ def test_query_parser_applies_the_configured_seller_center_scope_and_limit():
     assert "LIMIT 2" in sql
 
 
+@pytest.mark.parametrize(
+    "filter_condition",
+    [
+        "schema_name = 'seller_center'; DROP TABLE query_history",
+        "schema_name = 'seller_center' OR 1 = 1",
+        "LOWER(schema_name) = 'seller_center'",
+    ],
+)
+def test_query_parser_rejects_unsafe_filter_condition(filter_condition):
+    source = object.__new__(ClickzettaUsageSource)
+    source.service_connection = SimpleNamespace(
+        queryHistoryTable="seller_center.query_history",
+        databaseName="quick_start",
+        databaseSchema="seller_center",
+    )
+    source.source_config = SimpleNamespace(
+        filterCondition=filter_condition,
+        resultLimit=2,
+    )
+
+    with pytest.raises(InvalidSourceException, match="filterCondition"):
+        source.get_sql_statement(
+            datetime(2026, 8, 5, tzinfo=timezone.utc),
+            datetime(2026, 8, 6, tzinfo=timezone.utc),
+        )
+
+
 def test_query_parser_requires_a_query_history_table():
     source = object.__new__(ClickzettaUsageSource)
     source.service_connection = SimpleNamespace(queryHistoryTable=None)
@@ -255,6 +299,50 @@ def test_usage_source_uses_one_bounded_window_with_a_fake_engine():
     executed_sql = connection.execute.call_args.args[0].text
     assert "FROM seller_center.query_history" in executed_sql
     assert "LIMIT 2" in executed_sql
+
+
+def test_usage_source_propagates_query_history_errors():
+    source = object.__new__(ClickzettaUsageSource)
+    source.start = datetime(2026, 8, 5, tzinfo=timezone.utc)
+    source.end = datetime(2026, 8, 5, 1, tzinfo=timezone.utc)
+    source.service_connection = SimpleNamespace(
+        queryHistoryTable="seller_center.query_history",
+        databaseName="quick_start",
+        databaseSchema="seller_center",
+    )
+    source.config = SimpleNamespace(serviceName="clickzetta")
+    source.source_config = SimpleNamespace(filterCondition=None, resultLimit=2)
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    connection.execute.side_effect = PermissionError("missing SELECT permission")
+    engine = MagicMock()
+    engine.connect.return_value = connection
+    source.get_engine = lambda: iter([engine])
+
+    with pytest.raises(RuntimeError, match="ClickZetta usage query failed"):
+        list(source.yield_table_queries())
+
+
+def test_lineage_source_propagates_query_history_errors():
+    source = object.__new__(ClickzettaLineageSource)
+    source.start = datetime(2026, 8, 5, tzinfo=timezone.utc)
+    source.end = datetime(2026, 8, 5, 1, tzinfo=timezone.utc)
+    source.service_connection = SimpleNamespace(
+        queryHistoryTable="seller_center.query_history",
+        databaseName="quick_start",
+        databaseSchema="seller_center",
+    )
+    source.config = SimpleNamespace(serviceName="clickzetta")
+    source.source_config = SimpleNamespace(filterCondition=None, resultLimit=2)
+    connection = MagicMock()
+    connection.__enter__.return_value = connection
+    connection.execute.side_effect = PermissionError("missing SELECT permission")
+    engine = MagicMock()
+    engine.connect.return_value = connection
+    source.get_engine = lambda: iter([engine])
+
+    with pytest.raises(RuntimeError, match="ClickZetta lineage query failed"):
+        list(source.yield_table_query())
 
 
 def test_service_spec_registers_usage_and_lineage_sources():
