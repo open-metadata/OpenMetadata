@@ -76,6 +76,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const NON_FILTERING_TEST_CASE_PARAMS = new Set<
   keyof ListTestCaseParamsBySearch
 >(['testSuiteId', 'offset', 'sortField', 'sortType']);
+const TEST_CASE_LIST_REFRESH_DELAY_MS = 1000;
 
 const isUnfilteredTestCaseRequest = (param?: ListTestCaseParamsBySearch) =>
   Object.entries(param ?? {}).every(
@@ -446,6 +447,14 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             ...currentPaging,
             total,
           }));
+        }
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, TEST_CASE_LIST_REFRESH_DELAY_MS)
+        );
+
+        if (!isCurrentTestSuite()) {
+          return;
         }
 
         await fetchTestCases();

@@ -270,7 +270,7 @@ describe('QualityTab', () => {
 
     expect(await screen.findByTestId('quality-tab-toolbar')).toHaveClass(
       'tw:flex-wrap',
-      'tw:items-end',
+      'tw:items-center',
       'tw:gap-y-4'
     );
     expect(screen.getByTestId('quality-tab-search')).toHaveClass(
@@ -280,7 +280,7 @@ describe('QualityTab', () => {
     );
 
     const filterControls = screen.getByTestId('quality-tab-filter-controls');
-    const filterSpace = filterControls.querySelector('.ant-space-align-end');
+    const filterSpace = filterControls.querySelector('.ant-space-align-center');
     const filterItems = filterControls.querySelectorAll('.ant-form-item');
 
     expect(filterControls).toHaveClass('tw:ml-auto', 'tw:shrink-0');

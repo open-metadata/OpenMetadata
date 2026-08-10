@@ -207,12 +207,13 @@ describe('Test ColumnProfileTable component', () => {
     expect(await screen.findByTestId('searchbar')).toBeInTheDocument();
   });
 
-  it('should render the search bar at half width', async () => {
+  it('should render the search bar right-aligned at half width', async () => {
     await act(async () => {
       render(<ColumnProfileTable />, { wrapper: MemoryRouter });
     });
 
     expect(await screen.findByTestId('search-bar-container')).toHaveClass(
+      'tw:ml-auto',
       'tw:w-1/2'
     );
   });

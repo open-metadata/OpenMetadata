@@ -472,7 +472,7 @@ const ColumnProfileTable = () => {
           <div className="p-x-md p-y-md">
             <Searchbar
               removeMargin
-              containerClassName="tw:w-1/2"
+              containerClassName="tw:ml-auto tw:w-1/2"
               placeholder={t('message.find-in-table')}
               searchValue={searchText}
               typingInterval={500}

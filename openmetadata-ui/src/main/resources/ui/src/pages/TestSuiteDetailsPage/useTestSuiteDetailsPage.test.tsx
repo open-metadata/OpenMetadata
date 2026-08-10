@@ -50,6 +50,15 @@ const mockGetEntityPermissionByFqn = jest
   .mockImplementation(() => Promise.resolve(mockPermissions));
 let mockTestSuiteFQN = 'bundle_suite_fqn';
 
+const runTimeoutsImmediately = () =>
+  jest.spyOn(window, 'setTimeout').mockImplementation((callback) => {
+    if (typeof callback === 'function') {
+      callback();
+    }
+
+    return 0;
+  });
+
 jest.mock('../../rest/testAPI');
 jest.mock('../../rest/ingestionPipelineAPI');
 
@@ -240,21 +249,31 @@ describe('useTestSuiteDetailsPage', () => {
     expect(updateTestSuiteById).not.toHaveBeenCalled();
   });
 
-  it('should add test cases in bulk and refetch', async () => {
+  it('should wait one second before refetching after a bulk add', async () => {
     const { result } = renderHook(() => useTestSuiteDetailsPage());
 
     await waitFor(() => {
       expect(result.current.testSuite).toEqual(mockTestSuite);
+      expect(result.current.testCaseResult).toHaveLength(1);
     });
     (getTestSuiteByName as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock).mockClear();
 
-    await act(async () => {
-      await result.current.handleAddTestCaseSubmit({
-        selectAll: false,
-        includeIds: ['tc-9'],
-        excludeIds: [],
+    const setTimeoutSpy = runTimeoutsImmediately();
+
+    try {
+      await act(async () => {
+        await result.current.handleAddTestCaseSubmit({
+          selectAll: false,
+          includeIds: ['tc-9'],
+          excludeIds: [],
+        });
       });
-    });
+
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1000);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
 
     expect(addTestCasesToLogicalTestSuiteBulk).toHaveBeenCalledWith(
       'suite-id',
@@ -266,6 +285,7 @@ describe('useTestSuiteDetailsPage', () => {
     );
     expect(getTestSuiteByName).toHaveBeenCalled();
     expect(result.current.isTestCaseModalOpen).toBe(false);
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
   });
 
   it('should use the suite relationship count when search paging is stale after bulk add', async () => {
@@ -324,9 +344,12 @@ describe('useTestSuiteDetailsPage', () => {
       });
     });
 
-    await waitFor(() => {
-      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2);
-    });
+    await waitFor(
+      () => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2);
+      },
+      { timeout: 2000 }
+    );
 
     expect(result.current.pagingData.paging.total).toBe(2);
 
@@ -387,13 +410,19 @@ describe('useTestSuiteDetailsPage', () => {
         paging: { total: 1 },
       });
 
-    await act(async () => {
-      await result.current.handleAddTestCaseSubmit({
-        selectAll: false,
-        includeIds: ['tc-9'],
-        excludeIds: [],
+    const setTimeoutSpy = runTimeoutsImmediately();
+
+    try {
+      await act(async () => {
+        await result.current.handleAddTestCaseSubmit({
+          selectAll: false,
+          includeIds: ['tc-9'],
+          excludeIds: [],
+        });
       });
-    });
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
 
     expect(result.current.pagingData.paging.total).toBe(2);
 

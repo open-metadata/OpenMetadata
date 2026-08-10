@@ -384,7 +384,7 @@ export const QualityTab = () => {
 
       <div className="tw:border tw:border-secondary tw:rounded-[10px]">
         <div
-          className="tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-x-4 tw:gap-y-4 tw:p-4"
+          className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-4 tw:gap-y-4 tw:p-4"
           data-testid="quality-tab-toolbar">
           <div className="tw:flex tw:min-w-100 tw:flex-auto tw:items-center tw:gap-3">
             <Tabs
@@ -421,7 +421,10 @@ export const QualityTab = () => {
               className="new-form-style tw:ml-auto tw:shrink-0"
               data-testid="quality-tab-filter-controls"
               layout="inline">
-              <Space align="end" className="tw:w-full tw:justify-end" size={12}>
+              <Space
+                align="center"
+                className="tw:w-full tw:justify-end"
+                size={12}>
                 <Form.Item className="tw:m-0 tw:w-44" label={t('label.type')}>
                   <Select
                     options={TEST_CASE_TYPE_OPTION}

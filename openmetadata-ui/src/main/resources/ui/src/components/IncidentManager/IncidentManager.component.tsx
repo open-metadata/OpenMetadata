@@ -84,7 +84,7 @@ const IncidentManager = ({
           showArrow
           showSearch
           api={searchTestCases}
-          className="w-min-20"
+          className="w-min-15"
           data-testid="test-case-select"
           placeholder={t('label.test-case')}
           suffixIcon={undefined}
