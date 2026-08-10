@@ -35,7 +35,8 @@ const ColumnBulkOperations = () => {
     <PageLayoutV1
       pageTitle={t('label.column-bulk-operations')}
       variant={isAiMode ? 'compact' : 'default'}>
-      <div className={classNames('tw:flex tw:flex-col', { 'tw:gap-4': isAiMode })}>
+      <div
+        className={classNames('tw:flex tw:flex-col', { 'tw:gap-4': isAiMode })}>
         {isAiMode ? (
           <HeaderShell
             breadcrumb={
