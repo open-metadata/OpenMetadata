@@ -201,16 +201,6 @@ const AgentCard: FC<AgentCardProps> = ({
                     </strong>
                   </span>
                 )}
-                {isFailed && agent.failStep && (
-                  <Metric
-                    icon={<AlertCircle size={15} />}
-                    label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
-                      'label.before-error'
-                    )}`}
-                    tone="error"
-                    value={`${t('label.failed-at')} ${agent.failStep}`}
-                  />
-                )}
               </>
             )}
           </Box>
