@@ -96,7 +96,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const showHeaderSearch = isAiMode && !renderPageHeader;
+  const showHeaderSearch = isAiMode;
 
   const [searchInputValue, setSearchInputValue] = useState(
     domainListing.urlState.searchQuery ?? ''
@@ -128,6 +128,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     },
   };
 
+  const headerSearch = showHeaderSearch ? (
+    <Input className="tw:w-72" {...searchInputProps} />
+  ) : undefined;
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
@@ -137,9 +141,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DOMAIN,
     variant: isAiMode ? 'search' : undefined,
-    search: showHeaderSearch ? (
-      <Input className="tw:w-72" {...searchInputProps} />
-    ) : undefined,
+    search: headerSearch,
     breadcrumb: headerBreadcrumb,
   });
 
@@ -301,6 +303,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             createPermission: permissions.domain?.Create || false,
             count: domainListing.totalEntities,
             breadcrumb: headerBreadcrumb,
+            search: headerSearch,
           })
         : pageHeader}
 

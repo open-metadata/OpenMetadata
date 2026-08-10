@@ -180,7 +180,7 @@ class TestQueryLineage(unittest.TestCase):
         return mock_engine
 
     def test_result_limit_truncation_logged_when_reached(self):
-        """A debug truncation notice is logged when the query log fills resultLimit"""
+        """A truncation warning is logged when the query log fills resultLimit"""
         self.lineage_source.source_config.resultLimit = 2
         rows = [
             {"query_text": "SELECT * FROM t1", "database_name": "db1", "schema_name": "s1"},
@@ -190,11 +190,11 @@ class TestQueryLineage(unittest.TestCase):
 
         with (
             patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]),
-            patch("metadata.ingestion.source.database.lineage_source.logger") as mock_logger,
+            patch("metadata.ingestion.source.database.query_parser_source.logger") as mock_logger,
         ):
             list(self.lineage_source.yield_table_query())
 
-        assert any("resultLimit" in str(call.args[0]) for call in mock_logger.debug.call_args_list)
+        assert any("resultLimit" in str(call.args[0]) for call in mock_logger.warning.call_args_list)
 
     def test_result_limit_non_int_does_not_raise(self):
         """A non-int resultLimit (e.g. absent/mocked) skips the check without TypeError"""
@@ -206,13 +206,13 @@ class TestQueryLineage(unittest.TestCase):
 
         with (
             patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]),
-            patch("metadata.ingestion.source.database.lineage_source.logger") as mock_logger,
+            patch("metadata.ingestion.source.database.query_parser_source.logger") as mock_logger,
         ):
             queries = list(self.lineage_source.yield_table_query())
 
         # Processing completes and no truncation notice is emitted
         self.assertEqual(len(queries), 1)
-        assert not any("resultLimit" in str(call.args[0]) for call in mock_logger.debug.call_args_list)
+        assert not any("resultLimit" in str(call.args[0]) for call in mock_logger.warning.call_args_list)
 
     def test_yield_table_queries_from_logs(self):
         """Test yielding table queries from CSV log files"""
