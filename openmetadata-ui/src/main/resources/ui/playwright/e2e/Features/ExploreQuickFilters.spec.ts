@@ -436,6 +436,93 @@ test.describe('Filter persistence after bug fixes', () => {
   });
 });
 
+test.describe('Quick filter options - proper casing from top_hits', () => {
+  test('domain filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const domainName = domain.responseData.displayName as string;
+
+    await test.step('Open Domains filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
+      );
+      await page.click('[data-testid="search-dropdown-Domains"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original casing, not lowercased bucket key', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=domains.displayName.keyword*'
+      );
+      await page.fill('[data-testid="search-input"]', domainName);
+      await searchRes;
+
+      // The rendered option text must match the original-cased displayName
+      const optionEl = page.getByTestId(domainName.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(domainName);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('tier filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const tierFqn = tier.responseData.fullyQualifiedName as string;
+
+    await test.step('Open Tier filter and wait for aggregate response', async () => {
+      const aggRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+      );
+      await page.click('[data-testid="search-dropdown-Tier"]');
+      await aggRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Option label matches original FQN casing', async () => {
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN*'
+      );
+      await page.fill('[data-testid="search-input"]', tierFqn);
+      await searchRes;
+
+      const optionEl = page.getByTestId(tierFqn.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(tierFqn);
+    });
+
+    await clickOutside(page);
+  });
+
+  test('tag filter option label uses original casing from _source', async ({
+    page,
+  }) => {
+    const tagFqn = 'PersonalData.Personal';
+
+    await test.step('Open Tag filter and search for the tag', async () => {
+      await page.click('[data-testid="search-dropdown-Tag"]');
+      const searchRes = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=tags.tagFQN*'
+      );
+      await page.fill('[data-testid="search-input"]', tagFqn);
+      await searchRes;
+    });
+
+    await test.step('Option label matches original FQN casing', async () => {
+      const optionEl = page.getByTestId(tagFqn.toLowerCase());
+
+      await expect(optionEl).toBeVisible();
+      await expect(optionEl).toContainText(tagFqn);
+    });
+
+    await clickOutside(page);
+  });
+});
+
 test.describe('Metric search result highlight', () => {
   const metric = new MetricClass();
 

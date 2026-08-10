@@ -207,9 +207,28 @@ export const getServiceOptions = (
     : option.text;
 };
 
+const extractSourceValue = (
+  src: Record<string, unknown>,
+  path: string
+): string | undefined => {
+  let val: unknown = src;
+  for (const part of path.split('.')) {
+    if (Array.isArray(val)) {
+      val = (val[0] as Record<string, unknown> | undefined)?.[part];
+    } else if (val && typeof val === 'object' && part in (val as object)) {
+      val = (val as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  return typeof val === 'string' ? val : undefined;
+};
+
 export const getOptionsFromAggregationBucket = (
   buckets: Bucket[],
-  labelFormatter?: (key: string) => string
+  labelFormatter?: (key: string) => string,
+  sourceFields?: string
 ) => {
   if (!buckets) {
     return [];
@@ -220,11 +239,28 @@ export const getOptionsFromAggregationBucket = (
       (item) =>
         !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
     )
-    .map((option) => ({
-      key: option.key,
-      label: labelFormatter ? labelFormatter(option.key) : option.key,
-      count: option.doc_count ?? 0,
-    }));
+    .map((option) => {
+      let label = labelFormatter ? labelFormatter(option.key) : option.key;
+
+      if (sourceFields) {
+        const topHitsData = (option as Record<string, unknown>)[
+          'top_hits#top'
+        ] as
+          | {
+              hits?: {
+                hits?: Array<{ _source?: Record<string, unknown> }>;
+              };
+            }
+          | undefined;
+        const src = topHitsData?.hits?.hits?.[0]?._source;
+        const extracted = src ? extractSourceValue(src, sourceFields) : undefined;
+        if (extracted) {
+          label = extracted;
+        }
+      }
+
+      return { key: option.key, label, count: option.doc_count ?? 0 };
+    });
 };
 
 export const formatQueryValueBasedOnType = (
