@@ -132,7 +132,6 @@ import {
   centerNodePosition,
   getViewportForLineageExport,
 } from '../../utils/EntityLineageLayoutUtils';
-import { positionNodesUsingElk } from '../../utils/Lineage/Layout/ElkLayoutUtils';
 import {
   createNodes,
   getConnectedNodesEdges,
@@ -149,6 +148,7 @@ import {
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
+import { positionNodesUsingElk } from '../../utils/Lineage/Layout/ElkLayoutUtils';
 import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
