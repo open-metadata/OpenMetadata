@@ -11,341 +11,169 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
-import { noop } from 'lodash';
-import { useNavigate } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { OwnerType } from '../../../enums/user.enum';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { getTeamByName } from '../../../rest/teamsAPI';
 import { getUserByName } from '../../../rest/userAPI';
-import UserPopOverCard, {
-  PopoverContent,
-  PopoverTitle,
-  UserRoles,
-  UserTeams,
-} from './UserPopOverCard';
+import UserPopOverCard from './UserPopOverCard';
 
-const mockUserData = {
-  name: 'testUser',
-  displayName: 'Test User',
-  teams: [
-    { id: '1', name: 'Team 1', deleted: false },
-    { id: '2', name: 'Team 2', deleted: false },
-  ],
-  roles: [
-    { id: '1', name: 'Role 1' },
-    { id: '2', name: 'Role 2' },
-  ],
-  isAdmin: true,
+const mockStoreState = {
+  userProfilePics: {},
+  updateUserProfilePics: jest.fn(),
 };
 
-const mockUserProfilePics = {
-  testUser: mockUserData,
-};
-
-const mockUpdateUserProfilePics = jest.fn();
-
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    userProfilePics: mockUserProfilePics,
-    updateUserProfilePics: mockUpdateUserProfilePics,
-  })),
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  Link: jest.fn().mockImplementation(({ children }) => children),
 }));
 
-jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
-  useUserProfile: jest
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest
     .fn()
-    .mockImplementation(() => [null, null, mockUserData]),
+    .mockImplementation((selector) =>
+      selector ? selector(mockStoreState) : mockStoreState
+    ),
 }));
 
 jest.mock('../../../rest/userAPI', () => ({
   getUserByName: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(mockUserData)),
+    .mockImplementation(() =>
+      Promise.resolve({ name: 'testUser', displayName: 'Test User' })
+    ),
 }));
 
-const mockPush = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => mockPush),
-  Link: jest.fn().mockImplementation(({ children }) => children),
-}));
-
-jest.mock('../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest
+jest.mock('../../../rest/teamsAPI', () => ({
+  getTeamByName: jest
     .fn()
-    .mockImplementation((entity) => entity?.displayName || entity?.name || ''),
+    .mockImplementation(() =>
+      Promise.resolve({ name: 'testTeam', displayName: 'Test Team' })
+    ),
 }));
 
-jest.mock('../Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => <p>Loader</p>);
-});
+jest.mock('../../../utils/UserDataUtils', () => ({
+  getUserWithImage: jest.fn().mockImplementation((user) => user),
+}));
 
 jest.mock('../ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockImplementation(() => <div>ProfilePicture</div>);
 });
 
-describe('Test UserPopOverCard components', () => {
-  describe('UserTeams Component', () => {
-    it('should render teams when teams are available', () => {
-      render(<UserTeams userName="testUser" />);
+jest.mock('./PopoverContent.component', () => ({
+  PopoverContent: jest.fn().mockImplementation(() => <div>PopoverContent</div>),
+}));
 
-      expect(screen.getByText('label.team-plural')).toBeInTheDocument();
-      expect(screen.getByText('Team 1')).toBeInTheDocument();
-      expect(screen.getByText('Team 2')).toBeInTheDocument();
-    });
+jest.mock('./PopoverTitle.component', () => ({
+  PopoverTitle: jest.fn().mockImplementation(() => <div>PopoverTitle</div>),
+}));
 
-    it('should not render when no teams are available', () => {
-      const { container } = render(<UserTeams userName="nonExistentUser" />);
+jest.mock('./TeamPopoverContent.component', () => ({
+  TeamPopoverContent: jest
+    .fn()
+    .mockImplementation(() => <div>TeamPopoverContent</div>),
+}));
 
-      expect(container).toBeEmptyDOMElement();
-    });
+jest.mock('./TeamPopoverTitle.component', () => ({
+  TeamPopoverTitle: jest
+    .fn()
+    .mockImplementation(() => <div>TeamPopoverTitle</div>),
+}));
+
+describe('UserPopOverCard Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('UserRoles Component', () => {
-    it('should render roles and admin badge when available', () => {
-      render(<UserRoles userName="testUser" />);
+  it('should render with default props', () => {
+    render(<UserPopOverCard userName="testUser" />);
 
-      expect(screen.getByText('label.role-plural')).toBeInTheDocument();
-      expect(screen.getByText('Role 1')).toBeInTheDocument();
-      expect(screen.getByText('Role 2')).toBeInTheDocument();
-      expect(screen.getByText('Admin')).toBeInTheDocument();
-    });
-
-    it('should not render when no roles are available', () => {
-      const { container } = render(<UserRoles userName="nonExistentUser" />);
-
-      expect(container).toBeEmptyDOMElement();
-    });
+    expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
   });
 
-  describe('PopoverContent Component', () => {
-    beforeEach(() => {
-      jest.clearAllMocks();
-    });
+  it('should render with custom children', () => {
+    render(
+      <UserPopOverCard userName="testUser">
+        <div data-testid="custom-child">Custom Child</div>
+      </UserPopOverCard>
+    );
 
-    it('should show loader while loading', async () => {
-      (useUserProfile as jest.Mock).mockImplementation(() => [null, null, {}]);
-      (getUserByName as jest.Mock).mockImplementationOnce(
-        () => new Promise(noop)
-      );
-
-      render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
-
-      expect(screen.getByText('Loader')).toBeInTheDocument();
-    });
-
-    it('should show no data message when user data is empty', async () => {
-      (useUserProfile as jest.Mock).mockImplementation(() => [null, null, {}]);
-      (getUserByName as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve({})
-      );
-
-      await act(async () => {
-        render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
-      });
-
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
-    });
-
-    it('should fetch additional user details when needed', async () => {
-      const mockUser = { name: 'testUser', teams: null };
-      (useUserProfile as jest.Mock).mockImplementation(() => [
-        null,
-        null,
-        mockUser,
-      ]);
-
-      await act(async () => {
-        render(<PopoverContent type={OwnerType.USER} userName="testUser" />);
-      });
-
-      expect(getUserByName).toHaveBeenCalledWith('testUser', {
-        fields: ['teams', 'roles', 'profile'],
-      });
-    });
-
-    it('should not fetch additional details for team type', async () => {
-      await act(async () => {
-        render(<PopoverContent type={OwnerType.TEAM} userName="testUser" />);
-      });
-
-      expect(getUserByName).not.toHaveBeenCalled();
-    });
+    expect(screen.getByTestId('custom-child')).toBeInTheDocument();
   });
 
-  describe('PopoverTitle Component', () => {
-    it('should render user name and display name correctly', () => {
-      (useUserProfile as jest.Mock).mockImplementation(() => [
-        null,
-        null,
-        mockUserData,
-      ]);
-      render(
-        <PopoverTitle
-          profilePicture={<div>ProfilePicture</div>}
-          type={OwnerType.USER}
-          userName="testUser"
-        />
-      );
+  it('should render with showUserName prop', () => {
+    render(
+      <UserPopOverCard
+        showUserName
+        displayName="Test User"
+        userName="testUser"
+      />
+    );
 
-      expect(screen.getByText('Test User')).toBeInTheDocument();
-      expect(screen.getByText('testUser')).toBeInTheDocument();
-    });
-
-    it('should navigate using name instead of display name when clicking display name in tooltip', () => {
-      (useUserProfile as jest.Mock).mockImplementation(() => [
-        null,
-        null,
-        mockUserData,
-      ]);
-
-      render(
-        <PopoverTitle
-          profilePicture={<div>ProfilePicture</div>}
-          type={OwnerType.USER}
-          userName="testUser"
-        />
-      );
-
-      const displayNameButton = screen.getByText('Test User');
-      displayNameButton.click();
-
-      expect(mockPush).toHaveBeenCalledWith('/users/testUser');
-    });
-
-    it('should handle click on user name', () => {
-      const mockNavigate = jest.fn();
-      (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
-
-      render(
-        <PopoverTitle
-          profilePicture={<div>ProfilePicture</div>}
-          type={OwnerType.USER}
-          userName="testUser"
-        />
-      );
-
-      const userNameButton = screen.getByText('Test User');
-      userNameButton.click();
-
-      expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
-    });
-
-    it('should show only userName when displayName is not available', () => {
-      (useUserProfile as jest.Mock).mockImplementationOnce(() => [
-        null,
-        null,
-        { name: 'testUser' },
-      ]);
-
-      render(
-        <PopoverTitle
-          profilePicture={<div>ProfilePicture</div>}
-          type={OwnerType.USER}
-          userName="testUser"
-        />
-      );
-
-      expect(screen.getByText('testUser')).toBeInTheDocument();
-      expect(screen.queryByText('Test User')).not.toBeInTheDocument();
-    });
-
-    it('should navigate to team details path when type is TEAM', () => {
-      const mockNavigate = jest.fn();
-      (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
-      (useUserProfile as jest.Mock).mockImplementation(() => [
-        null,
-        null,
-        { name: 'testTeam', displayName: 'Test Team' },
-      ]);
-
-      render(
-        <PopoverTitle
-          profilePicture={<div>ProfilePicture</div>}
-          type={OwnerType.TEAM}
-          userName="testTeam"
-        />
-      );
-
-      const teamNameButton = screen.getByText('Test Team');
-      teamNameButton.click();
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/settings/members/teams/testTeam'
-      );
-
-      expect(mockNavigate).not.toHaveBeenCalledWith('/users/testTeam');
-    });
-
-    it('should navigate to user profile path when type is USER', () => {
-      const mockNavigate = jest.fn();
-      (useNavigate as jest.Mock).mockImplementationOnce(() => mockNavigate);
-      (useUserProfile as jest.Mock).mockImplementation(() => [
-        null,
-        null,
-        { name: 'testUser', displayName: 'Test User' },
-      ]);
-
-      render(
-        <PopoverTitle
-          profilePicture={<div>ProfilePicture</div>}
-          type={OwnerType.USER}
-          userName="testUser"
-        />
-      );
-
-      const userNameButton = screen.getByText('Test User');
-      userNameButton.click();
-
-      expect(mockNavigate).toHaveBeenCalledWith('/users/testUser');
-    });
+    expect(screen.getByText('Test User')).toBeInTheDocument();
   });
 
-  describe('UserPopOverCard Component', () => {
-    it('should render with default props', () => {
-      render(<UserPopOverCard userName="testUser" />);
+  it('should render with showUserProfile prop', () => {
+    render(<UserPopOverCard showUserProfile={false} userName="testUser" />);
 
-      expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
-    });
+    expect(screen.queryByText('ProfilePicture')).not.toBeInTheDocument();
+  });
 
-    it('should render with custom children', () => {
-      render(
-        <UserPopOverCard userName="testUser">
-          <div data-testid="custom-child">Custom Child</div>
-        </UserPopOverCard>
-      );
+  it('should render with custom profile width', () => {
+    render(<UserPopOverCard profileWidth={32} userName="testUser" />);
 
-      expect(screen.getByTestId('custom-child')).toBeInTheDocument();
-    });
+    expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
+  });
 
-    it('should render with showUserName prop', () => {
-      render(
-        <UserPopOverCard
-          showUserName
-          displayName="Test User"
-          userName="testUser"
-        />
-      );
+  it('should render with team type', () => {
+    render(<UserPopOverCard type={OwnerType.TEAM} userName="testUser" />);
 
-      expect(screen.getByText('Test User')).toBeInTheDocument();
-    });
+    expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
+  });
 
-    it('should render with showUserProfile prop', () => {
-      render(<UserPopOverCard showUserProfile={false} userName="testUser" />);
+  it('should not fetch anything until the popover is opened', () => {
+    render(<UserPopOverCard userName="testUser" />);
 
-      expect(screen.queryByText('ProfilePicture')).not.toBeInTheDocument();
-    });
+    expect(getUserByName).not.toHaveBeenCalled();
+    expect(getTeamByName).not.toHaveBeenCalled();
+  });
 
-    it('should render with custom profile width', () => {
-      render(<UserPopOverCard profileWidth={32} userName="testUser" />);
+  it('should fetch once for the shared title and content, even across re-hovers', async () => {
+    render(
+      <UserPopOverCard userName="testUser">
+        <span data-testid="owner-chip">testUser</span>
+      </UserPopOverCard>
+    );
 
-      expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
-    });
+    const chip = screen.getByTestId('owner-chip');
 
-    it('should render with team type', () => {
-      render(<UserPopOverCard type={OwnerType.TEAM} userName="testUser" />);
+    fireEvent.mouseEnter(chip);
 
-      expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
-    });
+    await waitFor(() => expect(getUserByName).toHaveBeenCalledTimes(1));
+
+    fireEvent.mouseLeave(chip);
+    fireEvent.mouseEnter(chip);
+
+    await waitFor(() =>
+      expect(screen.getByText('PopoverTitle')).toBeInTheDocument()
+    );
+
+    expect(getUserByName).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('PopoverContent')).toBeInTheDocument();
+  });
+
+  it('should fetch team details once for a team owner', async () => {
+    render(
+      <UserPopOverCard type={OwnerType.TEAM} userName="testTeam">
+        <span data-testid="owner-chip">testTeam</span>
+      </UserPopOverCard>
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId('owner-chip'));
+
+    await waitFor(() => expect(getTeamByName).toHaveBeenCalledTimes(1));
+
+    expect(getUserByName).not.toHaveBeenCalled();
+    expect(screen.getByText('TeamPopoverTitle')).toBeInTheDocument();
+    expect(screen.getByText('TeamPopoverContent')).toBeInTheDocument();
   });
 });
