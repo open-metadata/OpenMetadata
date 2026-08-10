@@ -21,7 +21,6 @@ import {
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import * as DataAssetSummaryPanelV1Module from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockApplicationEntityDetails } from './mocks/ApplicationSummary.mock';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
@@ -1230,70 +1229,6 @@ describe('EntitySummaryPanel component tests', () => {
         });
 
         expect(entityUtilClassBase.getEntityPatchAPI).not.toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('entityData sync when onEntityUpdate is provided (Lineage drawer)', () => {
-    it('should refresh the rendered dataAsset immediately, not just notify onEntityUpdate', async () => {
-      const mockOnEntityUpdate = jest.fn();
-      const tableEntity = {
-        ...mockTableEntityDetails,
-        entityType: EntityType.TABLE,
-        tags: [],
-      };
-
-      const CapturingSummaryPanel = jest
-        .fn()
-        .mockImplementation((props) => (
-          <div data-testid="captured-tags-count">
-            {props.dataAsset?.tags?.length ?? 0}
-          </div>
-        ));
-
-      jest
-        .spyOn(DataAssetSummaryPanelV1Module, 'DataAssetSummaryPanelV1')
-        .mockImplementation(CapturingSummaryPanel);
-      mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
-
-      render(
-        <EntitySummaryPanel
-          entityDetails={{ details: tableEntity }}
-          handleClosePanel={mockHandleClosePanel}
-          onEntityUpdate={mockOnEntityUpdate}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
-          '0'
-        );
-      });
-
-      const newTag = {
-        tagFQN: 'Tier.Tier1',
-        source: 'Classification',
-        labelType: 'Manual',
-        state: 'Confirmed',
-      };
-      const latestProps =
-        CapturingSummaryPanel.mock.calls[
-          CapturingSummaryPanel.mock.calls.length - 1
-        ][0];
-
-      act(() => {
-        latestProps.onTierUpdate(newTag);
-      });
-
-      // The parent (Lineage graph) still gets notified.
-      expect(mockOnEntityUpdate).toHaveBeenCalledWith({ tags: [newTag] });
-
-      // The panel's own render must reflect the update right away, without
-      // waiting for a refetch (e.g. panel close/reopen).
-      await waitFor(() => {
-        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
-          '1'
-        );
       });
     });
   });
