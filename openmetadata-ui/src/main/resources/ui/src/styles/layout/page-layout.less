@@ -68,11 +68,12 @@
   background-color: var(--tw-color-utility-gray-blue-50);
 }
 
-// The sticky alert consumes 78px inside the page scroll; expose it as an
-// offset so fixed-height panels (content-height-with-resizable-panel)
-// shrink to fit instead of each page re-deriving its own calc.
+// The sticky alert consumes @page-alert-height inside the page scroll;
+// expose it as an offset so fixed-height panels
+// (content-height-with-resizable-panel) shrink to fit instead of each page
+// re-deriving its own calc.
 .page-layout-v1-center:has(#page-alert) {
-  --page-alert-offset: 78px;
+  --page-alert-offset: @page-alert-height;
 }
 
 .page-layout-v1-center:has(.ontology-slideout-open) #page-alert {
