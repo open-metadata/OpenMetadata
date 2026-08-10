@@ -53,6 +53,57 @@ export interface CardinalityDistributionChartProps {
   noDataPlaceholderText?: string | React.ReactNode;
 }
 
+const renderPlaceholder = (placeholderText?: string | React.ReactNode) => (
+  <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
+    <ErrorPlaceHolder placeholderText={placeholderText} />
+  </div>
+);
+
+interface CustomYAxisTickProps {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+  selectedCategory: string | null;
+  onCategoryClick: (categoryName: string) => void;
+}
+
+const CustomYAxisTick = ({
+  x,
+  y,
+  payload,
+  selectedCategory,
+  onCategoryClick,
+}: CustomYAxisTickProps) => {
+  if (!payload) {
+    return null;
+  }
+
+  const categoryName = payload.value;
+  const isSelected = selectedCategory === categoryName;
+  const isHighlighted = selectedCategory && selectedCategory !== categoryName;
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        cursor="pointer"
+        dy={4}
+        fill={
+          isSelected ? CHART_BLUE_1 : isHighlighted ? COLOR_GREY_400 : GRAY_600
+        }
+        fontSize={12}
+        fontWeight={isSelected ? 600 : 400}
+        opacity={isHighlighted ? 0.5 : 1}
+        textAnchor="end"
+        x={-8}
+        onClick={() => onCategoryClick(categoryName)}>
+        {categoryName.length > 15
+          ? `${categoryName.slice(0, 15)}...`
+          : categoryName}
+      </text>
+    </g>
+  );
+};
+
 const CardinalityDistributionChart = ({
   data,
   noDataPlaceholderText,
@@ -71,16 +122,6 @@ const CardinalityDistributionChart = ({
 
   const renderHorizontalGridLine = useMemo(
     () => createHorizontalGridLineRenderer(),
-    []
-  );
-
-  const renderPlaceholder = useMemo(
-    () => (placeholderText: string | React.ReactNode) =>
-      (
-        <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
-          <ErrorPlaceHolder placeholderText={placeholderText} />
-        </div>
-      ),
     []
   );
 
@@ -139,46 +180,6 @@ const CardinalityDistributionChart = ({
   const handleCategoryClick = (categoryName: string) => {
     setSelectedCategory((prev) =>
       prev === categoryName ? null : categoryName
-    );
-  };
-
-  const CustomYAxisTick = (props: {
-    x?: number;
-    y?: number;
-    payload?: { value: string };
-  }) => {
-    const { x, y, payload } = props;
-    if (!payload) {
-      return null;
-    }
-
-    const categoryName = payload.value;
-    const isSelected = selectedCategory === categoryName;
-    const isHighlighted = selectedCategory && selectedCategory !== categoryName;
-
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text
-          cursor="pointer"
-          dy={4}
-          fill={
-            isSelected
-              ? CHART_BLUE_1
-              : isHighlighted
-              ? COLOR_GREY_400
-              : GRAY_600
-          }
-          fontSize={12}
-          fontWeight={isSelected ? 600 : 400}
-          opacity={isHighlighted ? 0.5 : 1}
-          textAnchor="end"
-          x={-8}
-          onClick={() => handleCategoryClick(categoryName)}>
-          {categoryName.length > 15
-            ? `${categoryName.slice(0, 15)}...`
-            : categoryName}
-        </text>
-      </g>
     );
   };
 
@@ -279,7 +280,12 @@ const CardinalityDistributionChart = ({
                             axisLine={false}
                             dataKey="name"
                             padding={{ top: 16, bottom: 16 }}
-                            tick={<CustomYAxisTick />}
+                            tick={
+                              <CustomYAxisTick
+                                selectedCategory={selectedCategory}
+                                onCategoryClick={handleCategoryClick}
+                              />
+                            }
                             tickLine={false}
                             type="category"
                             width={120}

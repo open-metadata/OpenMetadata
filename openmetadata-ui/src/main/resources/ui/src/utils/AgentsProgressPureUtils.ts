@@ -26,8 +26,7 @@ export type AgentFields =
   | 'assets'
   | 'target'
   | 'eta'
-  | 'finishedAt'
-  | 'failStep';
+  | 'finishedAt';
 
 export const isTerminalProgressUpdate = (
   updateType: ProgressUpdateType
@@ -129,7 +128,6 @@ const buildRunningFields = (
     target,
     eta: computeEta(agent, update),
     finishedAt: undefined,
-    failStep: undefined,
   };
 };
 
@@ -146,7 +144,6 @@ const buildCompletedFields = (
     target: Math.max(assets, 1),
     eta: 0,
     finishedAt: getShortRelativeTime(update.timestamp),
-    failStep: undefined,
   };
 };
 
@@ -164,7 +161,6 @@ const buildFailedFields = (
     target,
     eta: null,
     finishedAt: getShortRelativeTime(update.timestamp),
-    failStep: update.stepName ?? agent.failStep,
   };
 };
 
@@ -201,5 +197,4 @@ export const resetAgentProgress = (agent: Agent): Agent => ({
   target: 0,
   eta: null,
   finishedAt: undefined,
-  failStep: undefined,
 });
