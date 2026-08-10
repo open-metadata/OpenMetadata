@@ -71,7 +71,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     return queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   }, [location.search]);
 
-  const content = (
+  return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
@@ -118,12 +118,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
       </Row>
     </Fragment>
-  );
-
-  return fullHeight ? (
-    <div className="full-height-wrapper">{content}</div>
-  ) : (
-    content
   );
 };
 

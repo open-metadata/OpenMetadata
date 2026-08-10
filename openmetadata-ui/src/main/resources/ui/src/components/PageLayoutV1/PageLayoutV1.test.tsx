@@ -85,7 +85,7 @@ describe('PageLayoutV1', () => {
 
   it('Should apply the base and full-height classes when fullHeight is true', () => {
     const centerText = 'Center content';
-    const { container, getByTestId } = render(
+    const { getByTestId } = render(
       <PageLayoutV1 fullHeight pageTitle="Test Page">
         {centerText}
       </PageLayoutV1>
@@ -93,7 +93,6 @@ describe('PageLayoutV1', () => {
 
     const pageLayout = getByTestId('page-layout-v1');
 
-    expect(container.querySelector('.full-height-wrapper')).toBeInTheDocument();
     expect(pageLayout).toHaveClass('page-layout-v1');
     expect(pageLayout).toHaveClass('page-layout-v1-full-height');
   });
