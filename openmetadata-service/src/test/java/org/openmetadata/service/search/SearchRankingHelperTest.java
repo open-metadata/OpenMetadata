@@ -3,7 +3,9 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -314,7 +316,7 @@ class SearchRankingHelperTest {
   void withoutFuzzyStagesDropsOnlyTheFuzzyStage() {
     SearchSettings settings = settingsWithStages("exactName", "phraseName", "fuzzyName");
 
-    assertTrue(SearchRankingHelper.hasFuzzyStage(settings));
+    assertTrue(SearchRankingHelper.hasPrunableFuzzyStage(settings));
 
     SearchSettings precise = SearchRankingHelper.withoutFuzzyStages(settings);
     List<String> preciseStages =
@@ -323,16 +325,16 @@ class SearchRankingHelperTest {
             .toList();
 
     assertEquals(List.of("exactName", "phraseName"), preciseStages);
-    assertFalse(SearchRankingHelper.hasFuzzyStage(precise));
+    assertFalse(SearchRankingHelper.hasPrunableFuzzyStage(precise));
     // The original must be untouched — the widened second pass reuses it.
-    assertTrue(SearchRankingHelper.hasFuzzyStage(settings));
+    assertTrue(SearchRankingHelper.hasPrunableFuzzyStage(settings));
   }
 
   @Test
   void withoutFuzzyStagesIsANoOpWhenNoStageIsFuzzy() {
     SearchSettings settings = settingsWithStages("exactName", "phraseName");
 
-    assertFalse(SearchRankingHelper.hasFuzzyStage(settings));
+    assertFalse(SearchRankingHelper.hasPrunableFuzzyStage(settings));
     assertEquals(
         2,
         SearchRankingHelper.withoutFuzzyStages(settings)
@@ -340,6 +342,51 @@ class SearchRankingHelperTest {
             .getRanking()
             .getStages()
             .size());
+  }
+
+  /**
+   * Pruning is a full JSON round-trip of every asset config and runs on the search hot path, so the
+   * result is memoised on the source instance. SettingsCache hands out one SearchSettings per
+   * settings version, so identity hits for repeated queries and misses as soon as settings change.
+   */
+  @Test
+  void withoutFuzzyStagesReusesThePrunedCopyPerSettingsInstance() {
+    SearchSettings settings = settingsWithStages("exactName", "fuzzyName");
+
+    assertSame(
+        SearchRankingHelper.withoutFuzzyStages(settings),
+        SearchRankingHelper.withoutFuzzyStages(settings),
+        "Repeated lookups against one settings version must not re-serialize");
+    assertNotSame(
+        SearchRankingHelper.withoutFuzzyStages(settings),
+        SearchRankingHelper.withoutFuzzyStages(settingsWithStages("exactName", "fuzzyName")),
+        "A new settings instance must be pruned afresh, never served a stale copy");
+  }
+
+  /**
+   * A ranking whose only stage is fuzzy has no precise pass to offer. Pruning it would empty the
+   * stage list, and {@code buildRankedSimpleQueryV2} then falls back to {@code
+   * buildLegacySimpleQueryV2}, whose OR {@code multi_match} on {@code fullyQualifiedName} carries no
+   * minimum-should-match at all — wider than the stage that was removed, so the second pass would
+   * return more siblings than the first. Skip it: leave the stage in place and report it unprunable.
+   */
+  @Test
+  void aFuzzyOnlyRankingIsLeftAloneRatherThanEmptied() {
+    SearchSettings settings = settingsWithStages("fuzzyName");
+
+    assertFalse(
+        SearchRankingHelper.hasPrunableFuzzyStage(settings),
+        "With nothing precise left to run, the second pass must not happen at all");
+    assertEquals(
+        List.of("fuzzyName"),
+        SearchRankingHelper.withoutFuzzyStages(settings)
+            .getDefaultConfiguration()
+            .getRanking()
+            .getStages()
+            .stream()
+            .map(RankingStage::getName)
+            .toList(),
+        "Emptying the stage list would drop the query into the wider legacy builder");
   }
 
   /**
@@ -366,11 +413,11 @@ class SearchRankingHelperTest {
                 stored.getDefaultConfiguration().getRanking().getStages().getFirst(),
                 storedFuzzyStage));
 
-    assertTrue(SearchRankingHelper.hasFuzzyStage(stored));
+    assertTrue(SearchRankingHelper.hasPrunableFuzzyStage(stored));
 
     SearchSettings precise = SearchRankingHelper.withoutFuzzyStages(stored);
 
-    assertFalse(SearchRankingHelper.hasFuzzyStage(precise));
+    assertFalse(SearchRankingHelper.hasPrunableFuzzyStage(precise));
     assertEquals(
         List.of("exactName"),
         precise.getDefaultConfiguration().getRanking().getStages().stream()

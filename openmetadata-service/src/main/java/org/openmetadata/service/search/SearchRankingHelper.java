@@ -3,6 +3,9 @@ package org.openmetadata.service.search;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.json.JsonObject;
+import jakarta.json.JsonValue;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -10,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
@@ -34,6 +38,9 @@ public final class SearchRankingHelper {
   // pattern): the query stays one token and still matches the indexed n-grams.
   private static final String NGRAM_SEARCH_ANALYZER = "standard";
   private static final String ESCAPED_QUERY_CHARACTERS = "+-=&|><!(){}[]^\"~*?:\\/";
+  private static final List<String> IDENTITY_FIELDS = List.of("name", "fullyQualifiedName");
+
+  private static volatile PrunedSettings prunedSettings;
 
   private SearchRankingHelper() {}
 
@@ -523,13 +530,22 @@ public final class SearchRankingHelper {
         .anyMatch(identifier -> identifier != null && identifier.equalsIgnoreCase(target));
   }
 
-  /** Whether any resolvable ranking stage is a fuzzy one, i.e. whether a precise pass differs. */
-  public static boolean hasFuzzyStage(SearchSettings searchSettings) {
+  /**
+   * Whether dropping the fuzzy stages leaves a ranked query that still works — that is, whether
+   * there is a fuzzy stage to remove <em>and</em> a non-fuzzy stage left to decide recall.
+   *
+   * <p>A ranking whose only stage is fuzzy has no precise pass to offer. Pruning it would empty the
+   * stage list, {@code buildRankedSimpleQueryV2} would then see no stages and fall back to {@code
+   * buildLegacySimpleQueryV2}, and that builder matches {@code fullyQualifiedName} with an OR
+   * {@code multi_match} carrying no minimum-should-match at all — wider than the stage that was
+   * just removed. Such a config skips the second pass entirely and keeps today's behaviour.
+   */
+  public static boolean hasPrunableFuzzyStage(SearchSettings searchSettings) {
     return searchSettings != null
-        && (rankingHasFuzzyStage(defaultRanking(searchSettings))
+        && (rankingHasPrunableFuzzyStage(defaultRanking(searchSettings))
             || listOrEmpty(searchSettings.getAssetTypeConfigurations()).stream()
                 .map(AssetTypeConfiguration::getRanking)
-                .anyMatch(SearchRankingHelper::rankingHasFuzzyStage));
+                .anyMatch(SearchRankingHelper::rankingHasPrunableFuzzyStage));
   }
 
   /**
@@ -550,28 +566,93 @@ public final class SearchRankingHelper {
    * "typo-tolerant identity <b>fallback</b>".
    */
   public static SearchSettings withoutFuzzyStages(SearchSettings searchSettings) {
+    // Memoised on the source instance: pruning is a full JSON round-trip of every asset config, and
+    // this runs on the search hot path for each identifier lookup. SettingsCache hands out one
+    // SearchSettings per settings version, so identity both hits for repeated queries and misses
+    // the moment an admin saves new settings. One entry, so it cannot grow.
+    PrunedSettings memo = prunedSettings;
+    if (memo != null && memo.source() == searchSettings) {
+      return memo.precise();
+    }
     SearchSettings precise = JsonUtils.deepCopy(searchSettings, SearchSettings.class);
     dropFuzzyStages(defaultRanking(precise));
     listOrEmpty(precise.getAssetTypeConfigurations()).stream()
         .map(AssetTypeConfiguration::getRanking)
         .forEach(SearchRankingHelper::dropFuzzyStages);
+    prunedSettings = new PrunedSettings(searchSettings, precise);
     return precise;
   }
 
-  private static boolean rankingHasFuzzyStage(RankingConfiguration ranking) {
-    return ranking != null
-        && listOrEmpty(ranking.getStages()).stream()
-            .anyMatch(stage -> RankingStage.MatchType.FUZZY.equals(stage.getMatchType()));
+  /**
+   * Runs {@code pass} with the given settings and, when the query turns out to name an entity
+   * exactly, runs it again without the fuzzy stages. Shared by the Elasticsearch and OpenSearch
+   * managers, whose response and request-builder types differ but whose control flow does not.
+   *
+   * <p>The widened query runs first, so an ordinary search costs one round-trip and keeps the
+   * results it has today; only an exact identifier lookup pays a second.
+   */
+  public static <R> R searchWithIdentifierPrecision(
+      String query,
+      SearchSettings searchSettings,
+      SearchPass<R> pass,
+      Function<R, List<String>> identifiersOf)
+      throws IOException {
+    R response = pass.run(searchSettings);
+    if (hasPrunableFuzzyStage(searchSettings)
+        && isExactIdentifierLookup(query, identifiersOf.apply(response))) {
+      response = pass.run(withoutFuzzyStages(searchSettings));
+    }
+    return response;
+  }
+
+  /** One execution of a search, parameterised by the settings it should be built from. */
+  @FunctionalInterface
+  public interface SearchPass<R> {
+    R run(SearchSettings searchSettings) throws IOException;
+  }
+
+  /** {@code name} and {@code fullyQualifiedName} of every hit source. */
+  public static List<String> identifiersFrom(List<JsonObject> hitSources) {
+    List<String> identifiers = new ArrayList<>();
+    for (JsonObject source : listOrEmpty(hitSources)) {
+      for (String field : IDENTITY_FIELDS) {
+        JsonValue value = source.get(field);
+        if (value != null && value.getValueType() == JsonValue.ValueType.STRING) {
+          identifiers.add(source.getString(field));
+        }
+      }
+    }
+    return identifiers;
+  }
+
+  private record PrunedSettings(SearchSettings source, SearchSettings precise) {}
+
+  private static boolean rankingHasPrunableFuzzyStage(RankingConfiguration ranking) {
+    boolean prunable = false;
+    if (ranking != null) {
+      List<RankingStage> stages = listOrEmpty(ranking.getStages());
+      prunable =
+          stages.stream().anyMatch(SearchRankingHelper::isFuzzyStage)
+              && stages.stream().anyMatch(stage -> !isFuzzyStage(stage));
+    }
+    return prunable;
+  }
+
+  private static boolean isFuzzyStage(RankingStage stage) {
+    return RankingStage.MatchType.FUZZY.equals(stage.getMatchType());
   }
 
   private static void dropFuzzyStages(RankingConfiguration ranking) {
     if (ranking != null && !nullOrEmpty(ranking.getStages())) {
-      // deriveRanking() falls back to the default stages when a pruned list comes out empty, so a
-      // config whose only stage is fuzzy must keep an (empty) list rather than be left untouched.
-      ranking.setStages(
-          ranking.getStages().stream()
-              .filter(stage -> !RankingStage.MatchType.FUZZY.equals(stage.getMatchType()))
-              .toList());
+      List<RankingStage> preciseStages =
+          ranking.getStages().stream().filter(stage -> !isFuzzyStage(stage)).toList();
+      // Never leave the list empty. deriveRanking() falls back to the default stages when a pruned
+      // list comes out empty, and buildRankedSimpleQueryV2 falls back to the legacy builder, whose
+      // unbounded OR multi_match on fullyQualifiedName is wider than the stage just removed. A
+      // fuzzy-only ranking keeps its stage; hasPrunableFuzzyStage() skips its second pass instead.
+      if (!preciseStages.isEmpty()) {
+        ranking.setStages(preciseStages);
+      }
     }
   }
 }

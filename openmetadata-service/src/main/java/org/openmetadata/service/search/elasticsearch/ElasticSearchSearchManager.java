@@ -1073,23 +1073,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       SearchSettings searchSettings,
       String clusterAlias)
       throws IOException {
-    SearchResponse<JsonData> response =
-        executeSearchRequest(request, subjectContext, searchSettings, clusterAlias);
-    if (SearchRankingHelper.hasFuzzyStage(searchSettings)
-        && SearchRankingHelper.isExactIdentifierLookup(
-            request.getQuery(), hitIdentifiers(response))) {
-      LOG.debug(
-          "Query '{}' on index '{}' names an entity exactly; dropping partial-coverage recall",
-          request.getQuery(),
-          request.getIndex());
-      response =
-          executeSearchRequest(
-              request,
-              subjectContext,
-              SearchRankingHelper.withoutFuzzyStages(searchSettings),
-              clusterAlias);
-    }
-    return response;
+    return SearchRankingHelper.searchWithIdentifierPrecision(
+        request.getQuery(),
+        searchSettings,
+        settings -> executeSearchRequest(request, subjectContext, settings, clusterAlias),
+        ElasticSearchSearchManager::hitIdentifiers);
   }
 
   /** {@code name} and {@code fullyQualifiedName} of every returned hit. */
@@ -1097,21 +1085,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     if (response.hits() == null || response.hits().hits() == null) {
       return List.of();
     }
-    List<String> identifiers = new ArrayList<>();
+    List<JsonObject> sources = new ArrayList<>();
     for (var hit : response.hits().hits()) {
       JsonData source = hit.source();
-      if (source == null) {
-        continue;
-      }
-      JsonObject json = source.toJson().asJsonObject();
-      for (String field : List.of("name", "fullyQualifiedName")) {
-        JsonValue value = json.get(field);
-        if (value != null && value.getValueType() == JsonValue.ValueType.STRING) {
-          identifiers.add(json.getString(field));
-        }
+      if (source != null) {
+        sources.add(source.toJson().asJsonObject());
       }
     }
-    return identifiers;
+    return SearchRankingHelper.identifiersFrom(sources);
   }
 
   private SearchResponse<JsonData> executeSearchRequest(
