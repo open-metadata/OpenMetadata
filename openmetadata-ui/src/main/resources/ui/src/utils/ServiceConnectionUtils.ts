@@ -298,6 +298,9 @@ const PASSWORD_KEY = 'password';
 const PRIVATE_KEY_RE = /privatekey/i;
 const PASSPHRASE_RE = /passphrase/i;
 
+/** Mirrors the backend convention: {@link SecretsManager#SECRET_FIELD_PREFIX}. */
+export const SECRET_FIELD_PREFIX = 'secret:';
+
 type JsonObject = Record<string, Record<string, unknown>>;
 
 const getFlatSecretKeys = (
@@ -315,6 +318,88 @@ const getFlatSecretKeys = (
       (key) => PRIVATE_KEY_RE.test(key) && !PASSPHRASE_RE.test(key)
     ),
   };
+};
+
+export type PasswordFieldWithoutPrefix = {
+  path: (string | number)[];
+  key: string;
+};
+
+/**
+ * Recursively walks a connection schema (including `oneOf`/`anyOf` branches,
+ * resolved against the currently-selected branch in `formData`, same
+ * resolution strategy as {@link getMissingSchemaRequiredFieldsCountForSelectedBranch})
+ * and reports every `format: 'password'` field whose current value is
+ * non-empty and doesn't start with `prefix`.
+ */
+export const findPasswordFieldsWithoutPrefix = (
+  schema: Record<string, unknown>,
+  formData?: Record<string, unknown>,
+  prefix: string = SECRET_FIELD_PREFIX
+): PasswordFieldWithoutPrefix[] => {
+  const branches = [
+    ...(Array.isArray(schema.oneOf) ? schema.oneOf : []),
+    ...(Array.isArray(schema.anyOf) ? schema.anyOf : []),
+  ].filter(
+    (branch): branch is Record<string, unknown> =>
+      Boolean(branch) && typeof branch === 'object'
+  );
+
+  if (branches.length > 0) {
+    const dataKeys = Object.keys(formData ?? {}).filter(
+      (k) => (formData as Record<string, unknown>)[k] !== undefined
+    );
+    const matchingBranch =
+      dataKeys.length > 0
+        ? branches.find((branch) => {
+            const branchProps = new Set(
+              Object.keys((branch.properties ?? {}) as Record<string, unknown>)
+            );
+
+            return dataKeys.every((k) => branchProps.has(k));
+          })
+        : undefined;
+
+    return matchingBranch
+      ? findPasswordFieldsWithoutPrefix(matchingBranch, formData, prefix)
+      : branches.flatMap((branch) =>
+          findPasswordFieldsWithoutPrefix(branch, formData, prefix)
+        );
+  }
+
+  const properties = (schema.properties ?? {}) as JsonObject;
+
+  return Object.keys(properties).reduce((acc, key) => {
+    const propertySchema = properties[key];
+    const value = (formData as Record<string, unknown> | undefined)?.[key];
+
+    if (
+      propertySchema?.format === PASSWORD_FORMAT &&
+      typeof value === 'string' &&
+      value.trim() !== '' &&
+      !value.startsWith(prefix)
+    ) {
+      acc.push({ path: [key], key });
+
+      return acc;
+    }
+
+    if (
+      propertySchema &&
+      typeof propertySchema === 'object' &&
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value)
+    ) {
+      findPasswordFieldsWithoutPrefix(
+        propertySchema,
+        value as Record<string, unknown>,
+        prefix
+      ).forEach((hit) => acc.push({ path: [key, ...hit.path], key: hit.key }));
+    }
+
+    return acc;
+  }, [] as PasswordFieldWithoutPrefix[]);
 };
 
 const hasSynthesizableFlatAuth = (
