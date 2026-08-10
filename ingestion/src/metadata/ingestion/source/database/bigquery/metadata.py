@@ -18,7 +18,6 @@ import traceback
 from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from google import auth
-from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
@@ -81,6 +80,7 @@ from metadata.ingestion.source.database.bigquery.helper import (
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
+    get_policy_tag_client,
 )
 from metadata.ingestion.source.database.bigquery.incremental_table_processor import (
     BigQueryIncrementalTableProcessor,
@@ -254,10 +254,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._taxonomy_to_tags = {}
         self._table_ddl_cache = {}
         self._policy_tag_client = None
+        self._policy_tag_prefetch_key: Optional[Tuple[str, ...]] = None  # noqa: UP045, UP006
 
         if self.service_connection.includePolicyTags:
             try:
-                self._policy_tag_client = PolicyTagManagerClient()
+                self._policy_tag_client = get_policy_tag_client(self.service_connection)
             except Exception as exc:
                 logger.warning(f"Failed to initialize PolicyTagManagerClient: {exc}")
 
@@ -513,17 +514,29 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         if not self.service_connection.includePolicyTags:
             return
 
+        list_project_ids = [self.context.get().database]
+        if self.service_connection.taxonomyProjectID:
+            list_project_ids.extend(self.service_connection.taxonomyProjectID)
+
+        # This runs once per schema, so key the caches on the projects they hold
+        # rather than refetching every taxonomy for each dataset. Keying on the
+        # project list (not a done-flag) keeps a multi-project run from ever
+        # serving one project's taxonomies to another.
+        prefetch_key = tuple(list_project_ids)
+        if prefetch_key == self._policy_tag_prefetch_key:
+            return
+
         self._policy_tag_cache.clear()
         self._taxonomy_cache.clear()
         self._taxonomy_to_tags.clear()
+        # Claimed up front so a project that fails below is not retried for every
+        # remaining dataset: a denied taxonomy read will not start succeeding
+        # later in the same run, it only repeats the warning.
+        self._policy_tag_prefetch_key = prefetch_key
 
         if not self._policy_tag_client:
             logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
             return
-
-        list_project_ids = [self.context.get().database]
-        if self.service_connection.taxonomyProjectID:
-            list_project_ids.extend(self.service_connection.taxonomyProjectID)
 
         for project_id in list_project_ids:
             try:
