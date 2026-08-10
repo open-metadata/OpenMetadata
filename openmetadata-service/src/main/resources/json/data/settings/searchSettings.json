@@ -2437,12 +2437,13 @@
         },
         {
           "name": "fuzzyName",
-          "purpose": "Typo-tolerant identity fallback for short name searches. Deliberately excludes fullyQualifiedName: this stage is an OR multi_match at 70% token coverage, and an FQN carries its whole parent path, so a query for one entity's FQN clears 70% against every sibling and child under the same parent (that is the 'count 1 vs results 7381' bug). Exact and phrase identity on an FQN belong to exactName/phraseName, which match it precisely.",
+          "purpose": "Typo-tolerant identity fallback for short name searches.",
           "fields": [
             "displayName",
             "name",
             "displayName.compound",
-            "name.compound"
+            "name.compound",
+            "fullyQualifiedName"
           ],
           "matchType": "fuzzy",
           "weight": 24.0,

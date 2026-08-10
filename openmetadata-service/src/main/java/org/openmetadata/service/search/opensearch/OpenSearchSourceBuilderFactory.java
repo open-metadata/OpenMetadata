@@ -9,6 +9,7 @@ import static org.openmetadata.service.search.SearchUtils.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtils.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isFuzzyStageUseful;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 
@@ -1088,12 +1089,20 @@ public class OpenSearchSourceBuilderFactory
     return switch (matchType) {
       case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
-      case FUZZY -> buildTextRankingStageQueryV2(
-          significantQuery, stage, assetConfig, getFuzziness(significantQuery));
+      case FUZZY -> buildFuzzyRankingStageQueryV2(significantQuery, stage, assetConfig);
       case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
           significantQuery, stage, assetConfig);
       case STANDARD -> buildTextRankingStageQueryV2(significantQuery, stage, assetConfig, "0");
     };
+  }
+
+  private Query buildFuzzyRankingStageQueryV2(
+      String query, RankingStage stage, AssetTypeConfiguration assetConfig) {
+    Query result = null;
+    if (isFuzzyStageUseful(query)) {
+      result = buildTextRankingStageQueryV2(query, stage, assetConfig, getFuzziness(query));
+    }
+    return result;
   }
 
   private Query buildExactRankingStageQueryV2(
