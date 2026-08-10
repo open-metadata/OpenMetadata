@@ -168,17 +168,6 @@ const TestConnection: FC<TestConnectionProps> = ({
    */
   const currentWorkflowRef = useRef(currentWorkflow);
 
-  // Timers live in a ref so a new run - or an unmount - can cancel the previous
-  // run's callbacks before they write state over a newer result.
-  const timersRef = useRef<{ intervalId?: number; timeoutId?: number }>({});
-  const runIdRef = useRef(0);
-
-  const clearTimers = useCallback(() => {
-    clearInterval(timersRef.current.intervalId);
-    clearTimeout(timersRef.current.timeoutId);
-    timersRef.current = {};
-  }, []);
-
   const { controller } = useAbortController();
 
   const serviceType = useMemo(() => {
@@ -337,7 +326,10 @@ const TestConnection: FC<TestConnectionProps> = ({
   const handleWorkflowPolling = async (
     response: Workflow,
     definitionSteps: TestConnectionStep[],
-    runId: number
+    intervalObject: {
+      intervalId?: number;
+      timeoutId?: number;
+    }
   ) => {
     // return a promise that wraps the interval and handles errors inside it
     return new Promise<void>((resolve, reject) => {
@@ -345,28 +337,14 @@ const TestConnection: FC<TestConnectionProps> = ({
        * fetch workflow repeatedly with 2s interval
        * until status is either Failed or Successful
        */
-      timersRef.current.intervalId = toNumber(
+      intervalObject.intervalId = toNumber(
         setInterval(async () => {
-          if (runId !== runIdRef.current) {
-            resolve();
-
-            return;
-          }
-
           setProgress(updateProgress);
           try {
             const workflowResponse = await getWorkflowData(
               response.id,
               controller.signal
             );
-
-            // a newer run may have started while the request was in flight
-            if (runId !== runIdRef.current) {
-              resolve();
-
-              return;
-            }
-
             const { response: testConnectionResponse } = workflowResponse;
             const { status: testConnectionStatus, steps = [] } =
               testConnectionResponse || {};
@@ -389,7 +367,9 @@ const TestConnection: FC<TestConnectionProps> = ({
               definitionSteps
             );
 
-            clearTimers();
+            // clear the current interval
+            clearInterval(intervalObject.intervalId);
+            clearTimeout(intervalObject.timeoutId);
 
             // set testing connection to false
             setIsTestingConnection(false);
@@ -413,10 +393,13 @@ const TestConnection: FC<TestConnectionProps> = ({
     setMessage(t(TEST_CONNECTION_TESTING_MESSAGE));
     handleResetState();
 
-    clearTimers();
-    const runId = ++runIdRef.current;
-
     const updatedFormData = formatFormDataForSubmit(getData());
+
+    // current interval id
+    const intervalObject: {
+      intervalId?: number;
+      timeoutId?: number;
+    } = {};
 
     const { ingestionRunner, ...rest } = updatedFormData as ConfigObject & {
       ingestionRunner?: string;
@@ -470,12 +453,8 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       // stop fetching the workflow after 2 minutes
       const timeoutId = setTimeout(() => {
-        if (runId !== runIdRef.current) {
-          return;
-        }
-
         // clear the current interval
-        clearInterval(timersRef.current.intervalId);
+        clearInterval(intervalObject.intervalId);
 
         // using reference to ensure call back should have latest value
         const currentWorkflowStatus = currentWorkflowRef.current
@@ -503,13 +482,13 @@ const TestConnection: FC<TestConnectionProps> = ({
         onTestConnectionStatusChange?.(false);
       }, FETCHING_EXPIRY_TIME);
 
-      timersRef.current.timeoutId = Number(timeoutId);
+      intervalObject.timeoutId = Number(timeoutId);
 
       // Handle workflow polling and completion
-      await handleWorkflowPolling(response, definitionSteps, runId);
+      await handleWorkflowPolling(response, definitionSteps, intervalObject);
     } catch (error) {
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-      clearTimers();
+      clearInterval(intervalObject.intervalId);
       setIsTestingConnection(false);
       setMessage(t(TEST_CONNECTION_FAILURE_MESSAGE));
       setTestStatus(StatusType.Failed);
@@ -699,8 +678,6 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   useEffect(() => {
     return () => {
-      clearTimers();
-
       /**
        * if workflow is present then delete the workflow when component unmount
        */
