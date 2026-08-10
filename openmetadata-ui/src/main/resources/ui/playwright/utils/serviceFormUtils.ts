@@ -46,23 +46,23 @@ export const selectOneOfOption = async (
   const selectWidget = page.getByTestId(selectTestId);
 
   if (await selectWidget.isVisible({ timeout: 1000 }).catch(() => false)) {
-    const combobox = selectWidget.getByRole('combobox');
+    // The testid sits on the react-aria Select wrapper. Click the wrapper (not
+    // the visually hidden native `combobox` it renders for form submission —
+    // clicking that never opens the listbox) so the popover opens.
+    await selectWidget.click();
 
-    if (await combobox.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await combobox.click({
-        // eslint-disable-next-line playwright/no-force-option -- some oneOf selectors are partially covered by the field wrapper
-        force: true,
-      });
-    } else {
-      await selectWidget.click();
-    }
+    const popoverOption = page
+      .locator('.core-one-of-field-select-popover:visible')
+      .getByRole('option', { name: optionName })
+      .first();
+    const anyOption = page.getByRole('option', { name: optionName }).first();
 
-    const option = page.getByRole('option', { name: optionName });
+    for (const option of [popoverOption, anyOption]) {
+      if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await option.click();
 
-    if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await option.click();
-
-      return;
+        return;
+      }
     }
 
     await page

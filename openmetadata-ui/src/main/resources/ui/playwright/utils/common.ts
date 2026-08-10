@@ -785,7 +785,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await glossaryResponse;
   await waitForAllLoadersToDisappear(page);
   await page
-    .getByRole('menuitem', { name: glossaryName })
+    .getByTestId('glossary-left-panel')
+    .getByRole('menuitem', { name: glossaryName, exact: true })
     .click({ timeout: 30000 });
   await waitForAllLoadersToDisappear(page);
 };
@@ -850,19 +851,27 @@ export const verifyDomainLinkInCard = async (
 export const waitForSearchResult = async (
   page: Page,
   searchTerm: string,
-  result: Locator
+  result: Locator,
+  tabSelector?: Locator
 ) => {
   let hasSubmittedSearch = false;
 
   await expect
     .poll(
       async () => {
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.request().method() === 'GET',
-          { timeout: 15_000 }
-        );
+        // Swallow the timeout: this wait only exists to let the search settle
+        // before checking the result, and the enclosing poll is what decides
+        // success. Left unhandled, a single slow search rejects and the
+        // exception aborts the whole poll instead of counting as "not yet" —
+        // so a 45s budget could fail after one 15s iteration.
+        const searchResponse = page
+          .waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.request().method() === 'GET',
+            { timeout: 15_000 }
+          )
+          .catch(() => null);
 
         if (hasSubmittedSearch) {
           await Promise.all([searchResponse, page.reload()]);
@@ -875,6 +884,8 @@ export const waitForSearchResult = async (
           hasSubmittedSearch = true;
         }
         await waitForAllLoadersToDisappear(page);
+        await tabSelector?.click();
+        await waitForAllLoadersToDisappear(page);
 
         return result.isVisible();
       },
@@ -886,7 +897,8 @@ export const waitForSearchResult = async (
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
-  childFqnSearchTerm: string
+  childFqnSearchTerm: string,
+  exploreTabName?: string
 ) => {
   // Domain propagation from the parent service to its children — and the
   // subsequent search reindex — is eventually consistent. Gate on the search
@@ -938,6 +950,11 @@ export const verifyDomainPropagation = async (
   await searchBox.fill(childFqnSearchTerm);
   await searchBox.press('Enter');
   await waitForAllLoadersToDisappear(page);
+
+  if (exploreTabName) {
+    await page.getByRole('menuitem', { name: exploreTabName }).click();
+    await waitForAllLoadersToDisappear(page);
+  }
 
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   await expect(entityCard).toBeVisible({ timeout: 30_000 });

@@ -48,12 +48,14 @@ import {
   ReactFlowInstance,
   useKeyPress,
 } from 'reactflow';
+import 'reactflow/dist/style.css';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
+import '../../components/Entity/EntityLineage/entity-lineage.style.less';
 import {
   ElementLoadingState,
   LineageConfig,
@@ -157,6 +159,7 @@ import {
   LineageProviderProps,
   LineageTimeRange,
 } from './LineageProvider.interface';
+
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
 
@@ -1502,7 +1505,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         await removeEdgeHandler(selectedEdge as Edge, true);
       }
 
+      // Close the modal and drop the selection in the same batch so the
+      // floating edit/delete button in EdgeInteractionOverlay unmounts
+      // right after removal. Doing this here (rather than inside the
+      // handlers) keeps `selectedEdge` populated while the confirmation
+      // modal is still mounted — getModalBodyText() destructures it
+      // during render and would crash the LineageProvider tree if
+      // `selectedEdge` were cleared before the modal unmounts.
       setShowDeleteModal(false);
+      setSelectedEdge(undefined);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -2214,7 +2225,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           </SlideoutMenu>
         )}
 
-        {showDeleteModal && (
+        {showDeleteModal && selectedEdge && (
           <ModalOverlay
             isDismissable={!deletionState.loading}
             isOpen={showDeleteModal}
@@ -2228,7 +2239,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               <Dialog data-testid="delete-edge-confirmation-modal" width={400}>
                 <Dialog.Header title={t('message.remove-lineage-edge')} />
                 <Dialog.Content>
-                  {getModalBodyText(selectedEdge as Edge)}
+                  {getModalBodyText(selectedEdge)}
                 </Dialog.Content>
                 <Dialog.Footer>
                   <Button

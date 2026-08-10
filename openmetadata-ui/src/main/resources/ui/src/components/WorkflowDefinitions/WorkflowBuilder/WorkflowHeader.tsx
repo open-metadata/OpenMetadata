@@ -14,7 +14,6 @@
 import {
   Badge,
   Button,
-  Card,
   Dialog,
   Input,
   Modal,
@@ -31,9 +30,11 @@ import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeaderProps } from '../../../interface/workflow-builder-components.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { WorkflowControls } from './WorkflowControls';
 
 export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
+  breadcrumb,
   title,
   workflowName,
   handleTestWorkflow,
@@ -89,89 +90,96 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   };
 
   return (
-    <Card className="tw:px-6 tw:py-4" data-testid="workflow-header">
-      <div className="tw:flex tw:items-center tw:justify-between">
-        <div className="tw:flex tw:items-center tw:gap-3">
+    <>
+      <HeaderShell
+        actions={
+          <>
+            <WorkflowControls
+              isRunLoading={isRunLoading}
+              onCancelWorkflow={showCancelButton ? enterViewMode : undefined}
+              onDeleteWorkflow={
+                showDeleteButton ? handleDeleteWorkflow : undefined
+              }
+              onRevertAndCancel={
+                showCancelButton ? handleRevertAndCancel : undefined
+              }
+              onRunWorkflow={handleRunWorkflow}
+              onSaveWorkflow={
+                showSaveButton ? handleSaveAndEnterViewMode : undefined
+              }
+              onTestWorkflow={showTestButton ? handleTestWorkflow : undefined}
+            />
+            {showEditButton && (
+              <Button
+                color="primary"
+                data-testid="edit-workflow-button"
+                size="sm"
+                onPress={enterEditMode}>
+                {t('label.edit-workflow')}
+              </Button>
+            )}
+          </>
+        }
+        badge={
+          <>
+            {isNoOp && (
+              <Tooltip
+                placement="top"
+                title={t('message.system-workflow-edit-restriction')}>
+                <TooltipTrigger>
+                  <Badge
+                    color="gray"
+                    data-testid="system-workflow-badge"
+                    size="sm"
+                    type="color">
+                    {t('label.system')}
+                  </Badge>
+                </TooltipTrigger>
+              </Tooltip>
+            )}
+            {!isViewMode && !isNoOp && (
+              <Button
+                color="tertiary"
+                data-testid="edit-workflow-title-button"
+                iconLeading={EditIcon}
+                size="sm"
+                onPress={handleOpenEditModal}
+              />
+            )}
+          </>
+        }
+        breadcrumb={breadcrumb}
+        data-testid="workflow-header"
+        leading={
           <div className="tw:flex tw:items-center tw:justify-center tw:size-8 tw:rounded-md tw:bg-brand-solid">
             <WorkflowIcon className="tw:size-4 tw:text-white" />
           </div>
-
-          <div data-testid="workflow-title-section">
-            <div className="tw:flex tw:items-center tw:gap-2">
-              <Typography
-                ellipsis
-                as="p"
-                className="tw:m-0 tw:mb-1 tw:text-primary"
-                data-testid="workflow-title"
-                size="text-md"
-                weight="semibold">
-                {title}
-              </Typography>
-              {isNoOp && (
-                <Tooltip
-                  placement="top"
-                  title={t('message.system-workflow-edit-restriction')}>
-                  <TooltipTrigger>
-                    <Badge
-                      color="gray"
-                      data-testid="system-workflow-badge"
-                      size="sm"
-                      type="color">
-                      {t('label.system')}
-                    </Badge>
-                  </TooltipTrigger>
-                </Tooltip>
-              )}
-              {!isViewMode && !isNoOp && (
-                <Button
-                  color="tertiary"
-                  data-testid="edit-workflow-title-button"
-                  iconLeading={EditIcon}
-                  size="sm"
-                  onPress={handleOpenEditModal}
-                />
-              )}
-            </div>
-            {workflowName && (
-              <Typography
-                ellipsis
-                as="p"
-                className="tw:m-0 tw:text-secondary tw:max-w-150"
-                data-testid="workflow-description"
-                size="text-sm">
-                {workflowName}
-              </Typography>
-            )}
-          </div>
-        </div>
-
-        <div className="tw:flex tw:gap-3 tw:items-center">
-          <WorkflowControls
-            isRunLoading={isRunLoading}
-            onCancelWorkflow={showCancelButton ? enterViewMode : undefined}
-            onDeleteWorkflow={
-              showDeleteButton ? handleDeleteWorkflow : undefined
-            }
-            onRevertAndCancel={
-              showCancelButton ? handleRevertAndCancel : undefined
-            }
-            onRunWorkflow={handleRunWorkflow}
-            onSaveWorkflow={
-              showSaveButton ? handleSaveAndEnterViewMode : undefined
-            }
-            onTestWorkflow={showTestButton ? handleTestWorkflow : undefined}
-          />
-          {showEditButton && (
-            <Button
-              color="primary"
-              data-testid="edit-workflow-button"
-              size="sm"
-              onPress={enterEditMode}>
-              {t('label.edit-workflow')}
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+        subtitle={
+          workflowName ? (
+            <Typography
+              ellipsis
+              as="p"
+              className="tw:m-0 tw:text-secondary tw:max-w-150"
+              data-testid="workflow-description"
+              size="text-sm">
+              {workflowName}
+            </Typography>
+          ) : undefined
+        }
+        title={
+          <Typography
+            ellipsis
+            as="h3"
+            className="tw:m-0 tw:text-primary"
+            data-testid="workflow-title"
+            size="text-xl"
+            weight="semibold">
+            {title}
+          </Typography>
+        }
+        variant="gradient"
+      />
 
       <ModalOverlay isOpen={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <Modal>
@@ -209,6 +217,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           </Dialog>
         </Modal>
       </ModalOverlay>
-    </Card>
+    </>
   );
 };

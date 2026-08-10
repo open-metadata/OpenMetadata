@@ -16,6 +16,7 @@ import type { AppPlugin } from '../plugins/AppPlugin';
 
 export type ApplicationsContextType = {
   applications: EntityReference[];
+  isLoading: boolean;
   plugins: AppPlugin[];
   extensionRegistry: ExtensionPointRegistry;
 };

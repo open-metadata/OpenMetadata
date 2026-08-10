@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { FormField } from '../common/FormField';
 import { QueryBuilderSection } from './QueryBuilderSection';
 
 interface EventTriggerFilterSectionProps {
@@ -59,49 +60,55 @@ export const EventTriggerFilterSection: React.FC<
     setShowFilter(true);
   };
 
-  if (!showFilter && !hasFilter) {
-    return (
-      <div className="tw:mt-6">
-        <Button
-          className="tw:w-full"
-          color="secondary"
-          data-testid="add-event-filter-button"
-          iconLeading={Plus}
-          isDisabled={controlsDisabled}
-          size="sm"
-          onPress={handleAddFilter}>
-          {t('label.add-asset-filter')}
-        </Button>
-      </div>
-    );
-  }
+  const showAddButton = !showFilter && !hasFilter;
 
   return (
     <div className="tw:mt-6">
-      <Card className="tw:p-4">
-        <div className="tw:flex tw:items-center tw:gap-1.5 tw:mb-3">
+      <FormField
+        description={t(
+          'message.entities-matching-this-filter-will-not-trigger'
+        )}
+        label={t('label.exclude-filter')}
+        showInfoIcon={false}>
+        {showAddButton ? (
           <Button
-            color="tertiary"
-            iconLeading={XClose}
+            className="tw:w-full"
+            color="secondary"
+            data-testid="add-event-filter-button"
+            iconLeading={Plus}
             isDisabled={controlsDisabled}
             size="sm"
-            onPress={handleClearFilter}
-          />
-        </div>
+            onPress={handleAddFilter}>
+            {t('label.add-exclude-filter')}
+          </Button>
+        ) : (
+          <Card className="tw:p-4">
+            <div className="tw:flex tw:items-center tw:gap-1.5 tw:mb-3">
+              <Button
+                color="tertiary"
+                iconLeading={XClose}
+                isDisabled={controlsDisabled}
+                size="sm"
+                onPress={handleClearFilter}
+              />
+            </div>
 
-        <div className="tw:mt-4">
-          <QueryBuilderSection
-            entityTypes={entityType}
-            forceReadOnly={lockFields}
-            label="Filter"
-            outputType={SearchOutputType.ElasticSearch}
-            value={triggerFilter}
-            onChange={(value: string) => {
-              onTriggerFilterChange?.(value || '');
-            }}
-          />
-        </div>
-      </Card>
+            <div className="tw:mt-4">
+              <QueryBuilderSection
+                entityTypes={entityType}
+                forceReadOnly={lockFields}
+                label={t('label.exclude-filter')}
+                outputType={SearchOutputType.ElasticSearch}
+                showExploreLink={false}
+                value={triggerFilter}
+                onChange={(value: string) => {
+                  onTriggerFilterChange?.(value || '');
+                }}
+              />
+            </div>
+          </Card>
+        )}
+      </FormField>
     </div>
   );
 };
