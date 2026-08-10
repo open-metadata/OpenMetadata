@@ -117,7 +117,7 @@ MOCK_DATABRICKS_MULTICLOUD_EXP = """let
     test_schema = test_database{[Name="PUBLIC",Kind="Schema"]}[Data],
     test_table = test_schema{[Name="STG_CUSTOMERS",Kind="Table"]}[Data]
 in
-    Source""" # noqa: W291
+    Source"""
 
 MOCK_DATABRICKS_NATIVE_EXP = """let
     Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
@@ -780,7 +780,7 @@ class PowerBIUnitTest(TestCase):
 
         result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_MULTICLOUD_EXP, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
-        
+
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
