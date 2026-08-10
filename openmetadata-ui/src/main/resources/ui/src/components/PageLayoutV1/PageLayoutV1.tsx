@@ -90,8 +90,10 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     if (fullHeight && !pageContainerStyle.height) {
       return {
         // The shell (classic navbar, AI content pane, …) owns
-        // --ant-navbar-height; never hardcode the chrome offset here.
-        height: 'calc(100vh - var(--ant-navbar-height))',
+        // --ant-navbar-height; never hardcode the chrome offset here. The
+        // 64px fallback keeps the rule valid (and matches the previous
+        // hardcoded offset) in shells that never define the variable.
+        height: 'calc(100vh - var(--ant-navbar-height, 64px))',
         overflow: 'hidden',
         ...pageContainerStyle,
       };
