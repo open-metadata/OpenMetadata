@@ -342,6 +342,43 @@ class SearchRankingHelperTest {
             .size());
   }
 
+  /**
+   * On upgrade {@code SearchSettingsHandler.mergeSearchSettings} only adopts the shipped default
+   * ranking when the stored {@code defaultConfiguration} has none, so an existing install keeps
+   * whatever stage list is already in its SEARCH_SETTINGS row — a differently named stage, and
+   * {@code fullyQualifiedName} still among its fields. The precise pass must therefore key off
+   * {@code matchType} alone, never a stage name or field list, so that the fix reaches upgraded
+   * deployments without migrating stored settings.
+   */
+  @Test
+  void withoutFuzzyStagesIgnoresStageNamesAndFieldLists() {
+    RankingStage storedFuzzyStage =
+        new RankingStage()
+            .withName("legacyTypoFallback")
+            .withFields(List.of("name", "displayName", "fullyQualifiedName"))
+            .withMatchType(RankingStage.MatchType.FUZZY);
+    SearchSettings stored = settingsWithStages("exactName");
+    stored
+        .getDefaultConfiguration()
+        .getRanking()
+        .setStages(
+            List.of(
+                stored.getDefaultConfiguration().getRanking().getStages().getFirst(),
+                storedFuzzyStage));
+
+    assertTrue(SearchRankingHelper.hasFuzzyStage(stored));
+
+    SearchSettings precise = SearchRankingHelper.withoutFuzzyStages(stored);
+
+    assertFalse(SearchRankingHelper.hasFuzzyStage(precise));
+    assertEquals(
+        List.of("exactName"),
+        precise.getDefaultConfiguration().getRanking().getStages().stream()
+            .map(RankingStage::getName)
+            .toList(),
+        "A stored stage must be dropped on matchType, whatever it is called or which fields it names");
+  }
+
   private static RankingStage.MatchType matchTypeFor(String stageName) {
     return switch (stageName) {
       case "fuzzyName" -> RankingStage.MatchType.FUZZY;
