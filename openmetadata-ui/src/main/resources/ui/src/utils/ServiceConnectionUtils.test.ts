@@ -20,6 +20,7 @@ import { ConfigData } from '../interface/service.interface';
 import {
   buildValidConfig,
   EMPTY_CONNECTION_SCHEMA,
+  findPasswordFieldsWithoutPrefix,
   flattenAuthTypeIntoConfig,
   getConnectionFieldSection,
   getConnectionSchemas,
@@ -31,6 +32,7 @@ import {
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   hasMissingRequiredFlatCredential,
   loadConnectionSchema,
+  SECRET_FIELD_PREFIX,
   wrapFlatCredentialsIntoAuthType,
 } from './ServiceConnectionUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
@@ -931,5 +933,87 @@ describe('getFieldSchemaForId', () => {
 
   it('returns undefined for an unknown field id', () => {
     expect(getFieldSchemaForId(schema, 'root/doesNotExist')).toBeUndefined();
+  });
+});
+
+describe('findPasswordFieldsWithoutPrefix', () => {
+  const flatSchema = {
+    properties: {
+      username: { type: 'string' },
+      password: { format: 'password' },
+    },
+  };
+
+  it('reports a top-level password field missing the prefix', () => {
+    expect(
+      findPasswordFieldsWithoutPrefix(flatSchema, { password: 'plaintext' })
+    ).toEqual([{ path: ['password'], key: 'password' }]);
+  });
+
+  it('does not report a password field that already has the prefix', () => {
+    expect(
+      findPasswordFieldsWithoutPrefix(flatSchema, {
+        password: `${SECRET_FIELD_PREFIX}my-secret`,
+      })
+    ).toEqual([]);
+  });
+
+  it('does not report an empty password field', () => {
+    expect(findPasswordFieldsWithoutPrefix(flatSchema, {})).toEqual([]);
+  });
+
+  it('reports a password field nested inside an object property', () => {
+    const nestedSchema = {
+      properties: {
+        authenticationConfiguration: {
+          type: 'object',
+          properties: {
+            oauth2ClientSecret: { format: 'password' },
+          },
+        },
+      },
+    };
+
+    expect(
+      findPasswordFieldsWithoutPrefix(nestedSchema, {
+        authenticationConfiguration: { oauth2ClientSecret: 'plaintext' },
+      })
+    ).toEqual([
+      {
+        path: ['authenticationConfiguration', 'oauth2ClientSecret'],
+        key: 'oauth2ClientSecret',
+      },
+    ]);
+  });
+
+  it('only walks the oneOf branch selected by the current formData', () => {
+    const oneOfSchema = {
+      oneOf: [
+        {
+          title: 'Basic Auth',
+          properties: { password: { format: 'password' } },
+        },
+        {
+          title: 'AWS Config',
+          properties: { awsSecretAccessKey: { format: 'password' } },
+        },
+      ],
+    };
+
+    expect(
+      findPasswordFieldsWithoutPrefix(oneOfSchema, {
+        awsSecretAccessKey: 'plaintext',
+      })
+    ).toEqual([{ path: ['awsSecretAccessKey'], key: 'awsSecretAccessKey' }]);
+  });
+
+  it('supports a custom prefix', () => {
+    expect(
+      findPasswordFieldsWithoutPrefix(
+        flatSchema,
+        { password: 'vault:my-secret' },
+        'vault:'
+      )
+    ).toEqual([]);
   });
 });
