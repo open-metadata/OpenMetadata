@@ -41,13 +41,13 @@ import './data-marketplace-page.less';
 
 // The reader renders the widgets as a plain column: the layout here is always a
 // single full-width stack (`normalizeLayout` forces w/x and sorts by y) and the
-// grid was static anyway. A fixed-pitch grid gave every widget the same slot
-// height whatever its content, so the visible gap became the grid margin plus
-// each widget's unused slot — 49px under an empty widget, 17px under a populated
-// one. Flowing them keeps the gap at exactly WIDGET_GAP everywhere and lets each
-// widget be as tall as its own content. The customize page still uses the grid,
-// which is where drag and resize actually happen.
-const WIDGET_GAP = 30;
+// grid was static anyway. A fixed-pitch grid sized every slot the same whatever
+// the widget held, so the visible gap was the grid's 30px margin minus however
+// far the panel overflowed its slot — 19px when empty, 17px with cards, and it
+// grew to 49px once the taller placeholder needed a second row. 18px holds the
+// spacing the grid used to land on, now identically for every widget. The
+// customize page still uses the grid, which is where drag and resize happen.
+const WIDGET_GAP = 18;
 
 // In AI mode the caller's `HeaderShell` owns the 20px gap to the content below
 // through its own bottom margin, matching the Domains/Data Products list pages —
