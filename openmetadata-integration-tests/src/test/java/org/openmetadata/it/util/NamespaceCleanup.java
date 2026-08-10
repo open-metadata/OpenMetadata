@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
+import org.awaitility.pollinterval.IterativePollInterval;
 import org.awaitility.pollinterval.PollInterval;
 import org.openmetadata.it.util.TestNamespace.EntityRoot;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -122,6 +123,12 @@ public final class NamespaceCleanup {
       gone = false;
     }
     return gone;
+  }
+
+  /** Doubles the poll interval up to {@link #MAX_CASCADE_POLL} so a long cascade is not hammered. */
+  private static Duration nextCascadePoll(final Duration previous) {
+    final Duration doubled = previous.multipliedBy(2);
+    return doubled.compareTo(MAX_CASCADE_POLL) > 0 ? MAX_CASCADE_POLL : doubled;
   }
 
   /**
