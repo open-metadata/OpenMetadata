@@ -118,7 +118,7 @@ const TestCaseLastRunBanner = ({
       }
       rightSection={
         <div
-          className="tw:flex tw:shrink-0 tw:items-stretch tw:gap-6 tw:lg:w-80"
+          className="tw:flex tw:shrink-0 tw:items-stretch tw:justify-end tw:gap-6 tw:lg:w-80"
           data-testid="test-case-last-run-right-section">
           <ResultExpected
             config={config}

@@ -40,6 +40,7 @@ const LAST_RUN_ICON_TEST_ID = 'test-case-last-run-icon';
 const LAST_RUN_SUMMARY_TEST_ID = 'test-case-last-run-summary';
 const NEXT_RUN_TEST_ID = 'test-case-next-run';
 const INCIDENT_ID_TEST_ID = 'test-case-incident-id';
+const INCIDENT_STATUS_TEST_ID = 'test-case-incident-status';
 const TEST_CASE_RESULT_TIMESTAMP = 1_786_001_601_000;
 const TOP_ALIGNED_CLASS = 'tw:self-start';
 const TEXT_XS_CLASS = 'tw:text-xs';
@@ -126,7 +127,7 @@ describe('TestCaseLastRunBanner', () => {
       );
       expect(
         screen.getByTestId('test-case-last-run-right-section')
-      ).toHaveClass('tw:lg:w-80');
+      ).toHaveClass('tw:justify-end', 'tw:lg:w-80');
       expect(screen.getByText(result)).toHaveClass(TEXT_XS_CLASS);
       expect(
         screen.getByTestId('test-case-run-description')
@@ -178,8 +179,11 @@ describe('TestCaseLastRunBanner', () => {
         expect(screen.getByTestId('test-case-incident-icon')).toHaveClass(
           TOP_ALIGNED_CLASS
         );
-        expect(screen.getByTestId('test-case-incident-text')).toHaveClass(
-          'tw:flex-1'
+        expect(
+          screen.getByTestId('test-case-incident-text').nextElementSibling
+        ).toBe(screen.getByTestId(INCIDENT_STATUS_TEST_ID));
+        expect(screen.getByTestId('test-case-incident-actions')).toHaveClass(
+          'tw:lg:w-auto'
         );
         expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveClass(
           TEXT_XS_CLASS,
@@ -194,20 +198,21 @@ describe('TestCaseLastRunBanner', () => {
         expect(
           screen.getByTestId('test-case-incident-description')
         ).toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
-        expect(screen.getByTestId('test-case-incident-actions')).toHaveClass(
-          'tw:lg:w-80'
-        );
-        expect(screen.getByTestId('test-case-incident-status')).toHaveClass(
+        expect(screen.getByTestId(INCIDENT_STATUS_TEST_ID)).toHaveClass(
           TOP_ALIGNED_CLASS
         );
         expect(
-          screen.getByTestId('test-case-incident-status').firstElementChild
+          screen.getByTestId(INCIDENT_STATUS_TEST_ID).firstElementChild
         ).toHaveClass('tw:bg-white');
 
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
         expect(viewIncidentButton).toHaveTextContent('label.view-entity');
-        expect(viewIncidentButton).toHaveClass(TEXT_XS_CLASS);
+        expect(viewIncidentButton).toHaveClass(
+          TEXT_XS_CLASS,
+          'tw:ml-auto',
+          'tw:shrink-0'
+        );
         expect(viewIncidentButton).not.toHaveAttribute('href');
 
         fireEvent.click(viewIncidentButton);

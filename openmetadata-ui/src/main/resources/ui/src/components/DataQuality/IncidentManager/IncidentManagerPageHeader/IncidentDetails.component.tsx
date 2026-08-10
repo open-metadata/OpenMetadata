@@ -43,12 +43,9 @@ const IncidentDetails = ({
           data-testid="test-case-incident-icon"
           size={20}
         />
-        <div
-          className="tw:min-w-0 tw:flex-1"
-          data-testid="test-case-incident-text">
+        <div className="tw:min-w-0" data-testid="test-case-incident-text">
           {description ? (
             <ExpandableBannerText
-              className="tw:flex-1"
               dataTestId="test-case-incident-description"
               prefix={
                 <>
@@ -69,13 +66,9 @@ const IncidentDetails = ({
             </span>
           )}
         </div>
-      </div>
-      <div
-        className="tw:flex tw:w-full tw:items-start tw:gap-3 tw:lg:w-80 tw:lg:shrink-0"
-        data-testid="test-case-incident-actions">
         {statusConfig && (
           <span
-            className="tw:self-start"
+            className="tw:shrink-0 tw:self-start"
             data-testid="test-case-incident-status">
             <BadgeWithDot
               className="tw:bg-white"
@@ -86,8 +79,12 @@ const IncidentDetails = ({
             </BadgeWithDot>
           </span>
         )}
+      </div>
+      <div
+        className="tw:flex tw:w-full tw:items-start tw:lg:w-auto tw:lg:shrink-0"
+        data-testid="test-case-incident-actions">
         <Button
-          className="tw:ml-auto"
+          className="tw:ml-auto tw:shrink-0"
           color="primary"
           data-testid="view-incident-button"
           iconTrailing={ArrowUpRight}
