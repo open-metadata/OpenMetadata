@@ -1332,7 +1332,10 @@ export function useOntologyGraph({
       }
     };
 
-    runRender();
+    runRender().catch(() => {
+      // runRender has an internal catch that already handles destroy-time errors.
+      // This outer catch guards any edge case that escapes it.
+    });
 
     const resizeObserver = new ResizeObserver(() => {
       if (containerRef.current && graphRef.current) {
@@ -1444,7 +1447,9 @@ export function useOntologyGraph({
         }
         graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
-        graph.draw();
+        graph.draw().catch(() => {
+          // fire-and-forget paint; graph may be destroyed if tab was changed
+        });
 
         return;
       } catch {
@@ -1607,7 +1612,9 @@ export function useOntologyGraph({
       if (newEdges.length > 0) {
         graph.addEdgeData(newEdges);
       }
-      graph.draw();
+      graph.draw().catch(() => {
+        // fire-and-forget paint; graph may be destroyed if tab was changed
+      });
 
       return;
     }
@@ -1624,7 +1631,9 @@ export function useOntologyGraph({
         }
         graph.updateNodeData(nodesToUpdate);
         graph.updateEdgeData(graphData.edges ?? []);
-        graph.draw();
+        graph.draw().catch(() => {
+          // fire-and-forget paint; graph may be destroyed if tab was changed
+        });
       } catch {
         // ignore
       }
@@ -1739,6 +1748,9 @@ export function useOntologyGraph({
         if (cancelled) {
           return;
         }
+        if (graph.destroyed) {
+          return;
+        }
         await graph.draw();
 
         if (cancelled) {
@@ -1750,6 +1762,12 @@ export function useOntologyGraph({
         }
         recomputeGraphBounds();
         emitPagePositions(graph);
+      } catch (err) {
+        // Swallow rejections that arrive after the graph was destroyed (tab
+        // navigation while a draw was in flight). Re-throw real failures.
+        if (!cancelled && !graph.destroyed) {
+          throw err;
+        }
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;
@@ -1757,7 +1775,11 @@ export function useOntologyGraph({
       }
     };
 
-    runUpdate();
+    runUpdate().catch(() => {
+      // runUpdate re-throws only when neither cancelled nor destroyed; that
+      // path is already logged above. Catch here to prevent an unhandled
+      // rejection from surfacing in edge cases.
+    });
   }, [
     graphData,
     layoutType,
