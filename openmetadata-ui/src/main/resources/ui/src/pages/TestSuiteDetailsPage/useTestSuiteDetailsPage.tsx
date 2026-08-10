@@ -289,10 +289,34 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     }
   };
 
+  const fetchIngestionPipelineCount = useCallback(
+    async (
+      shouldFetch: boolean,
+      isCurrentRequest: () => boolean
+    ): Promise<void> => {
+      if (!shouldFetch || !isCurrentRequest()) {
+        return;
+      }
+
+      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
+        arrQueryFields: [],
+        testSuite: testSuiteFQN,
+        pipelineType: [PipelineType.TestSuite],
+        limit: 0,
+      });
+
+      if (isCurrentRequest()) {
+        setIngestionPipelineCount(ingestionPipelinePaging.total);
+      }
+    },
+    [testSuiteFQN]
+  );
+
   const fetchTestCasesWithTotal = useCallback(
     async (
       param?: ListTestCaseParamsBySearch,
-      keepLoading = false
+      keepLoading = false,
+      shouldFetchIngestionPipelines = true
     ): Promise<number | undefined> => {
       const requestId = ++testCaseRequestId.current;
       const requestedTestSuiteFQN = testSuiteFQN;
@@ -314,13 +338,9 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
           ...param,
           limit: pageSize,
         });
-        const { paging: ingestionPipelinePaging } = await getIngestionPipelines(
-          {
-            arrQueryFields: [],
-            testSuite: testSuiteFQN,
-            pipelineType: [PipelineType.TestSuite],
-            limit: 0,
-          }
+        await fetchIngestionPipelineCount(
+          shouldFetchIngestionPipelines,
+          isCurrentRequest
         );
 
         if (!isCurrentRequest()) {
@@ -333,7 +353,6 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
           isUnfilteredRequest &&
           authoritativeSnapshot?.testSuiteFQN === testSuiteFQN &&
           response.paging.total < authoritativeSnapshot.total;
-        setIngestionPipelineCount(ingestionPipelinePaging.total);
         setTestCaseResult(response.data);
         handlePagingChange({
           ...response.paging,
@@ -368,7 +387,15 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         }
       }
     },
-    [testSuiteId, testSuiteFQN, sortOptions, pageSize, handlePagingChange, t]
+    [
+      testSuiteId,
+      testSuiteFQN,
+      sortOptions,
+      pageSize,
+      handlePagingChange,
+      fetchIngestionPipelineCount,
+      t,
+    ]
   );
 
   const fetchTestCases = useCallback(
@@ -394,7 +421,11 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
             return;
           }
 
-          const indexedTotal = await fetchTestCasesWithTotal(undefined, true);
+          const indexedTotal = await fetchTestCasesWithTotal(
+            undefined,
+            true,
+            attempt === 0
+          );
 
           if (
             !isCurrentTestSuite() ||
