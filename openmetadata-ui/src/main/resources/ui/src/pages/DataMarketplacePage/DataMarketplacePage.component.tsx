@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import {
-  ComponentType,
   CSSProperties,
   ReactNode,
   useCallback,
@@ -22,7 +21,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import marketplaceBg from '../../assets/img/widgets/marketplace-bg.png';
 import Loader from '../../components/common/Loader/Loader';
 import AnnouncementsWidgetV2 from '../../components/DataMarketplace/AnnouncementsWidgetV2/AnnouncementsWidgetV2.component';
@@ -32,7 +31,6 @@ import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
@@ -41,9 +39,17 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './data-marketplace-page.less';
 
-const ReactGridLayout = WidthProvider(RGL) as ComponentType<
-  ReactGridLayoutProps & { children?: ReactNode }
->;
+// The reader renders the widgets as a plain column: the layout here is always a
+// single full-width stack (`normalizeLayout` forces w/x and sorts by y) and the
+// grid was static anyway. A fixed-pitch grid gave every widget the same slot
+// height whatever its content, so the visible gap became the grid margin plus
+// each widget's unused slot — 49px under an empty widget, 17px under a populated
+// one. Flowing them keeps the gap at exactly WIDGET_GAP everywhere and lets each
+// widget be as tall as its own content. The customize page still uses the grid,
+// which is where drag and resize actually happen.
+const WIDGET_GAP = 30;
+
+const GRID_STYLE = { gap: WIDGET_GAP, marginTop: 8 };
 
 const normalizeLayout = (l: WidgetConfig[]) =>
   l
@@ -67,6 +73,7 @@ const DataMarketplacePage = ({
   renderPageHeader,
 }: DataMarketplacePageProps) => {
   const { selectedPersona } = useApplicationStore();
+  const { i18n } = useTranslation();
 
   const defaultLayout = useMemo(
     () => dataMarketplaceClassBase.getDefaultLayout(EntityTabs.OVERVIEW),
@@ -77,8 +84,6 @@ const DataMarketplacePage = ({
   const [layout, setLayout] = useState<Array<WidgetConfig>>(() => [
     ...defaultLayout,
   ]);
-
-  useGridLayoutDirection(false);
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -124,11 +129,11 @@ const DataMarketplacePage = ({
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
-        <div data-grid={widget} key={widget.i}>
+        <div dir={i18n.dir()} key={widget.i}>
           {getWidgetsFromKey(PageType.DataMarketplace, widget)}
         </div>
       )),
-    [layout]
+    [layout, i18n]
   );
 
   if (isLoading) {
@@ -164,17 +169,11 @@ const DataMarketplacePage = ({
           <div className="p-x-box">
             <AnnouncementsWidgetV2 widgetKey="announcements" />
           </div>
-          <ReactGridLayout
-            className="grid-container p-x-box"
-            cols={TAB_GRID_MAX_COLUMNS}
-            containerPadding={[0, 0]}
-            isDraggable={false}
-            isResizable={false}
-            margin={[16, 30]}
-            rowHeight={156}
-            style={{ marginTop: 8 }}>
+          <div
+            className="grid-container p-x-box tw:flex tw:flex-col"
+            style={GRID_STYLE}>
             {widgets}
-          </ReactGridLayout>
+          </div>
         </div>
       </div>
     </div>
