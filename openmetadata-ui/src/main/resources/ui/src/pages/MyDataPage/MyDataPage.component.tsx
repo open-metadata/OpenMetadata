@@ -26,7 +26,6 @@ import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComp
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
-import { EntityType } from '../../enums/entity.enum';
 import type { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/page';
 import type { PersonaPreferences } from '../../generated/type/personaPreferences';

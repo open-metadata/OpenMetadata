@@ -36,9 +36,11 @@ export const docStoreQueryFn = (fqn: string) => (): Promise<Document> =>
  * Derive the docStore FQN for a persona's UICustomization document.
  * Returns null when the persona has no FQN (disabled query guard).
  */
-export const personaDocFqn = (persona?: {
-  fullyQualifiedName?: string;
-} | null): string | null =>
+export const personaDocFqn = (
+  persona?: {
+    fullyQualifiedName?: string;
+  } | null
+): string | null =>
   persona?.fullyQualifiedName
     ? `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${persona.fullyQualifiedName}`
     : null;
