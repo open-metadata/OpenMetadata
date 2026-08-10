@@ -2352,15 +2352,33 @@ public class MigrationUtil {
     }
 
     private void remediateInReviewGlossaryApproval(Task task, GlossaryTerm term) {
-      if (hasActiveApprovalSibling(term.getFullyQualifiedName(), task.getId())) {
+      String termFqn = term.getFullyQualifiedName();
+      if (hasActiveApprovalSibling(termFqn, task.getId())) {
+        // A valid approval task already governs the term (a later cycle's task, or the fresh task a
+        // prior stranded row's restart just created) -> this row is a duplicate, close it.
         closeStrandedGlossaryApproval(
             task, "glossary term already has an active approval task", null);
       } else if (startGlossaryTermApprovalWorkflow(term, task.getUpdatedBy())) {
-        closeStrandedGlossaryApproval(
-            task, "restarted GlossaryTermApprovalWorkflow for the term", null);
+        closeStrandedGlossaryApprovalAfterRestart(task, term, termFqn);
       } else {
         LOG.warn(
             "[v200] {} not found; leaving stranded glossary approval task {} open for term {}",
+            GLOSSARY_TERM_APPROVAL_WORKFLOW,
+            task.getId(),
+            term.getId());
+      }
+    }
+
+    private void closeStrandedGlossaryApprovalAfterRestart(
+        Task task, GlossaryTerm term, String termFqn) {
+      if (hasActiveApprovalSibling(termFqn, task.getId())) {
+        // Only close once the restart actually produced a bound approval task, so a workflow that
+        // completed without a wait-state never leaves the term with zero approval tasks.
+        closeStrandedGlossaryApproval(
+            task, "restarted GlossaryTermApprovalWorkflow; closing superseded stranded task", null);
+      } else {
+        LOG.warn(
+            "[v200] restarted {} but no bound approval task appeared; leaving stranded task {} open for term {}",
             GLOSSARY_TERM_APPROVAL_WORKFLOW,
             task.getId(),
             term.getId());
@@ -2388,8 +2406,12 @@ public class MigrationUtil {
                         ENTITY_STATUS_FIELD,
                         Include.NON_DELETED);
           }
-        } catch (Exception e) {
-          LOG.warn("[v200] Could not resolve glossary term for approval task about {}", about, e);
+        } catch (EntityNotFoundException e) {
+          // Term genuinely deleted -> leave term null so the caller closes the dead task. Any other
+          // (transient) failure propagates and is caught per-task by the backfill loop, leaving the
+          // task open rather than closing a still-valid In-Review approval on a migration-time
+          // blip.
+          LOG.warn("[v200] Glossary term for approval task about {} no longer exists", about, e);
         }
       }
       return term;
