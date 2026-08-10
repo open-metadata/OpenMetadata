@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
-import org.awaitility.pollinterval.PollInterval;
 import org.openmetadata.it.util.TestNamespace.EntityRoot;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
