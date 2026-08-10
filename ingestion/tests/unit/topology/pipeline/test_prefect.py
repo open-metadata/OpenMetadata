@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.prefectConne
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagLabel, TagSource
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -333,7 +334,7 @@ class TestSplitLineageTagIdentifier:
 
 class TestParseTimestamp:
     def test_parses_iso_string_with_z_suffix(self):
-        assert _parse_timestamp("2024-04-19T10:00:00Z") == 1713520800000
+        assert _parse_timestamp("2024-04-19T10:00:00Z").root == 1713520800000
 
     def test_none_when_input_is_none_or_empty(self):
         assert _parse_timestamp(None) is None
@@ -808,7 +809,7 @@ class TestPrefectSource:
 
     def test_yield_pipeline_lineage_details_builds_table_to_table_edges(self, prefect_source):
         pipeline_entity = Mock()
-        pipeline_entity.id.root = uuid.uuid4()
+        pipeline_entity.id = Uuid(uuid.uuid4())
         source_table = Mock(id=uuid.uuid4())
         dest_table = Mock(id=uuid.uuid4())
 
@@ -857,7 +858,7 @@ class TestPrefectSource:
         to every detected destination. A source/destination identifier that
         doesn't resolve to a real table is dropped, not sent as a broken edge."""
         pipeline_entity = Mock()
-        pipeline_entity.id.root = uuid.uuid4()
+        pipeline_entity.id = Uuid(uuid.uuid4())
         source_table = Mock(id=uuid.uuid4())
         dest_table = Mock(id=uuid.uuid4())
 
@@ -1033,7 +1034,7 @@ class TestYieldLineageFromAssets:
 
     def test_builds_edge_for_resolved_pair(self, prefect_source):
         pipeline_entity = Mock()
-        pipeline_entity.id.root = uuid.uuid4()
+        pipeline_entity.id = Uuid(uuid.uuid4())
         prefect_source.client.get_asset_materializations.return_value = [
             AssetMaterialization(
                 asset_key="postgres://host/mydb/public/dest_table",
@@ -1072,7 +1073,7 @@ class TestYieldLineageFromAssets:
 
     def test_skips_materialization_when_destination_table_not_found(self, prefect_source):
         pipeline_entity = Mock()
-        pipeline_entity.id.root = uuid.uuid4()
+        pipeline_entity.id = Uuid(uuid.uuid4())
         prefect_source.client.get_asset_materializations.return_value = [
             AssetMaterialization(asset_key="postgres://host/mydb/public/dest_table", upstream_assets=[])
         ]
@@ -1084,7 +1085,7 @@ class TestYieldLineageFromAssets:
 
     def test_skips_upstream_asset_when_source_table_not_found(self, prefect_source):
         pipeline_entity = Mock()
-        pipeline_entity.id.root = uuid.uuid4()
+        pipeline_entity.id = Uuid(uuid.uuid4())
         dest_table = Mock(id=uuid.uuid4())
         prefect_source.client.get_asset_materializations.return_value = [
             AssetMaterialization(
