@@ -14,19 +14,31 @@ package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetricExpressionLanguage;
+import org.openmetadata.schema.type.MetricGranularity;
+import org.openmetadata.schema.type.MetricType;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 /**
@@ -172,6 +184,80 @@ class VectorDocBuilderChunkTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void fromEntity_denormalizesTheMetricFactsThatTellSimilarMetricsApart() {
+    Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("MonthlyActiveUsers")
+            .withDescription("Distinct users in a month")
+            .withMetricType(MetricType.COUNT)
+            .withGranularity(MetricGranularity.MONTH)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.COUNT)
+            .withMetricExpression(
+                new MetricExpression()
+                    .withLanguage(MetricExpressionLanguage.SQL)
+                    .withCode("SELECT COUNT(DISTINCT user_id) FROM events"));
+
+    Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
+
+    Map<String, Object> expression = (Map<String, Object>) doc.get("metricExpression");
+    assertEquals("SELECT COUNT(DISTINCT user_id) FROM events", expression.get("code"));
+    assertEquals("SQL", expression.get("language"));
+    assertEquals("COUNT", doc.get("metricType"));
+    assertEquals("MONTH", doc.get("granularity"));
+    assertEquals("COUNT", doc.get("unitOfMeasurement"));
+  }
+
+  @Test
+  void fromEntity_keepsTheRawUnitEnumSoFacetFiltersMatchBothIndexes() {
+    Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("m")
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("basis points");
+
+    Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
+
+    // The entity indices store the raw enum under this name and share the dataAssetEmbeddings
+    // alias; resolving it here would make a facet filter match one index and miss the other.
+    assertEquals("OTHER", doc.get("unitOfMeasurement"));
+    assertEquals("basis points", doc.get("customUnitOfMeasurement"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void fromEntity_capsDenormalizedMetricCode() {
+    Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("m")
+            .withMetricExpression(
+                new MetricExpression()
+                    .withCode("x".repeat(VectorDocBuilder.MAX_CHUNK_METRIC_CODE_CHARS + 500)));
+
+    Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
+
+    Map<String, Object> expression = (Map<String, Object>) doc.get("metricExpression");
+    assertEquals(
+        VectorDocBuilder.MAX_CHUNK_METRIC_CODE_CHARS, ((String) expression.get("code")).length());
+  }
+
+  @Test
+  void fromEntity_omitsMetricFieldsWhenTheMetricHasNone() {
+    Metric metric =
+        new Metric().withId(UUID.randomUUID()).withName("m").withDescription("no expression here");
+
+    Map<String, Object> doc = VectorDocBuilder.fromEntity(metric, new MockEmbeddingClient()).get(0);
+
+    assertFalse(doc.containsKey("metricExpression"));
+    assertFalse(doc.containsKey("metricType"));
+    assertFalse(doc.containsKey("granularity"));
+    assertFalse(doc.containsKey("unitOfMeasurement"));
+  }
+
+  @Test
   void docVersion_doesNotChangeFingerprint_soNoReembedStorm() {
     Table table =
         new Table()
@@ -217,5 +303,73 @@ class VectorDocBuilderChunkTest {
       assertEquals(VectorDocBuilder.CHUNK_DOC_VERSION, rebuilt.get(i).get("docVersion"));
     }
     assertFalse(rebuilt.isEmpty());
+  }
+
+  private static ContextMemory memory(MemoryVisibility visibility, UUID... sharedWith) {
+    List<MemorySharedPrincipal> sharedPrincipals = new ArrayList<>();
+    for (UUID principalId : sharedWith) {
+      sharedPrincipals.add(
+          new MemorySharedPrincipal().withPrincipal(new EntityReference().withId(principalId)));
+    }
+    return new ContextMemory()
+        .withId(UUID.randomUUID())
+        .withName("memory")
+        .withTitle("SQL keyword casing preference")
+        .withQuestion("Should keywords be upper case?")
+        .withAnswer("Yes, upper case for SQL keywords.")
+        .withShareConfig(
+            new MemoryShareConfig().withVisibility(visibility).withSharedWith(sharedPrincipals));
+  }
+
+  /**
+   * The chunk-doc contract the visibility filter, the freshness check and the chunk index mapping all
+   * depend on. Asserted on every chunk, not just chunk 0: these are entity-level fields copied per
+   * chunk, so a regression that stamps only the first chunk leaves the rest unfilterable.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void chunkDocs_carryTheFieldsTheVisibilityFilterMatchesOn() {
+    UUID ownerId = UUID.randomUUID();
+    UUID sharedPrincipal = UUID.randomUUID();
+    ContextMemory memory = memory(MemoryVisibility.SHARED, sharedPrincipal);
+    // Long body via description: the memory-specific BodyTextExtractor is registered at runtime by
+    // VectorBodyTextContributor, not in a plain unit test, so buildBodyText falls back to the
+    // description here. What matters for this test is that the entity spans several chunks.
+    memory
+        .withDescription("revenue ".repeat(900))
+        .withOwners(
+            List.of(new EntityReference().withId(ownerId).withName("alice").withType("user")));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1, "fixture must span multiple chunks to catch chunk-0-only stamping");
+    for (Map<String, Object> doc : docs) {
+      assertEquals(MemoryVisibility.SHARED.value(), doc.get("visibility"));
+      assertEquals(List.of(sharedPrincipal.toString()), doc.get("sharedWithIds"));
+      List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
+      assertEquals(ownerId.toString(), owners.get(0).get("id"), "the filter matches on owners.id");
+      assertEquals("alice", owners.get(0).get("name"));
+    }
+  }
+
+  /**
+   * Share config is folded into the content fingerprint, so a visibility flip restamps the chunk docs
+   * the privacy filter reads; the sort keeps a reordered sharedWith from looking like a change.
+   */
+  @Test
+  void contentFingerprint_tracksShareConfigButNotSharedWithOrdering() {
+    ContextMemory memory = memory(MemoryVisibility.PRIVATE);
+    String before = VectorDocBuilder.computeFingerprintForEntity(memory);
+
+    memory.getShareConfig().setVisibility(MemoryVisibility.ENTITY);
+    assertNotEquals(before, VectorDocBuilder.computeFingerprintForEntity(memory));
+
+    UUID first = UUID.randomUUID();
+    UUID second = UUID.randomUUID();
+    assertEquals(
+        VectorDocBuilder.computeFingerprintForEntity(
+            memory(MemoryVisibility.SHARED, first, second)),
+        VectorDocBuilder.computeFingerprintForEntity(
+            memory(MemoryVisibility.SHARED, second, first)));
   }
 }

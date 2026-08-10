@@ -58,8 +58,9 @@ from metadata.generated.schema.entity.teams.user import AuthenticationMechanism,
 from metadata.generated.schema.type import schema
 from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import Recognizer
-from metadata.generated.schema.type.schema import DataTypeTopic, FieldModel, SchemaType
+from metadata.generated.schema.type.schema import SchemaType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.parsers.json_schema_parser import parse_json_schema
 from metadata.workflow.classification import AutoClassificationWorkflow
 
 from ...kafka.conftest import CustomKafkaContainer  # noqa: TID252
@@ -118,21 +119,40 @@ NON_PII_MESSAGES = [
     {"order_id": "1005", "product_id": "PROD-D", "quantity": "1", "price": "99.99"},
 ]
 
-PII_SCHEMA_FIELDS = [
-    FieldModel(name="customer_id", dataType=DataTypeTopic.STRING),
-    FieldModel(name="name", dataType=DataTypeTopic.STRING),
-    FieldModel(name="email", dataType=DataTypeTopic.STRING),
-    FieldModel(name="phone", dataType=DataTypeTopic.STRING),
-    FieldModel(name="ssn", dataType=DataTypeTopic.STRING),
-    FieldModel(name="credit_card", dataType=DataTypeTopic.STRING),
-]
 
-NON_PII_SCHEMA_FIELDS = [
-    FieldModel(name="order_id", dataType=DataTypeTopic.STRING),
-    FieldModel(name="product_id", dataType=DataTypeTopic.STRING),
-    FieldModel(name="quantity", dataType=DataTypeTopic.STRING),
-    FieldModel(name="price", dataType=DataTypeTopic.STRING),
-]
+def iter_leaf_fields(fields):
+    """Yield every non-RECORD field in a parsed schema tree."""
+    for field in fields or []:
+        if field.children:
+            yield from iter_leaf_fields(field.children)
+        else:
+            yield field
+
+
+def find_schema_field(fields, name: str):
+    """Return the leaf field with this name, or None."""
+    return next((field for field in iter_leaf_fields(fields) if field.name.root == name), None)
+
+
+def _json_schema(title: str, properties: list[str]) -> str:
+    return json.dumps(
+        {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "title": title,
+            "type": "object",
+            "properties": {name: {"type": "string"} for name in properties},
+        }
+    )
+
+
+# Run the real parser rather than hand-listing fields: it wraps everything in a
+# root RECORD named after the schema, and a flat hand-built list models a shape
+# the connector cannot produce.
+PII_SCHEMA_TEXT = _json_schema("Customer", list(PII_MESSAGES[0]))
+NON_PII_SCHEMA_TEXT = _json_schema("Order", list(NON_PII_MESSAGES[0]))
+
+PII_SCHEMA_FIELDS = parse_json_schema(PII_SCHEMA_TEXT)
+NON_PII_SCHEMA_FIELDS = parse_json_schema(NON_PII_SCHEMA_TEXT)
 
 
 def _produce_messages(bootstrap_server: str, topic_name: str, messages: list[dict]) -> None:
@@ -193,6 +213,7 @@ def kafka_pii_topic(metadata: OpenMetadata, kafka_container, messaging_service: 
             partitions=1,
             messageSchema=schema.Topic(
                 schemaType=SchemaType.JSON,
+                schemaText=PII_SCHEMA_TEXT,
                 schemaFields=PII_SCHEMA_FIELDS,
             ),
         )
@@ -209,6 +230,7 @@ def kafka_non_pii_topic(metadata: OpenMetadata, kafka_container, messaging_servi
             partitions=1,
             messageSchema=schema.Topic(
                 schemaType=SchemaType.JSON,
+                schemaText=NON_PII_SCHEMA_TEXT,
                 schemaFields=NON_PII_SCHEMA_FIELDS,
             ),
         )
