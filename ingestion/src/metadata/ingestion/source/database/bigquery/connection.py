@@ -18,8 +18,7 @@ from functools import partial
 from typing import Optional
 from urllib.parse import parse_qs, quote, urlparse
 
-from google.api_core.exceptions import NotFound
-from google.cloud.datacatalog_v1 import PolicyTagManagerClient
+from google.api_core.exceptions import Forbidden, NotFound
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -53,6 +52,7 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.helper import (
     get_impersonate_client_kwargs,
+    get_policy_tag_client,
 )
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
 from metadata.utils.bigquery_utils import get_bigquery_client
@@ -61,6 +61,17 @@ from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+
+class PolicyTagAccessError(Exception):
+    """Data Catalog rejected a taxonomy/policy-tag read.
+
+    A dedicated type so the failure is reported against the Data Catalog API and
+    the identity that actually performed the read: a bare ``Forbidden`` from Data
+    Catalog reads as a missing *BigQuery* role and sends users to grant
+    permissions on the wrong API - and, under impersonation, to the wrong
+    identity.
+    """
 
 
 def _add_location(url: str, connection: BigQueryConnection) -> str:
@@ -231,11 +242,9 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    def get_tags(taxonomies):
+    def get_tags(client, taxonomies):
         for taxonomy in taxonomies:
-            policy_tags = PolicyTagManagerClient().list_policy_tags(
-                parent=taxonomy.name
-            )
+            policy_tags = client.list_policy_tags(parent=taxonomy.name)
             return policy_tags
 
     def test_tags():
@@ -257,14 +266,24 @@ def test_connection(
             logger.info("'taxonomyLocation' is not set, so skipping this test.")
             return None
 
-        taxonomies = []
-        for project_id in taxonomy_project_ids:
-            taxonomies.extend(
-                PolicyTagManagerClient().list_taxonomies(
-                    parent=f"projects/{project_id}/locations/{taxonomy_location}"
+        client = get_policy_tag_client(service_connection)
+        try:
+            taxonomies = []
+            for project_id in taxonomy_project_ids:
+                taxonomies.extend(
+                    client.list_taxonomies(
+                        parent=f"projects/{project_id}/locations/{taxonomy_location}"
+                    )
                 )
-            )
-        return get_tags(taxonomies)
+            return get_tags(client, taxonomies)
+        # PermissionDenied (the gRPC 403 Data Catalog raises) subclasses Forbidden
+        except Forbidden as exc:
+            raise PolicyTagAccessError(
+                "Data Catalog denied reading taxonomies or their policy tags under "
+                f"{taxonomy_project_ids} in {taxonomy_location}"
+            ) from exc
+        finally:
+            client.transport.close()
 
     def test_connection_inner(engine):
         test_fn = {
