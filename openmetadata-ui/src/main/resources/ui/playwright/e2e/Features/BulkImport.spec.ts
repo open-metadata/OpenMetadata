@@ -166,7 +166,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
   test('Database service', async ({ page }) => {
     // 6 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(600_000);
+    test.slow();
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -412,7 +412,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
   test('Database', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(500_000);
+    test.slow();
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -610,7 +610,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
   test('Database Schema', async ({ page }) => {
     // 4 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(500_000);
+    test.slow();
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -758,7 +758,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
   });
 
   test('Table', async ({ page }) => {
-    test.setTimeout(300_000);
+    test.slow();
 
     const tableEntity = new TableClass();
 
@@ -1034,7 +1034,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
   test('Range selection', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(300_000);
+    test.slow();
 
     // Grid copy/paste calls navigator.clipboard directly; the real OS clipboard
     // API is unreliable in AUT/headless CI even with permissions granted.
