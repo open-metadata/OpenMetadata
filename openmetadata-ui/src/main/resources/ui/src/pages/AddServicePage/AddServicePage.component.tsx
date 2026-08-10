@@ -29,6 +29,9 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import FormPanelBody, {
+  getFormFirstPanelProps,
+} from '../../components/common/FormPanelBody/FormPanelBody.component';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
@@ -424,11 +427,33 @@ const AddServicePage = () => {
   const footerNextDisabled =
     activeServiceStep === 2 ? isStep2NextDisabled : isSavingService;
 
-  // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
-  // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
-      <div className="tw:flex-1">
+    <FormPanelBody
+      footer={
+        showFooter ? (
+          <>
+            <Button
+              color="secondary"
+              data-testid="previous-button"
+              isDisabled={isSavingService}
+              size="sm"
+              type="button"
+              onPress={handleFooterBack}>
+              {t('label.back')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="next-button"
+              isDisabled={footerNextDisabled || isSavingService}
+              size="sm"
+              type="button"
+              onPress={handleFooterNext}>
+              {footerNextText}
+            </Button>
+          </>
+        ) : undefined
+      }>
+      <>
         <Breadcrumbs
           items={serviceBreadcrumb}
           onAction={handleBreadcrumbAction}
@@ -557,30 +582,8 @@ const AddServicePage = () => {
             </div>
           </div>
         </div>
-      </div>
-      {showFooter && (
-        <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:py-4">
-          <Button
-            color="secondary"
-            data-testid="previous-button"
-            isDisabled={isSavingService}
-            size="sm"
-            type="button"
-            onPress={handleFooterBack}>
-            {t('label.back')}
-          </Button>
-          <Button
-            color="primary"
-            data-testid="next-button"
-            isDisabled={footerNextDisabled || isSavingService}
-            size="sm"
-            type="button"
-            onPress={handleFooterNext}>
-            {footerNextText}
-          </Button>
-        </div>
-      )}
-    </div>
+      </>
+    </FormPanelBody>
   );
 
   useEffect(() => {
@@ -600,14 +603,7 @@ const AddServicePage = () => {
       <>
         <ResizablePanels
           className="add-service-page content-height-with-resizable-panel"
-          firstPanel={{
-            children: firstPanelChildren,
-            minWidth: 700,
-            flex: 0.7,
-            className: 'content-resizable-panel-container',
-            // Renders our own Card below; built-in AntD card would cause a double card and break the h-full layout.
-            wrapInCard: false,
-          }}
+          firstPanel={getFormFirstPanelProps(firstPanelChildren)}
           hideSecondPanel={hideSecondPanel}
           pageTitle={t('label.add-entity', { entity: t('label.service') })}
           secondPanel={{

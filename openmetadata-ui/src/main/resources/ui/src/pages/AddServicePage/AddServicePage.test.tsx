@@ -14,6 +14,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import { ALL_SERVICES_CATEGORY } from '../../constants/Services.constant';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { EntityType } from '../../enums/entity.enum';
@@ -322,6 +323,18 @@ describe('AddServicePage', () => {
     expect(screen.getByTestId('header')).toHaveTextContent(
       'label.add-new-entity'
     );
+  });
+
+  it('should hand the scroll to the full-width panel, not the centred form body', async () => {
+    // Otherwise the blank margins beside the form belong to an overflow:hidden ancestor and the
+    // wheel does nothing there.
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    const { firstPanel } = (ResizablePanels as jest.Mock).mock.calls[0][0];
+
+    expect(firstPanel.allowScroll).toBe(true);
   });
 
   it('should handle service type selection', async () => {
