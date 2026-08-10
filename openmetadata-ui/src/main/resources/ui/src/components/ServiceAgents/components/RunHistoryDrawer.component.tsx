@@ -16,9 +16,11 @@ import {
   Box,
   Button,
   Card,
+  EmptyPlaceholder,
   SlideoutMenu,
 } from '@openmetadata/ui-core-components';
 import { AlignLeft } from '@untitledui/icons';
+import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
@@ -81,7 +83,10 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
   const { t } = useTranslation();
 
   return (
-    <Box className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:pb-1">
+    // `overflow-x-auto` makes the block axis `auto` too, so this clips on every side. The selected
+    // card's halo is a 4px outline drawn outward, so the rail needs at least that much padding all
+    // round or the halo is cut off — most visibly on the first card and along the bottom.
+    <Box className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:p-1">
       {runs.map((r) => {
         const m = RUN_META[r.status];
         const label = t(m.labelKey);
@@ -291,7 +296,9 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               variant="ghost">
               <Box
                 align="center"
-                className="tw:border-b tw:border-secondary tw:pb-2.5 tw:pt-3.5"
+                className={`tw:pb-2.5 tw:pt-3.5 ${
+                  isEmpty(run.steps) ? '' : 'tw:border-b tw:border-secondary'
+                }`}
                 justify="between">
                 <span className="tw:text-sm tw:font-semibold tw:text-secondary">
                   {t('label.steps')}
@@ -300,13 +307,26 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   {run.steps.length} {t('label.steps-lowercase')}
                 </span>
               </Box>
-              {run.steps.map((s, idx) => (
-                <RunStepRow
-                  isLast={idx === run.steps.length - 1}
-                  key={idx}
-                  step={s}
-                />
-              ))}
+              {isEmpty(run.steps) ? (
+                // EmptyPlaceholder's shell is absolutely positioned and fills its nearest
+                // positioned ancestor, so the host has to be relative and carry its own height.
+                <div
+                  className="tw:relative tw:min-h-[120px]"
+                  data-testid="run-steps-empty">
+                  <EmptyPlaceholder
+                    title={t('message.no-steps-available')}
+                    variant="blank"
+                  />
+                </div>
+              ) : (
+                run.steps.map((s, idx) => (
+                  <RunStepRow
+                    isLast={idx === run.steps.length - 1}
+                    key={idx}
+                    step={s}
+                  />
+                ))
+              )}
             </Card>
           </>
         ) : (

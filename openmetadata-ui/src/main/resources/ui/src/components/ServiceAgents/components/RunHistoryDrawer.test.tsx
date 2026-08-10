@@ -210,4 +210,71 @@ describe('RunHistoryDrawer', () => {
 
     expect(useAgentRuns).toHaveBeenCalledWith(agent.fqn, true, fetchRuns);
   });
+
+  describe('steps section', () => {
+    // The suite-level mock uses mockImplementation; a per-test mockReturnValue would outlive the
+    // test and leak into the next one, so restore the default after each.
+    afterEach(() => {
+      (useAgentRuns as jest.Mock).mockImplementation(() => ({
+        runs: mockRuns,
+        isLoading: false,
+      }));
+    });
+
+    it('should show an empty placeholder when the selected run has no steps', () => {
+      // Every fixture run ships `steps: []`, so this is the default state.
+      renderDrawer();
+
+      expect(screen.getByTestId('run-steps-empty')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.no-steps-available')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('RunStepRow')).not.toBeInTheDocument();
+    });
+
+    it('should render step rows instead of the placeholder when steps exist', () => {
+      (useAgentRuns as jest.Mock).mockReturnValue({
+        runs: [
+          {
+            ...mockRuns[0],
+            steps: [
+              {
+                name: 'Pod Diagnostics',
+                status: 'success',
+                records: 1,
+                filtered: 0,
+                updated: 0,
+                warnings: 0,
+                errors: 0,
+              },
+            ],
+          },
+        ],
+        isLoading: false,
+      });
+
+      renderDrawer();
+
+      expect(screen.getByText('RunStepRow')).toBeInTheDocument();
+      expect(screen.queryByTestId('run-steps-empty')).not.toBeInTheDocument();
+    });
+
+    it('should drop the header rule when there are no steps to separate', () => {
+      renderDrawer();
+
+      const header = screen.getByText('label.steps').parentElement;
+
+      expect(header?.className).not.toContain('tw:border-b');
+    });
+  });
+
+  it('should pad the run history rail on all sides so the selected halo is not clipped', () => {
+    // The selected card's halo is a 4px outline drawn outward, and the rail is a scroll container,
+    // so anything less than symmetric padding clips it — most visibly on the first card.
+    renderDrawer();
+
+    const rail = screen.getAllByTestId('run-history-item')[0].parentElement;
+
+    expect(rail?.className).toContain('tw:p-1');
+  });
 });

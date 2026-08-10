@@ -51,8 +51,14 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
     if (!navigator.clipboard?.writeText) {
       return;
     }
+    // Copying only `message` left the raw logs — the whole reason someone reaches for this button —
+    // out of the clipboard. Unlabelled so the payload stays paste-ready for a ticket or a terminal.
+    const clipboardText = [att.title, att.message, att.hint, att.stackTrace]
+      .filter(Boolean)
+      .join('\n\n');
+
     try {
-      await navigator.clipboard.writeText(att.message);
+      await navigator.clipboard.writeText(clipboardText);
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {
