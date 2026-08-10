@@ -378,20 +378,26 @@ export class OverviewPageObject extends RightPanelBase {
       await this.domainSearchBar.waitFor({ state: 'visible' });
       await this.domainSearchBar.scrollIntoViewIfNeeded();
 
-      const domainSearchPromise = this.page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain')
-      );
-      await this.domainSearchBar.fill(domainName);
-      const domainSearchResponse = await domainSearchPromise;
-      expect(domainSearchResponse.status()).toBe(200);
+      const domainTreeItem = this.domainTreeNode.filter({
+        hasText: domainName,
+      });
 
-      await this.domainTreeNode
-        .filter({ hasText: domainName })
-        .waitFor({ state: 'visible' });
+      await expect(async () => {
+        const domainSearchPromise = this.page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=domain'),
+          { timeout: 10_000 }
+        );
+        await this.domainSearchBar.fill('');
+        await this.domainSearchBar.fill(domainName);
+        const domainSearchResponse = await domainSearchPromise;
+        expect(domainSearchResponse.status()).toBe(200);
+
+        await expect(domainTreeItem).toBeVisible({ timeout: 5_000 });
+      }).toPass({ intervals: [1_000, 2_000, 5_000], timeout: 60_000 });
       const domainPatchPromise = this.waitForPatchResponse();
-      await this.domainTreeNode.filter({ hasText: domainName }).click();
+      await domainTreeItem.click();
       await domainPatchPromise;
     }
 

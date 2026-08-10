@@ -229,12 +229,13 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
-    await pageSizeDropdown.click();
+    const pageSizeOption = page.getByRole('menuitem', { name: '15 / Page' });
 
-    const pageSizeOption = page
-      .getByRole('menuitem', { name: '15 / Page' });
-    await expect(pageSizeOption).toBeVisible();
-    await pageSizeOption.click();
+    await expect(async () => {
+      await pageSizeDropdown.click();
+      await expect(pageSizeOption).toBeVisible({ timeout: 5_000 });
+      await pageSizeOption.click();
+    }).toPass({ intervals: [1_000, 2_000, 5_000], timeout: 30_000 });
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);

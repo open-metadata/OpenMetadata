@@ -18,6 +18,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
+  clickSuggestionActionAndWait,
   createTableDescriptionSuggestions,
   expandTableSuggestionColumns,
 } from '../../utils/suggestions';
@@ -105,17 +106,13 @@ test.describe.serial(
         // Click the first avatar
         await allAvatarSuggestion.nth(0).click();
 
-        const singleResolveResponse = page.waitForResponse(
+        await clickSuggestionActionAndWait(
+          page,
+          page.locator(
+            `[data-row-key*=${table.columnsName[0]}] [data-testid="accept-suggestion"]`
+          ),
           '/api/v1/suggestions/*/accept'
         );
-
-        await page
-          .locator(
-            `[data-row-key*=${table.columnsName[0]}] [data-testid="accept-suggestion"]`
-          )
-          .click();
-
-        await singleResolveResponse;
 
         await page.reload();
         await waitForAllLoadersToDisappear(page);
@@ -147,17 +144,13 @@ test.describe.serial(
         // Click the first avatar
         await allAvatarSuggestion.nth(0).click();
 
-        const singleResolveResponse = page.waitForResponse(
+        await clickSuggestionActionAndWait(
+          page,
+          page.locator(
+            `[data-row-key*=${table.columnsName[5]}] [data-testid="accept-suggestion"]`
+          ),
           '/api/v1/suggestions/*/accept'
         );
-
-        await page
-          .locator(
-            `[data-row-key*=${table.columnsName[5]}] [data-testid="accept-suggestion"]`
-          )
-          .click();
-
-        await singleResolveResponse;
 
         await page.reload();
         await waitForAllLoadersToDisappear(page);
@@ -190,17 +183,13 @@ test.describe.serial(
         // Click the first avatar
         await allAvatarSuggestion.nth(0).click();
 
-        const singleResolveResponse = page.waitForResponse(
+        await clickSuggestionActionAndWait(
+          page,
+          page.locator(
+            `[data-row-key*=${table.columnsName[1]}] [data-testid="reject-suggestion"]`
+          ),
           '/api/v1/suggestions/*/reject'
         );
-
-        await page
-          .locator(
-            `[data-row-key*=${table.columnsName[1]}] [data-testid="reject-suggestion"]`
-          )
-          .click();
-
-        await singleResolveResponse;
 
         // since we accepted two suggestions and rejected one, the badge count should be total-3
         await expect(
@@ -226,13 +215,11 @@ test.describe.serial(
         // Click the first avatar
         await allAvatarSuggestion.nth(0).click();
 
-        const acceptResponse = page.waitForResponse(
+        await clickSuggestionActionAndWait(
+          page,
+          page.getByTestId('accept-all-suggestions'),
           '/api/v1/suggestions/accept-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
         );
-
-        await page.click(`[data-testid="accept-all-suggestions"]`);
-
-        await acceptResponse;
 
         // check the third column description, since other two are already checked
         await expect(

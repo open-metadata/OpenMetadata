@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { expandNestedColumn } from './nestedColumnUpdatesUtils';
 
@@ -64,6 +64,24 @@ export const expandTableSuggestionColumns = async (
     arrayCol.fullyQualifiedName ?? '',
     (arrayCol.children ?? [])[0].fullyQualifiedName ?? ''
   );
+};
+
+export const clickSuggestionActionAndWait = async (
+  page: Page,
+  action: Locator,
+  responseMatcher: Parameters<Page['waitForResponse']>[0]
+) => {
+  await expect(async () => {
+    const responsePromise = page.waitForResponse(responseMatcher, {
+      timeout: 10_000,
+    });
+
+    await expect(action).toBeVisible({ timeout: 5_000 });
+    await action.click();
+    const response = await responsePromise;
+
+    expect(response.ok()).toBeTruthy();
+  }).toPass({ intervals: [1_000, 2_000, 5_000], timeout: 30_000 });
 };
 
 export const createTableDescriptionSuggestions = async (

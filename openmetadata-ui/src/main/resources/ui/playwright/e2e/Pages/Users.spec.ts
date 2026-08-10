@@ -34,7 +34,6 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -523,9 +522,16 @@ test.describe('User Profile Feed Interactions', () => {
       .locator('[data-testid="profile-avatar"]')
       .first();
 
-    await avatar.hover();
-    const popover = page.locator('.ant-popover-card');
-    await popover.waitFor({ state: 'visible' });
+    const popover = page
+      .locator('.ant-popover-card')
+      .filter({ has: page.getByTestId('user-name') })
+      .last();
+
+    await expect(async () => {
+      await avatar.scrollIntoViewIfNeeded();
+      await avatar.hover();
+      await expect(popover).toBeVisible({ timeout: 5_000 });
+    }).toPass({ intervals: [1_000, 2_000, 5_000], timeout: 30_000 });
 
     // Get the expected username from the popover BEFORE clicking
     const userNameElement = popover.getByTestId('user-name');

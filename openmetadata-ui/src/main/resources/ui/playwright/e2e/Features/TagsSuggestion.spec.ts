@@ -16,6 +16,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import {
+  clickSuggestionActionAndWait,
   createTableTagsSuggestions,
   expandTableSuggestionColumns,
 } from '../../utils/suggestions';
@@ -106,17 +107,13 @@ test.describe('Tags Suggestions Table Entity', () => {
       // Click the first avatar
       await allAvatarSuggestion.nth(0).click();
 
-      const singleResolveResponse = page.waitForResponse(
+      await clickSuggestionActionAndWait(
+        page,
+        page.locator(
+          `[data-row-key*=${table.columnsName[0]}] [data-testid="accept-suggestion"]`
+        ),
         '/api/v1/suggestions/*/accept'
       );
-
-      await page
-        .locator(
-          `[data-row-key*=${table.columnsName[0]}] [data-testid="accept-suggestion"]`
-        )
-        .click();
-
-      await singleResolveResponse;
 
       await expect(
         page.locator(
@@ -133,17 +130,13 @@ test.describe('Tags Suggestions Table Entity', () => {
       // Click the first avatar
       await allAvatarSuggestion.nth(0).click();
 
-      const singleResolveResponse = page.waitForResponse(
+      await clickSuggestionActionAndWait(
+        page,
+        page.locator(
+          `[data-row-key*=${table.columnsName[1]}] [data-testid="reject-suggestion"]`
+        ),
         '/api/v1/suggestions/*/reject'
       );
-
-      await page
-        .locator(
-          `[data-row-key*=${table.columnsName[1]}] [data-testid="reject-suggestion"]`
-        )
-        .click();
-
-      await singleResolveResponse;
 
       await expect(
         page.locator(
@@ -160,13 +153,11 @@ test.describe('Tags Suggestions Table Entity', () => {
       // Click the first avatar
       await allAvatarSuggestion.nth(0).click();
 
-      const acceptResponse = page.waitForResponse(
+      await clickSuggestionActionAndWait(
+        page,
+        page.getByTestId('accept-all-suggestions'),
         '/api/v1/suggestions/accept-all?userId=*&entityFQN=*&suggestionType=SuggestTagLabel'
       );
-
-      await page.click(`[data-testid="accept-all-suggestions"]`);
-
-      await acceptResponse;
 
       // check the third column description, since other two are already checked
       await expect(
