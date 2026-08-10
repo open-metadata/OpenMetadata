@@ -739,8 +739,7 @@ class TestFivetranLineage:
 
         # Topic FQNs have 2 slots; an unquoted dotted name would be read as service.topic
         assert (
-            mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"]
-            == '"hr_stream.employee_events"'
+            mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"] == '"hr_stream.employee_events"'
         )
 
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
