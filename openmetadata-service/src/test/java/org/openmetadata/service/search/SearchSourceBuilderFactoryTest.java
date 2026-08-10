@@ -400,22 +400,17 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
-  public void testFqnQueryDropsTheRecallWideningFuzzyStage() {
-    // Ranking stages sit under a `should` with minimum_should_match:1, so each one widens recall,
-    // not just the score. On a single-token FQN getFuzziness() already degrades the fuzzy stage to
-    // fuzziness 0, leaving an OR multi_match at 70% token coverage: no typo tolerance, but it
-    // admits every sibling column under the same table — ColumnSearchIndexIT saw 21 hits for a
-    // one-column FQN, all of them matching via `ranking:fuzzyName` alone (issue #31227). Only the
-    // exact, phrase and tokenCoverage stages may decide recall for an identifier lookup.
+  public void testIdentifierQueryStillBuildsTheFuzzyStage() {
+    // Recall is not narrowed at query-build time. Dropping the stage here is what cost mid-type
+    // autocomplete and one-char typo tolerance (SearchResourceIT#testDataAssetAliasSearchMatrix),
+    // because for a single-term identifier getFuzziness() already reports 0 and the gate then fired
+    // on essentially every entity name. Precision for an identifier lookup is recovered after the
+    // search instead — see SearchRankingHelper#isExactIdentifierLookup — which can tell a real
+    // identifier from a half-typed one, as the query text alone cannot.
     String columnFqn = "svc_a.db_a.schema_a.table_a.user_id";
-    String osQuery = rankedOpenSearchQuery(columnFqn);
-    String esQuery = rankedElasticSearchQuery(columnFqn);
 
-    assertFalse(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
-    assertFalse(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
-    // The precise stages still match, so the target column is still found.
-    assertTrue(osQuery.contains(CLOSE_NAME_STAGE_QUERY_NAME), osQuery);
-    assertTrue(esQuery.contains(CLOSE_NAME_STAGE_QUERY_NAME), esQuery);
+    assertTrue(rankedOpenSearchQuery(columnFqn).contains(FUZZY_STAGE_QUERY_NAME));
+    assertTrue(rankedElasticSearchQuery(columnFqn).contains(FUZZY_STAGE_QUERY_NAME));
   }
 
   @Test

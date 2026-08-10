@@ -18,6 +18,7 @@ import org.openmetadata.schema.api.search.RankingSignals;
 import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.StopWordsByLanguage;
+import org.openmetadata.schema.utils.JsonUtils;
 
 public final class SearchRankingHelper {
   private static final Pattern TOKEN_SPLITTER = Pattern.compile("[^\\p{L}\\p{N}]+");
@@ -484,5 +485,93 @@ public final class SearchRankingHelper {
 
   private static boolean isWeakSingleCharacterToken(int codePoint) {
     return Character.UnicodeScript.of(codePoint) == Character.UnicodeScript.LATIN;
+  }
+
+  /**
+   * Whether the query was an exact identifier lookup, and so should be re-run with {@link
+   * #withoutFuzzyStages}.
+   *
+   * <p>Ranking stages sit under a {@code should} with {@code minimum_should_match: 1}, so the fuzzy
+   * stage does not only score — it admits documents. It is an OR {@code multi_match} at partial
+   * token coverage, and anything missing one of the query's tokens clears that threshold, since
+   * {@code (T-1)/T} exceeds 70% for any realistic T. On a fully-qualified name that describes
+   * exactly its siblings under the same parent, which is the "count 1 vs results 7381" bug
+   * (#31227).
+   *
+   * <p>A genuine typo is also "one token off", so neither the query text nor a coverage threshold
+   * separates the two. The one unambiguous signal is whether the query <em>is</em> an identifier: if
+   * a returned document's name or fully-qualified name equals the query, the user asked for that
+   * entity by identity and partial-coverage recall can only add its relatives. If nothing matches
+   * the query exactly, it is a half-typed or misspelled search and the fuzzy stage is doing the job
+   * its configuration claims — a "typo-tolerant identity fallback".
+   *
+   * <p>Decided on document identity rather than on which ranking stage matched. Stage provenance is
+   * not a usable proxy: {@code closeName} is itself a partial-coverage stage, so an unrelated loose
+   * match reads as "precise" and discards a half-typed query's real target.
+   *
+   * <p>Re-running rather than filtering hits keeps {@code hits.total} consistent with the list that
+   * is returned; dropping hits client-side would recreate the count/results mismatch #31106 fixed.
+   *
+   * @param identifiers name and fullyQualifiedName of each returned hit
+   */
+  public static boolean isExactIdentifierLookup(String query, List<String> identifiers) {
+    if (nullOrEmpty(query)) {
+      return false;
+    }
+    String target = query.trim();
+    return listOrEmpty(identifiers).stream()
+        .anyMatch(identifier -> identifier != null && identifier.equalsIgnoreCase(target));
+  }
+
+  /** Whether any resolvable ranking stage is a fuzzy one, i.e. whether a precise pass differs. */
+  public static boolean hasFuzzyStage(SearchSettings searchSettings) {
+    return searchSettings != null
+        && (rankingHasFuzzyStage(defaultRanking(searchSettings))
+            || listOrEmpty(searchSettings.getAssetTypeConfigurations()).stream()
+                .map(AssetTypeConfiguration::getRanking)
+                .anyMatch(SearchRankingHelper::rankingHasFuzzyStage));
+  }
+
+  /**
+   * A copy of {@code searchSettings} with every fuzzy ranking stage removed.
+   *
+   * <p>Ranking stages are combined under a {@code should} with {@code minimum_should_match: 1}, so a
+   * stage does not only score — it admits documents. The fuzzy stage is an OR {@code multi_match} at
+   * partial token coverage, and a document missing just one of the query's tokens always clears that
+   * threshold: {@code (T-1)/T} is above 70% for any realistic T. For a fully-qualified name that
+   * describes exactly its siblings under the same parent, which is the "count 1 vs results 7381" bug
+   * (#31227) — in CI the unwanted sibling column matched {@code ranking:fuzzyName} and nothing else.
+   *
+   * <p>No coverage threshold or field list can separate that from a genuine typo, because a typo is
+   * also "one token off". What separates them is whether anything matched precisely, which is a
+   * property of the result set rather than of a document, so it cannot be expressed in one bool
+   * query. Hence the two-pass search: run the precise stages first and only widen with this stage's
+   * recall when they find nothing — which is what the stage's own purpose already claims to be, a
+   * "typo-tolerant identity <b>fallback</b>".
+   */
+  public static SearchSettings withoutFuzzyStages(SearchSettings searchSettings) {
+    SearchSettings precise = JsonUtils.deepCopy(searchSettings, SearchSettings.class);
+    dropFuzzyStages(defaultRanking(precise));
+    listOrEmpty(precise.getAssetTypeConfigurations()).stream()
+        .map(AssetTypeConfiguration::getRanking)
+        .forEach(SearchRankingHelper::dropFuzzyStages);
+    return precise;
+  }
+
+  private static boolean rankingHasFuzzyStage(RankingConfiguration ranking) {
+    return ranking != null
+        && listOrEmpty(ranking.getStages()).stream()
+            .anyMatch(stage -> RankingStage.MatchType.FUZZY.equals(stage.getMatchType()));
+  }
+
+  private static void dropFuzzyStages(RankingConfiguration ranking) {
+    if (ranking != null && !nullOrEmpty(ranking.getStages())) {
+      // deriveRanking() falls back to the default stages when a pruned list comes out empty, so a
+      // config whose only stage is fuzzy must keep an (empty) list rather than be left untouched.
+      ranking.setStages(
+          ranking.getStages().stream()
+              .filter(stage -> !RankingStage.MatchType.FUZZY.equals(stage.getMatchType()))
+              .toList());
+    }
   }
 }

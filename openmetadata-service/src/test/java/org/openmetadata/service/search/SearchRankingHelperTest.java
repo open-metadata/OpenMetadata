@@ -303,4 +303,111 @@ class SearchRankingHelperTest {
     assertEquals(1.0F, weights.get("name"));
     assertEquals(0.775F, weights.get("description"));
   }
+
+  /**
+   * The precise pass must keep every stage that decides recall on its own merits and drop only the
+   * fuzzy fallback. Ranking stages sit under a should with minimum_should_match:1, so the fuzzy
+   * stage admits documents rather than only scoring them: anything missing one of the query's
+   * tokens clears its partial-coverage threshold, which on an FQN is exactly its siblings (#31227).
+   */
+  @Test
+  void withoutFuzzyStagesDropsOnlyTheFuzzyStage() {
+    SearchSettings settings = settingsWithStages("exactName", "phraseName", "fuzzyName");
+
+    assertTrue(SearchRankingHelper.hasFuzzyStage(settings));
+
+    SearchSettings precise = SearchRankingHelper.withoutFuzzyStages(settings);
+    List<String> preciseStages =
+        precise.getDefaultConfiguration().getRanking().getStages().stream()
+            .map(RankingStage::getName)
+            .toList();
+
+    assertEquals(List.of("exactName", "phraseName"), preciseStages);
+    assertFalse(SearchRankingHelper.hasFuzzyStage(precise));
+    // The original must be untouched — the widened second pass reuses it.
+    assertTrue(SearchRankingHelper.hasFuzzyStage(settings));
+  }
+
+  @Test
+  void withoutFuzzyStagesIsANoOpWhenNoStageIsFuzzy() {
+    SearchSettings settings = settingsWithStages("exactName", "phraseName");
+
+    assertFalse(SearchRankingHelper.hasFuzzyStage(settings));
+    assertEquals(
+        2,
+        SearchRankingHelper.withoutFuzzyStages(settings)
+            .getDefaultConfiguration()
+            .getRanking()
+            .getStages()
+            .size());
+  }
+
+  private static RankingStage.MatchType matchTypeFor(String stageName) {
+    return switch (stageName) {
+      case "fuzzyName" -> RankingStage.MatchType.FUZZY;
+      case "phraseName" -> RankingStage.MatchType.PHRASE;
+        // closeName is itself a partial-coverage stage, so it must not count as an identity match.
+      case "closeName" -> RankingStage.MatchType.TOKEN_COVERAGE;
+      default -> RankingStage.MatchType.EXACT;
+    };
+  }
+
+  private static SearchSettings settingsWithStages(String... stageNames) {
+    List<RankingStage> stages =
+        Arrays.stream(stageNames)
+            .map(
+                name ->
+                    new RankingStage()
+                        .withName(name)
+                        .withFields(List.of("name"))
+                        .withMatchType(matchTypeFor(name)))
+            .toList();
+    AssetTypeConfiguration defaultConfig =
+        new AssetTypeConfiguration()
+            .withAssetType("default")
+            .withRanking(new RankingConfiguration().withEnabled(true).withStages(stages));
+    return new SearchSettings().withDefaultConfiguration(defaultConfig);
+  }
+
+  /**
+   * The FQN lookup: the query is exactly the target column's fullyQualifiedName, so partial-coverage
+   * recall can only add its siblings — which is the "count 1 vs results 7381" bug (#31227).
+   */
+  @Test
+  void identifiesAnExactFqnLookup() {
+    String fqn = "svc.db.schema.table.user_id";
+    assertTrue(
+        SearchRankingHelper.isExactIdentifierLookup(
+            fqn, List.of("user_id", fqn, "user_email", "svc.db.schema.table.user_email")));
+  }
+
+  @Test
+  void identifiesAnExactNameLookupCaseInsensitivelyAndTrimmed() {
+    assertTrue(SearchRankingHelper.isExactIdentifierLookup("  Orders ", List.of("orders")));
+  }
+
+  /**
+   * A half-typed or misspelled query names nothing exactly, so the fuzzy stage keeps its recall —
+   * this is the SearchResourceIT autocomplete/typo behaviour that earlier stage-provenance
+   * heuristics discarded.
+   */
+  @Test
+  void doesNotIdentifyAHalfTypedQuery() {
+    assertFalse(
+        SearchRankingHelper.isExactIdentifierLookup(
+            "xqz_lhr__i",
+            List.of("xqz_lhr__incoming_flights", "svc.db.xqz_lhr__incoming_flights")));
+  }
+
+  @Test
+  void doesNotIdentifyAMisspelledQuery() {
+    assertFalse(
+        SearchRankingHelper.isExactIdentifierLookup(
+            "xqz_lhr__incaming_flights", List.of("xqz_lhr__incoming_flights")));
+  }
+
+  @Test
+  void doesNotIdentifyABlankQuery() {
+    assertFalse(SearchRankingHelper.isExactIdentifierLookup("  ", List.of("orders")));
+  }
 }

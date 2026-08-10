@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
+import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
@@ -1029,23 +1030,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       SearchSettings searchSettings,
       String clusterAlias)
       throws IOException {
-    ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
-
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
     try {
-      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse;
-      try {
-        searchResponse = client.search(searchRequest, JsonData.class);
-      } finally {
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
-        }
-      }
+      SearchResponse<JsonData> searchResponse =
+          executeRankedSearch(request, subjectContext, searchSettings, clusterAlias);
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
         String responseJson = serializeSearchResponse(searchResponse);
@@ -1061,6 +1050,84 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             String.format("Failed to find index %s", request.getIndex()));
       } else {
         throw buildSearchException(e);
+      }
+    }
+  }
+
+  /**
+   * Runs the ranked query, then re-runs it without the fuzzy stage when the query turns out to name
+   * an entity exactly.
+   *
+   * <p>See {@link SearchRankingHelper#isExactIdentifierLookup}: the fuzzy stage admits documents
+   * rather than only scoring them, so asking for an entity by its fully-qualified name also returns
+   * its siblings (#31227). Whether that recall is wanted cannot be decided from the query alone — a
+   * typo is "one token off" exactly as a sibling is — so it is decided from the result set, which
+   * only exists once the search has run.
+   *
+   * <p>The widened query runs first, so an ordinary search costs one round-trip and keeps the
+   * results it has today. Only an exact identifier lookup pays a second.
+   */
+  private SearchResponse<JsonData> executeRankedSearch(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings searchSettings,
+      String clusterAlias)
+      throws IOException {
+    SearchResponse<JsonData> response =
+        executeSearchRequest(request, subjectContext, searchSettings, clusterAlias);
+    if (SearchRankingHelper.hasFuzzyStage(searchSettings)
+        && SearchRankingHelper.isExactIdentifierLookup(
+            request.getQuery(), hitIdentifiers(response))) {
+      LOG.debug(
+          "Query '{}' on index '{}' names an entity exactly; dropping partial-coverage recall",
+          request.getQuery(),
+          request.getIndex());
+      response =
+          executeSearchRequest(
+              request,
+              subjectContext,
+              SearchRankingHelper.withoutFuzzyStages(searchSettings),
+              clusterAlias);
+    }
+    return response;
+  }
+
+  /** {@code name} and {@code fullyQualifiedName} of every returned hit. */
+  private static List<String> hitIdentifiers(SearchResponse<JsonData> response) {
+    if (response.hits() == null || response.hits().hits() == null) {
+      return List.of();
+    }
+    List<String> identifiers = new ArrayList<>();
+    for (var hit : response.hits().hits()) {
+      JsonData source = hit.source();
+      if (source == null) {
+        continue;
+      }
+      JsonObject json = source.toJson().asJsonObject();
+      for (String field : List.of("name", "fullyQualifiedName")) {
+        JsonValue value = json.get(field);
+        if (value != null && value.getValueType() == JsonValue.ValueType.STRING) {
+          identifiers.add(json.getString(field));
+        }
+      }
+    }
+    return identifiers;
+  }
+
+  private SearchResponse<JsonData> executeSearchRequest(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings searchSettings,
+      String clusterAlias)
+      throws IOException {
+    ElasticSearchRequestBuilder requestBuilder =
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    try {
+      return client.search(requestBuilder.build(request.getIndex()), JsonData.class);
+    } finally {
+      if (searchTimerSample != null) {
+        RequestLatencyContext.endSearchOperation(searchTimerSample);
       }
     }
   }
