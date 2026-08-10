@@ -30,9 +30,9 @@ import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
+  verifyTestCaseLastRunBanner,
   visitTestSuiteDetailsPage,
   visitTestSuitesPage,
-  verifyTestCaseLastRunBanner,
   waitForPermissionsResponse,
   waitForTableEntityPermissionsResponse,
   waitForTestCaseDetailsResponse,
