@@ -11,22 +11,24 @@
  *  limitations under the License.
  */
 
-import { FeaturedIcon } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
-import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import IncidentDetails from './IncidentDetails.component';
+import LastRunBannerLayout from './LastRunBannerLayout.component';
 import LastRunTime from './LastRunTime.component';
-import NoRunBanner from './NoRunBanner.component';
 import ResultExpected from './ResultExpected.component';
 import RunDescription from './RunDescription.component';
-import { STATUS_CONFIG } from './TestCaseLastRunBanner.constants';
+import {
+  NO_RUN_CONFIG,
+  STATUS_CONFIG,
+} from './TestCaseLastRunBanner.constants';
 import type { TestCaseLastRunBannerProps } from './TestCaseLastRunBanner.interface';
 import {
   getIncidentLink,
   getIncidentMetadata,
   getIncidentTitle,
   getMetricSummary,
+  getNextRunLabel,
   getRunDescription,
 } from './TestCaseLastRunBanner.utils';
 
@@ -44,17 +46,39 @@ const TestCaseLastRunBanner = ({
     authoritativeTestCaseStatus ?? testCaseResult?.testCaseStatus;
 
   if (!testCaseResult || !testCaseStatus) {
-    return <NoRunBanner nextRunTimestamp={nextRunTimestamp} />;
+    return (
+      <LastRunBannerLayout
+        config={NO_RUN_CONFIG}
+        description={
+          <p className="tw:mt-1 tw:mb-0 tw:break-words tw:text-xs tw:leading-normal tw:text-secondary">
+            {t('message.test-case-not-run-yet')}
+          </p>
+        }
+        rightSection={
+          <div className="tw:flex tw:min-w-36 tw:shrink-0 tw:flex-col tw:items-start tw:lg:items-end">
+            <span
+              aria-hidden="true"
+              className="tw:text-sm tw:font-normal tw:text-primary">
+              —
+            </span>
+            <span
+              className="tw:mt-1 tw:whitespace-nowrap tw:text-xs tw:text-secondary"
+              data-testid="test-case-next-run">
+              {t('label.next')} ·{' '}
+              {getNextRunLabel(
+                nextRunTimestamp,
+                t('label.in-lowercase'),
+                t('label.not-scheduled')
+              )}
+            </span>
+          </div>
+        }
+      />
+    );
   }
 
   const { result, testResultValue, timestamp } = testCaseResult;
   const config = STATUS_CONFIG[testCaseStatus];
-  const statusLabel = {
-    [TestCaseStatus.Aborted]: t('label.aborted'),
-    [TestCaseStatus.Failed]: t('label.failed'),
-    [TestCaseStatus.Queued]: t('label.queued'),
-    [TestCaseStatus.Success]: t('label.success'),
-  }[testCaseStatus];
   const description = getRunDescription(
     result,
     testCaseStatus,
@@ -80,43 +104,19 @@ const TestCaseLastRunBanner = ({
   );
 
   return (
-    <div
-      aria-live="polite"
-      className={`tw:min-w-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-l-4 tw:font-sans ${config.containerClassName}`}
-      data-testid={config.testId}
-      role="status">
-      <div
-        className={`tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-3.5 tw:lg:flex-row tw:lg:items-start ${config.summaryClassName}`}
-        data-testid="test-case-last-run-summary">
-        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-start tw:gap-4">
-          <FeaturedIcon
-            outlined
-            bgColor="white"
-            className="tw:self-start"
-            color={config.iconColor}
-            data-testid="test-case-last-run-icon"
-            icon={config.icon}
-            radius="lg"
-            shape="square"
-            size="sm"
-          />
-          <div className="tw:min-w-0 tw:flex-1">
-            <p className="tw:m-0 tw:text-sm tw:leading-snug">
-              <span
-                className="tw:text-sm tw:font-medium tw:text-primary"
-                data-testid="test-case-last-run-prefix">
-                {t('label.last-run')}
-              </span>{' '}
-              <span
-                className={`tw:font-semibold ${config.statusClassName}`}
-                data-testid="test-case-last-run-status">
-                {statusLabel}
-              </span>
-            </p>
-            <RunDescription description={description} />
-          </div>
-        </div>
-
+    <LastRunBannerLayout
+      config={config}
+      description={<RunDescription description={description} />}
+      footer={
+        <IncidentDetails
+          config={config}
+          description={incidentMetadata.description}
+          incidentId={incidentMetadata.id}
+          incidentLink={incidentLink}
+          statusConfig={incidentMetadata.statusConfig}
+        />
+      }
+      rightSection={
         <div
           className="tw:flex tw:shrink-0 tw:items-stretch tw:gap-6 tw:lg:w-80"
           data-testid="test-case-last-run-right-section">
@@ -132,16 +132,8 @@ const TestCaseLastRunBanner = ({
             timestamp={timestamp}
           />
         </div>
-      </div>
-
-      <IncidentDetails
-        config={config}
-        description={incidentMetadata.description}
-        incidentId={incidentMetadata.id}
-        incidentLink={incidentLink}
-        statusConfig={incidentMetadata.statusConfig}
-      />
-    </div>
+      }
+    />
   );
 };
 

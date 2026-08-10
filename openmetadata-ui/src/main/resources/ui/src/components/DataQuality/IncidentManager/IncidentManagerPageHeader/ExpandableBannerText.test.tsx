@@ -39,8 +39,8 @@ describe('ExpandableBannerText', () => {
   });
 
   afterAll(() => {
-    delete HTMLElement.prototype.clientWidth;
-    delete HTMLElement.prototype.scrollWidth;
+    Reflect.deleteProperty(HTMLElement.prototype, 'clientWidth');
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollWidth');
   });
 
   it('keeps the collapsed text and more control in one clamped line', () => {

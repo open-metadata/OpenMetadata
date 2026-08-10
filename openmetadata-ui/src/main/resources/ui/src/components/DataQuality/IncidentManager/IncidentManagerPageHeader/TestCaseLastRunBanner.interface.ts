@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { ReactNode } from 'react';
 import type { Task } from '../../../../generated/entity/tasks/task';
 import type {
   TestCaseParameterValue,
@@ -19,6 +20,7 @@ import type {
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import type {
+  BannerLayoutConfig,
   IncidentStatusConfig,
   StatusConfig,
 } from './TestCaseLastRunBanner.constants';
@@ -34,6 +36,13 @@ export interface TestCaseLastRunBannerProps {
   taskLinkInfo: TaskLinkInfo | null;
 }
 
+export interface LastRunBannerLayoutProps {
+  config: BannerLayoutConfig;
+  description?: ReactNode;
+  footer?: ReactNode;
+  rightSection: ReactNode;
+}
+
 export interface IncidentDetailsProps {
   config: StatusConfig;
   description?: string;
@@ -47,11 +56,6 @@ export interface LastRunTimeProps {
   testCaseStatus: TestCaseStatus;
   timestamp?: number;
 }
-
-export type NoRunBannerProps = Pick<
-  TestCaseLastRunBannerProps,
-  'nextRunTimestamp'
->;
 
 export interface ResultExpectedProps {
   config: StatusConfig;

@@ -11,14 +11,23 @@
  *  limitations under the License.
  */
 
-import { Check, Clock, SlashCircle01, XClose } from '@untitledui/icons';
+import { Check, Clock, Minus, SlashCircle01, XClose } from '@untitledui/icons';
 import {
   TestCaseResolutionStatusTypes,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 
-export const NO_RUN_BANNER_TEST_ID =
-  'test-case-last-run-banner-not-run-yet';
+export const NO_RUN_BANNER_TEST_ID = 'test-case-last-run-banner-not-run-yet';
+
+export const NO_RUN_CONFIG = {
+  containerClassName: 'tw:border-utility-gray-200 tw:border-l-utility-gray-400',
+  icon: Minus,
+  iconColor: 'gray',
+  statusClassName: 'tw:text-secondary',
+  statusLabel: 'label.not-run-yet',
+  summaryClassName: 'tw:bg-secondary',
+  testId: NO_RUN_BANNER_TEST_ID,
+} as const;
 
 export const STATUS_CONFIG = {
   [TestCaseStatus.Aborted]: {
@@ -30,6 +39,7 @@ export const STATUS_CONFIG = {
     incidentClassName: 'tw:bg-yellow-50',
     resultClassName: 'tw:text-warning-primary',
     statusClassName: 'tw:text-warning-primary',
+    statusLabel: 'label.aborted',
     summaryClassName: 'tw:bg-yellow-50',
     testId: 'test-case-last-run-banner-aborted',
   },
@@ -42,6 +52,7 @@ export const STATUS_CONFIG = {
     incidentClassName: 'tw:bg-error-50',
     resultClassName: 'tw:text-error-primary',
     statusClassName: 'tw:text-error-primary',
+    statusLabel: 'label.failed',
     summaryClassName: 'tw:bg-error-50',
     testId: 'test-case-last-run-banner-failed',
   },
@@ -54,6 +65,7 @@ export const STATUS_CONFIG = {
     incidentClassName: 'tw:bg-brand-primary',
     resultClassName: 'tw:text-brand-primary',
     statusClassName: 'tw:text-brand-primary',
+    statusLabel: 'label.queued',
     summaryClassName: 'tw:bg-brand-primary',
     testId: 'test-case-last-run-banner-queued',
   },
@@ -66,6 +78,7 @@ export const STATUS_CONFIG = {
     incidentClassName: 'tw:bg-success-primary',
     resultClassName: 'tw:text-success-primary',
     statusClassName: 'tw:text-success-primary',
+    statusLabel: 'label.success',
     summaryClassName: 'tw:bg-success-primary',
     testId: 'test-case-last-run-banner-success',
   },
@@ -103,3 +116,15 @@ export const METRIC_RUN_STATUSES = new Set([
 export type IncidentStatusConfig =
   (typeof INCIDENT_STATUS_CONFIG)[keyof typeof INCIDENT_STATUS_CONFIG];
 export type StatusConfig = (typeof STATUS_CONFIG)[keyof typeof STATUS_CONFIG];
+export type BannerLayoutConfig =
+  | typeof NO_RUN_CONFIG
+  | Pick<
+      StatusConfig,
+      | 'containerClassName'
+      | 'icon'
+      | 'iconColor'
+      | 'statusClassName'
+      | 'statusLabel'
+      | 'summaryClassName'
+      | 'testId'
+    >;

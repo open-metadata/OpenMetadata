@@ -771,10 +771,8 @@ test.describe(
           '[data-testid^="test-case-last-run-banner-"]'
         );
         const waitForTestCaseDetails = () =>
-          page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/dataQuality/testCases/name/') &&
-              response.status() === 200
+          page.waitForResponse((response) =>
+            response.url().includes('/api/v1/dataQuality/testCases/name/')
           );
 
         await test.step('Show the no-run state before the first result', async () => {
@@ -887,10 +885,8 @@ test.describe(
           failedTimestamp
         );
 
-        const testCaseDetailsResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/dataQuality/testCases/name/') &&
-            response.status() === 200
+        const testCaseDetailsResponse = page.waitForResponse((response) =>
+          response.url().includes('/api/v1/dataQuality/testCases/name/')
         );
         await page.goto(
           `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`

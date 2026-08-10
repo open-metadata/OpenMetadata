@@ -17,11 +17,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import type { EntityReference } from '../../../../generated/type/entityReference';
 import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
@@ -70,143 +70,6 @@ const HeaderFieldValue = ({
   </Typography>
 );
 
-const TestTypeField = ({
-  testDefinition,
-}: {
-  testDefinition?: EntityReference;
-}) => {
-  const { t } = useTranslation();
-  const testDefinitionName = getEntityName(testDefinition);
-  const testDefinitionDescription = testDefinition?.description;
-
-  // The value is truncated to keep the header on one row, so reveal the full
-  // test type name (plus its description when present) on hover.
-  const testTypeTooltip = testDefinitionDescription ? (
-    <div className="tw:flex tw:flex-col tw:gap-1.5">
-      <div className="tw:font-medium">{testDefinitionName}</div>
-      <div>{testDefinitionDescription}</div>
-    </div>
-  ) : (
-    testDefinitionName
-  );
-
-  return (
-    <>
-      <HeaderDotSeparator />
-      <HeaderField label={t('label.test-type')}>
-        <Tooltip
-          isDisabled={!testDefinitionName}
-          placement="bottom"
-          title={testTypeTooltip}>
-          <TooltipTrigger className="tw:w-fit tw:max-w-full">
-            <span
-              className="tw:block tw:max-w-[176px] tw:truncate tw:text-sm tw:font-medium tw:text-primary"
-              data-testid="test-definition-name">
-              {testDefinitionName}
-            </span>
-          </TooltipTrigger>
-        </Tooltip>
-      </HeaderField>
-    </>
-  );
-};
-
-type IncidentHeaderData = ReturnType<typeof useTestCaseIncidentHeader>;
-type StatusDetailsProps = Pick<
-  IncidentHeaderData,
-  | 'handleAssigneeUpdate'
-  | 'handleSeverityUpdate'
-  | 'hasEditStatusPermission'
-  | 'isLoading'
-  | 'onIncidentStatusUpdate'
-  | 'taskLinkInfo'
-  | 'testCaseStatusData'
->;
-
-const StatusDetails = ({
-  handleAssigneeUpdate,
-  handleSeverityUpdate,
-  hasEditStatusPermission,
-  isLoading,
-  onIncidentStatusUpdate,
-  taskLinkInfo,
-  testCaseStatusData,
-}: StatusDetailsProps) => {
-  const { t } = useTranslation();
-
-  if (isLoading) {
-    return <Skeleton height={24} variant="rounded" width={160} />;
-  }
-
-  if (isUndefined(testCaseStatusData)) {
-    return (
-      <>
-        <HeaderDotSeparator />
-        <HeaderField label={t('label.incident-status')}>
-          <HeaderFieldValue>
-            {t('label.no-entity', { entity: t('label.incident') })}
-          </HeaderFieldValue>
-        </HeaderField>
-      </>
-    );
-  }
-
-  const details = testCaseStatusData.testCaseResolutionStatusDetails;
-
-  return (
-    <>
-      {taskLinkInfo && (
-        <>
-          <HeaderDotSeparator />
-          <HeaderField label={t('label.incident')}>
-            <Link
-              className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
-              data-testid="incident-task-link"
-              to={taskLinkInfo.path}>
-              {taskLinkInfo.label}
-              <InternalLinkIcon className="text-grey-muted" width="14px" />
-            </Link>
-          </HeaderField>
-        </>
-      )}
-      <HeaderDotSeparator />
-      <TestCaseIncidentManagerStatus
-        newLook
-        data={testCaseStatusData}
-        hasPermission={hasEditStatusPermission}
-        headerName={t('label.incident-status')}
-        onSubmit={onIncidentStatusUpdate}
-      />
-      <HeaderDotSeparator />
-      <div className="tw:min-w-0" data-testid="assignee">
-        <OwnerLabel
-          className="header-owner-heading"
-          hasPermission={hasEditStatusPermission}
-          isCompactView={false}
-          multiple={{
-            user: false,
-            team: false,
-          }}
-          owners={details?.assignee ? [details.assignee] : []}
-          placeHolder={t('label.assignee')}
-          tooltipText={t('label.edit-entity', {
-            entity: t('label.assignee'),
-          })}
-          onUpdate={handleAssigneeUpdate}
-        />
-      </div>
-      <HeaderDotSeparator />
-      <Severity
-        newLook
-        hasPermission={hasEditStatusPermission}
-        headerName={t('label.severity')}
-        severity={testCaseStatusData.severity}
-        onSubmit={handleSeverityUpdate}
-      />
-    </>
-  );
-};
-
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   incidentHeaderData,
@@ -234,90 +97,189 @@ const IncidentManagerPageHeader = ({
     onIncidentStatusUpdate,
   } = incidentHeaderData;
 
-  return (
-    <>
-      <div className="incident-manager-header w-full">
-        <DomainLabel
-          headerLayout
-          showDashPlaceholder
-          domains={testCaseData?.domains}
-          entityFqn={testCaseData?.fullyQualifiedName ?? ''}
-          entityId={testCaseData?.id ?? ''}
-          entityType={EntityType.TEST_CASE}
-          hasPermission={hasEditDomainPermission}
-          multiple={false}
-          textClassName="render-domain-lebel-style"
-          onUpdate={handleDomainUpdate}
-        />
-        <HeaderDotSeparator />
-        <OwnerLabel
-          showDashPlaceholder
-          avatarSize={24}
-          className="header-owner-heading"
-          hasPermission={hasEditOwnerPermission}
-          isCompactView={false}
-          maxVisibleOwners={3}
-          multiple={{
-            user: canAddMultipleUserOwners,
-            team: canAddMultipleTeamOwner,
-          }}
-          ownerDisplayName={ownerDisplayName}
-          owners={testCaseData?.owners ?? ownerRef}
-          onUpdate={onOwnerUpdate}
-        />
-        {!isVersionPage && (
-          <StatusDetails
-            handleAssigneeUpdate={handleAssigneeUpdate}
-            handleSeverityUpdate={handleSeverityUpdate}
-            hasEditStatusPermission={hasEditStatusPermission}
-            isLoading={isLoading}
-            taskLinkInfo={taskLinkInfo}
-            testCaseStatusData={testCaseStatusData}
-            onIncidentStatusUpdate={onIncidentStatusUpdate}
-          />
-        )}
-        {tableFqn && (
+  const statusDetails = useMemo(() => {
+    if (isLoading) {
+      return <Skeleton height={24} variant="rounded" width={160} />;
+    }
+
+    if (isUndefined(testCaseStatusData)) {
+      return (
+        <>
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.incident-status')}>
+            <HeaderFieldValue>
+              {t('label.no-entity', { entity: t('label.incident') })}
+            </HeaderFieldValue>
+          </HeaderField>
+        </>
+      );
+    }
+
+    const details = testCaseStatusData?.testCaseResolutionStatusDetails;
+
+    return (
+      <>
+        {taskLinkInfo && (
           <>
             <HeaderDotSeparator />
-            <HeaderField label={t('label.table')}>
+            <HeaderField label={t('label.incident')}>
               <Link
                 className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
-                data-testid="table-name"
-                to={getEntityDetailsPath(
-                  EntityType.TABLE,
-                  tableFqn,
-                  EntityTabs.PROFILER,
-                  ProfilerTabPath.DATA_QUALITY
-                )}>
-                {getNameFromFQN(tableFqn)}
+                data-testid="incident-task-link"
+                to={taskLinkInfo.path}>
+                {taskLinkInfo.label}
                 <InternalLinkIcon className="text-grey-muted" width="14px" />
               </Link>
             </HeaderField>
           </>
         )}
-        {dimensionKey && (
-          <>
-            <HeaderDotSeparator />
-            <HeaderField label={t('label.dimension')}>
-              <HeaderFieldValue dataTestId="dimension-key">
-                {dimensionKey}
-              </HeaderFieldValue>
-            </HeaderField>
-          </>
-        )}
-        {columnName && (
-          <>
-            <HeaderDotSeparator />
-            <HeaderField label={t('label.column')}>
-              <HeaderFieldValue dataTestId="test-column-name">
-                {columnName}
-              </HeaderFieldValue>
-            </HeaderField>
-          </>
-        )}
-        <TestTypeField testDefinition={testCaseData?.testDefinition} />
-      </div>
-    </>
+        <HeaderDotSeparator />
+        <TestCaseIncidentManagerStatus
+          newLook
+          data={testCaseStatusData}
+          hasPermission={hasEditStatusPermission}
+          headerName={t('label.incident-status')}
+          onSubmit={onIncidentStatusUpdate}
+        />
+        <HeaderDotSeparator />
+        <div className="tw:min-w-0" data-testid="assignee">
+          <OwnerLabel
+            className="header-owner-heading"
+            hasPermission={hasEditStatusPermission}
+            isCompactView={false}
+            multiple={{
+              user: false,
+              team: false,
+            }}
+            owners={details?.assignee ? [details.assignee] : []}
+            placeHolder={t('label.assignee')}
+            tooltipText={t('label.edit-entity', {
+              entity: t('label.assignee'),
+            })}
+            onUpdate={handleAssigneeUpdate}
+          />
+        </div>
+        <HeaderDotSeparator />
+        <Severity
+          newLook
+          hasPermission={hasEditStatusPermission}
+          headerName={t('label.severity')}
+          severity={testCaseStatusData.severity}
+          onSubmit={handleSeverityUpdate}
+        />
+      </>
+    );
+  }, [
+    handleAssigneeUpdate,
+    handleSeverityUpdate,
+    hasEditStatusPermission,
+    isLoading,
+    onIncidentStatusUpdate,
+    t,
+    taskLinkInfo,
+    testCaseStatusData,
+  ]);
+
+  const testDefinitionName = getEntityName(testCaseData?.testDefinition);
+  const testDefinitionDescription = testCaseData?.testDefinition?.description;
+
+  // The value is truncated to keep the header on one row, so reveal the full
+  // test type name (plus its description when present) on hover.
+  const testTypeTooltip = testDefinitionDescription ? (
+    <div className="tw:flex tw:flex-col tw:gap-1.5">
+      <div className="tw:font-medium">{testDefinitionName}</div>
+      <div>{testDefinitionDescription}</div>
+    </div>
+  ) : (
+    testDefinitionName
+  );
+
+  return (
+    <div className="incident-manager-header w-full">
+      <DomainLabel
+        headerLayout
+        showDashPlaceholder
+        domains={testCaseData?.domains}
+        entityFqn={testCaseData?.fullyQualifiedName ?? ''}
+        entityId={testCaseData?.id ?? ''}
+        entityType={EntityType.TEST_CASE}
+        hasPermission={hasEditDomainPermission}
+        multiple={false}
+        textClassName="render-domain-lebel-style"
+        onUpdate={handleDomainUpdate}
+      />
+      <HeaderDotSeparator />
+      <OwnerLabel
+        showDashPlaceholder
+        avatarSize={24}
+        className="header-owner-heading"
+        hasPermission={hasEditOwnerPermission}
+        isCompactView={false}
+        maxVisibleOwners={3}
+        multiple={{
+          user: canAddMultipleUserOwners,
+          team: canAddMultipleTeamOwner,
+        }}
+        ownerDisplayName={ownerDisplayName}
+        owners={testCaseData?.owners ?? ownerRef}
+        onUpdate={onOwnerUpdate}
+      />
+      {!isVersionPage && statusDetails}
+      {tableFqn && (
+        <>
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.table')}>
+            <Link
+              className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
+              data-testid="table-name"
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
+              {getNameFromFQN(tableFqn)}
+              <InternalLinkIcon className="text-grey-muted" width="14px" />
+            </Link>
+          </HeaderField>
+        </>
+      )}
+      {dimensionKey && (
+        <>
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.dimension')}>
+            <HeaderFieldValue dataTestId="dimension-key">
+              {dimensionKey}
+            </HeaderFieldValue>
+          </HeaderField>
+        </>
+      )}
+      {columnName && (
+        <>
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.column')}>
+            <HeaderFieldValue dataTestId="test-column-name">
+              {columnName}
+            </HeaderFieldValue>
+          </HeaderField>
+        </>
+      )}
+      <HeaderDotSeparator />
+      <HeaderField label={t('label.test-type')}>
+        <Tooltip
+          isDisabled={!testDefinitionName}
+          placement="bottom"
+          title={testTypeTooltip}>
+          <TooltipTrigger className="tw:w-fit tw:max-w-full">
+            <span
+              className="tw:block tw:max-w-[176px] tw:truncate tw:text-sm tw:font-medium tw:text-primary"
+              data-testid="test-definition-name">
+              {testDefinitionName}
+            </span>
+          </TooltipTrigger>
+        </Tooltip>
+      </HeaderField>
+    </div>
   );
 };
 
