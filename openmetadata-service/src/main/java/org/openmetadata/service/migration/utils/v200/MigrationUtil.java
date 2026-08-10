@@ -36,6 +36,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
@@ -2246,6 +2248,23 @@ public class MigrationUtil {
         List<Task> openTasks =
             listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
         for (Task task : openTasks) {
+          // Glossary approvals are governed by GlossaryTermApprovalWorkflow, not a standalone task
+          // workflow. A GlossaryApproval task with no workflowInstanceId is a legacy row stranded
+          // by
+          // a move/rename whose original process was already cleaned; remediate it by term status
+          // instead of letting the generic backfill start a stray workflow for it.
+          if (task.getType() == TaskEntityType.GlossaryApproval
+              && task.getWorkflowInstanceId() == null) {
+            try {
+              remediateStrandedGlossaryApproval(task);
+            } catch (Exception e) {
+              LOG.warn(
+                  "[v200] Failed to remediate stranded glossary approval task {}; continuing",
+                  task.getId(),
+                  e);
+            }
+            continue;
+          }
           if (task.getAbout() == null) {
             continue;
           }
@@ -2310,6 +2329,128 @@ public class MigrationUtil {
         variables.put(WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, schema.getVersion());
       }
       return variables;
+    }
+
+    /**
+     * Remediate a legacy glossary approval task that lost its GlossaryTermApprovalWorkflow process
+     * (moved/renamed term whose original process was cleaned). Only In-Review terms still need an
+     * approval; Draft/Approved/Rejected (or unresolvable) terms get the dead task closed. For an
+     * In-Review term we restart GlossaryTermApprovalWorkflow only when it has no other active
+     * approval task, then close this stranded row so the workflow's fresh task is the only one.
+     */
+    private void remediateStrandedGlossaryApproval(Task task) {
+      GlossaryTerm term = resolveGlossaryTermForTask(task.getAbout());
+      if (term != null && term.getEntityStatus() == EntityStatus.IN_REVIEW) {
+        remediateInReviewGlossaryApproval(task, term);
+      } else {
+        String status =
+            (term == null || term.getEntityStatus() == null)
+                ? "unresolved"
+                : term.getEntityStatus().value();
+        closeStrandedGlossaryApproval(task, "glossary term is not In Review (status=%s)", status);
+      }
+    }
+
+    private void remediateInReviewGlossaryApproval(Task task, GlossaryTerm term) {
+      String termFqn = term.getFullyQualifiedName();
+      if (hasActiveApprovalSibling(termFqn, task.getId())) {
+        // A valid approval task already governs the term (a later cycle's task, or the fresh task a
+        // prior stranded row's restart just created) -> this row is a duplicate, close it.
+        closeStrandedGlossaryApproval(
+            task, "glossary term already has an active approval task", null);
+      } else if (startGlossaryTermApprovalWorkflow(term, task.getUpdatedBy())) {
+        closeStrandedGlossaryApprovalAfterRestart(task, term, termFqn);
+      } else {
+        LOG.warn(
+            "[v200] {} not found; leaving stranded glossary approval task {} open for term {}",
+            GLOSSARY_TERM_APPROVAL_WORKFLOW,
+            task.getId(),
+            term.getId());
+      }
+    }
+
+    private void closeStrandedGlossaryApprovalAfterRestart(
+        Task task, GlossaryTerm term, String termFqn) {
+      if (hasActiveApprovalSibling(termFqn, task.getId())) {
+        // Only close once the restart actually produced a bound approval task, so a workflow that
+        // completed without a wait-state never leaves the term with zero approval tasks.
+        closeStrandedGlossaryApproval(
+            task, "restarted GlossaryTermApprovalWorkflow; closing superseded stranded task", null);
+      } else {
+        LOG.warn(
+            "[v200] restarted {} but no bound approval task appeared; leaving stranded task {} open for term {}",
+            GLOSSARY_TERM_APPROVAL_WORKFLOW,
+            task.getId(),
+            term.getId());
+      }
+    }
+
+    private GlossaryTerm resolveGlossaryTermForTask(EntityReference about) {
+      GlossaryTerm term = null;
+      if (about != null) {
+        try {
+          if (about.getId() != null) {
+            term =
+                (GlossaryTerm)
+                    Entity.getEntity(
+                        Entity.GLOSSARY_TERM,
+                        about.getId(),
+                        ENTITY_STATUS_FIELD,
+                        Include.NON_DELETED);
+          } else if (!nullOrEmpty(about.getFullyQualifiedName())) {
+            term =
+                (GlossaryTerm)
+                    Entity.getEntityByName(
+                        Entity.GLOSSARY_TERM,
+                        about.getFullyQualifiedName(),
+                        ENTITY_STATUS_FIELD,
+                        Include.NON_DELETED);
+          }
+        } catch (EntityNotFoundException e) {
+          // Term genuinely deleted -> leave term null so the caller closes the dead task. Any other
+          // (transient) failure propagates and is caught per-task by the backfill loop, leaving the
+          // task open rather than closing a still-valid In-Review approval on a migration-time
+          // blip.
+          LOG.warn("[v200] Glossary term for approval task about {} no longer exists", about, e);
+        }
+      }
+      return term;
+    }
+
+    private boolean hasActiveApprovalSibling(String termFqn, UUID strandedTaskId) {
+      return taskRepository
+          .listNonTerminalTasksByEntityAndCategory(termFqn, TaskCategory.Approval)
+          .stream()
+          .anyMatch(t -> !t.getId().equals(strandedTaskId) && t.getWorkflowInstanceId() != null);
+    }
+
+    private boolean startGlossaryTermApprovalWorkflow(GlossaryTerm term, String updatedBy) {
+      WorkflowDefinition definition =
+          workflowDefinitionRepository.findByNameOrNull(
+              GLOSSARY_TERM_APPROVAL_WORKFLOW, Include.NON_DELETED);
+      boolean started = false;
+      if (definition != null) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+            EntityUtil.buildEntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()));
+        variables.put(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), updatedBy);
+        workflowHandler.triggerByKey(
+            getTriggerWorkflowId(definition.getFullyQualifiedName()),
+            term.getId().toString(),
+            variables);
+        started = true;
+      }
+      return started;
+    }
+
+    private void closeStrandedGlossaryApproval(Task task, String reasonFormat, String reasonArg) {
+      String reason = reasonArg == null ? reasonFormat : reasonFormat.formatted(reasonArg);
+      try {
+        taskRepository.closeTask(task, ADMIN_USER_NAME, "v200 migration: %s".formatted(reason));
+      } catch (Exception e) {
+        LOG.warn("[v200] Could not close stranded glossary approval task {}", task.getId(), e);
+      }
     }
 
     private boolean replayMigratedIncidentState(Task task) {

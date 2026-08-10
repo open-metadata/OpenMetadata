@@ -384,6 +384,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
+    "prefect": {},  # uses requests
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
@@ -435,7 +436,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.25.6",
+    "datamodel-code-generator==0.64.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",

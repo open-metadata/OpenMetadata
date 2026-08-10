@@ -26,6 +26,7 @@ import { performAdminLogin } from '../../../utils/admin';
 import {
   assignSingleSelectDomain,
   clickOutside,
+  createNewPage,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -51,6 +52,7 @@ import {
   verifyIncidentBreadcrumbsFromTablePageRedirect,
   verifyTestCaseLastRunBanner,
   visitDataQualityTab,
+  waitForTestCaseDetailsResponse,
 } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
@@ -1546,6 +1548,96 @@ test.describe(
         });
       } finally {
         await phantomTagsTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Test result tooltip stays fixed while the pointer enters its incident link', async ({
+      browser,
+      page,
+    }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const tooltipTable = new TableClass();
+
+      try {
+        await tooltipTable.create(apiContext);
+        const testCase = await tooltipTable.createTestCase(apiContext);
+        const testCaseFqn = testCase.fullyQualifiedName as string;
+        const failedAt = Date.now();
+
+        await tooltipTable.addTestCaseResult(apiContext, testCaseFqn, {
+          result: 'Row count was outside the expected range.',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '10' }],
+          timestamp: failedAt,
+        });
+        await waitForIncidentToBeIndexed(apiContext, testCaseFqn, failedAt);
+
+        const detailsResponse = waitForTestCaseDetailsResponse(page);
+        const resultsResponse = page.waitForResponse(
+          (response) =>
+            response
+              .url()
+              .includes('/api/v1/dataQuality/testCases/testCaseResults/') &&
+            response.status() === 200
+        );
+
+        await page.goto(
+          `/test-case/${encodeURIComponent(testCaseFqn)}/test-case-results`
+        );
+        await Promise.all([detailsResponse, resultsResponse]);
+        await waitForAllLoadersToDisappear(page);
+
+        const point = page
+          .locator('[data-testid^="test-summary-point-"]')
+          .first();
+        const tooltip = page.getByTestId('test-summary-tooltip');
+
+        await expect(point).toBeVisible();
+        await point.scrollIntoViewIfNeeded();
+        const pointBox = await point.boundingBox();
+
+        if (!pointBox) {
+          throw new Error(
+            'Expected the test result point to have a bounding box'
+          );
+        }
+
+        // A nearby chart position must not inherit the dot's tooltip activation.
+        await page.mouse.move(
+          pointBox.x + pointBox.width + 3,
+          pointBox.y + pointBox.height / 2
+        );
+        await expect(tooltip).toBeHidden();
+
+        await point.hover();
+        await expect(tooltip).toBeVisible();
+
+        const incidentLink = tooltip.locator('a.tooltip-incident-link');
+
+        await expect(incidentLink).toBeVisible();
+        // Recharts used to move the tooltip during this browser-level pointer
+        // transition, preventing Playwright (and users) from reaching the link.
+        await incidentLink.hover();
+        await expect(incidentLink).toBeVisible();
+        await expect
+          .poll(() =>
+            incidentLink.evaluate((element) => element.matches(':hover'))
+          )
+          .toBe(true);
+
+        const incidentHref = await incidentLink.getAttribute('href');
+
+        if (!incidentHref) {
+          throw new Error('Expected the incident link to have a destination');
+        }
+
+        await Promise.all([
+          page.waitForURL((url) => url.pathname === incidentHref),
+          incidentLink.click(),
+        ]);
+      } finally {
+        await tooltipTable.delete(apiContext);
         await afterAction();
       }
     });
