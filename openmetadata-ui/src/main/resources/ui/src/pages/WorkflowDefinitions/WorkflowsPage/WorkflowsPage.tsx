@@ -308,13 +308,15 @@ const WorkflowsPage = () => {
   return (
     <PageLayoutV1
       fullHeight
-      className={classNames('workflow-page tw:!px-0', {
-        'tw:!pb-0': isAiMode,
-      })}
+      className={classNames('workflow-page', { 'tw:!px-0': !isAiMode })}
       mainContainerClassName="workflow-page-layout"
       pageTitle={t('label.workflow-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
-      <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-2 tw:gap-4">
+      <div
+        className={classNames(
+          'tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:gap-4',
+          { 'tw:mx-2': !isAiMode }
+        )}>
         {isAiMode ? (
           <HeaderShell
             actions={createWorkflowButton}

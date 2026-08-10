@@ -313,7 +313,9 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         : pageHeader}
 
       <Card
-        className="tw:mb-5 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
+        className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
+          'tw:mb-5': !isAiMode,
+        })}
         variant="elevated">
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
