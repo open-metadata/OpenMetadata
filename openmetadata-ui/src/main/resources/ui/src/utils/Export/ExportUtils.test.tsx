@@ -572,9 +572,7 @@ describe('shouldIncludeInExport (DOM filter)', () => {
     // must opt in individually — the safe path.
     expect(
       shouldIncludeInExport(
-        html(
-          '<div class="react-flow__handle" data-export-hide="true"></div>'
-        )
+        html('<div class="react-flow__handle" data-export-hide="true"></div>')
       )
     ).toBe(false);
   });
