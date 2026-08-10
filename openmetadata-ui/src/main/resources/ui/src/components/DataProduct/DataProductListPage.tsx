@@ -342,6 +342,7 @@ const DataProductListPage = ({
           <EntityListingTable
             ariaLabel={t('label.data-product')}
             columns={dataProductColumns}
+            containerClassName="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
             entities={dataProductListing.entities}
             loading={dataProductListing.loading}
             renderCell={renderDataProductCell}
@@ -362,7 +363,7 @@ const DataProductListPage = ({
     return (
       <>
         <EntityCardView
-          className="tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={dataProductListing.entities}
           loading={dataProductListing.loading}
           renderCard={renderDataProductCard}
@@ -407,7 +408,9 @@ const DataProductListPage = ({
           })
         : pageHeader}
 
-      <Card style={{ marginBottom: 20 }} variant="elevated">
+      <Card
+        className="tw:mb-5 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
+        variant="elevated">
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
@@ -437,6 +440,7 @@ const DataProductListPageWithLayout: FC<DataProductListPageProps> = (props) => {
 
   return (
     <PageLayoutV1
+      fullHeight={isAiMode}
       pageTitle={props.pageTitle}
       variant={isAiMode ? 'compact' : 'default'}>
       <DataProductListPage {...props} />
