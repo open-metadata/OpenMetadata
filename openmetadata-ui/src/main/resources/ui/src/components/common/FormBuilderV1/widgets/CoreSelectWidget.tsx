@@ -52,7 +52,8 @@ const CoreSelectWidget = ({
     [options.enumOptions]
   );
 
-  const description = (options.help as string | undefined) ?? schema.description;
+  const description =
+    (options.help as string | undefined) ?? schema.description;
   const showAsTooltip = Boolean(options.showDescriptionAsTooltip);
   const hint = rawErrors?.[0] ?? (showAsTooltip ? undefined : description);
   const tooltip = showAsTooltip ? description : undefined;

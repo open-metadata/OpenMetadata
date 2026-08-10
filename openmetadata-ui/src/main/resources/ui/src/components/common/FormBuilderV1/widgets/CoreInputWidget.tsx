@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Input, Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  Input,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { HelpCircle } from '@untitledui/icons';
 import { getWidgetLabel } from './coreWidgetUtils';
@@ -62,14 +66,17 @@ const CoreInputWidget = ({
     onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
-  const description = (options.help as string | undefined) ?? schema.description;
+  const description =
+    (options.help as string | undefined) ?? schema.description;
   const showAsTooltip = Boolean(options.showDescriptionAsTooltip);
   const widgetLabel = getWidgetLabel({ hideLabel, label });
   // Only show tooltip when there is a label to anchor it; otherwise fall back
   // to inline hint so the description is not silently lost.
   const showTooltipRow = showAsTooltip && Boolean(widgetLabel);
   const hint = rawErrors?.[0] ?? (showTooltipRow ? undefined : description);
-  const tooltip = showTooltipRow ? (description as string | undefined) : undefined;
+  const tooltip = showTooltipRow
+    ? (description as string | undefined)
+    : undefined;
 
   return (
     <div>
@@ -80,9 +87,7 @@ const CoreInputWidget = ({
             htmlFor={id}>
             {widgetLabel}
           </label>
-          {required && (
-            <span className="tw:text-error-primary">*</span>
-          )}
+          {required && <span className="tw:text-error-primary">*</span>}
           <Tooltip placement="top" title={tooltip}>
             <TooltipTrigger className="tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover">
               <HelpCircle className="tw:size-4" />

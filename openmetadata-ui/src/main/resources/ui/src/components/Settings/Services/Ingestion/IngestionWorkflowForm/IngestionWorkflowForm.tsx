@@ -16,7 +16,6 @@ import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined, omit, omitBy } from 'lodash';
-import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import {
   forwardRef,
   lazy,
@@ -42,6 +41,7 @@ import {
   IngestionWorkflowFormHandle,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
+import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
