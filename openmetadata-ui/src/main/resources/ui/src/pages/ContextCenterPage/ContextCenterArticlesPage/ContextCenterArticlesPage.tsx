@@ -314,11 +314,11 @@ const ContextCenterArticlesPage = () => {
   );
 
   const rightSidebar = useMemo(() => {
-    if (isActivityFeedTab) {
+    if (isActivityFeedTab || version) {
       return null;
     }
 
-    if (version || isRightPanelOpen) {
+    if (isRightPanelOpen) {
       return page.rightPanel;
     }
 

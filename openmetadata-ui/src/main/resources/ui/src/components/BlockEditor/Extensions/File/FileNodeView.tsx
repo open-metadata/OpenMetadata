@@ -71,8 +71,16 @@ const FileNodeView: FC<NodeViewProps> = ({
 }) => {
   const { t } = useTranslation();
   const { setPopoverOpen } = useEntityAttachment();
-  const { url, fileName, fileSize, mimeType, isUploading, tempFile, isImage } =
-    node.attrs;
+  const {
+    url,
+    fileName,
+    fileSize,
+    mimeType,
+    isUploading,
+    tempFile,
+    isImage,
+    diffState,
+  } = node.attrs;
   const isValidSource = !isEmpty(url) || isUploading;
   const isVideo = mimeType?.startsWith(FileType.VIDEO);
   const isAudio = mimeType?.startsWith(FileType.AUDIO);
@@ -166,6 +174,9 @@ const FileNodeView: FC<NodeViewProps> = ({
         'file-type-video': isVideo,
         'file-type-audio': isAudio,
         uploading: isUploading,
+        'tw:outline tw:outline-2 tw:outline-offset-2': Boolean(diffState),
+        'tw:outline-green-600': diffState === 'added',
+        'tw:outline-red-500 tw:opacity-60': diffState === 'removed',
       })}
       data-filename={fileName || tempFile?.name}
       data-filesize={(fileSize || tempFile?.size)?.toString()}
