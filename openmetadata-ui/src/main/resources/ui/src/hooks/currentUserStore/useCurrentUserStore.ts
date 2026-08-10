@@ -220,7 +220,11 @@ async function flushOneKey(
   try {
     const updated = isRemoval
       ? await deleteUserPreference(userId, type)
-      : await putUserPreference(userId, type, buildPreferenceConfig(key, value));
+      : await putUserPreference(
+          userId,
+          type,
+          buildPreferenceConfig(key, value)
+        );
 
     const keyed = deriveKeyedPreferences(
       updated?.preferences as WirePreferenceEntry[] | undefined

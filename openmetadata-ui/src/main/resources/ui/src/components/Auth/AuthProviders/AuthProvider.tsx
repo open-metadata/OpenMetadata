@@ -158,7 +158,8 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
 
-  const userPref = derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
+  const userPref =
+    derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
   writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault));
 };
 
