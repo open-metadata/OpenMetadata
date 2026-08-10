@@ -282,7 +282,7 @@
               "$ref": "./connections/database/clickhouseConnection.json"
             },
             {
-              "$ref": "connections/database/clickzettaConnection.json"
+              "$ref": "./connections/database/clickzettaConnection.json"
             },
             {
               "$ref": "./connections/database/databricksConnection.json"

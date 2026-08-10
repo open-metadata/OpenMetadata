@@ -46,7 +46,7 @@ def build_clickzetta_url(
     connection_options: Optional[Mapping[str, str]] = None,  # noqa: UP045
 ) -> URL:
     host, port = _split_host_port(host_port)
-    option_keys = set(connection_options or {})
+    option_keys = {key.casefold() for key in (connection_options or {})}
     reserved_collisions = sorted(option_keys & _RESERVED_CONNECTION_OPTIONS)
     if reserved_collisions:
         raise ValueError(
