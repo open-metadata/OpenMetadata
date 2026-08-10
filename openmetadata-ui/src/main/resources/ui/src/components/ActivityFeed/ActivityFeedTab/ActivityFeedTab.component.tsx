@@ -67,7 +67,10 @@ import { getTaskCounts, Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityUserLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getFeedCounts } from '../../../utils/FeedUtilsPure';
+import {
+  aggregateFeedCountResponse,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -264,21 +267,26 @@ export const ActivityFeedTab = ({
         : { aboutEntity: fqn, view: 'entity' as const, domain };
 
       const taskCounts = await getTaskCounts(taskCountParams);
+      const totalTasksCount = taskCounts.total ?? 0;
 
       if (isUserEntity) {
         // Also get feed counts for conversations and mentions
         const res = await getFeedCount(getEntityUserLink(fqn));
+        const { conversationCount, mentionCount } =
+          aggregateFeedCountResponse(res);
+        // The user profile has no entity-scoped activity stream, so the "All"
+        // badge that would consume this is gated behind `!isUserEntity` below.
+        const activityCount = 0;
         setCountData((prev) => ({
           ...prev,
           data: {
-            conversationCount: res[0].conversationCount ?? 0,
-            activityCount: 0,
-            totalTasksCount: taskCounts.total,
+            conversationCount,
+            activityCount,
+            totalTasksCount,
             openTaskCount: taskCounts.open ?? 0,
             closedTaskCount: taskCounts.completed ?? 0,
-            totalCount:
-              (res[0].conversationCount ?? 0) + (taskCounts.total ?? 0),
-            mentionCount: res[0].mentionCount ?? 0,
+            totalCount: conversationCount + activityCount + totalTasksCount,
+            mentionCount,
           },
         }));
       } else {
@@ -286,9 +294,15 @@ export const ActivityFeedTab = ({
         await getFeedCounts(entityType, fqn, domain, (feedData) => {
           handleFeedCount({
             ...feedData,
-            totalTasksCount: taskCounts.total,
+            totalTasksCount,
             openTaskCount: taskCounts.open ?? 0,
             closedTaskCount: taskCounts.completed ?? 0,
+            // getFeedCounts derives its own total from a differently-scoped
+            // task query; recompute so it agrees with the counts we just set.
+            totalCount:
+              feedData.conversationCount +
+              feedData.activityCount +
+              totalTasksCount,
           });
         });
       }
@@ -662,10 +676,6 @@ export const ActivityFeedTab = ({
             isOpenInDrawer
             showActivityFeedEditor
             showThread
-            componentsVisibility={{
-              showThreadIcon: true,
-              showRepliesContainer: true,
-            }}
             feed={selectedThread}
             handlePanelResize={handlePanelResize}
             hidePopover={false}
@@ -684,10 +694,6 @@ export const ActivityFeedTab = ({
           <FeedPanelBodyV1New
             isOpenInDrawer
             activity={selectedActivity}
-            componentsVisibility={{
-              showThreadIcon: true,
-              showRepliesContainer: false,
-            }}
             handlePanelResize={handlePanelResize}
             hidePopover={false}
             isFullWidth={isFullWidth}

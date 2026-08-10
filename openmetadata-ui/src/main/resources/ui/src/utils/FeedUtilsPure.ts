@@ -35,7 +35,10 @@ import type {
   Thread,
 } from '../generated/entity/feed/thread';
 import { TestCaseStatus, ThreadType } from '../generated/entity/feed/thread';
-import type { FeedCounts } from '../interface/feed.interface';
+import type {
+  EntityFieldThreadCount,
+  FeedCounts,
+} from '../interface/feed.interface';
 import {
   deletePostById,
   deleteThread,
@@ -560,6 +563,21 @@ export const prepareFeedLink = (
   }
 };
 
+/**
+ * The `/feed/count` endpoint answers with one entry per entity field, so the
+ * array may be empty or hold several entries — never index into it directly.
+ */
+export const aggregateFeedCountResponse = (
+  response: EntityFieldThreadCount[] | undefined
+) =>
+  (response ?? []).reduce(
+    (acc, item) => ({
+      conversationCount: acc.conversationCount + (item.conversationCount ?? 0),
+      mentionCount: acc.mentionCount + (item.mentionCount ?? 0),
+    }),
+    { conversationCount: 0, mentionCount: 0 }
+  );
+
 export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
@@ -589,14 +607,8 @@ export const getFeedCounts = async (
     ]);
 
     // Conversations and activity change-events are separate stores; count both.
-    const conversationCount = (feedCountRes ?? []).reduce(
-      (sum, item) => sum + (item.conversationCount ?? 0),
-      0
-    );
-    const mentionCount = (feedCountRes ?? []).reduce(
-      (sum, item) => sum + (item.mentionCount ?? 0),
-      0
-    );
+    const { conversationCount, mentionCount } =
+      aggregateFeedCountResponse(feedCountRes);
     const activityCount = activityRes?.paging?.total ?? 0;
 
     const openTaskCount = taskCounts.open ?? 0;

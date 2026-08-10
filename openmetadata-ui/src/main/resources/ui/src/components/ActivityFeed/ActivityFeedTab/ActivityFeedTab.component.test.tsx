@@ -15,6 +15,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
+import { getFeedCount } from '../../../rest/feedsAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ActivityFeedTab } from './ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
@@ -87,9 +89,7 @@ jest.mock('../../../rest/tasksAPI', () => ({
 }));
 
 jest.mock('../../../rest/feedsAPI', () => ({
-  getFeedCount: jest
-    .fn()
-    .mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
+  getFeedCount: jest.fn(),
 }));
 
 jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
@@ -100,12 +100,16 @@ jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
 }));
 
 jest.mock('../../../utils/FeedUtilsPure', () => ({
+  // Real implementation — folding the /feed/count array is the behaviour the
+  // user-entity tests below exercise.
+  aggregateFeedCountResponse: jest.requireActual('../../../utils/FeedUtilsPure')
+    .aggregateFeedCountResponse,
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
       conversationCount: mockConversationCount,
       activityCount: mockActivityCount,
       mentionCount: 0,
-      totalCount: mockConversationCount,
+      totalCount: mockConversationCount + mockActivityCount,
       totalTasksCount: 0,
       openTaskCount: 0,
       closedTaskCount: 0,
@@ -168,6 +172,20 @@ const renderComponent = (subTab = ActivityFeedTabs.TASKS) => {
   );
 };
 
+const renderUserComponent = (subTab = ActivityFeedTabs.TASKS) => {
+  mockUseRequiredParams.mockReturnValue({ tab: 'activity_feed', subTab });
+
+  return render(
+    <MemoryRouter>
+      <ActivityFeedTab
+        {...defaultProps}
+        columns={undefined}
+        entityType={EntityType.USER}
+      />
+    </MemoryRouter>
+  );
+};
+
 describe('ActivityFeedTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -182,6 +200,13 @@ describe('ActivityFeedTab', () => {
     });
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
+    (getFeedCount as jest.Mock).mockResolvedValue([
+      {
+        entityLink: '<#E::user::admin>',
+        conversationCount: 0,
+        mentionCount: 0,
+      },
+    ]);
   });
 
   describe('Activity fetch is gated by tab', () => {
@@ -223,6 +248,21 @@ describe('ActivityFeedTab', () => {
         // NOT 3 + activityEvents.length (1).
         expect(counts).toContain('5');
       });
+    });
+  });
+
+  describe('User entity feed counts tolerate an empty /feed/count response', () => {
+    it('still renders the tab when the feed count response is empty', async () => {
+      // A user with no threads gets back [] — indexing res[0] threw here, which
+      // was swallowed by the catch and left the whole tab unrendered.
+      (getFeedCount as jest.Mock).mockResolvedValue([]);
+
+      renderUserComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() => expect(getFeedCount).toHaveBeenCalled());
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+      expect(screen.getByTestId('task-list')).toBeInTheDocument();
     });
   });
 

@@ -13,7 +13,7 @@
 import { FeedCounts } from '../interface/feed.interface';
 import { getEntityActivityByFqn, getFeedCount } from '../rest/feedsAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
-import { getFeedCounts } from './FeedUtilsPure';
+import { aggregateFeedCountResponse, getFeedCounts } from './FeedUtilsPure';
 
 jest.mock('../rest/feedsAPI', () => ({
   getFeedCount: jest.fn(),
@@ -27,6 +27,56 @@ jest.mock('../rest/tasksAPI', () => ({
 jest.mock('./ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+describe('aggregateFeedCountResponse', () => {
+  it('returns zeroes for an undefined or empty response', () => {
+    expect(aggregateFeedCountResponse(undefined)).toEqual({
+      conversationCount: 0,
+      mentionCount: 0,
+    });
+    expect(aggregateFeedCountResponse([])).toEqual({
+      conversationCount: 0,
+      mentionCount: 0,
+    });
+  });
+
+  it('sums every entry instead of reading only the first one', () => {
+    expect(
+      aggregateFeedCountResponse([
+        {
+          entityLink: '<#E::table::db.schema.t::description>',
+          conversationCount: 2,
+          mentionCount: 1,
+          totalTaskCount: 0,
+        },
+        {
+          entityLink: '<#E::table::db.schema.t::columns>',
+          conversationCount: 3,
+          mentionCount: 4,
+          totalTaskCount: 0,
+        },
+      ])
+    ).toEqual({ conversationCount: 5, mentionCount: 5 });
+  });
+
+  it('treats an omitted conversationCount as zero', () => {
+    expect(
+      aggregateFeedCountResponse([
+        {
+          entityLink: '<#E::table::db.schema.t::description>',
+          mentionCount: 0,
+          totalTaskCount: 0,
+        },
+        {
+          entityLink: '<#E::table::db.schema.t::columns>',
+          conversationCount: 7,
+          mentionCount: 0,
+          totalTaskCount: 0,
+        },
+      ])
+    ).toEqual({ conversationCount: 7, mentionCount: 0 });
+  });
+});
 
 describe('getFeedCounts', () => {
   beforeEach(() => {
