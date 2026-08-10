@@ -35,6 +35,14 @@ const LAST_RUN_BANNER_TEST_IDS = {
 const NO_RUN_BANNER_TEST_ID = 'test-case-last-run-banner-not-run-yet';
 const LAST_RUN_INCIDENT_TEST_ID = 'test-case-last-run-incident';
 const RESULT_EXPECTED_TEST_ID = 'test-case-result-expected';
+const LAST_RUN_STATUS_TEST_ID = 'test-case-last-run-status';
+const LAST_RUN_ICON_TEST_ID = 'test-case-last-run-icon';
+const LAST_RUN_SUMMARY_TEST_ID = 'test-case-last-run-summary';
+const NEXT_RUN_TEST_ID = 'test-case-next-run';
+const INCIDENT_ID_TEST_ID = 'test-case-incident-id';
+const TEST_CASE_RESULT_TIMESTAMP = 1_786_001_601_000;
+const TOP_ALIGNED_CLASS = 'tw:self-start';
+const TEXT_XS_CLASS = 'tw:text-xs';
 const INCIDENT_PATH =
   '/test-case/sample_data.ecommerce_db.shopify.dim_address.table_column_count_between/issues';
 
@@ -77,7 +85,7 @@ describe('TestCaseLastRunBanner', () => {
         testResultValue: [
           { name: 'rowCount', predictedValue: '1000', value: '5' },
         ],
-        timestamp: 1_786_001_601_000,
+        timestamp: TEST_CASE_RESULT_TIMESTAMP,
       };
 
       renderBanner({ testCaseResult, testCaseStatus });
@@ -90,7 +98,7 @@ describe('TestCaseLastRunBanner', () => {
       expect(screen.getByTestId(bannerTestId)).toHaveTextContent(
         `label.last-run label.${testCaseStatus.toLowerCase()}`
       );
-      expect(screen.getByTestId('test-case-last-run-status')).toHaveClass(
+      expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
         {
           [TestCaseStatus.Aborted]: 'tw:text-warning-primary',
           [TestCaseStatus.Failed]: 'tw:text-error-primary',
@@ -102,12 +110,12 @@ describe('TestCaseLastRunBanner', () => {
         'tw:text-primary',
         'tw:text-sm'
       );
-      expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
+      expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
         'tw:size-8',
         'tw:rounded-lg',
-        'tw:self-start'
+        TOP_ALIGNED_CLASS
       );
-      expect(screen.getByTestId('test-case-last-run-summary')).toHaveClass(
+      expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
         'tw:py-3.5',
         {
           [TestCaseStatus.Aborted]: 'tw:bg-yellow-50',
@@ -119,15 +127,15 @@ describe('TestCaseLastRunBanner', () => {
       expect(
         screen.getByTestId('test-case-last-run-right-section')
       ).toHaveClass('tw:lg:w-80');
-      expect(screen.getByText(result)).toHaveClass('tw:text-xs');
+      expect(screen.getByText(result)).toHaveClass(TEXT_XS_CLASS);
       expect(
         screen.getByTestId('test-case-run-description')
       ).toBeInTheDocument();
       expect(screen.getByTestId('test-case-last-run-time')).toHaveClass(
-        'tw:text-xs',
+        TEXT_XS_CLASS,
         'tw:font-normal'
       );
-      expect(screen.getByTestId('test-case-next-run')).toHaveTextContent(
+      expect(screen.getByTestId(NEXT_RUN_TEST_ID)).toHaveTextContent(
         'label.next · label.not-scheduled'
       );
 
@@ -168,29 +176,29 @@ describe('TestCaseLastRunBanner', () => {
         );
         expect(incidentRow).toHaveTextContent('label.acknowledged');
         expect(screen.getByTestId('test-case-incident-icon')).toHaveClass(
-          'tw:self-start'
+          TOP_ALIGNED_CLASS
         );
         expect(screen.getByTestId('test-case-incident-text')).toHaveClass(
           'tw:flex-1'
         );
-        expect(screen.getByTestId('test-case-incident-id')).toHaveClass(
-          'tw:text-xs',
+        expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveClass(
+          TEXT_XS_CLASS,
           'tw:font-semibold'
         );
-        expect(screen.getByTestId('test-case-incident-id')).toHaveTextContent(
+        expect(screen.getByTestId(INCIDENT_ID_TEST_ID)).toHaveTextContent(
           /INC.*9,/
         );
         expect(
           screen.getByTestId('test-case-incident-description')
-        ).toHaveClass('tw:text-xs');
+        ).toHaveClass(TEXT_XS_CLASS);
         expect(
           screen.getByTestId('test-case-incident-description')
-        ).toContainElement(screen.getByTestId('test-case-incident-id'));
+        ).toContainElement(screen.getByTestId(INCIDENT_ID_TEST_ID));
         expect(screen.getByTestId('test-case-incident-actions')).toHaveClass(
           'tw:lg:w-80'
         );
         expect(screen.getByTestId('test-case-incident-status')).toHaveClass(
-          'tw:self-start'
+          TOP_ALIGNED_CLASS
         );
         expect(
           screen.getByTestId('test-case-incident-status').firstElementChild
@@ -199,7 +207,7 @@ describe('TestCaseLastRunBanner', () => {
         const viewIncidentButton = screen.getByTestId('view-incident-button');
 
         expect(viewIncidentButton).toHaveTextContent('label.view-entity');
-        expect(viewIncidentButton).toHaveClass('tw:text-xs');
+        expect(viewIncidentButton).toHaveClass(TEXT_XS_CLASS);
         expect(viewIncidentButton).not.toHaveAttribute('href');
 
         fireEvent.click(viewIncidentButton);
@@ -223,10 +231,10 @@ describe('TestCaseLastRunBanner', () => {
       testCaseStatus: TestCaseStatus.Aborted,
     });
 
-    expect(screen.getByTestId('test-case-last-run-status')).toHaveTextContent(
+    expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveTextContent(
       'label.aborted'
     );
-    expect(screen.getByTestId('test-case-last-run-status')).toHaveClass(
+    expect(screen.getByTestId(LAST_RUN_STATUS_TEST_ID)).toHaveClass(
       'tw:text-warning-primary'
     );
     expect(
@@ -244,7 +252,7 @@ describe('TestCaseLastRunBanner', () => {
         result: 'Found 110 rows vs. the expected 10,000',
         testCaseStatus: TestCaseStatus.Failed,
         testResultValue: [{ name: 'rowCount', value: '110' }],
-        timestamp: 1_786_001_601_000,
+        timestamp: TEST_CASE_RESULT_TIMESTAMP,
       },
       testCaseStatus: TestCaseStatus.Failed,
     });
@@ -263,7 +271,7 @@ describe('TestCaseLastRunBanner', () => {
         result,
         testCaseStatus: TestCaseStatus.Failed,
         testResultValue: [{ name: 'rowCount', value: '5' }],
-        timestamp: 1_786_001_601_000,
+        timestamp: TEST_CASE_RESULT_TIMESTAMP,
       },
       testCaseStatus: TestCaseStatus.Failed,
     });
@@ -278,7 +286,7 @@ describe('TestCaseLastRunBanner', () => {
     renderBanner({
       testCaseResult: {
         testCaseStatus: TestCaseStatus.Queued,
-        timestamp: 1_786_001_601_000,
+        timestamp: TEST_CASE_RESULT_TIMESTAMP,
       },
       testCaseStatus: TestCaseStatus.Queued,
     });
@@ -298,7 +306,7 @@ describe('TestCaseLastRunBanner', () => {
     expect(
       screen.queryByTestId(LAST_RUN_INCIDENT_TEST_ID)
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('test-case-next-run')).toHaveTextContent(
+    expect(screen.getByTestId(NEXT_RUN_TEST_ID)).toHaveTextContent(
       'label.next · label.running-now'
     );
   });
@@ -327,16 +335,16 @@ describe('TestCaseLastRunBanner', () => {
     expect(screen.getByTestId('test-case-last-run-prefix')).toHaveClass(
       'tw:text-sm'
     );
-    expect(screen.getByTestId('test-case-last-run-icon')).toHaveClass(
+    expect(screen.getByTestId(LAST_RUN_ICON_TEST_ID)).toHaveClass(
       'tw:size-8',
       'tw:rounded-lg',
-      'tw:self-start'
+      TOP_ALIGNED_CLASS
     );
-    expect(screen.getByTestId('test-case-last-run-summary')).toHaveClass(
+    expect(screen.getByTestId(LAST_RUN_SUMMARY_TEST_ID)).toHaveClass(
       'tw:py-3.5'
     );
     expect(screen.getByText('message.test-case-not-run-yet')).toHaveClass(
-      'tw:text-xs'
+      TEXT_XS_CLASS
     );
   });
 
@@ -352,7 +360,7 @@ describe('TestCaseLastRunBanner', () => {
       testCaseStatusData: undefined,
     });
 
-    const nextRun = screen.getByTestId('test-case-next-run');
+    const nextRun = screen.getByTestId(NEXT_RUN_TEST_ID);
 
     expect(nextRun).toHaveTextContent('label.not-scheduled');
     expect(nextRun).not.toHaveTextContent('label.in-lowercase');

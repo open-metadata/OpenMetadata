@@ -20,6 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
+import type { TFunction } from 'i18next';
 import { isUndefined, toString } from 'lodash';
 import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +48,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import type { TestCase } from '../../../generated/tests/testCase';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
@@ -104,6 +106,138 @@ const fetchNextTestCaseRunTimestamp = async (testSuiteFqns: string[]) => {
   return nextRuns.length ? Math.min(...nextRuns) : undefined;
 };
 
+type TestCaseDetailPageData = ReturnType<typeof useTestCaseDetailPage>;
+
+const shouldFetchNextRun = ({
+  activeTab,
+  dimensionKey,
+  isVersionPage,
+  testSuiteFqns,
+}: {
+  activeTab: TestCaseDetailPageData['activeTab'];
+  dimensionKey: TestCaseDetailPageData['dimensionKey'];
+  isVersionPage: boolean;
+  testSuiteFqns: string[];
+}) =>
+  Boolean(
+    testSuiteFqns.length &&
+      !isVersionPage &&
+      !dimensionKey &&
+      activeTab === TestCasePageTabs.TEST_CASE_RESULTS
+  );
+
+const getIncidentManagerPageTitle = (
+  t: TFunction,
+  isVersionPage: boolean,
+  testCase: TestCase
+) =>
+  t(
+    isVersionPage
+      ? 'label.entity-version-detail-plural'
+      : 'label.entity-detail-plural',
+    {
+      entity: getEntityName(testCase) || t('label.test-case'),
+    }
+  );
+
+const getTabBarExtraContent = ({
+  isExpandViewSupported,
+  isTabExpanded,
+  t,
+  toggleTabExpanded,
+}: {
+  isExpandViewSupported: TestCaseDetailPageData['isExpandViewSupported'];
+  isTabExpanded: TestCaseDetailPageData['isTabExpanded'];
+  t: TFunction;
+  toggleTabExpanded: TestCaseDetailPageData['toggleTabExpanded'];
+}) => {
+  if (!isExpandViewSupported) {
+    return null;
+  }
+
+  return (
+    <AlignRightIconButton
+      className={isTabExpanded ? 'rotate-180' : ''}
+      title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+      onClick={toggleTabExpanded}
+    />
+  );
+};
+
+const TestCaseHeaderTitle = ({
+  displayName,
+  hasCopied,
+  testCaseName,
+  onCopy,
+}: {
+  displayName: TestCaseDetailPageData['displayName'];
+  hasCopied: boolean;
+  testCaseName: TestCase['name'];
+  onCopy: () => Promise<void>;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      align="center"
+      className="tw:min-w-0"
+      data-testid="entity-header-title"
+      gap={3}>
+      <Box className="tw:min-w-0" direction="col">
+        {displayName && (
+          <Typography
+            as="h2"
+            className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
+            data-testid="entity-header-display-name"
+            ellipsis={{
+              tooltip: breakableTooltipText(stringToHTML(displayName)),
+            }}
+            size="text-lg"
+            weight="bold">
+            {stringToHTML(displayName)}
+          </Typography>
+        )}
+        <Typography
+          as={displayName ? 'span' : 'h2'}
+          className={classNames(
+            'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
+            {
+              'tw:text-primary': !displayName,
+              'tw:text-tertiary': displayName,
+            }
+          )}
+          data-testid="entity-header-name"
+          ellipsis={{ tooltip: breakableTooltipText(testCaseName) }}
+          size={displayName ? 'text-sm' : 'text-lg'}
+          weight={displayName ? 'medium' : 'bold'}>
+          {testCaseName}
+        </Typography>
+      </Box>
+      <Tooltip
+        placement="top"
+        title={
+          hasCopied
+            ? t('message.link-copy-to-clipboard')
+            : t('label.copy-item', {
+                item: t('label.url-uppercase'),
+              })
+        }>
+        <Button
+          aria-label={t('label.copy-item', {
+            item: t('label.url-uppercase'),
+          })}
+          color="tertiary"
+          data-testid="entity-header-copy-button"
+          iconLeading={Copy01}
+          size="xs"
+          type="button"
+          onClick={onCopy}
+        />
+      </Tooltip>
+    </Box>
+  );
+};
+
 const IncidentManagerDetailPage = ({
   isVersionPage = false,
 }: {
@@ -157,12 +291,12 @@ const IncidentManagerDetailPage = ({
   const { data: nextRunTimestamp } = useQuery({
     queryKey: ['test-case-next-run', testCaseFQN, testSuiteFqns],
     queryFn: () => fetchNextTestCaseRunTimestamp(testSuiteFqns),
-    enabled: Boolean(
-      testSuiteFqns.length &&
-        !isVersionPage &&
-        !dimensionKey &&
-        activeTab === TestCasePageTabs.TEST_CASE_RESULTS
-    ),
+    enabled: shouldFetchNextRun({
+      activeTab,
+      dimensionKey,
+      isVersionPage,
+      testSuiteFqns,
+    }),
   });
 
   const tabItems: TabsProps['items'] = useMemo(
@@ -322,14 +456,7 @@ const IncidentManagerDetailPage = ({
 
   return (
     <PageLayoutV1
-      pageTitle={t(
-        isVersionPage
-          ? 'label.entity-version-detail-plural'
-          : 'label.entity-detail-plural',
-        {
-          entity: getEntityName(testCase) || t('label.test-case'),
-        }
-      )}>
+      pageTitle={getIncidentManagerPageTitle(t, isVersionPage, testCase)}>
       <Box
         className={classNames({
           'version-data': isVersionPage,
@@ -380,65 +507,12 @@ const IncidentManagerDetailPage = ({
                 justify="center">
                 <TestCaseIcon className="tw:size-5" />
               </Box>
-              <Box
-                align="center"
-                className="tw:min-w-0"
-                data-testid="entity-header-title"
-                gap={3}>
-                <Box className="tw:min-w-0" direction="col">
-                  {displayName && (
-                    <Typography
-                      as="h2"
-                      className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
-                      data-testid="entity-header-display-name"
-                      ellipsis={{
-                        tooltip: breakableTooltipText(
-                          stringToHTML(displayName)
-                        ),
-                      }}
-                      size="text-lg"
-                      weight="bold">
-                      {stringToHTML(displayName)}
-                    </Typography>
-                  )}
-                  <Typography
-                    as={displayName ? 'span' : 'h2'}
-                    className={classNames(
-                      'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
-                      {
-                        'tw:text-primary': !displayName,
-                        'tw:text-tertiary': displayName,
-                      }
-                    )}
-                    data-testid="entity-header-name"
-                    ellipsis={{ tooltip: breakableTooltipText(testCase?.name) }}
-                    size={displayName ? 'text-sm' : 'text-lg'}
-                    weight={displayName ? 'medium' : 'bold'}>
-                    {testCase?.name}
-                  </Typography>
-                </Box>
-                <Tooltip
-                  placement="top"
-                  title={
-                    hasCopied
-                      ? t('message.link-copy-to-clipboard')
-                      : t('label.copy-item', {
-                          item: t('label.url-uppercase'),
-                        })
-                  }>
-                  <Button
-                    aria-label={t('label.copy-item', {
-                      item: t('label.url-uppercase'),
-                    })}
-                    color="tertiary"
-                    data-testid="entity-header-copy-button"
-                    iconLeading={Copy01}
-                    size="xs"
-                    type="button"
-                    onClick={handleCopyEntityUrl}
-                  />
-                </Tooltip>
-              </Box>
+              <TestCaseHeaderTitle
+                displayName={displayName}
+                hasCopied={hasCopied}
+                testCaseName={testCase.name}
+                onCopy={handleCopyEntityUrl}
+              />
             </Box>
             <Box align="center" className="tw:shrink-0" gap={2}>
               {!isVersionPage && (
@@ -476,17 +550,12 @@ const IncidentManagerDetailPage = ({
             className="tabs-new"
             data-testid="tabs"
             items={tabItems}
-            tabBarExtraContent={
-              isExpandViewSupported && (
-                <AlignRightIconButton
-                  className={isTabExpanded ? 'rotate-180' : ''}
-                  title={
-                    isTabExpanded ? t('label.collapse') : t('label.expand')
-                  }
-                  onClick={toggleTabExpanded}
-                />
-              )
-            }
+            tabBarExtraContent={getTabBarExtraContent({
+              isExpandViewSupported,
+              isTabExpanded,
+              t,
+              toggleTabExpanded,
+            })}
             onChange={handleTabChange}
           />
         </div>

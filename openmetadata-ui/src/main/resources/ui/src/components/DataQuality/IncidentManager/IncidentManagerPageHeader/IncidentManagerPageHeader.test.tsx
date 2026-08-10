@@ -51,6 +51,10 @@ const mockUseActivityFeedProviderValue = {
 
 const mockOnOwnerUpdate = jest.fn();
 const mockFetchTaskCount = jest.fn();
+const INCIDENT_ID = '123';
+const OWNER_COMPONENT_TEST_ID = 'owner-component';
+const SEVERITY_COMPONENT_TEST_ID = 'severity-component';
+const INCIDENT_STATUS_COMPONENT_TEST_ID = 'incident-status-component';
 
 type IncidentManagerPageHeaderHarnessProps = Omit<
   IncidentManagerPageHeaderProps,
@@ -164,10 +168,14 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
     .fn()
     .mockImplementation(({ children, onUpdate, placeHolder, ...rest }) => (
-      <div {...rest} data-testid="owner-component" onClick={onUpdate}>
+      <button
+        {...rest}
+        data-testid={OWNER_COMPONENT_TEST_ID}
+        type="button"
+        onClick={onUpdate}>
         <div data-testid="placeholder">{placeHolder}</div>
         {children}
-      </div>
+      </button>
     )),
 }));
 
@@ -175,9 +183,11 @@ jest.mock('../Severity/Severity.component', () => {
   return jest.fn().mockImplementation(({ headerName, onSubmit }) => (
     <div>
       <div data-testid="severity-header">{headerName}</div>
-      <div>Severity.component</div>
+      <div data-testid={SEVERITY_COMPONENT_TEST_ID} />
       <button
+        aria-label={headerName}
         data-testid="update-severity"
+        type="button"
         onClick={() => onSubmit(Severities.Severity4)}
       />
     </div>
@@ -188,9 +198,11 @@ jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
   return jest.fn().mockImplementation(({ headerName, onSubmit }) => (
     <div>
       <div data-testid="status-header">{headerName}</div>
-      <div>TestCaseIncidentManagerStatus.component</div>
+      <div data-testid={INCIDENT_STATUS_COMPONENT_TEST_ID} />
       <button
+        aria-label={headerName}
         data-testid="test-case-incident-manager-status"
+        type="button"
         onClick={() => onSubmit(MOCK_TEST_CASE_RESOLUTION_STATUS[1])}
       />
     </div>
@@ -198,7 +210,7 @@ jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
 });
 
 const mockUseTestCaseStore = {
-  testCase: { ...MOCK_TEST_CASE_DATA, incidentId: '123' },
+  testCase: { ...MOCK_TEST_CASE_DATA, incidentId: INCIDENT_ID },
 };
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
@@ -231,24 +243,24 @@ describe('Incident Manager Page Header component', () => {
   it('getIncidentTaskByStateId should be call on mount', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    expect(getIncidentTaskByStateId).toHaveBeenCalledWith('123');
+    expect(getIncidentTaskByStateId).toHaveBeenCalledWith(INCIDENT_ID);
   });
 
   it('getListTestCaseIncidentByStateId should be call on mount', async () => {
     render(
       <IncidentManagerPageHeader
         {...mockProps}
-        testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: '123' }}
+        testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: INCIDENT_ID }}
       />
     );
 
-    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith('123');
+    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith(INCIDENT_ID);
   });
 
   it('should trigger onOwnerUpdate', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId('owner-component'));
+    fireEvent.click(screen.getByTestId(OWNER_COMPONENT_TEST_ID));
 
     expect(mockOnOwnerUpdate).toHaveBeenCalled();
   });
@@ -258,7 +270,7 @@ describe('Incident Manager Page Header component', () => {
       render(
         <IncidentManagerPageHeader
           {...mockProps}
-          testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: '123' }}
+          testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: INCIDENT_ID }}
         />
       );
     });
@@ -279,7 +291,7 @@ describe('Incident Manager Page Header component', () => {
       render(
         <IncidentManagerPageHeader
           {...mockProps}
-          testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: '123' }}
+          testCaseData={{ ...MOCK_TEST_CASE_DATA, incidentId: INCIDENT_ID }}
         />
       );
     });
@@ -296,7 +308,7 @@ describe('Incident Manager Page Header component', () => {
   it('Component should render without status details', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    expect(screen.getByTestId('owner-component')).toBeInTheDocument();
+    expect(screen.getByTestId(OWNER_COMPONENT_TEST_ID)).toBeInTheDocument();
     // If Table FQN is present
     expect(screen.getByText('label.table')).toBeInTheDocument();
     expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
@@ -312,26 +324,26 @@ describe('Incident Manager Page Header component', () => {
           {...mockProps}
           testCaseData={{
             ...MOCK_TEST_CASE_DATA,
-            incidentId: '123',
+            incidentId: INCIDENT_ID,
           }}
         />
       );
     });
 
-    expect(screen.getAllByTestId('owner-component')).toHaveLength(2);
+    expect(screen.getAllByTestId(OWNER_COMPONENT_TEST_ID)).toHaveLength(2);
     // Incident
     expect(screen.getByText('label.incident')).toBeInTheDocument();
     expect(screen.getByText('#9')).toBeInTheDocument();
     // Incident
     expect(screen.getByText('label.incident-status')).toBeInTheDocument();
     expect(
-      screen.getByText('TestCaseIncidentManagerStatus.component')
+      screen.getByTestId(INCIDENT_STATUS_COMPONENT_TEST_ID)
     ).toBeInTheDocument();
     // Assignee
     expect(screen.getByTestId('assignee')).toBeInTheDocument();
     // Severity
     expect(screen.getByText('label.severity')).toBeInTheDocument();
-    expect(screen.getByText('Severity.component')).toBeInTheDocument();
+    expect(screen.getByTestId(SEVERITY_COMPONENT_TEST_ID)).toBeInTheDocument();
     // If Table FQN is present
     expect(screen.getByText('label.table')).toBeInTheDocument();
     expect(screen.getByText('getNameFromFQN')).toBeInTheDocument();
@@ -354,6 +366,6 @@ describe('Incident Manager Page Header component', () => {
 
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    expect(getIncidentTaskByStateId).toHaveBeenCalledWith('123');
+    expect(getIncidentTaskByStateId).toHaveBeenCalledWith(INCIDENT_ID);
   });
 });

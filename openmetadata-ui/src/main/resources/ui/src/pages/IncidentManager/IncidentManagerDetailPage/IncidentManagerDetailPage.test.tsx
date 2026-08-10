@@ -25,11 +25,17 @@ import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
 
+const TEST_CASE_FQN =
+  'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
+const TEST_SUITE_FQN = 'sample_data.ecommerce_db.shopify.dim_address.testSuite';
+const ERROR_PLACEHOLDER_TEST_ID = 'error-placeholder';
+const HEADER_BREADCRUMB_TEST_ID = 'header-breadcrumb';
+const INCIDENT_MANAGER_HEADER_TEST_ID = 'incident-manager-page-header';
+
 const mockTestCaseData = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
   name: 'table_column_count_equals',
-  fullyQualifiedName:
-    'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
+  fullyQualifiedName: TEST_CASE_FQN,
   description: 'test the number of column in table',
   testDefinition: {
     id: '48063740-ac35-4854-9ab3-b1b542c820fe',
@@ -47,9 +53,8 @@ const mockTestCaseData = {
   testSuite: {
     id: 'fe44ef1a-1b83-4872-bef6-fbd1885986b8',
     type: 'testSuite',
-    name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-    fullyQualifiedName:
-      'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+    name: TEST_SUITE_FQN,
+    fullyQualifiedName: TEST_SUITE_FQN,
     description: 'This is an basic test suite linked to an entity',
     deleted: false,
     href: 'http://localhost:8585/api/v1/dataQuality/testSuites/fe44ef1a-1b83-4872-bef6-fbd1885986b8',
@@ -146,12 +151,8 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
 );
 jest.mock('../../../components/common/Loader/Loader', () => ({
   __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="loader">Loader</div>),
-  PageLoader: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  default: jest.fn().mockImplementation(() => <div data-testid="loader" />),
+  PageLoader: jest.fn().mockImplementation(() => <div data-testid="loader" />),
 }));
 jest.mock(
   '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
@@ -159,10 +160,14 @@ jest.mock(
     __esModule: true,
     default: jest
       .fn()
-      .mockImplementation(() => <div>IncidentManagerPageHeader</div>),
+      .mockImplementation(() => (
+        <div data-testid={INCIDENT_MANAGER_HEADER_TEST_ID} />
+      )),
     IncidentManagerPageHeaderView: jest
       .fn()
-      .mockImplementation(() => <div>IncidentManagerPageHeader</div>),
+      .mockImplementation(() => (
+        <div data-testid={INCIDENT_MANAGER_HEADER_TEST_ID} />
+      )),
   })
 );
 jest.mock(
@@ -176,26 +181,39 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(({ type }) => <div>ErrorPlaceHolder {type}</div>)
+      .mockImplementation(({ type }) => (
+        <div data-testid={ERROR_PLACEHOLDER_TEST_ID} data-type={type} />
+      ))
 );
 jest.mock(
   '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
-  () => jest.fn().mockImplementation(() => <div>HeaderBreadcrumb</div>)
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => <div data-testid={HEADER_BREADCRUMB_TEST_ID} />)
 );
 jest.mock(
   '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
-  () => jest.fn().mockImplementation(() => <div>TestCaseResultTab</div>)
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => <div data-testid="test-case-result-tab" />)
 );
 jest.mock(
   '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component',
-  () => jest.fn().mockImplementation(() => <div>TestCaseIncidentTab</div>)
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => <div data-testid="test-case-incident-tab" />)
 );
 jest.mock(
   '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
+  OwnerLabel: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="owner-label" />),
 }));
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   convertMillisecondsToHumanReadableFormat: jest.fn().mockReturnValue('23m'),
@@ -228,7 +246,7 @@ describe('IncidentManagerDetailPage', () => {
   beforeEach(() => {
     mockUseTestCase.testCase = mockTestCaseData;
     jest.mocked(useParams).mockReturnValue({
-      fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
+      fqn: TEST_CASE_FQN,
       tab: TestCasePageTabs.TEST_CASE_RESULTS,
     });
     jest.mocked(useTestCaseIncidentHeader).mockReturnValue({
@@ -263,12 +281,14 @@ describe('IncidentManagerDetailPage', () => {
       await screen.findByTestId('incident-manager-details-page-container')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('tabs')).toBeInTheDocument();
-    expect(await screen.findByText('HeaderBreadcrumb')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(HEADER_BREADCRUMB_TEST_ID)
+    ).toBeInTheDocument();
     expect(
       await screen.findByTestId('entity-header-title')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('IncidentManagerPageHeader')
+      await screen.findByTestId(INCIDENT_MANAGER_HEADER_TEST_ID)
     ).toBeInTheDocument();
   });
 
@@ -312,7 +332,7 @@ describe('IncidentManagerDetailPage', () => {
       arrQueryFields: ['airflowConfig'],
       limit: 100,
       pipelineType: ['TestSuite'],
-      testSuite: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      testSuite: TEST_SUITE_FQN,
     });
     expect(getNextCronRunTimestamp).toHaveBeenCalledWith('10 * * * *', 'UTC');
     expect(await screen.findByTestId('test-case-next-run')).toHaveTextContent(
@@ -327,7 +347,7 @@ describe('IncidentManagerDetailPage', () => {
 
   it('should not render the last run banner inside the incident tab', async () => {
     jest.mocked(useParams).mockReturnValue({
-      fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
+      fqn: TEST_CASE_FQN,
       tab: TestCasePageTabs.ISSUES,
     });
 
@@ -347,8 +367,8 @@ describe('IncidentManagerDetailPage', () => {
     });
 
     expect(
-      await screen.findByText('ErrorPlaceHolder PERMISSION')
-    ).toBeInTheDocument();
+      await screen.findByTestId(ERROR_PLACEHOLDER_TEST_ID)
+    ).toHaveAttribute('data-type', 'PERMISSION');
 
     mockUseTestCase.testCasePermission = MOCK_PERMISSIONS;
   });
@@ -363,7 +383,9 @@ describe('IncidentManagerDetailPage', () => {
       render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(ERROR_PLACEHOLDER_TEST_ID)
+    ).toBeInTheDocument();
 
     mockUseTestCase.testCase = mockTestCaseData;
   });
