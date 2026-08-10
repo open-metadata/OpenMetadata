@@ -15,6 +15,7 @@ Fivetran source to extract metadata
 import traceback
 from collections import Counter
 from datetime import datetime
+from itertools import dropwhile
 from typing import Iterable, List, Optional, TypeVar, Union, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -91,6 +92,20 @@ HISTORICAL_SYNC_FIELDS = [
     ("succeeded_at", StatusType.Successful),
     ("failed_at", StatusType.Failed),
 ]
+
+# Fivetran-side disables ("schema/table disabled in Fivetran") are deliberate
+# configuration, not defects - warning on them trains operators to ignore the
+# warning. Only resolution failures mean the connector is misconfigured on the
+# OpenMetadata side; "self-referencing edge" belongs here too, since under the
+# empty-service-name fallback it usually means first-match-wins resolved both
+# ends to the same entity, a real resolution problem.
+ACTIONABLE_SKIP_REASONS = frozenset(
+    {
+        "source entity not found",
+        "destination entity not found",
+        "self-referencing edge",
+    }
+)
 
 
 # Constrained (not just bound) so isinstance(x, entity_type) narrows `x` to the concrete
@@ -400,7 +415,19 @@ class FivetranSource(PipelineServiceSource):
                     continue
 
                 if is_messaging_destination:
-                    to_entity = self._resolve_topic(topic_name=f"{destination_schema_name}.{destination_table_name}")
+                    # Guard against fabricating a "None.table" / "schema.None" search string
+                    # when name_in_destination is absent - fall through to the not-found skip below.
+                    to_entity = (
+                        self._resolve_topic(
+                            topic_name=(
+                                f"{destination_schema_name}.{destination_table_name}"
+                                if destination_schema_name
+                                else destination_table_name
+                            )
+                        )
+                        if destination_table_name
+                        else None
+                    )
                 else:
                     to_entity = self._resolve_table(
                         table_name=destination_table_name,
@@ -423,14 +450,23 @@ class FivetranSource(PipelineServiceSource):
                     skip_reasons["self-referencing edge"] += 1
                     continue
 
-                col_lineage = self._fetch_column_lineage(
-                    pipeline_details=pipeline_details,
-                    pipeline_name=pipeline_name,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    from_entity=from_entity,
-                    to_entity=to_entity,
-                )
+                try:
+                    col_lineage = self._fetch_column_lineage(
+                        pipeline_details=pipeline_details,
+                        pipeline_name=pipeline_name,
+                        schema_name=schema_name,
+                        table_name=table_name,
+                        from_entity=from_entity,
+                        to_entity=to_entity,
+                    )
+                except Exception as exc:
+                    # Column-config endpoint isn't supported for every connector type
+                    # (e.g. messaging sources); best-effort - keep the entity-level edge.
+                    logger.warning(
+                        f"Column lineage skipped for [{schema_name}].[{table_name}] in [{pipeline_name}]: {exc}"
+                    )
+                    logger.debug(traceback.format_exc())
+                    col_lineage = []
 
                 if pipeline_entity is None:
                     pipeline_entity = self._get_pipeline_entity()
@@ -459,11 +495,14 @@ class FivetranSource(PipelineServiceSource):
                     )
                 )  # type: ignore
 
-        if not edge_count and skip_reasons:
-            reason, count = skip_reasons.most_common(1)[0]
+        actionable_reasons = Counter(
+            {reason: count for reason, count in skip_reasons.items() if reason in ACTIONABLE_SKIP_REASONS}
+        )
+        if not edge_count and actionable_reasons:
+            reason, count = actionable_reasons.most_common(1)[0]
             logger.warning(
                 f"Pipeline [{pipeline_name}] produced no lineage."
-                f" Most common reason: {reason} ({count} of {sum(skip_reasons.values())} candidates)."
+                f" Most common actionable reason: {reason} ({count} of {sum(skip_reasons.values())} candidates)."
                 " If dbServiceNames/messagingServiceNames are unset, entities are matched across all"
                 " services; if they are set, verify the names match the services holding these entities."
             )
@@ -516,11 +555,16 @@ class FivetranSource(PipelineServiceSource):
         self,
         entity_type: type[EntityT],
         parts: List[Optional[str]],  # noqa: UP006, UP045
-    ) -> EntityT | None:
-        # search_in_any_service pads missing parent levels with `*`, so pass only
-        # known parts. Quoting matters: a dotted topic name would otherwise be
-        # split into service.topic instead of being treated as one FQN part.
-        search_string = fqn.FQN_SEPARATOR.join(fqn.quote_name(part) for part in parts if part)
+    ) -> Optional[EntityT]:  # noqa: UP045
+        # search_in_any_service pads missing parent levels with `*` at the front only
+        # (prefix_entity_for_wildcard_search), so leading unknown parts can be dropped -
+        # padding fills them back in. An interior gap must NOT be dropped: doing so
+        # shifts a later, known part into the missing slot (e.g. database landing in the
+        # schema slot). A missing leaf can't be searched for at all.
+        if not parts or not parts[-1]:
+            return None
+        known_parts = list(dropwhile(lambda part: not part, parts))
+        search_string = fqn.FQN_SEPARATOR.join(fqn.quote_name(part) if part else "*" for part in known_parts)
         result = self.metadata.search_in_any_service(
             entity_type=entity_type,
             fqn_search_string=search_string,
