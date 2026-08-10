@@ -347,6 +347,31 @@ public class SearchSourceBuilderFactoryTest {
     assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
   }
 
+  @Test
+  public void testColumnIndexUsesStructuredDataAssetBuilder() {
+    // Regression for the Explore column count-vs-results mismatch: index=tableColumn must go
+    // through the structured data-asset builder (operator AND over fqnParts) so an FQN query
+    // matches the one column precisely. The old permissive OR multi_match had no fqnParts and
+    // matched every column that shared a parent-name token (returned the whole index).
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String osQuery =
+        serializeOpenSearchRequest(
+            osFactory.getSearchSourceBuilderV2("tableColumn", "customer orders", 0, 15));
+    String esQuery =
+        esFactory
+            .getSearchSourceBuilderV2("tableColumn", "customer orders", 0, 15)
+            .query()
+            .toString();
+
+    assertTrue(osQuery.contains("fqnParts"), osQuery);
+    assertTrue(osQuery.contains("\"operator\":\"and\""), osQuery);
+    assertTrue(esQuery.contains("fqnParts"), esQuery);
+    assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
+  }
+
   private static String serializeOpenSearchRequest(OpenSearchRequestBuilder requestBuilder) {
     JacksonJsonpMapper mapper = new JacksonJsonpMapper();
     StringWriter writer = new StringWriter();

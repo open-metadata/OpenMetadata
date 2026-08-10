@@ -40,10 +40,10 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const renewToken = async () => {
       try {
-        const existingIdToken = await oktaAuth.tokenManager.get('idToken');
-        const existingAccessToken = await oktaAuth.tokenManager.get(
-          'accessToken'
-        );
+        const [existingIdToken, existingAccessToken] = await Promise.all([
+          oktaAuth.tokenManager.get('idToken'),
+          oktaAuth.tokenManager.get('accessToken'),
+        ]);
 
         // Add fallback if renewToken fails
         // Redirect to sign-in if no tokens exist
