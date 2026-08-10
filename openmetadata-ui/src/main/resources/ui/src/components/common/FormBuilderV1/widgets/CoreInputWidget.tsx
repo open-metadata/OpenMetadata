@@ -97,7 +97,6 @@ const CoreInputWidget = ({
           </Tooltip>
         </div>
       ) : null}
-      {}
       <Input
         aria-label={showTooltipRow ? widgetLabel : undefined}
         autoFocus={autofocus}
