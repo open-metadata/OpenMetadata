@@ -447,12 +447,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     <PageLayoutV1
       fullHeight
       mainContainerClassName="workflow-builder-layout"
-      pageContainerStyle={{
-        height: 'calc(100vh - var(--ant-navbar-height))',
-        overflow: 'hidden',
-      }}
-      pageTitle={t('label.workflow-plural')}
-      variant={isAiMode ? 'compact' : 'default'}>
+      pageTitle={t('label.workflow-plural')}>
       {isConnectionModalOpen && (
         <div className="tw:fixed tw:inset-0 tw:bg-black/30 tw:z-9999" />
       )}

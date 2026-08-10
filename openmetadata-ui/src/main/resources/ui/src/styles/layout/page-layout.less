@@ -20,6 +20,36 @@
   overflow-x: hidden;
 }
 
+// fullHeight mode: the page container is pinned to the viewport
+// (100vh - var(--ant-navbar-height)) and the center column becomes a
+// flex chain so the last content row absorbs the remaining height.
+.full-height-wrapper {
+  .page-layout-v1-center.page-layout-v1-vertical-scroll {
+    overflow: hidden;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-layout-v1-center > .ant-row {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-layout-v1-center .ant-row .ant-col {
+    flex: none;
+  }
+
+  .page-layout-v1-center .ant-row .ant-col:last-child {
+    min-height: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 #page-alert {
   position: sticky;
   top: 0px;

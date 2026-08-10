@@ -117,8 +117,7 @@ const OntologyExplorerPage: React.FC = () => {
       className="ontology-explorer-page"
       fullHeight={isAiMode}
       mainContainerClassName="ontology-explorer-page-layout"
-      pageTitle={t('label.ontology-explorer')}
-      variant={isAiMode ? 'compact' : 'default'}>
+      pageTitle={t('label.ontology-explorer')}>
       <Box
         className={
           isAiMode ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col' : undefined

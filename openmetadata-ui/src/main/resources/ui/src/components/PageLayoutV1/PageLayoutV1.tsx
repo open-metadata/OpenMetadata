@@ -23,6 +23,7 @@ import {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
@@ -49,48 +50,6 @@ export const pageContainerStyles: CSSProperties = {
   overflow: 'hidden',
 };
 
-const FullHeightWrapper: FC<{
-  $wrapperClassName?: string;
-  children: ReactNode;
-}> = ({ $wrapperClassName, children }) => {
-  const scopedStyles = useMemo(() => {
-    if (!$wrapperClassName) {
-      return '';
-    }
-
-    return `
-      .full-height-wrapper .page-layout-v1-vertical-scroll.${$wrapperClassName} {
-        overflow: hidden;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-      }
-      .full-height-wrapper .${$wrapperClassName} > .ant-row {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-      }
-      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col {
-        flex: none;
-      }
-      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col:last-child {
-        min-height: 0;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-      }
-    `;
-  }, [$wrapperClassName]);
-
-  return (
-    <div className="full-height-wrapper">
-      {scopedStyles && <style>{scopedStyles}</style>}
-      {children}
-    </div>
-  );
-};
-
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
   children,
@@ -103,11 +62,17 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
   fullHeight = false,
-  variant = 'default',
+  variant,
 }: PageLayoutProp) => {
   const location = useLocation();
+  const isAiMode = useIsAiMode();
 
-  const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'p-x-box';
+  // AI mode uses a uniform 8px page padding everywhere; classic mode keeps
+  // the 20px horizontal gutter. An explicit `variant` prop always wins so a
+  // page can opt out of the mode default.
+  const resolvedVariant = variant ?? (isAiMode ? 'compact' : 'default');
+
+  const paddingClassName = resolvedVariant === 'compact' ? 'tw:p-2' : 'p-x-box';
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -124,7 +89,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   const finalPageContainerStyle = useMemo(() => {
     if (fullHeight && !pageContainerStyle.height) {
       return {
-        height: 'calc(100vh - 64px)',
+        // The shell (classic navbar, AI content pane, …) owns
+        // --ant-navbar-height; never hardcode the chrome offset here.
+        height: 'calc(100vh - var(--ant-navbar-height))',
         overflow: 'hidden',
         ...pageContainerStyle,
       };
@@ -145,7 +112,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
       <Row
         className={classNames(paddingClassName, className)}
         data-testid="page-layout-v1"
-        data-variant={variant}
+        data-variant={resolvedVariant}
         style={{ ...pageContainerStyles, ...finalPageContainerStyle }}
         wrap={false}>
         {leftPanel && (
@@ -185,9 +152,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   );
 
   return fullHeight ? (
-    <FullHeightWrapper $wrapperClassName={mainContainerClassName}>
-      {content}
-    </FullHeightWrapper>
+    <div className="full-height-wrapper">{content}</div>
   ) : (
     content
   );

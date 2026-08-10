@@ -433,12 +433,8 @@ const DataProductListPage = ({
 };
 
 const DataProductListPageWithLayout: FC<DataProductListPageProps> = (props) => {
-  const isAiMode = useIsAiMode();
-
   return (
-    <PageLayoutV1
-      pageTitle={props.pageTitle}
-      variant={isAiMode ? 'compact' : 'default'}>
+    <PageLayoutV1 pageTitle={props.pageTitle}>
       <DataProductListPage {...props} />
     </PageLayoutV1>
   );

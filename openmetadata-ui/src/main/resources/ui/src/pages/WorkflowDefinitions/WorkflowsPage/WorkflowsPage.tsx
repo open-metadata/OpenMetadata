@@ -312,10 +312,9 @@ const WorkflowsPage = () => {
       pageContainerStyle={{
         paddingLeft: 0,
         paddingRight: 0,
-        ...(isAiMode ? { paddingBottom: 0, height: 'calc(100vh - 16px)' } : {}),
+        ...(isAiMode ? { paddingBottom: 0 } : {}),
       }}
-      pageTitle={t('label.workflow-plural')}
-      variant={isAiMode ? 'compact' : 'default'}>
+      pageTitle={t('label.workflow-plural')}>
       <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-2 tw:gap-4">
         {isAiMode ? (
           <HeaderShell

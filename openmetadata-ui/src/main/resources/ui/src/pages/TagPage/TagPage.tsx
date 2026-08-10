@@ -880,9 +880,7 @@ const TagPage = () => {
     ) : null;
 
   return (
-    <PageLayoutV1
-      pageTitle={tagItem.name}
-      variant={isAiMode ? 'compact' : 'default'}>
+    <PageLayoutV1 pageTitle={tagItem.name}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           {showAiHeader ? (

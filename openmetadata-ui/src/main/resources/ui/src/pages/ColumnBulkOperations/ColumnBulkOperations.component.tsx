@@ -31,9 +31,7 @@ const ColumnBulkOperations = () => {
   ];
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.column-bulk-operations')}
-      variant={isAiMode ? 'compact' : 'default'}>
+    <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
       <div className="tw:flex tw:flex-col tw:gap-4">
         {isAiMode ? (
           <HeaderShell
