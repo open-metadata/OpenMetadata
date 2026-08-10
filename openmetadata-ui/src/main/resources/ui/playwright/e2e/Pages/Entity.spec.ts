@@ -178,6 +178,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * and that removing the domain from the service removes it from the entity
      */
     test('Domain Propagation', async ({ page }) => {
+      test.slow(true);
       const serviceCategory = entity.serviceCategory;
       if (serviceCategory && 'service' in entity) {
         await visitServiceDetailsPage(
@@ -197,7 +198,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           page,
           EntityDataClass.domain1.responseData,
           entity.entityResponseData?.['fullyQualifiedName'] ??
-            entity.entityResponseData?.['name']
+            entity.entityResponseData?.['name'],
+          entity.exploreTabName
         );
 
         await visitServiceDetailsPage(

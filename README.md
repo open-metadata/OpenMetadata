@@ -187,6 +187,71 @@ Developers can use the AI SDK to build custom AI applications that use OpenMetad
 
 ---
 
+## Use It From Code
+
+Two packages, depending on what you're building.
+
+| Goal | Package | Install |
+|------|---------|---------|
+| Read/write metadata, lineage, glossary, quality | [`openmetadata-ingestion`](https://pypi.org/project/openmetadata-ingestion/) | `pip install "openmetadata-ingestion"` |
+| Give an LLM or agent governed access (MCP, LangChain) | [`data-ai-sdk`](https://pypi.org/project/data-ai-sdk/) | `pip install data-ai-sdk` |
+
+Also available: [`@openmetadata/ai-sdk`](https://www.npmjs.com/package/@openmetadata/ai-sdk) (TypeScript), [`org.open-metadata:ai-sdk`](https://central.sonatype.com/artifact/org.open-metadata/ai-sdk) (Java).
+
+### Python SDK — connect and read metadata
+
+Match the SDK version to your server version.
+
+```python
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection, AuthProvider,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+metadata = OpenMetadata(OpenMetadataConnection(
+    hostPort="http://localhost:8585/api",
+    authProvider=AuthProvider.openmetadata,
+    securityConfig=OpenMetadataJWTClientConfig(jwtToken="<your-token>"),
+))
+assert metadata.health_check()
+
+table = metadata.get_by_name(entity=Table, fqn="sample_data.ecommerce_db.shopify.raw_product_catalog")
+print(table.description, [c.name.root for c in table.columns])
+```
+
+Entities are hierarchical — a Table belongs to a Schema, which belongs to a Database, which belongs to a DatabaseService. Every entity references its parent by `fullyQualifiedName`.
+
+### AI SDK — give an agent governed context via MCP
+
+OpenMetadata exposes an [MCP server](https://modelcontextprotocol.io/) at `/mcp`. Unlike generic connectors that only read raw database schemas, it exposes semantic search, lineage traversal, glossary/classification, and metadata mutations as tools any LLM can call.
+
+```python
+from ai_sdk import AISdk, AISdkConfig
+
+client = AISdk.from_config(AISdkConfig.from_env())
+
+# Convert MCP tools to LangChain format — one line
+tools = client.mcp.as_langchain_tools()
+
+# Or call a tool directly
+result = client.mcp.call_tool("search_metadata", {"query": "customers"})
+```
+
+Works with LangChain and OpenAI function calling out of the box.
+
+### Docs & examples
+
+- **Python SDK reference:** https://docs.open-metadata.org/latest/sdk/python
+- **MCP server guide:** https://docs.open-metadata.org/latest/how-to-guides/mcp
+- **AI SDK (MCP tools + agents):** https://github.com/open-metadata/ai-sdk
+- **REST API:** https://docs.open-metadata.org/latest/main-concepts/metadata-standard/apis
+
+---
+
 ## What You Can Build
 
 ### AI Data Discovery

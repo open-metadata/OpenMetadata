@@ -210,7 +210,9 @@ const MarketplaceDomainsWidget = ({
           </Typography>
           <Typography
             as="span"
-            className="tw:text-sm tw:font-medium tw:text-text-primary">
+            className="tw:text-text-secondary"
+            size="text-sm"
+            weight="regular">
             {t('label.recently-created-entity', {
               entity: t('label.domain-plural'),
             })}

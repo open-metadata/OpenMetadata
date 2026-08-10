@@ -49,7 +49,12 @@ import './data-marketplace-page.less';
 // which is where drag and resize actually happen.
 const WIDGET_GAP = 30;
 
-const GRID_STYLE = { gap: WIDGET_GAP, marginTop: 8 };
+// In AI mode the caller's `HeaderShell` owns the 20px gap to the content below
+// through its own bottom margin, matching the Domains/Data Products list pages —
+// the column must not stack another offset on top of it. The classic hero keeps
+// the original 8px offset it was designed against.
+const AI_MODE_GRID_STYLE = { gap: WIDGET_GAP, marginTop: 0 };
+const CLASSIC_GRID_STYLE = { gap: WIDGET_GAP, marginTop: 8 };
 
 const normalizeLayout = (l: WidgetConfig[]) =>
   l
@@ -149,7 +154,7 @@ const DataMarketplacePage = ({
       <div className="tw:mb-8">
         {renderPageHeader ? (
           <div className={gridWrapperClassName} dir="ltr">
-            <div className="tw:p-2">{renderPageHeader()}</div>
+            <div className="tw:px-2 tw:pt-2">{renderPageHeader()}</div>
           </div>
         ) : (
           <div
@@ -171,7 +176,7 @@ const DataMarketplacePage = ({
           </div>
           <div
             className="grid-container p-x-box tw:flex tw:flex-col"
-            style={GRID_STYLE}>
+            style={renderPageHeader ? AI_MODE_GRID_STYLE : CLASSIC_GRID_STYLE}>
             {widgets}
           </div>
         </div>

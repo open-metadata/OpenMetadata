@@ -64,6 +64,8 @@ export interface CsvAsyncJob {
   logs?: CsvAsyncJobLog[];
 }
 
+export const isPollableCsvAsyncJobId = (jobId: string) => /^\d+$/.test(jobId);
+
 const CSV_DOCUMENTATION_FALLBACK_PATHS: Record<string, string> = {
   glossary: '/glossaries/documentation/csv',
   metric: '/metrics/documentation/csv',

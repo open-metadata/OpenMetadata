@@ -44,10 +44,12 @@ import {
   getClassificationTags,
   getGlossaryTags,
 } from '../../utils/TagsPureUtils';
+import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
-  COMPACT_CELL_WRAP_CLASS,
-  NAME_CELL_WRAP_CLASS,
+  CLIPPED_NAME_CLASS,
+  COMPACT_CELL_CLIP_CLASS,
+  NAME_CELL_CLIP_CLASS,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -118,7 +120,7 @@ const DataProductListPage = ({
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const showHeaderSearch = isAiMode && !renderPageHeader;
+  const showHeaderSearch = isAiMode;
 
   const [searchInputValue, setSearchInputValue] = useState(
     dataProductListing.urlState.searchQuery ?? ''
@@ -150,6 +152,10 @@ const DataProductListPage = ({
     },
   };
 
+  const headerSearch = showHeaderSearch ? (
+    <Input className="tw:w-72" {...searchInputProps} />
+  ) : undefined;
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
     descriptionMessageKey: 'message.data-product-description',
@@ -158,9 +164,7 @@ const DataProductListPage = ({
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
     variant: isAiMode ? 'search' : undefined,
-    search: showHeaderSearch ? (
-      <Input className="tw:w-72" {...searchInputProps} />
-    ) : undefined,
+    search: headerSearch,
     breadcrumb: headerBreadcrumb,
   });
 
@@ -197,17 +201,26 @@ const DataProductListPage = ({
 
           return (
             <Box
-              align="start"
-              className={NAME_CELL_WRAP_CLASS}
+              align="center"
+              className={NAME_CELL_CLIP_CLASS}
               direction="row"
               gap={3}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
               <Box className="tw:min-w-0" direction="col">
-                <Typography size="text-sm" weight="medium">
+                <Typography
+                  className={CLIPPED_NAME_CLASS}
+                  ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+                  size="text-sm"
+                  weight="medium">
                   {entityName}
                 </Typography>
                 {showName && (
-                  <Typography size="text-xs">{entity.name}</Typography>
+                  <Typography
+                    className={CLIPPED_NAME_CLASS}
+                    ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
+                    size="text-xs">
+                    {entity.name}
+                  </Typography>
                 )}
               </Box>
             </Box>
@@ -233,12 +246,19 @@ const DataProductListPage = ({
 
           return (
             <Box
-              align="start"
-              className={COMPACT_CELL_WRAP_CLASS}
+              align="center"
+              className={COMPACT_CELL_CLIP_CLASS}
               direction="row"
               gap={1}>
               <Globe01 size={16} style={{ flexShrink: 0 }} />
-              <Typography size="text-sm">
+              <Typography
+                className={CLIPPED_NAME_CLASS}
+                ellipsis={{
+                  tooltip: renderBreakableTooltip(
+                    domain.displayName || domain.name
+                  ),
+                }}
+                size="text-sm">
                 {domain.displayName || domain.name}
               </Typography>
             </Box>
@@ -383,6 +403,7 @@ const DataProductListPage = ({
             createPermission: permissions.dataProduct?.Create || false,
             count: dataProductListing.totalEntities,
             breadcrumb: headerBreadcrumb,
+            search: headerSearch,
           })
         : pageHeader}
 

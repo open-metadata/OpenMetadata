@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -25,6 +25,10 @@ import {
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
+import {
+  EntityTypeEndpoint,
+  ENTITY_PATH,
+} from '../support/entity/Entity.interface';
 import {
   clickOutside,
   descriptionBox,
@@ -70,6 +74,17 @@ const scrollIntoViewCenter = async (locator: Locator) => {
       element.scrollIntoView({ block: 'center', inline: 'center' })
     )
     .catch(() => undefined);
+};
+
+// The CSV jobs tray is position:fixed at bottom-right and can appear at any
+// moment during a test (mid-fill, mid-modal, mid-drag) as background jobs
+// complete. Injecting pointer-events:none once disables click interception for
+// the entire page session — no need to poll or dismiss at every step.
+const disableCsvJobsTrayInterception = async (page: Page) => {
+  await page.addStyleTag({
+    content:
+      '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }',
+  });
 };
 
 const getTextEditorCandidates = (page: Page) => {
@@ -983,6 +998,11 @@ export const startCsvPreviewAndWaitForGrid = async (
 ) => {
   const timeout = options?.timeout ?? 90000;
 
+  // Disable the CSV jobs tray's click interception for the entire page session.
+  // The tray can appear at any moment (mid-fill, mid-modal, mid-drag) so a
+  // one-shot CSS injection is more robust than polling at specific steps.
+  await disableCsvJobsTrayInterception(page);
+
   if (
     !(await waitForVisibleLocator(
       page.locator('.rdg-header-row').first(),
@@ -1411,6 +1431,105 @@ export const createCustomPropertiesForEntity = async (
   }
 
   return propertyListName;
+};
+
+export const createCustomPropertiesForEntityViaApi = async (
+  apiContext: APIRequestContext,
+  endpoint: EntityTypeEndpoint
+): Promise<{
+  propertyListName: Record<string, string>;
+  cleanup: (apiContext: APIRequestContext) => Promise<void>;
+}> => {
+  const propertiesResponse = await apiContext.get(
+    '/api/v1/metadata/types?category=field&limit=20'
+  );
+
+  if (!propertiesResponse.ok()) {
+    throw new Error(
+      `Failed to fetch field types: ${propertiesResponse.status()} ${propertiesResponse.statusText()}`
+    );
+  }
+
+  const properties = await propertiesResponse.json();
+
+  const entityTypeName = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
+  const entitySchemaResponse = await apiContext.get(
+    `/api/v1/metadata/types/name/${entityTypeName}`
+  );
+
+  if (!entitySchemaResponse.ok()) {
+    throw new Error(
+      `Failed to fetch entity schema for "${entityTypeName}": ${entitySchemaResponse.status()} ${entitySchemaResponse.statusText()}`
+    );
+  }
+
+  const entitySchema = await entitySchemaResponse.json();
+  const entityTypeId: string = entitySchema.id;
+
+  const typeMapping: Array<
+    [string, string, Record<string, unknown> | undefined]
+  > = [
+    [CUSTOM_PROPERTIES_TYPES.STRING, 'string', undefined],
+    [CUSTOM_PROPERTIES_TYPES.MARKDOWN, 'markdown', undefined],
+    [CUSTOM_PROPERTIES_TYPES.SQL_QUERY, 'sqlQuery', undefined],
+    [
+      CUSTOM_PROPERTIES_TYPES.TABLE,
+      'table-cp',
+      {
+        customPropertyConfig: {
+          config: { columns: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns },
+        },
+      },
+    ],
+  ];
+
+  const propertyListName: Record<string, string> = {};
+
+  for (const [displayName, apiTypeName, extraConfig] of typeMapping) {
+    const typeInfo = properties.data.find(
+      (item: { name: string }) => item.name === apiTypeName
+    );
+
+    if (!typeInfo) {
+      continue;
+    }
+
+    const propertyName = `pwcustomproperty${entityTypeName}test${uuid()}`;
+
+    const putResponse = await apiContext.put(
+      `/api/v1/metadata/types/${entityTypeId}`,
+      {
+        data: {
+          name: propertyName,
+          description: propertyName,
+          propertyType: { id: typeInfo.id, type: 'type' },
+          ...(extraConfig ?? {}),
+        },
+      }
+    );
+
+    if (!putResponse.ok()) {
+      throw new Error(
+        `Failed to create custom property "${propertyName}" (${apiTypeName}): ${putResponse.status()} ${putResponse.statusText()}`
+      );
+    }
+
+    propertyListName[displayName] = propertyName;
+  }
+
+  const cleanup = async (cleanupApiContext: APIRequestContext) => {
+    await Promise.all(
+      Object.values(propertyListName).map((propertyName) =>
+        cleanupApiContext.delete(
+          `/api/v1/metadata/types/${entityTypeId}/customProperties/${encodeURIComponent(
+            propertyName
+          )}`
+        )
+      )
+    );
+  };
+
+  return { propertyListName, cleanup };
 };
 
 export const fillRecursiveEntityTypeFQNDetails = async (

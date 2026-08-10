@@ -53,6 +53,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
@@ -587,7 +588,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                   g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName)).id(entityId),
               Map.class);
 
-      if (response != null && response.found()) {
+      // This path runs no query and has no SubjectContext, so it cannot tell whose restricted
+      // memory a document is: a non-org-wide memory reads as not found rather than leaking.
+      if (response != null
+          && response.found()
+          && ContextMemorySearchVisibility.isOrgWideReadable(response.source())) {
         return Response.status(Response.Status.OK).entity(response.source()).build();
       }
     } catch (OpenSearchException e) {

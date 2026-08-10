@@ -127,20 +127,13 @@ class ListFilterTest {
   }
 
   @Test
-  void test_getMemorySearchVisibilityCondition() {
-    ListFilter filter = new ListFilter();
-    String condition = filter.getCondition("context_memory");
+  void getCondition_neverFiltersMemoriesByShareConfigVisibility() {
+    // The search reindex reads memories through this filter, and a user's own PRIVATE/SHARED
+    // memories have to reach the index to stay findable in the ContextCenter listing.
+    String condition = new ListFilter().getCondition("context_memory");
+
     assertFalse(condition.contains("shareConfig.visibility"));
     assertFalse(condition.contains("shareConfig'->>'visibility"));
-
-    filter = new ListFilter();
-    filter.addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, "Entity");
-    condition = filter.getCondition("context_memory");
-    String bindPlaceholder = ":" + ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM;
-    assertTrue(
-        condition.contains(
-                "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = " + bindPlaceholder)
-            || condition.contains("json->'shareConfig'->>'visibility' = " + bindPlaceholder));
   }
 
   @Test
@@ -527,5 +520,26 @@ class ListFilterTest {
     assertFalse(condition.contains("OR 1=1"), condition);
     assertTrue(condition.contains(":folderIdParam"), condition);
     assertEquals(hostile, filter.getQueryParam("folderIdParam"));
+  }
+
+  @Test
+  void test_getServiceCondition_filtersDatabaseHierarchyTables() {
+    // The database hierarchy below `databases` is FQN-prefixed by the service, so the
+    // generic service condition applies to it unchanged.
+    List<String> tableNames =
+        List.of("table_entity", "database_schema_entity", "stored_procedure_entity");
+    for (String tableName : tableNames) {
+      ListFilter filter =
+          new ListFilter(Include.NON_DELETED).addQueryParam("service", "my_service");
+      assertEquals(tableName + ".fqnHash LIKE :serviceHash", filter.getServiceCondition(tableName));
+      assertEquals(
+          FullyQualifiedName.buildHash("my_service") + ".%",
+          filter.getQueryParams().get("serviceHash"));
+    }
+  }
+
+  @Test
+  void test_getServiceCondition_absentServiceYieldsNoCondition() {
+    assertEquals("", new ListFilter(Include.NON_DELETED).getServiceCondition("table_entity"));
   }
 }

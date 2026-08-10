@@ -12,7 +12,6 @@
  */
 package org.openmetadata.service.jdbi3;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -26,6 +25,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
@@ -34,11 +35,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 
 /**
- * The ContextMemory index-time search-visibility rule lives in {@link ContextMemoryRepository}:
- * only org-wide ({@link MemoryVisibility#ENTITY}) memories are indexed. {@link
- * ContextMemoryRepository#isSearchIndexable} gates the live create/update path and {@link
- * ContextMemoryRepository#getReindexFilter} carries the same rule into the bulk reindex as a DB
- * query. These tests pin both halves across every visibility state.
+ * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
+ * query time by {@link org.openmetadata.service.search.security.ContextMemorySearchVisibility}.
+ * Excluding restricted memories at index time hid a user's own PRIVATE memories and the SHARED ones
+ * they are a principal of from the search-backed {@code GET /contextCenter/memories} listing, so
+ * these tests pin that no visibility is filtered out of the index.
  */
 @Execution(ExecutionMode.SAME_THREAD)
 class ContextMemoryRepositoryTest {
@@ -60,42 +61,42 @@ class ContextMemoryRepositoryTest {
     Entity.cleanup();
   }
 
-  @Test
-  void isSearchIndexable_trueForEntityVisibility() {
-    assertTrue(repository.isSearchIndexable(memory(MemoryVisibility.ENTITY)));
+  @ParameterizedTest
+  @EnumSource(MemoryVisibility.class)
+  void isSearchIndexable_trueForEveryVisibility(MemoryVisibility visibility) {
+    assertTrue(repository.isSearchIndexable(memory(visibility)));
   }
 
   @Test
-  void isSearchIndexable_falseForPrivate() {
-    assertFalse(repository.isSearchIndexable(memory(MemoryVisibility.PRIVATE)));
-  }
-
-  @Test
-  void isSearchIndexable_falseForShared() {
-    assertFalse(repository.isSearchIndexable(memory(MemoryVisibility.SHARED)));
-  }
-
-  @Test
-  void isSearchIndexable_falseWhenShareConfigMissing() {
-    assertFalse(
+  void isSearchIndexable_trueWhenShareConfigMissing() {
+    assertTrue(
         repository.isSearchIndexable(
             new ContextMemory().withId(UUID.randomUUID()).withName("mem")));
   }
 
-  @Test
-  void getReindexFilter_restrictsToEntityVisibility() {
-    assertEquals(
-        MemoryVisibility.ENTITY.value(),
-        repository
-            .getReindexFilter()
-            .getQueryParams()
-            .get(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM));
+  @ParameterizedTest
+  @EnumSource(MemoryVisibility.class)
+  void isVectorEmbeddable_trueForEveryVisibility(MemoryVisibility visibility) {
+    assertTrue(repository.isVectorEmbeddable(memory(visibility)));
   }
 
   @Test
-  void entityFacade_isSearchIndexable_dispatchesToRepository() {
+  void isVectorEmbeddable_trueWhenShareConfigMissing() {
+    assertTrue(
+        repository.isVectorEmbeddable(
+            new ContextMemory().withId(UUID.randomUUID()).withName("mem")));
+  }
+
+  @Test
+  void getReindexFilter_doesNotRestrictByVisibility() {
+    assertTrue(repository.getReindexFilter().getQueryParams().isEmpty());
+  }
+
+  @Test
+  void entityFacade_isSearchIndexable_trueForRestrictedMemories() {
     assertTrue(Entity.isSearchIndexable(memory(MemoryVisibility.ENTITY)));
-    assertFalse(Entity.isSearchIndexable(memory(MemoryVisibility.PRIVATE)));
+    assertTrue(Entity.isSearchIndexable(memory(MemoryVisibility.PRIVATE)));
+    assertTrue(Entity.isSearchIndexable(memory(MemoryVisibility.SHARED)));
   }
 
   @Test

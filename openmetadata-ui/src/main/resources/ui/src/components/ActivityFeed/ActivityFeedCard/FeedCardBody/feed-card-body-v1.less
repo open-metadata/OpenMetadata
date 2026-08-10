@@ -15,7 +15,7 @@
 
 .asset-info-card.explore-search-card {
   background-color: @grey-5;
-  padding: 8px;
+  padding: var(--om-space-8);
 }
 
 .deleted-entity {
@@ -31,44 +31,44 @@
     width: 100%;
     height: 100%;
     background-color: transparent;
-    z-index: 1;
+    z-index: var(--om-z-1);
   }
 }
 .common-style {
-  border-radius: 8px;
-  font-size: 14px;
-  color: #535862;
+  border-radius: var(--om-radius-lg);
+  font-size: var(--om-font-size-sm);
+  color: var(--om-color-gray-600);
   line-height: 20px;
 }
 
 .show-thread {
   background: @grey-9;
-  padding: 20px;
-  border: 0.5px solid #eaecf5;
-  margin-top: 20px;
-  border-radius: 8px;
+  padding: var(--om-space-20);
+  border: 0.5px solid var(--om-color-gray-blue-100);
+  margin-top: var(--om-space-20);
+  border-radius: var(--om-radius-lg);
   max-height: 400px;
   overflow-y: scroll;
   overflow-x: hidden;
 }
 .feed-widget-body {
   padding: @size-sm @size-md;
-  margin-top: 10px;
+  margin-top: var(--om-space-10);
 }
 
 .show-thread.description {
-  padding: 20px 6px 20px 6px;
+  padding: var(--om-space-20) var(--om-space-6) var(--om-space-20) var(--om-space-6);
 }
 
 .hide-thread {
   background: white;
-  padding: 20px;
-  margin-top: 2px;
-  border-radius: 8px;
+  padding: var(--om-space-20);
+  margin-top: var(--om-space-2);
+  border-radius: var(--om-radius-lg);
   max-height: 200px;
   overflow-y: scroll;
   overflow-x: hidden;
-  border: 0.5px solid #eaecf5;
+  border: 0.5px solid var(--om-color-gray-blue-100);
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
@@ -77,5 +77,5 @@
 }
 
 .hide-thread.description.updated {
-  padding: 20px 6px 20px 6px;
+  padding: var(--om-space-20) var(--om-space-6) var(--om-space-20) var(--om-space-6);
 }

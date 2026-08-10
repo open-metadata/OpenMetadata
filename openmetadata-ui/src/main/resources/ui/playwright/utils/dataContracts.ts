@@ -22,6 +22,33 @@ import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
+const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess)/;
+
+const pollContractStatus = async (
+  page: Page,
+  contractId: string,
+  timeoutMs = 180_000
+): Promise<void> => {
+  const { apiContext } = await getApiContext(page);
+  await expect
+    .poll(
+      async () => {
+        const contract = await apiContext
+          .get(`/api/v1/dataContracts/${contractId}`)
+          .then((r) => (r.ok() ? r.json() : null))
+          .catch(() => null);
+
+        return contract?.latestResult?.status ?? 'Running';
+      },
+      {
+        message: 'Wait for contract validation to reach terminal state',
+        timeout: timeoutMs,
+        intervals: [3_000, 5_000, 5_000, 10_000, 15_000, 20_000],
+      }
+    )
+    .toEqual(expect.stringMatching(TERMINAL_CONTRACT_STATUS));
+};
+
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
@@ -54,6 +81,13 @@ export const saveAndTriggerDataContractValidation = async (
 
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
+
+  // Poll the API until the validation result reaches a terminal state before
+  // reloading the page. Without this, the UI status check immediately after
+  // the reload is racy: the backend may still be processing the result.
+  if (responseData?.id) {
+    await pollContractStatus(page, responseData.id);
+  }
 
   await page.reload();
 
@@ -541,7 +575,10 @@ export const saveContractAndWait = async (page: Page): Promise<void> => {
   await waitForAllLoadersToDisappear(page);
 };
 
-export const triggerContractValidation = async (page: Page): Promise<void> => {
+export const triggerContractValidation = async (
+  page: Page,
+  contractId?: string
+): Promise<void> => {
   const runNowResponse = page.waitForResponse(
     '/api/v1/dataContracts/*/validate'
   );
@@ -549,6 +586,12 @@ export const triggerContractValidation = async (page: Page): Promise<void> => {
   await openContractActionsDropdown(page);
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
+
+  // If a contractId is supplied, poll until the validation reaches a terminal
+  // state so callers can safely assert on the UI status after a reload.
+  if (contractId) {
+    await pollContractStatus(page, contractId);
+  }
 };
 
 export const exportContractYaml = async (

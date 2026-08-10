@@ -382,63 +382,66 @@ const Services = ({ serviceName }: ServicesProps) => {
     []
   );
 
-  const columns: ColumnsType<ServicesType> = [
-    {
-      title: t('label.name'),
-      dataIndex: TABLE_COLUMNS_KEYS.NAME,
-      key: TABLE_COLUMNS_KEYS.NAME,
-      width: 200,
-      sorter: getColumnSorter<ServicesType, 'name'>('name'),
-      render: (name, record) => (
-        <div className="d-flex gap-2 items-center">
-          {getServiceLogoElement(record, 'w-4')}
-          <Link
-            className="max-two-lines"
-            data-testid={`service-name-${name}`}
-            to={getServiceDetailsPath(
-              record.fullyQualifiedName ?? record.name,
-              serviceName
-            )}>
-            {stringToHTML(
-              highlightSearchText(getEntityName(record), searchTerm)
-            )}
-          </Link>
-        </div>
-      ),
-    },
-    {
-      title: t('label.description'),
-      dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
-      key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-      width: 200,
-      render: (description) =>
-        description ? (
-          <RichTextEditorPreviewerNew
-            className="max-two-lines"
-            markdown={highlightSearchText(description, searchTerm)}
-          />
-        ) : (
-          <span className="text-grey-muted">{t('label.no-description')}</span>
+  const columns: ColumnsType<ServicesType> = useMemo(
+    () => [
+      {
+        title: t('label.name'),
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
+        width: 200,
+        sorter: getColumnSorter<ServicesType, 'name'>('name'),
+        render: (name, record) => (
+          <div className="d-flex gap-2 items-center">
+            {getServiceLogoElement(record, 'w-4')}
+            <Link
+              className="max-two-lines"
+              data-testid={`service-name-${name}`}
+              to={getServiceDetailsPath(
+                record.fullyQualifiedName ?? record.name,
+                serviceName
+              )}>
+              {stringToHTML(
+                highlightSearchText(getEntityName(record), searchTerm)
+              )}
+            </Link>
+          </div>
         ),
-    },
-    {
-      title: t('label.type'),
-      dataIndex: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
-      key: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
-      width: 200,
-      filterDropdown: ColumnFilter,
-      filterIcon: columnFilterIcon,
-      filtered: !isEmpty(serviceTypeFilter),
-      filteredValue: serviceTypeFilter,
-      filters: serviceTypeFilters,
-      render: (serviceType) => (
-        <span className="font-normal text-grey-body">
-          {stringToHTML(highlightSearchText(serviceType, searchTerm))}
-        </span>
-      ),
-    },
-    ...ownerTableObject<ServicesType>(),
-  ];
+      },
+      {
+        title: t('label.description'),
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        width: 200,
+        render: (description) =>
+          description ? (
+            <RichTextEditorPreviewerNew
+              className="max-two-lines"
+              markdown={highlightSearchText(description, searchTerm)}
+            />
+          ) : (
+            <span className="text-grey-muted">{t('label.no-description')}</span>
+          ),
+      },
+      {
+        title: t('label.type'),
+        dataIndex: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
+        key: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
+        width: 200,
+        filterDropdown: ColumnFilter,
+        filterIcon: columnFilterIcon,
+        filtered: !isEmpty(serviceTypeFilter),
+        filteredValue: serviceTypeFilter,
+        filters: serviceTypeFilters,
+        render: (serviceType) => (
+          <span className="font-normal text-grey-body">
+            {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+          </span>
+        ),
+      },
+      ...ownerTableObject<ServicesType>(),
+    ],
+    [t, serviceName, searchTerm, serviceTypeFilter, serviceTypeFilters]
+  );
 
   const serviceCardRenderer = (service: ServicesType) => {
     return (

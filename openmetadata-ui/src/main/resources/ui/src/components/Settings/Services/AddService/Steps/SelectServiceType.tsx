@@ -123,7 +123,7 @@ const SelectServiceType = ({
         </Select>
       </div>
 
-      <div className="tw:mt-[14px]">
+      <div className="tw:mt-3.5">
         <Input
           icon={SearchLg}
           placeholder={t('label.search-for-a-connector')}

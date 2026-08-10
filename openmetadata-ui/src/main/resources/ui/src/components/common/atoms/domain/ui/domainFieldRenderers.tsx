@@ -24,6 +24,7 @@ import {
   getClassificationTags,
   getGlossaryTags,
 } from '../../../../../utils/TagsPureUtils';
+import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';
@@ -38,25 +39,42 @@ interface OwnedEntity {
   owners?: EntityReference[];
 }
 
-// Long entity names (including no-space strings) must wrap within a capped
-// width instead of overflowing the row. `overflow-wrap:anywhere` both adds
-// break points and lets the flex item shrink below its content width.
-export const NAME_CELL_WRAP_CLASS =
-  'tw:max-w-[480px] tw:[overflow-wrap:anywhere]';
-export const COMPACT_CELL_WRAP_CLASS =
-  'tw:max-w-[320px] tw:[overflow-wrap:anywhere]';
-export const CARD_NAME_WRAP_CLASS = 'tw:min-w-0 tw:[overflow-wrap:anywhere]';
+// Long entity names must clip to a single line with a tooltip carrying the full
+// name. The table is `table-layout: auto`, so the max-width is what stops a long
+// name from widening the column - it is the clip boundary, not decoration.
+// `min-w-0` lets the name shrink below its content width so the ellipsis lands.
+export const NAME_CELL_CLIP_CLASS = 'tw:max-w-[480px] tw:min-w-0';
+export const COMPACT_CELL_CLIP_CLASS = 'tw:max-w-[320px] tw:min-w-0';
+export const CARD_NAME_CLIP_CLASS = 'tw:min-w-0';
+
+// `ellipsis` wraps the text in react-aria's TooltipTrigger, which renders a
+// `<button>` - and the UA stylesheet centers a button's text. The default
+// Typography element is an inline `<span>`, so `text-left` alone would not
+// apply; `block` makes it a block container so the left alignment takes effect.
+export const CLIPPED_NAME_CLASS = 'tw:block tw:text-left';
 
 export const renderDomainNameCell = (
   entity: Domain | DataProduct
-): ReactNode => (
-  <Box align="start" className={NAME_CELL_WRAP_CLASS} direction="row" gap={3}>
-    <Avatar size="md" {...getEntityAvatarProps(entity)} />
-    <Typography size="text-sm" weight="medium">
-      {getEntityName(entity)}
-    </Typography>
-  </Box>
-);
+): ReactNode => {
+  const entityName = getEntityName(entity);
+
+  return (
+    <Box
+      align="center"
+      className={NAME_CELL_CLIP_CLASS}
+      direction="row"
+      gap={3}>
+      <Avatar size="md" {...getEntityAvatarProps(entity)} />
+      <Typography
+        className={CLIPPED_NAME_CLASS}
+        ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+        size="text-sm"
+        weight="medium">
+        {entityName}
+      </Typography>
+    </Box>
+  );
+};
 
 export const renderDomainTypeCell = (entity: Domain): ReactNode =>
   entity.domainType ? (
