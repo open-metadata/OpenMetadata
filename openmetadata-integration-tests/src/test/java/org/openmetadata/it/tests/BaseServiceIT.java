@@ -57,7 +57,7 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
 
     assertNotNull(service.getHref(), "Service href must be set");
     assertTrue(
-        service.getHref().getPath().startsWith(getResourcePath()),
+        service.getHref().getPath().endsWith(getResourcePath() + service.getId()),
         String.format(
             "%s href '%s' must live under '%s'",
             getEntityType(), service.getHref(), getResourcePath()));
