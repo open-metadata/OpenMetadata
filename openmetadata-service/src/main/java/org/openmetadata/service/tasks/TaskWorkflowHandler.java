@@ -50,6 +50,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -212,14 +213,20 @@ public class TaskWorkflowHandler {
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
+        // Report M1: two clients racing the same task, or a stale resolve arriving after
+        // Flowable already advanced past this node. Return a 409 CONFLICT via a typed
+        // WebServiceException so the caller learns the state changed under them — the
+        // generic exception mapper would otherwise surface these as 500s. Kept narrow
+        // (only these two resolve-race sites) so unrelated IllegalStateException bugs
+        // still surface as 500.
         if (resolutionType == null) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format(
                   "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
                   transitionId, taskId));
         }
         if (TaskRepository.isTerminalStatus(task.getStatus())) {
-          throw new IllegalStateException(
+          throw TaskStateConflictException.of(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
         LOG.warn(
@@ -228,7 +235,7 @@ public class TaskWorkflowHandler {
         return applyTaskResolution(
             task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
       }
-      throw new IllegalStateException(
+      throw TaskStateConflictException.of(
           String.format(
               "Workflow resolution failed for task '%s' on transition '%s'",
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
