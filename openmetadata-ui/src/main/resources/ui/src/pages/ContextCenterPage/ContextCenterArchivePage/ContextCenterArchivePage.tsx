@@ -219,7 +219,7 @@ const ContextCenterArchivePage: FC = () => {
         />
       </div>
       <div className="context-center-content-section tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:px-5 tw:pb-5">
-        {!isLoading && (hasEverHadItems || items.length > 0) && (
+        {(hasEverHadItems || items.length > 0) && (
           <div className="tw:pb-5">
             <Tabs
               className="tw:w-max"
