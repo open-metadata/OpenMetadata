@@ -854,6 +854,15 @@ rdf:
   dataset: ${RDF_DATASET:-"openmetadata"}
   inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
 
+# App Configuration
+# Tenant-wide "first impression" UI default, seeded into the DB-backed appConfiguration
+# setting on first boot only. After that, admins mutate it at runtime via
+# /v1/system/settings/appConfiguration and this yaml value is ignored.
+appConfiguration:
+  # Non-null seeds the app mode for users who have not chosen one (e.g. "ai" or "classic");
+  # user preference and persona-level app mode still win over this default.
+  defaultAppMode: ${APP_DEFAULT_MODE:-null}
+
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load
 # Default: none (no external dependency). Set CACHE_PROVIDER=redis to enable the
