@@ -96,7 +96,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
             // `overflow-x-auto`, which forces the block axis to `auto` too, so anything drawn outside
             // the card's box gets clipped. Unselected cards carry the same 2px width so selecting one
             // doesn't resize it.
-            className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border-2 tw:px-3 tw:py-2.5 tw:text-left ${
+            className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border- tw:px-3 tw:py-2.5 tw:text-left ${
               isSelected
                 ? 'tw:border-utility-brand-600 tw:bg-primary'
                 : 'tw:border-secondary tw:bg-secondary'
