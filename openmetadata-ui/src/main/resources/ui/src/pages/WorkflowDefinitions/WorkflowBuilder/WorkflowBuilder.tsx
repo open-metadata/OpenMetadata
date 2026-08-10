@@ -29,6 +29,7 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../../components/common/Loader/Loader';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UnsavedChangesModal } from '../../../components/Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -411,6 +412,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     workflowMetadata?.displayName || 'Workflow Builder';
   const workflowName = workflowMetadata?.name;
 
+  // AI-mode breadcrumb: rendered inside the HeaderShell gradient header.
   const breadcrumb = useMemo(
     () => (
       <HeaderBreadcrumb
@@ -427,6 +429,18 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
       />
     ),
     [workflowDisplayName, t]
+  );
+
+  // Classic-mode breadcrumb: the legacy TitleBreadcrumb shown above the header.
+  const breadcrumbs = useMemo(
+    () => [
+      {
+        activeTitle: false,
+        name: t('label.workflow-plural'),
+        url: getWorkflowDefinitionsListPath(),
+      },
+    ],
+    [t]
   );
 
   if (loading) {
@@ -447,10 +461,6 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     <PageLayoutV1
       fullHeight
       mainContainerClassName="workflow-builder-layout"
-      pageContainerStyle={{
-        height: 'calc(100vh - var(--ant-navbar-height))',
-        overflow: 'hidden',
-      }}
       pageTitle={t('label.workflow-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
       {isConnectionModalOpen && (
@@ -462,14 +472,20 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
           'tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden',
           { 'tw:bg-gray-50': !isAiMode }
         )}>
+        {!isAiMode && (
+          <div className="tw:mb-4 tw:shrink-0">
+            <TitleBreadcrumb titleLinks={breadcrumbs} />
+          </div>
+        )}
         <div className="tw:shrink-0">
           <WorkflowHeader
-            breadcrumb={breadcrumb}
+            breadcrumb={isAiMode ? breadcrumb : undefined}
             handleDeleteWorkflow={handleShowDeleteModal}
             handleRevertAndCancel={handleRevertAndCancel}
             handleRunWorkflow={handleRunWorkflow}
             handleSaveWorkflow={handleSaveWorkflowWithSnapshot}
             handleTestWorkflow={handleTestWorkflow}
+            isAiMode={isAiMode}
             isRunLoading={isRunLoading}
             title={workflowDisplayName}
             workflowName={workflowName}
