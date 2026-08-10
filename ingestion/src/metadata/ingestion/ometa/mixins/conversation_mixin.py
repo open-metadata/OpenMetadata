@@ -53,11 +53,14 @@ class OMetaConversationMixin:
         # endpoints only ever return a decoded body.
         if not isinstance(response, dict):
             return EntityList(entities=[], total=0)
+        # An error body decodes to a dict too, so read the paged shape defensively rather than
+        # turning an unexpected payload into a KeyError.
+        paging = response.get("paging") or {}
         return EntityList(
-            entities=[model.model_validate(item) for item in response["data"]],
-            total=response["paging"]["total"],
-            after=response["paging"].get("after"),
-            before=response["paging"].get("before"),
+            entities=[model.model_validate(item) for item in response.get("data") or []],
+            total=paging.get("total", 0),
+            after=paging.get("after"),
+            before=paging.get("before"),
         )
 
     def list_conversations(
