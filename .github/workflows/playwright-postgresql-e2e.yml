@@ -1336,9 +1336,33 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
+      # The downstream playwright-summary gate treats a missing results.json
+      # as "shard did not upload a usable Playwright results artifact" and
+      # fails the required check on it — even when every test in the shard
+      # passed. A transient error from the artifact backend here (seen: 403
+      # on FinalizeArtifact) otherwise turns into a false-red merge-queue
+      # run. Retry once with a plain duplicate step rather than pulling in
+      # a third-party retry action — actions/upload-artifact is already
+      # trusted throughout this file, and `overwrite: true` makes a second
+      # attempt safe to re-run against the same artifact name.
       - name: Upload results JSON for summary
+        id: upload-results-json
         uses: actions/upload-artifact@v6
         if: always()
+        continue-on-error: true
+        with:
+          name: playwright-results-json-${{ matrix.shardId }}
+          overwrite: true
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/results.json
+            openmetadata-ui/src/main/resources/ui/playwright/output/ci-status.json
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Retry upload results JSON for summary
+        if: always() && steps.upload-results-json.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        continue-on-error: true
         with:
           name: playwright-results-json-${{ matrix.shardId }}
           overwrite: true
