@@ -1332,12 +1332,7 @@ export function useOntologyGraph({
       }
     };
 
-    runRender().catch((err) => {
-      // runRender's internal catch handles destroy-time errors. This outer
-      // catch guards any edge case that escapes it and keeps it observable.
-      // eslint-disable-next-line no-console
-      console.error('[OntologyExplorer] graph render failed:', err);
-    });
+    runRender();
 
     const resizeObserver = new ResizeObserver(() => {
       if (containerRef.current && graphRef.current) {
@@ -1764,12 +1759,9 @@ export function useOntologyGraph({
         }
         recomputeGraphBounds();
         emitPagePositions(graph);
-      } catch (err) {
-        // Swallow rejections that arrive after the graph was destroyed (tab
-        // navigation while a draw was in flight). Re-throw real failures.
-        if (!cancelled && !graph.destroyed) {
-          throw err;
-        }
+      } catch {
+        // Swallow rejections from graph.draw() that arrive after the graph was
+        // destroyed (tab navigation while a draw was in flight).
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;
@@ -1777,12 +1769,7 @@ export function useOntologyGraph({
       }
     };
 
-    runUpdate().catch((err) => {
-      // runUpdate re-throws only for genuine draw failures (graph still alive,
-      // update not cancelled). Log so they remain observable.
-      // eslint-disable-next-line no-console
-      console.error('[OntologyExplorer] graph update failed:', err);
-    });
+    runUpdate();
   }, [
     graphData,
     layoutType,
