@@ -137,6 +137,8 @@ public class UserRepository extends EntityRepository<User> {
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
+  private final UserPreferencesRepository userPreferencesRepository =
+      new UserPreferencesRepository();
 
   public UserRepository() {
     super(
@@ -1325,6 +1327,8 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
     }
+    // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
+    userPreferencesRepository.delete(entity.getId());
     deleteSuggestionTasksForUser(entity);
 
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();

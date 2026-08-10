@@ -19,6 +19,7 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,7 +27,7 @@ import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constan
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { uploadDriveFile } from '../../../rest/assetAPI';
 import { runWithConcurrencyLimit } from '../../../utils/AsyncUtils';
-import { showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   QueuedFile,
   UploadDocumentModalProps,
@@ -92,12 +93,13 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   ): Promise<ContextFile | null> => {
     try {
       return await uploadDriveFile(entry.file, folderFqn);
-    } catch {
+    } catch (err) {
       setFiles((prev) =>
         prev.map((f) =>
           f.id === entry.id ? { ...f, progress: 0, status: 'error' } : f
         )
       );
+      showErrorToast(err as AxiosError, t('message.upload-failed'));
 
       return null;
     }

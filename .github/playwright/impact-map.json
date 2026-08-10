@@ -449,6 +449,34 @@
         "playwright/e2e/Features/MutuallyExclusiveColumnTags.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts"
       ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/TestConnectionModalUtils.tsx"
+      ],
+      "projects": ["Basic"],
+      "specs": ["playwright/e2e/Flow/TestConnectionModal.spec.ts"]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/TestConnectionModalUtils.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/TestConnectionModalUtils.tsx"
+      ],
+      "projects": ["Ingestion"],
+      "specs": [
+        "playwright/e2e/Flow/ServiceForm.spec.ts",
+        "playwright/e2e/Flow/ApiServiceRest.spec.ts",
+        "playwright/e2e/Features/AutoPilot.spec.ts"
+      ]
     }
   ]
 }
