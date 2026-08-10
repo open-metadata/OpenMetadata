@@ -102,12 +102,19 @@ class Status(BaseModel):
         self.filtered.append({key: reason})
 
     def as_string(self) -> str:
+        def literal_safe(v: Any) -> Any:
+            return v.model_dump() if isinstance(v, BaseModel) else v
+
         parts = []
         for key, value in self.__dict__.items():
             if isinstance(value, list) and len(value) > MAX_STATUS_DISPLAY_ITEMS:
-                header = f"[{len(value)} total items — showing first {MAX_STATUS_DISPLAY_ITEMS}]"
-                formatted = pprint.pformat(value[:MAX_STATUS_DISPLAY_ITEMS], width=150)
-                parts.append(f"'{key}': {header}\n{formatted}")
+                header = f"{len(value)} total items — showing first {MAX_STATUS_DISPLAY_ITEMS}"
+                shown = [literal_safe(v) for v in value[:MAX_STATUS_DISPLAY_ITEMS]]
+                formatted = pprint.pformat([header, *shown], width=150)
+                parts.append(f"'{key}': {formatted}")
+            elif isinstance(value, list):
+                formatted = pprint.pformat([literal_safe(v) for v in value], width=150)
+                parts.append(f"'{key}': {formatted}")
             else:
                 parts.append(f"'{key}': {pprint.pformat(value, width=150)}")
         return "{\n " + ",\n ".join(parts) + "}"
