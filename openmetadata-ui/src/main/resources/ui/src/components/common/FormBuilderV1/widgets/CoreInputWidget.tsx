@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Input, Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  Input,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { HelpCircle } from '@untitledui/icons';
 import { getWidgetLabel } from './coreWidgetUtils';
@@ -54,7 +58,9 @@ const CoreInputWidget = ({
   const handleChange = (nextValue: string) => {
     if (schema.type === 'number' || schema.type === 'integer') {
       onChange(
-        parseNumericValue(nextValue, schema.type) ?? options.emptyValue ?? undefined
+        parseNumericValue(nextValue, schema.type) ??
+          options.emptyValue ??
+          undefined
       );
 
       return;
@@ -63,12 +69,15 @@ const CoreInputWidget = ({
     onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
-  const description = (options.help as string | undefined) ?? schema.description;
+  const description =
+    (options.help as string | undefined) ?? schema.description;
   const showAsTooltip = Boolean(options.showDescriptionAsTooltip);
   const widgetLabel = getWidgetLabel({ hideLabel, label });
   const showTooltipRow = showAsTooltip && Boolean(widgetLabel);
   const hint = rawErrors?.[0] ?? (showTooltipRow ? undefined : description);
-  const tooltip = showTooltipRow ? (description as string | undefined) : undefined;
+  const tooltip = showTooltipRow
+    ? (description as string | undefined)
+    : undefined;
 
   return (
     <div>

@@ -365,7 +365,10 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
 }: ObjectFieldTemplateProps) => {
   const { t } = useTranslation();
   const isRootLevel = idSchema.$id === 'root';
-  const compactAdvancedSection = getCompactAdvancedSection(isRootLevel, uiSchema);
+  const compactAdvancedSection = getCompactAdvancedSection(
+    isRootLevel,
+    uiSchema
+  );
 
   if (!isRootLevel) {
     const nonRootSchemaProperties = (schema.properties ?? {}) as Record<
