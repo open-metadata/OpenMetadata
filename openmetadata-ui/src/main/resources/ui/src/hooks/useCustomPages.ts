@@ -27,7 +27,11 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     ? `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`
     : null;
 
-  const { data: doc, isPending, isError } = useQuery({
+  const {
+    data: doc,
+    isPending,
+    isError,
+  } = useQuery({
     queryKey: docStoreQueryKey(fqn ?? ''),
     queryFn: docStoreQueryFn(fqn ?? ''),
     enabled: !!fqn,
@@ -36,9 +40,9 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
 
   return {
     customizedPage:
-      (doc?.data?.pages?.find(
-        (p: Page | null) => p?.pageType === pageType
-      ) as Page | undefined) ?? null,
+      (doc?.data?.pages?.find((p: Page | null) => p?.pageType === pageType) as
+        | Page
+        | undefined) ?? null,
     // Reset to [] on error to clear stale navigation items, null when no persona selected.
     navigation: isError
       ? ([] as NavigationItem[])
