@@ -1095,10 +1095,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // — TaskRepository.update() (used by the workflow's CreateTask node) intentionally
     // bypasses this.
     //
-    // Field fetch scoped to only what validateTaskPatch diffs. availableTransitions / status /
-    // approvedBy* / approvedAt / aboutFqnHash / resolution / payload sit on the base task row
-    // and hydrate for free; `about` is the one relationship-hydrated getter we need.
-    Task original = repository.get(uriInfo, id, repository.getFields("about"));
+    // Fetch with the same patchFields set patchInternal uses internally, so any relationship-
+    // hydrated field the client might address in an "add"/"remove" op (e.g. /assignees/-) is
+    // populated and JsonUtils.applyPatch does not blow up on a null list. The diff-based
+    // checks in validateTaskPatch read a subset of these anyway.
+    Task original = repository.get(uriInfo, id, repository.getPatchFields());
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
     return patchInternal(uriInfo, securityContext, id, patch);
