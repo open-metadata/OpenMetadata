@@ -26,7 +26,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Edit01, FileCheck02, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
@@ -271,7 +270,7 @@ const IntakeFormsPage = () => {
         <TitleBreadcrumb titleLinks={breadcrumbs} />
         {headerBar}
 
-        {!loading && isEmpty(forms) ? (
+        {!loading && forms.length === 0 ? (
           <div className="tw:relative tw:min-h-90">
             <CreatePlaceholder
               data-testid="intake-forms-empty"
