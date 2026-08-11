@@ -167,12 +167,15 @@ const useFileNodeViewState = ({
   const isAudio = mimeType?.startsWith(FileType.AUDIO);
   const isMedia = isVideo || isAudio;
   const isAssetsUrl = isValidSource && url?.includes(UPLOADED_ASSETS_URL);
-  const isPlayableMedia = isMedia && isValidSource && !isUploading;
   const isEditableMedia = editor.isEditable && !isAssetsUrl;
   const fileType = getFileType(isVideo, isAudio, isImage);
 
   const { mediaSrc, isMediaLoading, downloadFile, isFileLoading } =
     useAuthenticatedMediaUrls(url);
+  const isMediaSrcReady = !isMediaLoading && !isEmpty(mediaSrc);
+
+  const isPlayableMedia =
+    isMedia && isValidSource && !isUploading && isMediaSrcReady;
 
   return {
     url,
