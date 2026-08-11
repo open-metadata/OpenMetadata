@@ -65,9 +65,11 @@ const AUTO_APPROVED_BY_REVIEWER_STAGE = 'Auto-Approved by Reviewer';
 // always misses. A coarse interval therefore charges a whole interval per miss against the caller's
 // budget, and every caller here is a `test.slow()` (180s) or `test.setTimeout(5m)` test that polls
 // up to twice - which is how waiting for a one-second event produced a 180s test timeout.
+// AUT upgrade environments produce a large change-event backlog that delays
+// WorkflowEventConsumer by up to ~8 minutes. Raise the poll window to match.
 const WORKFLOW_POLL = {
-  timeout: 60_000,
-  intervals: [1_000, 2_000, 5_000],
+  timeout: 600_000,
+  intervals: [60_000, 40_000, 20_000],
 };
 
 type WorkflowInstanceStateRow = {
