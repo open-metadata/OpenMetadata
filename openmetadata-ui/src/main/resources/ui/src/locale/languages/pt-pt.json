@@ -3772,6 +3772,8 @@
     "no-input-output-ports-configured": "Ainda não foram configuradas portas de entrada ou saída",
     "no-input-ports-added": "Ainda não foram adicionadas portas de entrada",
     "no-installed-applications-found": "Nenhuma aplicação instalada atualmente. Clique no botão 'Adicionar Aplicativos' para instalar um.",
+    "no-intake-form-yet": "Ainda não existem formulários de admissão",
+    "no-intake-form-yet-description": "Crie um formulário de admissão para impor os campos obrigatórios da política de governação para Produtos de dados, Domínios e Termos do glossário.",
     "no-knowledge-graph-data": "Nenhum dado de grafo de conhecimento disponível. Verifique se a aplicação de indexação de grafo de conhecimento RDF está instalada e configurada corretamente.",
     "no-kpi": "Defina indicadores-chave de desempenho para monitorizar impacto e tomar decisões mais inteligentes.",
     "no-kpi-available-add-new-one": "Nenhum KPI disponível. Clique no botão Adicionar KPI para adicionar um.",

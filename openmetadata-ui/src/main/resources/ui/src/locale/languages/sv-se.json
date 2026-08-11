@@ -3772,6 +3772,8 @@
     "no-input-output-ports-configured": "Inga in- eller utgångsportar konfigurerade ännu",
     "no-input-ports-added": "Inga ingångsportar har lagts till ännu",
     "no-installed-applications-found": "Inga applikationer är installerade för närvarande. Klicka på knappen 'Lägg till appar' för att installera en.",
+    "no-intake-form-yet": "Inga intagsformulär ännu",
+    "no-intake-form-yet-description": "Skapa ett intagsformulär för att framtvinga fält som krävs enligt styrningspolicyn för dataprodukter, domäner och ordlistetermer.",
     "no-knowledge-graph-data": "Inga kunskapsgrafdata tillgängliga. Kontrollera om applikationen RDF Knowledge Graph Indexing är installerad och korrekt konfigurerad.",
     "no-kpi": "Definiera nyckeltal för att övervaka påverkan och fatta smartare beslut.",
     "no-kpi-available-add-new-one": "Inga KPI:er är tillgängliga. Klicka på knappen Lägg till KPI för att lägga till en.",

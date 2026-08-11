@@ -3772,6 +3772,8 @@
     "no-input-output-ports-configured": "尚未設定輸入或輸出連接埠",
     "no-input-ports-added": "尚未新增輸入連接埠",
     "no-installed-applications-found": "目前沒有安裝任何應用程式。點擊「新增應用程式」按鈕以安裝一個。",
+    "no-intake-form-yet": "尚無接收表單",
+    "no-intake-form-yet-description": "建立接收表單，以對資料產品、網域和詞彙表術語強制執行治理原則所需的欄位。",
     "no-knowledge-graph-data": "沒有可用的知識圖譜資料。請檢查RDF知識圖譜索引應用程式是否已安裝並正確設定。",
     "no-kpi": "定義關鍵績效指標以監控影響並推動更明智的決策。",
     "no-kpi-available-add-new-one": "沒有可用的 KPI。點擊「新增 KPI」按鈕以新增一個。",

@@ -3772,6 +3772,8 @@
     "no-input-output-ports-configured": "Nog geen invoer- of uitvoerpoorten geconfigureerd",
     "no-input-ports-added": "Er zijn nog geen invoerpoorten toegevoegd",
     "no-installed-applications-found": "Er zijn momenteel geen toepassingen geïnstalleerd. Klik op de knop 'Apps toevoegen' om er een te installeren.",
+    "no-intake-form-yet": "Nog geen intakeformulieren",
+    "no-intake-form-yet-description": "Maak een intakeformulier om de door het governancebeleid vereiste velden af te dwingen voor Dataproducten, Domeinen en Woordenlijsttermen.",
     "no-knowledge-graph-data": "Geen kennisgraafgegevens beschikbaar. Controleer of de RDF-kennisgraafindexeringstoepassing is geïnstalleerd en correct is geconfigureerd.",
     "no-kpi": "Definieer prestatie-indicatoren om impact te volgen en slimmere beslissingen te nemen.",
     "no-kpi-available-add-new-one": "Er zijn geen KPI's beschikbaar. Klik op de knop KPI toevoegen om er een toe te voegen.",
