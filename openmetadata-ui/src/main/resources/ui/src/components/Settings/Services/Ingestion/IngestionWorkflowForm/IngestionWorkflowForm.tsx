@@ -242,7 +242,6 @@ const IngestionWorkflowForm = forwardRef<
     hideFooter,
     isElasticSearchPipeline,
     isIncrementalExtractionSupported,
-    operationType,
     pipeLineType,
   ]);
 
