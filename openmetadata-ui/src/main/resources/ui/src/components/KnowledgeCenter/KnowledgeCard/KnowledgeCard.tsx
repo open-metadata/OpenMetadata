@@ -102,17 +102,20 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
-  const fetchPermission = async (fqn: string) => {
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.KNOWLEDGE_PAGE as unknown as ResourceEntity,
-        fqn
-      );
-      setPermissions(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const fetchPermission = useCallback(
+    async (fqn: string) => {
+      try {
+        const response = await getEntityPermissionByFqn(
+          ResourceEntity.KNOWLEDGE_PAGE as unknown as ResourceEntity,
+          fqn
+        );
+        setPermissions(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [getEntityPermissionByFqn]
+  );
 
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
   const path = isQuickLink
@@ -159,7 +162,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       isSoftDelete ? handleToggleDelete() : onDelete?.(knowledgePage?.id);
       onRefreshTagsCategory?.(true);
     },
-    [knowledgePage, onDelete, handleToggleDelete, onRefreshTagsCategory]
+    [
+      knowledgePage,
+      onDelete,
+      handleToggleDelete,
+      onRefreshTagsCategory,
+      recentlyViewed,
+    ]
   );
 
   const quickLinkActions = useMemo(() => {
@@ -212,7 +221,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
     if (knowledgeItem.pageType === PageType.QUICK_LINK) {
       fetchPermission(knowledgeItem.fullyQualifiedName);
     }
-  }, [knowledgeItem]);
+  }, [knowledgeItem, fetchPermission]);
 
   return (
     <Card
