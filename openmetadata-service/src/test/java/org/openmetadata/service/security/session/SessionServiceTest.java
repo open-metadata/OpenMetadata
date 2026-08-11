@@ -267,6 +267,30 @@ class SessionServiceTest {
   }
 
   @Test
+  void acquireRefreshLease_pendingLogin_returnsEmptyWithoutClearingCookieOrSession() {
+    String sessionId = validSessionId('g');
+    long now = System.currentTimeMillis();
+    UserSession pendingLogin =
+        UserSession.builder()
+            .id(sessionId)
+            .status(SessionStatus.PENDING)
+            .state("state")
+            .version(0L)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId)).thenReturn(Optional.of(pendingLogin));
+
+    // A concurrent refresh (another tab's expiry timer) while the login round-trip is at the
+    // IdP must not break the pending login: no lease, no cookie clearing, no session mutation.
+    assertTrue(sessionService.acquireRefreshLease(request, response).isEmpty());
+    verify(response, never()).addHeader(eq("Set-Cookie"), any());
+    verify(repository, never()).updateIfVersion(any(UserSession.class), anyLong());
+  }
+
+  @Test
   void acquireRefreshLease_reclaimsStaleLease() {
     String sessionId = validSessionId('s');
     long now = System.currentTimeMillis();
