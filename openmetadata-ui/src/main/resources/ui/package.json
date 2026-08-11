@@ -103,6 +103,7 @@
     "classnames": "^2.3.1",
     "codemirror": "^5.65.16",
     "cookie-storage": "^6.1.0",
+    "cron-parser": "^5.6.2",
     "cronstrue": "^2.53.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "diff": "^8.0.3",

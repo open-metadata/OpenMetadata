@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../../generated/entity/type';
-import type { UseTestCaseIncidentHeaderResult } from './useTestCaseIncidentHeader';
 
-export interface IncidentManagerPageHeaderProps {
-  onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
-  incidentHeaderData: UseTestCaseIncidentHeaderResult;
-  isVersionPage?: boolean;
-}
+export const TEST_CASE_LAST_RUN_BANNER_TEST_IDS = {
+  aborted: 'test-case-last-run-banner-aborted',
+  failed: 'test-case-last-run-banner-failed',
+  'not-run-yet': 'test-case-last-run-banner-not-run-yet',
+  queued: 'test-case-last-run-banner-queued',
+  success: 'test-case-last-run-banner-success',
+} as const;
+
+export type TestCaseLastRunBannerStatus =
+  keyof typeof TEST_CASE_LAST_RUN_BANNER_TEST_IDS;
