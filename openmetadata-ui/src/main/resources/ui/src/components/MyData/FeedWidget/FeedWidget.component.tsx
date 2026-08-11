@@ -47,8 +47,13 @@ const MyFeedWidgetInternal = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
-  const { isActivityLoading, activityEvents, fetchMyActivityFeed } =
-    useActivityFeedProvider();
+  const {
+    isActivityLoading,
+    activityEvents,
+    fetchActivityEvents,
+    fetchMyActivityFeed,
+    fetchFollowingActivity,
+  } = useActivityFeedProvider();
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
     FeedFilter.ALL
   );
@@ -64,13 +69,35 @@ const MyFeedWidgetInternal = ({
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
+  // Each filter maps to its own endpoint: ALL is every event, OWNER is entities
+  // owned by the user or their teams, FOLLOWS is entities they follow.
+  const fetchActivityForFilter = useCallback(() => {
+    switch (selectedFilter) {
+      case FeedFilter.OWNER:
+        fetchMyActivityFeed({ limit: PAGE_SIZE_MEDIUM });
+
+        break;
+      case FeedFilter.FOLLOWS:
+        fetchFollowingActivity({ limit: PAGE_SIZE_MEDIUM });
+
+        break;
+      default:
+        fetchActivityEvents({ limit: PAGE_SIZE_MEDIUM });
+    }
+  }, [
+    selectedFilter,
+    fetchActivityEvents,
+    fetchMyActivityFeed,
+    fetchFollowingActivity,
+  ]);
+
   const handleUpdateEntityDetails = useCallback(() => {
-    fetchMyActivityFeed({ limit: PAGE_SIZE_MEDIUM });
-  }, [fetchMyActivityFeed]);
+    fetchActivityForFilter();
+  }, [fetchActivityForFilter]);
 
   useEffect(() => {
-    fetchMyActivityFeed({ limit: PAGE_SIZE_MEDIUM });
-  }, [fetchMyActivityFeed]);
+    fetchActivityForFilter();
+  }, [fetchActivityForFilter]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
