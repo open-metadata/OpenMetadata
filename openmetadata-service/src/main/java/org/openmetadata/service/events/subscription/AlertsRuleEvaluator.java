@@ -725,8 +725,7 @@ public class AlertsRuleEvaluator {
     if (!threadSubjectResolved) {
       threadSubjectResolved = true;
       if (changeEvent.getEntity() != null) {
-        Thread thread = getThread(changeEvent);
-        threadSubject = thread == null ? null : thread.getEntityRef();
+        threadSubject = getThread(changeEvent).getEntityRef();
       }
     }
     return threadSubject;
