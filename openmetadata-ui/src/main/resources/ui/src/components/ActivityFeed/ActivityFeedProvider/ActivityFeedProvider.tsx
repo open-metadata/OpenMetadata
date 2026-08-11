@@ -21,6 +21,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +53,7 @@ import {
   getAllFeeds,
   getEntityActivityByFqn,
   getFeedById,
+  getFollowingActivityFeed,
   getMyActivityFeed,
   getPostsFeedById,
   getUserActivity,
@@ -101,6 +103,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [selectedActivity, setSelectedActivity] = useState<ActivityEvent>();
   const [activityThread, setActivityThread] = useState<Thread | undefined>();
   const [isActivityLoading, setIsActivityLoading] = useState(false);
+  // The activity fetchers all write to the same activityEvents state. Switching the
+  // home widget filter quickly can let a slower earlier request resolve last and
+  // overwrite newer results, so each request claims a sequence number and only the
+  // latest one is allowed to commit.
+  const activityRequestSeq = useRef(0);
   // For regular feeds (conversations, announcements)
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -760,37 +767,57 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [setTestCaseResolutionStatus, selectedTask?.id]
   );
 
-  // Activity Events fetch methods
-  const fetchActivityEventsHandler = useCallback(
-    async (params?: ListActivityParams) => {
+  // Activity Events fetch methods.
+  // Every activity fetcher shares this runner so the sequence guard and the
+  // loading flag stay identical across all of them — a request that has been
+  // superseded must not commit its result, toast, or clear a loading flag that
+  // now belongs to a newer request.
+  //
+  // Domain scoping is deliberately absent: the `withDomainFilter` interceptor
+  // registered in AuthProvider appends `domain` to every GET, so resolving it
+  // here would duplicate that.
+  const runActivityRequest = useCallback(
+    async (request: () => Promise<{ data: ActivityEvent[] }>) => {
+      const seq = ++activityRequestSeq.current;
       setIsActivityLoading(true);
       try {
-        const { data } = await getActivityEvents(params);
+        const { data } = await request();
+        if (seq !== activityRequestSeq.current) {
+          return;
+        }
         setActivityEvents(data);
       } catch (err) {
-        showErrorToast(err as AxiosError);
+        if (seq === activityRequestSeq.current) {
+          showErrorToast(err as AxiosError);
+        }
       } finally {
-        setIsActivityLoading(false);
+        if (seq === activityRequestSeq.current) {
+          setIsActivityLoading(false);
+        }
       }
     },
     []
   );
 
+  const fetchActivityEventsHandler = useCallback(
+    async (params?: ListActivityParams) => {
+      await runActivityRequest(() => getActivityEvents({ ...params }));
+    },
+    [runActivityRequest]
+  );
+
   const fetchMyActivityFeedHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      setIsActivityLoading(true);
-      try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getMyActivityFeed({ ...params, domain });
-        setActivityEvents(data);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      } finally {
-        setIsActivityLoading(false);
-      }
+      await runActivityRequest(() => getMyActivityFeed({ ...params }));
     },
-    [activeDomain]
+    [runActivityRequest]
+  );
+
+  const fetchFollowingActivityHandler = useCallback(
+    async (params?: { days?: number; limit?: number }) => {
+      await runActivityRequest(() => getFollowingActivityFeed({ ...params }));
+    },
+    [runActivityRequest]
   );
 
   const fetchEntityActivityHandler = useCallback(
@@ -873,6 +900,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       activityThread,
       fetchActivityEvents: fetchActivityEventsHandler,
       fetchMyActivityFeed: fetchMyActivityFeedHandler,
+      fetchFollowingActivity: fetchFollowingActivityHandler,
       fetchEntityActivity: fetchEntityActivityHandler,
       fetchUserActivity: fetchUserActivityHandler,
       updateActivityReaction,
@@ -917,6 +945,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     activityThread,
     fetchActivityEventsHandler,
     fetchMyActivityFeedHandler,
+    fetchFollowingActivityHandler,
     fetchEntityActivityHandler,
     fetchUserActivityHandler,
     updateActivityReaction,
