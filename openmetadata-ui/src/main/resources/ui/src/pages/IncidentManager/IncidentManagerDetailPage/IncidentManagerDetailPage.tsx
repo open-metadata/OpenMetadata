@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
-import { Copy01, RefreshCcw01 } from '@untitledui/icons';
+import { RefreshCcw01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import type { TFunction } from 'i18next';
 import { isUndefined, toString } from 'lodash';
-import { ReactNode, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
@@ -31,7 +25,6 @@ import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import { PageLoader } from '../../../components/common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
@@ -44,15 +37,7 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import {
-  IngestionPipeline,
-  PipelineType,
-} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import type { TestCase } from '../../../generated/tests/testCase';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
-import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -60,183 +45,18 @@ import {
   getEntityDetailsPath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
+import { TEST_CASE_NEXT_RUN_QUERY_KEY } from './IncidentManagerDetailPage.constants';
+import {
+  fetchNextTestCaseRunTimestamp,
+  getIncidentManagerPageTitle,
+  getTestSuiteFqns,
+  shouldFetchNextRun,
+} from './IncidentManagerDetailPage.utils';
+import TestCaseHeaderTitle from './TestCaseHeaderTitle.component';
+import TestCaseTabBarExtraContent from './TestCaseTabBarExtraContent.component';
 import { useTestCaseDetailPage } from './useTestCaseDetailPage';
-
-const breakableTooltipText = (text?: ReactNode) => (
-  <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
-);
-
-const getPipelineNextRunTimestamp = async (pipeline: IngestionPipeline) => {
-  const scheduleInterval = pipeline.airflowConfig?.scheduleInterval;
-
-  if (
-    pipeline.enabled === false ||
-    pipeline.airflowConfig?.pausePipeline ||
-    !scheduleInterval
-  ) {
-    return undefined;
-  }
-
-  return getNextCronRunTimestamp(
-    scheduleInterval,
-    pipeline.airflowConfig?.pipelineTimezone
-  );
-};
-
-const fetchNextTestCaseRunTimestamp = async (testSuiteFqns: string[]) => {
-  const responses = await Promise.all(
-    testSuiteFqns.map((testSuite) =>
-      getIngestionPipelines({
-        arrQueryFields: ['airflowConfig'],
-        limit: 100,
-        pipelineType: [PipelineType.TestSuite],
-        testSuite,
-      })
-    )
-  );
-  const nextRuns = (
-    await Promise.all(
-      responses.flatMap(({ data }) => data).map(getPipelineNextRunTimestamp)
-    )
-  ).filter((nextRun): nextRun is number => nextRun !== undefined);
-
-  return nextRuns.length ? Math.min(...nextRuns) : undefined;
-};
-
-type TestCaseDetailPageData = ReturnType<typeof useTestCaseDetailPage>;
-
-const shouldFetchNextRun = ({
-  activeTab,
-  dimensionKey,
-  isVersionPage,
-  testSuiteFqns,
-}: {
-  activeTab: TestCaseDetailPageData['activeTab'];
-  dimensionKey: TestCaseDetailPageData['dimensionKey'];
-  isVersionPage: boolean;
-  testSuiteFqns: string[];
-}) =>
-  Boolean(
-    testSuiteFqns.length &&
-      !isVersionPage &&
-      !dimensionKey &&
-      activeTab === TestCasePageTabs.TEST_CASE_RESULTS
-  );
-
-const getIncidentManagerPageTitle = (
-  t: TFunction,
-  isVersionPage: boolean,
-  testCase: TestCase
-) =>
-  t(
-    isVersionPage
-      ? 'label.entity-version-detail-plural'
-      : 'label.entity-detail-plural',
-    {
-      entity: getEntityName(testCase) || t('label.test-case'),
-    }
-  );
-
-const getTabBarExtraContent = ({
-  isExpandViewSupported,
-  isTabExpanded,
-  t,
-  toggleTabExpanded,
-}: {
-  isExpandViewSupported: TestCaseDetailPageData['isExpandViewSupported'];
-  isTabExpanded: TestCaseDetailPageData['isTabExpanded'];
-  t: TFunction;
-  toggleTabExpanded: TestCaseDetailPageData['toggleTabExpanded'];
-}) => {
-  if (!isExpandViewSupported) {
-    return null;
-  }
-
-  return (
-    <AlignRightIconButton
-      className={isTabExpanded ? 'rotate-180' : ''}
-      title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-      onClick={toggleTabExpanded}
-    />
-  );
-};
-
-const TestCaseHeaderTitle = ({
-  displayName,
-  hasCopied,
-  testCaseName,
-  onCopy,
-}: {
-  displayName: TestCaseDetailPageData['displayName'];
-  hasCopied: boolean;
-  testCaseName: TestCase['name'];
-  onCopy: () => Promise<void>;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Box
-      align="center"
-      className="tw:min-w-0"
-      data-testid="entity-header-title"
-      gap={3}>
-      <Box className="tw:min-w-0" direction="col">
-        {displayName && (
-          <Typography
-            as="h2"
-            className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
-            data-testid="entity-header-display-name"
-            ellipsis={{
-              tooltip: breakableTooltipText(stringToHTML(displayName)),
-            }}
-            size="text-lg"
-            weight="bold">
-            {stringToHTML(displayName)}
-          </Typography>
-        )}
-        <Typography
-          as={displayName ? 'span' : 'h2'}
-          className={classNames(
-            'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
-            {
-              'tw:text-primary': !displayName,
-              'tw:text-tertiary': displayName,
-            }
-          )}
-          data-testid="entity-header-name"
-          ellipsis={{ tooltip: breakableTooltipText(testCaseName) }}
-          size={displayName ? 'text-sm' : 'text-lg'}
-          weight={displayName ? 'medium' : 'bold'}>
-          {testCaseName}
-        </Typography>
-      </Box>
-      <Tooltip
-        placement="top"
-        title={
-          hasCopied
-            ? t('message.link-copy-to-clipboard')
-            : t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })
-        }>
-        <Button
-          aria-label={t('label.copy-item', {
-            item: t('label.url-uppercase'),
-          })}
-          color="tertiary"
-          data-testid="entity-header-copy-button"
-          iconLeading={Copy01}
-          size="xs"
-          type="button"
-          onClick={onCopy}
-        />
-      </Tooltip>
-    </Box>
-  );
-};
 
 const IncidentManagerDetailPage = ({
   isVersionPage = false,
@@ -278,18 +98,9 @@ const IncidentManagerDetailPage = ({
     fetchTaskCount: getEntityFeedCount,
     isVersionPage,
   });
-  const testSuiteFqns = useMemo(() => {
-    const fqns = [
-      testCase?.testSuite?.fullyQualifiedName ?? testCase?.testSuite?.name,
-      ...(testCase?.testSuites?.map(
-        (testSuite) => testSuite.fullyQualifiedName ?? testSuite.name
-      ) ?? []),
-    ].filter((fqn): fqn is string => Boolean(fqn));
-
-    return [...new Set(fqns)];
-  }, [testCase?.testSuite, testCase?.testSuites]);
+  const testSuiteFqns = useMemo(() => getTestSuiteFqns(testCase), [testCase]);
   const { data: nextRunTimestamp } = useQuery({
-    queryKey: ['test-case-next-run', testCaseFQN, testSuiteFqns],
+    queryKey: [TEST_CASE_NEXT_RUN_QUERY_KEY, testCaseFQN, testSuiteFqns],
     queryFn: () => fetchNextTestCaseRunTimestamp(testSuiteFqns),
     enabled: shouldFetchNextRun({
       activeTab,
@@ -550,12 +361,13 @@ const IncidentManagerDetailPage = ({
             className="tabs-new"
             data-testid="tabs"
             items={tabItems}
-            tabBarExtraContent={getTabBarExtraContent({
-              isExpandViewSupported,
-              isTabExpanded,
-              t,
-              toggleTabExpanded,
-            })}
+            tabBarExtraContent={
+              <TestCaseTabBarExtraContent
+                isExpandViewSupported={isExpandViewSupported}
+                isTabExpanded={isTabExpanded}
+                toggleTabExpanded={toggleTabExpanded}
+              />
+            }
             onChange={handleTabChange}
           />
         </div>
