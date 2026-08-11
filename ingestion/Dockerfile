@@ -140,14 +140,6 @@ RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docke
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
 
-# Every source build is done, so the setuptools<81 pin above can be lifted. That pin is
-# build-time only: cx_Oracle and mysqlclient import pkg_resources from their setup.py and
-# 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x on disk is
-# what keeps scanners reporting CVE-2026-59890.
-# Keep this the LAST pip layer -- a later layer that compiles a package needing
-# pkg_resources would fail here, and the error would not look like a setuptools problem.
-RUN pip install --upgrade "setuptools>=83"
-
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
@@ -159,3 +151,13 @@ RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
+
+# Every step that needs pkg_resources is done, so the setuptools<81 pin above can be lifted.
+# That pin is build-time only: cx_Oracle and mysqlclient import pkg_resources from their
+# setup.py and 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x
+# on disk is what keeps scanners reporting CVE-2026-59890.
+# This must remain the final layer in the file -- after `airflow db migrate` as well as after
+# the last pip install. Anything that compiles a package needing pkg_resources, or that runs
+# an import chain still using it, would fail once it is gone, and the error would not look
+# like a setuptools problem.
+RUN pip install --upgrade "setuptools>=83"

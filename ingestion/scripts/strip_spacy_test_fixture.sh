@@ -29,12 +29,19 @@
 
 set -uo pipefail
 
-if ! command -v python >/dev/null 2>&1; then
-  echo "WARNING: python not on PATH; skipping spacy test-fixture strip" >&2
+# `python` is tried first, not `python3`: pip installs into whichever interpreter `python`
+# resolves to in these images (in the airflow base that is ~/.local/bin/python, not the
+# system one), so preferring `python3` could scan a different site-packages than the one the
+# fixture was installed into. `python3` is the fallback for a base image that ships no
+# `python` shim -- without it the strip would silently skip and the black findings would
+# survive a green build.
+PYTHON="$(command -v python || command -v python3 || true)"
+if [ -z "${PYTHON}" ]; then
+  echo "WARNING: no python interpreter on PATH; skipping spacy test-fixture strip" >&2
   exit 0
 fi
 
-python - <<'PY'
+"${PYTHON}" - <<'PY'
 import os
 import sys
 
