@@ -9,7 +9,7 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- */
+*/
 
 import { ToastProvider } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
@@ -28,37 +28,56 @@ import {
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
-import { isPlaywrightEnv } from './utils/PlaywrightUtils';
 import { getThemeConfig } from './utils/ThemeUtils';
 
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
-
-  const { applicationConfig, setApplicationConfig, setRdfEnabled } =
-    useApplicationStore(
-      useShallow((state) => ({
-        applicationConfig: state.applicationConfig,
-        setApplicationConfig: state.setApplicationConfig,
-        setRdfEnabled: state.setRdfEnabled,
-      }))
-    );
+  const {
+    applicationConfig,
+    setApplicationConfig,
+    setRdfEnabled,
+    setTimeFormat,
+  } = useApplicationStore(
+    useShallow((state) => ({
+      applicationConfig: state.applicationConfig,
+      setApplicationConfig: state.setApplicationConfig,
+      setRdfEnabled: state.setRdfEnabled,
+      setTimeFormat: state.setTimeFormat,
+    }))
+  );
 
   const fetchApplicationConfig = async () => {
     try {
-      const [themeData, systemConfig] = await Promise.all([
-        getCustomUiThemePreference(),
-        getSystemConfig(),
-      ]);
-
-      setApplicationConfig({
-        ...themeData,
-        customTheme: getThemeConfig(themeData.customTheme),
+      // FIX: Handle promises independently so a theme fetch failure doesn't 
+      // drop the successfully fetched tenant timeFormat default.
+      const themeDataPromise = getCustomUiThemePreference().catch((err) => {
+        console.error('Failed to fetch theme data:', err);
+        return null;
+      });
+      
+      const systemConfigPromise = getSystemConfig().catch((err) => {
+        console.error('Failed to fetch system config:', err);
+        return null;
       });
 
-      setRdfEnabled(systemConfig.rdfEnabled || false);
+      const [themeData, systemConfig] = await Promise.all([
+        themeDataPromise,
+        systemConfigPromise,
+      ]);
+
+      if (themeData) {
+        setApplicationConfig({
+          ...themeData,
+          customTheme: getThemeConfig(themeData.customTheme),
+        });
+      }
+
+      if (systemConfig) {
+        setRdfEnabled(systemConfig.rdfEnabled || false);
+        setTimeFormat(systemConfig.timeFormat || '12h');
+      }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(error);
+      console.error('Failed to fetch application config:', error);
     }
   };
 
@@ -68,14 +87,12 @@ const AppRoot: FC = () => {
   }, []);
 
   useEffect(() => {
-    const faviconHref = isEmpty(
-      applicationConfig?.customLogoConfig?.customFaviconUrlPath
-    )
-      ? '/favicon.png'
-      : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
-        '/favicon.png';
+    const faviconHref =
+      isEmpty(applicationConfig?.customLogoConfig?.customFaviconUrlPath)
+        ? '/favicon.png'
+        : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
+          '/favicon.png';
     const link = document.querySelectorAll('link[rel~="icon"]');
-
     if (!isEmpty(link)) {
       link.forEach((item) => {
         item.setAttribute('href', faviconHref);
@@ -86,9 +103,7 @@ const AppRoot: FC = () => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <BrowserRouter
-          basename={getBasePath()}
-          useTransitions={!isPlaywrightEnv()}>
+        <BrowserRouter basename={getBasePath()}>
           <I18nextProvider i18n={i18n}>
             <AntDConfigProvider>
               <HelmetProvider>

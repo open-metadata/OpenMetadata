@@ -64,6 +64,7 @@ public class ConfigResource {
   public Map<String, Object> getConfig() {
     Map<String, Object> config = new HashMap<>();
     config.put("basePath", openMetadataApplicationConfig.getBasePath());
+    config.put("timeFormat", openMetadataApplicationConfig.getTimeFormat());
 
     // Add RDF configuration
     if (openMetadataApplicationConfig.getRdfConfiguration() != null) {
