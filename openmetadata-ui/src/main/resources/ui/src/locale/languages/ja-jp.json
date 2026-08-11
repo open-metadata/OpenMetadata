@@ -307,6 +307,8 @@
     "browse-estate": "データ基盤を参照",
     "browse-glossary": "用語集を参照",
     "bulk-edit": "一括編集",
+    "bulk-edit-all": "すべてを一括編集",
+    "bulk-edit-count": "一括編集（{{count}} 件選択中）",
     "bulk-import-entity": "{{entity}}の一括インポート",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

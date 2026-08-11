@@ -307,6 +307,8 @@
     "browse-estate": "استعراض المنظومة البيانية",
     "browse-glossary": "تصفّح المسرد",
     "bulk-edit": "تعديل مجمع",
+    "bulk-edit-all": "تعديل مجمع للكل",
+    "bulk-edit-count": "تعديل مجمع ({{count}} محدد)",
     "bulk-import-entity": "استيراد {{entity}} بالجملة",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

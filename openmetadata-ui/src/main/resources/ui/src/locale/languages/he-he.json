@@ -307,6 +307,8 @@
     "browse-estate": "עיין במאגר הנתונים",
     "browse-glossary": "עיון במילון המונחים",
     "bulk-edit": "עריכה מרובה",
+    "bulk-edit-all": "עריכה מרובה של הכול",
+    "bulk-edit-count": "עריכה מרובה ({{count}} נבחרו)",
     "bulk-import-entity": "ייבוא מרוכז של {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

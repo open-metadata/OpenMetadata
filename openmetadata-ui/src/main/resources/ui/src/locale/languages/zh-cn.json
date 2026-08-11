@@ -307,6 +307,8 @@
     "browse-estate": "浏览数据资产",
     "browse-glossary": "浏览术语表",
     "bulk-edit": "批量编辑",
+    "bulk-edit-all": "批量编辑全部",
+    "bulk-edit-count": "批量编辑（已选择 {{count}} 项）",
     "bulk-import-entity": "批量导入{{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

@@ -307,6 +307,8 @@
     "browse-estate": "Databestand doorzoeken",
     "browse-glossary": "Woordenlijst verkennen",
     "bulk-edit": "Bulk bewerken",
+    "bulk-edit-all": "Alles bulk bewerken",
+    "bulk-edit-count": "Bulk bewerken ({{count}} geselecteerd)",
     "bulk-import-entity": "Bulkimport van {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",
