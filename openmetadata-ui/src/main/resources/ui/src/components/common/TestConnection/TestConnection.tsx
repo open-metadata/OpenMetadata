@@ -399,6 +399,13 @@ const TestConnection: FC<TestConnectionProps> = ({
 
             resolve();
           } catch (error) {
+            // a newer run may have started while this request was in flight;
+            // its rejection must not clear the newer run's timers/state
+            if (runId !== runIdRef.current) {
+              resolve();
+
+              return;
+            }
             reject(error as AxiosError);
           }
         }, FETCH_INTERVAL)
