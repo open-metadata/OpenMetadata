@@ -58,24 +58,6 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         DROP VIEW  IF EXISTS view_persons;
     """
 
-    # keeps `dbo` from ever reporting zero tables mid-suite (test_delete_table_is_marked_as_deleted
-    # drops `persons` with nothing to replace it). An empty scan of a schema is intentionally treated
-    # server-side as "can't tell if the connector crashed" and skips deletion (see
-    # BulkDeleteStaleIT#test_emptySeenFqns_withPopulatedScope_deletesNothing) - a permanent extra table
-    # is the fix, not a server change.
-    create_actors_profile_table_query: str = """
-        IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG = 'e2e_cli_tests' AND TABLE_NAME = 'actors_profile')
-            BEGIN
-                CREATE TABLE e2e_cli_tests.dbo.actors_profile (id int)
-            END
-    """
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        with cls.engine.begin() as connection:
-            connection.exec_driver_sql(cls.create_actors_profile_table_query)
-
     def setUp(self) -> None:
         self.create_table_and_view()
 
