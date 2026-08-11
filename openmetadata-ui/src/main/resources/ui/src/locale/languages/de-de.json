@@ -3776,6 +3776,8 @@
     "no-input-output-ports-configured": "Noch keine Eingabe- oder Ausgabe-Ports konfiguriert",
     "no-input-ports-added": "Es wurden noch keine Eingabe-Ports hinzugefügt",
     "no-installed-applications-found": "Derzeit sind keine Anwendungen installiert. Klicken Sie auf die Schaltfläche 'Apps hinzufügen', um eine zu installieren.",
+    "no-intake-form-yet": "Noch keine Aufnahmeformulare",
+    "no-intake-form-yet-description": "Erstellen Sie ein Aufnahmeformular, um die von der Governance-Richtlinie geforderten Pflichtfelder für Datenprodukte, Domänen und Glossarbegriffe durchzusetzen.",
     "no-knowledge-graph-data": "Keine Wissensgraph-Daten verfügbar. Bitte prüfen Sie, ob die RDF-Wissensgraph-Indexierungsanwendung installiert und korrekt konfiguriert ist.",
     "no-kpi": "Definieren Sie Schlüsselkennzahlen, um Auswirkungen zu überwachen und fundiertere Entscheidungen zu treffen.",
     "no-kpi-available-add-new-one": "Keine KPIs verfügbar. Klicken Sie auf die Schaltfläche 'KPI hinzufügen', um einen hinzuzufügen.",
