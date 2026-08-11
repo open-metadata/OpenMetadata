@@ -1715,8 +1715,14 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
-      const { row } = await getFirstVisibleFixtureMetricRow(page);
+      await filterMetrics(page, fixtures.prefix);
 
+      const row = page
+        .locator('tr')
+        .filter({ has: page.getByTestId('metric-name') })
+        .first();
+      await expect(row).toBeVisible();
+      
       await row.locator('.metric-status-pill').first().click();
 
       await expect(page).toHaveURL(/\/metric\//);
@@ -1727,7 +1733,13 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
-      const { row } = await getFirstVisibleFixtureMetricRow(page);
+      await filterMetrics(page, fixtures.prefix);
+
+      const row = page
+        .locator('tr')
+        .filter({ has: page.getByTestId('metric-name') })
+        .first();
+      await expect(row).toBeVisible();
 
       await row.locator('label[slot="selection"]').click();
 
