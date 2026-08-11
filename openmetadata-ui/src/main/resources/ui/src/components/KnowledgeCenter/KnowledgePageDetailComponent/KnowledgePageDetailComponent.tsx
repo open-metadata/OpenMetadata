@@ -108,6 +108,9 @@ interface KnowledgePageDetailComponentProps {
 }
 
 const stripPendingUploadNodes = (html: string): string => {
+  if (!html.includes('data-uploading="true"')) {
+    return html;
+  }
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   doc
