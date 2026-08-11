@@ -17,7 +17,6 @@ from typing import List  # noqa: UP035
 
 import pytest
 
-from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.ingestion.api.status import Status
 
 from .common.test_cli_dashboard import CliCommonDashboard  # noqa: TID252
@@ -88,20 +87,6 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         We are overriding this method because of diff.
         of 1 in source and sink records
         """
-        print(f"[verify] source_status.records={source_status.records}")  # noqa: T201
-        print(f"[verify] source_status.updated_records={source_status.updated_records}")  # noqa: T201
-        dashboards = self.openmetadata.list_entities(
-            entity=Dashboard,
-            params={"service": "local_quicksight", "fields": "charts,dataModels"},
-        ).entities
-        for d in dashboards:
-            charts = d.charts.root if d.charts else []
-            data_models = d.dataModels.root if d.dataModels else []
-            print(  # noqa: T201
-                f"[verify] dashboard {d.name.root!r} ({d.displayName!r}): "
-                f"charts={[c.displayName or c.name for c in charts]} "
-                f"dataModels={[m.displayName or m.name for m in data_models]}"
-            )
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)

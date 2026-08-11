@@ -1876,10 +1876,6 @@ class DbtSource(DbtServiceSource):
                 # entityLink shapes), so its description is only set on creation and
                 # never patched from an individual node.
                 if not check_test_definition_exists:
-                    logger.info(
-                        f"[verify] creating TestDefinition {test_definition_name!r} as "
-                        f"entityType={entity_type} (first triggered by node {manifest_node.name!r})"
-                    )
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
@@ -1930,11 +1926,6 @@ class DbtSource(DbtServiceSource):
                         # Create the test case only if it does not exist
                         entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
                         test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
-                        logger.info(
-                            f"[verify] test_case={manifest_node.name!r} "
-                            f"testDefinition={test_definition_name!r} "
-                            f"entityLink={entity_link_str!r}"
-                        )
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,

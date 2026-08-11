@@ -22,7 +22,6 @@ import pytest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.ingestion.api.status import Status
-from metadata.ingestion.ometa.utils import model_str
 
 from .test_cli import CliBase  # noqa: TID252
 
@@ -70,29 +69,15 @@ class CliDBTBase(TestCase):
             test_case_entity_list = self.openmetadata.list_entities(
                 entity=TestDefinition,
                 params={"testPlatform": TestPlatform.dbt.value},
-                fields=["*"],
                 # default limit=100 would silently truncate if this ever grows past it.
+                limit=1000,
             )
-            for e in test_case_entity_list.entities:
-                print(  # noqa: T201
-                    f"[verify] TestDefinition name={model_str(e.name)!r} entityType={e.entityType} "
-                    f"displayName={e.displayName!r} description={e.description!r} "
-                    f"testPlatforms={e.testPlatforms} parameterDefinition={e.parameterDefinition}"
-                )
-            # server-reported total vs. what this page actually returned - if these
-            # ever diverge, the list above is incomplete and limit needs raising.
-            print(  # noqa: T201
-                f"[verify] TestDefinition page count={len(test_case_entity_list.entities)} "
-                f"server total={test_case_entity_list.total}"
-            )
-            # ponytail: deliberately wrong on purpose. TestDefinition is now shared per
-            # dbt test *type* (#28927, 2026-06-16), so 26 (the old one-per-test-case
-            # count) can't be right anymore - but the real number is unconfirmed (doc
-            # says 4, a prior commit claimed 5, neither has a surviving log to check).
-            # Asserting the known-stale 26 guarantees this fails, which forces pytest to
-            # print the [verify] dump above into the CI log. Replace with the real
-            # count once a dispatch shows it.
-            self.assertEqual(len(test_case_entity_list.entities), 26)
+            # TestDefinition is shared per dbt test *type* (#28927, 2026-06-16), not per
+            # test case - 26 was the pre-#28927 one-per-test-case count. 6 is the real,
+            # CI-confirmed count post-fix (run 31504446866, job 93822356284): accepted_values,
+            # columnValueMaxToBeBetween, not_null, relationships, unique, unique_table
+            # (the last one only exists because of the composite-key TestDefinition split).
+            self.assertEqual(len(test_case_entity_list.entities), 6)
 
         # 5. test dbt lineage
         @pytest.mark.order(5)

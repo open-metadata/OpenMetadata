@@ -15,8 +15,6 @@ MSSQL E2E tests
 
 from typing import List  # noqa: UP035
 
-from metadata.ingestion.api.status import Status
-
 from .common.test_cli_db import CliCommonDB  # noqa: TID252
 from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
@@ -60,7 +58,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         DROP VIEW  IF EXISTS view_persons;
     """
 
-    # ponytail: keeps `dbo` from ever reporting zero tables mid-suite (test_delete_table_is_marked_as_deleted
+    # keeps `dbo` from ever reporting zero tables mid-suite (test_delete_table_is_marked_as_deleted
     # drops `persons` with nothing to replace it). An empty scan of a schema is intentionally treated
     # server-side as "can't tell if the connector crashed" and skips deletion (see
     # BulkDeleteStaleIT#test_emptySeenFqns_withPopulatedScope_deletesNothing) - a permanent extra table
@@ -93,19 +91,6 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def delete_table_and_view(self) -> None:
         SQACommonMethods.delete_table_and_view(self)
-
-    def assert_for_delete_table_is_marked_as_deleted(self, source_status: Status, sink_status: Status) -> None:
-        # ponytail: proves the `actors_profile` keep-alive table actually does its job -
-        # persons should be gone (None), actors_profile should still be there (not None).
-        # If actors_profile also comes back None, the empty-seenFqns guard fired anyway
-        # and the fix didn't work.
-        deleted = self.retrieve_table(self.fqn_deleted_table())
-        keepalive = self.retrieve_table("mssql.e2e_cli_tests.dbo.actors_profile")
-        print(  # noqa: T201
-            f"[verify] persons (should be None)={deleted!r} "
-            f"actors_profile (should NOT be None)={keepalive!r}"
-        )
-        super().assert_for_delete_table_is_marked_as_deleted(source_status, sink_status)
 
     @staticmethod
     def expected_tables() -> int:

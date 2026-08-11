@@ -74,7 +74,6 @@ class DbtCliTest(CliDBTBase.TestSuite):
         self.assertTrue((len(sink_status.records) + len(sink_status.updated_records)) > self.expected_tables())
 
     def assert_for_dbt_ingestion(self, source_status: Status, sink_status: Status) -> None:
-        print(f"[verify] source_status.failures={source_status.failures}")  # noqa: T201
         self.assertTrue(len(source_status.failures) == 0)
         self.assertLessEqual(len(source_status.warnings), 10)
         self.assertTrue(len(source_status.filtered) == 0)

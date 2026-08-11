@@ -69,7 +69,6 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.delete_table_and_view()
 
     def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
-        print(f"[verify] source_status.warnings={source_status.warnings}")  # noqa: T201
         self.assertEqual(len(source_status.failures), 0)
         # ponytail: 3 = sql_column_handler._filter_invalid_constraints() dropping
         # invalid table constraints on the shared cluster's AUTO-distribution MVs -
