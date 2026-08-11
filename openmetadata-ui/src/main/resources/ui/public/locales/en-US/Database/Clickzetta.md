@@ -63,8 +63,13 @@ $$
 $$section
 ### Query History Table $(id="queryHistoryTable")
 
-Optional table or view used by the usage and query-lineage workflows. For the
-native ClickZetta history source, enter:
+Optional table or view used by the usage and query-lineage workflows. For
+workspace-local native ClickZetta history, enter:
+
+`information_schema.job_history`
+
+Use the cross-workspace source only when the ingestion identity has explicit
+access to ClickZetta's shared system schema:
 
 `sys.information_schema.job_history`
 
