@@ -39,7 +39,7 @@ def make_source(search_result=None, latest_versions=None, model_name: str = MODE
     source.status = MagicMock()
     source.source_config = MagicMock(mlModelFilterPattern=None)
 
-    if isinstance(search_result, Exception):
+    if isinstance(search_result, Exception) or callable(search_result):
         source.client.search_model_versions.side_effect = search_result
     else:
         source.client.search_model_versions.return_value = search_result
@@ -102,10 +102,16 @@ def test_partial_pagination_failure_does_not_ingest_stale_version():
     that is the stale-version bug pagination exists to prevent.
     """
     source = make_source()
-    source.client.search_model_versions.side_effect = [
-        PagedList([make_version("1")], "token-1"),
-        MlflowException("backend blew up mid-scan"),
-    ]
+
+    calls = {"n": 0}
+
+    def flaky(**_):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return PagedList([make_version("1")], "token-1")
+        raise MlflowException("backend blew up mid-scan")
+
+    source.client.search_model_versions.side_effect = flaky
 
     results = list(source.get_mlmodels())
 
@@ -134,7 +140,59 @@ def test_search_never_passes_order_by():
 
     _, kwargs = source.client.search_model_versions.call_args
     assert "order_by" not in kwargs
-    assert kwargs["filter_string"] == f'name="{MODEL_NAME}"'
+
+
+def test_search_uses_single_quoted_filter():
+    """
+    Unity Catalog only accepts `name = '...'` and rejects double quotes, so the
+    first (and, for an ordinary name, only) attempt must use single quotes.
+    """
+    source = make_source(search_result=PagedList([make_version("1")], None))
+
+    list(source.get_mlmodels())
+
+    assert source.client.search_model_versions.call_count == 1
+    assert source.client.search_model_versions.call_args[1]["filter_string"] == f"name = '{MODEL_NAME}'"
+
+
+def _unity_catalog_backend(model_name, versions):
+    """Simulate Unity Catalog: single-quoted name filters only, double quotes rejected."""
+
+    def _search(*, filter_string, page_token=None):
+        if '"' in filter_string:
+            raise MlflowException(
+                f"INVALID_PARAMETER_VALUE: Unsupported filter query : `{filter_string}`. "
+                "Please specify your filter parameter in the format `name = 'model_name'`."
+            )
+        return PagedList(versions, None)
+
+    return _search
+
+
+def _open_source_backend(model_name, versions):
+    """Simulate open-source MLflow: any filter that parses back to the exact name is honoured."""
+
+    def _search(*, filter_string, page_token=None):
+        parsed = SearchModelUtils.parse_search_filter(filter_string)
+        if parsed[0]["value"] != model_name:
+            raise MlflowException("filter did not round-trip the name")
+        return PagedList(versions, None)
+
+    return _search
+
+
+def test_unity_catalog_model_resolves_via_single_quoted_filter():
+    """Reproduces the reported failure: UC rejected the double-quoted filter and ingested nothing."""
+    model_name = "engagement_dev.curated_ai_recommendations.om_connector_test"
+    source = make_source(
+        search_result=_unity_catalog_backend(model_name, [make_version("2")]),
+        model_name=model_name,
+    )
+
+    results = list(source.get_mlmodels())
+
+    assert results[0][1].version == "2"
+    source.status.failed.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -142,8 +200,15 @@ def test_search_never_passes_order_by():
     ["catalog.schema.o'brien_model", "catalog.schema.it's_a_model"],
 )
 def test_search_filter_survives_quotes_in_model_name(model_name):
-    """A quote in the name must not corrupt the filter, or the model silently vanishes."""
-    source = make_source(search_result=PagedList([make_version("2")], None), model_name=model_name)
+    """
+    A single quote in the name breaks the single-quoted filter, so the source
+    must fall back to the double-quoted form open-source MLflow can round-trip,
+    or the model silently vanishes.
+    """
+    source = make_source(
+        search_result=_open_source_backend(model_name, [make_version("2")]),
+        model_name=model_name,
+    )
 
     results = list(source.get_mlmodels())
 

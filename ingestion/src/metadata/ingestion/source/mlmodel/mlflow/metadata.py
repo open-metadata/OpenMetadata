@@ -137,33 +137,56 @@ class MlflowSource(MlModelServiceSource):
 
         Note the ordering is deliberately left to `_pick_newest`: Unity Catalog
         rejects `order_by` on this call outright.
+
+        Backends disagree on how the name filter must be quoted, and no single
+        form satisfies both:
+
+        - Unity Catalog only accepts the single-quoted `name = '...'` and
+          rejects a double-quoted filter outright.
+        - Open-source MLflow accepts either, but is the only one that can
+          round-trip a name containing a single quote -- and only through
+          double quotes (the SQL-style `''` escape parses, yet hands back the
+          doubled quote verbatim and would silently match nothing).
+
+        Unity Catalog names cannot contain quotes, so try the single-quoted
+        form first -- portable across both backends for every ordinary name --
+        and fall back to double quotes for the open-source name-with-a-quote
+        case, where the single-quoted attempt fails to parse.
+        """
+        last_error: Exception | None = None
+        for filter_string in (f"name = '{model_name}'", f'name = "{model_name}"'):
+            try:
+                return self._collect_versions(model_name, filter_string)
+            except Exception as err:
+                logger.debug(traceback.format_exc())
+                last_error = err
+
+        logger.warning(f"Error searching for versions of model {model_name} - {last_error}")
+        return []
+
+    def _collect_versions(self, model_name: str, filter_string: str) -> list[ModelVersion]:
+        """
+        Page through every version matching `filter_string`.
+
+        Raises on a backend error so the caller can try the next filter form;
+        returns an empty list only when the query itself succeeds with nothing
+        to show (including a blown page budget, which is not a filter problem).
         """
         versions: list[ModelVersion] = []
         page_token = None
 
-        # MLflow only bars `/` and `:` from model names, so a name may well contain
-        # a quote. Double quotes are the only delimiter the filter parser round-trips
-        # a single quote through: the SQL-style `''` escape parses, but yields the
-        # doubled quote verbatim and would silently match nothing.
-        filter_string = f'name="{model_name}"'
+        for _ in range(MAX_VERSION_PAGES):
+            page = self.client.search_model_versions(filter_string=filter_string, page_token=page_token)
+            versions.extend(page)
 
-        try:
-            for _ in range(MAX_VERSION_PAGES):
-                page = self.client.search_model_versions(filter_string=filter_string, page_token=page_token)
-                versions.extend(page)
+            page_token = getattr(page, "token", None)
+            if not page_token:
+                return versions
 
-                page_token = getattr(page, "token", None)
-                if not page_token:
-                    return versions
-
-            logger.warning(
-                f"Gave up paginating versions of {model_name} after {MAX_VERSION_PAGES} pages "
-                "with more still pending; skipping the model rather than risking a stale version."
-            )
-        except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error searching for versions of model {model_name} - {err}")
-
+        logger.warning(
+            f"Gave up paginating versions of {model_name} after {MAX_VERSION_PAGES} pages "
+            "with more still pending; skipping the model rather than risking a stale version."
+        )
         return []
 
     @staticmethod
