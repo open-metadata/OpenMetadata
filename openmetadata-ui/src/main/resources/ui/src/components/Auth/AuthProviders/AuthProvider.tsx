@@ -38,7 +38,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
-import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
+import {
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
+} from '../../../constants/Auth.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
   REDIRECT_PATHNAME,
@@ -127,6 +130,12 @@ let pendingRequests: {
   reject: (reason?: unknown) => void;
   config: InternalAxiosRequestConfig<unknown>;
 }[] = [];
+
+// True while THIS tab is driving a token refresh and draining `pendingRequests`.
+// Kept in memory (not the cross-tab localStorage flag) so a sibling tab's
+// refresh can never leave this tab's queued 401s without a driver to settle
+// them — the bug that hung the UI on a spinner.
+let isRefreshDriverActive = false;
 
 type AuthContextType = {
   onLoginHandler: () => void;
@@ -593,67 +602,61 @@ export const AuthProvider = ({
             if (
               UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
               (error.config.url === '/users/loggedInUser' &&
-                !error.response.data.message.includes('Expired token!'))
+                !REFRESHABLE_AUTH_ERRORS.some((authError) =>
+                  (error.response.data?.message ?? '').includes(authError)
+                ))
             ) {
               throw error;
             }
             handleStoreProtectedRedirectPath();
 
-            // If 401 error and refresh is not in progress, trigger the refresh
-            if (tokenService.current?.isTokenUpdateInProgress()) {
-              // If refresh is in progress, queue the request
-              return new Promise((resolve, reject) => {
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
-                });
-              });
-            } else {
-              // Start the refresh process
-              return new Promise((resolve, reject) => {
-                // Add this request to the pending queue
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
-                });
+            // Queue the failed request, then ensure exactly one refresh drives
+            // the queue in THIS tab. Every 401 lands in pendingRequests; the
+            // first arrival starts the refresh and, once it settles, ALWAYS
+            // drains the queue — retry with the new token, or reject + log out.
+            // Nothing is left parked. The previous code queued behind a
+            // cross-tab localStorage flag that no in-tab driver would clear,
+            // hanging the request (and the UI spinner) indefinitely.
+            return new Promise((resolve, reject) => {
+              pendingRequests.push({ resolve, reject, config: error.config });
+              if (isRefreshDriverActive) {
+                return;
+              }
+              isRefreshDriverActive = true;
 
-                // Reject every queued 401'd request with the given error and
-                // clear the queue. Called on any path where the refresh does
-                // not yield a new token (null-return or thrown error) so the
-                // callers don't hang waiting for a retry that will never come.
-                const rejectPending = (rejectionError: unknown) => {
-                  pendingRequests.forEach(({ reject }) =>
-                    reject(rejectionError)
+              const drainPendingRequests = (hasNewToken: boolean) => {
+                const queued = pendingRequests;
+                pendingRequests = [];
+                isRefreshDriverActive = false;
+                if (hasNewToken) {
+                  queued.forEach(
+                    ({ resolve: onResolve, reject: onReject, config }) =>
+                      axiosClient
+                        .request(config)
+                        .then(onResolve)
+                        .catch(onReject)
                   );
-                  pendingRequests = [];
-                };
+                } else {
+                  queued.forEach(({ reject: onReject }) => onReject(error));
+                }
+              };
 
-                // Refresh the token and retry the requests in the queue
-                tokenService.current
-                  .refreshToken()
-                  .then(async (token) => {
-                    if (token) {
-                      // Retry the pending requests
-                      await initializeAxiosInterceptors();
-                      pendingRequests.forEach(({ resolve, reject, config }) => {
-                        axiosClient.request(config).then(resolve).catch(reject);
-                      });
-
-                      // Clear the queue after retrying
-                      pendingRequests = [];
-                    } else {
-                      rejectPending(error);
-                      resetUserDetails(true);
-                    }
-                  })
-                  .catch((refreshError) => {
-                    rejectPending(refreshError);
+              tokenService.current
+                .refreshToken()
+                .then(async (token) => {
+                  if (token) {
+                    await initializeAxiosInterceptors();
+                    drainPendingRequests(true);
+                  } else {
+                    drainPendingRequests(false);
                     resetUserDetails(true);
-                  });
-              });
-            }
+                  }
+                })
+                .catch(() => {
+                  drainPendingRequests(false);
+                  resetUserDetails(true);
+                });
+            });
           }
         }
 
