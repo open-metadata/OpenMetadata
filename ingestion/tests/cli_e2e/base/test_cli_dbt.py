@@ -22,6 +22,7 @@ import pytest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.ometa.utils import model_str
 
 from .test_cli import CliBase  # noqa: TID252
 
@@ -70,7 +71,13 @@ class CliDBTBase(TestCase):
                 entity=TestDefinition,
                 params={"testPlatform": TestPlatform.dbt.value},
             )
-            self.assertEqual(len(test_case_entity_list.entities), 26)
+            print(  # noqa: T201
+                f"[verify] TestDefinition names: {[model_str(e.name) for e in test_case_entity_list.entities]}"
+            )
+            # TestDefinition is now shared per dbt test *type*, not per test case
+            # (#28927, 2026-06-16) - 26 was the pre-#28927 one-per-test-case count.
+            # 5 is the measured count of distinct dbt test types after that change.
+            self.assertEqual(len(test_case_entity_list.entities), 5)
 
         # 5. test dbt lineage
         @pytest.mark.order(5)

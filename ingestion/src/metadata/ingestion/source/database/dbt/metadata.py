@@ -1876,6 +1876,10 @@ class DbtSource(DbtServiceSource):
                     entity_type = EntityType.TABLE
                     if get_manifest_column_name(manifest_node):
                         entity_type = EntityType.COLUMN
+                    logger.info(
+                        f"[verify] creating TestDefinition {test_definition_name!r} as "
+                        f"entityType={entity_type} (first triggered by node {manifest_node.name!r})"
+                    )
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
@@ -1924,6 +1928,11 @@ class DbtSource(DbtServiceSource):
                     description = get_dbt_test_description(manifest_node)
                     if test_case is None:
                         # Create the test case only if it does not exist
+                        logger.info(
+                            f"[verify] test_case={manifest_node.name!r} "
+                            f"testDefinition={get_dbt_test_definition_name(manifest_node)!r} "
+                            f"entityLink={entity_link_str!r}"
+                        )
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,

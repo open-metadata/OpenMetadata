@@ -87,6 +87,8 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         We are overriding this method because of diff.
         of 1 in source and sink records
         """
+        print(f"[verify] source_status.records={source_status.records}")  # noqa: T201
+        print(f"[verify] source_status.updated_records={source_status.updated_records}")  # noqa: T201
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)
