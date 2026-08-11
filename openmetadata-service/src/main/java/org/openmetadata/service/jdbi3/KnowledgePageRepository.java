@@ -401,7 +401,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       List<EntityReference> filtered = filterOutDomainsAndDataProducts(relatedEntities);
       knowledgePage.withRelatedEntities(filtered);
     }
-    EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities());
+    // Capture the return so unresolvable refs (e.g. search-index-only pseudo-types such as
+    // tableColumn) are dropped before they are stored — otherwise they persist as HAS rows and
+    // fail every later read that resolves them via getEntityRepository.
+    knowledgePage.withRelatedEntities(
+        EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities()));
 
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
