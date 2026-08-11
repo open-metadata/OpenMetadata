@@ -35,3 +35,13 @@ CREATE TABLE IF NOT EXISTS test_case_incident (
     INDEX idx_tci_assignee (assignee, testCaseResolutionStatusType),
     INDEX idx_tci_updated (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- App-mode preferences v2: lightweight, app-managed (no FK) per-user preferences bag.
+-- Deliberately not a full entity table - no versioning/audit/soft-delete, cascade-deleted
+-- via UserRepository#postDelete rather than a foreign key.
+CREATE TABLE IF NOT EXISTS user_preferences (
+    userId VARCHAR(36) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (userId)
+);
