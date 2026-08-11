@@ -118,7 +118,7 @@ class NullMissingCount(StaticMetric):
             return None
 
         col = column(self.col.name, self.col.type)
-        conditions: list[tuple[ColumnElement[bool], int]] = [(col.is_(None), 1)]
+        conditions: list[tuple["ColumnElement[bool]", int]] = [(col.is_(None), 1)]
 
         if can_hold_empty_string(self.col.type):
             conditions.append((col.__eq__(""), 1))
