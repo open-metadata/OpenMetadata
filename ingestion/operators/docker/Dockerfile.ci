@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-trixie
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
 # before configuring third-party apt repositories.
@@ -6,8 +6,17 @@ RUN apt-get -qq update \
     && apt-get -qq install -y --no-install-recommends \
          curl ca-certificates gnupg \
     && rm -rf /var/lib/apt/lists/*
-RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
+# apt-key was removed in Debian 13. The repo was also pointing at Debian 11
+# while the image was Debian 12 -- now matched to the actual base. The
+# debian/13 "prod" repo is signed with Microsoft's newer General GPG Signer
+# key (EE4D7792F748182B), which is NOT included in keys/microsoft.asc (that
+# file only has the older Release-signing key) -- so the key and matching
+# sources.list entry are taken from Microsoft's own config package instead of
+# hand-dearmoring the wrong key.
+RUN curl -fsSL -o /tmp/packages-microsoft-prod.deb \
+      https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb \
+  && dpkg -i /tmp/packages-microsoft-prod.deb \
+  && rm -f /tmp/packages-microsoft-prod.deb
 
 # Install Dependencies (listed in alphabetical order)
 RUN apt-get -qq update \
@@ -18,7 +27,8 @@ RUN apt-get -qq update \
     freetds-dev \
     gcc \
     gnupg \
-    libaio1 \
+    # Renamed by Debian's 64-bit time_t transition; libaio1 no longer exists.
+    libaio1t64 \
     libevent-dev \
     libffi-dev \
     libpq-dev \
@@ -36,39 +46,51 @@ RUN apt-get -qq update \
     # mysql_config) and has no Linux wheels, so it always builds from source.
     # The slim base omits pkg-config, unlike the python:3.12-bookworm base.
     pkg-config \
-    # To ensure compatibility with unixodbc package
-    odbcinst=2.3.11-2+deb12u1 \
+    # unixodbc/odbcinst were pinned to bookworm's 2.3.11-2+deb12u1 to keep the
+    # two in lockstep; trixie ships 2.3.12-2 for both, so the pins are dropped
+    # rather than retargeted.
+    odbcinst \
     postgresql \
     postgresql-contrib \
     tdsodbc \
-    unixodbc=2.3.11-2+deb12u1 \
-    unixodbc-dev=2.3.11-2+deb12u1 \
+    unixodbc \
+    unixodbc-dev \
     unzip \
     git \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
-    # Pull bookworm-security fixes for known-vulnerable packages
-    # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
-    # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
-    # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
-    # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
-    # --only-upgrade is a no-op for packages not present in the base image.
+    # Pull any security updates newer than the base image for packages we or our
+    # dependencies pull in. Version-specific Perl module names were removed:
+    # trixie ships Perl 5.40, so perl-modules-5.36/libperl5.36 do not exist.
+    # --only-upgrade is a no-op for packages not present in the image.
     && apt-get -qq install -y --only-upgrade \
          libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
          libpam0g libpam-modules libpam-modules-bin libpam-runtime \
          curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-         perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+         perl perl-base libnss3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
 ENV DEBIAN_FRONTEND=noninteractive
-RUN curl -sS https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
+RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+RUN echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt/ trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
     apt-get -qq update; \
     apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
     apt-get -qq autoremove -yqq --purge; \
     apt-get -qq clean && rm -rf /var/lib/apt/lists/*
+
+# Oracle Instant Client 19.x is linked against libaio.so.1, but Debian 13's
+# 64-bit time_t transition ships that library as libaio.so.1t64 (package
+# libaio1t64). Installing the package satisfies apt but not the linker, so
+# cx_Oracle fails at runtime with DPI-1047. Provide the legacy soname. The
+# path is derived rather than hard-coded because the multiarch directory
+# differs between amd64 and arm64 builds.
+RUN set -eu; \
+    lib="$(find /usr/lib -name 'libaio.so.1t64' -print -quit)"; \
+    test -n "$lib"; \
+    ln -sf "$lib" "$(dirname "$lib")/libaio.so.1"
 
 RUN if [ $(uname -m) = "arm64" ] | [ $(uname -m) = "aarch64" ]; \
  then \
@@ -127,6 +149,13 @@ USER openmetadata
 ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
+
+# GCC 14 (trixie's default) turns implicit-function-declaration,
+# incompatible-pointer-types, and int-conversion from warnings into hard
+# errors by default. Some pinned C-extension deps (e.g. asammdf 7.4.5) predate
+# that default and fail to compile without this; it does not relax any check
+# performed on our own code.
+ENV CFLAGS="-Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion"
 
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
