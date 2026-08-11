@@ -43,6 +43,7 @@ import {
   XClose,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import {
   ChangeEvent,
@@ -760,7 +761,9 @@ const MetricListPage = () => {
       pageTitle={t('label.metric-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
       <div
-        className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
+        className={classNames('metric-list-page-stack', {
+          'p-b-md m-t-xs': !isAiMode,
+        })}>
         <div>
           {isAiMode ? (
             <HeaderShell

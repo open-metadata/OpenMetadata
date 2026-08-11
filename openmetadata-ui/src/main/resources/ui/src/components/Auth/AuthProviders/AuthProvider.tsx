@@ -38,7 +38,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
-import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
+import {
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
+} from '../../../constants/Auth.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
   REDIRECT_PATHNAME,
@@ -54,8 +57,21 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
+import {
+  derivePreferencesFromList,
+  hydrateBackendSyncedPreferences,
+  resetBackendSyncState,
+} from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { clearAppMode, resolveInitialAppMode } from '../../../hooks/useAppMode';
+import {
+  clearAppMode,
+  readAppModeSession,
+  resolveEffectiveAppMode,
+  resolveInitialAppMode,
+  setAppDefaultMode,
+  translateWireMode,
+  writeAppMode,
+} from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
 import { queryClient } from '../../../queryClient';
@@ -65,7 +81,8 @@ import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
-import { getLoggedInUser } from '../../../rest/userAPI';
+import { getAppConfiguration } from '../../../rest/settingConfigAPI';
+import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
@@ -119,6 +136,48 @@ const userAPIQueryFields = [
 
 const isEmailVerifyField = 'isEmailVerified';
 
+/**
+ * Boot-time app-mode plumbing, run once `currentUser` is known (both the
+ * returning-session path and the fresh-login path need it). Fetches the
+ * user's own preferences bag and the tenant-wide app-mode default in
+ * parallel — neither depends on the other, only on `user.id` being
+ * resolved already, so a true 3-way `Promise.all` alongside
+ * `getLoggedInUser` isn't possible (the preferences fetch needs the id
+ * `getLoggedInUser` itself returns).
+ *
+ * Hydrates the local preferences store from the server (or migrates a
+ * local-only value up, on first boot after this feature ships), then
+ * resolves and writes the effective app mode via the fallback chain:
+ * user preference -> persona (unknown synchronously here; refined shortly
+ * after by `useResolvedAppMode` once the persona doc loads) -> tenant
+ * default -> `DEFAULT_APP_MODE`.
+ */
+const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
+  const [prefsRes, appConfig] = await Promise.all([
+    getUserPreferences(user.id).catch(() => ({ preferences: [] })),
+    getAppConfiguration().catch(() => null),
+  ]);
+  hydrateBackendSyncedPreferences(user, prefsRes);
+
+  const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
+  setAppDefaultMode(appDefault);
+
+  // If this tab already has a session tuple (a manual toggle earlier in
+  // this tab, or a reload of one) leave it alone. `useResolvedAppMode`
+  // is the authoritative source and treats the tuple as the highest-
+  // priority signal once persona information is available — writing
+  // here would clobber a valid in-tab choice with the boot-time best-
+  // effort resolve (which cannot yet see persona) and break "toggle to
+  // AI, then reload" for users who did not tick "remember".
+  if (readAppModeSession()?.mode) {
+    return;
+  }
+
+  const userPref =
+    derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
+  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault));
+};
+
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
 
@@ -127,6 +186,12 @@ let pendingRequests: {
   reject: (reason?: unknown) => void;
   config: InternalAxiosRequestConfig<unknown>;
 }[] = [];
+
+// True while THIS tab is driving a token refresh and draining `pendingRequests`.
+// Kept in memory (not the cross-tab localStorage flag) so a sibling tab's
+// refresh can never leave this tab's queued 401s without a driver to settle
+// them — the bug that hung the UI on a spinner.
+let isRefreshDriverActive = false;
 
 type AuthContextType = {
   onLoginHandler: () => void;
@@ -246,6 +311,11 @@ export const AuthProvider = ({
     // this user's transient mode.
     clearAppMode();
 
+    // Reset the debounced backend-sync bookkeeping so a pending PATCH
+    // from user A cannot be flushed with user B's value/id when the SPA
+    // logs out + back in within the 300ms window.
+    resetBackendSyncState();
+
     setApplicationLoading(false);
 
     // Clear the refresh flag (used after refresh is complete)
@@ -333,6 +403,7 @@ export const AuthProvider = ({
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
+        await hydrateAndResolveAppMode(res);
       } else {
         resetUserDetails();
       }
@@ -473,6 +544,7 @@ export const AuthProvider = ({
         if (res) {
           const userDetails = await checkIfUpdateRequired(res, newUser);
           setCurrentUser(userDetails);
+          await hydrateAndResolveAppMode(userDetails);
 
           handledVerifiedUser();
           // Start expiry timer on successful login
@@ -593,67 +665,61 @@ export const AuthProvider = ({
             if (
               UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
               (error.config.url === '/users/loggedInUser' &&
-                !error.response.data.message.includes('Expired token!'))
+                !REFRESHABLE_AUTH_ERRORS.some((authError) =>
+                  (error.response.data?.message ?? '').includes(authError)
+                ))
             ) {
               throw error;
             }
             handleStoreProtectedRedirectPath();
 
-            // If 401 error and refresh is not in progress, trigger the refresh
-            if (tokenService.current?.isTokenUpdateInProgress()) {
-              // If refresh is in progress, queue the request
-              return new Promise((resolve, reject) => {
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
-                });
-              });
-            } else {
-              // Start the refresh process
-              return new Promise((resolve, reject) => {
-                // Add this request to the pending queue
-                pendingRequests.push({
-                  resolve,
-                  reject,
-                  config: error.config,
-                });
+            // Queue the failed request, then ensure exactly one refresh drives
+            // the queue in THIS tab. Every 401 lands in pendingRequests; the
+            // first arrival starts the refresh and, once it settles, ALWAYS
+            // drains the queue — retry with the new token, or reject + log out.
+            // Nothing is left parked. The previous code queued behind a
+            // cross-tab localStorage flag that no in-tab driver would clear,
+            // hanging the request (and the UI spinner) indefinitely.
+            return new Promise((resolve, reject) => {
+              pendingRequests.push({ resolve, reject, config: error.config });
+              if (isRefreshDriverActive) {
+                return;
+              }
+              isRefreshDriverActive = true;
 
-                // Reject every queued 401'd request with the given error and
-                // clear the queue. Called on any path where the refresh does
-                // not yield a new token (null-return or thrown error) so the
-                // callers don't hang waiting for a retry that will never come.
-                const rejectPending = (rejectionError: unknown) => {
-                  pendingRequests.forEach(({ reject }) =>
-                    reject(rejectionError)
+              const drainPendingRequests = (hasNewToken: boolean) => {
+                const queued = pendingRequests;
+                pendingRequests = [];
+                isRefreshDriverActive = false;
+                if (hasNewToken) {
+                  queued.forEach(
+                    ({ resolve: onResolve, reject: onReject, config }) =>
+                      axiosClient
+                        .request(config)
+                        .then(onResolve)
+                        .catch(onReject)
                   );
-                  pendingRequests = [];
-                };
+                } else {
+                  queued.forEach(({ reject: onReject }) => onReject(error));
+                }
+              };
 
-                // Refresh the token and retry the requests in the queue
-                tokenService.current
-                  .refreshToken()
-                  .then(async (token) => {
-                    if (token) {
-                      // Retry the pending requests
-                      await initializeAxiosInterceptors();
-                      pendingRequests.forEach(({ resolve, reject, config }) => {
-                        axiosClient.request(config).then(resolve).catch(reject);
-                      });
-
-                      // Clear the queue after retrying
-                      pendingRequests = [];
-                    } else {
-                      rejectPending(error);
-                      resetUserDetails(true);
-                    }
-                  })
-                  .catch((refreshError) => {
-                    rejectPending(refreshError);
+              tokenService.current
+                .refreshToken()
+                .then(async (token) => {
+                  if (token) {
+                    await initializeAxiosInterceptors();
+                    drainPendingRequests(true);
+                  } else {
+                    drainPendingRequests(false);
                     resetUserDetails(true);
-                  });
-              });
-            }
+                  }
+                })
+                .catch(() => {
+                  drainPendingRequests(false);
+                  resetUserDetails(true);
+                });
+            });
           }
         }
 
