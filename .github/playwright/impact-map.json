@@ -477,6 +477,17 @@
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Features/AutoPilot.spec.ts"
       ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/EntityImport/CsvJobsTray/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/csvAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/csv/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/csv/**"
+      ],
+      "projects": ["chromium", "ImportExport"],
+      "specs": ["playwright/e2e/Features/CsvJobsTrayE2E.spec.ts"]
     }
   ]
 }
