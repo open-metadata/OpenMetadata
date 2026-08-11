@@ -502,6 +502,10 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
 
         for datamodel in datamodels:
             if hasattr(datamodel, "columns") and datamodel.columns:
+                print(  # noqa: T201
+                    f"[verify] datamodel={datamodel.name.root!r} columns="
+                    f"{[(c.name.root, c.displayName, str(c.dataType)) for c in datamodel.columns]}"
+                )
                 for column in datamodel.columns:
                     if hasattr(column, "dataType") and column.dataType:
                         # Check if field type matches expected
