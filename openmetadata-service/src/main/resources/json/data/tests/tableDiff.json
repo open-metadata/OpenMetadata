@@ -73,7 +73,8 @@
     "Trino",
     "SapHana",
     "Databricks",
-    "UnityCatalog"
+    "UnityCatalog",
+    "AzureSQL"
   ],
   "validatorClass": "TableDiffValidator"
 }
