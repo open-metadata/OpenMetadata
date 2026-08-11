@@ -18,6 +18,7 @@ from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Language, MetricType, Type
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     MAX_METRIC_NAME_LENGTH,
@@ -34,9 +35,11 @@ FACT_LINE_AMOUNT = ("orders", "line_amount", "NUMBER", "orders.o_totalprice", "L
 
 
 def test_build_metric_name_is_qualified():
+    """The readable path leads the name; the trailing digest disambiguates paths
+    that sanitize or join to the same string (see the collision tests below)."""
     name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "total_revenue")
 
-    assert name == "snowflake_svc-TEST_DB-SALES-sales_analysis-total_revenue"
+    assert name.startswith("snowflake_svc-TEST_DB-SALES-sales_analysis-total_revenue-")
 
 
 def test_build_metric_name_is_a_single_fqn_segment():
@@ -53,7 +56,7 @@ def test_build_metric_name_strips_separators_from_identifiers():
     reintroduce FQN segments, and `::` is rejected by the entityName pattern."""
     name = build_metric_name("svc", '"my.db"', "S", '"v.1"', "a::b")
 
-    assert name == "svc-my_db-S-v_1-a__b"
+    assert name.startswith("svc-my_db-S-v_1-a__b-")
     assert "." not in name
     assert "::" not in name
 
@@ -64,6 +67,27 @@ def test_build_metric_name_is_unique_per_path_element():
 
     assert len(set(variants)) == len(base)
     assert build_metric_name(*base) not in variants
+
+
+def test_build_metric_name_survives_lossy_sanitization():
+    """`.` and `:` are rewritten to `_`, which is itself legal in an identifier, so
+    the sanitized form alone is not injective: `a.b` and `a_b` are distinct Snowflake
+    objects that must not collapse onto one Metric. A Metric's FQN *is* its name, so
+    a collision silently overwrites one metric with the other."""
+    dotted = build_metric_name("svc", "db", "a.b", "view", "metric")
+    underscored = build_metric_name("svc", "db", "a_b", "view", "metric")
+
+    assert dotted != underscored
+
+
+def test_build_metric_name_is_unambiguous_across_part_boundaries():
+    """METRIC_NAME_SEPARATOR is legal inside a quoted Snowflake identifier, so
+    joining on it alone is ambiguous: ("sales-prod", "reporting") and
+    ("sales", "prod-reporting") would otherwise produce the same name."""
+    left = build_metric_name("svc", "db", "sales-prod", "reporting", "metric")
+    right = build_metric_name("svc", "db", "sales", "prod-reporting", "metric")
+
+    assert left != right
 
 
 def test_build_metric_name_respects_the_entity_name_limit():
@@ -98,7 +122,9 @@ def test_build_metric_request_maps_all_fields():
         fact_rows=[FACT_LINE_AMOUNT],
         view_ref=view_ref,
     )
-    assert request.name.root.endswith("total_revenue")
+    assert request.name.root == build_metric_name(
+        "snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "total_revenue"
+    )
     assert request.displayName == "total_revenue"
     assert request.description.root == "Total revenue"
     assert request.metricType == MetricType.SUM
@@ -170,12 +196,17 @@ def _rows_for(query):
     return [(VIEW, *row) for row in rows]
 
 
+def _metric_requests(records):
+    """The stage interleaves a sink-flush Barrier with the CreateMetricRequests."""
+    return [r.right for r in records if r.right is not None and not isinstance(r.right, Barrier)]
+
+
 def test_yield_table_metrics_yields_one_per_metric():
     source = _make_source()
     source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
 
     results = list(source.yield_table_metrics(("sales_analysis", TableType.SemanticView)))
-    requests = [r.right for r in results if r.right is not None]
+    requests = _metric_requests(results)
     assert len(requests) == 2
     names = {r.displayName for r in requests}
     assert names == {"total_revenue", "order_count"}
@@ -183,6 +214,39 @@ def test_yield_table_metrics_yields_one_per_metric():
     assert str(revenue.assets.root[0].id.root) == "12345678-1234-1234-1234-123456789012"
     assert [d.name for d in revenue.dimensions] == ["region"]
     assert [m.name for m in revenue.measures] == ["line_amount"]
+
+
+def test_yield_table_metrics_flushes_the_sink_before_resolving_the_view():
+    """The semantic view's own Table is still sitting in the sink's bulk buffer
+    (CreateTableRequest batches at bulk_sink_batch_size; CreateMetricRequest is
+    written immediately), so resolving it by FQN first would 404 on every first
+    run and drop the assets[] back-reference. Yield a Barrier to flush, and only
+    then look the view up."""
+    source = _make_source()
+    source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
+
+    records = source.yield_table_metrics((VIEW, TableType.SemanticView))
+
+    first = next(records).right
+    assert isinstance(first, Barrier)
+    # the lookup must not have happened yet -- that is the whole point of the flush
+    source.metadata.get_by_name.assert_not_called()
+
+    remaining = [r.right for r in records]
+    source.metadata.get_by_name.assert_called_once()
+    assert [r.displayName for r in remaining] == ["total_revenue", "order_count"]
+
+
+def test_yield_table_metrics_does_not_flush_when_the_view_has_no_metrics():
+    """The stage runs for *every* table, so an unconditional Barrier would flush
+    the bulk buffer once per table and destroy sink throughput for all connectors."""
+    source = _make_source()
+    source.connection.execute.side_effect = lambda clause: []
+
+    records = list(source.yield_table_metrics((VIEW, TableType.SemanticView)))
+
+    assert records == []
+    source.metadata.get_by_name.assert_not_called()
 
 
 def test_yield_table_metrics_skips_non_semantic_tables():
@@ -213,7 +277,7 @@ def test_metric_stage_consumes_the_producer_tuple_contract():
 
     produced_entity = ("sales_analysis", TableType.SemanticView)
     results = list(source.yield_table_metrics(produced_entity))
-    assert [r.right.displayName for r in results if r.right is not None] == [
+    assert [r.displayName for r in _metric_requests(results)] == [
         "total_revenue",
         "order_count",
     ]

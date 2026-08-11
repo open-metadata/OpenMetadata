@@ -65,6 +65,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -1213,11 +1214,20 @@ class SnowflakeSource(
                 dimension_rows = self._semantic_rows(SEMANTIC_DIMENSIONS, query_schema, query_view)
                 fact_rows = self._semantic_rows(SEMANTIC_FACTS, query_schema, query_view)
                 metric_rows = self._semantic_rows(SEMANTIC_METRICS, query_schema, query_view)
-                view_ref = self._semantic_view_reference(database, schema, view)
                 logger.info(
                     f"Semantic view [{schema}.{view}]: emitting {len(metric_rows)} metric(s) "
                     f"with {len(dimension_rows)} dimension(s) and {len(fact_rows)} measure(s)"
                 )
+                if not metric_rows:
+                    return
+                # This view's own CreateTableRequest is still in the sink's bulk buffer
+                # (Metric requests are written immediately, Table requests batch), so
+                # without a flush the lookup below 404s on every first run and the
+                # metrics lose their assets[] back-reference. Gated on metric_rows: the
+                # stage runs for every table, and flushing per table would negate the
+                # bulk sink for every connector.
+                yield Either(right=Barrier(reason=f"semantic_view_metrics:{schema}.{view}"))  # pyright: ignore[reportCallIssue]
+                view_ref = self._semantic_view_reference(database, schema, view)
                 for metric_row in metric_rows:
                     yield Either(  # pyright: ignore[reportCallIssue]
                         right=build_metric_request(

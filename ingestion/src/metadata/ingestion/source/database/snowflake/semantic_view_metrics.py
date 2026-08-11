@@ -20,7 +20,7 @@ because the ``Metric`` namespace is global (FQN == name).
 """
 
 import hashlib
-from typing import List, Optional  # noqa: UP035
+from typing import List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import (
@@ -78,6 +78,12 @@ def _sanitize_name_part(part: str) -> str:
     return cleaned
 
 
+def _path_digest(parts: Tuple[str, ...]) -> str:  # noqa: UP006
+    """Short digest of the *unsanitized* path, joined on a character no Snowflake
+    identifier can contain so the encoding itself is unambiguous."""
+    return hashlib.sha256("\x00".join(part or "" for part in parts).encode("utf-8")).hexdigest()[:_NAME_DIGEST_LENGTH]
+
+
 def build_metric_name(service: str, database: str, schema: str, view: str, metric: str) -> str:
     """Globally-unique metric name as a single, dot-free FQN segment.
 
@@ -89,17 +95,20 @@ def build_metric_name(service: str, database: str, schema: str, view: str, metri
     schemas, databases and services — but join with ``METRIC_NAME_SEPARATOR`` so the
     whole thing stays one segment.
 
-    Names longer than the ``entityName`` limit are truncated and suffixed with a
-    digest of the full path, which keeps them unique and still deterministic for the
-    lineage workflow (it re-derives the name through this same function).
+    The readable path alone does not identify the metric: ``_sanitize_name_part`` is
+    lossy (``a.b`` and ``a_b`` both yield ``a_b``) and ``METRIC_NAME_SEPARATOR`` is
+    itself legal inside a quoted identifier (``("x-y", "z")`` and ``("x", "y-z")``
+    join to the same string). Either collision would silently overwrite one metric
+    with another, so every name carries a digest of the raw path. It is deterministic,
+    which the lineage workflow relies on to re-derive the name through this same
+    function.
     """
-    parts = [_sanitize_name_part(part) for part in (service, database, schema, view, metric)]
-    name = METRIC_NAME_SEPARATOR.join(parts)
-    if len(name) > MAX_METRIC_NAME_LENGTH:
-        digest = hashlib.sha256(name.encode("utf-8")).hexdigest()[:_NAME_DIGEST_LENGTH]
-        keep = MAX_METRIC_NAME_LENGTH - _NAME_DIGEST_LENGTH - len(METRIC_NAME_SEPARATOR)
-        name = f"{name[:keep]}{METRIC_NAME_SEPARATOR}{digest}"
-    return name
+    raw = (service, database, schema, view, metric)
+    digest = _path_digest(raw)
+    suffix = f"{METRIC_NAME_SEPARATOR}{digest}"
+    path = METRIC_NAME_SEPARATOR.join(_sanitize_name_part(part) for part in raw)
+    # Truncating the readable path never costs uniqueness -- that lives in the digest.
+    return f"{path[: MAX_METRIC_NAME_LENGTH - len(suffix)]}{suffix}"
 
 
 def infer_metric_type(expression: Optional[str]) -> MetricType:  # noqa: UP045
