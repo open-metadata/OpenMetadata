@@ -150,8 +150,16 @@ const KnowledgePagesHierarchy = forwardRef<
     const [isExpandingAll, setIsExpandingAll] = useState(false);
     const { data: knowledgePagesTotalCount = 0 } = useQuery({
       queryKey: KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY,
-      queryFn: () =>
-        getListKnowledgePages({ limit: 0 }).then((res) => res.paging.total),
+      queryFn: async () => {
+        try {
+          const res = await getListKnowledgePages({ limit: 0 });
+
+          return res.paging.total;
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+          throw error;
+        }
+      },
     });
 
     const [movedPage, setMovedPage] = useState<MovedEntity>();
