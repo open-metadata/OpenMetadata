@@ -64,6 +64,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -509,20 +510,61 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
+    postDelete(entity, hardDelete, false);
+  }
+
+  private boolean postDelete(
+      IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
     super.postDelete(entity, hardDelete);
-    // Delete deployed pipeline in the Pipeline Service Client
+    boolean wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
+    deletePipelineStatuses(entity);
+    return wasRunnerCleanupSkipped;
+  }
+
+  boolean deleteDeployedPipeline(IngestionPipeline entity, boolean allowUnavailableRunner) {
+    boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
-      pipelineServiceClient.deletePipeline(entity);
+      try {
+        pipelineServiceClient.deletePipeline(entity);
+      } catch (IngestionRunnerUnavailableException exception) {
+        if (allowUnavailableRunner) {
+          wasRunnerCleanupSkipped = true;
+        } else {
+          throw exception;
+        }
+      }
     } else {
       LOG.debug(
           "Skipping pipeline service delete for '{}' because pipeline service client is not configured.",
           entity.getFullyQualifiedName());
     }
-    // Clean pipeline status
+    return wasRunnerCleanupSkipped;
+  }
+
+  private void deletePipelineStatuses(IngestionPipeline entity) {
     daoCollection
         .entityExtensionTimeSeriesDao()
         .delete(entity.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
   }
+
+  @Transaction
+  public ForcedDeleteResult forceDelete(String deletedBy, UUID id) {
+    RestUtil.DeleteResponse<IngestionPipeline> response =
+        deleteInternal(deletedBy, id, false, true);
+    boolean wasRunnerCleanupSkipped = postDelete(response.entity(), true, true);
+    deleteFromSearch(response.entity(), true);
+    if (wasRunnerCleanupSkipped) {
+      LOG.warn(
+          "Force delete skipped ingestion runner cleanup [user={}, pipelineFqn={}, pipelineId={}]",
+          deletedBy,
+          response.entity().getFullyQualifiedName(),
+          id);
+    }
+    return new ForcedDeleteResult(response, wasRunnerCleanupSkipped);
+  }
+
+  public record ForcedDeleteResult(
+      RestUtil.DeleteResponse<IngestionPipeline> response, boolean wasRunnerCleanupSkipped) {}
 
   @Override
   protected EntityReference getParentReference(IngestionPipeline entity) {
