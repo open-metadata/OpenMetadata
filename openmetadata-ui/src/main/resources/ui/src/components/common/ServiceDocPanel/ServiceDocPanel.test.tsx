@@ -1153,11 +1153,7 @@ describe('ServiceDocPanel Component', () => {
       );
 
       const { container } = render(
-        <ServiceDocPanel
-          {...defaultProps}
-          focusedMode
-          serviceName="oracle"
-        />
+        <ServiceDocPanel {...defaultProps} focusedMode serviceName="oracle" />
       );
 
       await waitFor(() => {
@@ -1174,18 +1170,11 @@ describe('ServiceDocPanel Component', () => {
       );
 
       const { container } = render(
-        <ServiceDocPanel
-          {...defaultProps}
-          focusedMode
-          serviceName="exasol"
-        />
+        <ServiceDocPanel {...defaultProps} focusedMode serviceName="exasol" />
       );
 
       await waitFor(() => {
-        expect(getDocsLink(container)).toHaveAttribute(
-          'href',
-          CONNECTORS_DOCS
-        );
+        expect(getDocsLink(container)).toHaveAttribute('href', CONNECTORS_DOCS);
       });
     });
 
@@ -1200,11 +1189,7 @@ describe('ServiceDocPanel Component', () => {
       );
 
       const { container } = render(
-        <ServiceDocPanel
-          {...defaultProps}
-          focusedMode
-          serviceName="SapHana"
-        />
+        <ServiceDocPanel {...defaultProps} focusedMode serviceName="SapHana" />
       );
 
       await waitFor(() => {
