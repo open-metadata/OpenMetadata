@@ -25,10 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonString;
-import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -52,6 +49,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -80,6 +78,7 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
@@ -1083,21 +1082,123 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                             "[{\"op\": \"add\", \"path\": \"/status\", \"value\": \"InProgress\"}]")
                       }))
           JsonPatch patch) {
-    // Only status is read here to decide the payload/about freeze in validatePatchOperations;
-    // avoid pulling comments / assignees / availableTransitions / payload just to reject a
-    // forged JSON-Patch (Copilot review, 2026-08-03). status is a generated column on the base
-    // row so EMPTY_FIELDS is enough.
-    // workflowInstanceId is on the base row via a generated column, but we need it plus
-    // status to decide H4/H5/H6. Small extra field cost vs. the alternative of pulling
-    // FIELDS which includes payload/comments/availableTransitions.
-    Task task = repository.get(uriInfo, id, EntityUtil.Fields.EMPTY_FIELDS);
-    validatePatchOperations(task, patch, isAdmin(securityContext));
+    // H4 / H5 / H6: apply the patch to an in-memory copy, then run diff-based checks against
+    // the original before persisting. Compared to the previous JsonPatch op-walking approach,
+    // this reads fields off typed getters (no path-string / JsonValue casting) and closes the
+    // gap where a `move`/`copy` op or an empty JSON-Pointer whole-doc replace could sneak
+    // restricted-field edits past a path-based check. The check is scoped to the PATCH endpoint
+    // — TaskRepository.update() (used by the workflow's CreateTask node) intentionally
+    // bypasses this.
+    Task original = repository.get(uriInfo, id, repository.getFields("*"));
+    Task patched = JsonUtils.applyPatch(original, patch, Task.class);
+    validateTaskPatch(original, patched, isAdmin(securityContext));
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   private boolean isAdmin(SecurityContext securityContext) {
     SubjectContext subject = getSubjectContext(securityContext);
     return subject != null && subject.isAdmin();
+  }
+
+  /**
+   * Statuses that mean an authorization / resolution decision has been made. PATCH must not be
+   * allowed to land the task in any of these — those transitions carry authorization
+   * side-effects (PolicyAgent grant / revoke, revoke boundary timer, notifications) that only
+   * the {@code /resolve} and {@code /close} endpoints run. Progress markers (Open / InProgress
+   * / Pending) stay PATCH-able for admin state-repair / test setup.
+   */
+  private static final Set<TaskEntityStatus> WORKFLOW_DECISION_STATUSES =
+      Set.of(
+          TaskEntityStatus.Approved,
+          TaskEntityStatus.Rejected,
+          TaskEntityStatus.Granted,
+          TaskEntityStatus.ManualRevoke,
+          TaskEntityStatus.Cancelled,
+          TaskEntityStatus.Completed,
+          TaskEntityStatus.Failed,
+          TaskEntityStatus.Revoked,
+          TaskEntityStatus.Expired);
+
+  /**
+   * H4 / H5 / H6 diff-based patch checks. Operates on the pre-persistence typed Task rather
+   * than the raw JSON-Patch operation list.
+   *
+   * <p>Kept at the resource layer (not TaskUpdater) because the workflow's CreateTask node
+   * legitimately writes {@code availableTransitions}, {@code status}, and {@code payload} via
+   * {@code TaskRepository.update()}. Firing these guards inside TaskUpdater would block the
+   * workflow's own writes.
+   */
+  private void validateTaskPatch(Task original, Task patched, boolean callerIsAdmin) {
+    rejectForgeAttributionEdits(original, patched);
+    rejectStatusChangeToWorkflowDecision(original, patched);
+    rejectAvailableTransitionsEditByNonAdmin(original, patched, callerIsAdmin);
+    rejectPayloadOrAboutEditAfterOpen(original, patched);
+  }
+
+  private void rejectForgeAttributionEdits(Task original, Task patched) {
+    if (!Objects.equals(original.getResolution(), patched.getResolution())) {
+      throw workflowOwnedFieldRejection("resolution");
+    }
+    if (!Objects.equals(original.getApprovedBy(), patched.getApprovedBy())) {
+      throw workflowOwnedFieldRejection("approvedBy");
+    }
+    if (!Objects.equals(original.getApprovedById(), patched.getApprovedById())) {
+      throw workflowOwnedFieldRejection("approvedById");
+    }
+    if (!Objects.equals(original.getApprovedAt(), patched.getApprovedAt())) {
+      throw workflowOwnedFieldRejection("approvedAt");
+    }
+    if (!Objects.equals(original.getAboutFqnHash(), patched.getAboutFqnHash())) {
+      throw workflowOwnedFieldRejection("aboutFqnHash");
+    }
+  }
+
+  private void rejectStatusChangeToWorkflowDecision(Task original, Task patched) {
+    if (Objects.equals(original.getStatus(), patched.getStatus()) || patched.getStatus() == null) {
+      return;
+    }
+    if (WORKFLOW_DECISION_STATUSES.contains(patched.getStatus())) {
+      throw BadRequestException.of(
+          ("Status '%s' can only be reached through the workflow /resolve or /close endpoints"
+                  + " — PATCH cannot skip the authorization / notification side-effects those"
+                  + " transitions run.")
+              .formatted(patched.getStatus()));
+    }
+  }
+
+  private void rejectAvailableTransitionsEditByNonAdmin(
+      Task original, Task patched, boolean callerIsAdmin) {
+    if (Objects.equals(original.getAvailableTransitions(), patched.getAvailableTransitions())) {
+      return;
+    }
+    if (!callerIsAdmin) {
+      throw BadRequestException.of(
+          "Field '/availableTransitions' is workflow-owned and cannot be changed via PATCH.");
+    }
+  }
+
+  private void rejectPayloadOrAboutEditAfterOpen(Task original, Task patched) {
+    if (original.getStatus() == TaskEntityStatus.Open) {
+      return;
+    }
+    if (!Objects.equals(original.getPayload(), patched.getPayload())) {
+      throw frozenAfterOpenRejection("payload", original);
+    }
+    if (!Objects.equals(original.getAbout(), patched.getAbout())) {
+      throw frozenAfterOpenRejection("about", original);
+    }
+  }
+
+  private BadRequestException workflowOwnedFieldRejection(String field) {
+    return BadRequestException.of(
+        "Field '/%s' is workflow- or audit-owned and cannot be changed via PATCH."
+            .formatted(field));
+  }
+
+  private BadRequestException frozenAfterOpenRejection(String field, Task original) {
+    return BadRequestException.of(
+        "Field '/%s' is frozen once task '%s' has left status Open (currently '%s')."
+            .formatted(field, original.getId(), original.getStatus()));
   }
 
   @POST
@@ -1694,159 +1795,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               "Transition '%s' on task '%s' requires a non-empty comment.",
               transitionId, task.getId()));
     }
-  }
-
-  /**
-   * Top-level JSON-Patch paths that only the workflow engine, the resolve/close endpoints, or
-   * the audit chain may mutate. A client PATCH that touches any of these can push the task into
-   * an inconsistent state (e.g. status=Granted while workflowStageId=review — no access was
-   * actually granted) or replay/impersonate the audit trail, so we reject those operations at
-   * the API boundary.
-   */
-  private static final Set<String> WORKFLOW_OR_AUDIT_OWNED_TOP_LEVEL_FIELDS =
-      Set.of(
-          // Forge-attribution fields: /resolution names the "Approved by" type + comment,
-          // /approvedBy* names the approver. If a user PATCHes these, the audit trail lies.
-          "resolution",
-          "approvedBy",
-          "approvedById",
-          "approvedAt",
-          // /aboutFqnHash is the dup-check key. Rewriting it decouples the check from the real
-          // /about.
-          "aboutFqnHash");
-
-  /**
-   * Statuses that mean an authorization / resolution decision has been made. PATCH must not be
-   * allowed to land the task in any of these — that would skip the workflow's side-effects
-   * (PolicyAgent grant / revoke, revoke boundary timer, notifications). The workflow drives
-   * these transitions through {@code /resolve} and {@code /close}. Other statuses (Open,
-   * InProgress, Pending) are progress markers and can be PATCHed by admin state-repair /
-   * test setup without skipping any authorization gate.
-   */
-  private static final Set<TaskEntityStatus> WORKFLOW_DECISION_STATUSES =
-      Set.of(
-          TaskEntityStatus.Approved,
-          TaskEntityStatus.Rejected,
-          TaskEntityStatus.Granted,
-          TaskEntityStatus.ManualRevoke,
-          TaskEntityStatus.Cancelled,
-          TaskEntityStatus.Completed,
-          TaskEntityStatus.Failed,
-          TaskEntityStatus.Revoked,
-          TaskEntityStatus.Expired);
-
-  /**
-   * Reject JSON-Patch operations that would either forge workflow/audit state (H4) or edit
-   * task details that must be frozen once the task has left {@code Open} (H5 for payload, H6
-   * for the target entity). Applied at the API boundary so the underlying updater in
-   * {@link TaskRepository} can rely on the invariant that these fields only change through the
-   * resolve/close paths.
-   */
-  private void validatePatchOperations(
-      final Task task, final JsonPatch patch, final boolean callerIsAdmin) {
-    if (patch == null) {
-      return;
-    }
-    // jakarta.json exposes the patch as an untyped JsonArray of JsonObject ops; we walk each op
-    // and inspect its "path" pointer, which is why the JsonValue instanceof-check is required.
-    for (JsonValue op : patch.toJsonArray()) {
-      if (op instanceof JsonObject opObj) {
-        rejectRestrictedPatchOp(task, opObj, callerIsAdmin);
-      }
-    }
-  }
-
-  private void rejectRestrictedPatchOp(
-      final Task task, final JsonObject op, final boolean callerIsAdmin) {
-    final String rawPath = op.containsKey("path") ? op.getString("path", "") : "";
-    checkRestrictedTarget(task, rawPath, callerIsAdmin);
-    checkStatusPatchIsNotWorkflowDecision(task, op, rawPath);
-    // move/copy operations carry a second pointer that names the SOURCE. A restricted
-    // source is just as unsafe as a restricted target — {"op":"move","from":"/payload/x",
-    // "path":"/foo"} would silently strip a field out of the frozen payload while the
-    // target /foo doesn't touch any restricted top-level. Check both.
-    if (op.containsKey("from")) {
-      checkRestrictedTarget(task, op.getString("from", ""), callerIsAdmin);
-    }
-  }
-
-  /**
-   * H4: PATCH of {@code /status} is allowed for progress markers (Open, InProgress, Pending)
-   * — this covers the legit "start work" seed used in test setup and admin state-repair. It
-   * is rejected when the destination is a workflow-decision status
-   * ({@link #WORKFLOW_DECISION_STATUSES}) because those transitions carry authorization
-   * side-effects (PolicyAgent, revoke timers) that only the workflow can run. Callers must
-   * take those steps through {@code /resolve} or {@code /close}.
-   */
-  private void checkStatusPatchIsNotWorkflowDecision(
-      final Task task, final JsonObject op, final String rawPath) {
-    if (rawPath == null || !rawPath.equals("/status")) {
-      return;
-    }
-    JsonValue value = op.get("value");
-    if (!(value instanceof JsonString jsonStr)) {
-      return;
-    }
-    TaskEntityStatus target = null;
-    try {
-      target = TaskEntityStatus.fromValue(jsonStr.getString());
-    } catch (IllegalArgumentException unknownStatus) {
-      // Unknown status value — the underlying updater will reject it with its own 400; nothing
-      // to add from H4's perspective since the caller has not landed the task in a decision
-      // state.
-      target = null;
-    }
-    if (target != null && WORKFLOW_DECISION_STATUSES.contains(target)) {
-      throw BadRequestException.of(
-          ("Status '%s' can only be reached through the workflow /resolve or /close endpoints"
-                  + " — PATCH cannot skip the authorization / notification side-effects those"
-                  + " transitions run.")
-              .formatted(target));
-    }
-  }
-
-  private void checkRestrictedTarget(
-      final Task task, final String rawPath, final boolean callerIsAdmin) {
-    if (rawPath == null) {
-      return;
-    }
-    // RFC 6901: an empty JSON-Pointer ("") targets the whole document, so a client could
-    // wholesale replace the task JSON (including workflow-owned fields) and bypass every
-    // top-level restriction below. Reject explicitly (Copilot review, 2026-08-04).
-    if (rawPath.isEmpty()) {
-      throw BadRequestException.of(
-          "PATCH with an empty JSON-Pointer is not allowed — targets must name a field.");
-    }
-    final String topLevel = topLevelField(rawPath);
-    if (WORKFLOW_OR_AUDIT_OWNED_TOP_LEVEL_FIELDS.contains(topLevel)) {
-      throw BadRequestException.of(
-          "Field '/%s' is workflow- or audit-owned and cannot be changed via PATCH."
-              .formatted(topLevel));
-    }
-    // /availableTransitions is the input to validateTransition's transitionId check on resolve.
-    // A regular user PATCHing it to add a fake {id: "grant", resolutionType: "Approved"} could
-    // pass validateTransition and land the task in Approved via the workflow handler's positive-
-    // default fallback — the exact H1 bypass Copilot's review flagged. Non-admin cannot write.
-    // Admin retains the ability so OSS "resolve when the workflow has not stamped transitions"
-    // regression tests (which use adminClient().tasks().update() to seed an empty transitions
-    // list) still work; admin already has broader footguns.
-    if (!callerIsAdmin && "availableTransitions".equals(topLevel)) {
-      throw BadRequestException.of(
-          "Field '/availableTransitions' is workflow-owned and cannot be changed via PATCH.");
-    }
-    if (task.getStatus() != TaskEntityStatus.Open
-        && ("payload".equals(topLevel) || "about".equals(topLevel))) {
-      throw BadRequestException.of(
-          "Field '/%s' is frozen once task '%s' has left status Open (currently '%s')."
-              .formatted(topLevel, task.getId(), task.getStatus()));
-    }
-  }
-
-  private String topLevelField(final String jsonPointerPath) {
-    // JSON-Patch paths look like "/status" or "/payload/accessType"; grab the first segment.
-    final String trimmed = jsonPointerPath.startsWith("/") ? jsonPointerPath.substring(1) : "";
-    final int slash = trimmed.indexOf('/');
-    return slash < 0 ? trimmed : trimmed.substring(0, slash);
   }
 
   /**
