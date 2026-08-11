@@ -72,11 +72,10 @@ class CliDBTBase(TestCase):
                 # default limit=100 would silently truncate if this ever grows past it.
                 limit=1000,
             )
-            # TestDefinition is shared per dbt test *type* (#28927, 2026-06-16), not per
-            # test case - 26 was the pre-#28927 one-per-test-case count. 6 is the real,
-            # CI-confirmed count post-fix (run 31504446866, job 93822356284): accepted_values,
-            # columnValueMaxToBeBetween, not_null, relationships, unique, unique_table
-            # (the last one only exists because of the composite-key TestDefinition split).
+            # TestDefinition is shared per dbt test *type*, not per test case: one
+            # definition per generic test type (unique, not_null, accepted_values,
+            # relationships), plus a separate definition per type when a test resolves
+            # to a table-level link instead of a single column (unique_table).
             self.assertEqual(len(test_case_entity_list.entities), 6)
 
         # 5. test dbt lineage

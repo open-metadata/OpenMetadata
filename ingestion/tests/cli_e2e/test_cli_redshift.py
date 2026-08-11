@@ -70,10 +70,9 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertEqual(len(source_status.failures), 0)
-        # ponytail: 3 = sql_column_handler._filter_invalid_constraints() dropping
-        # invalid table constraints on the shared cluster's AUTO-distribution MVs -
-        # routine, expected noise, tied to that cluster's current schema, not a
-        # stable connector property. Will drift if the cluster's schema changes.
+        # 3 = sql_column_handler._filter_invalid_constraints() dropping invalid table
+        # constraints on Redshift's AUTO-distribution materialized views - routine,
+        # expected filtering noise, not a connector defect.
         self.assertEqual(len(source_status.warnings), 3)
         self.assertEqual(len(source_status.filtered), 1)
         self.assertGreaterEqual(

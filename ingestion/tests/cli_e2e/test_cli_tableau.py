@@ -75,6 +75,9 @@ class TableauExpectedValues:
         "quantity",
     ]
 
+    # Calculated fields keep the RECORD wrapper; every other field collapses
+    EXPECTED_RECORD_FIELDS = {"Sales Summary (Custom SQL)"}  # noqa: RUF012
+
     # Expected tags
     EXPECTED_TAGS = ["Analytics", "workbook"]  # noqa: RUF012
 
@@ -505,15 +508,23 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
             if hasattr(datamodel, "columns") and datamodel.columns:
                 for column in datamodel.columns:
                     if hasattr(column, "dataType") and column.dataType:
-                        # A field mirroring a single same-named upstream column takes that
-                        # column's real type (#30928); calculated/renamed/grouped fields keep
-                        # the RECORD wrapper. Either outcome is a resolved type - only an
-                        # unresolved UNKNOWN means the connector failed to type the field.
-                        self.assertNotEqual(
-                            column.dataType,
-                            DataType.UNKNOWN,
-                            f"Field '{column.name.root}' should have a resolved type",
-                        )
+                        if column.displayName in TableauExpectedValues.EXPECTED_RECORD_FIELDS:
+                            self.assertEqual(
+                                column.dataType,
+                                DataType.RECORD,
+                                f"Calculated field '{column.displayName}' should keep the RECORD wrapper",
+                            )
+                        else:
+                            self.assertNotEqual(
+                                column.dataType,
+                                DataType.RECORD,
+                                f"Field '{column.displayName}' should have collapsed to its real type",
+                            )
+                            self.assertNotEqual(
+                                column.dataType,
+                                DataType.UNKNOWN,
+                                f"Field '{column.displayName}' should have a resolved type",
+                            )
 
     @pytest.mark.order(11)
     def test_lineage(self) -> None:
