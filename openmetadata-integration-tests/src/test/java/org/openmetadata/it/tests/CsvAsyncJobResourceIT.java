@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,18 +32,24 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.service.csv.CsvExportPayload;
+import org.openmetadata.service.csv.CsvExportSpool;
 
 /**
  * Integration tests for the CSV async job APIs that back the bulk import/export experience: job
- * creation via entity exportAsync/importAsync, the user-scoped job listing (which must not carry
- * export payloads), the spooled result download endpoint, payload caps, access control, and the
- * search-results export job.
+ * creation via entity exportAsync/importAsync, the user-scoped job listing and job status (neither
+ * of which may carry export payloads), the result download endpoint, payload caps, access control,
+ * and the search-results, lineage, and audit export jobs.
+ *
+ * <p>Export results live in the job row rather than on the local disk of whichever server ran the
+ * job, so that a download served by any server in the cluster finds them.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -194,6 +201,127 @@ public class CsvAsyncJobResourceIT {
     HttpResponse<String> response =
         request("GET", "/v1/csvAsyncJobs/999999999/result", null, adminToken());
     assertEquals(404, response.statusCode());
+  }
+
+  /**
+   * The status endpoint is polled while a job runs, so it must not carry the export payload — only
+   * the download endpoint may. Without this the whole CSV is transferred on every poll.
+   */
+  @Test
+  void test_statusEndpointDoesNotCarryTheExportPayload(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "statuspayload");
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/exportAsync",
+            null,
+            adminToken());
+
+    JsonNode completedJob = awaitJobStatus(jobId, "COMPLETED");
+
+    assertTrue(
+        completedJob.path("result").isNull() || completedJob.path("result").isMissingNode(),
+        "Job status must omit the export payload; downloads go through /result");
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+    assertEquals(200, result.statusCode(), "The payload must still be downloadable");
+    assertTrue(result.body().contains(metric.getName()));
+  }
+
+  /** Downloading twice must work: the result is not consumed by the first read. */
+  @Test
+  void test_exportResultDownloadsRepeatedly(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "repeatable");
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/exportAsync",
+            null,
+            adminToken());
+    awaitJobStatus(jobId, "COMPLETED");
+
+    HttpResponse<String> first =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+    HttpResponse<String> second =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+
+    assertEquals(200, first.statusCode());
+    assertEquals(200, second.statusCode(), "A second download must not 404");
+    assertEquals(first.body(), second.body(), "Repeat downloads must return identical CSV");
+  }
+
+  /**
+   * The regression test for the multi-node download failure. A single server cannot be split across
+   * hosts, but the property that broke is testable here: the completed export must leave nothing on
+   * this server's disk, and the payload must be in the shared job row where any server can read it.
+   *
+   * <p>Before results moved into the row, the assertions below fail — the CSV was written to
+   * {@code ${java.io.tmpdir}/openmetadata-csv-exports} and the row held only a pointer to it, so a
+   * download served by any other server 404'd.
+   */
+  @Test
+  void test_exportResultIsInTheJobRowAndNotOnLocalDisk(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "nodelocal");
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/metrics/name/" + metric.getFullyQualifiedName() + "/exportAsync",
+            null,
+            adminToken());
+    awaitJobStatus(jobId, "COMPLETED");
+
+    assertFalse(
+        CsvExportSpool.exists(jobId),
+        "A completed export must leave no node-local file; only the server that ran the job "
+            + "would be able to serve it");
+
+    String storedResult =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT result FROM background_jobs WHERE id = :id")
+                        .bind("id", Long.parseLong(jobId))
+                        .mapTo(String.class)
+                        .one());
+    assertTrue(
+        CsvExportPayload.isCompressed(storedResult),
+        "The job row must hold the compressed payload, not a pointer to local storage");
+
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+    assertEquals(200, result.statusCode());
+    assertTrue(result.body().contains(metric.getName()));
+  }
+
+  /**
+   * Lineage exports used to run on a local executor under a random UUID job id, so the result was
+   * only ever pushed over the websocket of the server that ran it and was resolvable through no
+   * API. They are background jobs now: a numeric id, a pollable status, and a download.
+   */
+  @Test
+  void test_lineageExportRunsAsBackgroundJob(TestNamespace ns) throws Exception {
+    Metric metric = createMetric(ns, "lineage");
+
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/lineage/exportAsync?fqn="
+                + metric.getFullyQualifiedName()
+                + "&entityType=metric&upstreamDepth=1&downstreamDepth=1",
+            null,
+            adminToken());
+
+    assertTrue(
+        jobId.chars().allMatch(Character::isDigit),
+        "Lineage export must return a background job id, not a local UUID: " + jobId);
+    JsonNode completedJob = awaitJobStatus(jobId, "COMPLETED");
+    assertEquals("EXPORT", completedJob.path("operation").asText());
+    assertEquals("lineage", completedJob.path("entityType").asText());
+
+    HttpResponse<String> result =
+        request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, adminToken());
+    assertEquals(200, result.statusCode(), "Lineage export result must download: " + result.body());
   }
 
   private Metric createMetric(TestNamespace ns, String suffix) {

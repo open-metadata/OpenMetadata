@@ -24,7 +24,7 @@ import {
   XClose,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, kebabCase } from 'lodash';
 import {
   FC,
   SVGProps,
@@ -61,6 +61,8 @@ const TERMINAL_STATUSES: CsvAsyncJobStatus[] = [
   'CANCELLED',
 ];
 
+const ACTIVE_JOBS_POLL_INTERVAL_MS = 5000;
+
 type StatusVariant = 'running' | 'success' | 'error';
 
 const getStatusVariant = (status: CsvAsyncJobStatus): StatusVariant => {
@@ -95,6 +97,11 @@ export const CsvJobsTray = () => {
   const [cancellingJobId, setCancellingJobId] = useState<string>();
   const [downloadingJobId, setDownloadingJobId] = useState<string>();
   const [downloadedJobIds, setDownloadedJobIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  // Jobs whose result the server no longer holds — released by retention, or
+  // produced before results moved into the shared job row.
+  const [expiredJobIds, setExpiredJobIds] = useState<Set<string>>(
     () => new Set()
   );
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
@@ -147,6 +154,8 @@ export const CsvJobsTray = () => {
     [visibleJobs]
   );
 
+  const hasActiveJobs = !isEmpty(activeJobs);
+
   useEffect(() => {
     const newlyFinished = visibleJobs.filter(
       (job) =>
@@ -176,31 +185,47 @@ export const CsvJobsTray = () => {
     }
   }, []);
 
-  const handleDownload = useCallback(async (job: CsvAsyncJob) => {
-    try {
-      setDownloadingJobId(job.jobId);
-      const csvData = await getCsvAsyncJobResult(job.jobId);
-      const blob = new Blob([csvData], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${job.entityType}-${job.jobId}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      setDownloadedJobIds((current) => {
-        const next = new Set(current);
-        next.add(job.jobId);
+  const handleDownload = useCallback(
+    async (job: CsvAsyncJob) => {
+      try {
+        setDownloadingJobId(job.jobId);
+        const csvData = await getCsvAsyncJobResult(job.jobId);
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${job.entityType}-${job.jobId}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setDownloadedJobIds((current) => {
+          const next = new Set(current);
+          next.add(job.jobId);
 
-        return next;
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setDownloadingJobId(undefined);
-    }
-  }, []);
+          return next;
+        });
+      } catch (error) {
+        // A 404 means the payload was released to reclaim storage, or the job
+        // predates result sharing. The row stays Completed but is not downloadable,
+        // so say that instead of surfacing the raw server message.
+        if ((error as AxiosError).response?.status === 404) {
+          setExpiredJobIds((current) => {
+            const next = new Set(current);
+            next.add(job.jobId);
+
+            return next;
+          });
+          showErrorToast(t('message.export-result-no-longer-available'));
+        } else {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        setDownloadingJobId(undefined);
+      }
+    },
+    [t]
+  );
 
   const handleDismiss = useCallback((jobId: string) => {
     setDismissedJobIds((current) => {
@@ -243,6 +268,22 @@ export const CsvJobsTray = () => {
     };
   }, [fetchJobs]);
 
+  // The websocket only reaches sockets held by the server that ran the job, so in
+  // a multi-server deployment the completion event is often delivered to a peer.
+  // Polling while work is outstanding is what actually keeps the tray truthful;
+  // the socket subscription above is just the fast path.
+  useEffect(() => {
+    if (!hasActiveJobs) {
+      return;
+    }
+
+    const intervalId = setInterval(fetchJobs, ACTIVE_JOBS_POLL_INTERVAL_MS);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [hasActiveJobs, fetchJobs]);
+
   const handleOpen = useCallback(() => {
     setOpen(true);
     fetchJobs();
@@ -253,7 +294,10 @@ export const CsvJobsTray = () => {
   }
 
   const renderJobTitle = (job: CsvAsyncJob) => {
-    const entityLabel = t(`label.${job.entityType}-plural`, {
+    // Job entity types are camelCase (dataAsset, databaseSchema) while the label
+    // keys are kebab-case, so look up the kebab form or every multi-word entity
+    // falls through to the raw type — "Exported dataAsset".
+    const entityLabel = t(`label.${kebabCase(job.entityType)}-plural`, {
       defaultValue: job.entityType,
     });
 
@@ -323,7 +367,11 @@ export const CsvJobsTray = () => {
       );
     }
 
-    if (job.status === 'COMPLETED' && job.operation === 'EXPORT') {
+    if (
+      job.status === 'COMPLETED' &&
+      job.operation === 'EXPORT' &&
+      !expiredJobIds.has(job.jobId)
+    ) {
       return (
         <Button
           className="csv-jobs-tray-action"

@@ -22,7 +22,7 @@ import {
 import { SearchLg, XClose } from '@untitledui/icons';
 import { Modal, Progress } from 'antd';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
+import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,7 +48,11 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
-import { exportAuditLogs, getAuditLogs } from '../../rest/auditLogAPI';
+import {
+  exportAuditLogs,
+  getAuditLogExportResult,
+  getAuditLogs,
+} from '../../rest/auditLogAPI';
 import {
   AuditLogActiveFilter,
   AuditLogEntry,
@@ -247,13 +251,29 @@ const AuditLogsPage = () => {
       setExportJob(updatedJob);
       exportJobRef.current = updatedJob;
 
-      if (response.status === 'COMPLETED' && response.data) {
-        handleExportDownload(response.data);
-        showSuccessToast(t('message.export-successful'));
-        setIsExporting(false);
-        setIsExportModalOpen(false);
-        setExportJob(null);
-        exportJobRef.current = null;
+      if (response.status === 'COMPLETED') {
+        // The completion event no longer carries the payload — it can be
+        // arbitrarily large — so fetch it from the job result endpoint, which any
+        // server can serve. `data` is still honoured for older servers.
+        const finishExport = (data: string) => {
+          handleExportDownload(data);
+          showSuccessToast(t('message.export-successful'));
+          setIsExporting(false);
+          setIsExportModalOpen(false);
+          setExportJob(null);
+          exportJobRef.current = null;
+        };
+
+        if (isString(response.data)) {
+          finishExport(response.data);
+        } else {
+          getAuditLogExportResult(response.jobId)
+            .then(finishExport)
+            .catch((error) => {
+              showErrorToast(error as AxiosError);
+              setIsExporting(false);
+            });
+        }
       } else if (response.status === 'FAILED') {
         setIsExporting(false);
       }

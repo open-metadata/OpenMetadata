@@ -21,14 +21,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.StreamingOutput;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -39,14 +33,17 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogEntry;
 import org.openmetadata.service.audit.AuditLogRepository;
-import org.openmetadata.service.csv.CsvExportSpool;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobArgs;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.csv.CsvExportPayload;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/audit/logs")
 @Tag(
@@ -155,20 +152,6 @@ public class AuditLogResource {
   private static final int EXPORT_MAX_LIMIT = 100000;
   private static final int EXPORT_DEFAULT_LIMIT = 10000;
 
-  // Audit exports stream to a spool file and hand back a download reference over the websocket (see
-  // streamExportAsJson + downloadAuditExportResult), so a single export never materializes its
-  // whole
-  // payload. This dedicated pool additionally caps how many run at once to bound DB load.
-  private static final int MAX_CONCURRENT_AUDIT_EXPORTS = 2;
-  private static final ExecutorService AUDIT_EXPORT_EXECUTOR =
-      Executors.newFixedThreadPool(
-          MAX_CONCURRENT_AUDIT_EXPORTS,
-          runnable -> {
-            Thread thread = new Thread(runnable, "audit-export");
-            thread.setDaemon(true);
-            return thread;
-          });
-
   @GET
   @Path("/export")
   @Operation(
@@ -257,42 +240,25 @@ public class AuditLogResource {
     // Apply limit constraints
     int effectiveLimit = Math.min(Math.max(limit, 1), EXPORT_MAX_LIMIT);
 
-    // Generate job ID and start async export
-    String jobId = UUID.randomUUID().toString();
-    AUDIT_EXPORT_EXECUTOR.submit(
-        () -> {
-          try (OutputStream spool = CsvExportSpool.openForWrite(jobId)) {
-            // Stream results straight to the spool file (one batch in memory at a time) and hand
-            // the
-            // client a download reference over the websocket instead of the inline payload, so
-            // neither the heap nor the websocket send buffer holds a multi-hundred-MB export.
-            int exported =
-                repository.streamExportAsJson(
-                    spool,
-                    userName,
-                    actorType,
-                    serviceName,
-                    entityType,
-                    eventType,
-                    startTs,
-                    endTs,
-                    searchTerm,
-                    effectiveLimit,
-                    (fetched, total, message) ->
-                        WebsocketNotificationHandler.sendCsvExportProgressNotification(
-                            jobId, securityContext, fetched, total, message));
-            LOG.info("Audit export {} spooled {} records", jobId, exported);
-            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                jobId, securityContext, null);
-          } catch (Exception e) {
-            LOG.error("Encountered exception while exporting audit logs.", e);
-            deleteSpoolQuietly(jobId);
-            WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-          }
-        });
+    // Queued on the shared job table rather than a local pool, so the result is
+    // downloadable from any server and survives a restart of the one that ran it.
+    CsvAsyncJobArgs.AuditExportArgs args =
+        new CsvAsyncJobArgs.AuditExportArgs()
+            .setUserName(userName)
+            .setActorType(actorType)
+            .setServiceName(serviceName)
+            .setEntityType(entityType)
+            .setEventType(eventType)
+            .setStartTs(startTs)
+            .setEndTs(endTs)
+            .setSearchTerm(searchTerm)
+            .setLimit(effectiveLimit);
+    CsvAsyncJob job =
+        CsvAsyncJobManager.getInstance()
+            .createAuditExportJob(securityContext.getUserPrincipal().getName(), args);
 
-    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    CSVExportResponse response =
+        new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
@@ -314,11 +280,19 @@ public class AuditLogResource {
     OperationContext operationContext =
         new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
     authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
+    CsvAsyncJob job = isServerGeneratedJobId(jobId) ? findAuditExportJob(jobId) : null;
+    String result =
+        job == null ? null : CsvAsyncJobManager.getInstance().getExportResult(job.getJobId());
     Response response;
-    if (isServerGeneratedJobId(jobId) && CsvExportSpool.exists(jobId)) {
+    if (job == null || job.getStatus() != CsvAsyncJob.Status.COMPLETED || nullOrEmpty(result)) {
+      response =
+          Response.status(Response.Status.NOT_FOUND)
+              .entity("Export result not found or expired for job " + jobId)
+              .build();
+    } else {
       StreamingOutput stream =
           output -> {
-            try (InputStream in = CsvExportSpool.openForRead(jobId)) {
+            try (InputStream in = CsvExportPayload.decompress(result)) {
               in.transferTo(output);
             }
           };
@@ -327,34 +301,25 @@ public class AuditLogResource {
               .header(
                   "Content-Disposition", "attachment; filename=\"audit-export-" + jobId + ".json\"")
               .build();
-    } else {
-      response =
-          Response.status(Response.Status.NOT_FOUND)
-              .entity("Export result not found or expired for job " + jobId)
-              .build();
     }
     return response;
   }
 
-  // Job ids are always server-generated UUIDs; reject anything else before it reaches the spool
-  // path (spoolDir().resolve(prefix + jobId + suffix)) to prevent path traversal.
-  private static boolean isServerGeneratedJobId(String jobId) {
-    boolean valid;
+  private static CsvAsyncJob findAuditExportJob(String jobId) {
+    CsvAsyncJob job;
     try {
-      UUID.fromString(jobId);
-      valid = true;
-    } catch (IllegalArgumentException e) {
-      valid = false;
+      job = CsvAsyncJobManager.getInstance().getAuditExportJob(jobId);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Audit export job {} not found", jobId, e);
+      job = null;
     }
-    return valid;
+    return job;
   }
 
-  private static void deleteSpoolQuietly(String jobId) {
-    try {
-      Files.deleteIfExists(CsvExportSpool.fileForJob(jobId));
-    } catch (IOException e) {
-      LOG.warn("Failed to delete partial audit export spool for {}: {}", jobId, e.getMessage());
-    }
+  // Job ids are the numeric primary key of the background_jobs row. Reject anything
+  // else before it reaches the lookup so a malformed id is a 404, not a 500.
+  private static boolean isServerGeneratedJobId(String jobId) {
+    return jobId != null && jobId.chars().allMatch(Character::isDigit) && !jobId.isEmpty();
   }
 
   /**

@@ -41,3 +41,19 @@ export const exportAuditLogs = async (
 
   return response.data;
 };
+
+/**
+ * Fetches a completed export's payload. The completion websocket event carries
+ * only the job status — the export itself can be arbitrarily large, so it is
+ * stored server-side and downloaded from any server through this endpoint.
+ */
+export const getAuditLogExportResult = async (
+  jobId: string
+): Promise<string> => {
+  const response = await APIClient.get<string>(
+    `${BASE_URL}/export/${jobId}/result`,
+    { responseType: 'text' }
+  );
+
+  return response.data;
+};

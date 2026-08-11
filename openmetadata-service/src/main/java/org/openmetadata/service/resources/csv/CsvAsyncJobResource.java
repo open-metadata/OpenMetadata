@@ -36,6 +36,7 @@ import java.io.InputStream;
 import java.util.List;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.csv.CsvExportPayload;
 import org.openmetadata.service.csv.CsvExportSpool;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -88,26 +89,54 @@ public class CsvAsyncJobResource {
       throw new BadRequestException(
           "CSV job " + jobId + " is not a completed export; it has no downloadable result.");
     }
-    if (jobManager.isSpoolResultReference(job.getResult())) {
-      if (!CsvExportSpool.exists(jobId)) {
-        throw new NotFoundException(
-            "The result of CSV job "
-                + jobId
-                + " is no longer available; it may have expired or been produced on another server.");
-      }
+    return streamResult(jobId, jobManager.getExportResult(jobId));
+  }
+
+  /**
+   * Results are stored compressed in the job row so any server can serve the download. The two
+   * legacy encodings stay readable so jobs that completed before the upgrade still download: a
+   * pointer to a node-local spool file, and a plain inline CSV from before spooling existed.
+   */
+  private Response streamResult(String jobId, String result) {
+    if (nullOrEmpty(result)) {
+      throw new NotFoundException(
+          "The result of CSV job "
+              + jobId
+              + " is no longer available; it may have been released to reclaim storage. "
+              + "Run the export again.");
+    }
+    final Response response;
+    if (CsvExportPayload.isCompressed(result)) {
       StreamingOutput stream =
           output -> {
-            try (InputStream spooled = CsvExportSpool.openForRead(jobId)) {
-              spooled.transferTo(output);
+            try (InputStream csv = CsvExportPayload.decompress(result)) {
+              csv.transferTo(output);
             }
           };
-      return Response.ok(stream, "text/csv").build();
+      response = Response.ok(stream, "text/csv").build();
+    } else if (jobManager.isSpoolResultReference(result)) {
+      response = streamLegacySpoolFile(jobId);
+    } else {
+      response = Response.ok(result, "text/csv").build();
     }
-    if (nullOrEmpty(job.getResult())) {
-      throw new NotFoundException("The result of CSV job " + jobId + " is no longer available.");
+    return response;
+  }
+
+  private Response streamLegacySpoolFile(String jobId) {
+    if (!CsvExportSpool.exists(jobId)) {
+      throw new NotFoundException(
+          "The result of CSV job "
+              + jobId
+              + " is no longer available; it was produced on another server before this release. "
+              + "Run the export again.");
     }
-    // Jobs completed before spooling was introduced stored the CSV inline.
-    return Response.ok(job.getResult(), "text/csv").build();
+    StreamingOutput stream =
+        output -> {
+          try (InputStream spooled = CsvExportSpool.openForRead(jobId)) {
+            spooled.transferTo(output);
+          }
+        };
+    return Response.ok(stream, "text/csv").build();
   }
 
   @PUT
