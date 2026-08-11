@@ -53,6 +53,7 @@ import {
 } from './DocumentsView.interface';
 
 const FOLDERS_SCROLL_THRESHOLD = 100;
+const FOLDER_LABEL_KEY = 'label.folder';
 
 const DocumentFolderView = (
   {
@@ -281,7 +282,7 @@ const DocumentFolderView = (
         onSelectFolder(undefined);
       }
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.folder') })
+        t('server.entity-deleted-successfully', { entity: t(FOLDER_LABEL_KEY) })
       );
       setFolderToDelete(undefined);
     } catch (err) {
@@ -320,7 +321,7 @@ const DocumentFolderView = (
             </div>
             <div>
               <Typography size="text-md" weight="semibold">
-                {t('label.folder')}
+                {t(FOLDER_LABEL_KEY)}
               </Typography>
               <Typography
                 className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
@@ -342,7 +343,7 @@ const DocumentFolderView = (
               data-testid="add-folder-btn"
               icon={Plus}
               size="sm"
-              tooltip={t('label.add-entity', { entity: t('label.folder') })}
+              tooltip={t('label.add-entity', { entity: t(FOLDER_LABEL_KEY) })}
               onClick={() => setIsCreateModalOpen(true)}
             />
           )}
@@ -353,9 +354,11 @@ const DocumentFolderView = (
           onScroll={handleFoldersScroll}>
           {isLoading ? (
             <div className="tw:flex tw:flex-col tw:gap-2">
+              {/* Static-length skeleton placeholder, never reordered */}
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton
                   height="32px"
+                  // eslint-disable-next-line react/no-array-index-key
                   key={i}
                   variant="rounded"
                   width="100%"
@@ -464,9 +467,11 @@ const DocumentFolderView = (
                           className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
                           showExpandIcon={false}>
                           <div className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:py-1">
+                            {/* Static-length skeleton placeholder, never reordered */}
                             {Array.from({ length: 2 }).map((_, i) => (
                               <Skeleton
                                 height="20px"
+                                // eslint-disable-next-line react/no-array-index-key
                                 key={i}
                                 variant="rounded"
                                 width="100%"

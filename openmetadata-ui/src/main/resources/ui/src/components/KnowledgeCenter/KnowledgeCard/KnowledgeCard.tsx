@@ -160,7 +160,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
       isSoftDelete ? handleToggleDelete() : onDelete?.(knowledgePage?.id);
       onRefreshTagsCategory?.(true);
     },
-    [knowledgePage, onDelete, handleToggleDelete, onRefreshTagsCategory]
+    [
+      knowledgePage,
+      onDelete,
+      handleToggleDelete,
+      onRefreshTagsCategory,
+      recentlyViewed,
+    ]
   );
 
   const quickLinkActions = useMemo(() => {

@@ -81,6 +81,8 @@ import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/User
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
+const TOOLTIP_TRIGGER_CLASS = 'tw:leading-0';
+
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   knowledgePage,
   contentChangeState,
@@ -125,7 +127,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         label: getKnowledgePageName(knowledgePage, t),
       },
     ],
-    [knowledgePage?.id, knowledgePage?.name, knowledgePage?.displayName, t]
+    [knowledgePage, t]
   );
 
   const voteStatus = useMemo(() => {
@@ -191,7 +193,13 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } finally {
       setIsDeleting(false);
     }
-  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy, removeDraft]);
+  }, [
+    knowledgePage,
+    recentlyViewed,
+    fetchKnowledgePageHierarchy,
+    removeDraft,
+    navigate,
+  ]);
 
   const handleVersionClick = () => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
@@ -295,7 +303,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } else {
       return null;
     }
-  }, [contentChangeState]);
+  }, [contentChangeState, t]);
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
 
@@ -328,7 +336,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     <Box align="center" className="tw:text-sm tw:mt-2" gap={3} wrap="wrap">
       <Box align="center" gap={1}>
         <Tooltip title={t('label.domain')}>
-          <TooltipTrigger className="tw:leading-0">
+          <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
             <GlobeIcon
               className="tw:shrink-0 tw:text-quaternary"
               height={16}
@@ -374,7 +382,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
       <Box align="center" gap={1}>
         <Tooltip title={t('label.owner-plural')}>
-          <TooltipTrigger className="tw:leading-0">
+          <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
             <UserIcon
               className="tw:shrink-0 tw:text-quaternary"
               height={16}
@@ -428,7 +436,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           <Dot className="tw:text-fg-quaternary" size="xs" />
           <Box align="center" gap={1}>
             <Tooltip title={t('label.editor')}>
-              <TooltipTrigger className="tw:leading-0">
+              <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
                 <EditorIcon
                   className="tw:shrink-0 tw:text-quaternary"
                   height={16}
