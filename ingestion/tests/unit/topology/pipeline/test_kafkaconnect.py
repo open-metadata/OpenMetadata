@@ -1900,6 +1900,18 @@ class TestServiceSupportsDatabase:
             source = self._source_with({"svc": self._config(module, cls_name)})
             assert source._service_supports_database("svc") is True, cls_name
 
+    def test_service_with_unreadable_connection_is_undecided(self):
+        """
+        A service whose connection config is absent (masked, or not returned to the
+        caller) tells us nothing about its class. It must report None, not False:
+        False means "single-database" and drops the database qualifier from the FQN,
+        which would make a schema that repeats across databases resolve ambiguously.
+        """
+        for connection in (None, SimpleNamespace(config=None)):
+            source = self._source_with({})
+            source._database_services_cache = [SimpleNamespace(name=SimpleNamespace(root="svc"), connection=connection)]
+            assert source._service_supports_database("svc") is None, connection
+
     def test_unknown_service_is_undecided(self):
         """
         An unresolvable service name (e.g. the "*" wildcard used when no dbServiceNames

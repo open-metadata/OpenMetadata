@@ -496,8 +496,12 @@ class KafkaconnectSource(PipelineServiceSource):
         for service in self.database_services:
             if model_str(service.name) == service_name:
                 config = service.connection.config if service.connection else None
-                model_fields = getattr(type(config), "model_fields", {})
-                supports = "supportsDatabase" in model_fields or "database" in model_fields
+                model_fields = getattr(type(config), "model_fields", None)
+                # An unreadable connection (masked, or absent from the response) says
+                # nothing about the service's class, so it stays undecided rather than
+                # defaulting to single-database and dropping the database qualifier.
+                if model_fields:
+                    supports = "supportsDatabase" in model_fields or "database" in model_fields
                 break
         return supports
 
