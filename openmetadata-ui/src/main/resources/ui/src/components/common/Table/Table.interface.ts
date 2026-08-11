@@ -34,6 +34,12 @@ export interface TableComponentProps<T> extends TableProps<T> {
   cellClassName?: string;
   /** React Aria drag-and-drop hooks returned by `useDragAndDrop`. */
   dragAndDropHooks?: DragAndDropHooks;
+  /**
+   * Called when a row is activated (clicked/Enter). When provided together with
+   * `rowSelection`, React Aria performs this action on row click while selection
+   * is limited to the selection checkbox — the row no longer toggles selection.
+   */
+  onRowAction?: (key: React.Key) => void;
   'data-testid'?: string;
 }
 
