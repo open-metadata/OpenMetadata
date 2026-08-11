@@ -15,12 +15,14 @@ import {
   Box,
   Button,
   Card,
+  Dot,
   FeaturedIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight } from '@untitledui/icons';
-import { FC } from 'react';
+import classNames from 'classnames';
+import { FC, Fragment, KeyboardEvent, MouseEvent } from 'react';
 import {
   ContextKnowledgePillarCardProps,
   PillarRecentItem,
@@ -33,32 +35,65 @@ function RecentItem({
   readonly Icon: FC<{ className?: string }>;
   readonly item: PillarRecentItem;
 }) {
+  const handleClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    item.onClick();
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      item.onClick();
+    }
+  };
+
   return (
-    <Box align="center" className="tw:py-1.5" gap={2}>
+    <Box
+      align="center"
+      className="tw:py-1.5 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
+      gap={2}
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}>
       {item.icon ? (
         item.icon
       ) : (
-        <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+        <Icon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
       )}
       <Box
         align="center"
         className="tw:min-w-0 tw:flex-1"
         gap={4}
         justify="between">
-        <Typography
-          ellipsis
-          as="span"
-          className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-          size="text-xs"
-          weight="medium">
-          {item.title}
-        </Typography>
-        <Typography
-          as="span"
-          className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
-          size="text-xs">
-          {item.meta}
-        </Typography>
+        <div className="tw:min-w-0">
+          <Typography
+            ellipsis
+            className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+            size="text-xs"
+            weight="medium">
+            {item.title}
+          </Typography>
+        </div>
+        <Box align="center" gap={1}>
+          {item.meta.map((metaItem, index) => (
+            <Fragment key={`${index}-${metaItem}`}>
+              <div className="tw:max-w-20">
+                <Typography
+                  ellipsis
+                  className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                  size="text-xs">
+                  {metaItem}
+                </Typography>
+              </div>
+
+              {index < item.meta.length - 1 && (
+                <Dot className="tw:text-quaternary" size="micro" />
+              )}
+            </Fragment>
+          ))}
+        </Box>
       </Box>
     </Box>
   );
@@ -68,7 +103,7 @@ export const ContextKnowledgePillarCardSkeleton: FC<{
   dataTestId?: string;
 }> = ({ dataTestId }) => (
   <Card
-    className="tw:p-5 tw:flex tw:flex-col tw:justify-between"
+    className="tw:px-4 tw:py-3 tw:flex tw:flex-col tw:justify-between"
     data-testid={dataTestId}>
     <div>
       <Box align="center" className="tw:mb-3.5" gap={3}>
@@ -134,7 +169,10 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
 
   return (
     <Card
-      className="tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px"
+      className={classNames(
+        'tw:cursor-pointer tw:px-4 tw:py-3 tw:flex tw:flex-col tw:justify-between tw:min-h-68',
+        'tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px'
+      )}
       data-testid={dataTestId}
       onClick={onClick}>
       <div>
@@ -142,7 +180,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           <FeaturedIcon
             className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
             color="brand"
-            icon={Icon}
+            icon={<Icon className="tw:size-5" />}
             size="sm"
             theme="light"
           />

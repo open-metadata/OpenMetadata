@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -36,8 +37,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/common/Loader/Loader';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
@@ -71,6 +72,7 @@ import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
 import KnowledgePageListRightPanel from '../KnowledgePageListRightPanel/KnowledgePageListRightPanel';
 import {
@@ -85,6 +87,8 @@ interface KnowledgePageListComponentProps {
   hideAddButton?: boolean;
   rightPanelSlot?: React.ReactNode;
   searchQuery?: string;
+  onEmptyStateChange?: (isEmpty: boolean) => void;
+  isPermissionsLoading?: boolean;
 }
 
 const KnowledgePageListComponent = forwardRef<
@@ -98,6 +102,8 @@ const KnowledgePageListComponent = forwardRef<
       hideAddButton = false,
       rightPanelSlot,
       searchQuery,
+      onEmptyStateChange,
+      isPermissionsLoading = false,
     },
     ref
   ) => {
@@ -324,13 +330,28 @@ const KnowledgePageListComponent = forwardRef<
     );
 
     useEffect(() => {
+      if (isPermissionsLoading) {
+        return;
+      }
       if (hasViewPermission) {
         setPageOffset(0);
         fetchKnowledgePages(0);
       } else {
         setIsLoading(false);
       }
-    }, [hasViewPermission, searchQuery]);
+    }, [hasViewPermission, searchQuery, isPermissionsLoading]);
+
+    useEffect(() => {
+      if (!isLoading && !isPermissionsLoading && !searchQuery) {
+        onEmptyStateChange?.(isEmpty(knowledgePages));
+      }
+    }, [
+      isLoading,
+      isPermissionsLoading,
+      searchQuery,
+      knowledgePages,
+      onEmptyStateChange,
+    ]);
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
@@ -410,10 +431,9 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       onPageChange({
-        title: t('label.knowledge-center'),
+        title: t('label.context-center'),
         rightPanel: getRightPanelElement(),
         data: undefined,
-        header: null,
       });
     }, [getRightPanelElement]);
 
@@ -423,7 +443,7 @@ const KnowledgePageListComponent = forwardRef<
         setKnowledgePages((prevPages) => [knowledgePage, ...prevPages]),
     }));
 
-    if (isLoading || isCreatingNewPage) {
+    if (isLoading || isCreatingNewPage || isPermissionsLoading) {
       return (
         <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
           {Array.from({ length: 4 }).map(() => (
@@ -478,10 +498,23 @@ const KnowledgePageListComponent = forwardRef<
         <ErrorPlaceHolder
           className="border-none"
           permissionValue={t('label.view-entity', {
-            entity: t('label.knowledge-article-plural'),
+            entity: t('label.article-plural'),
           })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
+      );
+    }
+
+    if (!isLoading && isEmpty(knowledgePages) && searchQuery) {
+      return (
+        <div className="tw:relative tw:min-h-[320px] tw:py-12">
+          <EmptyPlaceholder
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+            variant="blank"
+          />
+        </div>
       );
     }
 
@@ -508,7 +541,7 @@ const KnowledgePageListComponent = forwardRef<
               <div className="text-center text-sm font-normal">
                 <Typography.Paragraph>
                   {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                    entity: t('label.knowledge-page'),
+                    entity: t('label.article'),
                   })}
                 </Typography.Paragraph>
 
@@ -570,7 +603,7 @@ const KnowledgePageListComponent = forwardRef<
             </Col>
           ))}
         </Row>
-        {isLoadingMore ? <Loader /> : null}
+        {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
         <div
           className="w-full"
           data-testid="observer-element"

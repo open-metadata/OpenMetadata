@@ -174,6 +174,7 @@
     "governanceMetadata": {
       "type": "object",
       "javaType": "org.openmetadata.schema.entity.ai.McpGovernanceMetadata",
+      "javaInterfaces": ["org.openmetadata.schema.entity.ai.AIGovernanceRegistration"],
       "description": "Governance metadata for compliance and risk management of the MCP server",
       "additionalProperties": false,
       "properties": {

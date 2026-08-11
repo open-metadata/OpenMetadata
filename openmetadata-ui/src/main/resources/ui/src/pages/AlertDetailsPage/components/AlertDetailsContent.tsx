@@ -13,17 +13,19 @@
 
 import { SyncOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import DeleteEntityModal from '../../../components/common/DeleteWidget/DeleteEntityModal';
-import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import Description from '../../../components/common/EntityDescription/Description';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
+import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { AlertDetailsContentProps } from '../AlertDetailsPage.interface';
 
@@ -51,6 +53,21 @@ function AlertDetailsContent({
   tabItems,
 }: Readonly<AlertDetailsContentProps>) {
   const { t } = useTranslation();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleAlertHardDelete = useCallback(async () => {
+    setIsDeleting(true);
+    const isSuccess = await hardDeleteEntity(
+      getEntityName(alertDetails),
+      alertDetails?.id ?? '',
+      EntityType.SUBSCRIPTION
+    );
+    if (isSuccess) {
+      handleAlertDelete();
+    }
+    hideDeleteModal();
+    setIsDeleting(false);
+  }, [alertDetails, handleAlertDelete, hideDeleteModal]);
 
   return (
     <Card
@@ -146,7 +163,7 @@ function AlertDetailsContent({
           className="alert-description"
           data-testid="alert-description"
           span={24}>
-          <DescriptionV1
+          <Description
             description={alertDetails?.description}
             entityType={EntityType.EVENT_SUBSCRIPTION}
             hasEditAccess={editDescriptionPermission}
@@ -164,14 +181,15 @@ function AlertDetailsContent({
           />
         </Col>
       </Row>
-      <DeleteEntityModal
-        afterDeleteAction={handleAlertDelete}
-        allowSoftDelete={false}
-        entityId={alertDetails?.id ?? ''}
-        entityName={getEntityName(alertDetails)}
-        entityType={EntityType.SUBSCRIPTION}
-        visible={showDeleteModal}
+      <DeleteModal
+        entityTitle={getEntityName(alertDetails)}
+        isDeleting={isDeleting}
+        message={t('message.permanently-delete-common-message', {
+          entity: getEntityName(alertDetails)?.toLowerCase?.() ?? '',
+        })}
+        open={showDeleteModal}
         onCancel={hideDeleteModal}
+        onDelete={handleAlertHardDelete}
       />
     </Card>
   );

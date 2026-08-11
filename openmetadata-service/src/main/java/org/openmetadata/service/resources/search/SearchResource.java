@@ -530,6 +530,7 @@ public class SearchResource {
             .withFrom(previewRequest.getFrom())
             .withQueryFilter(previewRequest.getQueryFilter())
             .withPostFilter(previewRequest.getPostFilter())
+            .withDeleted(previewRequest.getDeleted())
             .withFetchSource(previewRequest.getFetchSource())
             .withTrackTotalHits(previewRequest.getTrackTotalHits())
             .withSortFieldParam(previewRequest.getSortField())
@@ -891,7 +892,7 @@ public class SearchResource {
             .withPostFilter(postFilter)
             .withDomains(domains);
 
-    return searchRepository.getEntityTypeCounts(request, index);
+    return searchRepository.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @POST

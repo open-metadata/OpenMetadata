@@ -99,7 +99,18 @@ export interface AuditReport {
      * User who requested the report
      */
     requestedBy?: EntityReference;
-    scope:        ReportScope;
+    /**
+     * Deterministic hash of the request parameters (scope, target, framework, format, asOfDate,
+     * includeRedacted). Backs an indexed lookup so a retried submission dedupes to the
+     * in-flight report instead of generating the same pack twice.
+     */
+    requestSignature?: string;
+    /**
+     * Identifier of the server node that claimed and is running this job. Used to detect and
+     * recover jobs orphaned by a pod restart.
+     */
+    runningOn?: string;
+    scope:      ReportScope;
     /**
      * Reference to the domain or asset when scope is not Estate
      */

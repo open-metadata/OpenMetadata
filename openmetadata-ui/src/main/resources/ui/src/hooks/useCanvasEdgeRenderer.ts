@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import type { Edge } from 'reactflow';
 import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
@@ -28,7 +27,11 @@ import {
   isEdgeInViewport,
   setupCanvas,
 } from '../utils/CanvasUtils';
-import { computeEdgeStyle } from '../utils/EdgeStyleUtils';
+import {
+  computeEdgeStyle,
+  computeEdgeVisualState,
+  LineageEdgeColors,
+} from '../utils/EdgeStyleUtils';
 import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
 import { useLineageStore } from './useLineageStore';
@@ -38,7 +41,7 @@ interface UseCanvasEdgeRendererProps {
   edges: Edge[];
   hoverEdge?: Edge | null;
   dqHighlightedEdges: Set<string>;
-  theme: Theme;
+  colors: LineageEdgeColors;
   containerWidth: number;
   containerHeight: number;
 }
@@ -58,7 +61,7 @@ export function useCanvasEdgeRenderer({
   dqHighlightedEdges,
   edges,
   hoverEdge,
-  theme,
+  colors,
   containerWidth,
   containerHeight,
 }: UseCanvasEdgeRendererProps) {
@@ -156,7 +159,7 @@ export function useCanvasEdgeRenderer({
         tracedColumns,
         dqHighlightedEdges,
         selectedColumn,
-        theme,
+        colors,
         edge.data?.isColumnLineage ?? false,
         edge.sourceHandle,
         edge.targetHandle,
@@ -199,7 +202,7 @@ export function useCanvasEdgeRenderer({
       tracedColumns,
       dqHighlightedEdges,
       selectedColumn,
-      theme,
+      colors,
       columnsInCurrentPages,
       hoverEdge,
       selectedEdge,
@@ -255,16 +258,17 @@ export function useCanvasEdgeRenderer({
 
     const visibleEdges = edges.filter(
       (edge) =>
-        isEdgeTraced(edge, tracedColumns) ||
-        isEdgeInViewport(
-          edge,
-          getNode(edge.source),
-          getNode(edge.target),
-          viewport,
-          containerWidth,
-          containerHeight,
-          columnsInCurrentPages
-        )
+        computeEdgeVisualState(edge, tracedNodes, tracedColumns) !== 'hidden' &&
+        (isEdgeTraced(edge, tracedColumns) ||
+          isEdgeInViewport(
+            edge,
+            getNode(edge.source),
+            getNode(edge.target),
+            viewport,
+            containerWidth,
+            containerHeight,
+            columnsInCurrentPages
+          ))
     );
 
     visibleEdgesRef.current = visibleEdges;
@@ -453,7 +457,7 @@ export function useCanvasEdgeRenderer({
     selectedEdge,
     selectedColumn,
     dqHighlightedEdges,
-    theme,
+    colors,
   ]);
 
   useEffect(() => {

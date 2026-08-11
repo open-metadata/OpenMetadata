@@ -12,7 +12,7 @@
 OpenMetadata source for the profiler
 """
 
-from typing import Iterable, List, Optional  # noqa: UP035
+from typing import ClassVar, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,  # noqa: TC001
@@ -31,6 +31,11 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
+from metadata.ingestion.progress.tracking import (
+    ProgressTracking,
+    attach_progress_tracking,
+)
 from metadata.profiler.source.fetcher.entity_fetcher import EntityFetcher
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.class_helper import (
@@ -54,6 +59,15 @@ class OpenMetadataSource(Source):
     to test the connection against the Database Service Source.
     We do this here as well.
     """
+
+    progress_mode: ClassVar[ProgressMode] = ProgressMode.MANUAL
+
+    @property
+    def progress_tracking(self) -> ProgressTracking:
+        """Composed per-source progress state. The profiler source is MANUAL:
+        the topology runner does not count it, so it drives
+        ``progress_tracking.manual`` from the fetcher."""
+        return attach_progress_tracking(self)
 
     @property
     def name(self) -> str:
@@ -112,7 +126,13 @@ class OpenMetadataSource(Source):
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
         global_profiler_config = self.metadata.get_profiler_config_settings()
-        entity_fetcher = EntityFetcher(self.config, self.metadata, global_profiler_config, self.status)
+        entity_fetcher = EntityFetcher(
+            self.config,
+            self.metadata,
+            global_profiler_config,
+            self.status,
+            self.progress_tracking.manual,
+        )
         yield from entity_fetcher.fetch()
 
     @classmethod

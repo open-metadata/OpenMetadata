@@ -130,6 +130,14 @@ export const QualityTab = () => {
   const [ingestionPipelineCount, setIngestionPipelineCount] =
     useState<number>(0);
 
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(searchValue) ||
+      Boolean(selectedTestCaseStatus) ||
+      selectedTestType !== TestCaseType.all,
+    [searchValue, selectedTestCaseStatus, selectedTestType]
+  );
+
   const totalTestCaseSummary = useMemo(() => {
     const tests = testCaseSummary?.total ?? INITIAL_TEST_SUMMARY;
 
@@ -448,6 +456,7 @@ export const QualityTab = () => {
             }}
             breadcrumbData={tableBreadcrumb}
             fetchTestCases={handleSortTestCase}
+            hasActiveFilters={hasActiveFilters}
             isEditAllowed={editTest}
             isLoading={isTestsLoading}
             pagingData={pagingData}

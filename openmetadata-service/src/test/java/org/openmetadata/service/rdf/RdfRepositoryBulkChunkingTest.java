@@ -13,7 +13,10 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -51,7 +54,7 @@ class RdfRepositoryBulkChunkingTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<RdfStorageInterface.EntityWriteRequest>> captor =
         ArgumentCaptor.forClass(List.class);
-    verify(storage, times(3)).bulkStoreEntities(captor.capture());
+    verify(storage, times(3)).bulkStoreEntities(captor.capture(), eq(RdfWriteMode.RECONCILE));
     assertEquals(2, captor.getAllValues().get(0).size());
     assertEquals(2, captor.getAllValues().get(1).size());
     assertEquals(1, captor.getAllValues().get(2).size());
@@ -134,6 +137,28 @@ class RdfRepositoryBulkChunkingTest {
     assertEquals(
         RdfRepository.DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE,
         RdfRepository.resolveBulkRelationshipSourceBatchSize(config));
+    assertEquals(
+        RdfRepository.DEFAULT_BULK_LINEAGE_EDGE_BATCH_SIZE,
+        RdfRepository.resolveBulkLineageEdgeBatchSize(config));
+  }
+
+  @Test
+  @DisplayName("lineage edges are split by configured chunk size")
+  void bulkLineageEdgesAreChunked() {
+    RdfStorageInterface storage = storageMock();
+    RdfRepository repository =
+        new RdfRepository(config().withBulkLineageEdgeBatchSize(2), storage, null);
+    List<RdfRepository.LineageEdgeData> edges =
+        List.of(lineageEdge(), lineageEdge(), lineageEdge(), lineageEdge(), lineageEdge());
+
+    repository.bulkAddLineage(edges, RdfWriteMode.INSERT_ONLY);
+
+    ArgumentCaptor<String> updateCaptor = ArgumentCaptor.forClass(String.class);
+    verify(storage, times(3)).executeSparqlUpdate(updateCaptor.capture());
+    for (String update : updateCaptor.getAllValues()) {
+      assertTrue(update.contains("INSERT DATA"));
+      assertFalse(update.contains("DELETE"));
+    }
   }
 
   private static RdfConfiguration config() {
@@ -160,6 +185,11 @@ class RdfRepositoryBulkChunkingTest {
   private static RdfStorageInterface.RelationshipData relationship(UUID fromId, UUID toId) {
     return new RdfStorageInterface.RelationshipData(
         "table", fromId, "database", toId, "CONTAINS", BASE_URI + "ontology/contains");
+  }
+
+  private static RdfRepository.LineageEdgeData lineageEdge() {
+    return new RdfRepository.LineageEdgeData(
+        "table", UUID.randomUUID(), "table", UUID.randomUUID(), null);
   }
 
   private static String entityUri(String entityType, UUID entityId) {

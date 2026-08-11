@@ -42,11 +42,15 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.data.DataContractResource;
 
 /**
@@ -653,6 +657,52 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         foundRejectedContract,
         "Expected to find the rejected contract with matching entity and status");
   }
+
+  @Test
+  void testSearchDataContracts(TestNamespace ns) {
+    String searchToken = ns.prefix("contract_search");
+    DataContract contractByName =
+        createEntity(
+            new CreateDataContract()
+                .withName(searchToken + "_name")
+                .withEntity(createTestTable(ns).getEntityReference()));
+    DataContract contractByDisplayName =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("different_name"))
+                .withDisplayName(searchToken + " Display")
+                .withEntity(createTestTable(ns).getEntityReference()));
+
+    ResultList<DataContract> matches = searchDataContracts(searchToken);
+
+    assertTrue(matches.getData().stream().anyMatch(c -> c.getId().equals(contractByName.getId())));
+    assertTrue(
+        matches.getData().stream().anyMatch(c -> c.getId().equals(contractByDisplayName.getId())));
+    assertEquals(
+        matches.getData().size(), searchDataContracts(searchToken.toUpperCase()).getData().size());
+    assertTrue(searchDataContracts(ns.prefix("no_match")).getData().isEmpty());
+  }
+
+  private ResultList<DataContract> searchDataContracts(String query) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("q", query)
+            .queryParam("limit", "50")
+            .queryParam("offset", "0")
+            .build();
+
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/dataContracts/search",
+            null,
+            DataContractResultList.class,
+            options);
+  }
+
+  private static class DataContractResultList extends ResultList<DataContract> {}
 
   @Test
   void testDataContractWithEntityStatus(TestNamespace ns) {
@@ -6753,5 +6803,64 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         ContractExecutionStatus.Failed,
         result.getContractExecutionStatus(),
         "Empty rule should be treated as a failed semantics check");
+  }
+
+  /**
+   * Regression guard for the 1.13.0 defect where {@code dataContract} was added to
+   * FIELDS_STORED_AS_RELATIONSHIPS on TestSuite but the reverse edge {@code
+   * testSuite CONTAINS dataContract} was never persisted on create. Symptom: contract validations
+   * with quality expectations stayed at Running forever because
+   * TestSuiteRepository.onTestSuiteExecutionComplete guards on testSuite.getDataContract() != null.
+   * Fix: DataContractRepository.postCreateOrUpdate now writes the reverse relationship.
+   *
+   * <p>Assertion: after creating a contract with qualityExpectations, fetching the logical
+   * TestSuite with {@code fields=dataContract} must return the DataContract EntityReference.
+   */
+  @Test
+  void testDataContractCreatesReverseTestSuiteRelationship(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    org.openmetadata.schema.tests.TestCase testCase =
+        SdkClients.adminClient()
+            .testCases()
+            .create(
+                new org.openmetadata.schema.api.tests.CreateTestCase()
+                    .withName(ns.prefix("qe_tc"))
+                    .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+                    .withTestDefinition("tableRowCountToBeBetween")
+                    .withParameterValues(
+                        List.of(
+                            new org.openmetadata.schema.tests.TestCaseParameterValue()
+                                .withName("minValue")
+                                .withValue("0"),
+                            new org.openmetadata.schema.tests.TestCaseParameterValue()
+                                .withName("maxValue")
+                                .withValue("100"))));
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dc_reverse_rel"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(testCase.getEntityReference()))
+            .withDescription("Guard: reverse testSuite -> dataContract relationship is stored");
+
+    DataContract contract = createEntity(request);
+    assertNotNull(
+        contract.getTestSuite(), "Contract with qualityExpectations must have a testSuite");
+
+    org.openmetadata.schema.tests.TestSuite testSuite =
+        SdkClients.adminClient()
+            .testSuites()
+            .get(contract.getTestSuite().getId().toString(), "dataContract");
+
+    assertNotNull(
+        testSuite.getDataContract(),
+        "TestSuite.dataContract must be populated so onTestSuiteExecutionComplete can flip the "
+            + "contract status when the pipeline finishes");
+    assertEquals(
+        contract.getId(),
+        testSuite.getDataContract().getId(),
+        "TestSuite.dataContract must point back at the owning contract");
   }
 }

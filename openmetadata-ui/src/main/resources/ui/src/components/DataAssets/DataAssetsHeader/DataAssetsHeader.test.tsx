@@ -41,6 +41,7 @@ import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContr
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import type { IconColorModalProps } from '../../Modals/IconColorModal';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
@@ -226,6 +227,30 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue({ customizedPage: null }),
 }));
+
+jest.mock('../../Modals/IconColorModal', () =>
+  jest.fn().mockImplementation(({ onSubmit }: IconColorModalProps) => (
+    <div data-testid="icon-color-modal">
+      <button
+        data-testid="submit-empty-style"
+        onClick={() => {
+          void onSubmit({ color: '', iconURL: '' });
+        }}>
+        Submit Empty Style
+      </button>
+      <button
+        data-testid="submit-custom-style"
+        onClick={() => {
+          void onSubmit({
+            color: ' #654321 ',
+            iconURL: ' https://example.com/icon.svg ',
+          });
+        }}>
+        Submit Custom Style
+      </button>
+    </div>
+  ))
+);
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest.fn(),
@@ -656,6 +681,45 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByText('label.certification')).not.toBeInTheDocument();
     expect(screen.queryByText('CertificationTag')).not.toBeInTheDocument();
     expect(screen.queryByTestId('certification-label')).not.toBeInTheDocument();
+  });
+
+  it('should submit null style when icon and color are cleared', async () => {
+    const onStyleUpdate = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          style: {
+            color: '#123456',
+            iconURL: 'https://example.com/icon.svg',
+          },
+        }}
+        onStyleUpdate={onStyleUpdate}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('submit-empty-style'));
+
+    await waitFor(() => {
+      expect(onStyleUpdate).toHaveBeenCalledWith(null);
+    });
+  });
+
+  it('should trim and submit style when icon or color is set', async () => {
+    const onStyleUpdate = jest.fn().mockResolvedValue(undefined);
+
+    render(<DataAssetsHeader {...mockProps} onStyleUpdate={onStyleUpdate} />);
+
+    fireEvent.click(screen.getByTestId('submit-custom-style'));
+
+    await waitFor(() => {
+      expect(onStyleUpdate).toHaveBeenCalledWith({
+        color: '#654321',
+        iconURL: 'https://example.com/icon.svg',
+      });
+    });
   });
 
   it('should not render the auto-pilot button when user has no Trigger permission (view-only policy)', () => {

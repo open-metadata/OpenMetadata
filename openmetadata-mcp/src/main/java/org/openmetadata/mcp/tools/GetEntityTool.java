@@ -103,10 +103,12 @@ public class GetEntityTool implements McpTool {
       throws IOException {
     String entityType = (String) params.get("entityType");
     String fqn = (String) params.get("fqn");
+    // Authorize by FQN so entity-scoped tag/owner/domain policies are evaluated, not just the
+    // resource-type permission.
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, VIEW_ALL),
-        new ResourceContext<>(entityType));
+        new ResourceContext<>(entityType, null, fqn));
     LOG.info("Getting details for entity type: {}, FQN: {}", entityType, fqn);
     int columnOffset =
         Math.max(0, McpParams.getInt(params, COLUMN_OFFSET_PARAM, DEFAULT_COLUMN_OFFSET));

@@ -187,7 +187,6 @@ export const confirmIngestionPipelineHardDelete = async (page: Page) => {
   const deleteResponse = page.waitForResponse(
     '/api/v1/services/ingestionPipelines/*?hardDelete=true'
   );
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
   await page.getByTestId('confirm-button').click();
   await deleteResponse;
 };

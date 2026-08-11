@@ -9,21 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-TCP reachability preflight for the test-connection engine.
-
-Before a connector's gate check opens a real (driver, TLS, auth) connection, a
-raw TCP connect to the resolved host:port separates a *network* failure - DNS, a
-firewall, a wrong port - from an *auth/protocol* failure. ``NETWORK_ERRORS`` is
-the diagnosis pack a connector folds into its own with ``ErrorPack.including``,
-so a probe failure reads as an actionable network problem rather than a bare
-socket error. The pack matches by exception *type*, so it is driver- and
-platform-agnostic.
+TCP reachability preflight, and the network diagnosis pack folded in with
+``ErrorPack.including``. Matches by exception type, so it stays driver-agnostic.
 """
 
 from __future__ import annotations
 
 import socket
 
+from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
     Matchers,
@@ -32,6 +26,7 @@ from metadata.core.connections.test_connection.classifier import (
 from metadata.core.connections.test_connection.constants import (
     NETWORK_PROBE_TIMEOUT_SECONDS,
 )
+from metadata.core.connections.test_connection.records import Evidence
 
 
 class NetworkUnreachableError(OSError):
@@ -39,16 +34,23 @@ class NetworkUnreachableError(OSError):
 
 
 def tcp_probe(host: str, port: int, timeout: float = NETWORK_PROBE_TIMEOUT_SECONDS) -> None:
-    """Prove a host:port is reachable by opening and immediately closing a TCP connection.
+    """Prove host:port is reachable, raising ``NetworkUnreachableError``.
 
-    Raises ``NetworkUnreachableError`` - chaining the underlying socket error so
-    the classifier can still match its type - when the connect fails or times out.
+    Chains the socket error so the classifier can match its type.
     """
     try:
         with socket.create_connection((host, port), timeout=timeout):
             pass
     except OSError as cause:
         raise NetworkUnreachableError(f"{host}:{port} is not reachable: {cause}") from cause
+
+
+def probe_or_fail(host: str, port: int) -> None:
+    """TCP-probe host:port, raising ``CheckError`` with the attempted command."""
+    try:
+        tcp_probe(host, port)
+    except NetworkUnreachableError as error:
+        raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
 
 
 # Ordered specific-first. The catch-all matches our own ``NetworkUnreachableError``

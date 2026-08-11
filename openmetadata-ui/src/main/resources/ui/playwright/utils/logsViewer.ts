@@ -18,6 +18,33 @@ import {
 } from '../constant/logsViewer';
 import { waitForAllLoadersToDisappear } from './entity';
 
+/**
+ * Distinctive marker injected into mocked log payloads. Tests assert the
+ * LogViewerModal body renders this string, proving logs are shown at a call
+ * site without depending on a real backend job.
+ */
+export const LOG_VIEWER_MARKER = 'PLAYWRIGHT_LOG_MARKER';
+
+/**
+ * Deterministic multi-line log text that embeds the marker on every line.
+ */
+export const buildMarkerLogText = (marker = LOG_VIEWER_MARKER): string =>
+  Array.from(
+    { length: 20 },
+    (_, index) => `${marker} log line ${index + 1}`
+  ).join('\n');
+
+/**
+ * Assert the LogViewerModal is open and its body shows the injected marker.
+ */
+export const assertLogViewerShowsLogs = async (
+  page: Page,
+  marker = LOG_VIEWER_MARKER
+): Promise<void> => {
+  await expect(page.getByTestId('log-viewer-title')).toBeVisible();
+  await expect(page.getByTestId('log-viewer-body')).toContainText(marker);
+};
+
 export const navigateToBundleSuiteWithPagination = async (
   page: Page,
   bundleSuiteFqn: string,

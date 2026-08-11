@@ -77,7 +77,7 @@ export const AvatarProfilePhoto = ({
       return (
         <div
           className={cx(
-            'tw:flex tw:size-full tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:ring-1 tw:ring-secondary_alt',
+            'tw:flex tw:size-full tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-1 tw:outline-secondary_alt',
             styles[size].content
           )}>
           <span className={cx('tw:text-quaternary', styles[size].initials)}>
@@ -91,7 +91,7 @@ export const AvatarProfilePhoto = ({
       return (
         <div
           className={cx(
-            'tw:flex tw:size-full tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:ring-1 tw:ring-secondary_alt',
+            'tw:flex tw:size-full tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-1 tw:outline-secondary_alt',
             styles[size].content
           )}>
           <PlaceholderIcon
@@ -104,7 +104,7 @@ export const AvatarProfilePhoto = ({
     return (
       <div
         className={cx(
-          'tw:flex tw:size-full tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:ring-1 tw:ring-secondary_alt',
+          'tw:flex tw:size-full tw:items-center tw:justify-center tw:rounded-full tw:bg-tertiary tw:outline-1 tw:outline-secondary_alt',
           styles[size].content
         )}>
         {placeholder || (
@@ -140,7 +140,7 @@ export const AvatarProfilePhoto = ({
   return (
     <div
       className={cx(
-        'tw:relative tw:flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-primary tw:ring-1 tw:ring-secondary_alt',
+        'tw:relative tw:flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:bg-primary tw:outline-1 tw:outline-secondary_alt',
         styles[size].root,
         (!src || isFailed) && styles[size].rootWithPlaceholder,
         className

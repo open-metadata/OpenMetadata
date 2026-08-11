@@ -44,11 +44,14 @@ jest.mock('../../../hooks/useClipBoard', () => ({
   useClipboard: jest.fn(() => ({ onCopyToClipBoard: mockCopyToClipBoard })),
 }));
 
-jest.mock('../../../utils/KnowledgePageUtils', () => ({
+jest.mock('../../../utils/KnowledgePagePureUtils', () => ({
   getKnowledgePageName: jest.fn(
     (entity?: { displayName?: string; name?: string }) =>
       entity?.displayName || entity?.name || 'label.untitled'
   ),
+}));
+
+jest.mock('../../../utils/KnowledgePageUtils', () => ({
   updateKnowledgeCenterRecentViewed: jest.fn(),
 }));
 
@@ -130,14 +133,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
   Button: jest.fn(
     ({
       children,
       onClick,
+      'data-testid': testId,
     }: {
       children: React.ReactNode;
       onClick?: () => void;
-    }) => <button onClick={onClick}>{children}</button>
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
+    )
   ),
   ButtonUtility: jest.fn(
     ({

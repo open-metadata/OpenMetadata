@@ -16,10 +16,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
@@ -52,6 +55,9 @@ import org.openmetadata.sdk.network.HttpMethod;
  * timeInterval.
  */
 @Execution(ExecutionMode.CONCURRENT)
+@ResourceLock(
+    value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+    mode = ResourceAccessMode.READ_WRITE)
 @ExtendWith(TestNamespaceExtension.class)
 public class ColumnCustomPropertiesIT {
 

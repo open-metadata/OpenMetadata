@@ -18,11 +18,11 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.ai.AIGovernanceActivityEvent;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.type.AIDetection;
 import org.openmetadata.schema.type.AIDetectionSource;
@@ -43,11 +43,11 @@ class GovernanceActivityTest {
                     .withSource(AIDetectionSource.OutboundApiTraffic)
                     .withDetectedAt(1000L));
 
-    List<Map<String, Object>> events = GovernanceActivity.eventsFor(model);
+    List<AIGovernanceActivityEvent> events = GovernanceActivity.eventsFor(model);
 
     assertEquals(List.of("ShadowAIDetected", "SubmittedForReview"), eventTypes(events));
-    assertEquals(2000L, event(events, "SubmittedForReview").get("at"));
-    assertEquals("alice", event(events, "SubmittedForReview").get("who"));
+    assertEquals(2000L, event(events, "SubmittedForReview").getAt());
+    assertEquals("alice", event(events, "SubmittedForReview").getWho());
   }
 
   @Test
@@ -69,13 +69,13 @@ class GovernanceActivityTest {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.LLM_MODEL)).thenReturn(repository);
 
-      List<Map<String, Object>> events = GovernanceActivity.eventsFor(model);
+      List<AIGovernanceActivityEvent> events = GovernanceActivity.eventsFor(model);
 
       assertEquals(List.of("SubmittedForReview", "Approved"), eventTypes(events));
-      assertEquals(2000L, event(events, "SubmittedForReview").get("at"));
-      assertEquals("bob", event(events, "SubmittedForReview").get("who"));
-      assertEquals(3000L, event(events, "Approved").get("at"));
-      assertEquals("alice", event(events, "Approved").get("who"));
+      assertEquals(2000L, event(events, "SubmittedForReview").getAt());
+      assertEquals("bob", event(events, "SubmittedForReview").getWho());
+      assertEquals(3000L, event(events, "Approved").getAt());
+      assertEquals("alice", event(events, "Approved").getWho());
     }
   }
 
@@ -90,14 +90,11 @@ class GovernanceActivityTest {
         .withUpdatedBy("alice");
   }
 
-  private List<Object> eventTypes(List<Map<String, Object>> events) {
-    return events.stream().map(event -> event.get("type")).toList();
+  private List<String> eventTypes(List<AIGovernanceActivityEvent> events) {
+    return events.stream().map(AIGovernanceActivityEvent::getType).toList();
   }
 
-  private Map<String, Object> event(List<Map<String, Object>> events, String type) {
-    return events.stream()
-        .filter(event -> type.equals(event.get("type")))
-        .findFirst()
-        .orElseThrow();
+  private AIGovernanceActivityEvent event(List<AIGovernanceActivityEvent> events, String type) {
+    return events.stream().filter(event -> type.equals(event.getType())).findFirst().orElseThrow();
   }
 }

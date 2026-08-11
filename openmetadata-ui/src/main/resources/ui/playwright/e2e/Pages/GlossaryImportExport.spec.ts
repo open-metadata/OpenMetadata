@@ -102,7 +102,7 @@ const exportActiveGlossaryCsv = async (
   return fetchCompletedCsvAsyncJobResult(apiContext, jobId);
 };
 
-test.describe('Glossary Bulk Import Export', () => {
+test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
   test.slow(true);
 
   test.beforeAll('setup pre-test', async () => {

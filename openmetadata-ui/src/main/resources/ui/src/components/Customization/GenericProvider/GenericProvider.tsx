@@ -69,7 +69,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   currentVersionData,
   isTabExpanded = false,
   customizedPage,
-  muiTags = false,
+  newTagsUI = false,
   columnFqn,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
@@ -414,7 +414,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       updateWidgetHeight,
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
-      muiTags,
+      newTagsUI,
       selectedColumn,
       isColumnDetailOpen,
       openColumnDetailPanel,
@@ -436,7 +436,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       updateWidgetHeight,
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
-      muiTags,
+      newTagsUI,
       selectedColumn,
       isColumnDetailOpen,
       openColumnDetailPanel,

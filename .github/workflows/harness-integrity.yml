@@ -1,0 +1,56 @@
+name: Harness Integrity
+
+# Warnings-only guard that keeps the agent-facing config (CLAUDE.md, AGENTS.md,
+# ARCHITECTURE.md, docs/index.md, .claude/rules/**, skills, docs/generated/**) from
+# silently decaying. Every finding is a GitHub ::warning:: annotation — this job never
+# fails a PR. Promote to a blocking gate only with maintainer sign-off (drop the
+# `|| true`-equivalent by passing --strict to the script).
+#
+# One workflow, not spread across the other checks. It is NOT folded into
+# skills/.github/workflows/lint-standards.yml: that file is the skills *plugin's* own CI
+# (it triggers on skills/** and GitHub only runs workflows from the repo-root
+# .github/workflows/, so it does not execute in this monorepo), and these checks span
+# repo-root files it cannot reach. It also subsumes the docs/generated freshness check.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
+      - 'ARCHITECTURE.md'
+      - 'docs/**'
+      - '.claude/rules/**'
+      - '.claude/skills/**'
+      - '.agents/skills/**'
+      - 'skills/**'
+      - 'Makefile'
+      - 'ingestion/Makefile'
+      - 'openmetadata-ui/src/main/resources/ui/package.json'
+      - 'openmetadata-ui-core-components/src/main/resources/ui/package.json'
+      - 'scripts/harness/**'
+      - 'scripts/generate_entity_index.py'
+      - 'scripts/generate_api_reference.py'
+      # freshness (check 6) sources:
+      - 'openmetadata-spec/src/main/resources/json/schema/entity/**'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  harness-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # Warnings only: the script exits 0 unless --strict, so it annotates but never
+      # fails the PR. To make it blocking after maintainer sign-off, add `--strict`.
+      - name: Run harness-integrity checks
+        run: python3 scripts/harness/check_harness.py

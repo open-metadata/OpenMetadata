@@ -461,9 +461,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"Processes: {metrics.active_processes}"
                 )
 
-            reporter = self._progress_reporter()
-            if reporter is not None:
-                text = reporter.cli()
+            registry = self._find_progress_registry()
+            if registry is not None:
+                text = registry.render_cli()
                 if text:
                     logger.info("Ingestion progress:\n%s", text)
 

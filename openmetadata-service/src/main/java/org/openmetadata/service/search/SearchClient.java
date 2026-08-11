@@ -240,6 +240,17 @@ public interface SearchClient
       }
       """;
 
+  String CASCADE_SERVICE_STYLE_SCRIPT =
+      """
+      if (ctx._source.service != null) {
+        if (params.style == null) {
+          ctx._source.service.remove('style');
+        } else {
+          ctx._source.service.style = params.style;
+        }
+      }
+      """;
+
   // FQN-boundary aware, idempotent rewrite of a single tagFQN. A bare
   // startsWith + replace is NOT idempotent when the new FQN keeps the old one
   // as a prefix (rename "a" -> "a b"): the glossary rename fires this twice

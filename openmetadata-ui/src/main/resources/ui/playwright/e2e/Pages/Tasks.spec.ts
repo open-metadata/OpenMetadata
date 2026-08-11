@@ -10,54 +10,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../../fixtures/testNamespace';
 import { TaskClass } from '../../support/entity/TaskClass';
 import { UserClass } from '../../support/user/UserClass';
-import { authenticateAdminPage } from '../../utils/admin';
-import { getApiContext } from '../../utils/common';
 import { findTaskInList } from '../../utils/taskAPI';
 
 test.describe('Task Entity API Tests', () => {
+  const DAR_EXPIRATION_MS = 14 * 24 * 60 * 60 * 1000;
   const user1 = new UserClass();
   const user2 = new UserClass();
   let task1: TaskClass;
   let task2: TaskClass;
   let task3: TaskClass;
 
-  test.beforeAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    await authenticateAdminPage(page);
-    const { apiContext, afterAction } = await getApiContext(page);
-    await user1.create(apiContext);
-    await user2.create(apiContext);
-    await afterAction();
-    await page.close();
+  const futureDarExpirationDate = () => Date.now() + DAR_EXPIRATION_MS;
+
+  test.beforeAll(async ({ adminApiContext }) => {
+    await user1.create(adminApiContext);
+    await user2.create(adminApiContext);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    await authenticateAdminPage(page);
-    const { apiContext, afterAction } = await getApiContext(page);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await afterAction();
-    await page.close();
+  test.afterAll(async ({ adminApiContext }) => {
+    await user1.delete(adminApiContext);
+    await user2.delete(adminApiContext);
   });
 
-  test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
-  });
-
-  test('Create task with different built-in categories', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('Create task with different built-in categories', async ({
+    adminApiContext,
+  }) => {
     await test.step('Create MetadataUpdate task', async () => {
       task1 = new TaskClass({
         category: 'MetadataUpdate',
         type: 'DescriptionUpdate',
         description: 'Update the description for this entity',
       });
-      const response = await task1.create(apiContext);
+      const response = await task1.create(adminApiContext);
 
       expect(response).toBeDefined();
       expect(response.id).toBeDefined();
@@ -74,7 +61,7 @@ test.describe('Task Entity API Tests', () => {
         description: 'Approve this glossary term',
         priority: 'High',
       });
-      const response = await task2.create(apiContext);
+      const response = await task2.create(adminApiContext);
 
       expect(response).toBeDefined();
       expect(response.taskId).toMatch(/^TASK-\d+$/);
@@ -89,7 +76,7 @@ test.describe('Task Entity API Tests', () => {
         description: 'Review workflow task',
         priority: 'Critical',
       });
-      const response = await task3.create(apiContext);
+      const response = await task3.create(adminApiContext);
 
       expect(response).toBeDefined();
       expect(response.category).toBe('Review');
@@ -97,9 +84,7 @@ test.describe('Task Entity API Tests', () => {
     });
   });
 
-  test('Task ID sequence is unique', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('Task ID sequence is unique', async ({ adminApiContext }) => {
     const taskA = new TaskClass({
       category: 'MetadataUpdate',
       type: 'TagUpdate',
@@ -109,8 +94,8 @@ test.describe('Task Entity API Tests', () => {
       type: 'TagUpdate',
     });
 
-    const responseA = await taskA.create(apiContext);
-    const responseB = await taskB.create(apiContext);
+    const responseA = await taskA.create(adminApiContext);
+    const responseB = await taskB.create(adminApiContext);
 
     expect(responseA.taskId).not.toBe(responseB.taskId);
 
@@ -118,13 +103,11 @@ test.describe('Task Entity API Tests', () => {
     const taskIdNumB = parseInt(responseB.taskId.replace('TASK-', ''), 10);
     expect(taskIdNumB).toBeGreaterThan(taskIdNumA);
 
-    await taskA.delete(apiContext);
-    await taskB.delete(apiContext);
+    await taskA.delete(adminApiContext);
+    await taskB.delete(adminApiContext);
   });
 
-  test('Resolve task with approval', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('Resolve task with approval', async ({ adminApiContext }) => {
     const task = new TaskClass({
       category: 'Approval',
       type: 'GlossaryApproval',
@@ -132,13 +115,13 @@ test.describe('Task Entity API Tests', () => {
     });
 
     await test.step('Create task', async () => {
-      const response = await task.create(apiContext);
+      const response = await task.create(adminApiContext);
       expect(response.status).toBe('Open');
     });
 
     await test.step('Resolve with approval', async () => {
       const response = await task.resolve(
-        apiContext,
+        adminApiContext,
         'Approved',
         'Approved after review'
       );
@@ -146,13 +129,11 @@ test.describe('Task Entity API Tests', () => {
     });
 
     await test.step('Cleanup', async () => {
-      await task.delete(apiContext);
+      await task.delete(adminApiContext);
     });
   });
 
-  test('Resolve task with rejection', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('Resolve task with rejection', async ({ adminApiContext }) => {
     const task = new TaskClass({
       category: 'DataAccess',
       type: 'DataAccessRequest',
@@ -160,18 +141,18 @@ test.describe('Task Entity API Tests', () => {
       payload: {
         accessType: 'FullAccess',
         reason: 'Playwright test access request',
-        duration: 'P14D',
+        expirationDate: futureDarExpirationDate(),
       },
     });
 
     await test.step('Create task', async () => {
-      const response = await task.create(apiContext);
+      const response = await task.create(adminApiContext);
       expect(response.status).toBe('Open');
     });
 
     await test.step('Resolve with rejection', async () => {
       const response = await task.resolve(
-        apiContext,
+        adminApiContext,
         'Rejected',
         'Insufficient justification provided'
       );
@@ -179,13 +160,11 @@ test.describe('Task Entity API Tests', () => {
     });
 
     await test.step('Cleanup', async () => {
-      await task.delete(apiContext);
+      await task.delete(adminApiContext);
     });
   });
 
-  test('Create task with assignees', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('Create task with assignees', async ({ adminApiContext }) => {
     const task = new TaskClass({
       category: 'Review',
       type: 'DataQualityReview',
@@ -193,29 +172,27 @@ test.describe('Task Entity API Tests', () => {
       assignees: [user1.responseData?.fullyQualifiedName ?? ''],
     });
 
-    const response = await task.create(apiContext);
+    const response = await task.create(adminApiContext);
 
     expect(response).toBeDefined();
     expect(response.status).toBe('Open');
 
-    await task.delete(apiContext);
+    await task.delete(adminApiContext);
   });
 
-  test('List tasks by status', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('List tasks by status', async ({ adminApiContext }) => {
     const openTask = new TaskClass({
       category: 'MetadataUpdate',
       type: 'OwnershipUpdate',
     });
 
-    await openTask.create(apiContext);
+    await openTask.create(adminApiContext);
 
     // Verify the task was created
     expect(openTask.responseData?.id).toBeDefined();
 
     const foundTask = await findTaskInList(
-      apiContext,
+      adminApiContext,
       openTask.responseData?.id ?? '',
       {
         status: 'Open',
@@ -225,12 +202,10 @@ test.describe('Task Entity API Tests', () => {
 
     expect(foundTask).toBeDefined();
 
-    await openTask.delete(apiContext);
+    await openTask.delete(adminApiContext);
   });
 
-  test('Task CRUD operations', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('Task CRUD operations', async ({ adminApiContext }) => {
     const task = new TaskClass({
       category: 'Incident',
       type: 'IncidentResolution',
@@ -239,18 +214,18 @@ test.describe('Task Entity API Tests', () => {
     });
 
     await test.step('Create task', async () => {
-      const response = await task.create(apiContext);
+      const response = await task.create(adminApiContext);
       expect(response.id).toBeDefined();
       expect(response.description).toBe('Initial description');
     });
 
     await test.step('Get task by ID', async () => {
-      const response = await task.get(apiContext);
+      const response = await task.get(adminApiContext);
       expect(response.id).toBe(task.responseData?.id);
     });
 
     await test.step('Get task by taskId (human-readable)', async () => {
-      const response = await apiContext.get(
+      const response = await adminApiContext.get(
         `/api/v1/tasks/name/${task.responseData?.taskId}`
       );
       const data = await response.json();
@@ -258,17 +233,17 @@ test.describe('Task Entity API Tests', () => {
     });
 
     await test.step('Delete task', async () => {
-      await task.delete(apiContext);
-      const response = await apiContext.get(
+      await task.delete(adminApiContext);
+      const response = await adminApiContext.get(
         `/api/v1/tasks/${task.responseData?.id}`
       );
       expect(response.status()).toBe(404);
     });
   });
 
-  test('All built-in task categories can be created', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('All built-in task categories can be created', async ({
+    adminApiContext,
+  }) => {
     const categories = [
       { category: 'Approval', type: 'GlossaryApproval' },
       {
@@ -277,7 +252,7 @@ test.describe('Task Entity API Tests', () => {
         payload: {
           accessType: 'FullAccess',
           reason: 'Playwright test access request',
-          duration: 'P14D',
+          expirationDate: futureDarExpirationDate(),
         },
       },
       { category: 'MetadataUpdate', type: 'DescriptionUpdate' },
@@ -289,7 +264,7 @@ test.describe('Task Entity API Tests', () => {
 
     for (const { category, type, ...rest } of categories) {
       const task = new TaskClass({ category, type, ...rest });
-      const response = await task.create(apiContext);
+      const response = await task.create(adminApiContext);
 
       expect(response.category).toBe(category);
       expect(response.type).toBe(type);
@@ -297,13 +272,11 @@ test.describe('Task Entity API Tests', () => {
     }
 
     for (const task of createdTasks) {
-      await task.delete(apiContext);
+      await task.delete(adminApiContext);
     }
   });
 
-  test('Task priority levels', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-
+  test('Task priority levels', async ({ adminApiContext }) => {
     const priorities = ['Critical', 'High', 'Medium', 'Low'];
     const createdTasks: TaskClass[] = [];
 
@@ -313,33 +286,26 @@ test.describe('Task Entity API Tests', () => {
         type: 'TierUpdate',
         priority,
       });
-      const response = await task.create(apiContext);
+      const response = await task.create(adminApiContext);
 
       expect(response.priority).toBe(priority);
       createdTasks.push(task);
     }
 
     for (const task of createdTasks) {
-      await task.delete(apiContext);
+      await task.delete(adminApiContext);
     }
   });
 
-  test.afterAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    await authenticateAdminPage(page);
-    const { apiContext, afterAction } = await getApiContext(page);
-
+  test.afterAll(async ({ adminApiContext }) => {
     if (task1?.responseData?.id) {
-      await task1.delete(apiContext);
+      await task1.delete(adminApiContext);
     }
     if (task2?.responseData?.id) {
-      await task2.delete(apiContext);
+      await task2.delete(adminApiContext);
     }
     if (task3?.responseData?.id) {
-      await task3.delete(apiContext);
+      await task3.delete(adminApiContext);
     }
-
-    await afterAction();
-    await page.close();
   });
 });

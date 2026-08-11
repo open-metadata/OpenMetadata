@@ -658,6 +658,8 @@ export enum AuthProvider {
  *
  * Regex to only fetch topics that matches the pattern.
  *
+ * Regex to only compute metrics for entities that match the pattern
+ *
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
  *
@@ -688,6 +690,8 @@ export enum AuthProvider {
  *
  * Regex to exclude or include charts that matches the pattern.
  *
+ * Regex to exclude or include data models (Omni topics) that matches the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -712,8 +716,6 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
  * pattern.
- *
- * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
  *
@@ -825,7 +827,7 @@ export interface OpenMetadataJWTClientConfig {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
- * TLS/SSL configuration for secure NATS connections.
+ * SSL Configuration for Prefect API connection.
  *
  * SSL certificate configuration for validating the server certificate when fetching dbt
  * artifacts.
@@ -1084,6 +1086,8 @@ export interface SourceConfig {
  *
  * MessagingService Metadata Pipeline Configuration.
  *
+ * MessagingService AutoClassification Pipeline Configuration.
+ *
  * DatabaseService Profiler Pipeline Configuration.
  *
  * DatabaseService AutoClassification & Auto Classification Pipeline Configuration.
@@ -1261,10 +1265,14 @@ export interface Pipeline {
     /**
      * Pipeline type
      */
-    type?: FluffyType;
+    type?: ConfigType;
     /**
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
+     *
+     * Regex will be applied on fully qualified name (e.g
+     * service_name.db_name.schema_name.table_name) instead of on the short name (e.g.
+     * table_name). Short name is used as default.
      *
      * Regex will be applied on fully qualified name (e.g service_name.container_name) instead
      * of raw name (e.g. container_name)
@@ -1408,6 +1416,8 @@ export interface Pipeline {
      */
     topicFilterPattern?: FilterPattern;
     /**
+     * Regex to only compute metrics for entities that match the pattern
+     *
      * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
      * pattern.
      *
@@ -1415,6 +1425,49 @@ export interface Pipeline {
      * pattern.
      */
     classificationFilterPattern?: FilterPattern;
+    /**
+     * Language used for classification. Supported languages include: en (English).
+     *
+     * Language to use for auto classification recognizers. Use 'any' to run all recognizers
+     * regardless of their configured language. For specific languages, only recognizers that
+     * support that language will be used.
+     */
+    classificationLanguage?: ClassificationLanguage;
+    /**
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will tag less columns as PII, whereas a lower
+     * number will tag more columns as PII.
+     *
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will yield less false positives but more
+     * false negatives. A lower number will yield more false positives but less false negatives.
+     */
+    confidence?: number;
+    /**
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information.
+     *
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information
+     */
+    enableAutoClassification?: boolean;
+    /**
+     * No. of messages to fetch during sample data ingestion.
+     *
+     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     */
+    sampleDataCount?: number;
+    /**
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each topic.
+     *
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each table.
+     *
+     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
+     * each structured container.
+     */
+    storeSampleData?: boolean;
     /**
      * Option to turn on/off column metric computation. If enabled, profiler will compute column
      * level metrics.
@@ -1451,35 +1504,6 @@ export interface Pipeline {
      * https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
-    /**
-     * Language to use for auto classification recognizers. Use 'any' to run all recognizers
-     * regardless of their configured language. For specific languages, only recognizers that
-     * support that language will be used.
-     */
-    classificationLanguage?: ClassificationLanguage;
-    /**
-     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
-     * value ranges from 0 to 100. A higher number will yield less false positives but more
-     * false negatives. A lower number will yield more false positives but less false negatives.
-     */
-    confidence?: number;
-    /**
-     * Optional configuration to automatically tag columns that might contain sensitive
-     * information
-     */
-    enableAutoClassification?: boolean;
-    /**
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
-     */
-    sampleDataCount?: number;
-    /**
-     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
-     * each table.
-     *
-     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
-     * each structured container.
-     */
-    storeSampleData?: boolean;
     /**
      * Optional configuration to turn off fetching lineage from pipelines.
      */
@@ -1691,6 +1715,10 @@ export interface Pipeline {
      */
     dbtUpdateOwners?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
+     */
+    includeMetrics?: boolean;
+    /**
      * Optional configuration to search across databases for tables or not
      */
     searchAcrossDatabases?: boolean;
@@ -1753,8 +1781,6 @@ export interface Pipeline {
  *
  * This schema defines the Slack App Information
  *
- * Configuration for the Collate AI Quality Agent.
- *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
@@ -1773,8 +1799,6 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
-     *
-     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -1810,13 +1834,7 @@ export interface CollateAIAppConfig {
     /**
      * User Token
      */
-    userToken?: string;
-    /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
-     */
-    active?:                boolean;
+    userToken?:             string;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
@@ -1963,6 +1981,10 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?: boolean;
     /**
      * Service Entity Link for which to trigger the application.
      */
@@ -2778,10 +2800,6 @@ export interface ModuleConfiguration {
      * Data Assets Insights Module configuration
      */
     dataAssets: DataAssetsConfig;
-    /**
-     * Data Quality Insights Module configuration
-     */
-    dataQuality: DataQualityConfig;
 }
 
 /**
@@ -2830,16 +2848,6 @@ export interface ServiceFilter {
 }
 
 /**
- * Data Quality Insights Module configuration
- */
-export interface DataQualityConfig {
-    /**
-     * If Enabled, Data Quality insights will be populated when the App runs.
-     */
-    enabled: boolean;
-}
-
-/**
  * Entities selected to run the automation.
  */
 export interface Resource {
@@ -2885,8 +2893,6 @@ export enum CollateAIAppConfigType {
     Automator = "Automator",
     CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
-    CollateAIQualityAgent = "CollateAIQualityAgent",
-    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
@@ -2936,12 +2942,14 @@ export interface AppLimitsConfig {
 }
 
 /**
- * Language to use for auto classification recognizers. Use 'any' to run all recognizers
- * regardless of their configured language. For specific languages, only recognizers that
- * support that language will be used.
+ * Language used for classification. Supported languages include: en (English).
  *
  * Supported languages for auto classification recognizers (ISO 639-1 codes). Use 'any' to
  * apply all recognizers regardless of their configured language.
+ *
+ * Language to use for auto classification recognizers. Use 'any' to run all recognizers
+ * regardless of their configured language. For specific languages, only recognizers that
+ * support that language will be used.
  */
 export enum ClassificationLanguage {
     AF = "af",
@@ -3848,7 +3856,7 @@ export interface ServiceConnections {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -3897,6 +3905,8 @@ export interface ServiceConnection {
  * create, deploy, and manage paginated reports
  *
  * SAP S/4HANA Connection Config for Embedded Analytics
+ *
+ * Omni BI connector: models, topics, workbooks/dashboards and lineage
  *
  * Google BigQuery Connection Config
  *
@@ -4020,8 +4030,6 @@ export interface ServiceConnection {
  *
  * Kinesis Connection Config
  *
- * NATS Connection Config
- *
  * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
@@ -4130,7 +4138,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -4163,6 +4171,8 @@ export interface ConfigObject {
      * certificate. Paste the PEM content directly or upload the certificate file.
      *
      * SSL Configuration for OpenMetadata Server
+     *
+     * SSL Configuration for Prefect API connection.
      */
     sslConfig?: SSLConfigObject;
     /**
@@ -4176,11 +4186,9 @@ export interface ConfigObject {
      *
      * Hex API token for authentication. Can be personal or workspace token.
      *
-     * Token for NATS token-based authentication.
+     * API token to authenticate with Omni.
      *
      * To Connect to Dagster Cloud
-     *
-     * Generated Token to connect to Databricks.
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -4210,7 +4218,7 @@ export interface ConfigObject {
      *
      * Custom search service type
      */
-    type?: PurpleType;
+    type?: AirflowConnectionType;
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
@@ -4271,6 +4279,8 @@ export interface ConfigObject {
     dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
+     *
+     * Regex to exclude or include data models (Omni topics) that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
     /**
@@ -4314,6 +4324,9 @@ export interface ConfigObject {
      * Host and Port of the Ssrs instance.
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
+     *
+     * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
+     * automatically.
      *
      * BigQuery APIs URL.
      *
@@ -4407,6 +4420,9 @@ export interface ConfigObject {
      * Pipeline Service Management/UI URL.
      *
      * Spline REST Server Host & Port.
+     *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
      *
      * KafkaConnect Service Management/UI URI.
      *
@@ -4516,8 +4532,6 @@ export interface ConfigObject {
      * Password to connect to IOMETE.
      *
      * Password for the HANA database user.
-     *
-     * Password for NATS basic authentication.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -4653,8 +4667,6 @@ export interface ConfigObject {
      *
      * HANA database username with access to BW metadata tables.
      *
-     * Username for NATS basic authentication.
-     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -4726,7 +4738,7 @@ export interface ConfigObject {
      *
      * Matillion Auth Configuration
      */
-    connection?: ConfigConnection;
+    connection?: AirflowConnectionConnection;
     /**
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
@@ -4758,6 +4770,8 @@ export interface ConfigObject {
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
      *
      * Authentication type to connect to Apache Ranger.
      *
@@ -4969,7 +4983,7 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?: ConfigScheme;
+    scheme?: AirflowConnectionScheme;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -5050,17 +5064,18 @@ export interface ConfigObject {
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
      *
-     * Database of the data source.
-     *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
-     *
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
      *
      * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
      * blank, all namespaces will be ingested.
@@ -5306,6 +5321,21 @@ export interface ConfigObject {
      * Verify ( Connection Argument for SSL ) to connect to Trino.
      */
     verify?: string;
+    /**
+     * Redshift cluster identifier. Leave empty for standard Redshift hostnames
+     * (*.redshift.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM
+     * authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find
+     * it in AWS Console -> Amazon Redshift -> Clusters ('Cluster identifier' column).
+     */
+    clusterIdentifier?: string;
+    /**
+     * Redshift Serverless workgroup name. Leave empty for standard Redshift Serverless
+     * hostnames (*.redshift-serverless.amazonaws.com) - it is derived automatically. Set this
+     * ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a
+     * custom DNS name. Find it in AWS Console -> Amazon Redshift -> Redshift Serverless ->
+     * Workgroups.
+     */
+    workgroupName?: string;
     /**
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
@@ -5630,36 +5660,8 @@ export interface ConfigObject {
     securityProtocol?: KafkaSecurityProtocol;
     /**
      * Regex to only fetch topics that matches the pattern.
-     *
-     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
-    /**
-     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
-     */
-    additionalConfig?: { [key: string]: any };
-    /**
-     * Enable JetStream to ingest Streams and Consumers metadata. If false, only core NATS
-     * subjects are ingested.
-     */
-    jetStreamEnabled?: boolean;
-    /**
-     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
-     */
-    natsServers?: string;
-    /**
-     * NKey seed for NATS NKey-based authentication.
-     */
-    nkeySeed?: string;
-    /**
-     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
-     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
-     */
-    schemaKvBucket?: string;
-    /**
-     * TLS/SSL configuration for secure NATS connections.
-     */
-    tlsConfig?: DbtSSLConfigClass;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -5722,7 +5724,7 @@ export interface ConfigObject {
     /**
      * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
      */
-    elasticsSearch?: ConfigElasticsSearch;
+    elasticsSearch?: AirflowConnectionElasticsSearch;
     /**
      * Validate Openmetadata Server & Client Version.
      */
@@ -5877,6 +5879,8 @@ export interface ConfigObject {
     glossaryFilterPattern?: FilterPattern;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -6286,6 +6290,13 @@ export enum AuthMechanismEnum {
  *
  * API Access Token Auth Credentials
  *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
+ *
  * Basic Auth Configuration for ElasticSearch
  *
  * API Key Authentication for ElasticSearch
@@ -6432,9 +6443,24 @@ export interface AuthenticationType {
      */
     accessToken?: string;
     /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     *
      * Elastic Search API Key for API Authentication
      */
     apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
     /**
      * Elastic Search API Key ID for API Authentication
      */
@@ -6924,7 +6950,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: Connection;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -6967,7 +6993,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface Connection {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -7044,7 +7070,7 @@ export interface Connection {
  *
  * Matillion Data Productivity Cloud Auth Config.
  */
-export interface ConfigConnection {
+export interface AirflowConnectionConnection {
     /**
      * Password for Superset.
      *
@@ -7097,11 +7123,15 @@ export interface ConfigConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
-     *
-     * Database of the data source.
      */
     database?: string;
     /**
@@ -7486,7 +7516,7 @@ export enum ConnectionScheme {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
- * TLS/SSL configuration for secure NATS connections.
+ * SSL Configuration for Prefect API connection.
  *
  * SSL certificate configuration for validating the server certificate when fetching dbt
  * artifacts.
@@ -7607,9 +7637,9 @@ export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database: string;
     /**
@@ -7725,7 +7755,7 @@ export enum DiscoveryMethod {
 /**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
-export interface ConfigElasticsSearch {
+export interface AirflowConnectionElasticsSearch {
     config?: { [key: string]: any };
     /**
      * Type of sink component ex: metadata
@@ -7830,9 +7860,9 @@ export interface HiveMetastoreConnectionDetails {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database?: string;
     /**
@@ -8154,7 +8184,7 @@ export enum RunMode {
  *
  * Couchbase driver scheme options.
  */
-export enum ConfigScheme {
+export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
@@ -8268,7 +8298,7 @@ export enum SpaceType {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
- * TLS/SSL configuration for secure NATS connections.
+ * SSL Configuration for Prefect API connection.
  *
  * SSL certificate configuration for validating the server certificate when fetching dbt
  * artifacts.
@@ -8460,7 +8490,7 @@ export enum TokenType {
  *
  * Service type
  */
-export enum PurpleType {
+export enum AirflowConnectionType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -8538,8 +8568,8 @@ export enum PurpleType {
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
-    Nats = "Nats",
     Nifi = "Nifi",
+    Omni = "Omni",
     OpenLineage = "OpenLineage",
     OpenMetadata = "OpenMetadata",
     OpenSearch = "OpenSearch",
@@ -8548,6 +8578,7 @@ export enum PurpleType {
     Postgres = "Postgres",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
+    Prefect = "Prefect",
     Presto = "Presto",
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
@@ -8654,6 +8685,8 @@ export interface StorageMetadataBucketDetails {
  *
  * Messaging Source Config Metadata Pipeline type
  *
+ * Messaging Service Auto Classification Pipeline type
+ *
  * Profiler Source Config Pipeline type
  *
  * Pipeline Source Config Metadata Pipeline type
@@ -8680,7 +8713,7 @@ export interface StorageMetadataBucketDetails {
  *
  * Policy Agent Pipeline type
  */
-export enum FluffyType {
+export enum ConfigType {
     APIMetadata = "ApiMetadata",
     Application = "Application",
     AutoClassification = "AutoClassification",

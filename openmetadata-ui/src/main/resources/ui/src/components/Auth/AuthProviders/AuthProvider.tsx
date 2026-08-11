@@ -37,6 +37,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
@@ -50,8 +51,23 @@ import {
 } from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
+import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
+import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
+import {
+  derivePreferencesFromList,
+  hydrateBackendSyncedPreferences,
+  resetBackendSyncState,
+} from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  clearAppMode,
+  resolveEffectiveAppMode,
+  resolveInitialAppMode,
+  setAppDefaultMode,
+  translateWireMode,
+  writeAppMode,
+} from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
 import { queryClient } from '../../../queryClient';
@@ -61,7 +77,8 @@ import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
-import { getLoggedInUser } from '../../../rest/userAPI';
+import { getAppConfiguration } from '../../../rest/settingConfigAPI';
+import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
@@ -114,6 +131,37 @@ const userAPIQueryFields = [
 ];
 
 const isEmailVerifyField = 'isEmailVerified';
+
+/**
+ * Boot-time app-mode plumbing, run once `currentUser` is known (both the
+ * returning-session path and the fresh-login path need it). Fetches the
+ * user's own preferences bag and the tenant-wide app-mode default in
+ * parallel — neither depends on the other, only on `user.id` being
+ * resolved already, so a true 3-way `Promise.all` alongside
+ * `getLoggedInUser` isn't possible (the preferences fetch needs the id
+ * `getLoggedInUser` itself returns).
+ *
+ * Hydrates the local preferences store from the server (or migrates a
+ * local-only value up, on first boot after this feature ships), then
+ * resolves and writes the effective app mode via the fallback chain:
+ * user preference -> persona (unknown synchronously here; refined shortly
+ * after by `useResolvedAppMode` once the persona doc loads) -> tenant
+ * default -> `DEFAULT_APP_MODE`.
+ */
+const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
+  const [prefsRes, appConfig] = await Promise.all([
+    getUserPreferences(user.id).catch(() => ({ preferences: [] })),
+    getAppConfiguration().catch(() => null),
+  ]);
+  hydrateBackendSyncedPreferences(user, prefsRes);
+
+  const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
+  setAppDefaultMode(appDefault);
+
+  const userPref =
+    derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
+  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault));
+};
 
 let requestInterceptor: number | null = null;
 let responseInterceptor: number | null = null;
@@ -237,6 +285,16 @@ export const AuthProvider = ({
     clearEtagCache();
     queryClient.clear();
 
+    // Drop the tab-scoped app-mode session so the next user boots into
+    // their own persona/preference-resolved mode rather than inheriting
+    // this user's transient mode.
+    clearAppMode();
+
+    // Reset the debounced backend-sync bookkeeping so a pending PATCH
+    // from user A cannot be flushed with user B's value/id when the SPA
+    // logs out + back in within the 300ms window.
+    resetBackendSyncState();
+
     setApplicationLoading(false);
 
     // Clear the refresh flag (used after refresh is complete)
@@ -248,6 +306,30 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
+      // Non-default app modes (e.g. AskCollate's 'ai') own their own
+      // shell and land pages — navigating to /my-data would drop the
+      // user on the Classic My Data page even though their tab is in
+      // AI mode. Route to `/` and let the mode-specific route tree
+      // render its own landing page.
+      //
+      // At post-login redirect time `useResolvedAppMode` has not yet
+      // run, so the useAppMode store alone only reflects the
+      // sessionStorage tuple (empty on a fresh login). `resolveInitialAppMode`
+      // consults the same synchronously-available signals as the
+      // resolver — session tuple → fresh cross-tab hint → user's
+      // stored preference — so a user whose "remember" checkbox is on
+      // AI or whose sibling tab is in AI lands on `/` from the start
+      // instead of being bounced through `/my-data` and then flipped
+      // to AI by the resolver a tick later. Persona (async) stays
+      // with the resolver.
+      const userName = useApplicationStore.getState().currentUser?.name;
+      const appMode = resolveInitialAppMode(userName);
+      if (appMode !== DEFAULT_APP_MODE) {
+        navigate(ROUTES.HOME);
+
+        return;
+      }
+
       // Check if provider uses OidcAuthenticator which has routing logic
       const usesOidcAuthenticator = [
         AuthProviderEnum.Google,
@@ -300,6 +382,7 @@ export const AuthProvider = ({
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
+        await hydrateAndResolveAppMode(res);
       } else {
         resetUserDetails();
       }
@@ -440,6 +523,7 @@ export const AuthProvider = ({
         if (res) {
           const userDetails = await checkIfUpdateRequired(res, newUser);
           setCurrentUser(userDetails);
+          await hydrateAndResolveAppMode(userDetails);
 
           handledVerifiedUser();
           // Start expiry timer on successful login
@@ -543,7 +627,9 @@ export const AuthProvider = ({
         config.headers['Content-type'] = 'application/json-patch+json';
       }
 
-      return withDomainFilter(config);
+      return withLanguageHeader(
+        withActivePersonaHeader(withDomainFilter(config))
+      );
     });
 
     // Axios response interceptor for statusCode 401,403
@@ -584,6 +670,17 @@ export const AuthProvider = ({
                   config: error.config,
                 });
 
+                // Reject every queued 401'd request with the given error and
+                // clear the queue. Called on any path where the refresh does
+                // not yield a new token (null-return or thrown error) so the
+                // callers don't hang waiting for a retry that will never come.
+                const rejectPending = (rejectionError: unknown) => {
+                  pendingRequests.forEach(({ reject }) =>
+                    reject(rejectionError)
+                  );
+                  pendingRequests = [];
+                };
+
                 // Refresh the token and retry the requests in the queue
                 tokenService.current
                   .refreshToken()
@@ -598,13 +695,13 @@ export const AuthProvider = ({
                       // Clear the queue after retrying
                       pendingRequests = [];
                     } else {
+                      rejectPending(error);
                       resetUserDetails(true);
                     }
                   })
-                  .catch((error) => {
+                  .catch((refreshError) => {
+                    rejectPending(refreshError);
                     resetUserDetails(true);
-
-                    return Promise.reject(error);
                   });
               });
             }

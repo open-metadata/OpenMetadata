@@ -33,12 +33,10 @@ server:
     #            but downgrade to HTTP/1.1 on the upstream hop anyway, so HTTP/2 on Jetty
     #            buys nothing.
     #
-    #   - h2c    HTTP/2 cleartext on the same TCP port. Jetty 12 accepts both h1 clients
-    #            (via h1 protocol) and h2 clients (via h2c-upgrade or h2c-prior-knowledge),
-    #            so this is backwards-compatible. Worth flipping on when browsers hit Jetty
-    #            directly (Docker Compose, on-prem single-node, local dev) — multiplexing
-    #            removes the h1 6-connections-per-origin cap, which materially helps cold
-    #            first-paint on SPAs that load 30+ chunks.
+    #   - h2c    HTTP/2 cleartext on the same TCP port for clients and proxies that explicitly
+    #            support h2c upgrade or prior knowledge. Mainstream browsers do not negotiate
+    #            h2c, so browser-direct deployments continue to use HTTP/1.1 on this connector.
+    #            Use the TLS `h2` connector below when Jetty is the browser-facing edge.
     #
     # For HTTPS-terminated HTTP/2 (`type: h2`) see the example block lower in this file —
     # that path requires a keystore and isn't env-var-driven from here.
@@ -178,15 +176,15 @@ server:
 
 # HTTP/2 support — opt-in. The dropwizard-http2 module is on the classpath, so the
 # `type: h2` (TLS) and `type: h2c` (cleartext) connector types are available out of the
-# box. Both are backward-compatible: HTTP/1.1 clients still work on the same port (h2c
-# negotiates via the HTTP/1.1 Upgrade header; h2 negotiates via TLS ALPN), so flipping
-# from `type: http` to `type: h2c` does not break the SDK or browser.
+# box. Both retain HTTP/1.1 on the same port. h2c-capable SDKs and proxies can upgrade,
+# while mainstream browsers remain on HTTP/1.1; browsers require TLS ALPN (`type: h2`)
+# for HTTP/2 multiplexing.
 #
 # When to enable at Jetty:
-#   * Self-hosted single-node deploys with no LB in front (Jetty IS the edge).
+#   * Service-to-service deployments whose clients explicitly support h2c.
 #   * Production deploys that want end-to-end HTTP/2 — multiplexing all the way through
 #     instead of LB↔pod fanning out to many HTTP/1.1 connections under high parallelism.
-#   * Behind h2c-aware proxies (envoy, nginx with `proxy_http_version 2`).
+#   * Behind proxies explicitly configured to use h2c to the origin.
 #
 # When to leave HTTP/2 to the LB and keep `type: http` here:
 #   * Production deploys behind nginx-ingress / ALB / Traefik that already terminate
@@ -451,6 +449,10 @@ authenticationConfiguration:
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   # For SSO: Set to your OAuth callback URL (e.g., "https://yourhost/api/v1/callback")
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  # Additional redirect URIs allowed for the login flow (beyond callbackUrl and the server callbacks).
+  # Each entry must exactly match the requested redirect URI. Use for browser-extension logins,
+  # e.g. ["https://<extension-id>.chromiumapp.org/auth0"].
+  additionalTrustedRedirectUris: ${AUTHENTICATION_ADDITIONAL_TRUSTED_REDIRECT_URIS:-[]}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
@@ -594,9 +596,9 @@ elasticsearch:
     # Embedding provider/model/credentials now live under llmConfiguration.embeddings (single LLM config home).
 
 # Platform-wide LLM provider configuration. Generic - consumed by any feature that needs LLM
-# completions (e.g. Context Center knowledge-pill extraction and the MCP Chat application). The
-# file content of uploaded documents is sent to the configured provider when enabled. Disabled by
-# default; set provider + credentials (or the matching env vars) to enable.
+# completions or embeddings (currently the semantic-search embeddings under
+# llmConfiguration.embeddings). Disabled by default; set provider + credentials (or the matching
+# env vars) to enable.
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
@@ -838,17 +840,28 @@ rdf:
   enabled: ${RDF_ENABLED:-false}
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
-  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  remoteEndpoint: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-"http://localhost:3030/openmetadata"}}
   connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
   requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
   writeMaxRetries: ${RDF_WRITE_MAX_RETRIES:-2}
   writeRetryInitialBackoffMs: ${RDF_WRITE_RETRY_INITIAL_BACKOFF_MS:-250}
   writeRetryMaxBackoffMs: ${RDF_WRITE_RETRY_MAX_BACKOFF_MS:-2000}
-  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-50}
-  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-25}
+  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-100}
+  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-100}
+  bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
+  inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
+
+# App Configuration
+# Tenant-wide "first impression" UI default, seeded into the DB-backed appConfiguration
+# setting on first boot only. After that, admins mutate it at runtime via
+# /v1/system/settings/appConfiguration and this yaml value is ignored.
+appConfiguration:
+  # Non-null seeds the app mode for users who have not chosen one (e.g. "ai" or "classic");
+  # user preference and persona-level app mode still win over this default.
+  defaultAppMode: ${APP_DEFAULT_MODE:-null}
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load

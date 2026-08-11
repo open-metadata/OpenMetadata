@@ -111,6 +111,14 @@ MOCK_DATABRICKS_EXP = """let
 in 
     Source"""  # noqa: W291
 
+MOCK_DATABRICKS_MULTICLOUD_EXP = """let
+    Source = DatabricksMultiCloud.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog = "", Database = ""]),
+    test_database = Source{[Name="DEMO_STAGE",Kind="Database"]}[Data],
+    test_schema = test_database{[Name="PUBLIC",Kind="Schema"]}[Data],
+    test_table = test_schema{[Name="STG_CUSTOMERS",Kind="Table"]}[Data]
+in
+    Source"""
+
 MOCK_DATABRICKS_NATIVE_EXP = """let
     Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
 in
@@ -705,10 +713,10 @@ class PowerBIUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    @patch("metadata.ingestion.source.dashboard.powerbi.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
+    def __init__(self, methodName, create_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
-        get_connection.return_value = False
+        create_connection.return_value.client = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
         self.powerbi: PowerbiSource = PowerbiSource.create(
@@ -768,6 +776,9 @@ class PowerBIUnitTest(TestCase):
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
         result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_EXP, MOCK_DASHBOARD_DATA_MODEL)
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(MOCK_DATABRICKS_MULTICLOUD_EXP, MOCK_DASHBOARD_DATA_MODEL)
         self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
         result = self.powerbi._parse_databricks_source(
@@ -2421,10 +2432,8 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(55)
     @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
     def test_yield_dashboard_advances_workspace_progress(self, *_):
-        from metadata.workflow.progress_render import ProgressReporter
-
         self.powerbi.state = WorkspaceState()
-        self.powerbi.__dict__.pop("_progress_registry", None)
+        self.powerbi.__dict__.pop("_progress_tracking", None)
 
         for dash in (
             PowerBIDashboard(id="dash-1", displayName="One", tiles=[]),
@@ -2443,15 +2452,15 @@ class PowerBIUnitTest(TestCase):
         )
         list(self.powerbi.yield_dashboard(Group(id="ws-1", name="Sales")))
 
-        assert self.powerbi.progress.assets_ingested() == 2
-        out = ProgressReporter(self.powerbi.progress).cli()
+        assert self.powerbi.progress_tracking.registry.assets_ingested() == 2
+        out = self.powerbi.progress_tracking.registry.render_cli()
         assert "Sales.Dashboard" in out
         assert "Dashboard 2" in out
 
     @pytest.mark.order(56)
     def test_get_dashboard_tracks_workspace_group(self):
         self.powerbi.state = WorkspaceState()
-        self.powerbi.__dict__.pop("_progress_registry", None)
+        self.powerbi.__dict__.pop("_progress_tracking", None)
 
         ws_a = Group(id="wa", name="Alpha")
         ws_b = Group(id="wb", name="Beta")
@@ -2462,13 +2471,13 @@ class PowerBIUnitTest(TestCase):
         produced = list(self.powerbi.get_dashboard())
 
         assert [w.id for w in produced] == ["wa", "wb"]
-        assert self.powerbi.progress.global_counters() == [("Workspaces", 2, None)]
-        assert self.powerbi.progress.snapshot() is None
+        assert self.powerbi.progress_tracking.registry.global_counters() == [("Workspaces", 2, None)]
+        assert self.powerbi.progress_tracking.registry.snapshot() is None
 
     @pytest.mark.order(56)
     def test_get_dashboard_does_not_count_workspace_failing_before_open(self):
         self.powerbi.state = WorkspaceState()
-        self.powerbi.__dict__.pop("_progress_registry", None)
+        self.powerbi.__dict__.pop("_progress_tracking", None)
 
         ws_ok = Group(id="ok", name="Ok")
         ws_bad = Group(id="bad", name="Bad")
@@ -2479,11 +2488,11 @@ class PowerBIUnitTest(TestCase):
         produced = list(self.powerbi.get_dashboard())
 
         assert [w.id for w in produced] == ["ok"]
-        assert self.powerbi.progress.global_counters() == [("Workspaces", 1, None)]
+        assert self.powerbi.progress_tracking.registry.global_counters() == [("Workspaces", 1, None)]
 
     @pytest.mark.order(57)
     def test_admin_workspace_progress_total_reconciles_to_active_scan_results(self):
-        self.powerbi.__dict__.pop("_progress_registry", None)
+        self.powerbi.__dict__.pop("_progress_tracking", None)
         self.powerbi.pagination_entity_per_page = 100
 
         candidate_workspaces = [Group(id=f"ws-{index}", name=f"Workspace {index}") for index in range(46)]
@@ -2503,14 +2512,12 @@ class PowerBIUnitTest(TestCase):
         produced = list(self.powerbi.get_admin_workspace_data())
 
         assert [workspace.id for workspace in produced] == [f"ws-{index}" for index in range(40)]
-        assert self.powerbi.progress.global_counters() == [("Workspaces", 0, 40)]
+        assert self.powerbi.progress_tracking.registry.global_counters() == [("Workspaces", 0, 40)]
 
     @pytest.mark.order(58)
     @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
     def test_unnamed_workspace_keys_progress_on_id(self, *_):
-        from metadata.workflow.progress_render import ProgressReporter
-
-        self.powerbi.__dict__.pop("_progress_registry", None)
+        self.powerbi.__dict__.pop("_progress_tracking", None)
 
         self.powerbi.state.add_filtered_dashboard(PowerBIDashboard(id="dash-1", displayName="One", tiles=[]))
 
@@ -2524,7 +2531,7 @@ class PowerBIUnitTest(TestCase):
         self.powerbi._open_group_progress("ws-x", {"Dashboard": None})
         list(self.powerbi.yield_dashboard(Group(id="ws-x", name=None)))
 
-        out = ProgressReporter(self.powerbi.progress).cli()
+        out = self.powerbi.progress_tracking.registry.render_cli()
         assert "ws-x.Dashboard" in out
         assert "None.Dashboard" not in out
 

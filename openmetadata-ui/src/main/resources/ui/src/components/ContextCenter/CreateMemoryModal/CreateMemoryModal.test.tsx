@@ -20,30 +20,11 @@ import {
   useForm,
   useFormContext,
 } from 'react-hook-form';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-jest.mock('react-router-dom', () => ({
-  Link: jest.fn(
-    ({
-      children,
-      to,
-      'data-testid': testId,
-    }: {
-      children: React.ReactNode;
-      to: string;
-      'data-testid'?: string;
-    }) => (
-      <a data-testid={testId} href={to}>
-        {children}
-      </a>
-    )
-  ),
 }));
 
 jest.mock(
@@ -74,7 +55,6 @@ jest.mock('../../../utils/TagClassBase', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn(() => 'Jan 1, 2026'),
 }));
 
@@ -90,10 +70,6 @@ jest.mock(
 jest.mock(
   '../../../components/Tag/TagsSelectForm/TagsSelectForm.component',
   () => jest.fn(() => <div data-testid="tag-select-form" />)
-);
-
-jest.mock('../DerivedOntologyCard/DerivedOntologyCard.component', () =>
-  jest.fn(() => <div data-testid="derived-ontology-card" />)
 );
 
 jest.mock('antd', () => ({
@@ -319,48 +295,5 @@ describe('CreateMemoryModal', () => {
 
     expect(screen.getByTestId('memory-title-input')).toBeInTheDocument();
     expect(screen.getByTestId('memory-type-select')).toBeInTheDocument();
-  });
-
-  it('links a file-extracted memory to its source document', () => {
-    const memoryToEdit = {
-      id: 'm1',
-      name: 'pill-1',
-      sourceFile: { id: 'f1', type: 'contextFile', name: 'policy.pdf' },
-    } as unknown as ContextMemory;
-
-    render(
-      <CreateMemoryModal
-        {...defaultProps}
-        viewOnly
-        memoryToEdit={memoryToEdit}
-      />
-    );
-
-    const link = screen.getByTestId('memory-source-file-link');
-
-    expect(link).toHaveTextContent('policy.pdf');
-    expect(link).toHaveAttribute(
-      'href',
-      '/context-center/documents?document=f1'
-    );
-  });
-
-  it('renders no source link for a manually created memory', () => {
-    const memoryToEdit = {
-      id: 'm2',
-      name: 'manual-memory',
-    } as unknown as ContextMemory;
-
-    render(
-      <CreateMemoryModal
-        {...defaultProps}
-        viewOnly
-        memoryToEdit={memoryToEdit}
-      />
-    );
-
-    expect(
-      screen.queryByTestId('memory-source-file-link')
-    ).not.toBeInTheDocument();
   });
 });

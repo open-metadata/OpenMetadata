@@ -15,23 +15,22 @@ import {
   Box,
   Button,
   Dropdown,
+  EmptyPlaceholder,
   Skeleton,
   Table,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, DotsVertical } from '@untitledui/icons';
+import { ChevronDown, DotsVertical, File02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, sortBy, toLower } from 'lodash';
-import { PagingResponse } from 'Models';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
-import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -45,27 +44,25 @@ import {
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
-import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
+import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
-import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
-import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
+import TestCaseFormDrawer from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import AddToBundleSuiteModal from '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component';
-import BundleSuiteForm from '../../../DataQuality/BundleSuiteForm/BundleSuiteForm';
+import BundleSuiteFormDrawer from '../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
@@ -126,6 +123,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   tableHeader,
   removeTableBorder = false,
   enableBulkActions = false,
+  editVariant = getDefaultTestCaseFormVariant(),
+  hasActiveFilters = false,
+  emptyStateAction,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -347,33 +347,27 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     return cols;
   }, [showTableColumn, t]);
 
-  const fetchTestCaseStatus = async () => {
-    try {
-      setIsStatusLoading(true);
-      const promises = testCases.reduce((acc, testCase) => {
-        if (testCase.incidentId) {
-          return [
-            ...acc,
-            getListTestCaseIncidentByStateId(testCase.incidentId ?? ''),
-          ];
-        }
+  const collectInlineIncidentStatuses = () => {
+    const data = testCases.reduce((acc, testCase) => {
+      if (testCase.incidentStatus) {
+        return [
+          ...acc,
+          {
+            ...testCase.incidentStatus,
+            testCaseReference: testCase.incidentStatus.testCaseReference ?? {
+              id: testCase.id ?? '',
+              type: EntityType.TEST_CASE,
+              name: testCase.name,
+              fullyQualifiedName: testCase.fullyQualifiedName,
+            },
+          } as TestCaseResolutionStatus,
+        ];
+      }
 
-        return acc;
-      }, [] as Promise<PagingResponse<TestCaseResolutionStatus[]>>[]);
-      const testCaseStatusResults = await Promise.allSettled(promises);
-      const data = testCaseStatusResults.reduce((acc, status) => {
-        if (status.status === 'fulfilled' && status.value.data.length) {
-          return [...acc, status.value.data[0]];
-        }
-
-        return acc;
-      }, [] as TestCaseResolutionStatus[]);
-      setTestCaseStatus(data);
-    } catch {
-      // do nothing
-    } finally {
-      setIsStatusLoading(false);
-    }
+      return acc;
+    }, [] as TestCaseResolutionStatus[]);
+    setTestCaseStatus(data);
+    setIsStatusLoading(false);
   };
 
   const fetchTestCasePermissions = async () => {
@@ -410,7 +404,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   useEffect(() => {
     if (testCases.length) {
-      fetchTestCaseStatus();
+      collectInlineIncidentStatuses();
       fetchTestCasePermissions();
     } else {
       setIsStatusLoading(false);
@@ -462,19 +456,26 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   ) => {
     return result?.result &&
       result.testCaseStatus !== TestCaseStatus.Success ? (
-      <Tooltip
-        containerClassName="tw:break-all"
-        placement="top"
-        title={result.result}>
-        <TooltipTrigger>
-          <Typography
-            className="tw:m-0 tw:max-w-54 tw:line-clamp-2 tw:break-all tw:overflow-hidden tw:whitespace-normal"
-            data-testid={`reason-text-${record.name}`}
-            size="text-sm">
-            {result.result}
-          </Typography>
-        </TooltipTrigger>
-      </Tooltip>
+      // Safari sizes a `display: table-cell` to the unclamped intrinsic height
+      // of a `-webkit-line-clamp` descendant, inflating the row to the full
+      // message height. This wrapper must stay the direct child of the cell
+      // (outside the Tooltip's w-max/h-max button) so its max-height + overflow
+      // actually clip the cell height. Chromium/Firefox are unaffected.
+      <div className="tw:max-h-11 tw:overflow-hidden">
+        <Tooltip
+          containerClassName="tw:break-all"
+          placement="top"
+          title={result.result}>
+          <TooltipTrigger>
+            <Typography
+              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:break-all tw:whitespace-normal"
+              data-testid={`reason-text-${record.name}`}
+              size="text-sm">
+              {result.result}
+            </Typography>
+          </TooltipTrigger>
+        </Tooltip>
+      </div>
     ) : (
       '--'
     );
@@ -793,7 +794,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           'test-case-table-container': true,
           'custom-card-with-table':
             !isUndefined(tableHeader) || removeTableBorder,
-          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary':
+          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:outline-1 tw:outline-secondary':
             isUndefined(tableHeader) && !removeTableBorder,
         })}>
         <Table
@@ -844,24 +845,27 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   ))}
                 </div>
               ) : (
-                <FilterTablePlaceHolder
-                  placeholderText={
-                    <Transi18next
-                      i18nKey="message.no-data-quality-test-case"
-                      renderElement={
-                        <a
-                          href={DATA_QUALITY_PROFILER_DOCS}
-                          rel="noreferrer"
-                          target="_blank"
-                          title="Data Quality Profiler Documentation"
-                        />
-                      }
-                      values={{
-                        explore: t('message.explore-our-guide-here'),
-                      }}
-                    />
-                  }
-                />
+                <Box className="tw:relative tw:min-h-80 tw:w-full">
+                  <EmptyPlaceholder
+                    actions={
+                      !hasActiveFilters && emptyStateAction
+                        ? [emptyStateAction]
+                        : undefined
+                    }
+                    description={t(
+                      hasActiveFilters
+                        ? 'message.no-matching-test-cases-description'
+                        : 'message.no-test-cases-yet-description'
+                    )}
+                    icon={<File02 className="tw:text-fg-brand-primary" />}
+                    title={t(
+                      hasActiveFilters
+                        ? 'message.no-matching-test-cases'
+                        : 'message.no-test-cases-yet'
+                    )}
+                    variant="blank"
+                  />
+                </Box>
               )
             }>
             {(record) => renderRow(record)}
@@ -877,22 +881,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onCancel={() => setIsAddToBundleSuiteModalOpen(false)}
         />
       )}
-      {isBundleSuiteFormOpen && (
-        <BundleSuiteForm
-          drawerProps={{ open: isBundleSuiteFormOpen }}
-          initialValues={{ testCases: bundleSuiteFormInitialCases }}
-          onCancel={() => {
-            setIsBundleSuiteFormOpen(false);
-            setBundleSuiteFormInitialCases([]);
-          }}
-          onSuccess={handleBundleSuiteSuccess}
-        />
-      )}
+      <BundleSuiteFormDrawer
+        initialValues={{ testCases: bundleSuiteFormInitialCases }}
+        open={isBundleSuiteFormOpen}
+        onClose={() => {
+          setIsBundleSuiteFormOpen(false);
+          setBundleSuiteFormInitialCases([]);
+        }}
+        onSuccess={handleBundleSuiteSuccess}
+      />
       {selectedTestCase?.action === 'UPDATE' && (
-        <EditTestCaseModalV1
+        <TestCaseFormDrawer
           open
           testCase={selectedTestCase?.data}
-          onCancel={handleCancel}
+          variant={editVariant}
+          onClose={handleCancel}
           onUpdate={onTestUpdate}
         />
       )}

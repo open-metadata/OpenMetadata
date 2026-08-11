@@ -24,24 +24,23 @@
 }
 
 .explore-page {
+  margin-bottom: var(--om-space-20);
+
   .content-height-with-resizable-panel {
-    height: calc(
-      100vh - @om-navbar-height - @quick-filters-container-height - @size-xs
-    );
+    // 86px quick-filters bar (@quick-filters-container-height) + 8px gap
+    --content-panel-offset: 94px;
     overflow-y: auto;
 
     &.filter-applied {
-      height: calc(
-        100vh - @om-navbar-height - @quick-filters-container-height - @size-xs -
-          40px // filter applied height adjustment
-      );
+      // + 40px applied-filters row
+      --content-panel-offset: 134px;
     }
   }
 
   .explore-page-right-panel {
-    flex: 1 1 400px;
-    max-width: 800px;
-    min-width: 400px;
+    flex: 0 0 clamp(360px, 26vw, 440px);
+    max-width: 440px;
+    min-width: 360px;
     overflow: auto;
   }
 
@@ -86,7 +85,7 @@
 
     .ant-tree-title {
       width: 100%;
-      padding: 4px;
+      padding: var(--om-space-4);
     }
 
     .ant-tree-node-selected {

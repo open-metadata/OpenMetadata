@@ -26,7 +26,6 @@ import {
   getListTestCaseIncidentByStateId,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
-import '../../../../test/unit/mocks/mui.mock';
 import IncidentManagerPageHeader from './IncidentManagerPageHeader.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 

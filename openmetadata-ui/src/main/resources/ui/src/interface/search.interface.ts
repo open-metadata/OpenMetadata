@@ -382,6 +382,7 @@ export type SearchRequest<
   sortOrder?: string;
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
+  explain?: boolean;
   filters?: string;
   excludeSourceFields?: string[];
 } & (
@@ -416,9 +417,17 @@ export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _type?: string;
   _id: string;
   _score?: number;
+  _explanation?: SearchExplanation;
   highlight?: Record<string, string[]>;
+  matched_queries?: string[];
   sort?: number[];
   _source: T;
+}
+
+export interface SearchExplanation {
+  value: number;
+  description: string;
+  details?: SearchExplanation[];
 }
 
 type SearchIndexSearchHitBodyMapping<

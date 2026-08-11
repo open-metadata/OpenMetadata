@@ -103,9 +103,11 @@ const test = base.extend<{
   userPage: Page;
 }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
@@ -380,20 +382,19 @@ test.describe('Domains', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify empty state message
-      await expect(page.getByTestId('no-data-placeholder')).toContainText(
-        "Looks like you haven't added any data assets yet."
-      );
+      await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
-      const addButton = page.getByTestId('data-assets-add-button');
+      // `CreatePlaceholder` applies the action's `data-assets-add-button` as the
+      // button's DOM id, so this CTA has no testid to select it by.
+      const addButton = page.locator('#data-assets-add-button');
       await expect(addButton).toBeVisible();
       await addButton.click();
 
       await waitForAllLoadersToDisappear(page);
 
-      // Verify Add Assets form is displayed
-      await expect(page.getByTestId('form-heading')).toContainText(
-        'Add Assets'
-      );
+      // Verify Add Assets modal is displayed (migrated to the core-ui Dialog
+      // `asset-selection-modal`; the old `form-heading` testid no longer applies)
+      await expect(page.getByTestId('asset-selection-modal')).toBeVisible();
 
       await expect(page.getByTestId('cancel-btn')).toBeVisible();
       await expect(page.getByTestId('save-btn')).toBeDisabled();
@@ -849,12 +850,10 @@ test.describe('Domains', () => {
         const countText = await assetCountElement.textContent();
         const displayedCount = Number.parseInt(countText ?? '0', 10);
         const totalCount = domainAssets.length + subDomainAssets.length;
-        const assetCards = await page
-          .locator('[data-testid*="table-data-card_"]')
-          .count();
+        const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
         expect(displayedCount).toBe(totalCount);
-        expect(assetCards).toBe(totalCount);
+        await expect(assetCards).toHaveCount(totalCount);
       });
 
       await test.step('Verify subdomain asset count matches displayed cards', async () => {
@@ -889,12 +888,10 @@ test.describe('Domains', () => {
         const countText = await assetCountElement.textContent();
         const displayedCount = Number.parseInt(countText ?? '0', 10);
 
-        const assetCards = await page
-          .locator('[data-testid*="table-data-card_"]')
-          .count();
+        const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
         expect(displayedCount).toBe(subDomainAssets.length);
-        expect(assetCards).toBe(subDomainAssets.length);
+        await expect(assetCards).toHaveCount(subDomainAssets.length);
       });
     } finally {
       await subDomain?.delete(apiContext);
@@ -2740,7 +2737,9 @@ test.describe('Domains Rbac', () => {
     user1 = new UserClass();
     test.slow();
 
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await Promise.all([
       domain1.create(apiContext),
       domain2.create(apiContext),
@@ -2804,7 +2803,9 @@ test.describe('Domains Rbac', () => {
   test('Domain Rbac', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: userPage, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
 
@@ -3121,13 +3122,14 @@ test.describe('Domain Access with noDomain() Rule', () => {
 
 test.describe('Domain Tree View Functionality', () => {
   let subDomain: SubDomain;
-  const domain = EntityDataClass.domain1;
-  const domainDisplayName = domain.responseData.displayName;
+  const domain = new Domain();
+  const domainDisplayName = domain.data.displayName;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.create(apiContext);
     subDomain = new SubDomain(domain);
     await subDomain.create(apiContext);
     await afterAction();
@@ -3137,6 +3139,7 @@ test.describe('Domain Tree View Functionality', () => {
     test.slow(true);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain.delete(apiContext);
     await subDomain.delete(apiContext);
     await afterAction();
   });
@@ -3149,7 +3152,7 @@ test.describe('Domain Tree View Functionality', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
     await waitForAllLoadersToDisappear(page);
 
-    const treeViewButton = page.getByRole('button', { name: 'tree' });
+    const treeViewButton = page.getByRole('radio', { name: 'tree' });
     await expect(treeViewButton).toBeVisible();
     await treeViewButton.click();
 
@@ -3171,7 +3174,7 @@ test.describe('Domain Tree View Functionality', () => {
 
     await expect(
       page
-        .getByRole('treeitem', {
+        .getByRole('row', {
           name: domainDisplayName,
         })
         .locator('div')
@@ -3179,14 +3182,14 @@ test.describe('Domain Tree View Functionality', () => {
     ).toBeVisible();
 
     await page
-      .getByRole('treeitem', { name: domainDisplayName })
+      .getByRole('row', { name: domainDisplayName })
       .locator('div')
       .nth(2)
       .click();
 
     await expect(
       page
-        .getByRole('treeitem', { name: subDomain.data.displayName })
+        .getByRole('row', { name: subDomain.data.displayName })
         .locator('div')
         .nth(2)
     ).toBeVisible();
@@ -3720,5 +3723,68 @@ test.describe('Domain assets — glossary and inherited glossary term', () => {
 
     await expect(glossaryCard).toBeVisible({ timeout: 30_000 });
     await expect(inheritedTermCard).toBeVisible({ timeout: 30_000 });
+  });
+});
+
+test.describe('Domain description editor popups', () => {
+  const table = new TableClass();
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await table.create(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit home page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('slash, mention, and hashtag popups are usable inside the Add Domain drawer', async ({
+    page,
+  }) => {
+    const entityName = table.entityResponseData.name ?? table.entity.name;
+    const displayName =
+      table.entityResponseData.displayName ??
+      table.entity.displayName ??
+      entityName;
+
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('add-domain').click();
+    await page.getByTestId('add-domain-form').waitFor();
+
+    const description = page.locator(descriptionBox);
+    await description.click();
+
+    await test.step('Slash command inserts an image block', async () => {
+      await description.pressSequentially('/image');
+      await page.locator('#editor-command-Image').click();
+
+      await expect(
+        description.locator('[data-testid="add-image-container"]')
+      ).toBeVisible();
+    });
+
+    await test.step('Mention popup inserts a user mention', async () => {
+      await description.pressSequentially(' @admin');
+      await page
+        .locator('.mention-item')
+        .filter({ hasText: 'admin' })
+        .first()
+        .click();
+
+      await expect(description.locator('a[data-type="mention"]')).toBeVisible();
+    });
+
+    await test.step('Hashtag popup inserts an entity link', async () => {
+      const searchResponse = page.waitForResponse('/api/v1/search/query?**');
+      await description.pressSequentially(` #${entityName}`);
+      await searchResponse;
+
+      await page.getByTestId(`hash-mention-${displayName}`).click();
+
+      await expect(description.locator('a[data-type="hashtag"]')).toBeVisible();
+    });
   });
 });

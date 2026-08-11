@@ -87,11 +87,13 @@ public final class SearchSettingsTestHelper {
       final String index,
       final SearchSettings settings,
       final int size) {
+    return idsOf(preview(server, query, index, settings, size, false));
+  }
+
+  /** Hit IDs in ranked order from any preview response. */
+  public static List<String> idsOf(final JsonNode response) {
     final List<String> ids = new ArrayList<>();
-    preview(server, query, index, settings, size, false)
-        .path("hits")
-        .path("hits")
-        .forEach(hit -> ids.add(hit.path("_id").asText()));
+    response.path("hits").path("hits").forEach(hit -> ids.add(hit.path("_id").asText()));
     return ids;
   }
 
@@ -118,16 +120,28 @@ public final class SearchSettingsTestHelper {
       final SearchSettings settings,
       final int size,
       final boolean explain) {
-    final PreviewSearchRequest request =
-        new PreviewSearchRequest()
-            .withQuery(query)
-            .withIndex(index)
-            .withSearchSettings(settings)
-            .withFrom(0)
-            .withSize(size)
-            .withTrackTotalHits(true)
-            .withFetchSource(false)
-            .withExplain(explain);
+    return preview(server, previewRequest(query, index, settings, size).withExplain(explain));
+  }
+
+  /**
+   * A preview request carrying the defaults these tests share. Knobs the schema defaults already
+   * cover (e.g. {@code deleted}) are deliberately left unset so a test that overrides one is
+   * asserting against the same request the UI sends.
+   */
+  public static PreviewSearchRequest previewRequest(
+      final String query, final String index, final SearchSettings settings, final int size) {
+    return new PreviewSearchRequest()
+        .withQuery(query)
+        .withIndex(index)
+        .withSearchSettings(settings)
+        .withFrom(0)
+        .withSize(size)
+        .withTrackTotalHits(true)
+        .withFetchSource(false);
+  }
+
+  /** Raw engine response for a fully-specified preview request. */
+  public static JsonNode preview(final ServerHandle server, final PreviewSearchRequest request) {
     final String response =
         server.sdk().getHttpClient().executeForString(HttpMethod.POST, PREVIEW_PATH, request);
     return JsonUtils.readTree(response);
@@ -205,6 +219,28 @@ public final class SearchSettingsTestHelper {
       final String assetType,
       final AssetTypeConfiguration.BoostMode boostMode) {
     assetConfig(settings, assetType).setBoostMode(boostMode);
+  }
+
+  public static SearchSettings withRankingDisabled(
+      final SearchSettings settings, final String assetType) {
+    final SearchSettings copy = copyOf(settings);
+    disableRanking(copy.getDefaultConfiguration());
+
+    if (copy.getAssetTypeConfigurations() != null) {
+      for (AssetTypeConfiguration config : copy.getAssetTypeConfigurations()) {
+        if (assetType.equalsIgnoreCase(config.getAssetType())) {
+          disableRanking(config);
+        }
+      }
+    }
+
+    return copy;
+  }
+
+  private static void disableRanking(final AssetTypeConfiguration config) {
+    if (config != null && config.getRanking() != null) {
+      config.getRanking().setEnabled(false);
+    }
   }
 
   /**

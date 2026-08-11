@@ -32,7 +32,7 @@ export const FormItemLabel = ({
     {tooltip && (
       <Tooltip title={tooltip}>
         <TooltipTrigger
-          className="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
+          className="tw:flex tw:items-center tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
           isDisabled={false}>
           <HelpCircle className="tw:size-4" />
         </TooltipTrigger>

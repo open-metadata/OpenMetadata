@@ -25,7 +25,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
-import { MatchType } from '../../../generated/settings/settings';
+import { SearchFieldMatchType as MatchType } from '../../../generated/configuration/searchSettings';
 import './field-configuration.less';
 import { FieldConfigurationProps } from './fieldConfiguration.interface';
 

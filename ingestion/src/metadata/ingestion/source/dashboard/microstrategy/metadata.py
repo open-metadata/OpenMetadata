@@ -368,8 +368,3 @@ class MicrostrategySource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def close(self):
-        # close the api session
-        self.client.close_api_session()
-        self.metadata.close()

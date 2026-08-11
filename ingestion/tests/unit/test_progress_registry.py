@@ -13,7 +13,7 @@
 import threading
 from unittest.mock import patch
 
-from metadata.utils.progress_registry import ProgressRegistry
+from metadata.ingestion.progress.registry import ProgressRegistry
 
 
 def _by_label(snapshot):
@@ -353,7 +353,7 @@ class TestElapsedSeconds:
 
     def test_positive_after_first_open(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 100.0
             reg.open([], "Database", None)
             clock.return_value = 130.0
@@ -361,7 +361,7 @@ class TestElapsedSeconds:
 
     def test_marker_set_on_first_open_only(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 100.0
             reg.open([], "Database", None)
             clock.return_value = 200.0

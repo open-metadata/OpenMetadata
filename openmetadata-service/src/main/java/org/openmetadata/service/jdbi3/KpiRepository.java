@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 import static org.openmetadata.service.Entity.KPI;
@@ -128,9 +129,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
         DataInsightCustomChartResultList resultList =
             searchRepository.getSearchClient().buildDIChart(chart, start, end);
 
-        if (resultList != null && !resultList.getResults().isEmpty()) {
-          DataInsightCustomChartResult result = resultList.getResults().get(0);
-
+        DataInsightCustomChartResult result = getMostRecentResult(resultList);
+        if (result != null) {
           // Apply the result to all KPIs using this chart
           for (Kpi kpi : entry.getValue()) {
             KpiTarget target =
@@ -205,6 +205,15 @@ public class KpiRepository extends EntityRepository<Kpi> {
     return getToEntityRef(kpi.getId(), Relationship.USES, DATA_INSIGHT_CUSTOM_CHART, true);
   }
 
+  static DataInsightCustomChartResult getMostRecentResult(
+      DataInsightCustomChartResultList resultList) {
+    DataInsightCustomChartResult result = null;
+    if (resultList != null && !nullOrEmpty(resultList.getResults())) {
+      result = resultList.getResults().getLast();
+    }
+    return result;
+  }
+
   public KpiResult getKpiResult(String fqn) {
 
     long end = System.currentTimeMillis();
@@ -220,8 +229,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    if (resultList != null && !resultList.getResults().isEmpty()) {
-      DataInsightCustomChartResult result = resultList.getResults().get(0);
+    DataInsightCustomChartResult result = getMostRecentResult(resultList);
+    if (result != null) {
       KpiTarget target =
           new KpiTarget()
               .withValue(result.getCount().toString())

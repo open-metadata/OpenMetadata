@@ -39,7 +39,6 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import ServiceFlowStepper from '../../components/Settings/Services/AddService/ServiceFlowStepper/ServiceFlowStepper';
 import { ConnectionConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm.interface';
 import { FiltersConfigFormHandle } from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm.interface';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
   STEPS_FOR_EDIT_SERVICE,
@@ -56,11 +55,7 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
-import {
-  getServiceRouteFromServiceType,
-  getServiceType,
-} from '../../utils/ServicePureUtils';
+import { getServiceType } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -224,13 +219,15 @@ function EditConnectionFormPage() {
     (id: React.Key) => {
       if (id === 'service-category') {
         navigate(
-          getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory)
-          )
+          connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
         );
       } else if (id === 'service-name') {
-        navigate(getPathByServiceFQN(serviceCategory, serviceFQN));
+        navigate(
+          connectionsRouterClassBase.getPathByServiceFQN(
+            serviceCategory,
+            serviceFQN
+          )
+        );
       }
     },
     [navigate, serviceCategory, serviceFQN]
@@ -280,7 +277,7 @@ function EditConnectionFormPage() {
   // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
   // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
       <div className="tw:flex-1">
         <Breadcrumbs
           items={slashedBreadcrumb}
@@ -381,7 +378,7 @@ function EditConnectionFormPage() {
       )}>
       <>
         <ResizablePanels
-          className="edit-connection-page content-height-with-resizable-panel"
+          className="edit-connection-page content-height-with-resizable-panel tw:bg-transparent"
           firstPanel={{
             children: firstPanelChildren,
             minWidth: 700,

@@ -29,11 +29,11 @@ jest.mock('react-router-dom', () => ({
     .fn()
     .mockReturnValue({ state: null, pathname: '/data-product/test' }),
 }));
-jest.mock('../../../utils/NotistackUtils', () => ({
-  showNotistackError: jest.fn(),
-  showNotistackSuccess: jest.fn(),
-  showNotistackInfo: jest.fn(),
-  showNotistackWarning: jest.fn(),
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+  showInfoToast: jest.fn(),
+  showWarningToast: jest.fn(),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({

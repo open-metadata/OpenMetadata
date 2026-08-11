@@ -23,6 +23,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.DefaultOperationalConfigProvider;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -81,11 +82,11 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
 
-  @JsonProperty("llmConfiguration")
-  private LLMConfiguration llmConfiguration;
-
   @JsonProperty("nlqHybridSearch")
   private JsonNode nlqHybridSearch;
+
+  @JsonProperty("llmConfiguration")
+  private LLMConfiguration llmConfiguration;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
@@ -191,6 +192,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("rdf")
   private RdfConfiguration rdfConfiguration = new RdfConfiguration();
+
+  @JsonProperty("appConfiguration")
+  @Valid
+  private AppConfiguration appConfiguration = new AppConfiguration();
 
   @JsonProperty("cache")
   private org.openmetadata.service.cache.CacheConfig cacheConfig;

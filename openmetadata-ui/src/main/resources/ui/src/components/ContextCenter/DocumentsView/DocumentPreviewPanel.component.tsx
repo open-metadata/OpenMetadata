@@ -18,15 +18,14 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy06, XClose } from '@untitledui/icons';
+import { XClose } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
-import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
-import ExtractedMemoriesCard from '../ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import {
   DocumentPreviewPanelProps,
   MetaRowProps,
@@ -53,8 +52,8 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   const { folderName, fileName, formattedFileSize } = useMemo(() => {
     return {
       folderName: getEntityName(file.folder),
-      formattedFileSize: formatBytes(file.fileSize),
       fileName: getEntityName(file),
+      formattedFileSize: formatBytes(file.fileSize),
     };
   }, [file]);
 
@@ -91,13 +90,13 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           </div>
         </Box>
         <Box align="center" gap={2}>
-          <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
-            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
+          <CopyLinkButton className="tw:w-8 tw:h-8" url={url}>
+            <CopyIcon aria-hidden="true" height={20} width={20} />
           </CopyLinkButton>
           <ButtonUtility
             color="tertiary"
             data-testid="close-preview-btn"
-            icon={XClose}
+            icon={<XClose height={20} width={20} />}
             size="xs"
             tooltip={t('label.close')}
             onClick={onClose}
@@ -106,7 +105,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       </Box>
 
       <Box
-        className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4"
+        className="tw:flex-1 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
         direction="col"
         gap={4}>
         <Card className="tw:p-4 tw:shrink-0">
@@ -118,16 +117,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               {t('label.detail-plural')}
             </Typography>
           </div>
-          <Box align="center" className="tw:py-1.5" justify="between">
-            <Typography className="tw:text-quaternary" size="text-sm">
-              {t('label.status')}
-            </Typography>
-            <DocumentStatusBadge
-              error={file.processingError}
-              stats={file.extractionStats}
-              status={file.processingStatus}
-            />
-          </Box>
           {folderName && (
             <MetaRow label={t('label.folder')} value={folderName} />
           )}
@@ -141,22 +130,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               value={getShortRelativeTime(file.updatedAt)}
             />
           )}
-          {file.processingError && (
-            <Box className="tw:py-1.5" direction="col" gap={1}>
-              <Typography className="tw:text-quaternary" size="text-sm">
-                {t('label.error')}
-              </Typography>
-              <Typography
-                className="tw:text-error-primary tw:break-words"
-                data-testid="processing-error"
-                size="text-sm">
-                {file.processingError}
-              </Typography>
-            </Box>
-          )}
         </Card>
-
-        <ExtractedMemoriesCard sourceId={file.id} />
       </Box>
     </Box>
   );

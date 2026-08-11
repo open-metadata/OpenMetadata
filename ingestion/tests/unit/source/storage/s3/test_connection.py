@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.storage import list_buckets
 from metadata.ingestion.connections.connection import BaseConnection
@@ -34,7 +35,7 @@ _SEED = (
 
 
 def _checks(client=None, bucket_names=None):
-    return S3Checks(connect=lambda: client, bucket_names=bucket_names)
+    return S3Checks(store=Borrowed.of(client), bucket_names=bucket_names)
 
 
 def _check_names():
@@ -164,13 +165,14 @@ def test_error_pack_signature_mismatch():
 def test_error_pack_unrecognized_client():
     diagnosis = S3_ERRORS.classify(_client_error("UnrecognizedClientException", "ListMetrics"))
     assert diagnosis is not None
-    assert "not recognized" in diagnosis.title.lower()
+    assert diagnosis.title == "AWS access key not recognized"
 
 
 def test_error_pack_invalid_client_token():
+    # STS's code for an unknown access key ID.
     diagnosis = S3_ERRORS.classify(_client_error("InvalidClientTokenId", "ListBuckets"))
     assert diagnosis is not None
-    assert "security token" in diagnosis.title.lower()
+    assert diagnosis.title == "AWS access key not recognized"
 
 
 def test_error_pack_expired_token():

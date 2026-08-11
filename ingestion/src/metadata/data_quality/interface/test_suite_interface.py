@@ -26,6 +26,9 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
 from metadata.data_quality.validations.runtime_param_setter.param_setter_factory import (
     RuntimeParameterSetterFactory,
 )
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    SampleDataIngestionConfig,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseStatus
@@ -51,6 +54,7 @@ class TestSuiteInterface(ABC):
         sampler: SamplerInterface,
         table_entity: Table,
         validator_builder: Type[ValidatorBuilder],  # noqa: UP006
+        sample_data_config: Optional[SampleDataIngestionConfig] = None,  # noqa: UP045
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
@@ -58,6 +62,7 @@ class TestSuiteInterface(ABC):
         self.table_entity = table_entity
         self.sampler = sampler
         self.validator_builder_class = validator_builder
+        self.sample_data_config = sample_data_config
 
     @classmethod
     def create(
@@ -106,6 +111,11 @@ class TestSuiteInterface(ABC):
         """
         cls.runtime_params_setter_fact = class_fact
 
+    def _should_collect_failed_rows_sample(self) -> bool:
+        """Failed row samples are persisted sample data. Skip collecting them
+        when the global profiler configuration disables storing sample data."""
+        return self.sample_data_config is None or bool(self.sample_data_config.storeSampleData)
+
     def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResultResponse]:  # noqa: UP045
         """run column data quality tests"""
         runtime_params_setter_fact: RuntimeParameterSetterFactory = self._get_runtime_params_setter_fact()  # type: ignore
@@ -133,7 +143,14 @@ class TestSuiteInterface(ABC):
         try:
             test_result = validator.run_validation()
             response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
-            validator.result_with_failed_samples(response)
+            if self._should_collect_failed_rows_sample():
+                validator.result_with_failed_samples(response)
+            else:
+                logger.debug(
+                    "Global profiler configuration disables storing sample data. "
+                    "Skipping failed rows sample collection for %s.",
+                    test_case.name.root,
+                )
             return response  # noqa: TRY300
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"

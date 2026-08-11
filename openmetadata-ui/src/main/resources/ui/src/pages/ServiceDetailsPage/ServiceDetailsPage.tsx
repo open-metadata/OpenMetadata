@@ -44,6 +44,7 @@ import FilesTable from '../../components/DriveService/File/FilesTable/FilesTable
 import SpreadsheetsTable from '../../components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useMetadataAgents } from '../../components/ServiceAgents/hooks/useMetadataAgents';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
 import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -55,7 +56,6 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
   OPEN_METADATA,
@@ -76,18 +76,29 @@ import {
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
-import { AgentType, App } from '../../generated/entity/applications/app';
+
 import { Tag } from '../../generated/entity/classification/tag';
 import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
-import { DashboardConnection } from '../../generated/entity/services/dashboardService';
+import {
+  DashboardConnection,
+  DashboardServiceType,
+} from '../../generated/entity/services/dashboardService';
+import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
+import { DriveServiceType } from '../../generated/entity/services/driveService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { MessagingServiceType } from '../../generated/entity/services/messagingService';
+import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
+import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../../generated/entity/services/searchService';
+import { StorageServiceType } from '../../generated/entity/services/storageService';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { Style } from '../../generated/type/schema';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -95,7 +106,10 @@ import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
-import { getApplicationList } from '../../rest/applicationAPI';
+import {
+  CollateAgentAutomation,
+  getAiAutomationsByService,
+} from '../../rest/applicationAPI';
 import {
   getDashboards,
   getDataModels,
@@ -124,6 +138,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
@@ -147,14 +162,12 @@ import {
   getEditConnectionPath,
   getServiceDetailsPath,
   getServiceVersionPath,
-  getSettingPath,
 } from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
   getServiceDisplayNameQueryFilter,
-  getServiceRouteFromServiceType,
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -168,6 +181,17 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
+
+const CUSTOM_SERVICE_TYPES = new Set<string>([
+  DashboardServiceType.CustomDashboard,
+  DatabaseServiceType.CustomDatabase,
+  DriveServiceType.CustomDrive,
+  MessagingServiceType.CustomMessaging,
+  MlModelServiceType.CustomMlModel,
+  PipelineServiceType.CustomPipeline,
+  SearchServiceType.CustomSearch,
+  StorageServiceType.CustomStorage,
+]);
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -280,6 +304,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [ingestionPipelines, setIngestionPipelines] = useState<
     IngestionPipeline[]
   >([]);
+  // Lives at page level so the discovery stream stays connected on every tab;
+  // agents created while another tab is active still reach the list and counts.
+  const { agents: metadataAgents, discoveredCount } = useMetadataAgents(
+    ingestionPipelines,
+    serviceCategory as ServiceCategory,
+    decodedServiceFQN
+  );
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -291,7 +322,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     Array<{ key: string; label: string }>
   >([]);
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
-  const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
+  const [collateAgentsList, setCollateAgentsList] = useState<
+    CollateAgentAutomation[]
+  >([]);
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
@@ -520,27 +553,30 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, serviceCategory]);
 
   const fetchCollateAgentsList = useCallback(
-    async (paging?: Omit<Paging, 'total'>) => {
+    async (_paging?: Omit<Paging, 'total'>) => {
+      // A deleted service has no live automations and the endpoint 404s on it, so asking only
+      // produces an error toast on a page the user opened deliberately.
+      if (deleted) {
+        setCollateAgentsList([]);
+        handleCollateAgentPagingChange({ total: 0 });
+
+        return;
+      }
       try {
         setIsCollateAgentLoading(true);
-        const { data, paging: pagingRes } = await getApplicationList({
-          agentType: [
-            AgentType.CollateAI,
-            AgentType.CollateAIQualityAgent,
-            AgentType.CollateAITierAgent,
-          ],
-          ...paging,
-        });
+        // AutoPilot creates at most one automation per template, so the list is
+        // bounded and served in a single unpaginated fetch.
+        const { data } = await getAiAutomationsByService(decodedServiceFQN);
 
         setCollateAgentsList(data);
-        handleCollateAgentPagingChange(pagingRes);
+        handleCollateAgentPagingChange({ total: data.length });
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsCollateAgentLoading(false);
       }
     },
-    [handleCollateAgentPagingChange]
+    [decodedServiceFQN, handleCollateAgentPagingChange, deleted]
   );
 
   const getAllIngestionWorkflows = useCallback(
@@ -722,11 +758,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include, permissions.dashboard]
   );
 
-  // Fetch Data Model count to show it in tab label
+  // Fetch Data Model count to show it in tab label. This owns `dataModelPaging`
+  // only — `isServiceLoading` and the entity paging belong to `getOtherDetails`,
+  // and driving them from here left the entity tab's table spinning forever
+  // because this effect re-runs on every tab change.
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
       try {
-        setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
           fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
@@ -736,7 +774,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setDataModelPaging(resPaging);
       } catch (error) {
         showErrorToast(error as AxiosError);
-        handlePagingChange(pagingObject);
+        setDataModelPaging(pagingObject);
       }
     },
     [decodedServiceFQN, include]
@@ -1068,6 +1106,32 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails, serviceCategory]
   );
 
+  const handleUpdateServiceStyle = useCallback(
+    async (style: Style | null) => {
+      if (isEmpty(serviceDetails)) {
+        return;
+      }
+
+      const updatedData: Record<string, unknown> = {
+        ...serviceDetails,
+        style,
+      };
+      const jsonPatch = compare(serviceDetails, updatedData);
+
+      try {
+        const response = await patchService(
+          serviceCategory,
+          serviceDetails.id,
+          jsonPatch
+        );
+        setServiceDetails(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [serviceDetails, serviceCategory]
+  );
+
   const handleDescriptionUpdate = useCallback(
     async (updatedHTML: string) => {
       if (
@@ -1325,10 +1389,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     (isSoftDelete?: boolean) => {
       if (!isSoftDelete) {
         navigate(
-          getSettingPath(
-            GlobalSettingsMenuCategory.SERVICES,
-            getServiceRouteFromServiceType(serviceCategory)
-          )
+          connectionsRouterClassBase.getSettingsServicesPath(serviceCategory)
         );
       }
     },
@@ -1569,9 +1630,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const agentCounts = useMemo(() => {
     return {
       [ServiceAgentSubTabs.COLLATE_AI]: collateAgentPaging.total,
-      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total,
+      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total + discoveredCount,
     };
-  }, [collateAgentPaging, ingestionPaging]);
+  }, [collateAgentPaging, ingestionPaging, discoveredCount]);
 
   const refreshAgentsList = useCallback(
     async (agentListType: ServiceAgentSubTabs) => {
@@ -1600,6 +1661,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => (
       <Ingestion
         agentCounts={agentCounts}
+        agents={metadataAgents}
         airflowInformation={airflowInformation}
         collateAgentPagingInfo={collateAgentPagingInfo}
         collateAgentsList={collateAgentsList}
@@ -1627,6 +1689,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       isIngestionPipelineLoading,
       serviceDetails,
       ingestionPipelines,
+      metadataAgents,
       ingestionPaging,
       getAllIngestionWorkflows,
       handleIngestionListUpdate,
@@ -1836,7 +1899,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         name: t('label.agent-plural'),
         key: EntityTabs.AGENTS,
         isHidden: !showIngestionTab,
-        count: ingestionPaging.total + collateAgentPaging.total,
+        count:
+          ingestionPaging.total + collateAgentPaging.total + discoveredCount,
         children: ingestionTab,
       });
     }
@@ -1902,6 +1966,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     dataModelPaging,
     ingestionPaging,
     collateAgentPaging,
+    discoveredCount,
     ingestionTab,
     testConnectionTab,
     activeTab,
@@ -1942,6 +2007,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     serviceUtilClassBase.getExtraInfo();
   }, []);
+
+  const isCustomService = useMemo(
+    () => CUSTOM_SERVICE_TYPES.has(toString(serviceDetails.serviceType)),
+    [serviceDetails.serviceType]
+  );
 
   if (isLoading) {
     return <PageLoader />;
@@ -1987,6 +2057,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
               onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={handleRestoreService}
+              onStyleUpdate={
+                isCustomService ? handleUpdateServiceStyle : undefined
+              }
               onTierUpdate={handleUpdateTier}
               onVersionClick={versionHandler}
             />

@@ -44,6 +44,8 @@ let mockGetApplicationRuns = jest.fn().mockReturnValue({
 });
 const mockShowErrorToast = jest.fn();
 const mockNavigate = jest.fn();
+const mockOpenLogs = jest.fn();
+const mockHasAppRunStats = jest.fn();
 
 jest.mock('../../../../constants/LeftSidebar.constants', () => ({
   SIDEBAR_NESTED_KEYS: {},
@@ -99,10 +101,18 @@ jest.mock('../../../../rest/applicationAPI', () => ({
 jest.mock('../../../../utils/ApplicationUtils', () => ({
   getStatusFromPipelineState: jest.fn(),
   getStatusTypeForApplication: jest.fn(),
+  hasAppRunStats: (...args: unknown[]) => mockHasAppRunStats(...args),
+  getAppRunFailureLogs: jest.fn().mockReturnValue('mock failure logs'),
 }));
 
-jest.mock('../../../../utils/RouterUtils', () => ({
-  getLogsViewerPath: jest.fn().mockReturnValue('logs viewer path'),
+jest.mock('../../../common/LogViewerModal/LogViewerModal.component', () => ({
+  __esModule: true,
+  default: ({ open }: { open: boolean }) =>
+    open ? <div>LogViewerModalOpen</div> : null,
+}));
+
+jest.mock('../../../../hooks/useLogsModal', () => ({
+  useLogsModal: () => ({ openLogs: mockOpenLogs, logsModal: null }),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -204,6 +214,7 @@ const mockProps3 = {
 describe('AppRunsHistory', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHasAppRunStats.mockReturnValue(true);
     mockGetApplicationRuns = jest.fn().mockReturnValue({
       data: [mockApplicationData],
       paging: {
@@ -309,13 +320,51 @@ describe('AppRunsHistory', () => {
     });
   });
 
-  it('onclick of logs button should call navigate method of external apps', async () => {
+  it('opens the logs modal directly for an internal run with no inline stats', async () => {
+    mockHasAppRunStats.mockReturnValue(false);
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-no-stats', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByText('label.log-plural'));
+
+    expect(screen.getByText('LogViewerModalOpen')).toBeInTheDocument();
+    expect(screen.queryByText('AppLogsViewer')).not.toBeInTheDocument();
+  });
+
+  it('expands inline (no modal) for an internal run that has stats', async () => {
+    mockHasAppRunStats.mockReturnValue(true);
+    mockGetApplicationRuns = jest.fn().mockReturnValue({
+      data: [
+        { ...mockApplicationData, id: 'run-with-stats', status: Status.Failed },
+      ],
+      paging: { offset: 0, total: 1 },
+    });
+
+    render(<AppRunsHistory {...mockProps1} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    fireEvent.click(screen.getByText('label.log-plural'));
+
+    expect(screen.getByText('AppLogsViewer')).toBeInTheDocument();
+    expect(screen.queryByText('LogViewerModalOpen')).not.toBeInTheDocument();
+  });
+
+  it('onclick of logs button should open the logs modal for external apps', async () => {
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     fireEvent.click(screen.getByText('label.log-plural'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('logs viewer path');
+    expect(mockOpenLogs).toHaveBeenCalledWith(
+      expect.objectContaining({ logEntityType: 'apps' })
+    );
   });
 
   it('checking behaviour of component when no prop is passed', async () => {
