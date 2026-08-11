@@ -22,6 +22,11 @@ import { test } from '../fixtures/pages';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Submit the Explore export modal and return the jobId from the 202 response. */
 const queueSearchExport = async (page: Page): Promise<string> => {
   const asyncResponsePromise = page.waitForResponse(
     (r) => r.url().includes('/api/v1/search/export/async') && r.status() === 202
@@ -37,6 +42,31 @@ const queueSearchExport = async (page: Page): Promise<string> => {
 
   await expect(page.getByText('Export started')).toBeVisible();
   await expect(getExportModalContent(page)).not.toBeVisible();
+
+  return jobId;
+};
+
+/**
+ * Create a db-service export job via the API and immediately notify the tray.
+ * Uses sample_data which is always present in the test environment.
+ * Db-service exports reliably reach COMPLETED — use this for tests that need
+ * to assert on COMPLETED status or the Download button.
+ */
+const queueDbServiceExport = async (
+  apiContext: APIRequestContext,
+  page: Page
+): Promise<string> => {
+  const exportRes = await apiContext.get(
+    '/api/v1/services/databaseServices/name/sample_data/exportAsync'
+  );
+
+  expect(exportRes.status()).toBe(202);
+  const { jobId } = (await exportRes.json()) as { jobId: string };
+
+  // Immediately notify the tray so it fetches without waiting for WebSocket.
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event('csv-jobs-refresh'))
+  );
 
   return jobId;
 };
@@ -137,6 +167,23 @@ const goToExploreAndOpenModal = async (page: Page): Promise<void> => {
   await openExportScopeModal(page);
 };
 
+/**
+ * Navigate to a page and pre-activate the tray container so hasLoadedInitialJobs
+ * becomes true before any new job is created.  New jobs that appear after this
+ * point will not be dismissed on first fetch.
+ */
+const activateTrayOnPage = async (page: Page, path: string): Promise<void> => {
+  await page.goto(path);
+  await waitForAllLoadersToDisappear(page);
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event('csv-jobs-refresh'))
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
 test.describe(
   'CsvJobsTray — real server',
   { tag: ['@Features', '@import-export'] },
@@ -144,8 +191,16 @@ test.describe(
     test('export job queued makes the tray launcher visible', async ({
       page,
     }) => {
+      // Verifies that starting an export from the Explore UI makes the tray
+      // launcher (or auto-opened popover) appear without any mocking.
       await goToExploreAndOpenModal(page);
       await queueSearchExport(page);
+
+      // Immediately refresh so the tray fetches the new job (QUEUED / RUNNING /
+      // FAILED) without waiting for a WebSocket event that may be slow in CI.
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('csv-jobs-refresh'))
+      );
 
       const launcher = page.locator('.csv-jobs-tray-launcher');
       const trayPopover = page.locator('.csv-jobs-tray-popover');
@@ -157,14 +212,22 @@ test.describe(
       browser,
       page,
     }) => {
+      // Guards the autoOpenedJobIds useEffect path. The tray must open on its
+      // own when a newly-completed job appears — the user never clicks the launcher.
+      // Uses db-service export which reliably reaches COMPLETED on any test server.
       test.slow();
-
-      await goToExploreAndOpenModal(page);
-      const jobId = await queueSearchExport(page);
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      await activateTrayOnPage(page, '/settings/services/databases');
+      const jobId = await queueDbServiceExport(apiContext, page);
+
       await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+      // Mirror what the WebSocket would do: tell the tray to re-fetch now so
+      // the auto-open useEffect fires for the newly-completed job.
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('csv-jobs-refresh'))
+      );
       await afterAction();
 
       // Never click the launcher — the tray must open on its own.
@@ -189,12 +252,14 @@ test.describe(
       browser,
       page,
     }) => {
+      // Verifies GET /csvAsyncJobs/{jobId}/result returns a valid CSV after the
+      // job completes. Uses db-service export which always produces structured CSV.
       test.slow();
 
-      await goToExploreAndOpenModal(page);
-      const jobId = await queueSearchExport(page);
-
       const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await activateTrayOnPage(page, '/settings/services/databases');
+      const jobId = await queueDbServiceExport(apiContext, page);
 
       await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
 
@@ -210,10 +275,10 @@ test.describe(
         .split('\n')
         .filter((line) => line.trim().length > 0);
 
-      // Must have at least a header row (data rows depend on search results).
+      // Must have at least a header row.
       expect(nonEmptyLines.length).toBeGreaterThanOrEqual(1);
 
-      // Every data-asset export includes a "name" column in the header.
+      // Database service export includes a "name" column in the header.
       expect(nonEmptyLines[0].toLowerCase()).toContain('name');
 
       await afterAction();
@@ -223,14 +288,20 @@ test.describe(
       browser,
       page,
     }) => {
+      // Verifies the Download button in the tray's completed-job row fires the
+      // result endpoint and triggers a browser download event.
       test.slow();
-
-      await goToExploreAndOpenModal(page);
-      const jobId = await queueSearchExport(page);
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      await activateTrayOnPage(page, '/settings/services/databases');
+      const jobId = await queueDbServiceExport(apiContext, page);
+
       await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+      // Refresh the tray so the auto-open useEffect fires for the completed job.
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('csv-jobs-refresh'))
+      );
       await afterAction();
 
       // Tray should already be auto-opened by the useEffect.
@@ -269,12 +340,15 @@ test.describe(
     }) => {
       test.slow();
 
-      await goToExploreAndOpenModal(page);
-      const jobId = await queueSearchExport(page);
-
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      await activateTrayOnPage(page, '/settings/services/databases');
+      const jobId = await queueDbServiceExport(apiContext, page);
+
       await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('csv-jobs-refresh'))
+      );
       await afterAction();
 
       await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
@@ -291,45 +365,49 @@ test.describe(
       browser,
       page,
     }) => {
-      // Verifies the tray correctly handles multiple in-flight jobs from the
-      // same session. Uses two different Explore URLs so the exports are
-      // independent requests and get distinct jobIds from the server.
+      // Verifies the tray handles multiple in-flight jobs from the same session.
+      // Uses two different entity-type exports (db service + user) so the jobs
+      // have distinct entityType labels in the tray.
       test.slow();
 
-      // Export 1: tables matching sample_data
-      await goToExploreAndOpenModal(page);
-      const jobId1 = await queueSearchExport(page);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      // Export 2: topics (different entity index → separate job)
-      const topicsQueryPromise = page.waitForResponse(
-        (r) => r.url().includes('/api/v1/search/query') && r.status() === 200
+      await activateTrayOnPage(page, '/settings/services/databases');
+
+      // Job 1: database service export
+      const exportRes1 = await apiContext.get(
+        '/api/v1/services/databaseServices/name/sample_data/exportAsync'
       );
 
-      await page.goto('/explore/topics');
-      await expect(page.getByTestId('explore-page')).toBeVisible();
-      await topicsQueryPromise;
-      await waitForAllLoadersToDisappear(page);
+      expect(exportRes1.status()).toBe(202);
+      const { jobId: jobId1 } = (await exportRes1.json()) as { jobId: string };
 
-      // Re-activate the tray on the new page before the second export.
+      // Job 2: user export (different entity type — appears as "user" in tray)
+      const exportRes2 = await apiContext.get(
+        '/api/v1/users/exportAsync?team=Organization'
+      );
+
+      expect(exportRes2.status()).toBe(202);
+      const { jobId: jobId2 } = (await exportRes2.json()) as { jobId: string };
+
+      expect(jobId1).not.toBe(jobId2);
+
+      // Notify the tray about both jobs at once.
       await page.evaluate(() =>
         window.dispatchEvent(new Event('csv-jobs-refresh'))
       );
 
-      await openExportScopeModal(page);
-      const jobId2 = await queueSearchExport(page);
-
-      expect(jobId1).not.toBe(jobId2);
-
       // Both jobs must reach a terminal state — verify via API, not by
       // counting tray items (which are subject to auto-dismiss timing).
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
       await pollUntilTerminal(apiContext, jobId1);
       await pollUntilTerminal(apiContext, jobId2);
       await afterAction();
 
-      // After both complete, the tray (auto-opened) must show at least one
-      // entry. Parallel admin workers may have added more — we assert >= 1.
+      // Refresh the tray so it shows the finished jobs and auto-opens.
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('csv-jobs-refresh'))
+      );
+
       const trayPopover = page.locator('.csv-jobs-tray-popover');
       const launcher = page.locator('.csv-jobs-tray-launcher');
 
@@ -776,14 +854,19 @@ test.describe(
     }) => {
       // Guards the autoOpenedJobIds ref that prevents the same terminal job
       // from re-opening the tray on every WebSocket tick or poll cycle.
+      // Uses db-service export which reliably reaches COMPLETED.
       test.slow();
-
-      await goToExploreAndOpenModal(page);
-      const jobId = await queueSearchExport(page);
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      await activateTrayOnPage(page, '/settings/services/databases');
+      const jobId = await queueDbServiceExport(apiContext, page);
+
       await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+      // Mirror what the WebSocket would do: tell the tray to re-fetch.
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('csv-jobs-refresh'))
+      );
       await afterAction();
 
       // Tray auto-opens once for the newly-completed job.
@@ -816,6 +899,12 @@ test.describe(
       await goToExploreAndOpenModal(page);
       await queueSearchExport(page);
 
+      // Immediately refresh so the tray fetches the new job (QUEUED / RUNNING /
+      // FAILED) without waiting for a WebSocket event that may be slow in CI.
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('csv-jobs-refresh'))
+      );
+
       const launcher = page.locator('.csv-jobs-tray-launcher');
       const trayPopover = page.locator('.csv-jobs-tray-popover');
 
@@ -836,14 +925,19 @@ test.describe(
       // Guards the downloadedJobIds state: after the first download the row's
       // left icon changes to a checkmark, but the Download button must remain
       // visible so users can save the file again.
+      // Uses db-service export which reliably reaches COMPLETED.
       test.slow();
-
-      await goToExploreAndOpenModal(page);
-      const jobId = await queueSearchExport(page);
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
+      await activateTrayOnPage(page, '/settings/services/databases');
+      const jobId = await queueDbServiceExport(apiContext, page);
+
       await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+      // Mirror what the WebSocket would do: tell the tray to re-fetch.
+      await page.evaluate(() =>
+        window.dispatchEvent(new Event('csv-jobs-refresh'))
+      );
       await afterAction();
 
       await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({

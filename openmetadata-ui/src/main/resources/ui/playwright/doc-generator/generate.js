@@ -86,6 +86,7 @@ const DOMAIN_MAPPING = {
   Tour: { domain: 'Platform', name: 'Onboarding' },
 
   // Discovery
+  CsvJobsTray: { domain: 'Discovery', name: 'Import/Export' },
   Search: { domain: 'Discovery', name: 'Search' },
   DataInsight: { domain: 'Discovery', name: 'Data Insights' },
   Feed: { domain: 'Discovery', name: 'Feed' },
