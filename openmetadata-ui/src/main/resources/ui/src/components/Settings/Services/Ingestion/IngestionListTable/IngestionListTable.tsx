@@ -31,21 +31,13 @@ import {
   IngestionServicePermission,
   ResourceEntity,
 } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  IngestionPipeline,
-  PipelineStatus,
-} from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
-import {
-  deleteIngestionPipelineById,
-  getRunHistoryForPipeline,
-} from '../../../../../rest/ingestionPipelineAPI';
-import { Transi18next } from '../../../../../utils/CommonUtils';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../../../utils/EntityUtils';
+import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
+import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,
   renderScheduleField,
@@ -57,10 +49,10 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
-import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 import './ingestion-list-table.less';
@@ -111,10 +103,6 @@ function IngestionListTable({
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [ingestionPipelinePermissions, setIngestionPipelinePermissions] =
     useState<IngestionServicePermission>();
-  const [recentRunStatuses, setRecentRunStatuses] = useState<
-    Record<string, PipelineStatus[]>
-  >({});
-  const [isIngestionRunsLoading, setIsIngestionRunsLoading] = useState(false);
 
   const handleDeleteSelection = useCallback((row: SelectedRowDetails) => {
     setDeleteSelection(row);
@@ -129,10 +117,10 @@ function IngestionListTable({
     () =>
       ingestionData.map((item) => ({
         ...item,
-        runStatus: recentRunStatuses?.[item.name]?.[0]?.status?.[0],
-        runId: recentRunStatuses?.[item.name]?.[0]?.runId,
+        runStatus: item.pipelineStatuses?.[0]?.status?.[0],
+        runId: item.pipelineStatuses?.[0]?.runId,
       })),
-    [ingestionData, recentRunStatuses]
+    [ingestionData]
   );
 
   const deleteIngestion = useCallback(
@@ -186,23 +174,15 @@ function IngestionListTable({
     [handleCancelConfirmationModal]
   );
 
-  const fetchIngestionPipelineExtraDetails = useCallback(async () => {
-    try {
-      setIsIngestionRunsLoading(true);
-      const permissionPromises = ingestionData.map((item) =>
-        getEntityPermissionByFqn(
-          ResourceEntity.INGESTION_PIPELINE,
-          item.fullyQualifiedName ?? ''
-        )
-      );
-      const recentRunStatusPromises = ingestionData.map((item) =>
-        getRunHistoryForPipeline(item.fullyQualifiedName ?? '', { limit: 5 })
-      );
-      const permissionResponse = await Promise.allSettled(permissionPromises);
-      const recentRunStatusResponse = await Promise.allSettled(
-        recentRunStatusPromises
-      );
+  const fetchIngestionPipelineExtraDetails = useCallback(() => {
+    const permissionPromises = ingestionData.map((item) =>
+      getEntityPermissionByFqn(
+        ResourceEntity.INGESTION_PIPELINE,
+        item.fullyQualifiedName ?? ''
+      )
+    );
 
+    Promise.allSettled(permissionPromises).then((permissionResponse) => {
       const permissionData = permissionResponse.reduce((acc, cv, index) => {
         return {
           ...acc,
@@ -210,36 +190,8 @@ function IngestionListTable({
             cv.status === 'fulfilled' ? cv.value : {},
         };
       }, {});
-
-      const recentRunStatusData = recentRunStatusResponse.reduce(
-        (acc, cv, index) => {
-          let value: PipelineStatus[] = [];
-
-          if (cv.status === 'fulfilled') {
-            const runs = cv.value.data ?? [];
-
-            const ingestion = ingestionData[index];
-
-            value =
-              runs.length === 0 && ingestion?.pipelineStatuses
-                ? [ingestion.pipelineStatuses]
-                : runs;
-          }
-
-          return {
-            ...acc,
-            [ingestionData?.[index].name]: value,
-          };
-        },
-        {}
-      );
       setIngestionPipelinePermissions(permissionData);
-      setRecentRunStatuses(recentRunStatusData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsIngestionRunsLoading(false);
-    }
+    });
   }, [ingestionData]);
 
   const { isFetchingStatus, platform } = useMemo(
@@ -285,7 +237,9 @@ function IngestionListTable({
           handleEditClick={handleEditClick}
           handleEnableDisableIngestion={handleEnableDisableIngestion}
           handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-          ingestionPipelinePermissions={ingestionPipelinePermissions}
+          ingestionPipelinePermissions={
+            ingestionPipelinePermissions?.[record.name]
+          }
           pipeline={record}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
@@ -358,7 +312,7 @@ function IngestionListTable({
         key: 'count',
         width: 300,
         render: (_: string, record: ModifiedIngestionPipeline) => {
-          return isIngestionRunsLoading ? (
+          return isLoading ? (
             <Skeleton.Input active size="small" />
           ) : (
             <IngestionStatusCount
@@ -379,15 +333,15 @@ function IngestionListTable({
         title: t('label.recent-run-plural'),
         dataIndex: 'recentRuns',
         key: 'recentRuns',
-        width: 150,
+        width: 180,
         render: (_: string, record: IngestionPipeline) => (
           <IngestionRecentRuns
-            appRuns={recentRunStatuses[record.name]}
+            appRuns={record.pipelineStatuses}
             classNames="align-middle"
             fetchStatus={false}
             handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
             ingestion={record}
-            isAppRunsLoading={isIngestionRunsLoading}
+            isAppRunsLoading={isLoading}
             pipelineIdToFetchStatus={pipelineIdToFetchStatus}
           />
         ),
@@ -421,8 +375,7 @@ function IngestionListTable({
       enableActions,
       handlePipelineIdToFetchStatus,
       pipelineTypeColumnObj,
-      recentRunStatuses,
-      isIngestionRunsLoading,
+      isLoading,
     ]
   );
 
@@ -473,7 +426,8 @@ function IngestionListTable({
                 ingestionData.length,
                 isPlatFormDisabled,
                 theme,
-                pipelineType
+                pipelineType,
+                'tw:relative tw:py-8'
               ),
           }}
           pagination={false}
@@ -484,13 +438,13 @@ function IngestionListTable({
         />
       </div>
 
-      <EntityDeleteModal
-        bodyText={ingestionDeleteMessage}
-        entityName={getEntityName(deleteSelection)}
-        entityType={t('label.ingestion-lowercase')}
-        visible={isConfirmationModalOpen}
+      <DeleteModal
+        entityTitle={getEntityName(deleteSelection)}
+        isDeleting={deleteSelection.state === 'waiting'}
+        message={ingestionDeleteMessage}
+        open={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
-        onConfirm={handleDeleteConfirm}
+        onDelete={handleDeleteConfirm}
       />
     </>
   );

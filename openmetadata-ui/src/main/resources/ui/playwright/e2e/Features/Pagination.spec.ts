@@ -30,6 +30,7 @@ import {
   createNewPage,
   testClientSidePaginationNavigation,
   testCompletePaginationWithSearch,
+  testMetricsPaginationNavigation,
   testPaginationNavigation,
   uuid,
 } from '../../utils/common';
@@ -44,16 +45,20 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
-      for (let i = 1; i <= 20; i++) {
-        const user = new UserClass({
-          firstName: `pw_pagination_User${i}`,
-          lastName: `LastName${i}`,
-          email: `pw_pagination_user${i}@example.com`,
+      // Created concurrently: 20 sequential round-trips accumulate enough
+      // latency under load to blow the 60s beforeAll budget on their own.
+      const paginationUsers = Array.from({ length: 20 }, () => {
+        const uniqueId = uuid();
+
+        return new UserClass({
+          firstName: `pw_pagination_User${uniqueId}`,
+          lastName: `LastName${uniqueId}`,
+          email: `pw_pagination_user${uniqueId}@example.com`,
           password: 'User@OMD123',
         });
+      });
 
-        await user.create(apiContext);
-      }
+      await Promise.all(paginationUsers.map((user) => user.create(apiContext)));
 
       await afterAction();
     });
@@ -79,12 +84,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Database Schema Tables page pagination', () => {
-    const database = new DatabaseClass();
+    let database: DatabaseClass;
     let schemaFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      database = new DatabaseClass();
       await database.create(apiContext);
       schemaFqn = database.schemaResponseData.fullyQualifiedName;
 
@@ -144,11 +150,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Table columns page pagination', () => {
-    const database = new DatabaseClass();
+    let database: DatabaseClass;
     let tableFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+
+      database = new DatabaseClass();
 
       const columns = [];
       for (let i = 1; i <= 60; i++) {
@@ -206,10 +214,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Service Databases page pagination', () => {
-    const database = new DatabaseClass();
+    let database: DatabaseClass;
     let databaseFqn: string;
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+      database = new DatabaseClass();
       await database.create(apiContext);
       databaseFqn = database.serviceResponseData.fullyQualifiedName;
       for (let i = 1; i <= 20; i++) {
@@ -268,7 +277,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         state: 'visible',
       });
 
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -292,10 +304,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Classification Tags page', () => {
-    const classification = new ClassificationClass();
+    let classification: ClassificationClass;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+      classification = new ClassificationClass();
       await classification.create(apiContext);
 
       for (let i = 1; i <= 20; i++) {
@@ -321,7 +334,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto(`/tags/${classification.responseData.name}`);
-      await testPaginationNavigation(page, '/api/v1/tags', 'table');
+      await testPaginationNavigation(
+        page,
+        '/api/v1/tags',
+        '[data-testid="table"]'
+      );
     });
   });
 
@@ -338,8 +355,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test pagination on Metrics page', async ({ page }) => {
-      await page.goto('/metrics');
-      await testPaginationNavigation(page, '/api/v1/metrics', 'table');
+      await testMetricsPaginationNavigation(page);
     });
   });
 
@@ -418,6 +434,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto('/observability/alerts?pageSize=15');
+
       await testPaginationNavigation(
         page,
         '/api/v1/events/subscriptions',
@@ -427,12 +444,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for API Collection Endpoints page', () => {
-    const apiCollection = new ApiCollectionClass();
+    let apiCollection: ApiCollectionClass;
     let apiCollectionFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      apiCollection = new ApiCollectionClass();
       const result = await apiCollection.create(apiContext);
       apiCollectionFqn = result.entity.fullyQualifiedName;
 
@@ -483,12 +501,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Stored Procedures page', () => {
-    const database = new DatabaseClass();
+    let database: DatabaseClass;
     let schemaFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      database = new DatabaseClass();
       await database.create(apiContext);
       schemaFqn = database.schemaResponseData.fullyQualifiedName;
 
@@ -534,7 +553,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('stored_procedure').click();
       await page.waitForLoadState('domcontentloaded');
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -560,12 +582,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Database Schemas page', () => {
-    const database = new DatabaseClass();
+    let database: DatabaseClass;
     let databaseFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      database = new DatabaseClass();
       await database.create(apiContext);
       databaseFqn = database.entityResponseData.fullyQualifiedName;
 
@@ -615,12 +638,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Dashboard Data Models page', () => {
-    const dashboardService = new DashboardDataModelClass();
+    let dashboardService: DashboardDataModelClass;
     let serviceFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      dashboardService = new DashboardDataModelClass();
       await dashboardService.create(apiContext);
       serviceFqn = dashboardService.serviceResponseData.fullyQualifiedName;
 
@@ -671,7 +695,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('data-model').click();
       await page.waitForLoadState('domcontentloaded');
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -696,12 +723,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Drive Service Directories page', () => {
-    const driveService = new DriveServiceClass(`pw-drive-service-${uuid()}`);
+    let driveService: DriveServiceClass;
     let serviceFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      driveService = new DriveServiceClass();
       await driveService.create(apiContext);
       serviceFqn = driveService.entityResponseData.fullyQualifiedName;
 
@@ -753,12 +781,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Drive Service Files page', () => {
-    const driveService = new DriveServiceClass(`pw-drive-service-${uuid()}`);
+    let driveService: DriveServiceClass;
     let serviceFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      driveService = new DriveServiceClass();
       await driveService.create(apiContext);
       serviceFqn = driveService.entityResponseData.fullyQualifiedName;
 
@@ -816,13 +845,19 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      let paginationText = page.locator('[data-testid="page-indicator"]');
+      let paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       let paginationTextContent = await paginationText.textContent();
       expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
-      const nextButton = page.locator('[data-testid="next"]');
+      const nextButton = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('next');
       await expect(nextButton).toBeEnabled();
 
       const filesResponsePromise = page.waitForResponse((response) =>
@@ -856,7 +891,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(filesTabResponse.status()).toBe(200);
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationText = page.locator('[data-testid="page-indicator"]');
+      paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       paginationTextContent = await paginationText.textContent();
@@ -898,7 +936,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationText = page.locator('[data-testid="page-indicator"]');
+      paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       paginationTextContent = await paginationText.textContent();
@@ -907,12 +948,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Drive Service Spreadsheets page', () => {
-    const driveService = new DriveServiceClass(`pw-drive-service-${uuid()}`);
+    let driveService: DriveServiceClass;
     let serviceFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      driveService = new DriveServiceClass();
       await driveService.create(apiContext);
       serviceFqn = driveService.entityResponseData.fullyQualifiedName;
 
@@ -964,11 +1006,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pagination tests for Roles page', () => {
-    const policy = new PolicyClass();
+    let policy: PolicyClass;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      policy = new PolicyClass();
       // Create Policy
       await policy.create(apiContext, [
         {
@@ -1046,11 +1089,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.describe('Pipeline Tasks page pagination', () => {
-    const pipeline = new PipelineClass();
+    let pipeline: PipelineClass;
     let pipelineFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+
+      pipeline = new PipelineClass();
 
       const tasks = [];
       for (let i = 1; i <= 20; i++) {
@@ -1100,13 +1145,80 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
   });
 
+  test.describe('Table version page column pagination', () => {
+    let versionTableDb: DatabaseClass;
+    let versionTableFqn: string;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      versionTableDb = new DatabaseClass();
+
+      const columns = [];
+      for (let i = 1; i <= 20; i++) {
+        columns.push({
+          name: `version_col_${String(i).padStart(2, '0')}`,
+          dataType: 'VARCHAR',
+          dataLength: 255,
+          dataTypeDisplay: 'varchar',
+          description: `Version test column ${i}`,
+        });
+      }
+
+      versionTableDb.table.columns = columns;
+
+      await versionTableDb.create(apiContext);
+      versionTableFqn =
+        versionTableDb.tableResponseData.fullyQualifiedName ?? '';
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await versionTableDb.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should test pagination on Table version page columns', async ({
+      page,
+    }) => {
+      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+      await testClientSidePaginationNavigation(
+        page,
+        '[data-testid="entity-table"]'
+      );
+    });
+
+    test('should test search on Table version page columns', async ({
+      page,
+    }) => {
+      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+      await page.locator('[data-testid="entity-table"]').waitFor({
+        state: 'visible',
+      });
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('searchbar').fill('version_col_01');
+
+      // Search is client-side with a 500ms debounce — wait for the DOM to reflect
+      await expect(
+        page.getByTestId('entity-table').getByRole('row')
+      ).toHaveCount(2, { timeout: 3000 });
+      await expect(
+        page.getByTestId('entity-table').getByText('version_col_01')
+      ).toBeVisible();
+    });
+  });
+
   test.describe('Pagination tests for Service version page', () => {
-    const dashboardService = new DashboardServiceClass();
+    let dashboardService: DashboardServiceClass;
     let serviceFqn: string;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
+      dashboardService = new DashboardServiceClass();
       // Create Dashboard Service and Dashboards
       const customChildDashboards = [];
       for (let i = 1; i <= 20; i++) {

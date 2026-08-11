@@ -2,6 +2,7 @@
 Unit tests for parser.get_connection_class() function
 Tests the fix for Issue #22920 - SAS connection casing bug
 """
+
 import unittest
 
 from metadata.generated.schema.entity.services.databaseService import (
@@ -102,9 +103,7 @@ class TestGetConnectionClass(unittest.TestCase):
             if service_type.value not in excluded_types:
                 with self.subTest(service_type=service_type.value):
                     try:
-                        connection_class = get_connection_class(
-                            service_type.value, DatabaseConnection
-                        )
+                        connection_class = get_connection_class(service_type.value, DatabaseConnection)
                         self.assertIsNotNone(
                             connection_class,
                             f"Failed to load connection class for {service_type.value}",
@@ -116,9 +115,7 @@ class TestGetConnectionClass(unittest.TestCase):
                             f"Class name mismatch for {service_type.value}",
                         )
                     except Exception as e:
-                        self.fail(
-                            f"Failed to get connection class for {service_type.value}: {e}"
-                        )
+                        self.fail(f"Failed to get connection class for {service_type.value}: {e}")
 
 
 if __name__ == "__main__":

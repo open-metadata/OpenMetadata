@@ -46,6 +46,11 @@
       "description": "BurstIQ customer name for API requests.",
       "type": "string"
     },
+    "biqSystemWalletId": {
+      "title": "BurstIQ System Wallet ID",
+      "description": "BurstIQ system wallet ID sent as the biq_system_wallet_id header. Required for profiler data access.",
+      "type": "string"
+    },
     "tableFilterPattern": {
       "title": "Table Filter Pattern",
       "description": "Regex to only include/exclude dictionaries (tables) that matches the pattern.",
@@ -58,6 +63,10 @@
     "supportsLineageExtraction": {
       "title": "Supports Lineage Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,

@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/attachments/asset.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Asset",
+  "description": "Represents an uploaded asset record (e.g. an image, pdf or attachment) for an entity.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.attachments.Asset",
+  "definitions": {
+    "assetType": {
+      "javaType": "org.openmetadata.schema.attachments.AssetType",
+      "description": "This schema defines the type used for describing different types of Attachments.",
+      "type": "string",
+      "enum": [
+        "Inline",
+        "External"
+      ],
+      "javaEnums": [
+        {
+          "name": "Inline"
+        },
+        {
+          "name": "External"
+        }
+      ],
+      "default": "Inline",
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier of the asset."
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a data asset the attachment belongsTo`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "fileName": {
+      "type": "string",
+      "description": "The original file name of the asset."
+    },
+    "url": {
+      "type": "string",
+      "description": "URL where the asset is accessible."
+    },
+    "contentType": {
+      "type": "string",
+      "description": "MIME type of the asset."
+    },
+    "size": {
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0,
+      "description": "File size in bytes."
+    },
+    "extension": {
+      "type": "string",
+      "description": "File extension of the asset."
+    },
+    "assetType": {
+      "description": "Type of the asset.",
+      "$ref": "#/definitions/assetType"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been marked for permanent deletion.",
+      "type": "boolean",
+      "default": false
+    },
+    "entityLink": {
+      "description": "Link to the entity that this asset belongs to.",
+      "$ref": "../type/basic.json#/definitions/entityLink"
+    }
+  },
+  "required": ["id", "fileName", "entityLink"],
+  "additionalProperties": false
+}

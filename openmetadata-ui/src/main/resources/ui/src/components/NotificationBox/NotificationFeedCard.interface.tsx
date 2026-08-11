@@ -12,14 +12,28 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { ActivityFeedCardProp } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
+import { FeedInfo, Post } from '../../generated/entity/feed/thread';
+import { EntityReference } from '../../generated/type/entityReference';
+import { Task } from '../../rest/tasksAPI';
 
-export interface NotificationFeedProp
-  extends HTMLAttributes<HTMLDivElement>,
-    Pick<ActivityFeedCardProp, 'feedType' | 'task'> {
+export interface MentionNotification {
+  id: string;
+  about?: string;
+  createdBy?: string;
+  entityRef?: EntityReference;
+  entityUrlLink?: string;
+  feedInfo?: FeedInfo;
+  message?: string;
+  posts?: Post[];
+  reactions?: Post['reactions'];
+  threadTs?: number;
+}
+
+export interface NotificationFeedProp extends HTMLAttributes<HTMLDivElement> {
   createdBy: string;
   entityType: string;
   entityFQN: string;
   timestamp?: number;
-  isConversationFeed?: boolean;
+  mentionNotification?: MentionNotification;
+  taskEntity?: Task;
 }

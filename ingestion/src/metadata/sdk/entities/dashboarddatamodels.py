@@ -1,7 +1,8 @@
 """
 DashboardDataModels entity SDK with fluent API
 """
-from typing import Type
+
+from typing import Type  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
@@ -10,12 +11,10 @@ from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDa
 from metadata.sdk.entities.base import BaseEntity
 
 
-class DashboardDataModels(
-    BaseEntity[DashboardDataModel, CreateDashboardDataModelRequest]
-):
+class DashboardDataModels(BaseEntity[DashboardDataModel, CreateDashboardDataModelRequest]):
     """DashboardDataModels SDK class - plural to avoid conflict with generated DashboardDataModel entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[DashboardDataModel]:
+    def entity_type(cls) -> Type[DashboardDataModel]:  # noqa: UP006
         """Return the DashboardDataModel entity type"""
         return DashboardDataModel

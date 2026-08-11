@@ -40,7 +40,7 @@ class FailedSampleValidatorMixin(ABC):
       - filter() -> filter expression (dict for SQA, string for Pandas)
     """
 
-    def get_inspection_query(self) -> Optional[str]:
+    def get_inspection_query(self) -> Optional[str]:  # noqa: UP045
         return getattr(self, "_inspection_query", None)
 
     @abstractmethod

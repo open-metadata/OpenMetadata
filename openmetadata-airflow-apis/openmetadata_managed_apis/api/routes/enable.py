@@ -13,9 +13,10 @@ Enable/unpause a DAG
 """
 
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint, Response
+
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_request_dag_id
 from openmetadata_managed_apis.operations.state import enable_dag
@@ -34,6 +35,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
@@ -47,9 +49,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/enable", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def enable() -> Response:
         """
         Given a DAG ID, mark the dag as enabled

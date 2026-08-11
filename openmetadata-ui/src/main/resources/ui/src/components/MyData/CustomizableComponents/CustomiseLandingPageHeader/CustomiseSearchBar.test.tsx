@@ -19,7 +19,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
 import { TabsInfoData } from '../../../../pages/ExplorePage/ExplorePage.interface';
-import { addToRecentSearched } from '../../../../utils/CommonUtils';
+import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExploreSearchIndex } from '../../../Explore/ExplorePage.interface';
 import CustomiseSearchBar from './CustomiseSearchBar';
@@ -28,7 +28,7 @@ jest.mock('../../../../hooks/useApplicationStore');
 jest.mock('../../../../hooks/useSearchStore');
 jest.mock('../../../../context/TourProvider/TourProvider');
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation');
-jest.mock('../../../../utils/CommonUtils');
+jest.mock('../../../../utils/RecentActivityUtils');
 jest.mock('../../../../utils/SearchClassBase');
 
 // Create typed mocks

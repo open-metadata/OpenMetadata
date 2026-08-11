@@ -11,6 +11,7 @@
 """
 Test module for loading configs
 """
+
 import json
 import os
 from pathlib import Path
@@ -24,13 +25,13 @@ class TestConfig(TestCase):
     Check config reading
     """
 
-    basedir = os.path.join(os.path.dirname(__file__), "resources", "config")
+    basedir = os.path.join(os.path.dirname(__file__), "resources", "config")  # noqa: PTH118, PTH120
 
     def test_basic(self):
         """
         Load basic config file
         """
-        basic_file = Path(os.path.join(self.basedir, "basic.json"))
+        basic_file = Path(os.path.join(self.basedir, "basic.json"))  # noqa: PTH118
         loaded = load_config_file(basic_file)
 
         with basic_file.open() as file:
@@ -42,7 +43,7 @@ class TestConfig(TestCase):
         """
         Fail with non existent file
         """
-        no_file = Path(os.path.join(self.basedir, "random.json"))
+        no_file = Path(os.path.join(self.basedir, "random.json"))  # noqa: PTH118
 
         with self.assertRaises(ConfigurationError):
             load_config_file(no_file)
@@ -51,7 +52,7 @@ class TestConfig(TestCase):
         """
         Fail if not valid suffix
         """
-        bad_suffix = Path(os.path.join(self.basedir, "basic.random"))
+        bad_suffix = Path(os.path.join(self.basedir, "basic.random"))  # noqa: PTH118
 
         with self.assertRaises(ConfigurationError):
             load_config_file(bad_suffix)
@@ -61,7 +62,7 @@ class TestConfig(TestCase):
         """
         We can load env vars correctly
         """
-        pwd_file = Path(os.path.join(self.basedir, "env_ok.json"))
+        pwd_file = Path(os.path.join(self.basedir, "env_ok.json"))  # noqa: PTH118
         loaded = load_config_file(pwd_file)
 
         assert loaded["source"]["config"]["secret"] == "super_safe"
@@ -70,7 +71,7 @@ class TestConfig(TestCase):
         """
         String with $ should not be expanded
         """
-        dollar_file = Path(os.path.join(self.basedir, "dollar.json"))
+        dollar_file = Path(os.path.join(self.basedir, "dollar.json"))  # noqa: PTH118
         loaded = load_config_file(dollar_file)
 
         assert loaded["source"]["config"]["secret"] == "te$t"

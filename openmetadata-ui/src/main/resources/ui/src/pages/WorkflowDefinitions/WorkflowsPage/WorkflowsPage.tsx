@@ -1,0 +1,492 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Box,
+  Button,
+  EmptyPlaceholder,
+  Input,
+  SlideoutMenu,
+  TextArea,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { CursorClick01, Plus, Settings01, ZapFast } from '@untitledui/icons';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
+import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
+import Loader from '../../../components/common/Loader/Loader';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
+import PageHeader from '../../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { CursorType } from '../../../enums/pagination.enum';
+import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
+import { Paging } from '../../../generated/type/paging';
+import { useIsAiMode } from '../../../hooks/useAppMode';
+import {
+  createWorkflowDefinition,
+  getWorkflowDefinitions,
+  WorkflowDefinitionsParams,
+} from '../../../rest/workflowDefinitionsAPI';
+import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import workflowClassBase from '../../../utils/WorkflowClassBase';
+import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
+import {
+  WORKFLOW_NAME_MAX_LENGTH,
+  WORKFLOW_NAME_MIN_LENGTH,
+  WORKFLOW_NAME_REGEX,
+} from '../../../utils/WorkflowValidationUtils';
+import { WorkflowDetailsTabs } from '../WorkflowDetails/workflow-details.interface';
+
+const WorkflowsPage = () => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const [loading, setLoading] = useState(true);
+  const [workflows, setWorkflows] = useState<SettingMenuItem[]>([]);
+  const [paging, setPaging] = useState<Paging>({
+    after: undefined,
+    before: undefined,
+    total: 0,
+  });
+  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [workflowName, setWorkflowName] = useState('');
+  const [description, setDescription] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const allowCreateWorkflow = useMemo(
+    () => workflowClassBase.getCapabilities().allowCreateWorkflow,
+    []
+  );
+
+  const emptyStateFeatures = useMemo(
+    () => [
+      {
+        key: 'trigger',
+        icon: <ZapFast className="tw:text-fg-brand-primary" />,
+        title: t('label.pick-a-trigger'),
+        description: t('message.pick-a-trigger-description'),
+      },
+      {
+        key: 'action',
+        icon: <CursorClick01 className="tw:text-fg-warning-primary" />,
+        title: t('label.define-the-action'),
+        description: t('message.define-the-action-description'),
+      },
+      {
+        key: 'sit-back',
+        icon: <Settings01 className="tw:text-fg-success-primary" />,
+        title: t('label.sit-back'),
+        description: t('message.sit-back-description'),
+      },
+    ],
+    [t]
+  );
+
+  const validateWorkflowName = useCallback(
+    (value: string): string => {
+      if (!value) {
+        return t('label.workflow-name-is-required');
+      }
+      if (!WORKFLOW_NAME_REGEX.test(value)) {
+        return t('message.workflow-name-invalid-characters');
+      }
+      if (value.length < WORKFLOW_NAME_MIN_LENGTH) {
+        return t('message.workflow-name-min-length', {
+          count: WORKFLOW_NAME_MIN_LENGTH,
+        });
+      }
+      if (value.length > WORKFLOW_NAME_MAX_LENGTH) {
+        return t('message.workflow-name-max-length', {
+          count: WORKFLOW_NAME_MAX_LENGTH,
+        });
+      }
+
+      return '';
+    },
+    [t]
+  );
+
+  const resetForm = useCallback(() => {
+    setWorkflowName('');
+    setDescription('');
+    setNameError('');
+  }, []);
+
+  const onWorkflowClick = useCallback((key: string) => {
+    navigate(
+      getWorkflowDefinitionDetailPath(key, WorkflowDetailsTabs.WORKFLOW)
+    );
+  }, []);
+
+  const handleNewWorkflowClick = useCallback(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const handleModalCancel = useCallback(() => {
+    setIsModalOpen(false);
+    setIsSubmitting(false);
+    resetForm();
+  }, [resetForm]);
+
+  const getWorkflows = useCallback(
+    async (
+      page: number = INITIAL_PAGING_VALUE,
+      cursor?: Partial<Record<CursorType, string>>
+    ) => {
+      try {
+        setLoading(true);
+
+        const params: WorkflowDefinitionsParams = {
+          limit: pageSize,
+          ...cursor,
+        };
+
+        const res = await getWorkflowDefinitions(params);
+
+        const result = (res.data || []).map((workflow: WorkflowDefinition) => ({
+          ...workflow,
+          icon: WorkflowIcon,
+          key: workflow.fullyQualifiedName || '',
+          label: workflow.displayName ?? workflow.name,
+        }));
+
+        setWorkflows(result);
+        setPaging(res.paging || { total: 0 });
+        setCurrentPage(page);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [pageSize]
+  );
+
+  const handlePageChange = useCallback(
+    ({ cursorType, currentPage: page }: PagingHandlerParams) => {
+      const cursor = cursorType ? paging[cursorType] : undefined;
+      if (cursorType && cursor) {
+        getWorkflows(page, { [cursorType]: cursor });
+      }
+    },
+    [getWorkflows, paging]
+  );
+
+  useEffect(() => {
+    getWorkflows();
+  }, [getWorkflows]);
+
+  const handleModalSubmit = useCallback(async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    const error = validateWorkflowName(workflowName);
+    if (error) {
+      setNameError(error);
+
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const workflowData = {
+        description: description || '',
+        displayName: workflowName,
+        edges: [],
+        name: workflowName,
+        nodes: [],
+        trigger: {
+          config: {},
+          output: [],
+          type: 'eventBasedEntity',
+        },
+      };
+
+      await createWorkflowDefinition(workflowData);
+      await getWorkflows(1);
+
+      setIsModalOpen(false);
+      resetForm();
+
+      navigate(
+        `${getWorkflowDefinitionDetailPath(
+          workflowName,
+          WorkflowDetailsTabs.WORKFLOW
+        )}?mode=edit`
+      );
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.workflow'),
+        })
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    isSubmitting,
+    workflowName,
+    description,
+    validateWorkflowName,
+    resetForm,
+    navigate,
+    t,
+    getWorkflows,
+  ]);
+
+  const createWorkflowButton = allowCreateWorkflow ? (
+    <Button
+      data-testid="create-workflow-button"
+      iconLeading={Plus}
+      size="sm"
+      onPress={handleNewWorkflowClick}>
+      {t('label.new-workflow')}
+    </Button>
+  ) : null;
+
+  if (loading) {
+    return <Loader />;
+  }
+
+  const isWorkflowsEmpty = workflows.length === 0;
+
+  const emptyPlaceholder = (
+    <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl">
+      <EmptyPlaceholder
+        actions={
+          allowCreateWorkflow
+            ? [
+                {
+                  key: 'new-workflow',
+                  label: t('label.new-workflow'),
+                  color: 'primary' as const,
+                  iconLeading: Plus,
+                  onPress: handleNewWorkflowClick,
+                },
+              ]
+            : undefined
+        }
+        description={t('message.workflow-empty-description')}
+        features={emptyStateFeatures}
+        title={t('message.put-your-data-operations-on-autopilot')}
+        variant="features"
+      />
+    </Box>
+  );
+
+  return (
+    <PageLayoutV1
+      fullHeight
+      className={classNames('workflow-page', { 'tw:!px-0': !isAiMode })}
+      mainContainerClassName="workflow-page-layout"
+      pageTitle={t('label.workflow-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <div
+        className={classNames(
+          'tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:gap-4',
+          { 'tw:mx-2': !isAiMode }
+        )}>
+        {isAiMode ? (
+          <HeaderShell
+            actions={createWorkflowButton}
+            badge={<LearningIcon pageId={LEARNING_PAGE_IDS.WORKFLOWS} />}
+            breadcrumb={
+              <HeaderBreadcrumb
+                noMargin
+                items={[
+                  getGlossaryHomeCrumb(t),
+                  { label: t('label.workflow-plural') },
+                ]}
+                showHome={false}
+              />
+            }
+            className="tw:mb-0!"
+            padding="comfortable"
+            subtitle={t('message.workflow-subtitle')}
+            title={t('label.workflow-plural')}
+            variant="gradient"
+          />
+        ) : (
+          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary">
+            <div className="tw:flex tw:items-center tw:justify-between">
+              <PageHeader
+                data={{
+                  header: t('label.workflow-plural'),
+                  subHeader: t('message.workflow-subtitle'),
+                }}
+                learningPageId={LEARNING_PAGE_IDS.WORKFLOWS}
+                title={t('label.workflow-plural')}
+              />
+              {createWorkflowButton}
+            </div>
+          </div>
+        )}
+
+        {isWorkflowsEmpty ? (
+          emptyPlaceholder
+        ) : (
+          <div className="tw:flex tw:flex-1 tw:min-h-0 tw:flex-col">
+            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:rounded-t-xl tw:border-x tw:border-t tw:border-border-secondary tw:bg-primary tw:px-6 tw:pt-4">
+              <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pb-4">
+                {workflows.map((workflow) => (
+                  <WorkflowCard
+                    data={workflow}
+                    key={workflow.key}
+                    onClick={onWorkflowClick}
+                  />
+                ))}
+              </div>
+            </div>
+            <div
+              className="tw:rounded-b-xl tw:border-x tw:border-b tw:border-border-secondary tw:bg-primary tw:px-6 tw:py-3"
+              data-testid="workflows-pagination">
+              <NextPrevious
+                currentPage={currentPage}
+                isLoading={loading}
+                pageSize={pageSize}
+                pageSizeOptions={[
+                  PAGE_SIZE_BASE,
+                  PAGE_SIZE_MEDIUM,
+                  PAGE_SIZE_LARGE,
+                ]}
+                paging={paging}
+                pagingHandler={handlePageChange}
+                onShowSizeChange={setPageSize}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <SlideoutMenu
+        className="tw:z-9999"
+        isOpen={allowCreateWorkflow && isModalOpen}
+        width={640}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleModalCancel();
+          }
+        }}>
+        {({ close }) => (
+          <>
+            <SlideoutMenu.Header onClose={close}>
+              <Typography
+                as="p"
+                className="tw:m-0 tw:mb-1 tw:text-base tw:font-semibold tw:text-primary">
+                {t('label.create-new-workflow')}
+              </Typography>
+              <Typography
+                as="p"
+                className="tw:m-0 tw:text-sm tw:text-secondary">
+                {t('message.automate-your-tasks-by-creating-custom-workflows')}
+              </Typography>
+            </SlideoutMenu.Header>
+            <SlideoutMenu.Content>
+              <div className="tw:flex tw:flex-col tw:gap-5">
+                <div>
+                  <div className="tw:flex tw:items-center tw:gap-0.5 tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
+                    <Typography as="span">
+                      {t('label.workflow-name')}
+                    </Typography>
+                    <Typography as="span" className="tw:text-error-primary">
+                      *
+                    </Typography>
+                  </div>
+                  <Input
+                    data-testid="workflow-name"
+                    isDisabled={isSubmitting}
+                    isInvalid={!!nameError}
+                    placeholder={t('label.workflow-name-placeholder')}
+                    value={workflowName}
+                    onChange={(value) => {
+                      setWorkflowName(value);
+                      if (nameError) {
+                        setNameError('');
+                      }
+                    }}
+                  />
+                  {nameError && (
+                    <Typography
+                      as="p"
+                      className="tw:m-0 tw:mt-1 tw:text-error-primary"
+                      size="text-xs">
+                      {nameError}
+                    </Typography>
+                  )}
+                </div>
+                <div>
+                  <Typography
+                    as="p"
+                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
+                    {t('label.description')}
+                  </Typography>
+                  <TextArea
+                    data-testid="workflow-description"
+                    isDisabled={isSubmitting}
+                    placeholder={t('label.description')}
+                    rows={4}
+                    value={description}
+                    onChange={setDescription}
+                  />
+                </div>
+              </div>
+            </SlideoutMenu.Content>
+            <SlideoutMenu.Footer className="tw:shadow-none tw:p-0">
+              <div className="tw:flex tw:justify-end tw:gap-3 tw:px-4 tw:py-4 tw:border-t tw:border-border-secondary">
+                <Button
+                  color="secondary"
+                  data-testid="cancel-workflow-button"
+                  size="sm"
+                  onPress={close}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  data-testid="submit-workflow-button"
+                  isDisabled={isSubmitting}
+                  isLoading={isSubmitting}
+                  size="sm"
+                  onPress={handleModalSubmit}>
+                  {t('label.save-and-next')}
+                </Button>
+              </div>
+            </SlideoutMenu.Footer>
+          </>
+        )}
+      </SlideoutMenu>
+    </PageLayoutV1>
+  );
+};
+
+export default WorkflowsPage;

@@ -15,7 +15,7 @@ Validator for column values to be unique test case
 
 import logging
 from collections import Counter, defaultdict
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -56,7 +56,7 @@ class ColumnValuesToBeUniqueValidator(
 ):
     """Validator for column values to be unique test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -65,9 +65,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         return self.run_dataframe_results(self.runner, metric, column)
 
-    def _get_unique_count(
-        self, metric: Metrics, column: SQALikeColumn
-    ) -> Optional[int]:
+    def _get_unique_count(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
         """Get unique count of values"""
         return self._run_results(metric, column)
 
@@ -76,9 +74,9 @@ class ColumnValuesToBeUniqueValidator(
         column: SQALikeColumn,
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
-        test_params: Optional[dict],
+        test_params: Optional[dict],  # noqa: UP045
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -115,31 +113,27 @@ class ColumnValuesToBeUniqueValidator(
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
 
                     unique_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.uniqueCount.name],
                         group_df,
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.valuesCount.name
-                    ] += Metrics.valuesCount(column).df_fn([group_df])
-                    dimension_aggregates[dimension_value][
-                        DIMENSION_TOTAL_COUNT_KEY
-                    ] += len(group_df)
+                    dimension_aggregates[dimension_value][Metrics.valuesCount.name] += Metrics.valuesCount(
+                        column
+                    ).df_fn([group_df])
+                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 total_count = agg[Metrics.valuesCount.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
                 counter_accumulator = agg[Metrics.uniqueCount.name]
-                unique_count = unique_count_impl.aggregate_accumulator(
-                    counter_accumulator
-                )
+                unique_count = unique_count_impl.aggregate_accumulator(counter_accumulator)
                 failed_count = total_count - unique_count
 
                 results_data.append(
@@ -162,29 +156,19 @@ class ColumnValuesToBeUniqueValidator(
                     total_column=DIMENSION_TOTAL_COUNT_KEY,
                 )
 
-                def calculate_unique_count_from_counter(
-                    df_aggregated, others_mask, metric_column
-                ):
+                def calculate_unique_count_from_counter(df_aggregated, others_mask, metric_column):
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
-                        merged_counter = df_aggregated.loc[
-                            others_mask, COUNTER_ACCUMULATOR_KEY
-                        ].iloc[0]
+                        merged_counter = df_aggregated.loc[others_mask, COUNTER_ACCUMULATOR_KEY].iloc[0]
                         unique_count = sum(1 for v in merged_counter.values() if v == 1)
                         result.loc[others_mask] = unique_count
                     return result
 
-                def calculate_failed_count_from_metrics(
-                    df_aggregated, others_mask, metric_column
-                ):
+                def calculate_failed_count_from_metrics(df_aggregated, others_mask, metric_column):
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
-                        count = df_aggregated.loc[
-                            others_mask, Metrics.valuesCount.name
-                        ].iloc[0]
-                        unique_count = df_aggregated.loc[
-                            others_mask, Metrics.uniqueCount.name
-                        ].iloc[0]
+                        count = df_aggregated.loc[others_mask, Metrics.valuesCount.name].iloc[0]
+                        unique_count = df_aggregated.loc[others_mask, Metrics.uniqueCount.name].iloc[0]
                         failed_count = count - unique_count
                         result.loc[others_mask] = failed_count
                     return result
@@ -193,9 +177,7 @@ class ColumnValuesToBeUniqueValidator(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={
-                        COUNTER_ACCUMULATOR_KEY: lambda counters: sum(
-                            counters, Counter()
-                        ),
+                        COUNTER_ACCUMULATOR_KEY: lambda counters: sum(counters, Counter()),
                         Metrics.valuesCount.name: "sum",
                         DIMENSION_TOTAL_COUNT_KEY: "sum",
                         DIMENSION_FAILED_COUNT_KEY: "sum",

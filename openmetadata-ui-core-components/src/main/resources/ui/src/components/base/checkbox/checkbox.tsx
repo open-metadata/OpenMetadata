@@ -4,6 +4,7 @@ import {
   type CheckboxProps as AriaCheckboxProps,
 } from 'react-aria-components';
 import { cx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
 export interface CheckboxBaseProps {
   size?: 'sm' | 'md';
@@ -25,12 +26,13 @@ export const CheckboxBase = ({
   return (
     <div
       className={cx(
-        'tw:relative tw:flex tw:size-4 tw:shrink-0 tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded tw:bg-primary tw:ring-1 tw:ring-primary tw:ring-inset',
+        // Border on ::after — the element's own outline is reserved for the focus ring below.
+        `tw:relative tw:flex tw:size-4 tw:shrink-0 tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded tw:bg-primary ${borderAfter} tw:after:outline-primary`,
         size === 'md' && 'tw:size-5 tw:rounded-md',
         (isSelected || isIndeterminate) &&
-          'tw:bg-brand-solid tw:ring-bg-brand-solid',
+          'tw:bg-brand-solid tw:after:outline-brand-solid',
         isDisabled &&
-          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled',
+          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:after:outline-disabled',
         isFocusVisible &&
           'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
         className

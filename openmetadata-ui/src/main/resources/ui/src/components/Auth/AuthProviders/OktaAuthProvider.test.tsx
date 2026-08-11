@@ -44,13 +44,24 @@ const mockCustomStorage = {
   getStorage: jest.fn().mockReturnValue({}),
 };
 
-jest.mock('@okta/okta-auth-js', () => ({
-  OktaAuth: jest.fn(() => mockOktaAuth),
-  EVENT_RENEWED: 'renewed',
-  isIDToken: jest.fn(
-    (token) => token && typeof token === 'object' && 'idToken' in token
-  ),
-}));
+const mockOktaAuthConstructor = jest.fn();
+
+jest.mock('@okta/okta-auth-js', () => {
+  const actual = jest.requireActual('@okta/okta-auth-js');
+
+  return {
+    ...actual,
+    OktaAuth: function OktaAuth(...args: unknown[]) {
+      mockOktaAuthConstructor(...args);
+
+      return mockOktaAuth;
+    },
+    EVENT_RENEWED: 'renewed',
+    isIDToken: jest.fn(
+      (token) => token && typeof token === 'object' && 'idToken' in token
+    ),
+  };
+});
 
 jest.mock('@okta/okta-react', () => ({
   Security: ({ children }: { children: React.ReactNode }) => (
@@ -324,6 +335,124 @@ describe('OktaAuthProvider', () => {
         'renewed',
         expect.any(Function)
       );
+    });
+  });
+
+  describe('storage configuration', () => {
+    it('should configure OktaAuth with custom storage manager', async () => {
+      render(
+        <MemoryRouter>
+          <OktaAuthProvider>
+            <div>Test</div>
+          </OktaAuthProvider>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockOktaAuthConstructor).toHaveBeenCalled();
+      });
+
+      const oktaConfig = mockOktaAuthConstructor.mock.calls[0][0];
+
+      expect(oktaConfig).toMatchObject({
+        clientId: 'test-client-id',
+        issuer: 'https://test.okta.com',
+        redirectUri: 'http://localhost:3000/callback',
+        scopes: ['openid', 'profile', 'email'],
+        pkce: true,
+      });
+    });
+
+    it('should configure token manager with autoRenew and syncStorage', async () => {
+      render(
+        <MemoryRouter>
+          <OktaAuthProvider>
+            <div>Test</div>
+          </OktaAuthProvider>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockOktaAuthConstructor).toHaveBeenCalled();
+      });
+
+      const oktaConfig = mockOktaAuthConstructor.mock.calls[0][0];
+
+      expect(oktaConfig.tokenManager).toMatchObject({
+        autoRenew: true,
+        syncStorage: true,
+        secure: true,
+      });
+    });
+
+    it('should configure storageManager with separate storage for tokens and transactions', async () => {
+      render(
+        <MemoryRouter>
+          <OktaAuthProvider>
+            <div>Test</div>
+          </OktaAuthProvider>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockOktaAuthConstructor).toHaveBeenCalled();
+      });
+
+      const oktaConfig = mockOktaAuthConstructor.mock.calls[0][0];
+
+      expect(oktaConfig.storageManager).toBeDefined();
+      expect(oktaConfig.storageManager.token).toBeDefined();
+      expect(oktaConfig.storageManager.token.storageProvider).toBe(
+        mockCustomStorage
+      );
+      expect(oktaConfig.storageManager.transaction).toMatchObject({
+        storageTypes: ['localStorage'],
+      });
+      expect(oktaConfig.storageManager.cache).toMatchObject({
+        storageTypes: ['localStorage'],
+      });
+    });
+
+    it('should configure cookies with secure and sameSite settings', async () => {
+      render(
+        <MemoryRouter>
+          <OktaAuthProvider>
+            <div>Test</div>
+          </OktaAuthProvider>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockOktaAuthConstructor).toHaveBeenCalled();
+      });
+
+      const oktaConfig = mockOktaAuthConstructor.mock.calls[0][0];
+
+      expect(oktaConfig.cookies).toMatchObject({
+        secure: true,
+        sameSite: 'lax',
+      });
+    });
+
+    it('should configure services with autoRenew and renewOnTabActivation', async () => {
+      render(
+        <MemoryRouter>
+          <OktaAuthProvider>
+            <div>Test</div>
+          </OktaAuthProvider>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockOktaAuthConstructor).toHaveBeenCalled();
+      });
+
+      const oktaConfig = mockOktaAuthConstructor.mock.calls[0][0];
+
+      expect(oktaConfig.services).toMatchObject({
+        autoRenew: true,
+        renewOnTabActivation: true,
+      });
     });
   });
 });

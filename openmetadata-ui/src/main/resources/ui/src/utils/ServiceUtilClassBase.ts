@@ -12,116 +12,19 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { get, isEmpty, toLower } from 'lodash';
+import { MenuProps } from 'antd';
+import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
+import type { ComponentType } from 'react';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
+import KnowledgeCenterIcon from '../assets/svg/context-center.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
+import QuickLinkIcon from '../assets/svg/ic-quick-link.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
 import TagIcon from '../assets/svg/tag-grey.svg';
-import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
-import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
-import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
-import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
-import {
-  AIRBYTE,
-  AIRFLOW,
-  ALATIONSINK,
-  AMAZON_S3,
-  AMUNDSEN,
-  ATHENA,
-  ATLAS,
-  AZURESQL,
-  BIGQUERY,
-  BIGTABLE,
-  BURSTIQ,
-  CASSANDRA,
-  CLICKHOUSE,
-  COCKROACH,
-  COUCHBASE,
-  CUSTOM_DRIVE_DEFAULT,
-  CUSTOM_SEARCH_DEFAULT,
-  CUSTOM_STORAGE_DEFAULT,
-  DAGSTER,
-  DASHBOARD_DEFAULT,
-  DATABASE_DEFAULT,
-  DATABRICK,
-  DATALAKE,
-  DBT,
-  DEFAULT_SERVICE,
-  DELTALAKE,
-  DOMO,
-  DORIS,
-  DRUID,
-  DYNAMODB,
-  ELASTIC_SEARCH,
-  EXASOL,
-  FIVETRAN,
-  FLINK,
-  GCS,
-  GLUE,
-  GOOGLE_DRIVE,
-  GRAFANA,
-  GREENPLUM,
-  HEX,
-  HIVE,
-  IBMDB2,
-  IMPALA,
-  KAFKA,
-  KINESIS,
-  LIGHT_DASH,
-  LOGO,
-  LOOKER,
-  MARIADB,
-  METABASE,
-  MICROSTRATEGY,
-  MLFLOW,
-  ML_MODEL_DEFAULT,
-  MODE,
-  MONGODB,
-  MSSQL,
-  MYSQL,
-  NIFI,
-  OPENLINEAGE,
-  OPEN_SEARCH,
-  ORACLE,
-  PINOT,
-  PIPELINE_DEFAULT,
-  POSTGRES,
-  POWERBI,
-  PRESTO,
-  QLIK_SENSE,
-  QUICKSIGHT,
-  REDASH,
-  REDPANDA,
-  REDSHIFT,
-  REST_SERVICE,
-  SAGEMAKER,
-  SALESFORCE,
-  SAP_ERP,
-  SAP_HANA,
-  SAS,
-  SCIKIT,
-  SFTP,
-  SIGMA,
-  SINGLESTORE,
-  SNOWFLAKE,
-  SPARK,
-  SPLINE,
-  SQLITE,
-  STARROCKS,
-  SUPERSET,
-  SYNAPSE,
-  TABLEAU,
-  TERADATA,
-  TIMESCALE,
-  TOPIC_DEFAULT,
-  TRINO,
-  UNITYCATALOG,
-  VERTICA,
-} from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
@@ -135,11 +38,12 @@ import {
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
   SecurityServiceTypeSmallCaseType,
+  ServiceCategory,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
 import {
-  ConfigObject,
+  Connection as ConfigObject,
   WorkflowType,
 } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -153,27 +57,32 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
+import { EntityReference } from '../generated/entity/type';
+import { PageType } from '../interface/knowledge-center.interface';
+import { KnowledgePageSearchSource } from '../interface/search.interface';
 import {
   ConfigData,
   ExtraInfoType,
   ServicesType,
 } from '../interface/service.interface';
-import { getAPIConfig } from './APIServiceUtils';
-import { getDashboardConfig } from './DashboardServiceUtils';
-import { getDatabaseConfig } from './DatabaseServiceUtils';
-import { getDriveConfig } from './DriveServiceUtils';
-import { getMessagingConfig } from './MessagingServiceUtils';
-import { getMetadataConfig } from './MetadataServiceUtils';
-import { getMlmodelConfig } from './MlmodelServiceUtils';
-import { getPipelineConfig } from './PipelineServiceUtils';
-import { getSearchServiceConfig } from './SearchServiceUtils';
-import { getSecurityConfig } from './SecurityServiceUtils';
+import { getServiceIcon } from './ServiceIconUtils';
+import { getDefaultInsightsTabWidgets } from './ServiceInsightsWidgets';
 import {
   getSearchIndexFromService,
   getTestConnectionName,
-} from './ServiceUtils';
-import { getStorageConfig } from './StorageServiceUtils';
-import { customServiceComparator } from './StringsUtils';
+} from './ServicePureUtils';
+import { customServiceComparator } from './StringUtils';
+
+type ServiceLogoStyle = {
+  iconURL?: string;
+};
+
+type ServiceLogoSource = {
+  serviceType?: string;
+  entityType?: string;
+  style?: ServiceLogoStyle;
+  service?: Partial<EntityReference> & { style?: ServiceLogoStyle };
+};
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -195,7 +104,6 @@ class ServiceUtilClassBase {
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
     PipelineServiceType.Snowplow,
-    DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.Informix,
     DatabaseServiceType.ServiceNow,
@@ -205,6 +113,10 @@ class ServiceUtilClassBase {
     DatabaseServiceType.MicrosoftFabric,
     PipelineServiceType.MicrosoftFabricPipeline,
     DatabaseServiceType.MicrosoftAccess,
+    DashboardServiceType.SapS4Hana,
+    DatabaseServiceType.SapSuccessFactors,
+    DatabaseServiceType.SapBw4Hana,
+    PipelineServiceType.SapBw4HanaPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -413,156 +325,68 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
-  private readonly serviceLogoMap = new Map<string, string>([
-    [this.DatabaseServiceTypeSmallCase.CustomDatabase, DATABASE_DEFAULT],
-    [this.DatabaseServiceTypeSmallCase.Mysql, MYSQL],
-    [this.DatabaseServiceTypeSmallCase.Redshift, REDSHIFT],
-    [this.DatabaseServiceTypeSmallCase.BigQuery, BIGQUERY],
-    [this.DatabaseServiceTypeSmallCase.BigTable, BIGTABLE],
-    [this.DatabaseServiceTypeSmallCase.Hive, HIVE],
-    [this.DatabaseServiceTypeSmallCase.Impala, IMPALA],
-    [this.DatabaseServiceTypeSmallCase.Postgres, POSTGRES],
-    [this.DatabaseServiceTypeSmallCase.Oracle, ORACLE],
-    [this.DatabaseServiceTypeSmallCase.Snowflake, SNOWFLAKE],
-    [this.DatabaseServiceTypeSmallCase.Mssql, MSSQL],
-    [this.DatabaseServiceTypeSmallCase.Athena, ATHENA],
-    [this.DatabaseServiceTypeSmallCase.Presto, PRESTO],
-    [this.DatabaseServiceTypeSmallCase.Trino, TRINO],
-    [this.DatabaseServiceTypeSmallCase.Glue, GLUE],
-    [this.DatabaseServiceTypeSmallCase.DomoDatabase, DOMO],
-    [this.DatabaseServiceTypeSmallCase.MariaDB, MARIADB],
-    [this.DatabaseServiceTypeSmallCase.Vertica, VERTICA],
-    [this.DatabaseServiceTypeSmallCase.AzureSQL, AZURESQL],
-    [this.DatabaseServiceTypeSmallCase.Clickhouse, CLICKHOUSE],
-    [this.DatabaseServiceTypeSmallCase.Databricks, DATABRICK],
-    [this.DatabaseServiceTypeSmallCase.UnityCatalog, UNITYCATALOG],
-    [this.DatabaseServiceTypeSmallCase.Db2, IBMDB2],
-    [this.DatabaseServiceTypeSmallCase.Doris, DORIS],
-    [this.DatabaseServiceTypeSmallCase.StarRocks, STARROCKS],
-    [this.DatabaseServiceTypeSmallCase.Druid, DRUID],
-    [this.DatabaseServiceTypeSmallCase.DynamoDB, DYNAMODB],
-    [this.DatabaseServiceTypeSmallCase.Exasol, EXASOL],
-    [this.DatabaseServiceTypeSmallCase.SingleStore, SINGLESTORE],
-    [this.DatabaseServiceTypeSmallCase.SQLite, SQLITE],
-    [this.DatabaseServiceTypeSmallCase.Salesforce, SALESFORCE],
-    [this.DatabaseServiceTypeSmallCase.SapHana, SAP_HANA],
-    [this.DatabaseServiceTypeSmallCase.SapERP, SAP_ERP],
-    [this.DatabaseServiceTypeSmallCase.DeltaLake, DELTALAKE],
-    [this.DatabaseServiceTypeSmallCase.PinotDB, PINOT],
-    [this.DatabaseServiceTypeSmallCase.Datalake, DATALAKE],
-    [this.DatabaseServiceTypeSmallCase.MongoDB, MONGODB],
-    [this.DatabaseServiceTypeSmallCase.Cassandra, CASSANDRA],
-    [this.DatabaseServiceTypeSmallCase.SAS, SAS],
-    [this.DatabaseServiceTypeSmallCase.Couchbase, COUCHBASE],
-    [this.DatabaseServiceTypeSmallCase.Cockroach, COCKROACH],
-    [this.DatabaseServiceTypeSmallCase.Greenplum, GREENPLUM],
-    [this.DatabaseServiceTypeSmallCase.Teradata, TERADATA],
-    [this.DatabaseServiceTypeSmallCase.Synapse, SYNAPSE],
-    [this.DatabaseServiceTypeSmallCase.BurstIQ, BURSTIQ],
-    [this.DatabaseServiceTypeSmallCase.Timescale, TIMESCALE],
-    [this.MessagingServiceTypeSmallCase.CustomMessaging, TOPIC_DEFAULT],
-    [this.MessagingServiceTypeSmallCase.Kafka, KAFKA],
-    [this.MessagingServiceTypeSmallCase.Redpanda, REDPANDA],
-    [this.MessagingServiceTypeSmallCase.Kinesis, KINESIS],
-    [this.DashboardServiceTypeSmallCase.CustomDashboard, DASHBOARD_DEFAULT],
-    [this.DashboardServiceTypeSmallCase.Superset, SUPERSET],
-    [this.DashboardServiceTypeSmallCase.Looker, LOOKER],
-    [this.DashboardServiceTypeSmallCase.Tableau, TABLEAU],
-    [this.DashboardServiceTypeSmallCase.Hex, HEX],
-    [this.DashboardServiceTypeSmallCase.Redash, REDASH],
-    [this.DashboardServiceTypeSmallCase.Metabase, METABASE],
-    [this.DashboardServiceTypeSmallCase.PowerBI, POWERBI],
-    [this.DashboardServiceTypeSmallCase.QuickSight, QUICKSIGHT],
-    [this.DashboardServiceTypeSmallCase.DomoDashboard, DOMO],
-    [this.DashboardServiceTypeSmallCase.Mode, MODE],
-    [this.DashboardServiceTypeSmallCase.QlikSense, QLIK_SENSE],
-    [this.DashboardServiceTypeSmallCase.QlikCloud, QLIK_SENSE],
-    [this.DashboardServiceTypeSmallCase.Lightdash, LIGHT_DASH],
-    [this.DashboardServiceTypeSmallCase.Sigma, SIGMA],
-    [this.DashboardServiceTypeSmallCase.MicroStrategy, MICROSTRATEGY],
-    [this.DashboardServiceTypeSmallCase.Grafana, GRAFANA],
-    [this.PipelineServiceTypeSmallCase.CustomPipeline, PIPELINE_DEFAULT],
-    [this.PipelineServiceTypeSmallCase.Airflow, AIRFLOW],
-    [this.PipelineServiceTypeSmallCase.Airbyte, AIRBYTE],
-    [this.PipelineServiceTypeSmallCase.Dagster, DAGSTER],
-    [this.PipelineServiceTypeSmallCase.Fivetran, FIVETRAN],
-    [this.PipelineServiceTypeSmallCase.DBTCloud, DBT],
-    [this.PipelineServiceTypeSmallCase.GluePipeline, GLUE],
-    [this.PipelineServiceTypeSmallCase.KafkaConnect, KAFKA],
-    [this.PipelineServiceTypeSmallCase.Spark, SPARK],
-    [this.PipelineServiceTypeSmallCase.Spline, SPLINE],
-    [this.PipelineServiceTypeSmallCase.Nifi, NIFI],
-    [this.PipelineServiceTypeSmallCase.DomoPipeline, DOMO],
-    [this.PipelineServiceTypeSmallCase.DatabricksPipeline, DATABRICK],
-    [this.PipelineServiceTypeSmallCase.OpenLineage, OPENLINEAGE],
-    [this.PipelineServiceTypeSmallCase.Flink, FLINK],
-    [this.MlModelServiceTypeSmallCase.CustomMlModel, ML_MODEL_DEFAULT],
-    [this.MlModelServiceTypeSmallCase.Mlflow, MLFLOW],
-    [this.MlModelServiceTypeSmallCase.Sklearn, SCIKIT],
-    [this.MlModelServiceTypeSmallCase.SageMaker, SAGEMAKER],
-    [this.MetadataServiceTypeSmallCase.Amundsen, AMUNDSEN],
-    [this.MetadataServiceTypeSmallCase.Atlas, ATLAS],
-    [this.MetadataServiceTypeSmallCase.AlationSink, ALATIONSINK],
-    [this.MetadataServiceTypeSmallCase.OpenMetadata, LOGO],
-    [this.StorageServiceTypeSmallCase.CustomStorage, CUSTOM_STORAGE_DEFAULT],
-    [this.StorageServiceTypeSmallCase.S3, AMAZON_S3],
-    [this.StorageServiceTypeSmallCase.Gcs, GCS],
-    [this.SearchServiceTypeSmallCase.CustomSearch, CUSTOM_SEARCH_DEFAULT],
-    [this.SearchServiceTypeSmallCase.ElasticSearch, ELASTIC_SEARCH],
-    [this.SearchServiceTypeSmallCase.OpenSearch, OPEN_SEARCH],
-    [this.ApiServiceTypeSmallCase.REST, REST_SERVICE],
-    [this.DriveServiceTypeSmallCase.CustomDrive, CUSTOM_DRIVE_DEFAULT],
-    [this.DriveServiceTypeSmallCase.GoogleDrive, GOOGLE_DRIVE],
-    [this.DriveServiceTypeSmallCase.SFTP, SFTP],
-  ]);
-
   private getDefaultLogoForServiceType(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
 
     if (serviceTypes.messagingServices.includes(type)) {
-      return TOPIC_DEFAULT;
+      return getServiceIcon('topicdefault');
     }
     if (serviceTypes.dashboardServices.includes(type)) {
-      return DASHBOARD_DEFAULT;
+      return getServiceIcon('dashboarddefault');
     }
     if (serviceTypes.pipelineServices.includes(type)) {
-      return PIPELINE_DEFAULT;
+      return getServiceIcon('pipelinedefault');
     }
     if (serviceTypes.databaseServices.includes(type)) {
-      return DATABASE_DEFAULT;
+      return getServiceIcon('databasedefault');
     }
     if (serviceTypes.mlmodelServices.includes(type)) {
-      return ML_MODEL_DEFAULT;
+      return getServiceIcon('mlmodeldefault');
     }
     if (serviceTypes.storageServices.includes(type)) {
-      return CUSTOM_STORAGE_DEFAULT;
+      return getServiceIcon('storagedefault');
     }
     if (serviceTypes.searchServices.includes(type)) {
-      return CUSTOM_SEARCH_DEFAULT;
+      return getServiceIcon('searchdefault');
     }
     if (serviceTypes.securityServices.includes(type)) {
-      return DEFAULT_SERVICE;
+      return getServiceIcon('securitydefault');
     }
     if (serviceTypes.driveServices.includes(type)) {
-      return CUSTOM_DRIVE_DEFAULT;
+      return getServiceIcon('drivedefault');
+    }
+    if (serviceTypes.apiServices.includes(type)) {
+      return getServiceIcon('restservice');
     }
 
-    return DEFAULT_SERVICE;
+    return getServiceIcon('defaultservice');
   }
 
-  public getServiceLogo(type: string): string {
-    const lowerType = toLower(type);
-    const logo = this.serviceLogoMap.get(lowerType);
-
-    return logo ?? this.getDefaultLogoForServiceType(type);
+  public getServiceLogo(type: string) {
+    return getServiceIcon(type) ?? this.getDefaultLogoForServiceType(type);
   }
 
-  public getServiceTypeLogo(searchSource: {
-    serviceType?: string;
-    entityType?: string;
-  }): string {
+  public getServiceTypeLogo(searchSource?: ServiceLogoSource): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
+
+    if (searchSource?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      const isQuickLink =
+        (searchSource as KnowledgePageSearchSource)?.pageType ===
+        PageType.QUICK_LINK;
+
+      return isQuickLink ? QuickLinkIcon : KnowledgeCenterIcon;
+    }
+
+    const ownIcon = searchSource?.style?.iconURL;
+    if (ownIcon) {
+      return ownIcon;
+    }
+
+    const serviceIcon = searchSource?.service?.style?.iconURL;
+    if (serviceIcon) {
+      return serviceIcon;
+    }
 
     // Handle entities that don't have serviceType by using entity-specific icons
     if (isEmpty(type)) {
@@ -647,58 +471,74 @@ class ServiceUtilClassBase {
     }
   }
 
-  public getPipelineServiceConfig(type: PipelineServiceType) {
+  public async getPipelineServiceConfig(type: PipelineServiceType) {
+    const { getPipelineConfig } = await import('./PipelineServiceUtils');
+
     return getPipelineConfig(type);
   }
 
-  public getDatabaseServiceConfig(type: DatabaseServiceType) {
+  public async getDatabaseServiceConfig(type: DatabaseServiceType) {
+    const { getDatabaseConfig } = await import('./DatabaseServicePureUtils');
+
     return getDatabaseConfig(type);
   }
 
-  public getDashboardServiceConfig(type: DashboardServiceType) {
+  public async getDashboardServiceConfig(type: DashboardServiceType) {
+    const { getDashboardConfig } = await import('./DashboardServiceUtils');
+
     return getDashboardConfig(type);
   }
 
-  public getMessagingServiceConfig(type: MessagingServiceType) {
+  public async getMessagingServiceConfig(type: MessagingServiceType) {
+    const { getMessagingConfig } = await import('./MessagingServiceUtils');
+
     return getMessagingConfig(type);
   }
 
-  public getMlModelServiceConfig(type: MlModelServiceType) {
+  public async getMlModelServiceConfig(type: MlModelServiceType) {
+    const { getMlmodelConfig } = await import('./MlmodelServiceUtils');
+
     return getMlmodelConfig(type);
   }
 
-  public getSearchServiceConfig(type: SearchServiceType) {
+  public async getSearchServiceConfig(type: SearchServiceType) {
+    const { getSearchServiceConfig } = await import('./SearchServiceUtils');
+
     return getSearchServiceConfig(type);
   }
 
-  public getStorageServiceConfig(type: StorageServiceType) {
+  public async getStorageServiceConfig(type: StorageServiceType) {
+    const { getStorageConfig } = await import('./StorageServiceUtils');
+
     return getStorageConfig(type);
   }
 
-  public getMetadataServiceConfig(type: MetadataServiceType) {
+  public async getMetadataServiceConfig(type: MetadataServiceType) {
+    const { getMetadataConfig } = await import('./MetadataServiceUtils');
+
     return getMetadataConfig(type);
   }
 
-  public getAPIServiceConfig(type: APIServiceType) {
+  public async getAPIServiceConfig(type: APIServiceType) {
+    const { getAPIConfig } = await import('./APIServiceUtils');
+
     return getAPIConfig(type);
   }
 
-  public getSecurityServiceConfig(type: SecurityServiceType) {
+  public async getSecurityServiceConfig(type: SecurityServiceType) {
+    const { getSecurityConfig } = await import('./SecurityServiceUtils');
+
     return getSecurityConfig(type);
   }
-  public getDriveServiceConfig(type: DriveServiceType) {
+
+  public async getDriveServiceConfig(type: DriveServiceType) {
+    const { getDriveConfig } = await import('./DriveServiceUtils');
+
     return getDriveConfig(type);
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const widgets: Record<string, React.ComponentType<any>> = {
-      AgentsStatusWidget,
-      PlatformInsightsWidget,
-      TotalDataAssetsWidget,
-    };
-
-    return widgets;
+    return getDefaultInsightsTabWidgets();
   }
 
   public getExtraInfo(): Promise<void> {
@@ -737,13 +577,20 @@ class ServiceUtilClassBase {
     return updatedData;
   }
 
-  public getAgentsTabWidgets() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const widgets: Record<string, React.ComponentType<any>> = {
-      MetadataAgentsWidget,
-    };
+  public getAgentsTabWidgets(): Record<
+    string,
+    ComponentType<Record<string, unknown>>
+  > {
+    return {};
+  }
 
-    return widgets;
+  public getExtraIngestionMenuItems(
+    _serviceCategory: ServiceCategory,
+    _serviceName?: string,
+    _navigate?: (path: string) => void,
+    _serviceDetails?: ServicesType
+  ): MenuProps['items'] {
+    return [];
   }
 
   public getSearchIndexFromEntityType(entityType: EntityType | string) {

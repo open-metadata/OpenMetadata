@@ -16,7 +16,7 @@ We need to define this class as we end up having
 multiple profilers per table and columns.
 """
 
-from typing import List, Optional, Type, Union
+from typing import List, Optional, Type, Union  # noqa: UP035
 
 from pydantic import ConfigDict
 from sqlalchemy import Column
@@ -33,16 +33,22 @@ from metadata.sampler.models import DatabaseAndSchemaConfig, TableConfig
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
+def processor_config_payload(processor) -> dict:
+    """Return a workflow processor's inner config, or an empty mapping when the
+    processor block or its config is absent."""
+    return (processor.model_dump().get("config") if processor else None) or {}
+
+
 class ProfilerProcessorConfig(ConfigModel):
     """
     Defines how we read the processor information
     from the workflow JSON definition
     """
 
-    profiler: Optional[ProfilerDef] = None
-    tableConfig: Optional[List[TableConfig]] = None
-    schemaConfig: Optional[List[DatabaseAndSchemaConfig]] = []
-    databaseConfig: Optional[List[DatabaseAndSchemaConfig]] = []
+    profiler: Optional[ProfilerDef] = None  # noqa: UP045
+    tableConfig: Optional[List[TableConfig]] = None  # noqa: N815, UP006, UP045
+    schemaConfig: Optional[List[DatabaseAndSchemaConfig]] = []  # noqa: N815, RUF012, UP006, UP045
+    databaseConfig: Optional[List[DatabaseAndSchemaConfig]] = []  # noqa: N815, RUF012, UP006, UP045
 
 
 class ProfilerResponse(ConfigModel):
@@ -66,7 +72,7 @@ class ThreadPoolMetrics(ConfigModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]
+    metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]  # noqa: UP006, UP007
     metric_type: MetricTypes
-    column: Optional[Union[Column, SQALikeColumn]] = None
-    table: Union[Table, type]
+    column: Optional[Union[Column, SQALikeColumn]] = None  # noqa: UP007, UP045
+    table: Union[Table, type]  # noqa: UP007

@@ -19,6 +19,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { DIRECTORY_DUMMY_DATA } from '../constants/Directory.constant';
@@ -29,35 +30,6 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import directoryClassBase, { DirectoryClassBase } from './DirectoryClassBase';
 import { DirectoryDetailPageTabProps } from './DirectoryDetailsUtils';
 
-// Mock dependencies
-jest.mock('../constants/CustomizeWidgets.constants', () => ({
-  CUSTOM_PROPERTIES_WIDGET: {
-    fullyQualifiedName: 'customProperties',
-    name: 'Custom Properties',
-    data: { gridSizes: ['small', 'medium', 'large'] },
-  },
-  DATA_PRODUCTS_WIDGET: {
-    fullyQualifiedName: 'dataProducts',
-    name: 'Data Products',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-  DESCRIPTION_WIDGET: {
-    fullyQualifiedName: 'description',
-    name: 'Description',
-    data: { gridSizes: ['small', 'medium', 'large'] },
-  },
-  GLOSSARY_TERMS_WIDGET: {
-    fullyQualifiedName: 'glossaryTerms',
-    name: 'Glossary Terms',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-  TAGS_WIDGET: {
-    fullyQualifiedName: 'tags',
-    name: 'Tags',
-    data: { gridSizes: ['medium', 'large'] },
-  },
-}));
-
 jest.mock('../constants/Directory.constant', () => ({
   DIRECTORY_DUMMY_DATA: {
     id: 'test-directory-id',
@@ -67,20 +39,6 @@ jest.mock('../constants/Directory.constant', () => ({
     children: [],
     service: { id: 'service-id', name: 'test-service', type: 'DriveService' },
   } as Directory,
-}));
-
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn((tabId: EntityTabs) => {
-    const labelMap: Partial<Record<EntityTabs, string>> = {
-      [EntityTabs.CHILDREN]: 'Children',
-      [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
-      [EntityTabs.LINEAGE]: 'Lineage',
-      [EntityTabs.CONTRACT]: 'Contract',
-      [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
-    };
-
-    return labelMap[tabId] || tabId;
-  }),
 }));
 
 jest.mock('./DirectoryDetailsUtils', () => ({
@@ -154,6 +112,7 @@ describe('DirectoryClassBase', () => {
         [DetailPageWidgetKeys.DATA_PRODUCTS]: 2,
         [DetailPageWidgetKeys.TAGS]: 2,
         [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+        [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
         [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       });
     });
@@ -200,28 +159,28 @@ describe('DirectoryClassBase', () => {
       expect(result[1]).toEqual({
         id: EntityTabs.ACTIVITY_FEED,
         name: EntityTabs.ACTIVITY_FEED,
-        displayName: 'Activity Feed',
+        displayName: 'label.activity-feed-and-task-plural',
         layout: [],
         editable: false,
       });
       expect(result[2]).toEqual({
         id: EntityTabs.LINEAGE,
         name: EntityTabs.LINEAGE,
-        displayName: 'Lineage',
+        displayName: 'label.lineage',
         layout: [],
         editable: false,
       });
       expect(result[3]).toEqual({
         id: EntityTabs.CONTRACT,
         name: EntityTabs.CONTRACT,
-        displayName: 'Contract',
+        displayName: 'label.contract',
         layout: [],
         editable: false,
       });
       expect(result[4]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
-        displayName: 'Custom Properties',
+        displayName: 'label.custom-property-plural',
         layout: [],
         editable: false,
       });
@@ -258,7 +217,7 @@ describe('DirectoryClassBase', () => {
     it('should return default layout for CHILDREN tab', () => {
       const result = directoryClass.getDefaultLayout(EntityTabs.CHILDREN);
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
 
       // Check left panel
       const leftPanel = result[0];
@@ -284,7 +243,7 @@ describe('DirectoryClassBase', () => {
     it('should return default layout for undefined tab', () => {
       const result = directoryClass.getDefaultLayout(undefined);
 
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(6);
       expect(result[0].i).toBe(DetailPageWidgetKeys.LEFT_PANEL);
     });
 
@@ -327,7 +286,7 @@ describe('DirectoryClassBase', () => {
     it('should return correct widget list', () => {
       const result = directoryClass.getCommonWidgetList();
 
-      expect(result).toHaveLength(6);
+      expect(result).toHaveLength(7);
       expect(result[0]).toBe(DESCRIPTION_WIDGET);
       expect(result[1]).toEqual({
         fullyQualifiedName: DetailPageWidgetKeys.DIRECTORY_CHILDREN,
@@ -340,6 +299,7 @@ describe('DirectoryClassBase', () => {
       expect(result[3]).toBe(TAGS_WIDGET);
       expect(result[4]).toBe(GLOSSARY_TERMS_WIDGET);
       expect(result[5]).toBe(CUSTOM_PROPERTIES_WIDGET);
+      expect(result[6]).toBe(KNOWLEDGE_ARTICLE_WIDGET);
     });
   });
 

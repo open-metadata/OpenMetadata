@@ -28,5 +28,5 @@ public interface OrchestratorContext {
 
   ReindexingProgressListener createProgressListener(EventPublisherJob jobData);
 
-  ReindexingJobContext createReindexingContext(boolean distributed);
+  ReindexingJobContext createReindexingContext();
 }

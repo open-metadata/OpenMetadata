@@ -97,11 +97,9 @@ import {
   updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityLinkFromType,
-} from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -139,6 +137,7 @@ export default function EntitySummaryPanel({
   pipelineViewMode,
   nodesPerLayer,
   onEntityUpdate,
+  afterEntityUpdate,
   ontologyExplorerRelationsSlot,
   sideDrawerOverviewOnly = false,
 }: Readonly<EntitySummaryPanelProps>) {
@@ -150,7 +149,8 @@ export default function EntitySummaryPanel({
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, getEntityPermissionByFqn } =
+    usePermissionProvider();
   const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -231,7 +231,16 @@ export default function EntitySummaryPanel({
         }
       }
 
-      const permissions = await getEntityPermission(type, idForPermission);
+      // In ontology data-mode, nodes are built with id=FQN (not a UUID).
+      // Passing that FQN to the by-ID endpoint returns empty permissions even
+      // for admins.
+      const isOntologyPanel =
+        panelPath === 'ontology-explorer' ||
+        panelPath === 'glossary-term-assets-tab';
+      const permissions =
+        isOntologyPanel && fqn
+          ? await getEntityPermissionByFqn(type, fqn)
+          : await getEntityPermission(type, idForPermission);
       setEntityPermissions(permissions);
     } catch {
       // Error - set default permission to allow viewing
@@ -347,6 +356,11 @@ export default function EntitySummaryPanel({
       const fetchFn = entityFetchMap[entityType];
       if (fetchFn) {
         entityPromise = fetchFn(fqn);
+      } else if (entityType === EntityType.TABLE_COLUMN) {
+        setEntityData(entityDetails.details as EntityData);
+        setIsEntityDataLoading(false);
+
+        return;
       } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
         entityPromise = entityUtilClassBase.getEntityByFqn(
           entityType,
@@ -477,19 +491,24 @@ export default function EntitySummaryPanel({
 
   const updateEntityData = useCallback(
     (updatedData: Partial<EntityData>) => {
+      // Keep the panel's own entityData in sync regardless of onEntityUpdate
+      // being wired up (e.g. the Lineage drawer). Otherwise entityData stays
+      // frozen at its initial fetch, so the panel shows stale values after an
+      // edit, and subsequent tag/tier patches get diffed against an
+      // out-of-date "before" array, producing invalid JSON Patches.
+      const newData = {
+        ...(entityData ?? entityDetails.details),
+        ...updatedData,
+      } as EntityData;
+      setEntityData(newData);
+
       if (onEntityUpdate) {
         onEntityUpdate(updatedData);
       } else {
-        setEntityData(
-          (prev) =>
-            ({
-              ...(prev ?? entityDetails.details),
-              ...updatedData,
-            } as EntityData)
-        );
+        afterEntityUpdate?.(newData);
       }
     },
-    [entityDetails.details, onEntityUpdate]
+    [entityData, entityDetails.details, onEntityUpdate, afterEntityUpdate]
   );
 
   const handleOwnerUpdate = useCallback(
@@ -512,13 +531,12 @@ export default function EntitySummaryPanel({
       entityLabel: string,
       returnValue?: T
     ): T | undefined => {
-      setEntityData(
-        (prev) =>
-          ({
-            ...(prev || entityDetails.details),
-            ...result,
-          } as EntityData)
-      );
+      const newData = {
+        ...(entityData || entityDetails.details),
+        ...result,
+      } as EntityData;
+      setEntityData(newData);
+      afterEntityUpdate?.(newData);
 
       showSuccessToast(
         t('server.update-entity-success', {
@@ -528,7 +546,7 @@ export default function EntitySummaryPanel({
 
       return returnValue;
     },
-    [entityDetails.details, t]
+    [entityData, entityDetails.details, afterEntityUpdate, t]
   );
 
   const handleTagsUpdate = useCallback(
@@ -825,9 +843,12 @@ export default function EntitySummaryPanel({
     const type = (get(entityDetails, 'details.entityType') ??
       EntityType.TABLE) as EntityType;
     const entity = entityData || entityDetails.details;
+    const SummaryPanelComponent =
+      searchClassBase.getEntitySummaryPanelComponents()[type] ??
+      DataAssetSummaryPanelV1;
 
     return (
-      <DataAssetSummaryPanelV1
+      <SummaryPanelComponent
         componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
         dataAsset={
           entity as SearchedDataProps['data'][number]['_source'] & {
@@ -837,6 +858,7 @@ export default function EntitySummaryPanel({
         entityType={type}
         highlights={highlights}
         panelPath={panelPath}
+        summaryEntityType={searchClassBase.getEntitySummaryPanelType(type)}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}

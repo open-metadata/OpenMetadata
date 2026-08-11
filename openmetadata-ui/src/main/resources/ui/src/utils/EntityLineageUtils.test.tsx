@@ -15,6 +15,7 @@ import { Edge, Node } from 'reactflow';
 import {
   EdgeDetails,
   LineageData,
+  LineageNodeType,
 } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -23,29 +24,40 @@ import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
-  addLineageHandler,
   createNewEdge,
   getAllTracedEdges,
-  getColumnFunctionValue,
   getColumnLineageData,
-  getConnectedNodesEdges,
-  getEntityChildrenAndLabel,
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getLineageTableConfig,
-  getNodesBoundsReactFlow,
   getUpdatedColumnsFromEdge,
-  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageEdgeUtils';
+import {
+  centerNodePosition,
+  getNodesBoundsReactFlow,
   getViewportForBoundsReactFlow,
+} from './EntityLineageLayoutUtils';
+import {
+  getConnectedNodesEdges,
+  getEntityChildrenAndLabel,
+  getUpstreamDownstreamNodesEdges,
+} from './EntityLineageNodeUtils';
+import {
+  addLineageHandler,
+  getColumnFunctionValue,
   parseLineageData,
-} from './EntityLineageUtils';
+} from './EntityLineagePureUtils';
+import { getLineageTableConfig } from './EntityLineageUtils';
 jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
 }));
 
 import { get, isEqual, uniqWith } from 'lodash';
-import { LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS } from '../constants/Lineage.constants';
+import {
+  LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS,
+  NODE_HEIGHT,
+  ZOOM_TRANSITION_DURATION,
+} from '../constants/Lineage.constants';
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
@@ -212,6 +224,25 @@ describe('Test EntityLineageUtils utility', () => {
       },
       { toColumn: 'column4', fromColumns: ['column5', 'column6'] },
     ]);
+  });
+
+  it('centerNodePosition should center on the node midpoint with the requested zoom', () => {
+    const setCenter = jest.fn();
+    const reactFlowInstance = {
+      setCenter,
+    } as unknown as Parameters<typeof centerNodePosition>[1];
+    const node = {
+      id: 'node1',
+      position: { x: 100, y: 200 },
+      width: 300,
+    } as Node;
+
+    centerNodePosition(node, reactFlowInstance, 1.25);
+
+    expect(setCenter).toHaveBeenCalledWith(250, 200 + NODE_HEIGHT / 2, {
+      duration: ZOOM_TRANSITION_DURATION,
+      zoom: 1.25,
+    });
   });
 
   it('getConnectedNodesEdges should return an object with nodes, edges, and nodeFqn properties for downstream', () => {
@@ -620,7 +651,9 @@ describe('Test EntityLineageUtils utility', () => {
 
   describe('getEntityChildrenAndLabel', () => {
     it('should return empty values for null input', () => {
-      const result = getEntityChildrenAndLabel(null as any);
+      const result = getEntityChildrenAndLabel(
+        null as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -633,7 +666,9 @@ describe('Test EntityLineageUtils utility', () => {
       const node = {
         entityType: 'UNKNOWN',
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -652,7 +687,9 @@ describe('Test EntityLineageUtils utility', () => {
         columns,
         flattenColumns: columns,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: columns,
@@ -666,7 +703,9 @@ describe('Test EntityLineageUtils utility', () => {
         entityType: EntityType.TABLE,
         columns: [],
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -683,7 +722,9 @@ describe('Test EntityLineageUtils utility', () => {
         columns,
         flattenChildren,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: flattenChildren,
@@ -701,7 +742,9 @@ describe('Test EntityLineageUtils utility', () => {
         entityType: EntityType.DASHBOARD,
         charts,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: charts,
@@ -715,7 +758,9 @@ describe('Test EntityLineageUtils utility', () => {
         entityType: EntityType.DASHBOARD,
         charts: [],
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -733,7 +778,9 @@ describe('Test EntityLineageUtils utility', () => {
         entityType: EntityType.MLMODEL,
         mlFeatures,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: mlFeatures,
@@ -747,7 +794,9 @@ describe('Test EntityLineageUtils utility', () => {
         entityType: EntityType.MLMODEL,
         mlFeatures: [],
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -766,7 +815,9 @@ describe('Test EntityLineageUtils utility', () => {
         columns,
         flattenColumns: columns,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: columns,
@@ -786,7 +837,9 @@ describe('Test EntityLineageUtils utility', () => {
           columns,
         },
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: columns,
@@ -799,7 +852,9 @@ describe('Test EntityLineageUtils utility', () => {
       const node = {
         entityType: EntityType.CONTAINER,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -819,7 +874,9 @@ describe('Test EntityLineageUtils utility', () => {
           schemaFields,
         },
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: schemaFields,
@@ -832,7 +889,9 @@ describe('Test EntityLineageUtils utility', () => {
       const node = {
         entityType: EntityType.TOPIC,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -852,7 +911,9 @@ describe('Test EntityLineageUtils utility', () => {
           schemaFields,
         },
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: schemaFields,
@@ -872,7 +933,9 @@ describe('Test EntityLineageUtils utility', () => {
           schemaFields,
         },
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: schemaFields,
@@ -893,7 +956,9 @@ describe('Test EntityLineageUtils utility', () => {
           schemaFields: requestFields,
         },
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: responseFields,
@@ -906,7 +971,9 @@ describe('Test EntityLineageUtils utility', () => {
       const node = {
         entityType: EntityType.API_ENDPOINT,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -924,7 +991,9 @@ describe('Test EntityLineageUtils utility', () => {
         entityType: EntityType.SEARCH_INDEX,
         fields,
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: fields,
@@ -938,7 +1007,9 @@ describe('Test EntityLineageUtils utility', () => {
         entityType: EntityType.SEARCH_INDEX,
         fields: [],
       };
-      const result = getEntityChildrenAndLabel(node as any);
+      const result = getEntityChildrenAndLabel(
+        node as unknown as LineageNodeType
+      );
 
       expect(result).toEqual({
         children: [],
@@ -1370,17 +1441,19 @@ describe('parseLineageData', () => {
     jest.clearAllMocks();
 
     // Setup default mock implementations
-    mockUniqWith.mockImplementation((array: any) => array || []);
-    mockIsEqual.mockImplementation((a: any, b: any) => a === b);
-    mockGet.mockImplementation((obj: any, path: any, defaultValue?: any) => {
+    mockUniqWith.mockImplementation((array) => array ?? []);
+    mockIsEqual.mockImplementation((a, b) => a === b);
+    mockGet.mockImplementation((obj, path, defaultValue?) => {
       if (!obj || !path) {
         return defaultValue;
       }
-      const pathStr = Array.isArray(path) ? path.join('.') : String(path);
+      const pathStr = Array.isArray(path)
+        ? (path as string[]).join('.')
+        : String(path);
       const keys = pathStr.split('.');
-      let result = obj;
+      let result: unknown = obj;
       for (const key of keys) {
-        result = result?.[key];
+        result = (result as Record<string, unknown>)?.[key];
         if (result === undefined) {
           return defaultValue;
         }
@@ -1596,13 +1669,17 @@ describe('parseLineageData', () => {
   describe('Pagination handling', () => {
     it('should create load more nodes for entities with pagination', () => {
       // Mock get function to return pipeline type for filtering
-      mockGet.mockImplementation((obj: any, path: any) => {
+      mockGet.mockImplementation((obj, path) => {
         if (path === 'entityType') {
-          return obj?.entityType || EntityType.TABLE;
+          return (
+            (obj as Record<string, unknown>)?.entityType || EntityType.TABLE
+          );
         }
-        const pathStr = Array.isArray(path) ? path.join('.') : String(path);
+        const pathStr = Array.isArray(path)
+          ? (path as string[]).join('.')
+          : String(path);
 
-        return obj?.[pathStr];
+        return (obj as Record<string, unknown>)?.[pathStr];
       });
 
       const result = parseLineageData(
@@ -1636,13 +1713,15 @@ describe('parseLineageData', () => {
         },
       };
 
-      mockGet.mockImplementation((obj: any, path: any) => {
+      mockGet.mockImplementation((obj, path) => {
         if (path === 'entityType') {
-          return obj?.entityType;
+          return (obj as Record<string, unknown>)?.entityType;
         }
-        const pathStr = Array.isArray(path) ? path.join('.') : String(path);
+        const pathStr = Array.isArray(path)
+          ? (path as string[]).join('.')
+          : String(path);
 
-        return obj?.[pathStr];
+        return (obj as Record<string, unknown>)?.[pathStr];
       });
 
       const dataWithPipeline = {
@@ -1742,11 +1821,11 @@ describe('parseLineageData', () => {
       };
 
       // Mock uniqWith to actually remove duplicates
-      mockUniqWith.mockImplementation((array: any, compareFn?: any) => {
+      mockUniqWith.mockImplementation((array, compareFn?) => {
         if (!array) {
           return [];
         }
-        const unique: any[] = [];
+        const unique: unknown[] = [];
         for (const item of array) {
           if (
             !unique.some((existing) =>
@@ -1757,12 +1836,15 @@ describe('parseLineageData', () => {
           }
         }
 
-        return unique;
+        return unique as ReturnType<typeof uniqWith>;
       });
 
-      mockIsEqual.mockImplementation(
-        (a: any, b: any) => a.fullyQualifiedName === b.fullyQualifiedName
-      );
+      mockIsEqual.mockImplementation((a, b) => {
+        const aObj = a as { fullyQualifiedName?: string };
+        const bObj = b as { fullyQualifiedName?: string };
+
+        return aObj.fullyQualifiedName === bObj.fullyQualifiedName;
+      });
 
       parseLineageData(dataWithDuplicates, mockEntityFqn, mockRootFqn);
 
@@ -1780,7 +1862,7 @@ describe('getLineageTableConfig', () => {
   });
 
   it('should return empty arrays for null CSV data', () => {
-    const result = getLineageTableConfig(null as any);
+    const result = getLineageTableConfig(null as unknown as string[][]);
 
     expect(result.columns).toEqual([]);
     expect(result.dataSource).toEqual([]);
@@ -1913,5 +1995,194 @@ describe('getLineageTableConfig', () => {
       toEntityFQN: '',
       key: '1',
     });
+  });
+});
+
+describe('extractTempLineageNodes (via parseLineageData)', () => {
+  const actualLodash = jest.requireActual('lodash');
+
+  beforeEach(() => {
+    mockUniqWith.mockImplementation(actualLodash.uniqWith);
+    mockIsEqual.mockImplementation(actualLodash.isEqual);
+    mockGet.mockImplementation(actualLodash.get);
+  });
+
+  const makeNodeData = (id: string, fqn: string) => ({
+    entity: {
+      id,
+      type: EntityType.TABLE,
+      fullyQualifiedName: fqn,
+      name: fqn,
+      columns: [],
+    },
+    paging: { entityDownstreamCount: 0, entityUpstreamCount: 0 },
+  });
+
+  const makeLineageData = (
+    downstreamEdges: Record<string, EdgeDetails> = {}
+  ): LineageData => ({
+    nodes: {
+      'id-a': makeNodeData('id-a', 'db.tableA'),
+      'id-b': makeNodeData('id-b', 'db.tableB'),
+    },
+    downstreamEdges,
+    upstreamEdges: {},
+  });
+
+  it('creates a temp node with correct shape for an unknown FQN', () => {
+    const data = makeLineageData({
+      e1: {
+        fromEntity: {
+          id: 'id-a',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableA',
+        },
+        toEntity: {
+          id: 'id-b',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableB',
+        },
+        tempLineageTables: [
+          { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+        ],
+      },
+    });
+
+    const { nodes } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const tempNodes = nodes.filter((n) => n.isTempTable);
+
+    expect(tempNodes).toHaveLength(1);
+    expect(tempNodes[0].id).toBe('temp_tmp_staging');
+    expect(tempNodes[0].fullyQualifiedName).toBe('tmp_staging');
+    expect(tempNodes[0].entityType).toBe(EntityType.TABLE);
+    expect(tempNodes[0].isTempTable).toBe(true);
+  });
+
+  it('does not create a temp node when the FQN already exists as a real node', () => {
+    const data = makeLineageData({
+      e1: {
+        fromEntity: {
+          id: 'id-a',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableA',
+        },
+        toEntity: {
+          id: 'id-b',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableB',
+        },
+        tempLineageTables: [
+          { fromEntity: 'db.tableA', toEntity: 'tmp_staging' },
+        ],
+      },
+    });
+
+    const { nodes } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const tempNodes = nodes.filter((n) => n.isTempTable);
+
+    expect(tempNodes).toHaveLength(1);
+    expect(tempNodes[0].fullyQualifiedName).toBe('tmp_staging');
+  });
+
+  it('deduplicates temp nodes when the same FQN appears in multiple hops', () => {
+    const data = makeLineageData({
+      e1: {
+        fromEntity: {
+          id: 'id-a',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableA',
+        },
+        toEntity: {
+          id: 'id-b',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableB',
+        },
+        tempLineageTables: [
+          { fromEntity: 'tmp_staging', toEntity: 'tmp_mid' },
+          { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+        ],
+      },
+    });
+
+    const { nodes } = parseLineageData(data, 'db.tableA', 'db.tableA');
+    const stagingNodes = nodes.filter(
+      (n) => n.fullyQualifiedName === 'tmp_staging'
+    );
+
+    expect(stagingNodes).toHaveLength(1);
+  });
+
+  it('creates one hop edge per tempLineageTables entry', () => {
+    const data = makeLineageData({
+      e1: {
+        fromEntity: {
+          id: 'id-a',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableA',
+        },
+        toEntity: {
+          id: 'id-b',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableB',
+        },
+        tempLineageTables: [
+          { fromEntity: 'db.tableA', toEntity: 'tmp_staging' },
+          { fromEntity: 'tmp_staging', toEntity: 'db.tableB' },
+        ],
+      },
+    });
+
+    const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
+
+    expect(edges).toHaveLength(2);
+    expect(edges[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
+    expect(edges[0].toEntity.fullyQualifiedName).toBe('tmp_staging');
+    expect(edges[1].fromEntity.fullyQualifiedName).toBe('tmp_staging');
+    expect(edges[1].toEntity.fullyQualifiedName).toBe('db.tableB');
+  });
+
+  it('removes the original edge when it is expanded into temp hop edges', () => {
+    const data = makeLineageData({
+      e1: {
+        fromEntity: {
+          id: 'id-a',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableA',
+        },
+        toEntity: {
+          id: 'id-b',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableB',
+        },
+        tempLineageTables: [{ fromEntity: 'db.tableA', toEntity: 'db.tableB' }],
+      },
+    });
+
+    const { edges } = parseLineageData(data, 'db.tableA', 'db.tableA');
+
+    expect(edges.some((e) => e.tempLineageTables?.length)).toBe(false);
+  });
+
+  it('preserves regular edges that have no tempLineageTables', () => {
+    const data = makeLineageData({
+      e1: {
+        fromEntity: {
+          id: 'id-a',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableA',
+        },
+        toEntity: {
+          id: 'id-b',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'db.tableB',
+        },
+      },
+    });
+
+    const { edges, nodes } = parseLineageData(data, 'db.tableA', 'db.tableA');
+
+    expect(edges).toHaveLength(1);
+    expect(edges[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
+    expect(nodes.filter((n) => n.isTempTable)).toHaveLength(0);
   });
 });

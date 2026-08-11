@@ -1,0 +1,62 @@
+# Apache Shiro configuration for Fuseki security — TEMPLATE FILE.
+#
+# Do NOT mount or copy this file as-is into /fuseki/shiro.ini. It contains
+# `${FUSEKI_ADMIN_PASSWORD}` and `${FUSEKI_OPENMETADATA_PASSWORD}` placeholders
+# that Apache Shiro's INI realm does NOT interpolate — if Fuseki loads the
+# raw template, the literal string `${FUSEKI_ADMIN_PASSWORD}` becomes the
+# admin password, which silently lets `${FUSEKI_ADMIN_PASSWORD}` log in.
+#
+# The entrypoint.sh in this image envsubsts the file into /fuseki/shiro.ini
+# at container start. If you need a different layout, render the substituted
+# file yourself and bind-mount it onto /fuseki/shiro.ini WITH
+# FUSEKI_RENDER_SHIRO=false set on the container.
+#
+# This integrates with OpenMetadata's authentication
+
+[main]
+# Allow anonymous read access, require auth for writes
+anon = org.apache.shiro.web.filter.authc.AnonymousFilter
+authcBasic = org.apache.shiro.web.filter.authc.BasicHttpAuthenticationFilter
+
+# Fuseki 5.x uses Shiro without a session manager configured by default; if
+# the INI doesn't override the SubjectDAO it ends up trying to use the
+# default session storage and throws `IllegalStateException: No SessionManager`
+# on the first authenticated request. Disable session storage so every
+# request re-authenticates via Basic auth (stateless, REST-style).
+sessionStorageEvaluator = org.apache.shiro.web.mgt.DefaultWebSessionStorageEvaluator
+sessionStorageEvaluator.sessionStorageEnabled = false
+securityManager.subjectDAO.sessionStorageEvaluator = $sessionStorageEvaluator
+
+# Credentials.
+#
+# This file is a TEMPLATE. The entrypoint envsubsts the FUSEKI_ADMIN_PASSWORD
+# and FUSEKI_OPENMETADATA_PASSWORD variables into the [users] section below
+# at container start. Defaults applied in the entrypoint:
+#   admin user password         = admin
+#   openmetadata user password  = openmetadata-secret
+# (Variable names intentionally NOT written with `$` here so the rendered
+# file in /fuseki/shiro.ini does not leak the substituted password back
+# into this comment block.)
+#
+# The admin user carries BOTH the `admin` (server-management) and `writer`
+# (data-mutation) roles so a single credential covers /$/datasets, /$/compact,
+# /openmetadata/data and /openmetadata/update — Shiro evaluates roles[] as
+# membership, not permission, so admin's `*` permission alone does NOT satisfy
+# roles[writer]; explicit membership in both is required.
+[users]
+admin = ${FUSEKI_ADMIN_PASSWORD}, admin, writer
+openmetadata = ${FUSEKI_OPENMETADATA_PASSWORD}, writer
+
+[roles]
+admin = *
+writer = update:*, upload:*, data:*
+
+[urls]
+/$/ping = anon
+/$/stats/* = anon
+/openmetadata/sparql = anon
+/openmetadata/query = anon
+/openmetadata/update = authcBasic, roles[writer]
+/openmetadata/upload = authcBasic, roles[writer]
+/openmetadata/data = authcBasic, roles[writer]
+/** = authcBasic, roles[admin]

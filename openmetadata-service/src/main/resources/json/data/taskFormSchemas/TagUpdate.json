@@ -1,0 +1,105 @@
+{
+  "name": "TagUpdate",
+  "displayName": "Tag Update",
+  "taskType": "TagUpdate",
+  "taskCategory": "MetadataUpdate",
+  "formSchema": {
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+      "fieldPath": {
+        "type": "string",
+        "title": "Field Path"
+      },
+      "currentTags": {
+        "type": "array",
+        "title": "Current Tags",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "tagsToAdd": {
+        "type": "array",
+        "title": "Tags To Add",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "tagsToRemove": {
+        "type": "array",
+        "title": "Tags To Remove",
+        "items": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "operation": {
+        "type": "string",
+        "title": "Operation"
+      },
+      "source": {
+        "type": "string",
+        "title": "Source"
+      },
+      "confidence": {
+        "type": "number",
+        "title": "Confidence"
+      }
+    }
+  },
+  "uiSchema": {
+    "ui:handler": {
+      "type": "tagUpdate",
+      "permission": "EDIT_TAGS",
+      "fieldPathField": "fieldPath",
+      "currentTagsField": "currentTags",
+      "addTagsField": "tagsToAdd",
+      "removeTagsField": "tagsToRemove"
+    },
+    "ui:editablePayload": {
+      "fieldPathField": "fieldPath",
+      "currentTagsField": "currentTags",
+      "addTagsField": "tagsToAdd",
+      "removeTagsField": "tagsToRemove"
+    },
+    "ui:resolution": {
+      "mode": "tagMerge",
+      "currentField": "currentTags",
+      "addField": "tagsToAdd",
+      "removeField": "tagsToRemove"
+    },
+    "ui:order": [
+      "tagsToAdd",
+      "fieldPath",
+      "currentTags",
+      "tagsToRemove",
+      "operation",
+      "source",
+      "confidence"
+    ],
+    "fieldPath": {
+      "ui:widget": "hidden"
+    },
+    "currentTags": {
+      "ui:widget": "hidden"
+    },
+    "tagsToRemove": {
+      "ui:widget": "hidden"
+    },
+    "operation": {
+      "ui:widget": "hidden"
+    },
+    "source": {
+      "ui:widget": "hidden"
+    },
+    "confidence": {
+      "ui:widget": "hidden"
+    },
+    "tagsToAdd": {
+      "ui:widget": "tagsTabs"
+    }
+  },
+  "fullyQualifiedName": "TagUpdate"
+}

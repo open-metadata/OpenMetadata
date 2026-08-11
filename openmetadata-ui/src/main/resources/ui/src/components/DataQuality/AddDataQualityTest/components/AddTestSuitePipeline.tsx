@@ -30,7 +30,7 @@ import {
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
-import { escapeESReservedCharacters } from '../../../../utils/StringsUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';

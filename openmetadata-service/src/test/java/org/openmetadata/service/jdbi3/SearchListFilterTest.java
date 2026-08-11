@@ -147,6 +147,31 @@ public class SearchListFilterTest {
   }
 
   @Test
+  void testContextMemoryFiltersBuildPinnedAndAssetClauses() {
+    SearchListFilter searchListFilter = new SearchListFilter(Include.ALL);
+    searchListFilter.addQueryParam("pinned", true);
+    searchListFilter.addQueryParam("assets", "asset-1,asset-2");
+
+    JsonNode actual = parse(searchListFilter.getCondition(Entity.CONTEXT_MEMORY));
+
+    assertTrue(actual.at("/query/bool/filter/0/term/pinned").asBoolean());
+    assertEquals(
+        "asset-1",
+        actual.at("/query/bool/filter/1/bool/should/0/terms/primaryEntity.id/0").asText());
+    assertEquals(
+        "asset-2",
+        actual.at("/query/bool/filter/1/bool/should/0/terms/primaryEntity.id/1").asText());
+    assertEquals(
+        "relatedEntities", actual.at("/query/bool/filter/1/bool/should/1/nested/path").asText());
+    assertEquals(
+        "asset-1",
+        actual
+            .at("/query/bool/filter/1/bool/should/1/nested/query/terms/relatedEntities.id/0")
+            .asText());
+    assertTrue(actual.at("/query/bool/filter/1/bool/should/1/nested/ignore_unmapped").asBoolean());
+  }
+
+  @Test
   void testTestCaseConditionBuildsAllEntitySpecificFilters() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("entityFQN", "service.db.schema.table");
@@ -178,7 +203,7 @@ public class SearchListFilterTest {
     assertTrue(actual.contains("{\"range\": {\"testCaseResult.timestamp\": {\"gte\": 10}}}"));
     assertTrue(actual.contains("{\"range\": {\"testCaseResult.timestamp\": {\"lte\": 20}}}"));
     assertTrue(actual.contains("{\"terms\":{\"tags.tagFQN\":[\"PII\", \"Sensitive\"]}}"));
-    assertTrue(actual.contains("{\"terms\":{\"tags.tagFQN\":[\"Tier.Tier1\"]}}"));
+    assertTrue(actual.contains("{\"term\":{\"tier.tagFQN\":\"tier.tier1\"}}"));
     assertTrue(actual.contains("{\"term\": {\"service.name\": \"sample-service\"}}"));
     assertTrue(actual.contains("{\"term\": {\"dataQualityDimension\": \"Accuracy\"}}"));
     assertTrue(actual.contains("{\"term\": {\"followers.keyword\": \"follower-id\"}}"));

@@ -1,3 +1,4 @@
+import { cx } from '@/utils/cx';
 import type { ReactNode } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
@@ -10,7 +11,6 @@ import {
   Tooltip as AriaTooltip,
   TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
-import { cx } from '@/utils/cx';
 
 interface TooltipProps
   extends AriaTooltipTriggerComponentProps,
@@ -97,7 +97,8 @@ export const Tooltip = ({
         className={({ isEntering, isExiting }) =>
           cx(
             isEntering && 'tw:ease-out tw:animate-in',
-            isExiting && 'tw:ease-in tw:animate-out'
+            isExiting && 'tw:ease-in tw:animate-out',
+            'tw:break-words' // Ensure long words in the tooltip wrap instead of overflowing.
           )
         }
         crossOffset={crossOffset ?? calculatedCrossOffset}

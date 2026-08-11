@@ -12,6 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse } from 'Models';
 import {
   ContractAllResult,
   ContractResultFilter,
@@ -46,6 +47,24 @@ export const listContracts = async (params: ListContractsParams) => {
   });
 
   return response.data;
+};
+
+export const searchContracts = async (
+  query: string,
+  limit = 25
+): Promise<DataContract[]> => {
+  const response = await APIClient.get<PagingResponse<DataContract[]>>(
+    `${BASE_URL}/search`,
+    {
+      params: {
+        q: query || undefined,
+        limit,
+        offset: 0,
+      },
+    }
+  );
+
+  return response.data.data;
 };
 
 export const getContract = async (fqn: string) => {
@@ -85,10 +104,17 @@ export const getContractByEntityId = async (
   entityType: EntityType = EntityType.TABLE,
   fields: string[] = []
 ) => {
+  // Build the query string conditionally: previously we always appended
+  // `&fields=${fields.join(',')}`, which produced `?fields=` (empty string)
+  // when callers omitted the fields argument. The backend treated that as
+  // a request to evaluate every field and the call could time out at 1
+  // minute on heavyweight contracts. Drop the param entirely when empty.
+  const params = new URLSearchParams({ entityId, entityType });
+  if (fields.length > 0) {
+    params.set('fields', fields.join(','));
+  }
   const response = await APIClient.get<DataContract>(
-    `/dataContracts/entity?entityId=${entityId}&entityType=${entityType}&fields=${fields.join(
-      ','
-    )}`
+    `/dataContracts/entity?${params.toString()}`
   );
 
   return response.data;

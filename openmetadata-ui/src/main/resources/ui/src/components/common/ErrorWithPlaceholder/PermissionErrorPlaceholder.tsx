@@ -14,7 +14,7 @@ import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../enums/common.enum';
-import { Transi18next } from '../../../utils/CommonUtils';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { PermissionPlaceholderProps } from './placeholder.interface';
 
 const PermissionErrorPlaceholder = ({

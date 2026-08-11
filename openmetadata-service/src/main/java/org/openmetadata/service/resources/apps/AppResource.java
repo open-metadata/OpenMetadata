@@ -9,6 +9,8 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,6 +49,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -59,11 +63,13 @@ import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
@@ -82,6 +88,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -94,6 +101,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.quartz.SchedulerException;
@@ -108,6 +116,7 @@ import org.quartz.SchedulerException;
 @Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/";
+  private static final String REDACTED_APP_SNAPSHOT = "{}";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owners";
@@ -211,6 +220,37 @@ public class AppResource extends EntityResource<App, AppRepository> {
     app.setPrivateConfiguration(null);
   }
 
+  private Object stripRuntimeSecretsFromSnapshot(Object snapshot) {
+    Object stripped;
+    try {
+      App app = JsonUtils.readValue((String) snapshot, App.class);
+      unsetAppRuntimeProperties(app);
+      stripped = JsonUtils.pojoToJson(app);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to parse app version snapshot as App; redacting runtime secrets from raw JSON",
+          e);
+      stripped = redactRuntimeSecretsFromRawSnapshot(snapshot);
+    }
+    return stripped;
+  }
+
+  static Object redactRuntimeSecretsFromRawSnapshot(Object snapshot) {
+    Object redacted = REDACTED_APP_SNAPSHOT;
+    try {
+      JsonNode node = JsonUtils.readTree(snapshot.toString());
+      if (node instanceof ObjectNode objectNode) {
+        objectNode.remove(AppRepository.RUNTIME_SECRET_FIELDS);
+        redacted = objectNode.toString();
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to redact runtime secrets from raw app version snapshot; dropping snapshot body",
+          e);
+    }
+    return redacted;
+  }
+
   @GET
   @Operation(
       operationId = "listInstalledApplications",
@@ -267,8 +307,19 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentTypes);
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<App> applications =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    applications
+        .getData()
+        .forEach(
+            app -> {
+              app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName()));
+              // Defense-in-depth: the list path does not inject runtime secrets today, but strip
+              // them unconditionally so a future change that decrypts here cannot leak them.
+              unsetAppRuntimeProperties(app);
+            });
+    return applications;
   }
 
   @GET
@@ -374,8 +425,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
               case SUCCESS -> AppRunRecord.Status.SUCCESS;
               case FAILED, PARTIAL_SUCCESS -> AppRunRecord.Status.FAILED;
               case RUNNING -> AppRunRecord.Status.RUNNING;
+              case STOPPED -> AppRunRecord.Status.STOPPED;
             })
-        .withConfig(pipelineStatus.getConfig());
+        .withConfig(pipelineStatus.getConfig())
+        .withProperties(
+            pipelineStatus.getRunId() != null
+                ? Map.of("pipelineRunId", pipelineStatus.getRunId())
+                : null);
   }
 
   private ResultList<AppRunRecord> sortRunsByStartTime(ResultList<AppRunRecord> runs) {
@@ -427,7 +483,19 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     CollectionDAO.SearchIndexRetryQueueDAO retryQueueDAO =
         Entity.getCollectionDAO().searchIndexRetryQueueDAO();
-    var records = retryQueueDAO.listAll(limitParam, offset);
+    var records =
+        retryQueueDAO.listAll(limitParam, offset).stream()
+            .map(
+                record ->
+                    new CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord(
+                        record.getEntityId(),
+                        record.getEntityFqn(),
+                        SearchIndexRetryQueue.visibleFailureReason(record.getFailureReason()),
+                        record.getStatus(),
+                        record.getEntityType(),
+                        record.getRetryCount(),
+                        record.getClaimedAt()))
+            .toList();
     int total = retryQueueDAO.countAll();
     return Response.ok(new ResultList<>(records, offset, total)).build();
   }
@@ -527,7 +595,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           @DefaultValue("")
-          String after) {
+          String after,
+      @Parameter(
+              description =
+                  "Pipeline run ID to fetch logs for a specific run. "
+                      + "If not provided, returns logs for the latest run.",
+              schema = @Schema(type = "string"))
+          @QueryParam("runId")
+          String runId,
+      @Parameter(
+              description = "Maximum number of lines to return (only applies to streamable logs)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("1000")
+          int limit) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
     if (installation.getAppType().equals(AppType.Internal)) {
       AppRunRecord latestRun = repository.getLatestAppRunsOptional(installation).orElse(null);
@@ -542,14 +623,59 @@ public class AppResource extends EntityResource<App, AppRepository> {
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
-        return Response.ok(
-                pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after),
-                MediaType.APPLICATION_JSON_TYPE)
-            .build();
+                uriInfo,
+                pipelineRef.getId(),
+                ingestionPipelineRepository.getFields(
+                    FIELD_OWNERS + ",pipelineStatuses,ingestionRunner"));
+        Map<String, String> lastLogs =
+            getAppLastLogs(ingestionPipelineRepository, ingestionPipeline, after, runId, limit);
+        return Response.ok(lastLogs, MediaType.APPLICATION_JSON_TYPE).build();
       }
     }
     throw new BadRequestException("Failed to Get Logs for the Installation.");
+  }
+
+  private Map<String, String> getAppLastLogs(
+      IngestionPipelineRepository ingestionPipelineRepository,
+      IngestionPipeline ingestionPipeline,
+      String after,
+      String runId,
+      int limit) {
+    boolean useStreamableLogs =
+        Boolean.TRUE.equals(ingestionPipeline.getEnableStreamableLogs())
+            || (ingestionPipeline.getIngestionRunner() != null
+                && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
+                    ingestionPipeline.getIngestionRunner()));
+    if (useStreamableLogs) {
+      PipelineStatus latestStatus =
+          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+      String effectiveRunId =
+          !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
+      if (!nullOrEmpty(effectiveRunId)) {
+        UUID runUuid;
+        try {
+          runUuid = UUID.fromString(effectiveRunId);
+        } catch (IllegalArgumentException e) {
+          throw new BadRequestException("Invalid runId format: " + effectiveRunId);
+        }
+        Map<String, Object> raw =
+            ingestionPipelineRepository.getLogs(
+                ingestionPipeline.getFullyQualifiedName(), runUuid, after, limit);
+        Map<String, String> lastLogs =
+            raw.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().toString()));
+        Object logs = lastLogs.remove("logs");
+        if (logs != null) {
+          lastLogs.put(
+              PipelineServiceClientInterface.TYPE_TO_TASK.get(
+                  ingestionPipeline.getPipelineType().toString()),
+              logs.toString());
+        }
+        return lastLogs;
+      }
+    }
+    return pipelineServiceClient.getIngestionLogs(ingestionPipeline, after, runId);
   }
 
   @GET
@@ -627,7 +753,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    // Defense-in-depth: version snapshots are already stripped at storage time
+    // (AppRepository.serializeForVersionHistory) and by the 2.0.0 migration, but strip each
+    // returned snapshot too so this path never depends on those guarantees alone.
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(this::stripRuntimeSecretsFromSnapshot)
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
@@ -663,11 +798,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Include include) {
     App app = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
-      return ApplicationHandler.getInstance()
-          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
-    } else {
-      return app;
+      app =
+          ApplicationHandler.getInstance()
+              .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
     }
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @GET
@@ -705,11 +841,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Include include) {
     App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
-      return ApplicationHandler.getInstance()
-          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
-    } else {
-      return app;
+      app =
+          ApplicationHandler.getInstance()
+              .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
     }
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @GET
@@ -740,7 +877,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    App app = super.getVersionInternal(securityContext, id, version);
+    // Defense-in-depth: no upstream code sets runtime secrets on the version path today, but strip
+    // them so the guarantee holds structurally rather than by that assumption.
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @POST
@@ -1227,7 +1368,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
+          String name,
+      @Parameter(
+              description = "Pipeline run ID to stop a specific run",
+              schema = @Schema(type = "string"))
+          @QueryParam("runId")
+          String runId) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
@@ -1241,15 +1387,146 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .entity("Application stop in progress. Please check status via.")
             .build();
       } else {
-        if (!app.getPipelines().isEmpty()) {
-          IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
-          PipelineServiceClientResponse response =
-              pipelineServiceClient.killIngestion(ingestionPipeline);
-          return Response.status(response.getCode()).entity(response).build();
+        if (nullOrEmpty(app.getPipelines())) {
+          throw new BadRequestException(
+              String.format(
+                  "Application [%s] supports interrupts but has no associated pipeline configured.",
+                  name));
+        }
+        IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
+        if (runId != null && !runId.isBlank()) {
+          return stopSpecificRun(uriInfo, ingestionPipeline, runId);
+        } else {
+          return stopAllRuns(app, ingestionPipeline);
         }
       }
     }
     throw new BadRequestException("Application does not support Interrupts.");
+  }
+
+  private Response stopSpecificRun(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, String runId) {
+    markPipelineStatusAsStopped(ingestionPipeline, runId);
+    PipelineServiceClientResponse killResponse;
+    try {
+      killResponse = pipelineServiceClient.killIngestionRun(ingestionPipeline, runId);
+    } catch (Exception e) {
+      LOG.error(
+          "Kill request for run [{}] on pipeline [{}] failed after DB update. Workflow may still be running.",
+          runId,
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return Response.status(Response.Status.BAD_GATEWAY)
+          .entity(
+              new PipelineServiceClientResponse()
+                  .withCode(Response.Status.BAD_GATEWAY.getStatusCode())
+                  .withReason(e.getMessage())
+                  .withPlatform(pipelineServiceClient.getPlatform()))
+          .build();
+    }
+    return toStopResponse(killResponse);
+  }
+
+  private Response stopAllRuns(App app, IngestionPipeline ingestionPipeline) {
+    Long runStartTime =
+        repository
+            .getLatestAppRunsOptional(app, ingestionPipeline.getService().getId())
+            .map(AppRunRecord::getStartTime)
+            .orElse(null);
+    markLatestPipelineStatusAsStopped(ingestionPipeline, runStartTime);
+    PipelineServiceClientResponse killResponse;
+    try {
+      killResponse = pipelineServiceClient.killIngestion(ingestionPipeline);
+    } catch (Exception e) {
+      LOG.error(
+          "Kill request for pipeline [{}] failed after DB update. Workflows may still be running.",
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return Response.status(Response.Status.BAD_GATEWAY)
+          .entity(
+              new PipelineServiceClientResponse()
+                  .withCode(Response.Status.BAD_GATEWAY.getStatusCode())
+                  .withReason(e.getMessage())
+                  .withPlatform(pipelineServiceClient.getPlatform()))
+          .build();
+    }
+    return toStopResponse(killResponse);
+  }
+
+  private void markPipelineStatusAsStopped(IngestionPipeline ingestionPipeline, String runId) {
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    try {
+      PipelineStatus status =
+          ingestionPipelineRepository.getPipelineStatus(
+              ingestionPipeline.getFullyQualifiedName(), runId);
+      if (status == null) {
+        LOG.warn(
+            "Pipeline status not found in DB for run [{}] on pipeline [{}]. Proceeding with kill but DB state will remain inconsistent.",
+            runId,
+            ingestionPipeline.getFullyQualifiedName());
+        return;
+      }
+      if (!PipelineStatusUtils.isTerminalState(status.getPipelineState())) {
+        status.setPipelineState(PipelineStatusType.STOPPED);
+        status.setEndDate(System.currentTimeMillis());
+        // Use updatePipelineStatusByRunId instead of addPipelineStatus to avoid overwriting
+        // the pipeline-level current status. When stopping a specific run, other runs may still
+        // be active and their status should not be affected.
+        ingestionPipelineRepository.updatePipelineStatusByRunId(
+            ingestionPipeline.getFullyQualifiedName(), status);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to mark run [{}] as STOPPED in DB for pipeline [{}]. Kill will proceed but DB status may remain inconsistent.",
+          runId,
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+    }
+  }
+
+  private void markLatestPipelineStatusAsStopped(
+      IngestionPipeline ingestionPipeline, Long runStartTime) {
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    long now = System.currentTimeMillis();
+    long startTs = runStartTime != null ? runStartTime : now - TimeUnit.HOURS.toMillis(1);
+    ResultList<PipelineStatus> statuses;
+    try {
+      statuses =
+          ingestionPipelineRepository.listPipelineStatus(
+              ingestionPipeline.getFullyQualifiedName(), startTs, now);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to list pipeline statuses for [{}]. Kill will proceed but DB statuses may remain inconsistent.",
+          ingestionPipeline.getFullyQualifiedName(),
+          e);
+      return;
+    }
+    for (PipelineStatus status : statuses.getData()) {
+      if (status.getRunId() == null || status.getRunId().isBlank()) {
+        continue;
+      }
+      if (!PipelineStatusUtils.isTerminalState(status.getPipelineState())) {
+        markPipelineStatusAsStopped(ingestionPipeline, status.getRunId());
+      }
+    }
+  }
+
+  private Response toStopResponse(PipelineServiceClientResponse killResponse) {
+    int code = killResponse.getCode();
+    if (code >= 200 && code < 300) {
+      return Response.status(code).entity(killResponse).build();
+    }
+    if (code == 404) {
+      LOG.warn(
+          "Kill request returned 404 — workflow already completed. DB status already marked STOPPED.");
+      return Response.ok(killResponse).build();
+    }
+    LOG.error(
+        "Kill request returned unexpected code [{}]. DB status already marked STOPPED but workflow may still be running.",
+        code);
+    return Response.status(Response.Status.BAD_GATEWAY).entity(killResponse).build();
   }
 
   @POST
@@ -1299,11 +1576,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           service.setIngestionRunner(app.getIngestionRunner());
         }
 
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         PipelineServiceClientResponse status =
-            pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+            ingestionPipelineRepository.deployIngestionPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {
-          IngestionPipelineRepository ingestionPipelineRepository =
-              (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
           ingestionPipelineRepository.createOrUpdate(
               uriInfo, ingestionPipeline, securityContext.getUserPrincipal().getName());
         } else {
@@ -1412,6 +1689,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
               limits.invalidateCache(entityType);
             }
 
+            repository.storeChangeEventForAsyncOperation(
+                deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
             WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                 jobId, securityContext, deleteResponse.entity());
           } catch (Exception e) {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Card, Col, Form, Row, Tooltip, Typography } from 'antd';
-import { FC, useMemo, useState } from 'react';
+import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -19,9 +19,13 @@ import { Language } from '../../../generated/api/data/createMetric';
 import { Metric } from '../../../generated/entity/data/metric';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../utils/formUtils';
-import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtils/MetricUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import { getMetricExpressionLanguageName } from '../../../utils/MetricEntityUtils/MetricPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 const MetricExpression: FC = () => {
   const [form] = Form.useForm();

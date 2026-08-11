@@ -30,3 +30,22 @@ export const isHasKey = <T>(
 
   return checkAllKey ? keys.every(func) : keys.some(func);
 };
+
+export const reducerWithoutAction = <S, A>(state: S, action: A) => {
+  return {
+    ...state,
+    ...action,
+  };
+};
+
+export const normalizeToArray = <T>(value: T | T[]): T[] => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (value == null) {
+    return [];
+  }
+
+  return [value];
+};

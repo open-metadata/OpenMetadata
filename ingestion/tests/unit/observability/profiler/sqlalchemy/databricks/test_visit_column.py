@@ -1,16 +1,16 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from pyhive.sqlalchemy_hive import HiveCompiler
+from sqlalchemy.sql.compiler import SQLCompiler
 
 from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
     DatabricksProfilerInterface,
 )
 
 
-class FakeHiveCompiler(
+class FakeCompiler(
     DatabricksProfilerInterface,
-    HiveCompiler,
+    SQLCompiler,
 ):
     def __init__(self, service_connection_config):
         self.service_connection_config = service_connection_config
@@ -25,14 +25,14 @@ class TestDatabricksProfilerInterface(unittest.TestCase):
         "metadata.profiler.interface.sqlalchemy.databricks.profiler_interface.DatabricksProfilerInterface.__init__",
         return_value=None,
     )
-    @patch("pyhive.sqlalchemy_hive.HiveCompiler.visit_column")
+    @patch("sqlalchemy.sql.compiler.SQLCompiler.visit_column")
     def setUp(
         self,
         mock_visit_column,
         mock_init,
         mock_set_catalog,
     ) -> None:
-        self.profiler = FakeHiveCompiler(service_connection_config={})
+        self.profiler = FakeCompiler(service_connection_config={})
 
     @patch("sqlalchemy.sql.compiler.SQLCompiler.visit_column")
     def test_visit_column_no_nesting(self, mock_visit_column_super):
@@ -56,15 +56,10 @@ class TestDatabricksProfilerInterface(unittest.TestCase):
     def test_visit_column_nesting(self, mock_visit_column_super):
         # Mock the response of the super class method
         mock_visit_column_super.return_value = "`db`.`schema`.`table`.`col.u.m.n`"
-        assert (
-            self.profiler.visit_column(MagicMock())
-            == "`db`.`schema`.`table`.`col`.`u`.`m`.`n`"
-        )
+        assert self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`u`.`m`.`n`"
 
         mock_visit_column_super.return_value = "`db`.`schema`.`table`.`col.1`"
-        assert (
-            self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`1`"
-        )
+        assert self.profiler.visit_column(MagicMock()) == "`db`.`schema`.`table`.`col`.`1`"
 
         mock_visit_column_super.return_value = "`table`.`1.2`"
         assert self.profiler.visit_column(MagicMock()) == "`table`.`1`.`2`"

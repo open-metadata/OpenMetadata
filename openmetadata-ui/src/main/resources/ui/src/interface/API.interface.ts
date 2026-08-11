@@ -19,6 +19,7 @@ export type ListParams = {
   after?: string;
   include?: Include;
   includeRelations?: string;
+  orderBy?: 'ASC' | 'DESC';
   sort?: string;
 };
 

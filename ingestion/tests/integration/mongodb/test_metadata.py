@@ -5,7 +5,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(scope="module")
-def prepare_mongodb(mongodbContainer):
+def prepare_mongodb(mongodbContainer):  # noqa: N803
     db = mongodbContainer.get_connection_client().test
     db.create_collection(
         "test_table",
@@ -61,9 +61,7 @@ def test_ingest_metadata(
     prepare_mongodb,
 ):
     run_workflow(MetadataWorkflow, ingestion_config)
-    table = metadata.get_by_name(
-        entity=Table, fqn=table_fqn.format(service=db_service.fullyQualifiedName.root)
-    )
+    table = metadata.get_by_name(entity=Table, fqn=table_fqn.format(service=db_service.fullyQualifiedName.root))
     assert table
     assert table.fullyQualifiedName.root.split(".")[-1] == "test_table"
     assert len(table.columns) == 4

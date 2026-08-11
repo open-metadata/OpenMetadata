@@ -24,7 +24,8 @@ public interface EntityMapper<T extends EntityInterface, C extends CreateEntity>
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
-    entity.setDescription(request.getDescription());
+    entity.setDescription(
+        org.openmetadata.service.util.DescriptionSanitizer.sanitize(request.getDescription()));
     entity.setOwners(owners);
     entity.setDomains(domains);
     entity.setTags(request.getTags());

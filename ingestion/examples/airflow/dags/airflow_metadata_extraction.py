@@ -15,6 +15,7 @@ the `openmetadata-ingestion[airflow-container]` package. Its purpose
 is to connect to the underlying database, retrieve the information
 and push it to OpenMetadata.
 """
+
 from datetime import datetime, timedelta
 
 import yaml

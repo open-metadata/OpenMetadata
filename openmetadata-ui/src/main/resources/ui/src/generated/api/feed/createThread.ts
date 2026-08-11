@@ -35,10 +35,6 @@ export interface CreateThread {
      */
     domains?: string[];
     /**
-     * Name of the User (regular user or bot) posting the message
-     */
-    from: string;
-    /**
      * Message
      */
     message:      string;

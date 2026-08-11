@@ -17,7 +17,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { FC, useCallback } from 'react';
+import { FC, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ProviderType } from '../../generated/api/classification/createTag';
 import TagsForm from './TagsForm';
@@ -26,7 +26,7 @@ import { TagFormDrawerProps } from './TagsPage.interface';
 const TagFormDrawer: FC<TagFormDrawerProps> = ({
   open,
   editTag,
-  formRef,
+  form,
   isTier,
   isLoading,
   permissions,
@@ -35,6 +35,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
   onSubmit,
 }) => {
   const { t } = useTranslation();
+  const submitRef = useRef<() => void>(() => void 0);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -47,8 +48,10 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
 
   return (
     <SlideoutMenu
+      className="tw:z-999"
       data-testid="tag-form-drawer"
       isOpen={open}
+      width={480}
       onOpenChange={handleOpenChange}>
       {({ close }) => (
         <>
@@ -60,13 +63,14 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
 
           <SlideoutMenu.Content>
             <TagsForm
-              formRef={formRef}
+              form={form}
               initialValues={editTag}
               isEditing={!isUndefined(editTag)}
               isSystemTag={editTag?.provider === ProviderType.System}
               isTier={isTier}
               key={editTag?.id ?? 'new-tag'}
               permissions={permissions}
+              submitRef={submitRef}
               onSubmit={onSubmit}
             />
           </SlideoutMenu.Content>
@@ -84,7 +88,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
                 data-testid="save-button"
                 isDisabled={isLoading}
                 isLoading={isLoading}
-                onClick={() => formRef.submit()}>
+                onClick={() => submitRef.current()}>
                 {t('label.save')}
               </Button>
             </div>

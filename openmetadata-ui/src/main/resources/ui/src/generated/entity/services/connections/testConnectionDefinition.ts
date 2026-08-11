@@ -212,6 +212,11 @@ export interface EntityReference {
  */
 export interface TestConnectionStep {
     /**
+     * Whether the step gates connectivity (ConnectionGate) or verifies an optional capability
+     * (Capability). When a gate fails, later steps are skipped as ConnectionNotEstablished.
+     */
+    category?: Category;
+    /**
      * What is the goal of the step
      */
     description: string;
@@ -233,4 +238,13 @@ export interface TestConnectionStep {
      * process in case of failure.
      */
     shortCircuit?: boolean;
+}
+
+/**
+ * Whether the step gates connectivity (ConnectionGate) or verifies an optional capability
+ * (Capability). When a gate fails, later steps are skipped as ConnectionNotEstablished.
+ */
+export enum Category {
+    Capability = "Capability",
+    ConnectionGate = "ConnectionGate",
 }

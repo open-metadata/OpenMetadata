@@ -17,7 +17,6 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 @Builder
 public class FeedFilter {
   @Getter private ThreadType threadType;
-  @Getter private Boolean activeAnnouncement;
   @Getter private TaskStatus taskStatus;
   @Getter private Boolean resolved;
   @Getter private FilterType filterType;
@@ -26,6 +25,8 @@ public class FeedFilter {
   @Getter private String after;
   @Getter private boolean applyDomainFilter;
   @Getter private List<UUID> domains;
+  @Getter private Long startTs;
+  @Getter private Long endTs;
   @Getter @Builder.Default private final Map<String, String> queryParams = new HashMap<>();
 
   public String getCondition() {
@@ -38,15 +39,7 @@ public class FeedFilter {
     if (threadType != null) {
       queryParams.put("threadType", threadType.value());
       condition1 = "type = :threadType";
-      if (ThreadType.Announcement.equals(threadType) && activeAnnouncement != null) {
-        // Add activeAnnouncement filter
-        long now = System.currentTimeMillis(); // epoch time in milliseconds
-        String condition2 =
-            activeAnnouncement
-                ? String.format("%s BETWEEN announcementStart AND announcementEnd", now)
-                : String.format("%s NOT BETWEEN announcementStart AND announcementEnd", now);
-        condition1 = addCondition(condition1, condition2);
-      } else if (ThreadType.Task.equals(threadType) && taskStatus != null) {
+      if (ThreadType.Task.equals(threadType) && taskStatus != null) {
         queryParams.put("taskStatus", taskStatus.toString());
         condition1 = addCondition(condition1, "taskStatus = :taskStatus");
       }
@@ -63,21 +56,59 @@ public class FeedFilter {
       condition1 = addCondition(condition1, paginationCondition);
     }
 
+    condition1 = addCondition(condition1, buildTimeRangeCondition());
+
     // Only Domain Listing based thread can be fetched
+    condition1 =
+        addCondition(condition1, buildDomainCondition("domains", domains, applyDomainFilter));
+
+    return condition1.isEmpty() ? "WHERE TRUE" : "WHERE " + condition1;
+  }
+
+  // Restricts threads to a [startTs, endTs] window on createdAt (the $.threadTs
+  // generated column), matching the list ordering and the timestamp the UI shows.
+  // Inlines the validated Long values (like the pagination clause above) so the
+  // bigint comparison works on both MySQL and PostgreSQL.
+  private String buildTimeRangeCondition() {
+    String condition = "";
+    if (startTs != null) {
+      condition = addCondition(condition, String.format("createdAt >= %s", startTs));
+    }
+    if (endTs != null) {
+      condition = addCondition(condition, String.format("createdAt <= %s", endTs));
+    }
+    return condition;
+  }
+
+  /**
+   * Builds the SQL fragment that restricts threads to the given domains, applied against the
+   * {@code domainsColumn} expression (e.g. {@code "domains"} for the thread query or
+   * {@code "combined.domains"} for the owner-count subquery). Returns an empty string when domain
+   * filtering is off, so callers can splice it in unconditionally. Mirrors the
+   * {@code RBACConditionEvaluator.hasDomain()} semantics: own-domain threads, or domainless threads
+   * when the user has no domains.
+   */
+  static String buildDomainCondition(
+      String domainsColumn, List<UUID> domains, boolean applyDomainFilter) {
     String domainCondition = "";
     if (applyDomainFilter) {
+      // domainsColumn is spliced directly into SQL; only ever a caller-controlled column reference.
+      // Reject anything that is not a plain (optionally qualified) identifier to close the door on
+      // a future caller passing a request/user-supplied value and opening a SQL injection vector.
+      if (!domainsColumn.matches("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)?")) {
+        throw new IllegalArgumentException("Invalid domain column reference: " + domainsColumn);
+      }
       if (domains != null && !domains.isEmpty()) {
+        // Domain UUIDs are inlined into JSON/ARRAY literals because bind parameters cannot be used
+        // inside JSON_TABLE('...') or ARRAY[...] syntax. This is safe because `domains` is
+        // List<UUID> — UUID.toString() can only produce hex digits and dashes.
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-          // Domain UUIDs are inlined into JSON/ARRAY literals because bind parameters cannot be
-          // used inside JSON_TABLE('...') or ARRAY[...] syntax. This is safe because `domains`
-          // is List<UUID> — UUID.toString() can only produce hex digits and dashes.
           StringBuilder jsonArrayBuilder = new StringBuilder("[");
           for (int i = 0; i < domains.size(); i++) {
             if (i > 0) jsonArrayBuilder.append(",");
             jsonArrayBuilder.append("\"").append(domains.get(i).toString()).append("\"");
           }
           jsonArrayBuilder.append("]");
-
           domainCondition =
               "EXISTS ("
                   + "SELECT 1 FROM JSON_TABLE("
@@ -85,7 +116,9 @@ public class FeedFilter {
                   + jsonArrayBuilder
                   + "', '$[*]' "
                   + "COLUMNS (domainId VARCHAR(64) PATH '$')) d "
-                  + "WHERE JSON_CONTAINS(domains, JSON_QUOTE(d.domainId))"
+                  + "WHERE JSON_CONTAINS("
+                  + domainsColumn
+                  + ", JSON_QUOTE(d.domainId))"
                   + ")";
         } else {
           StringBuilder arrayBuilder = new StringBuilder("ARRAY[");
@@ -94,23 +127,21 @@ public class FeedFilter {
             arrayBuilder.append("'").append(domains.get(i).toString()).append("'");
           }
           arrayBuilder.append("]");
-
           domainCondition =
               "EXISTS ("
                   + "SELECT 1 FROM unnest("
                   + arrayBuilder
                   + ") AS d(domainId) "
-                  + "WHERE domainId = ANY (SELECT jsonb_array_elements_text(domains::jsonb))"
+                  + "WHERE domainId = ANY (SELECT jsonb_array_elements_text("
+                  + domainsColumn
+                  + "::jsonb))"
                   + ")";
         }
-
       } else {
-        domainCondition = "domains IS NULL";
+        domainCondition = domainsColumn + " IS NULL";
       }
     }
-    condition1 = addCondition(condition1, domainCondition);
-
-    return condition1.isEmpty() ? "WHERE TRUE" : "WHERE " + condition1;
+    return domainCondition;
   }
 
   private String addCondition(String condition1, String condition2) {

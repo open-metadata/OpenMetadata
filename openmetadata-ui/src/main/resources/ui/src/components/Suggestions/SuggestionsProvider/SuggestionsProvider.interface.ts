@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SuggestionType } from '../../../generated/api/feed/createSuggestion';
-import { Suggestion } from '../../../generated/entity/feed/suggestion';
 import { EntityReference } from '../../../generated/entity/type';
+import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 
 export interface SuggestionDataByTypes {
   tags: Suggestion[];

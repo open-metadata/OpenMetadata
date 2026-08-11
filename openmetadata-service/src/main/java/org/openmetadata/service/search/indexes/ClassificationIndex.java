@@ -11,10 +11,12 @@ public record ClassificationIndex(Classification classification) implements Sear
     return classification;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.CLASSIFICATION;
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(classification, Entity.CLASSIFICATION);
-    esDoc.putAll(commonAttributes);
     return esDoc;
   }
 }

@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Pipeline test
 """
+
 from datetime import datetime
 
 import pytest
@@ -103,9 +104,7 @@ class TestOMetaPipelineAPI:
         res = metadata.create_or_update(data=updated_entity)
 
         # Verify update
-        assert (
-            res.service.fullyQualifiedName == pipeline_service.fullyQualifiedName.root
-        )
+        assert res.service.fullyQualifiedName == pipeline_service.fullyQualifiedName.root
         assert res_create.id == res.id
         assert res.owners.root[0].id == user.id
 
@@ -162,9 +161,7 @@ class TestOMetaPipelineAPI:
         """
         created = create_pipeline(pipeline_request)
 
-        res = metadata.get_list_entity_versions(
-            entity=Pipeline, entity_id=created.id.root
-        )
+        res = metadata.get_list_entity_versions(entity=Pipeline, entity_id=created.id.root)
         assert res is not None
         assert len(res.versions) >= 1
 
@@ -174,9 +171,7 @@ class TestOMetaPipelineAPI:
         """
         created = create_pipeline(pipeline_request)
 
-        res = metadata.get_entity_version(
-            entity=Pipeline, entity_id=created.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=Pipeline, entity_id=created.id.root, version=0.1)
 
         # Check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
@@ -187,9 +182,7 @@ class TestOMetaPipelineAPI:
         Test retrieving EntityReference for a pipeline
         """
         created = create_pipeline(pipeline_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=Pipeline, fqn=created.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Pipeline, fqn=created.fullyQualifiedName)
 
         assert created.id == entity_ref.id
 
@@ -224,9 +217,7 @@ class TestOMetaPipelineAPI:
         assert updated.pipelineStatus.timestamp.root == execution_ts
         assert len(updated.pipelineStatus.taskStatus) == 1
 
-    def test_add_pipeline_status_with_special_chars(
-        self, metadata, pipeline_service, create_pipeline
-    ):
+    def test_add_pipeline_status_with_special_chars(self, metadata, pipeline_service, create_pipeline):
         """
         Test adding pipeline status when pipeline name contains special characters
         """
@@ -288,13 +279,7 @@ class TestOMetaPipelineAPI:
         )
 
         assert len(updated_pipeline.tasks) == 3
-        assert next(
-            iter(
-                task
-                for task in updated_pipeline.tasks
-                if task.displayName == "TaskDisplay"
-            )
-        )
+        assert next(iter(task for task in updated_pipeline.tasks if task.displayName == "TaskDisplay"))
 
         # Add more than one task at a time
         new_tasks = [
@@ -305,9 +290,7 @@ class TestOMetaPipelineAPI:
 
         assert len(updated_pipeline.tasks) == 4
 
-    def test_add_tasks_to_empty_pipeline(
-        self, metadata, pipeline_request, create_pipeline
-    ):
+    def test_add_tasks_to_empty_pipeline(self, metadata, pipeline_request, create_pipeline):
         """
         We can add tasks to a pipeline without tasks
         """

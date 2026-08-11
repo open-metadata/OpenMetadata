@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DataProductsPage from './DataProductsPage.component';
 
@@ -37,7 +38,7 @@ jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('testEntityName'),
 }));
 
@@ -113,9 +114,11 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
 
 describe('DataProductsPage component', () => {
   it('should render successfully', async () => {
-    const { container } = render(<DataProductsPage />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DataProductsPage />
+      </MemoryRouter>
+    );
 
     await waitFor(() => {
       expect(container).toBeInTheDocument();
@@ -123,9 +126,11 @@ describe('DataProductsPage component', () => {
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
-    render(<DataProductsPage />, {
-      wrapper: MemoryRouter,
-    });
+    renderWithQueryClient(
+      <MemoryRouter>
+        <DataProductsPage />
+      </MemoryRouter>
+    );
 
     await waitFor(() => {
       expect(PageLayoutV1).toHaveBeenCalledWith(

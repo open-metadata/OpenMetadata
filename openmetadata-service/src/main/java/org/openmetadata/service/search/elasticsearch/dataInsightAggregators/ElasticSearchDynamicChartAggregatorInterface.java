@@ -30,8 +30,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.security.policyevaluator.CompiledRule;
-import org.springframework.expression.Expression;
+import org.openmetadata.service.util.DataInsightFormulaEvaluator;
 
 public interface ElasticSearchDynamicChartAggregatorInterface {
 
@@ -160,10 +159,9 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
             formulaCopy.replace(holder.get(i).getFormula(), result.get(i).getCount().toString());
       }
       if (evaluate
-          && formulaCopy.matches(DataInsightSystemChartRepository.NUMERIC_VALIDATION_REGEX)
+          && formulaCopy.matches(DataInsightFormulaEvaluator.NUMERIC_VALIDATION_REGEX)
           && (day != null || term != null)) {
-        Expression expression = CompiledRule.parseExpression(formulaCopy);
-        Double value = (Double) expression.getValue();
+        Double value = DataInsightFormulaEvaluator.evaluate(formulaCopy);
         // Convert NaN and Infinite values to 0.0
         if (value == null || value.isNaN() || value.isInfinite()) {
           value = 0.0;
@@ -196,6 +194,10 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       Map<String, Aggregation> aggregationsMap,
       String parentAggName,
       List<FormulaHolder> formulas) {
+    if (function == null && formula == null) {
+      throw new IllegalArgumentException(
+          "Data Insight chart metric must define either a function or a formula");
+    }
     if (formula != null) {
       if (filter != null && !filter.equals("{}")) {
         try {

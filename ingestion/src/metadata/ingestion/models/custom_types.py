@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 # new typing type wrapping services with connection field types
 ServiceWithConnectionType = NewType(
     "ServiceWithConnectionType",
-    Union[
+    Union[  # noqa: UP007
         ApiService,
         DashboardService,
         DatabaseService,

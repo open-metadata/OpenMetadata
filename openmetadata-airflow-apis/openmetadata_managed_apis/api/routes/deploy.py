@@ -13,15 +13,15 @@ Deploy the DAG and scan it with the scheduler
 """
 
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
-from flask import Blueprint, Response, request
-from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.operations.deploy import DagDeployer
-from openmetadata_managed_apis.utils.logger import routes_logger
+from flask import Blueprint, Response, jsonify, make_response, request
 from pydantic import ValidationError
 
 from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
+from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.operations.deploy import DagDeployer
+from openmetadata_managed_apis.utils.logger import routes_logger
 
 logger = routes_logger()
 
@@ -36,6 +36,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
@@ -49,9 +50,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/deploy", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)])
     def deploy_dag() -> Response:
         """
         Custom Function for the deploy_dag API
@@ -68,14 +67,12 @@ def get_fn(blueprint: Blueprint) -> Callable:
                     error="Did not receive any JSON request to deploy",
                 )
 
-            ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(
-                json_request
-            )
+            ingestion_pipeline = parse_ingestion_pipeline_config_gracefully(json_request)
 
             deployer = DagDeployer(ingestion_pipeline)
-            response = deployer.deploy()
+            result = deployer.deploy()
 
-            return response
+            return make_response(jsonify(result.get_json()), result.status_code)
 
         except ValidationError as err:
             logger.debug(traceback.format_exc())

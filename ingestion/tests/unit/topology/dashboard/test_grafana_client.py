@@ -238,9 +238,7 @@ class TestGrafanaApiClient(TestCase):
         """Test handling 401 unauthorized error"""
         mock_response = MagicMock()
         mock_response.status_code = 401
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-            response=mock_response
-        )
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
         mock_request.return_value = mock_response
 
         result = self.client.get_folders()
@@ -253,9 +251,7 @@ class TestGrafanaApiClient(TestCase):
         """Test handling 403 forbidden error"""
         mock_response = MagicMock()
         mock_response.status_code = 403
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-            response=mock_response
-        )
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
         mock_request.return_value = mock_response
 
         result = self.client.get_dashboard("test-uid")
@@ -267,9 +263,7 @@ class TestGrafanaApiClient(TestCase):
         """Test handling 500 server error"""
         mock_response = MagicMock()
         mock_response.status_code = 500
-        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
-            response=mock_response
-        )
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
         mock_request.return_value = mock_response
 
         result = self.client.get_datasources()
@@ -313,7 +307,7 @@ class TestGrafanaApiClient(TestCase):
     def test_close_session(self):
         """Test closing the HTTP session"""
         # Create a session first
-        session = self.client.session
+        session = self.client.session  # noqa: F841
         self.assertIsNotNone(self.client._session)
 
         # Close the session

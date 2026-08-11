@@ -39,7 +39,8 @@ import {
   updateQueryVote,
 } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
-import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

@@ -23,19 +23,18 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityFieldDisplay } from '../../../../utils/FeedUtils';
 import {
   entityDisplayName,
-  getEntityFieldDisplay,
   prepareFeedLink,
-} from '../../../../utils/FeedUtils';
+} from '../../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../../utils/RouterUtils';
-import { getTaskDetailPath } from '../../../../utils/TasksUtils';
+import { getTaskDetailPath } from '../../../../utils/TaskNavigationUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
 import './feed-card-header-v1.style.less';
-
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
   createdBy,
@@ -54,7 +53,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
   const { t } = useTranslation();
 
-  const { task: taskDetails } = task;
+  const { task: taskDetails } = task ?? {};
 
   const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
 
@@ -113,10 +112,6 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
     </span>
   );
 
-  const getAnnouncementLinkElement = entityCheck && (
-    <span>{t('message.made-announcement')} </span>
-  );
-
   return (
     <div className={classNames('d-inline-block feed-header', className)}>
       <UserPopOverCard userName={createdBy}>
@@ -127,7 +122,6 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
 
       {feedType === ThreadType.Conversation && getFeedLinkElement}
       {feedType === ThreadType.Task && getTaskLinkElement}
-      {feedType === ThreadType.Announcement && getAnnouncementLinkElement}
 
       {timeStamp && (
         <Tooltip className="text-grey-muted" title={formatDateTime(timeStamp)}>

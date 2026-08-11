@@ -168,7 +168,8 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     // Section Block 1 (Test Message)
     blocks.add(
         Blocks.section(
-            section -> section.text(BlockCompositions.markdownText(CONNECTION_TEST_DESCRIPTION))));
+            section ->
+                section.text(BlockCompositions.markdownText(getConnectionTestDescription()))));
 
     // Divider Block
     blocks.add(Blocks.divider());
@@ -180,7 +181,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 context.elements(
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText(applyBoldFormat("OpenMetadata"))))));
+                        BlockCompositions.markdownText(applyBoldFormat(getProductName()))))));
 
     SlackMessage.Attachment attachment = new SlackMessage.Attachment();
     attachment.setColor("#36a64f"); // green
@@ -265,7 +266,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 context.elements(
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText(TEMPLATE_FOOTER)))));
+                        BlockCompositions.markdownText(getProductName() + " Change Event")))));
     return blocks;
   }
 
@@ -353,7 +354,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 context.elements(
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText(TEMPLATE_FOOTER)))));
+                        BlockCompositions.markdownText(getProductName() + " Change Event")))));
     return blocks;
   }
 
@@ -474,7 +475,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 context.elements(
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText(TEMPLATE_FOOTER)))));
+                        BlockCompositions.markdownText(getProductName() + " Change Event")))));
     return blocks;
   }
 
@@ -526,7 +527,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 context.elements(
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText("Change Event by OpenMetadata")))));
+                        BlockCompositions.markdownText(getProductName() + " Change Event")))));
 
     SlackMessage.Attachment attachment = new SlackMessage.Attachment();
     attachment.setBlocks(blocks);
@@ -605,7 +606,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                 context.elements(
                     List.of(
                         ImageElement.builder().imageUrl(getOMImage()).altText("oss icon").build(),
-                        BlockCompositions.markdownText("Change Event by OpenMetadata")))));
+                        BlockCompositions.markdownText(getProductName() + " Change Event")))));
 
     SlackMessage.Attachment attachment = new SlackMessage.Attachment();
     attachment.setBlocks(blocks);
@@ -979,7 +980,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   private String getOMImage() {
-    return "https://i.postimg.cc/0jYLNmM1/image.png";
+    return getLogoUrl();
   }
 
   private void addDataContractAlertHeader(List<LayoutBlock> blocks) {

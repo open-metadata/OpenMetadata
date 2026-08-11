@@ -38,9 +38,7 @@ from metadata.ingestion.source.pipeline.airbyte.models import (
 
 MOCK_REST = "metadata.ingestion.source.pipeline.airbyte.client.TrackedREST"
 MOCK_REQUESTS_POST = "metadata.ingestion.source.pipeline.airbyte.client.requests.post"
-MOCK_GENERATE_TOKEN = (
-    "metadata.ingestion.source.pipeline.airbyte.client.generate_http_basic_token"
-)
+MOCK_GENERATE_TOKEN = "metadata.ingestion.source.pipeline.airbyte.client.generate_http_basic_token"
 MOCK_TIME = "metadata.ingestion.source.pipeline.airbyte.client.time.time"
 
 
@@ -50,27 +48,21 @@ class TestAirbyteClientPublicApiDetection:
     @patch(MOCK_REST)
     def test_internal_api_detection(self, mock_rest):
         mock_rest.return_value = MagicMock()
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
         assert client._use_public_api is False
 
     @patch(MOCK_REST)
     def test_public_api_detection(self, mock_rest):
         mock_rest.return_value = MagicMock()
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
         assert client._use_public_api is True
 
     @patch(MOCK_REST)
     def test_public_api_detection_case_insensitive(self, mock_rest):
         mock_rest.return_value = MagicMock()
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/PUBLIC/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/PUBLIC/v1")
         client = AirbyteClient(config)
         assert client._use_public_api is True
 
@@ -101,13 +93,9 @@ class TestAirbyteClientInternalApi:
     @patch(MOCK_REST)
     def test_list_workspaces(self, mock_rest):
         mock_rest_instance = MagicMock()
-        mock_rest_instance.post.return_value = {
-            "workspaces": [{"workspaceId": "test-workspace-id"}]
-        }
+        mock_rest_instance.post.return_value = {"workspaces": [{"workspaceId": "test-workspace-id"}]}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_workspaces())
@@ -119,13 +107,9 @@ class TestAirbyteClientInternalApi:
     @patch(MOCK_REST)
     def test_list_connections(self, mock_rest):
         mock_rest_instance = MagicMock()
-        mock_rest_instance.post.return_value = {
-            "connections": [{"connectionId": "test-connection-id"}]
-        }
+        mock_rest_instance.post.return_value = {"connections": [{"connectionId": "test-connection-id"}]}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_connections("workspace-id"))
@@ -138,13 +122,9 @@ class TestAirbyteClientInternalApi:
     @patch(MOCK_REST)
     def test_list_jobs(self, mock_rest):
         mock_rest_instance = MagicMock()
-        mock_rest_instance.post.return_value = {
-            "jobs": [{"attempts": [{"status": "running"}]}]
-        }
+        mock_rest_instance.post.return_value = {"jobs": [{"attempts": [{"status": "running"}]}]}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_jobs("connection-id"))
@@ -162,9 +142,7 @@ class TestAirbyteClientInternalApi:
             "connectionConfiguration": {"database": "mydb"},
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         result = client.get_source("source-id")
@@ -182,9 +160,7 @@ class TestAirbyteClientInternalApi:
             "connectionConfiguration": {"database": "mydb"},
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         result = client.get_destination("destination-id")
@@ -202,9 +178,7 @@ class TestAirbyteClientInternalApi:
             "message": "Internal error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -218,9 +192,7 @@ class TestAirbyteClientInternalApi:
             "message": "Internal error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -234,9 +206,7 @@ class TestAirbyteClientInternalApi:
             "message": "Internal error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -250,9 +220,7 @@ class TestAirbyteClientInternalApi:
             "message": "Internal error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -266,9 +234,7 @@ class TestAirbyteClientInternalApi:
             "message": "Internal error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -281,13 +247,9 @@ class TestAirbyteClientPublicApi:
     @patch(MOCK_REST)
     def test_list_workspaces(self, mock_rest):
         mock_rest_instance = MagicMock()
-        mock_rest_instance.get.return_value = {
-            "data": [{"workspaceId": "test-workspace-id"}]
-        }
+        mock_rest_instance.get.return_value = {"data": [{"workspaceId": "test-workspace-id"}]}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_workspaces())
@@ -299,40 +261,28 @@ class TestAirbyteClientPublicApi:
     @patch(MOCK_REST)
     def test_list_connections(self, mock_rest):
         mock_rest_instance = MagicMock()
-        mock_rest_instance.get.return_value = {
-            "data": [{"connectionId": "test-connection-id"}]
-        }
+        mock_rest_instance.get.return_value = {"data": [{"connectionId": "test-connection-id"}]}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_connections("workspace-id"))
 
-        mock_rest_instance.get.assert_called_once_with(
-            "/connections?workspaceIds=workspace-id&limit=100&offset=0"
-        )
+        mock_rest_instance.get.assert_called_once_with("/connections?workspaceIds=workspace-id&limit=100&offset=0")
         assert len(result) == 1
         assert result[0].connectionId == "test-connection-id"
 
     @patch(MOCK_REST)
     def test_list_jobs(self, mock_rest):
         mock_rest_instance = MagicMock()
-        mock_rest_instance.get.return_value = {
-            "data": [{"status": "succeeded", "startTime": "2022-01-01T00:00:00Z"}]
-        }
+        mock_rest_instance.get.return_value = {"data": [{"status": "succeeded", "startTime": "2022-01-01T00:00:00Z"}]}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_jobs("connection-id"))
 
-        mock_rest_instance.get.assert_called_once_with(
-            "/jobs?connectionId=connection-id&limit=100&offset=0"
-        )
+        mock_rest_instance.get.assert_called_once_with("/jobs?connectionId=connection-id&limit=100&offset=0")
         assert len(result) == 1
         assert result[0].status == "succeeded"
 
@@ -344,9 +294,7 @@ class TestAirbyteClientPublicApi:
             "connectionConfiguration": {"database": "mydb"},
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         result = client.get_source("source-id")
@@ -363,9 +311,7 @@ class TestAirbyteClientPublicApi:
             "connectionConfiguration": {"database": "mydb"},
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         result = client.get_destination("destination-id")
@@ -382,9 +328,7 @@ class TestAirbyteClientPublicApi:
             "message": "Public API error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -398,9 +342,7 @@ class TestAirbyteClientPublicApi:
             "message": "Public API error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -414,9 +356,7 @@ class TestAirbyteClientPublicApi:
             "message": "Public API error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -430,9 +370,7 @@ class TestAirbyteClientPublicApi:
             "message": "Public API error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -446,9 +384,7 @@ class TestAirbyteClientPublicApi:
             "message": "Public API error",
         }
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         with pytest.raises(APIError):
@@ -468,32 +404,22 @@ class TestAirbyteClientPagination:
             {"data": page2_data},
         ]
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_connections("workspace-id"))
 
         assert len(result) == 125
         assert mock_rest_instance.get.call_count == 2
-        mock_rest_instance.get.assert_any_call(
-            "/connections?workspaceIds=workspace-id&limit=100&offset=0"
-        )
-        mock_rest_instance.get.assert_any_call(
-            "/connections?workspaceIds=workspace-id&limit=100&offset=100"
-        )
+        mock_rest_instance.get.assert_any_call("/connections?workspaceIds=workspace-id&limit=100&offset=0")
+        mock_rest_instance.get.assert_any_call("/connections?workspaceIds=workspace-id&limit=100&offset=100")
 
     @patch(MOCK_REST)
     def test_paginate_stops_without_next(self, mock_rest):
         mock_rest_instance = MagicMock()
-        mock_rest_instance.get.return_value = {
-            "data": [{"workspaceId": f"ws-{i}"} for i in range(100)]
-        }
+        mock_rest_instance.get.return_value = {"data": [{"workspaceId": f"ws-{i}"} for i in range(100)]}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_workspaces())
@@ -506,9 +432,7 @@ class TestAirbyteClientPagination:
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"data": []}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         result = list(client.list_jobs("connection-id"))
@@ -525,9 +449,7 @@ class TestAirbyteClientUrlEncoding:
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"data": []}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         list(client.list_connections("workspace/id&special=chars"))
@@ -541,9 +463,7 @@ class TestAirbyteClientUrlEncoding:
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"data": []}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         list(client.list_jobs("connection/id&special=chars"))
@@ -557,9 +477,7 @@ class TestAirbyteClientUrlEncoding:
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"sourceName": "test"}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         client.get_source("src/id")
@@ -571,9 +489,7 @@ class TestAirbyteClientUrlEncoding:
         mock_rest_instance = MagicMock()
         mock_rest_instance.get.return_value = {"destinationName": "test"}
         mock_rest.return_value = mock_rest_instance
-        config = AirbyteConnection(
-            hostPort="http://localhost:8001", apiVersion="api/public/v1"
-        )
+        config = AirbyteConnection(hostPort="http://localhost:8001", apiVersion="api/public/v1")
         client = AirbyteClient(config)
 
         client.get_destination("dst/id")
@@ -593,7 +509,7 @@ class TestAirbyteCloudClient:
             auth=BasicAuthentication(username="user", password="pass"),
         )
 
-        with pytest.raises(ValueError, match="OAuth 2.0"):
+        with pytest.raises(ValueError, match="OAuth 2.0"):  # noqa: RUF043
             AirbyteCloudClient(config)
 
     @patch(MOCK_REQUESTS_POST)
@@ -603,9 +519,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -629,9 +543,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -639,6 +551,34 @@ class TestAirbyteCloudClient:
 
         assert token == "test-token"
         assert expires_in == 3600
+        # Cloud (apiVersion="v1") -> token endpoint under /v1
+        called_url = mock_requests_post.call_args.args[0]
+        assert called_url == "https://api.airbyte.com/v1/applications/token"
+
+    @patch(MOCK_REQUESTS_POST)
+    @patch(MOCK_REST)
+    def test_fetch_oauth_token_self_hosted_public_api_path(self, mock_rest, mock_requests_post):
+        """Regression: on self-hosted instances the Applications token endpoint
+        lives under /api/public/v1, not /v1. Previously the path was hardcoded to
+        /v1/applications/token, which 404s to the web UI (HTML) and breaks JSON
+        parsing. The token URL must follow the resolved public-API version."""
+        mock_rest.return_value = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"access_token": "test-token", "expires_in": 3600}
+        mock_requests_post.return_value = mock_response
+
+        config = AirbyteConnection(
+            hostPort="http://airbyte.internal:8000",
+            # default internal apiVersion is auto-promoted to the public API path
+            apiVersion="api/v1",
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
+        )
+
+        client = AirbyteCloudClient(config)
+        client._fetch_oauth_token()
+
+        called_url = mock_requests_post.call_args.args[0]
+        assert called_url == "http://airbyte.internal:8000/api/public/v1/applications/token"
 
     @patch(MOCK_REQUESTS_POST)
     @patch(MOCK_REST)
@@ -651,9 +591,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -665,16 +603,12 @@ class TestAirbyteCloudClient:
     @patch(MOCK_REST)
     def test_fetch_oauth_token_request_error(self, mock_rest, mock_requests_post):
         mock_rest.return_value = MagicMock()
-        mock_requests_post.side_effect = requests.exceptions.RequestException(
-            "Connection error"
-        )
+        mock_requests_post.side_effect = requests.exceptions.RequestException("Connection error")
 
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -693,9 +627,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -720,9 +652,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -735,18 +665,14 @@ class TestAirbyteCloudClient:
     @patch(MOCK_TIME)
     @patch(MOCK_REQUESTS_POST)
     @patch(MOCK_REST)
-    def test_get_oauth_token_uses_cached(
-        self, mock_rest, mock_requests_post, mock_time
-    ):
+    def test_get_oauth_token_uses_cached(self, mock_rest, mock_requests_post, mock_time):
         mock_rest.return_value = MagicMock()
         mock_time.return_value = 1000.0
 
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -760,22 +686,16 @@ class TestAirbyteCloudClient:
 
     @patch(MOCK_REQUESTS_POST)
     @patch(MOCK_REST)
-    def test_cloud_client_inherits_public_api_methods(
-        self, mock_rest, mock_requests_post
-    ):
+    def test_cloud_client_inherits_public_api_methods(self, mock_rest, mock_requests_post):
         """AirbyteCloudClient inherits public API methods from AirbyteClient"""
         mock_rest_instance = MagicMock()
-        mock_rest_instance.get.return_value = {
-            "data": [{"workspaceId": "cloud-workspace"}]
-        }
+        mock_rest_instance.get.return_value = {"data": [{"workspaceId": "cloud-workspace"}]}
         mock_rest.return_value = mock_rest_instance
 
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -789,25 +709,19 @@ class TestAirbyteCloudClient:
     @patch(MOCK_REST)
     def test_cloud_client_list_connections(self, mock_rest, mock_requests_post):
         mock_rest_instance = MagicMock()
-        mock_rest_instance.get.return_value = {
-            "data": [{"connectionId": "cloud-connection"}]
-        }
+        mock_rest_instance.get.return_value = {"data": [{"connectionId": "cloud-connection"}]}
         mock_rest.return_value = mock_rest_instance
 
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
         result = list(client.list_connections("workspace-id"))
 
-        mock_rest_instance.get.assert_called_with(
-            "/connections?workspaceIds=workspace-id&limit=100&offset=0"
-        )
+        mock_rest_instance.get.assert_called_with("/connections?workspaceIds=workspace-id&limit=100&offset=0")
         assert len(result) == 1
         assert result[0].connectionId == "cloud-connection"
 
@@ -821,17 +735,13 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
         result = list(client.list_jobs("connection-id"))
 
-        mock_rest_instance.get.assert_called_with(
-            "/jobs?connectionId=connection-id&limit=100&offset=0"
-        )
+        mock_rest_instance.get.assert_called_with("/jobs?connectionId=connection-id&limit=100&offset=0")
         assert len(result) == 1
         assert result[0].status == "succeeded"
 
@@ -845,9 +755,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -867,9 +775,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -892,9 +798,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)
@@ -912,9 +816,7 @@ class TestAirbyteCloudClient:
         config = AirbyteConnection(
             hostPort="https://api.airbyte.com",
             apiVersion="v1",
-            auth=Oauth20ClientCredentialsAuthentication(
-                clientId="client-id", clientSecret="client-secret"
-            ),
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
         )
 
         client = AirbyteCloudClient(config)

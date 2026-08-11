@@ -4,8 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -15,6 +13,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -45,6 +44,45 @@ public class OmAppJobListener implements JobListener {
 
   protected OmAppJobListener() {
     this.repository = new AppRepository();
+  }
+
+  /**
+   * Populate {@code endTime} and {@code executionTime} on a terminal-state run record. Each field
+   * is filled independently and only if currently null:
+   *
+   * <ul>
+   *   <li>{@code endTime} defaults to {@code System.currentTimeMillis()} if absent.
+   *   <li>{@code executionTime} is computed from {@code endTime - startTime} if absent and both
+   *       endpoints are available — this means callers that pre-populated {@code endTime} (e.g.
+   *       from {@code job.getCompletedAt()}) still get an accurate {@code executionTime}.
+   * </ul>
+   *
+   * <p>The method is a no-op for non-terminal statuses, so it is safe to call from progress
+   * listeners that may persist before {@link #jobWasExecuted} runs. Without this, mid-flight
+   * writes by progress listeners (e.g. {@code QuartzProgressListener} firing {@code onJobFailed})
+   * would persist a terminal status to the DB without timings; if the job dies before {@code
+   * jobWasExecuted} fires, polling consumers would see {@code status=FAILED} with no
+   * {@code endTime} / {@code executionTime}.
+   */
+  public static void fillTerminalTimings(AppRunRecord record) {
+    if (record == null || record.getStatus() == null || !isTerminalStatus(record.getStatus())) {
+      return;
+    }
+    if (record.getEndTime() == null) {
+      record.withEndTime(System.currentTimeMillis());
+    }
+    if (record.getExecutionTime() == null
+        && record.getStartTime() != null
+        && record.getEndTime() != null) {
+      record.setExecutionTime(record.getEndTime() - record.getStartTime());
+    }
+  }
+
+  private static boolean isTerminalStatus(AppRunRecord.Status status) {
+    return switch (status) {
+      case SUCCESS, FAILED, ACTIVE_ERROR, STOPPED, COMPLETED -> true;
+      default -> false;
+    };
   }
 
   @Override
@@ -186,10 +224,11 @@ public class OmAppJobListener implements JobListener {
           context = runRecord.getFailureContext();
         }
         if (jobException != null) {
-          Map<String, Object> failure = new HashMap<>();
-          failure.put("message", jobException.getMessage());
-          failure.put("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
-          context.withAdditionalProperty("failure", failure);
+          context.withFailure(
+              new IndexingError()
+                  .withErrorSource(IndexingError.ErrorSource.JOB)
+                  .withMessage(jobException.getMessage())
+                  .withStackTrace(ExceptionUtils.getStackTrace(jobException)));
         }
 
         runRecord.setFailureContext(context);

@@ -16,4 +16,6 @@ package org.openmetadata.csv;
 @FunctionalInterface
 public interface CsvImportProgressCallback {
   void onProgress(int rowsProcessed, int totalRows, int batchNumber, String message);
+
+  default void checkpoint() {}
 }

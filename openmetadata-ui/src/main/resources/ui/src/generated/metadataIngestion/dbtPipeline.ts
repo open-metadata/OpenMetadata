@@ -35,6 +35,10 @@ export interface DbtPipeline {
      */
     dbtUpdateOwners?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
+     */
+    includeMetrics?: boolean;
+    /**
      * Optional configuration to toggle the tags ingestion.
      */
     includeTags?: boolean;
@@ -156,6 +160,11 @@ export interface DBTConfigurationSource {
      */
     dbtCatalogHttpPath?: string;
     /**
+     * Custom HTTP headers to include in every request when fetching dbt artifacts (e.g.
+     * Authorization for private GitLab/GitHub repos).
+     */
+    dbtHttpHeaders?: { [key: string]: string };
+    /**
      * DBT manifest http file path to extract dbt models and associate with tables.
      */
     dbtManifestHttpPath?: string;
@@ -167,6 +176,15 @@ export interface DBTConfigurationSource {
      * DBT sources http file path to extract freshness test results information.
      */
     dbtSourcesHttpPath?: string;
+    /**
+     * SSL certificate configuration for validating the server certificate when fetching dbt
+     * artifacts.
+     */
+    dbtSSLConfig?: Config;
+    /**
+     * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+     */
+    dbtVerifySSL?: VerifySSL;
     /**
      * Details of the bucket where the dbt files are stored
      */
@@ -198,6 +216,29 @@ export interface DBTPrefixConfig {
      * Path of the folder where the dbt files are stored
      */
     dbtObjectPrefix?: string;
+}
+
+/**
+ * SSL certificate configuration for validating the server certificate when fetching dbt
+ * artifacts.
+ *
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
 }
 
 /**
@@ -389,6 +430,17 @@ export interface GCPImpersonateServiceAccountValues {
      */
     lifetime?: number;
     [property: string]: any;
+}
+
+/**
+ * SSL/TLS verification mode when fetching dbt artifacts over HTTPS.
+ *
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }
 
 /**

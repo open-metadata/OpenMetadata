@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { ComponentType, FC } from 'react';
+import { ComponentType, FC, lazy } from 'react';
+import { ReactComponent as DefaultAppLogo } from '../../../../assets/svg/application-colored.svg';
 import { AppType } from '../../../../generated/entity/applications/app';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
-import ApplicationConfiguration, {
-  ApplicationConfigurationProps,
-} from '../ApplicationConfiguration/ApplicationConfiguration';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import type { ApplicationConfigurationProps } from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';
+
+const ApplicationConfiguration =
+  withSuspenseFallback<ApplicationConfigurationProps>(
+    lazy(() => import('../ApplicationConfiguration/ApplicationConfiguration'))
+  );
 
 class ApplicationsClassBase {
   public async importSchema(fqn: string) {
@@ -45,8 +50,12 @@ class ApplicationsClassBase {
       },
     };
   }
-  public importAppLogo(appName: string) {
-    return import(`../../../../assets/svg/${appName}.svg`);
+  public async importAppLogo(appName: string) {
+    try {
+      return await import(`../../../../assets/svg/${appName}.svg`);
+    } catch {
+      return { ReactComponent: DefaultAppLogo };
+    }
   }
   /**
    * Used to pass extra elements from installed Apps.

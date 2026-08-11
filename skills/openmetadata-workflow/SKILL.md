@@ -19,13 +19,29 @@ This skill is loaded automatically at session start. It ensures you follow the r
 | Bug fix | `/systematic-debugging` then `/tdd` (write regression test) then `/verification` |
 | New API endpoint | `/planning` then `/tdd` then `/test-enforcement` (must include integration test) |
 | New connector | `/connector-standards` then `/connector-building` then `/test-enforcement` |
-| UI component | `/tdd` then `/test-enforcement` (must include Jest + Playwright if user-facing) |
+| UI component | `/ui-core-components` + `/react-best-practices` + `/composition-patterns` **before writing**, then `/tdd`, then `/web-design-guidelines` **after**, then `/test-enforcement` (must include Jest + Playwright if user-facing) |
+| UI a11y / UX / design audit | `/web-design-guidelines` |
+| React perf work (re-renders, waterfalls, bundle) | `/react-best-practices` |
 | Code review / PR review | `/code-review` then `/test-enforcement` |
+| Opening / finalizing a PR | `/test-enforcement` then `/verification` then `/pr-checklist` |
 | Connector review | `/connector-review` |
 | E2E test creation | `/playwright` |
 | Finishing implementation | `/test-enforcement` then `/verification` |
 
 > **Note:** Connector skills (`/connector-standards`, `/connector-building`, `/connector-review`) and `/playwright` are part of the OpenMetadata Skills plugin and ship together with this workflow skill. They are defined in the `skills/` directory alongside this file.
+
+> **Why the UI row names skills explicitly:** a skill only loads when it is invoked, and the model
+> decides that from the skill's own `description`. `/composition-patterns` describes itself as being
+> for *refactoring* prop proliferation and *building component libraries*, and
+> `/web-design-guidelines` describes itself as being for *"review my UI" / "check accessibility"* —
+> so neither reliably fires on "build me a component". Naming them here is what makes them part of
+> the workflow instead of a coin flip. Invoke `/web-design-guidelines` **after** the component
+> exists: it is an audit, and running it first works against its own trigger.
+>
+> `/react-best-practices`, `/composition-patterns` and `/web-design-guidelines` are vendored from
+> [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (MIT) under
+> `skills/vendor/`. They are authoring aids, not gates — enforcement is `ui-checkstyle`, see
+> [`docs/ui-code-quality-gate.md`](../../docs/ui-code-quality-gate.md).
 
 ### Workflow Rules
 
@@ -43,6 +59,8 @@ This skill is loaded automatically at session start. It ensures you follow the r
 
 5. **Review before merging.** Use `/code-review` for two-stage review (spec compliance + code quality).
 
+6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue, high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
+
 ### OpenMetadata Cross-Layer Checklist
 
 When your task touches multiple layers, ensure all are synchronized:
@@ -53,7 +71,7 @@ When your task touches multiple layers, ensure all are synchronized:
 - [ ] Backend API changes → update frontend API client
 - [ ] New UI strings → add to `locale/languages/en-us.json` then run `yarn i18n`
 - [ ] Java files → run `mvn spotless:apply`
-- [ ] Python files → run `make py_format && make lint`
+- [ ] Python files → run `make py_format && make py_format_check`
 - [ ] TypeScript/React files → run `yarn organize-imports:cli && yarn lint:fix && yarn pretty:base --write`
 - [ ] New source files → ensure Apache 2.0 license header (run `yarn license-header-fix`)
 - [ ] Application changes → run `yarn generate:app-docs`

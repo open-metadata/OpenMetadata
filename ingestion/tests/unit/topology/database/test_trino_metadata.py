@@ -34,9 +34,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def _set_execute_side_effect(self, primary_result, fallback_result=None):
         """Helper to mock connection.execute for primary and fallback queries"""
-        results = iter(
-            [self._mock_result(primary_result), self._mock_result(fallback_result)]
-        )
+        results = iter([self._mock_result(primary_result), self._mock_result(fallback_result)])
         self.mock_connection.execute.side_effect = lambda *args, **kwargs: next(results)
 
     @staticmethod
@@ -66,9 +64,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def test_view_definition_with_create_view_not_modified(self):
         """Test that a definition already containing CREATE VIEW is returned as-is"""
-        self._set_execute_side_effect(
-            "CREATE VIEW test_catalog.test_schema.test_view AS SELECT * FROM table1"
-        )
+        self._set_execute_side_effect("CREATE VIEW test_catalog.test_schema.test_view AS SELECT * FROM table1")
 
         result = get_view_definition(
             self.mock_self,
@@ -85,9 +81,7 @@ class TestTrinoMetadata(unittest.TestCase):
 
     def test_view_definition_with_create_or_replace_not_modified(self):
         """Test that CREATE OR REPLACE VIEW is not double-prefixed"""
-        self._set_execute_side_effect(
-            "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1"
-        )
+        self._set_execute_side_effect("CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1")
 
         result = get_view_definition(
             self.mock_self,
@@ -96,9 +90,7 @@ class TestTrinoMetadata(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1"
-        )
+        self.assertEqual(result, "CREATE OR REPLACE VIEW test_view AS SELECT * FROM table1")
 
     def test_view_definition_fallback_when_primary_returns_none(self):
         """Test that SHOW CREATE VIEW is used when information_schema returns None"""
@@ -134,9 +126,7 @@ class TestTrinoMetadata(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE VIEW test_catalog.test_schema.test_view AS SELECT 1"
-        )
+        self.assertEqual(result, "CREATE VIEW test_catalog.test_schema.test_view AS SELECT 1")
         self.assertEqual(self.mock_connection.execute.call_count, 2)
 
     def test_view_definition_returns_none_when_both_queries_empty(self):

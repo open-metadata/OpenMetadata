@@ -12,6 +12,7 @@
 """
 ValueRank Metric definition
 """
+
 from sqlalchemy import column
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType

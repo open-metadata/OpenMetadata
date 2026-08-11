@@ -34,11 +34,13 @@ export interface FivetranConnection {
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?:      FilterPattern;
+    sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */
-    type?: FivetranType;
+    type?:      FivetranType;
+    verifySSL?: VerifySSL;
 }
 
 /**
@@ -58,10 +60,39 @@ export interface FilterPattern {
 }
 
 /**
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
  * Service Type
  *
  * Service type.
  */
 export enum FivetranType {
     Fivetran = "Fivetran",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
 }

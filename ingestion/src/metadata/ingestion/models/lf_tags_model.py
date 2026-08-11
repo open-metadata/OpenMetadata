@@ -11,7 +11,8 @@
 """
 Custom models for LF tags
 """
-from typing import List, Optional
+
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -19,15 +20,15 @@ from pydantic import BaseModel
 class TagItem(BaseModel):
     CatalogId: str
     TagKey: str
-    TagValues: List[str]
+    TagValues: List[str]  # noqa: UP006
 
 
 class LFTagsOnColumnsItem(BaseModel):
     Name: str
-    LFTags: List[TagItem]
+    LFTags: List[TagItem]  # noqa: UP006
 
 
 class LFTags(BaseModel):
-    LFTagOnDatabase: Optional[List[TagItem]] = None
-    LFTagsOnTable: Optional[List[TagItem]] = None
-    LFTagsOnColumns: Optional[List[LFTagsOnColumnsItem]] = None
+    LFTagOnDatabase: Optional[List[TagItem]] = None  # noqa: UP006, UP045
+    LFTagsOnTable: Optional[List[TagItem]] = None  # noqa: UP006, UP045
+    LFTagsOnColumns: Optional[List[LFTagsOnColumnsItem]] = None  # noqa: UP006, UP045

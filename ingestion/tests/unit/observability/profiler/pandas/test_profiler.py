@@ -12,6 +12,7 @@
 """
 Test Profiler behavior
 """
+
 import os
 import sys
 from datetime import datetime
@@ -58,7 +59,7 @@ class Base(DeclarativeBase):
     pass
 
 
-if sys.version_info < (3, 9):
+if sys.version_info < (3, 9):  # noqa: UP036
     pytest.skip(
         "requires python 3.9+ due to incompatibility with object patch",
         allow_module_level=True,
@@ -91,7 +92,7 @@ class ProfilerTest(TestCase):
 
     import pandas as pd
 
-    col_names = [
+    col_names = [  # noqa: RUF012
         "name",
         "fullname",
         "nickname",
@@ -104,14 +105,10 @@ class ProfilerTest(TestCase):
         "array",
     ]
 
-    root_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(os.path.abspath(__file__))  # noqa: PTH100, PTH120
     csv_dir = "../custom_csv"
-    df1 = pd.read_csv(
-        os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names
-    )
-    df2 = pd.read_csv(
-        os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names
-    )
+    df1 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_1.csv"), names=col_names)  # noqa: PTH118
+    df2 = pd.read_csv(os.path.join(root_dir, csv_dir, "test_datalake_metrics_2.csv"), names=col_names)  # noqa: PTH118
     table_entity = Table(
         id=uuid4(),
         name="user",
@@ -167,7 +164,7 @@ class ProfilerTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def setUp(cls, mock_get_connection, *_) -> None:
@@ -219,11 +216,7 @@ class ProfilerTest(TestCase):
         assert profile.tableProfile.columnCount == 10
 
         age_profile = next(
-            (
-                col_profile
-                for col_profile in profile.columnProfile
-                if col_profile.name == "age"
-            ),
+            (col_profile for col_profile in profile.columnProfile if col_profile.name == "age"),
             None,
         )
 
@@ -401,13 +394,11 @@ class ProfilerTest(TestCase):
 
         profiler._check_profile_and_handle(
             CreateTableProfileRequest(
-                tableProfile=TableProfile(
-                    timestamp=Timestamp(int(datetime.now().timestamp())), columnCount=10
-                )
+                tableProfile=TableProfile(timestamp=Timestamp(int(datetime.now().timestamp())), columnCount=10)
             )
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             profiler._check_profile_and_handle(
                 CreateTableProfileRequest(
                     tableProfile=TableProfile(
@@ -420,12 +411,8 @@ class ProfilerTest(TestCase):
     def test_profiler_get_col_metrics(self):
         """check getc column metrics"""
         metric_filter = ["mean", "min", "max", "firstQuartile"]
-        self.datalake_profiler_interface.table_entity.tableProfilerConfig = (
-            TableProfilerConfig(
-                includeColumns=[
-                    ColumnProfilerConfig(columnName="age", metrics=metric_filter)
-                ]
-            )
+        self.datalake_profiler_interface.table_entity.tableProfilerConfig = TableProfilerConfig(
+            includeColumns=[ColumnProfilerConfig(columnName="age", metrics=metric_filter)]
         )  # type: ignore
 
         default_profiler = DefaultProfiler(
@@ -434,8 +421,5 @@ class ProfilerTest(TestCase):
         )
         column_metrics = default_profiler._prepare_column_metrics()
         for metric in column_metrics:
-            if (
-                metric.metric_type is not MetricTypes.Table
-                and metric.column.name == "id"
-            ):
+            if metric.metric_type is not MetricTypes.Table and metric.column.name == "id":
                 assert all(metric_filter.count(m.name()) for m in metric.metrics)

@@ -44,4 +44,9 @@ public class QueryCostRecordIndex implements SearchIndex {
   public Object getEntity() {
     return queryCostRecord;
   }
+
+  @Override
+  public String getEntityTypeName() {
+    return Entity.QUERY_COST_RECORD;
+  }
 }

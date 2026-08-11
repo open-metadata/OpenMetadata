@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/aiGovernanceActivityResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIGovernanceActivityResponse",
+  "description": "Curated AI governance activity feed response.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.AIGovernanceActivityResponse",
+  "definitions": {
+    "aiGovernanceActivityEvent": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernanceActivityEvent",
+      "description": "Single governance-significant activity event.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "description": "Type of AI asset associated with the event."
+        },
+        "entityId": {
+          "type": "string",
+          "description": "Identifier of the AI asset associated with the event."
+        },
+        "entityName": {
+          "type": "string",
+          "description": "Name of the AI asset associated with the event."
+        },
+        "entityDisplayName": {
+          "type": "string",
+          "description": "Display name of the AI asset associated with the event."
+        },
+        "entityFqn": {
+          "type": "string",
+          "description": "Fully qualified name of the AI asset associated with the event."
+        },
+        "type": {
+          "type": "string",
+          "description": "Governance event type."
+        },
+        "text": {
+          "type": "string",
+          "description": "Human-readable event summary."
+        },
+        "at": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "createdAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "scheduledAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "who": {
+          "type": "string",
+          "description": "User associated with the event."
+        }
+      },
+      "required": ["entityType", "type", "text", "at", "createdAt"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "events": {
+      "description": "Governance activity events.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aiGovernanceActivityEvent"
+      },
+      "default": []
+    }
+  },
+  "required": ["events"],
+  "additionalProperties": false
+}

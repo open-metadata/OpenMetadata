@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { DELETE_TERM } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
-import {
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-} from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
-import { addTeamHierarchy, getNewTeamDetails } from '../../utils/team';
+import {
+  addTeamHierarchy,
+  getNewTeamDetails,
+  searchTeam,
+} from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -119,35 +118,18 @@ test.describe(
 
       await page.click('[data-testid="delete-button-title"]');
 
-      await expect(page.locator('.ant-modal-header')).toContainText(
-        businessTeamName
-      );
-
-      await page.click(`[data-testid="hard-delete-option"]`);
-
-      await expect(
-        page.locator('[data-testid="confirm-button"]')
-      ).toBeDisabled();
-
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill(DELETE_TERM);
+      await page.click(`[data-testid="hard-delete"]`);
 
       const deleteResponse = page.waitForResponse(
         `/api/v1/teams/*?hardDelete=true&recursive=true`
       );
 
-      await expect(
-        page.locator('[data-testid="confirm-button"]')
-      ).not.toBeDisabled();
-
       await page.click('[data-testid="confirm-button"]');
       await deleteResponse;
 
-      await toastNotification(
-        page,
-        `"${businessTeamName}" deleted successfully!`
-      );
+      await test.step('Deleted team is no longer searchable', async () => {
+        await searchTeam(page, businessTeamName, { expectEmptyResults: true });
+      });
     });
   }
 );

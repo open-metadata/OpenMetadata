@@ -12,22 +12,35 @@
  */
 
 import { cloneDeep } from 'lodash';
-import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { Type } from '../generated/entity/services/securityService';
 
-export const getSecurityConfig = (type: Type) => {
-  let schema = {};
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const securitySchemaLoaders: Partial<Record<Type, SchemaLoader>> = {
+  [Type.Ranger]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/security/rangerConnection.json'
+    ),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
+
+export const getSecurityConfig = async (type: Type) => {
+  const loader = securitySchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
 
-  switch (type) {
-    case Type.Ranger: {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      schema = require('../jsons/connectionSchemas/connections/security/rangerConnection.json');
-
-      break;
-    }
-    default:
-      break;
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

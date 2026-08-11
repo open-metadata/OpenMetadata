@@ -1,0 +1,50 @@
+{
+  "$id": "https://open-metadata.org/schema/type/incidentResolutionPayload.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IncidentResolutionPayload",
+  "description": "Payload for Incident Resolution tasks.",
+  "javaType": "org.openmetadata.schema.type.IncidentResolutionPayload",
+  "type": "object",
+  "properties": {
+    "incidentType": {
+      "description": "Type of incident.",
+      "type": "string",
+      "enum": ["DataQuality", "Pipeline", "Schema", "Freshness", "Volume", "Custom"]
+    },
+    "severity": {
+      "description": "Severity of the incident.",
+      "type": "string",
+      "enum": ["Critical", "High", "Medium", "Low"]
+    },
+    "impactedAssets": {
+      "description": "Assets impacted by this incident.",
+      "$ref": "entityReferenceList.json"
+    },
+    "rootCause": {
+      "description": "Root cause analysis.",
+      "type": "string"
+    },
+    "resolution": {
+      "description": "How the incident was resolved.",
+      "type": "string"
+    },
+    "preventiveMeasures": {
+      "description": "Measures to prevent recurrence.",
+      "type": "string"
+    },
+    "startTime": {
+      "description": "When the incident started.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "endTime": {
+      "description": "When the incident was resolved.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "externalTicketUrl": {
+      "description": "URL to external incident ticket.",
+      "$ref": "basic.json#/definitions/href"
+    }
+  },
+  "required": ["incidentType", "severity"],
+  "additionalProperties": false
+}

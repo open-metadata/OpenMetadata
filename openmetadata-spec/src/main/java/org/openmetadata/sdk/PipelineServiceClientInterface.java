@@ -127,8 +127,23 @@ public interface PipelineServiceClientInterface {
   /* Get the all last run logs of a deployed pipeline */
   Map<String, String> getLastIngestionLogs(IngestionPipeline ingestionPipeline, String after);
 
+  /* Get logs for a specific pipeline run identified by runId.
+   * When runId is null or blank, falls back to getLastIngestionLogs (latest run). */
+  default Map<String, String> getIngestionLogs(
+      IngestionPipeline ingestionPipeline, String after, String runId) {
+    return getLastIngestionLogs(ingestionPipeline, after);
+  }
+
   /* Get the all last run logs of a deployed pipeline */
   PipelineServiceClientResponse killIngestion(IngestionPipeline ingestionPipeline);
+
+  /* Stop a specific run of a deployed pipeline identified by its run ID.
+   * Default is a no-op: clients that do not support per-run stopping return success without
+   * taking any action. The DB status is already marked STOPPED before this is called. */
+  default PipelineServiceClientResponse killIngestionRun(
+      IngestionPipeline ingestionPipeline, String runId) {
+    return new PipelineServiceClientResponse().withCode(200).withPlatform(getPlatform());
+  }
 
   String getPlatform();
 }

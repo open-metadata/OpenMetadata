@@ -1,11 +1,12 @@
 package org.openmetadata.service.security.auth;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,21 +20,28 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerFactory;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.NoopAuthServeletHandler;
+import org.openmetadata.service.security.session.SessionService;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class UnifiedAuthTest {
 
-  @Mock private HttpServletRequest mockRequest;
-  @Mock private HttpServletResponse mockResponse;
-  @Mock private HttpSession mockSession;
   @Mock private OpenMetadataApplicationConfig mockConfig;
   @Mock private AuthenticationConfiguration mockAuthConfig;
   @Mock private AuthorizerConfiguration mockAuthzConfig;
+  @Mock private SessionService sessionService;
 
   @BeforeEach
   void setUp() {}
+
+  @AfterEach
+  void tearDown() {
+    SecurityConfigurationManager.getInstance().setCurrentAuthConfig(null);
+    SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(null);
+    AuthServeletHandlerRegistry.setSessionService(null, null);
+  }
 
   @Test
   void testFactoryReturnsCorrectHandlerForBasicAuth() {
@@ -43,7 +51,7 @@ public class UnifiedAuthTest {
     SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(mockAuthzConfig);
 
     // Execute
-    AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(mockConfig);
+    AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(mockConfig, sessionService);
 
     // Verify
     assertNotNull(handler);
@@ -58,7 +66,7 @@ public class UnifiedAuthTest {
     SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(mockAuthzConfig);
 
     // Execute
-    AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(mockConfig);
+    AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(mockConfig, sessionService);
 
     // Verify
     assertNotNull(handler);
@@ -72,28 +80,12 @@ public class UnifiedAuthTest {
     SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
     SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(mockAuthzConfig);
 
-    AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(mockConfig);
+    AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(mockConfig, sessionService);
 
     // Verify handler exists and is of correct type
     assertNotNull(handler);
     assertTrue(
         handler instanceof BasicAuthServletHandler || handler instanceof NoopAuthServeletHandler);
-  }
-
-  @Test
-  void testSessionBasedRefreshToken() {
-    // This test verifies refresh tokens are stored in session, not sent to client
-
-    when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.BASIC);
-    SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
-    SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(mockAuthzConfig);
-
-    AuthServeletHandler handler = AuthServeletHandlerFactory.getHandler(mockConfig);
-
-    // Verify handler exists and would use session for refresh tokens
-    assertNotNull(handler);
-    // The actual session storage happens during login with valid credentials
-    // This test verifies the structure is in place
   }
 
   @Test
@@ -104,14 +96,30 @@ public class UnifiedAuthTest {
     when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.BASIC);
     SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
 
-    AuthServeletHandler handler1 = AuthServeletHandlerFactory.getHandler(mockConfig);
-    assertInstanceOf(BasicAuthServletHandler.class, handler1);
+    AuthServeletHandler handler1 =
+        AuthServeletHandlerFactory.getHandler(mockConfig, sessionService);
+    assertTrue(handler1 instanceof BasicAuthServletHandler);
 
     // Switch to LDAP
     when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.LDAP);
     SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
 
-    AuthServeletHandler handler2 = AuthServeletHandlerFactory.getHandler(mockConfig);
-    assertInstanceOf(LdapAuthServletHandler.class, handler2);
+    AuthServeletHandler handler2 =
+        AuthServeletHandlerFactory.getHandler(mockConfig, sessionService);
+    assertTrue(handler2 instanceof LdapAuthServletHandler);
+  }
+
+  @Test
+  void testFactoryRequiresRegisteredSessionService() {
+    when(mockAuthConfig.getProvider()).thenReturn(AuthProvider.BASIC);
+    SecurityConfigurationManager.getInstance().setCurrentAuthConfig(mockAuthConfig);
+    SecurityConfigurationManager.getInstance().setCurrentAuthzConfig(mockAuthzConfig);
+    AuthServeletHandlerRegistry.setSessionService(null, null);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class, () -> AuthServeletHandlerFactory.getHandler(mockConfig));
+
+    assertTrue(exception.getMessage().contains("SessionService must be initialized"));
   }
 }

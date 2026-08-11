@@ -28,14 +28,13 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.database import Database  # noqa: TC001
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema  # noqa: TC001
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
-    ProfileSampleType,
     TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
@@ -51,6 +50,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 
@@ -125,14 +125,10 @@ class TestE2EWorkflow(unittest.TestCase):
     """e2e test for the workflow"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.model_validate(
-            test_suite_config["workflowConfig"]["openMetadataServerConfig"]
-        )
+        OpenMetadataConnection.model_validate(test_suite_config["workflowConfig"]["openMetadataServerConfig"])
     )
 
-    db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db"
-    )
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = DatabaseConnection(
         config=SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
@@ -227,11 +223,7 @@ class TestE2EWorkflow(unittest.TestCase):
         """
         Clean up
         """
-        service_db_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test_suite_service_test"
-            ).id.root
-        )
+        service_db_id = str(cls.metadata.get_by_name(entity=DatabaseService, fqn="test_suite_service_test").id.root)
 
         cls.metadata.delete(
             entity=DatabaseService,
@@ -240,7 +232,7 @@ class TestE2EWorkflow(unittest.TestCase):
             hard_delete=True,
         )
 
-        os.remove(cls.db_path)
+        os.remove(cls.db_path)  # noqa: PTH107
         return super().tearDownClass()
 
     def test_e2e_cli_workflow(self):
@@ -283,20 +275,16 @@ class TestE2EWorkflow(unittest.TestCase):
                     f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
                     ".my_test_case",
                     data={
-                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
-                        * 1000,
-                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
-                        * 1000,
+                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
                     },
                 )
                 test_case_result_2 = self.metadata.client.get(
                     f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.{table_name}"
                     ".id.table_column_to_be_not_null",
                     data={
-                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
-                        * 1000,
-                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
-                        * 1000,
+                        "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                        "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
                     },
                 )
 
@@ -312,14 +300,17 @@ class TestE2EWorkflow(unittest.TestCase):
         """test cli workflow e2e"""
         fqn = "test_suite_service_test.test_suite_database.test_suite_database_schema.users"
 
-        test_suite_config["source"]["sourceConfig"]["config"].update(
-            {"entityFullyQualifiedName": fqn}
-        )
+        test_suite_config["source"]["sourceConfig"]["config"].update({"entityFullyQualifiedName": fqn})
         self.metadata.create_or_update_table_profiler_config(
             fqn=fqn,
             table_profiler_config=TableProfilerConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE,
-                profileSample=50.0,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType="STATIC",
+                    config={
+                        "profileSample": 50.0,
+                        "profileSampleType": "PERCENTAGE",
+                    },
+                ),
             ),
         )
 
@@ -329,12 +320,12 @@ class TestE2EWorkflow(unittest.TestCase):
 
         test_case_1 = self.metadata.get_by_name(
             entity=TestCase,
-            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case",
+            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case",  # noqa: F541
             fields=["testDefinition", "testSuite"],
         )
         test_case_2 = self.metadata.get_by_name(
             entity=TestCase,
-            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.id.table_column_to_be_not_null",
+            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.id.table_column_to_be_not_null",  # noqa: F541
             fields=["testDefinition", "testSuite"],
         )
 
@@ -342,7 +333,7 @@ class TestE2EWorkflow(unittest.TestCase):
         assert test_case_2
 
         test_case_result_1 = self.metadata.client.get(
-            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"  # noqa: F541
             ".my_test_case",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
@@ -350,7 +341,7 @@ class TestE2EWorkflow(unittest.TestCase):
             },
         )
         test_case_result_2 = self.metadata.client.get(
-            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"  # noqa: F541
             ".id.table_column_to_be_not_null",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
@@ -376,14 +367,17 @@ class TestE2EWorkflow(unittest.TestCase):
         """test cli workflow e2e"""
         fqn = "test_suite_service_test.test_suite_database.test_suite_database_schema.users"
 
-        test_suite_config["source"]["sourceConfig"]["config"].update(
-            {"entityFullyQualifiedName": fqn}
-        )
+        test_suite_config["source"]["sourceConfig"]["config"].update({"entityFullyQualifiedName": fqn})
         self.metadata.create_or_update_table_profiler_config(
             fqn=fqn,
             table_profiler_config=TableProfilerConfig(
-                profileSampleType=ProfileSampleType.PERCENTAGE,
-                profileSample=100.0,
+                profileSampleConfig=ProfileSampleConfig(
+                    sampleConfigType="STATIC",
+                    config={
+                        "profileSample": 100.0,
+                        "profileSampleType": "PERCENTAGE",
+                    },
+                ),
                 partitioning=PartitionProfilerConfig(
                     enablePartitioning=True,
                     partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
@@ -400,12 +394,12 @@ class TestE2EWorkflow(unittest.TestCase):
 
         test_case_1 = self.metadata.get_by_name(
             entity=TestCase,
-            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case",
+            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case",  # noqa: F541
             fields=["testDefinition", "testSuite"],
         )
         test_case_2 = self.metadata.get_by_name(
             entity=TestCase,
-            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.id.table_column_to_be_not_null",
+            fqn=f"test_suite_service_test.test_suite_database.test_suite_database_schema.users.id.table_column_to_be_not_null",  # noqa: F541
             fields=["testDefinition", "testSuite"],
         )
 
@@ -413,7 +407,7 @@ class TestE2EWorkflow(unittest.TestCase):
         assert test_case_2
 
         test_case_result_1 = self.metadata.client.get(
-            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"  # noqa: F541
             ".my_test_case",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
@@ -421,7 +415,7 @@ class TestE2EWorkflow(unittest.TestCase):
             },
         )
         test_case_result_2 = self.metadata.client.get(
-            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
+            f"/dataQuality/testCases/testCaseResults/test_suite_service_test.test_suite_database.test_suite_database_schema.users"  # noqa: F541
             ".id.table_column_to_be_not_null",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,

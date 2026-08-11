@@ -119,15 +119,27 @@ describe('TokenService', () => {
   });
 
   describe('refreshToken', () => {
-    it('should return early if token update is in progress', async () => {
+    it('should wait for a sibling tab refresh and return the new token', async () => {
+      jest.useRealTimers();
       localStorage.setItem('refreshInProgress', 'true');
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
+
       const result = await tokenService.refreshToken();
 
-      expect(result).toBeUndefined();
+      // Must resolve to the sibling's token, never `undefined` (the value that
+      // made the 401 interceptor treat an in-progress refresh as a failure).
+      expect(result).toBe('new-token');
+
+      jest.useFakeTimers();
     });
 
-    it('should refresh token if expired', async () => {
-      (getOidcToken as jest.Mock).mockResolvedValue('old-token');
+    it('should coalesce concurrent refresh calls into a single refresh', async () => {
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
       (extractDetailsFromToken as jest.Mock).mockReturnValue({
         isExpired: true,
         timeoutExpiry: -1,
@@ -135,49 +147,145 @@ describe('TokenService', () => {
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockResolvedValue('new-token');
 
-      const refreshPromise = tokenService.refreshToken();
+      const [first, second] = await Promise.all([
+        tokenService.refreshToken(),
+        tokenService.refreshToken(),
+      ]);
 
-      // Wait for async operations to reach the setTimeout
-      // Multiple flushes to ensure we pass the awaits in code
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
+      expect(mockRenewToken).toHaveBeenCalledTimes(1);
+      expect(first).toBe('new-token');
+      expect(second).toBe('new-token');
 
-      jest.advanceTimersByTime(100);
+      jest.useFakeTimers();
+    });
 
-      const result = await refreshPromise;
+    it('should treat a void-returning silent renew as success when the token is persisted', async () => {
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('renewed-token');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: true,
+        timeoutExpiry: -1,
+      });
+      tokenService.updateRenewToken(mockRenewToken);
+      // OIDC silent renew resolves void and writes the token via a side effect.
+      mockRenewToken.mockResolvedValue(undefined);
+
+      const result = await tokenService.refreshToken();
+
+      // A void return with a changed stored token is a success, not a logout.
+      expect(result).toBe('renewed-token');
+
+      jest.useFakeTimers();
+    });
+
+    it('should refresh even when the token still looks valid locally', async () => {
+      // A 401 can arrive on a token that is not yet expired locally (clock skew /
+      // server-side revocation); there is no "skip if valid" fast path to block it.
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue('new-token');
+
+      const result = await tokenService.refreshToken();
+
+      expect(mockRenewToken).toHaveBeenCalledTimes(1);
+      expect(result).toBe('new-token');
+
+      jest.useFakeTimers();
+    });
+
+    it('should treat a re-issued identical token as success, not a logout', async () => {
+      // MSAL/Okta/Auth0 silent renew can return the same id_token (forceRefresh
+      // only refreshes the access token); storage is unchanged but the renewer
+      // resolving is still success — must NOT return null (which logs the user out).
+      const sameToken = 'same-token';
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock).mockResolvedValue(sameToken);
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue(sameToken);
+
+      const result = await tokenService.refreshToken();
+
+      expect(result).toBe(sameToken);
+
+      jest.useFakeTimers();
+    });
+
+    it('should refresh token if expired', async () => {
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: true,
+        timeoutExpiry: -1,
+      });
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue('new-token');
+
+      const result = await tokenService.refreshToken();
 
       expect(mockRenewToken).toHaveBeenCalled();
       expect(result).toBe('new-token');
       expect(localStorage.getItem('tokenRefreshed')).toBe('true');
+
+      jest.useFakeTimers();
     });
 
-    it('should not refresh if token is valid', async () => {
+    it('should return null and clear the flag when no renewer is configured', async () => {
+      jest.useRealTimers();
       (getOidcToken as jest.Mock).mockResolvedValue('valid-token');
-      (extractDetailsFromToken as jest.Mock).mockReturnValue({
-        isExpired: false,
-        timeoutExpiry: 1000,
-      });
 
       const result = await tokenService.refreshToken();
 
       expect(mockRenewToken).not.toHaveBeenCalled();
       expect(result).toBeNull();
       expect(localStorage.getItem('refreshInProgress')).toBeNull();
+
+      jest.useFakeTimers();
     });
 
-    it('should handle errors during refresh', async () => {
+    it('should log a warning and resolve to null on renewal failure', async () => {
+      jest.useRealTimers();
       (getOidcToken as jest.Mock).mockResolvedValue('token');
-      (extractDetailsFromToken as jest.Mock).mockReturnValue({
-        isExpired: true,
-      });
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockRejectedValue(new Error('Refresh failed'));
+      const warnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
 
-      await expect(tokenService.refreshToken()).rejects.toThrow(
+      const result = await tokenService.refreshToken();
+
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
         'Failed to refresh token: Refresh failed'
       );
       expect(localStorage.getItem('refreshInProgress')).toBeNull();
+
+      warnSpy.mockRestore();
+      jest.useFakeTimers();
+    });
+
+    it('should succeed when a null-returning renew delivers the token via callback (public OIDC)', async () => {
+      // OidcAuthenticator.signInSilently resolves without returning the token; it
+      // lands asynchronously in storage via the silent-callback iframe. A null
+      // renew result must NOT be read as failure when a fresh token shows up.
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('callback-token');
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue(null);
+
+      const result = await tokenService.refreshToken();
+
+      expect(result).toBe('callback-token');
+
+      jest.useFakeTimers();
     });
   });
 
@@ -209,13 +317,21 @@ describe('TokenService', () => {
       expect(result).toBeNull();
     });
 
-    it('should throw other errors', async () => {
+    it('should log a warning and return null for other errors', async () => {
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockRejectedValue(new Error('Network error'));
+      const warnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
 
-      await expect(tokenService.fetchNewToken()).rejects.toThrow(
+      const result = await tokenService.fetchNewToken();
+
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
         'Failed to refresh token: Network error'
       );
+
+      warnSpy.mockRestore();
     });
 
     it('should clear refreshInProgress on success', async () => {

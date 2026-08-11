@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.teams.User;
@@ -14,8 +15,22 @@ public class UserIndex implements SearchIndex {
   }
 
   @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(SearchIndex.super.getRequiredReindexFields());
+    fields.add("teams");
+    fields.add("roles");
+    fields.add("inheritedRoles");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
   public Object getEntity() {
     return user;
+  }
+
+  @Override
+  public String getEntityTypeName() {
+    return Entity.USER;
   }
 
   @Override
@@ -24,8 +39,6 @@ public class UserIndex implements SearchIndex {
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes = getCommonAttributesMap(user, Entity.USER);
-    doc.putAll(commonAttributes);
     if (user.getIsBot() == null) {
       doc.put("isBot", false);
     }
@@ -33,6 +46,9 @@ public class UserIndex implements SearchIndex {
   }
 
   public static Map<String, Float> getFields() {
-    return SearchIndex.getDefaultFields();
+    Map<String, Float> fields = SearchIndex.getDefaultFields();
+    fields.put("email", 5.0f);
+    fields.put("email.keyword", 10.0f);
+    return fields;
   }
 }

@@ -12,7 +12,7 @@
  */
 
 import { isUndefined } from 'lodash';
-import { getStatisticsDisplayValue } from '../../../../utils/CommonUtils';
+import { getStatisticsDisplayValue } from '../../../../utils/NumberUtils';
 import '../ProfilerDashboard/profiler-dashboard.less';
 import { ProfilerLatestValueProps } from '../ProfilerDashboard/profilerDashboard.interface';
 

@@ -1,0 +1,104 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/folder.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Folder",
+  "$comment": "@om-entity-type",
+  "description": "A directory container for organizing files in the Context Center Drive. Folders can nest other folders. Access is determined by owners.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.Folder",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the folder.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the folder.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the folder.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name of the folder.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the folder.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "icon": {
+      "description": "Optional icon identifier for UI display.",
+      "type": "string"
+    },
+    "color": {
+      "description": "Optional color for the folder icon.",
+      "type": "string"
+    },
+    "parent": {
+      "description": "Parent folder (for nested folders).",
+      "$ref": "../../type/entityReference.json"
+    },
+    "children": {
+      "description": "Child folders.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "childrenCount": {
+      "description": "Count of direct children (folders + files).",
+      "type": "integer"
+    },
+    "owners": {
+      "description": "Owners of this folder. User-owned = personal, Team-owned = team folder, Org-owned = org-wide.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags associated with this folder.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Incremental change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "domains": {
+      "description": "Domains this folder belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this folder.",
+      "$ref": "../../type/entityReferenceList.json"
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

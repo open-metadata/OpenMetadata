@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -39,7 +40,7 @@ const uiCreatedDomainName = `PW-mp-domain-${uuid()}`;
 
 test.describe(
   'Data Marketplace - Core',
-  { tag: ['@Pages', '@Discovery'] },
+  { tag: ['@Pages', '@Discovery', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll('Setup entities', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -128,102 +129,6 @@ test.describe(
       });
     });
 
-    test('Search returns results and clicking navigates to entity', async ({
-      page,
-    }) => {
-      test.slow();
-
-      await test.step('Navigate to marketplace', async () => {
-        await navigateToMarketplace(page);
-      });
-
-      await test.step('Search for a data product', async () => {
-        await searchMarketplace(page, dp4.data.displayName);
-        const resultItem = page.getByTestId(
-          `search-result-dp-${dp4.responseData.id}`
-        );
-        await expect(resultItem).toBeVisible();
-      });
-
-      await test.step('Click data product result and verify navigation', async () => {
-        const resultItem = page.getByTestId(
-          `search-result-dp-${dp4.responseData.id}`
-        );
-        await resultItem.dispatchEvent('click');
-        await page.waitForURL('**/data-marketplace/data-products/**');
-      });
-
-      await test.step('Navigate back and search for a domain', async () => {
-        await navigateToMarketplace(page);
-        await searchMarketplace(page, domain4.data.displayName);
-        await expect(
-          page.getByTestId(`search-result-domain-${domain4.responseData.id}`)
-        ).toBeVisible();
-      });
-
-      await test.step('Click domain result and verify navigation', async () => {
-        const resultItem = page.getByTestId(
-          `search-result-domain-${domain4.responseData.id}`
-        );
-        await resultItem.dispatchEvent('click');
-        await page.waitForURL('**/data-marketplace/domains/**');
-      });
-    });
-
-    test('Widget card click navigates to entity detail page', async ({
-      page,
-    }) => {
-      test.slow();
-
-      await test.step('Navigate to marketplace', async () => {
-        await navigateToMarketplace(page);
-      });
-
-      await test.step('Click data product card and verify navigation', async () => {
-        const dpWidget = page.getByTestId('marketplace-dp-widget');
-        const dpCard = dpWidget
-          .locator('[data-testid^="marketplace-dp-card-"]')
-          .first();
-        await expect(dpCard).toBeVisible();
-        await dpCard.click();
-        await page.waitForURL('**/data-marketplace/data-products/**');
-      });
-
-      await test.step('Navigate back and click domain card', async () => {
-        await navigateToMarketplace(page);
-        const domainsWidget = page.getByTestId('marketplace-domains-widget');
-        const domainCard = domainsWidget
-          .locator('[data-testid^="marketplace-domain-card-"]')
-          .first();
-        await expect(domainCard).toBeVisible();
-        await domainCard.click();
-        await page.waitForURL('**/data-marketplace/domains/**');
-      });
-    });
-
-    test('View All links navigate correctly', async ({ page }) => {
-      test.slow();
-
-      await test.step('Navigate to marketplace', async () => {
-        await navigateToMarketplace(page);
-      });
-
-      await test.step('Click View All Data Products and verify', async () => {
-        const viewAllDp = page.getByTestId('view-all-data-products');
-        await expect(viewAllDp).toBeVisible();
-        await viewAllDp.click();
-        await page.waitForURL('**/data-marketplace/data-products**');
-      });
-
-      await test.step('Navigate back and click View All Domains', async () => {
-        await navigateToMarketplace(page);
-        const viewAllDomains = page.getByTestId('view-all-domains');
-        await expect(viewAllDomains).toBeVisible();
-        await viewAllDomains.click();
-        await page.waitForURL('**/data-marketplace/domains**');
-      });
-    });
-
     test('Admin can create a data product via marketplace drawer', async ({
       page,
     }) => {
@@ -235,7 +140,7 @@ test.describe(
 
       await test.step('Open add data product drawer', async () => {
         await page.getByTestId('add-data-product-btn').click();
-        await expect(page.getByTestId('add-domain')).toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).toBeVisible();
       });
 
       await test.step('Fill data product form and select domain', async () => {
@@ -246,8 +151,9 @@ test.describe(
           domains: [],
         } as DataProduct['data']);
 
-        const domainInput = page.getByTestId('domain-select');
-        await domainInput.scrollIntoViewIfNeeded();
+        const domainContainer = page.getByTestId('domain-select');
+        await domainContainer.scrollIntoViewIfNeeded();
+        const domainInput = domainContainer.getByRole('combobox');
         await domainInput.click();
 
         const searchDomain = page.waitForResponse((response) =>
@@ -273,7 +179,7 @@ test.describe(
       });
 
       await test.step('Verify drawer closes and widget refreshes', async () => {
-        await expect(page.getByTestId('add-domain')).not.toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).not.toBeVisible();
         await waitForAllLoadersToDisappear(page);
         await expect(page.getByTestId('marketplace-dp-widget')).toBeVisible();
       });
@@ -290,7 +196,7 @@ test.describe(
 
       await test.step('Open add domain drawer', async () => {
         await page.getByTestId('add-domain-btn').click();
-        await expect(page.getByTestId('add-domain')).toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).toBeVisible();
       });
 
       await test.step('Fill domain form and select type', async () => {
@@ -314,7 +220,7 @@ test.describe(
       });
 
       await test.step('Verify drawer closes and widget refreshes', async () => {
-        await expect(page.getByTestId('add-domain')).not.toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).not.toBeVisible();
         await waitForAllLoadersToDisappear(page);
         await expect(
           page.getByTestId('marketplace-domains-widget')

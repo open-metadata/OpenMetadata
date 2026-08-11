@@ -105,7 +105,10 @@ fi
 if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
   export OPENMETADATA_JVM_PERFORMANCE_OPTS="\
     -server -XX:+UseG1GC \
+    -XX:+UnlockExperimentalVMOptions \
     -XX:MaxGCPauseMillis=200 \
+    -XX:G1NewSizePercent=5 \
+    -XX:G1MaxNewSizePercent=20 \
     -XX:InitiatingHeapOccupancyPercent=45 \
     -XX:+ExplicitGCInvokesConcurrent \
     -XX:+UseStringDeduplication \

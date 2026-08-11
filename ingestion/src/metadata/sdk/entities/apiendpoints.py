@@ -1,7 +1,8 @@
 """
 APIEndpoints entity SDK with fluent API
 """
-from typing import Type
+
+from typing import Type  # noqa: UP035
 
 from metadata.generated.schema.api.data.createAPIEndpoint import (
     CreateAPIEndpointRequest,
@@ -14,6 +15,6 @@ class APIEndpoints(BaseEntity[APIEndpoint, CreateAPIEndpointRequest]):
     """APIEndpoints SDK class - plural to avoid conflict with generated APIEndpoint entity"""
 
     @classmethod
-    def entity_type(cls) -> Type[APIEndpoint]:
+    def entity_type(cls) -> Type[APIEndpoint]:  # noqa: UP006
         """Return the APIEndpoint entity type"""
         return APIEndpoint

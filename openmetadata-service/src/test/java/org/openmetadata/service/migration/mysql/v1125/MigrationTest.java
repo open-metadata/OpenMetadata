@@ -35,7 +35,6 @@ class MigrationTest {
     Migration migration = createMigrationWithHandle(handle);
 
     try (MockedStatic<MigrationUtil> util = mockStatic(MigrationUtil.class)) {
-      util.when(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle)).then(inv -> null);
       util.when(MigrationUtil::migrateWorkflowDefinitions).then(inv -> null);
       util.when(() -> MigrationUtil.migrateCertificationToTagUsage(handle, ConnectionType.MYSQL))
           .then(inv -> null);
@@ -53,7 +52,6 @@ class MigrationTest {
     Migration migration = createMigrationWithHandle(handle);
 
     try (MockedStatic<MigrationUtil> util = mockStatic(MigrationUtil.class)) {
-      util.when(() -> MigrationUtil.migrateWebhookSecretKeyToAuthType(handle)).then(inv -> null);
       util.when(MigrationUtil::migrateWorkflowDefinitions).then(inv -> null);
       util.when(() -> MigrationUtil.migrateCertificationToTagUsage(handle, ConnectionType.MYSQL))
           .thenThrow(new RuntimeException("certification migration failed"));

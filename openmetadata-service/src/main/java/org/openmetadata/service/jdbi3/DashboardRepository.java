@@ -67,6 +67,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     fieldFetchers.put("charts", this::fetchAndSetCharts);
     fieldFetchers.put("dataModels", this::fetchAndSetDataModels);
@@ -209,14 +213,28 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
   }
 
-  // Override soft delete behavior to handle charts through HAS relation.
+  // Hard-delete chart links (HAS relation). The CONTAINS subtree is handled by the bulk
+  // path in EntityRepository.bulkHardDeleteSubtree; chart handling is a per-dashboard concern
+  // and lives in the per-entity extension hook so it runs both for direct dashboard deletes
+  // and when dashboards are descendants of a larger hard-delete cascade.
   @Transaction
   @Override
-  protected void deleteChildren(
-      UUID dashboardId, boolean recursive, boolean hardDelete, String updatedBy) {
-    super.deleteChildren(dashboardId, recursive, hardDelete, updatedBy);
+  protected void hardDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
+    cascadeChartCleanup(dashboardId, updatedBy, true);
+  }
 
-    // Load all charts linked to this dashboard
+  // Soft-delete chart links (HAS relation). The CONTAINS subtree is handled by the bulk
+  // path in EntityRepository.bulkSoftDeleteSubtree; chart handling is a per-dashboard
+  // concern and lives in the per-entity extension hook so it runs both for direct dashboard
+  // deletes and when dashboards are descendants of a larger soft-delete (e.g.,
+  // DashboardService cascade).
+  @Transaction
+  @Override
+  protected void softDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
+    cascadeChartCleanup(dashboardId, updatedBy, false);
+  }
+
+  private void cascadeChartCleanup(UUID dashboardId, String updatedBy, boolean hardDelete) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
         daoCollection
             .relationshipDAO()
@@ -225,7 +243,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return;
     }
 
-    // Batch-load dashboard relationships for these charts
     List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
         daoCollection
             .relationshipDAO()
@@ -248,11 +265,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 Include.NON_DELETED)
             .stream()
             .map(Dashboard::getId)
-            .filter(id -> !id.equals(dashboardId)) // (excluding the current dashboard
+            .filter(id -> !id.equals(dashboardId))
             .collect(Collectors.toSet());
 
-    // For deletion: get charts whose linked dashboards (excluding the current dashboard)
-    // have no other non‑deleted dashboards.
+    // Soft-delete charts whose only remaining dashboard is the one being deleted.
     List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeDeleted =
         new ArrayList<>();
 
@@ -277,13 +293,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     deleteChildren(filteredChartRecordsToBeDeleted, hardDelete, updatedBy);
   }
 
-  // Override restore behavior to handle charts through HAS relation.
+  // Restore chart links (HAS relation). The CONTAINS subtree is now restored by the bulk
+  // path in EntityRepository.bulkRestoreSubtree; chart handling is a per-dashboard concern
+  // and lives in the per-entity extension hook.
   @Transaction
   @Override
-  protected void restoreChildren(UUID dashboardId, String updatedBy) {
-    super.restoreChildren(dashboardId, updatedBy);
-
-    // Load all charts linked to this dashboard
+  protected void restoreAdditionalChildren(UUID dashboardId, String updatedBy) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
         daoCollection
             .relationshipDAO()
@@ -292,7 +307,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       return;
     }
 
-    // Batch-load dashboard relationships for these charts
     List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
         daoCollection
             .relationshipDAO()
@@ -315,11 +329,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 Include.DELETED)
             .stream()
             .map(Dashboard::getId)
-            .filter(id -> !id.equals(dashboardId)) // (excluding the current dashboard
+            .filter(id -> !id.equals(dashboardId))
             .collect(Collectors.toSet());
 
-    // For restore: get charts whose linked dashboards (excluding the current dashboard)
-    // are all non‑deleted.
     List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeRestored =
         new ArrayList<>();
 
@@ -341,9 +353,25 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       }
     }
 
+    // Per-chart restore preserves the full chart restoreEntity flow (setFieldsInternal,
+    // setInheritedFields, lifecycle hooks, ES restore-from-search). Charts are typically
+    // few per dashboard, so the loop isn't a hot path; the bulkRestoreSubtree shortcut
+    // skipped chart-specific setup that the test in DashboardResourceIT relies on.
     for (CollectionDAO.EntityRelationshipRecord record : filteredChartRecordsToBeRestored) {
       LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-      Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      try {
+        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+      } catch (RuntimeException e) {
+        // Surface the underlying cause — Entity.restoreEntity has no try/catch wrapper of
+        // its own and silently aborts the whole dashboard restore if a single chart fails.
+        LOG.error(
+            "[ChartRestoreCascade] Failed to restore chart {} for dashboard {}: {}",
+            record.getId(),
+            dashboardId,
+            e.getMessage(),
+            e);
+        throw e;
+      }
     }
   }
 

@@ -2,6 +2,7 @@
 Integration tests for DQ as Code SDK with a running OpenMetadata server.
 Tests that data quality validators are actually executed against real PostgreSQL data.
 """
+
 from dirty_equals import HasAttributes
 
 from metadata.generated.schema.entity.data.table import Table
@@ -30,9 +31,7 @@ def test_table_row_count_tests(
     runner = TestRunner.for_table(table_fqn, client=metadata)
 
     runner.add_test(
-        TableRowCountToBeBetween(min_count=1, max_count=10).with_description(
-            "Check users table has between 1-10 rows"
-        )
+        TableRowCountToBeBetween(min_count=1, max_count=10).with_description("Check users table has between 1-10 rows")
     )
 
     results = runner.run()
@@ -104,9 +103,7 @@ def test_table_column_count_test(
     runner = TestRunner.for_table(table_fqn, client=metadata)
 
     runner.add_test(
-        TableColumnCountToBeBetween(min_count=2, max_count=5).with_description(
-            "Check products table has 2-5 columns"
-        )
+        TableColumnCountToBeBetween(min_count=2, max_count=5).with_description("Check products table has 2-5 columns")
     )
 
     results = runner.run()
@@ -141,9 +138,7 @@ def test_column_unique_test(
     runner = TestRunner.for_table(table_fqn, client=metadata)
 
     runner.add_test(
-        ColumnValuesToBeUnique(column="id")
-        .with_description("Check user IDs are unique")
-        .with_compute_row_count(True)
+        ColumnValuesToBeUnique(column="id").with_description("Check user IDs are unique").with_compute_row_count(True)
     )
 
     results = runner.run()
@@ -180,9 +175,7 @@ def test_column_not_null_test(
     runner = TestRunner.for_table(table_fqn, client=metadata)
 
     test = (
-        ColumnValuesToBeNotNull(column="email")
-        .with_description("Check email is not null")
-        .with_compute_row_count(True)
+        ColumnValuesToBeNotNull(column="email").with_description("Check email is not null").with_compute_row_count(True)
     )
 
     runner.add_test(test)
@@ -190,11 +183,7 @@ def test_column_not_null_test(
     results = runner.run()
 
     # Because of parallel tests, the table might contain a TestSuite with other tests already
-    test_result = next(
-        r
-        for r in results
-        if r.testCase.testDefinition.name == test.test_definition_name
-    )
+    test_result = next(r for r in results if r.testCase.testDefinition.name == test.test_definition_name)
 
     assert test_result.testCaseResult.testCaseStatus == TestCaseStatus.Failed
     assert test_result.testCaseResult.passedRows == 4
@@ -236,11 +225,7 @@ def test_column_values_between_test(
     results = runner.run()
 
     # Because of parallel tests, the table might contain a TestSuite with other tests already
-    test_result = next(
-        r
-        for r in results
-        if r.testCase.testDefinition.name == test.test_definition_name
-    )
+    test_result = next(r for r in results if r.testCase.testDefinition.name == test.test_definition_name)
 
     assert test_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
     assert test_result.testCaseResult.passedRows == 5
@@ -294,9 +279,7 @@ def test_multiple_tests_in_single_runner(
             ],
         )
     )
-    assert (
-        table_row_count_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
-    )
+    assert table_row_count_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 
     test_table_column_count_result = next(
         r
@@ -309,10 +292,7 @@ def test_multiple_tests_in_single_runner(
             ],
         )
     )
-    assert (
-        test_table_column_count_result.testCaseResult.testCaseStatus
-        == TestCaseStatus.Success
-    )
+    assert test_table_column_count_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 
     column_values_unique_result = next(
         r
@@ -323,10 +303,7 @@ def test_multiple_tests_in_single_runner(
             entityLink=EntityLink(root=f"<#E::table::{table_fqn}::columns::username>"),
         )
     )
-    assert (
-        column_values_unique_result.testCaseResult.testCaseStatus
-        == TestCaseStatus.Success
-    )
+    assert column_values_unique_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 
     column_values_not_null_result = next(
         r
@@ -337,10 +314,7 @@ def test_multiple_tests_in_single_runner(
             entityLink=EntityLink(root=f"<#E::table::{table_fqn}::columns::username>"),
         )
     )
-    assert (
-        column_values_not_null_result.testCaseResult.testCaseStatus
-        == TestCaseStatus.Success
-    )
+    assert column_values_not_null_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 
     table = metadata.get_by_name(Table, table_fqn)
     if table:

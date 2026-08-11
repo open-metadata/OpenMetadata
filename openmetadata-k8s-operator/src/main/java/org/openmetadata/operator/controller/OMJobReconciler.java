@@ -299,6 +299,12 @@ public class OMJobReconciler
     String eventType = success ? "OMJobCompleted" : "OMJobFailed";
     eventPublisher.publishNormalEvent(omJob, eventType, message);
 
+    // Schedule reconciliation for TTL cleanup so handleTerminalPhase runs
+    // Without this, the SDK applies its max reconciliation interval (10h)
+    Integer ttl = omJob.getSpec() != null ? omJob.getSpec().getTtlSecondsAfterFinished() : null;
+    if (ttl != null && ttl > 0) {
+      return UpdateControl.updateStatus(omJob).rescheduleAfter(Duration.ofSeconds(ttl));
+    }
     return UpdateControl.updateStatus(omJob);
   }
 
@@ -312,9 +318,30 @@ public class OMJobReconciler
 
       eventPublisher.publishNormalEvent(
           omJob, "ResourcesCleanedUp", "Cleaned up pods due to TTL expiration");
+
+      return UpdateControl.<OMJobResource>noUpdate();
     }
 
-    // Terminal state - no further reconciliation needed
+    // If TTL is configured but not yet expired, reschedule to clean up when it expires
+    Integer ttl = omJob.getSpec() != null ? omJob.getSpec().getTtlSecondsAfterFinished() : null;
+    if (ttl != null
+        && ttl > 0
+        && omJob.getStatus() != null
+        && omJob.getStatus().getCompletionTime() != null) {
+      long completionEpoch = omJob.getStatus().getCompletionTime().getEpochSecond();
+      long now = System.currentTimeMillis() / 1000;
+      long remaining = ttl - (now - completionEpoch);
+      if (remaining > 0) {
+        LOG.debug(
+            "TTL not yet expired for OMJob: {}, rescheduling in {} seconds",
+            omJob.getMetadata().getName(),
+            remaining + 1);
+        return UpdateControl.<OMJobResource>noUpdate()
+            .rescheduleAfter(Duration.ofSeconds(remaining + 1));
+      }
+    }
+
+    // Terminal state with no TTL - no further reconciliation needed
     return UpdateControl.<OMJobResource>noUpdate();
   }
 }

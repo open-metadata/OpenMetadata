@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Profiler models behave properly"""
+
 import pytest
 
 from metadata.profiler.processor.models import ProfilerDef

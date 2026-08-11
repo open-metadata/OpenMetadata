@@ -122,20 +122,19 @@
           "directory",
           "file",
           "spreadsheet",
-          "worksheet"
+          "worksheet",
+          "securityService",
+          "page",
+          "folder",
+          "contextFile"
         ]
       },
       "default": ["all"],
       "uiFieldType": "treeSelect",
       "uniqueItems": true
     },
-    "recreateIndex": {
-      "title": "Recreate Indexes",
-      "type": "boolean",
-      "default": true
-    },
     "searchIndexMappingLanguage": {
-      "description": "Recreate Indexes with updated Language",
+      "description": "Search index mapping language.",
       "title": "Search Index Language",
       "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
       "type": "string",
@@ -147,12 +146,6 @@
       "description": "Enable automatic performance tuning based on cluster capabilities and database entity count",
       "type": "boolean",
       "default": false
-    },
-    "useDistributedIndexing": {
-      "title": "Use Distributed Indexing",
-      "description": "Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing",
-      "type": "boolean",
-      "default": true
     },
     "partitionSize": {
       "title": "Partition Size",
@@ -168,6 +161,93 @@
       "type": "integer",
       "default": 0,
       "minimum": -1
+    },
+    "liveIndexSettings": {
+      "title": "Live Index Settings",
+      "description": "Settings applied to staged indexes before alias swap (live serving values). Tune for read freshness and HA. Defaults preserve current near-real-time read-after-write behavior. number_of_shards is omitted — it can only be set at index creation time, not via PUT _settings, and the staged-index reindex flow uses the static mapping JSON for creation.",
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "numberOfReplicas": 1,
+        "refreshInterval": "1s",
+        "translogDurability": "request",
+        "translogSyncInterval": "5s"
+      },
+      "properties": {
+        "numberOfReplicas": {
+          "title": "Number of Replicas",
+          "description": "Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.",
+          "type": "integer",
+          "default": 1,
+          "minimum": 0
+        },
+        "refreshInterval": {
+          "title": "Refresh Interval",
+          "description": "How often new writes become searchable. '1s' = near-real-time (required if users/agents read-after-write). Higher values reduce CPU/segment churn but delay search visibility.",
+          "type": "string",
+          "default": "1s"
+        },
+        "translogDurability": {
+          "title": "Translog Durability",
+          "description": "'request' = fsync per write (durable). 'async' = fsync on interval (faster, can lose <syncInterval seconds on crash).",
+          "type": "string",
+          "enum": ["request", "async"],
+          "default": "request"
+        },
+        "translogSyncInterval": {
+          "title": "Translog Sync Interval",
+          "description": "Translog fsync cadence when durability=async. Ignored when durability=request.",
+          "type": "string",
+          "default": "5s"
+        }
+      }
+    },
+    "bulkIndexSettings": {
+      "title": "Bulk Index Settings (during reindex)",
+      "description": "Overrides applied to staged indexes during bulk reindex for write throughput. Reverted to liveIndexSettings before alias swap. Nothing reads from staged indexes, so refresh=-1 and replicas=0 are safe.",
+      "type": "object",
+      "additionalProperties": false,
+      "default": {
+        "numberOfReplicas": 0,
+        "refreshInterval": "-1",
+        "translogDurability": "async",
+        "translogSyncInterval": "30s",
+        "forceMergeOnPromote": false
+      },
+      "properties": {
+        "numberOfReplicas": {
+          "title": "Number of Replicas",
+          "description": "Replica count during bulk write. 0 disables replica indexing for max throughput; replicas are populated after promotion from the new primary.",
+          "type": "integer",
+          "default": 0,
+          "minimum": 0
+        },
+        "refreshInterval": {
+          "title": "Refresh Interval",
+          "description": "'-1' disables refresh during bulk write — no segment churn, dramatically faster. Staged index isn't searchable, so this is safe. Reverted to live value before swap.",
+          "type": "string",
+          "default": "-1"
+        },
+        "translogDurability": {
+          "title": "Translog Durability",
+          "description": "'async' for bulk: fsync is batched, not per-write. Acceptable because a crashed reindex is rerunnable.",
+          "type": "string",
+          "enum": ["request", "async"],
+          "default": "async"
+        },
+        "translogSyncInterval": {
+          "title": "Translog Sync Interval",
+          "description": "Relaxed translog fsync cadence during bulk. Ignored when durability=request.",
+          "type": "string",
+          "default": "30s"
+        },
+        "forceMergeOnPromote": {
+          "title": "Force-merge before alias swap",
+          "description": "Run _forcemerge to 1 segment before swapping the alias. Improves post-reindex query performance at the cost of build time. Enable for large indexes serving heavy read traffic.",
+          "type": "boolean",
+          "default": false
+        }
+      }
     }
   },
   "additionalProperties": false

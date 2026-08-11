@@ -143,6 +143,9 @@ public final class K8sJobUtils {
     if (podSpec.getNodeSelector() != null && !podSpec.getNodeSelector().isEmpty()) {
       podSpecMap.put("nodeSelector", podSpec.getNodeSelector());
     }
+    if (podSpec.getTolerations() != null && !podSpec.getTolerations().isEmpty()) {
+      podSpecMap.put("tolerations", podSpec.getTolerations());
+    }
     if (podSpec.getSecurityContext() != null) {
       podSpecMap.put("securityContext", podSpec.getSecurityContext());
     }

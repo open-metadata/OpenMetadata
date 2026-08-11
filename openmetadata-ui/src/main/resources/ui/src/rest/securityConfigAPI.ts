@@ -16,6 +16,8 @@ import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
 } from '../constants/SSO.constant';
+import { FieldError } from '../generated/system/securityValidationResponse';
+import { TestLoginResult } from '../generated/system/testLoginResult';
 import APIClient from './index';
 
 export interface SecurityConfiguration {
@@ -23,17 +25,18 @@ export interface SecurityConfiguration {
   authorizerConfiguration: AuthorizerConfiguration;
 }
 
-export interface ValidationResult {
-  component: string;
-  status?: string;
-  message?: string;
-  error?: boolean;
+export interface SecurityValidationResponse {
+  status: 'success' | 'failed';
+  errors?: FieldError[];
 }
 
-export interface SecurityValidationResponse {
-  status: string;
-  message: string;
-  results: ValidationResult[];
+// Re-export the generated TestLoginResult so the schema stays the single source
+// of truth (the backend produces it from the same JSON schema).
+export type { TestLoginResult };
+
+export interface TestLoginTokenRequest {
+  securityConfiguration: SecurityConfiguration;
+  idToken: string;
 }
 
 /**
@@ -48,6 +51,21 @@ export const validateSecurityConfiguration = async (
     SecurityConfiguration,
     AxiosResponse<SecurityValidationResponse>
   >('/system/security/validate', data);
+};
+
+/**
+ * Validate a browser-obtained OIDC id_token against a candidate (unsaved)
+ * security configuration. Admin-only. Performs no side effects on the server.
+ * @param data - Candidate security configuration and the obtained id_token
+ * @returns Promise with the dry-run test login result
+ */
+export const testLoginValidateToken = async (
+  data: TestLoginTokenRequest
+): Promise<AxiosResponse<TestLoginResult>> => {
+  return APIClient.post<TestLoginTokenRequest, AxiosResponse<TestLoginResult>>(
+    '/system/security/test-login/validate-token',
+    data
+  );
 };
 
 /**
@@ -72,20 +90,6 @@ export const getSecurityConfiguration = async (): Promise<
   AxiosResponse<SecurityConfiguration>
 > => {
   return APIClient.get<SecurityConfiguration>('/system/security/config');
-};
-
-/**
- * Test security configuration connection
- * @param data - Security configuration data
- * @returns Promise with test result
- */
-export const testSecurityConfiguration = async (
-  data: SecurityConfiguration
-): Promise<AxiosResponse<ValidationResult>> => {
-  return APIClient.post<SecurityConfiguration, AxiosResponse<ValidationResult>>(
-    '/security/config/test',
-    data
-  );
 };
 
 /**

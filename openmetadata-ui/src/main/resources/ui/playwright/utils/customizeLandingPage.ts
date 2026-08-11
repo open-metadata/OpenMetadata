@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import {
   redirectToHomePage,
   removeLandingBanner,
@@ -18,6 +18,50 @@ import {
   visitOwnProfilePage,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+
+const DEFAULT_LANDING_PAGE_WIDGETS = [
+  'KnowledgePanel.ActivityFeed',
+  'KnowledgePanel.DataAssets',
+  'KnowledgePanel.MyData',
+  'KnowledgePanel.KPI',
+  'KnowledgePanel.TotalAssets',
+  'KnowledgePanel.Following',
+];
+
+const LANDING_PAGE_WIDGET_SCROLL_ATTEMPTS = 8;
+const LANDING_PAGE_WIDGET_SCROLL_OFFSET = 600;
+export const CURATED_ASSETS_WIDGET_KEY = 'KnowledgePanel.CuratedAssets';
+
+export type NameableEntityResponse = {
+  name?: string;
+  displayName?: string;
+};
+
+const waitForNextAnimationFrame = async (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        requestAnimationFrame(resolve);
+      })
+  );
+
+const scrollLandingPageContent = async (page: Page) => {
+  await page
+    .getByTestId('page-layout-v1')
+    .hover()
+    .catch(() => undefined);
+  await page.mouse.wheel(0, LANDING_PAGE_WIDGET_SCROLL_OFFSET);
+  await page.evaluate((scrollOffset) => {
+    const scrollContainer = document.querySelector(
+      '.page-layout-v1-center.page-layout-v1-vertical-scroll'
+    );
+
+    scrollContainer?.scrollBy({
+      top: scrollOffset,
+    });
+  }, LANDING_PAGE_WIDGET_SCROLL_OFFSET);
+  await waitForNextAnimationFrame(page);
+};
 
 // Entity types mapping from CURATED_ASSETS_LIST
 export const ENTITY_TYPE_CONFIGS = [
@@ -157,14 +201,75 @@ export const removeAndCheckWidget = async (
   page: Page,
   { widgetKey }: { widgetKey: string }
 ) => {
+  const widget = page.locator(`[data-testid="${widgetKey}"]`);
+
+  await widget.scrollIntoViewIfNeeded();
+
   // Click on remove widget button
-  await page
-    .locator(`[data-testid="${widgetKey}"] [data-testid="more-options-button"]`)
-    .click();
+  await widget.locator('[data-testid="more-options-button"]').click();
 
   await page.locator('.ant-dropdown:visible [data-menu-id*="remove"]').click();
 
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
+};
+
+const isLandingPageWidgetVisible = async (
+  page: Page,
+  widgetKey: string
+): Promise<boolean> => {
+  const widget = page.getByTestId(widgetKey);
+
+  for (let index = 0; index < LANDING_PAGE_WIDGET_SCROLL_ATTEMPTS; index++) {
+    if (await widget.isVisible().catch(() => false)) {
+      return true;
+    }
+
+    if ((await widget.count()) > 0) {
+      await widget.scrollIntoViewIfNeeded().catch(() => undefined);
+
+      if (await widget.isVisible().catch(() => false)) {
+        return true;
+      }
+    }
+
+    await scrollLandingPageContent(page);
+  }
+
+  return false;
+};
+
+const isLandingPageWidgetLoading = async (widget: Locator) =>
+  widget
+    .getByTestId('entity-list-skeleton')
+    .isVisible()
+    .catch(() => false);
+
+export const waitForLandingPageWidget = async (
+  page: Page,
+  widgetKey: string
+): Promise<Locator> => {
+  const widget = page.getByTestId(widgetKey);
+  const isVisible = await isLandingPageWidgetVisible(page, widgetKey);
+
+  if (isVisible) {
+    return widget;
+  }
+
+  await expect(widget).toBeVisible();
+
+  return widget;
+};
+
+export const toNameableEntity = (
+  entity?: unknown
+): NameableEntityResponse | undefined => {
+  const holder = entity as
+    | {
+        entityResponseData?: NameableEntityResponse;
+      }
+    | undefined;
+
+  return holder?.entityResponseData;
 };
 
 export const checkAllDefaultWidgets = async (page: Page) => {
@@ -173,12 +278,16 @@ export const checkAllDefaultWidgets = async (page: Page) => {
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   await expect(page.getByTestId('page-layout-v1')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.ActivityFeed')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.Following')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.DataAssets')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.MyData')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.KPI')).toBeVisible();
-  await expect(page.getByTestId('KnowledgePanel.TotalAssets')).toBeVisible();
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    document
+      .querySelector('.page-layout-v1-center.page-layout-v1-vertical-scroll')
+      ?.scrollTo({ top: 0 });
+  });
+
+  for (const widgetKey of DEFAULT_LANDING_PAGE_WIDGETS) {
+    await waitForLandingPageWidget(page, widgetKey);
+  }
 };
 
 export const setUserDefaultPersona = async (
@@ -279,9 +388,7 @@ export const addAndVerifyWidget = async (
 
   await page.locator('[data-testid="apply-btn"]').click();
 
-  await expect(
-    page.getByTestId('page-layout-v1').getByTestId(widgetKey)
-  ).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   const saveLayout = page.waitForResponse((response) =>
     response.url().includes('/api/v1/docStore')
@@ -302,11 +409,7 @@ export const addAndVerifyWidget = async (
         await removeLandingBanner(page);
         await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
-        return page
-          .getByTestId('page-layout-v1')
-          .getByTestId(widgetKey)
-          .isVisible()
-          .catch(() => false);
+        return isLandingPageWidgetVisible(page, widgetKey);
       },
       { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
     )
@@ -334,17 +437,13 @@ export const addCuratedAssetPlaceholder = async ({
 
   await page.locator('[data-testid="apply-btn"]').click();
 
-  await expect(
-    page
-      .getByTestId('page-layout-v1')
-      .getByTestId('KnowledgePanel.CuratedAssets')
-  ).toBeVisible();
+  const curatedAssetsWidget = await waitForLandingPageWidget(
+    page,
+    'KnowledgePanel.CuratedAssets'
+  );
 
   await expect(
-    page
-      .getByTestId('page-layout-v1')
-      .getByTestId('KnowledgePanel.CuratedAssets')
-      .getByTestId('widget-empty-state')
+    curatedAssetsWidget.getByTestId('widget-empty-state')
   ).toBeVisible();
 };
 
@@ -408,24 +507,32 @@ export const verifyWidgetFooterViewMore = async (
     widgetKey,
     expectedLink,
     link,
+    // Callers that seed enough rows for the link to be guaranteed pass true, so
+    // a missing footer fails instead of quietly ending the check. Defaults to
+    // false because most widgets here have no seeded row count to rely on.
+    requireViewMore = false,
   }: {
     widgetKey: string;
     expectedLink?: string;
     link?: string;
+    requireViewMore?: boolean;
   }
 ) => {
   // Wait for the page to load
   await waitForAllLoadersToDisappear(page);
 
-  const widget = page.getByTestId(widgetKey);
-
-  await expect(widget).toBeVisible();
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   // Wait for the data to appear in the widget
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   // Check for widget footer
   const widgetFooter = widget.locator('[data-testid="widget-footer"]');
+
+  if (requireViewMore) {
+    await expect(widgetFooter).toBeVisible();
+  }
+
   const footerExists = await widgetFooter.isVisible().catch(() => false);
 
   if (!footerExists) {
@@ -435,6 +542,11 @@ export const verifyWidgetFooterViewMore = async (
 
   // Footer exists, check for view more button
   const viewMoreButton = widget.locator('.footer-view-more-button');
+
+  if (requireViewMore) {
+    await expect(viewMoreButton).toBeVisible();
+  }
+
   const buttonExists = await viewMoreButton.isVisible().catch(() => false);
 
   if (!buttonExists) {
@@ -480,6 +592,7 @@ export const verifyWidgetEntityNavigation = async (
     verifyElement,
     apiResponseUrl,
     searchQuery,
+    altApiResponseUrl,
   }: {
     widgetKey: string;
     entitySelector: string;
@@ -488,22 +601,29 @@ export const verifyWidgetEntityNavigation = async (
     verifyElement?: string;
     apiResponseUrl: string;
     searchQuery: string | string[];
+    altApiResponseUrl?: string;
   }
 ) => {
-  // Wait for API response matching the search query
-  const response = page.waitForResponse((response) => {
-    if (!response.url().includes(apiResponseUrl)) {
+  // Wait for API response matching the search query with timeout fallback
+  const response = Promise.race([
+    page.waitForResponse((response) => {
+      // Check primary API URL
+      if (response.url().includes(apiResponseUrl)) {
+        if (Array.isArray(searchQuery)) {
+          return searchQuery.every((query) => response.url().includes(query));
+        }
+        return response.url().includes(searchQuery);
+      }
+
+      // Check alternative API URL (for Task API migration)
+      if (altApiResponseUrl && response.url().includes(altApiResponseUrl)) {
+        return true;
+      }
+
       return false;
-    }
-
-    // Handle multiple query parts (for complex queries like Data Assets)
-    if (Array.isArray(searchQuery)) {
-      return searchQuery.every((query) => response.url().includes(query));
-    }
-
-    // Handle single query string
-    return response.url().includes(searchQuery);
-  });
+    }),
+    page.waitForTimeout(10000),
+  ]);
 
   await redirectToHomePage(page);
 
@@ -514,10 +634,7 @@ export const verifyWidgetEntityNavigation = async (
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   // Get widget after navigation to home page
-  const widget = page.getByTestId(widgetKey);
-
-  // Wait for widget to be visible
-  await expect(widget).toBeVisible();
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   // Wait again for any widget-specific loaders
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
@@ -562,17 +679,12 @@ export const verifyWidgetEntityNavigation = async (
 
     // Navigate back to home for next tests
     await redirectToHomePage(page);
+  } else if (emptyStateTestId) {
+    await expect(page.getByTestId(emptyStateTestId)).toBeVisible();
   } else {
-    // Check for empty state if no entities
-    const emptyState = widget.locator('[data-testid="widget-empty-state"]');
-
-    await expect(emptyState).toBeVisible();
-
-    if (emptyStateTestId) {
-      const emptyStateComponent = page.getByTestId(emptyStateTestId);
-
-      await expect(emptyStateComponent).toBeVisible();
-    }
+    await expect(
+      widget.locator('[data-testid="widget-empty-state"]')
+    ).toBeVisible();
   }
 };
 
@@ -580,11 +692,10 @@ export const verifyWidgetHeaderNavigation = async (
   page: Page,
   widgetKey: string,
   expectedTitle: string,
-  navigationUrl: string
+  navigationUrl: string,
+  destinationTestId?: string
 ) => {
-  const widget = page.getByTestId(widgetKey);
-
-  await expect(widget).toBeVisible();
+  const widget = await waitForLandingPageWidget(page, widgetKey);
 
   // Wait for loaders before interacting with widget header
   await waitForAllLoadersToDisappear(page);
@@ -603,10 +714,16 @@ export const verifyWidgetHeaderNavigation = async (
   // Click header title to navigate
   await headerTitle.click();
 
-  const currentUrl = page.url();
+  // Poll instead of reading page.url() once: the click starts a client-side
+  // navigation, so a single read can still observe the landing page URL.
+  await expect.poll(() => page.url()).toContain(navigationUrl);
 
-  // Wait for navigation
-  expect(currentUrl).toContain(navigationUrl);
+  // Optionally prove the destination rendered. A URL check alone cannot tell a
+  // working page from one stuck on its loader. Must run before the redirect
+  // below, which takes the browser back to the landing page.
+  if (destinationTestId) {
+    await expect(page.getByTestId(destinationTestId)).toBeVisible();
+  }
 
   // Home keeps background requests alive on some persona routes; use the lighter
   // redirect path and wait on rendered state instead of networkidle.
@@ -634,13 +751,14 @@ export const verifyDomainCountInDomainWidget = async (
   await expect
     .poll(
       async () => {
-        const domainWidget = page.getByTestId('KnowledgePanel.Domains');
-        await domainWidget.scrollIntoViewIfNeeded().catch(() => undefined);
-        const isWidgetVisible = await domainWidget
-          .isVisible()
-          .catch(() => false);
+        if (
+          !(await isLandingPageWidgetVisible(page, 'KnowledgePanel.Domains'))
+        ) {
+          return null;
+        }
 
-        if (!isWidgetVisible) {
+        const domainWidget = page.getByTestId('KnowledgePanel.Domains');
+        if (await isLandingPageWidgetLoading(domainWidget)) {
           return null;
         }
 
@@ -673,15 +791,19 @@ export const verifyDataProductCountInDataProductWidget = async (
   await expect
     .poll(
       async () => {
+        if (
+          !(await isLandingPageWidgetVisible(
+            page,
+            'KnowledgePanel.DataProducts'
+          ))
+        ) {
+          return null;
+        }
+
         const dataProductWidget = page.getByTestId(
           'KnowledgePanel.DataProducts'
         );
-        await dataProductWidget.scrollIntoViewIfNeeded().catch(() => undefined);
-        const isWidgetVisible = await dataProductWidget
-          .isVisible()
-          .catch(() => false);
-
-        if (!isWidgetVisible) {
+        if (await isLandingPageWidgetLoading(dataProductWidget)) {
           return null;
         }
 
@@ -695,6 +817,35 @@ export const verifyDataProductCountInDataProductWidget = async (
         const text = await card.textContent();
 
         return text?.trim() ?? null;
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toContain(expectedCount.toString());
+};
+
+export const verifyWidgetCountOnCurrentPage = async (
+  page: Page,
+  widgetKey: string,
+  selector: string,
+  expectedCount: number
+) => {
+  const widget = await waitForLandingPageWidget(page, widgetKey);
+
+  await expect
+    .poll(
+      async () => {
+        if (await isLandingPageWidgetLoading(widget)) {
+          return null;
+        }
+
+        const element = widget.locator(selector).first();
+        const isVisible = await element.isVisible().catch(() => false);
+
+        if (!isVisible) {
+          return null;
+        }
+
+        return (await element.textContent())?.trim() ?? null;
       },
       { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
     )

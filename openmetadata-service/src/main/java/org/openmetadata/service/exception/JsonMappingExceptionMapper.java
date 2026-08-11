@@ -33,7 +33,7 @@ public class JsonMappingExceptionMapper implements ExceptionMapper<JsonMappingEx
     final jakarta.ws.rs.core.Response response = BadRequestException.of().getResponse();
     return jakarta.ws.rs.core.Response.status(response.getStatus())
         .type(MediaType.APPLICATION_JSON_TYPE)
-        .entity(new ErrorMessage(response.getStatus(), exception.getLocalizedMessage()))
+        .entity(new ErrorMessage(response.getStatus(), "Invalid request format"))
         .build();
   }
 }

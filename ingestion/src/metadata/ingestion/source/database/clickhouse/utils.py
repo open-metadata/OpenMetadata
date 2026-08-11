@@ -9,10 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Utils module to define overrided sqlalchamy methods 
+Utils module to define overrided sqlalchamy methods
 """
 # pylint: disable=protected-access,unused-argument
-
 
 from clickhouse_sqlalchemy.drivers.base import ischema_names
 from clickhouse_sqlalchemy.types import Date
@@ -74,9 +73,7 @@ ischema_names.update(
 
 
 @reflection.cache
-def _get_column_type(
-    self, name, spec
-):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
+def _get_column_type(self, name, spec):  # pylint: disable=protected-access,too-many-branches,too-many-return-statements
     if spec.startswith("Array"):
         return self.ischema_names["Array"]
 
@@ -138,10 +135,7 @@ def get_mview_names(self, schema=None):
 
 
 def get_mview_names_dialect(self, connection, schema=None, **kw):
-    query = text(
-        "SELECT name FROM system.tables WHERE engine = 'MaterializedView' "
-        "AND database = :database"
-    )
+    query = text("SELECT name FROM system.tables WHERE engine = 'MaterializedView' AND database = :database")
     database = schema or connection.engine.url.database
     rows = self._execute(connection, query, database=database)
     return [row.name for row in rows]
@@ -154,19 +148,23 @@ def get_unique_constraints(self, connection, table_name, schema=None, **kw):
 
 @reflection.cache
 def get_pk_constraint(
-    self, bind, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    bind,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     return {"constrained_columns": [], "name": "undefined"}
 
 
 @reflection.cache
 def get_view_names(
-    self, connection, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
-    query = text(
-        "SELECT name FROM system.tables WHERE engine = 'View' "
-        "AND database = :database"
-    )
+    query = text("SELECT name FROM system.tables WHERE engine = 'View' AND database = :database")
     database = schema or connection.engine.url.database
     rows = self._execute(  # pylint: disable=protected-access
         connection, query, database=database
@@ -176,7 +174,11 @@ def get_view_names(
 
 @reflection.cache
 def get_view_definition(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     return get_view_definition_wrapper(
         self,
@@ -189,7 +191,11 @@ def get_view_definition(
 
 @reflection.cache
 def get_table_comment(
-    self, connection, table_name, schema=None, **kw  # pylint: disable=unused-argument
+    self,
+    connection,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
 ):
     return get_table_comment_wrapper(
         self,
@@ -200,9 +206,7 @@ def get_table_comment(
     )
 
 
-def _get_column_info(
-    self, name, format_type, default_type, default_expression, comment
-):
+def _get_column_info(self, name, format_type, default_type, default_expression, comment):
     col_type = self._get_column_type(  # pylint: disable=protected-access
         name, format_type
     )

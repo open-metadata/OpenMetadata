@@ -11,8 +11,9 @@
 """
 Test lineage parser to get inlets and outlets information
 """
+
 from datetime import datetime
-from typing import List, Set
+from typing import List, Set  # noqa: UP035
 
 import pytest
 
@@ -39,12 +40,12 @@ from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
 SLEEP = "sleep 1"
 
 
-def xlet_fqns(xlet: XLets, xlet_mode: XLetsMode) -> Set[str]:
+def xlet_fqns(xlet: XLets, xlet_mode: XLetsMode) -> Set[str]:  # noqa: UP006
     """Helper method to get a set of FQNs out of the xlet"""
-    return set(elem.fqn for elem in getattr(xlet, xlet_mode.value))
+    return set(elem.fqn for elem in getattr(xlet, xlet_mode.value))  # noqa: C401
 
 
-def assert_xlets_equals(first: List[XLets], second: List[XLets]):
+def assert_xlets_equals(first: List[XLets], second: List[XLets]):  # noqa: UP006
     """
     Check that both XLet lists are the same
 
@@ -291,6 +292,40 @@ def test_get_dict_xlets_from_dag():
                         OMEntity(entity=Container, fqn="C1", key="test"),
                         OMEntity(entity=Container, fqn="C2", key="test"),
                     ],
+                    outlets=[OMEntity(entity=Table, fqn="T", key="test")],
+                ),
+            ],
+        )
+
+
+def test_unknown_entity_type_is_skipped_not_crashing():
+    """
+    A dict xlet with an unknown `entity` type (typo / custom / future type) must
+    be skipped with a warning instead of raising KeyError. The KeyError would be
+    swallowed by the per-task handler in get_xlets_from_dag and silently drop ALL
+    of the task's lineage - here the valid GOOD -> T edge must still survive.
+    """
+    with DAG("test_dag_unknown_entity", start_date=datetime(2021, 1, 1)) as dag:
+        BashOperator(
+            task_id="print_date",
+            bash_command="date",
+            inlets=[
+                {"entity": "table", "fqn": "GOOD", "key": "test"},
+                {"entity": "not_a_real_entity", "fqn": "BAD", "key": "test"},
+            ],
+        )
+
+        BashOperator(
+            task_id="sleep",
+            bash_command=SLEEP,
+            outlets=[{"entity": "table", "fqn": "T", "key": "test"}],
+        )
+
+        assert_xlets_equals(
+            get_xlets_from_dag(dag),
+            [
+                XLets(
+                    inlets=[OMEntity(entity=Table, fqn="GOOD", key="test")],
                     outlets=[OMEntity(entity=Table, fqn="T", key="test")],
                 ),
             ],

@@ -16,19 +16,19 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { DEFAULT_THEME } from '../../../../constants/Appearance.constants';
-import { Thread } from '../../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
 import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../../../utils/FeedUtils';
+} from '../../../../utils/FeedUtilsPure';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import AnnouncementCardV1 from './AnnouncementCardV1/AnnouncementCardV1.component';
 import './announcements-widget-v1.less';
 
 export interface AnnouncementsWidgetV1Props {
-  announcements?: Thread[];
+  announcements?: AnnouncementEntity[];
   currentBackgroundColor?: string;
   disabled?: boolean;
   loading?: boolean;
@@ -53,9 +53,9 @@ const AnnouncementsWidgetV1 = ({
     onClose();
   };
 
-  const handleAnnouncementClick = (announcement: Thread) => {
-    const entityType = getEntityType(announcement.about);
-    const entityFQN = getEntityFQN(announcement.about);
+  const handleAnnouncementClick = (announcement: AnnouncementEntity) => {
+    const entityType = getEntityType(announcement.entityLink ?? '');
+    const entityFQN = getEntityFQN(announcement.entityLink ?? '');
 
     if (entityType && entityFQN) {
       // Navigate to the activity feed of the entity

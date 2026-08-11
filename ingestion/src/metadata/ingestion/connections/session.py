@@ -12,6 +12,7 @@
 """
 SQLalchemy session management functions
 """
+
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 

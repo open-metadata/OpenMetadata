@@ -16,7 +16,7 @@ Memory limit decorator using tracemalloc for lightweight, low-overhead tracking.
 import functools
 import threading
 import tracemalloc
-from typing import Callable, Optional
+from typing import Callable, Optional  # noqa: UP035
 
 from metadata.utils.constants import BYTES_PER_MB
 from metadata.utils.logger import utils_logger
@@ -27,7 +27,7 @@ DEFAULT_MEMORY_LIMIT_MB = 100
 MEMORY_CHECK_INTERVAL_SECONDS = 0.1
 
 
-class MemoryLimitExceeded(Exception):
+class MemoryLimitExceeded(Exception):  # noqa: N818
     """Raised when function exceeds memory limit."""
 
 
@@ -38,8 +38,8 @@ class MemoryMonitor:
         self,
         max_memory_mb: int,
         check_interval: float = MEMORY_CHECK_INTERVAL_SECONDS,
-        context: Optional[str] = None,
-        function_name: Optional[str] = None,
+        context: Optional[str] = None,  # noqa: UP045
+        function_name: Optional[str] = None,  # noqa: UP045
         verbose: bool = False,
     ):
         self.max_memory_bytes = max_memory_mb * BYTES_PER_MB
@@ -50,7 +50,7 @@ class MemoryMonitor:
         self.verbose = verbose
         self.should_stop = threading.Event()
         self.exceeded = threading.Event()
-        self.monitor_thread: Optional[threading.Thread] = None
+        self.monitor_thread: Optional[threading.Thread] = None  # noqa: UP045
         self.baseline_memory = 0
         self.peak_memory = 0
 
@@ -97,8 +97,7 @@ class MemoryMonitor:
 
             context_str = f"[{self.context}] " if self.context else ""
             logger.debug(
-                f"{context_str}Memory monitor stopped for {self.function_name}(). "
-                f"Peak function memory: {peak_mb:.2f}MB"
+                f"{context_str}Memory monitor stopped for {self.function_name}(). Peak function memory: {peak_mb:.2f}MB"
             )
 
     def start(self):
@@ -141,7 +140,7 @@ class MemoryMonitor:
 
 def memory_limit(
     max_memory_mb: int = DEFAULT_MEMORY_LIMIT_MB,
-    context: Optional[str] = None,
+    context: Optional[str] = None,  # noqa: UP045
     verbose: bool = True,
 ) -> Callable:
     """
@@ -169,15 +168,14 @@ def memory_limit(
 
                 if verbose:
                     logger.debug(
-                        f"{context_str}Started memory monitoring for {fn.__name__}() "
-                        f"(limit: {max_memory_mb}MB)"
+                        f"{context_str}Started memory monitoring for {fn.__name__}() (limit: {max_memory_mb}MB)"
                     )
 
                 result = fn(*args, **kwargs)
 
                 monitor.check_exceeded()
 
-                return result
+                return result  # noqa: TRY300
 
             except MemoryLimitExceeded:
                 peak_mb = monitor.peak_memory / BYTES_PER_MB
@@ -185,7 +183,7 @@ def memory_limit(
                     f"{context_str}Function {fn.__name__}() exceeded memory limit of {max_memory_mb}MB. "
                     f"Peak usage: {peak_mb:.2f}MB"
                 )
-                raise MemoryLimitExceeded(
+                raise MemoryLimitExceeded(  # noqa: B904
                     f"{context_str}Function {fn.__name__}() exceeded memory limit of {max_memory_mb}MB. "
                     f"Peak usage: {peak_mb:.2f}MB"
                 )

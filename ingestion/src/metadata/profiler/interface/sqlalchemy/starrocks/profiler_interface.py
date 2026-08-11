@@ -30,9 +30,7 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 
 
-class StarRocksProfilerInterface(
-    ProfilerWithStatistics, StarRocksStoredStatisticsSource
-):
+class StarRocksProfilerInterface(ProfilerWithStatistics, StarRocksStoredStatisticsSource):
     """
     StarRocks profiler interface with support for stored statistics.
 

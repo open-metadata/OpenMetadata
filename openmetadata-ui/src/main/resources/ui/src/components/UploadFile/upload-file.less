@@ -14,10 +14,10 @@
 
 .file-dragger-wrapper {
   padding: @padding-lg;
-  background: @white;
+  background: var(--tw-color-bg-primary);
   .ant-typography {
-    font-weight: 500;
-    font-size: 16px;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-md);
 
     .browse-text {
       color: @primary-color;
@@ -32,4 +32,69 @@
       }
     }
   }
+}
+
+.file-dragger-wrapper-compact {
+  background: transparent;
+  padding: 0;
+
+  &.ant-upload-wrapper .ant-upload-drag {
+    background: @grey-26;
+    border: 1.5px dashed @grey-15;
+    border-radius: var(--om-radius-xl);
+    transition: background var(--om-duration-180) ease, border-color var(--om-duration-180) ease;
+
+    &:hover {
+      background: @primary-50;
+      border-color: @primary-6;
+    }
+  }
+
+  &.ant-upload-wrapper .ant-upload-drag .ant-upload {
+    padding: var(--om-space-38) var(--om-space-24);
+  }
+
+  .ant-typography {
+    margin: 0;
+  }
+}
+
+.file-dragger-compact-content {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--om-space-8);
+  justify-content: center;
+  min-height: 136px;
+  text-align: center;
+}
+
+.file-dragger-compact-icon {
+  align-items: center;
+  background: @primary-50;
+  border-radius: var(--om-radius-999);
+  color: @primary-6;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  margin-bottom: var(--om-space-6);
+  width: 40px;
+}
+
+.file-dragger-compact-title.ant-typography {
+  color: @grey-900;
+  font-size: var(--om-font-size-15);
+  font-weight: @font-semibold;
+  line-height: 22px;
+
+  .browse-text {
+    color: @primary-6;
+  }
+}
+
+.file-dragger-compact-description.ant-typography {
+  color: @grey-600;
+  font-size: var(--om-font-size-13);
+  font-weight: @font-regular;
+  line-height: 18px;
 }

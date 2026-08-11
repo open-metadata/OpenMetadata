@@ -119,16 +119,12 @@ public class MigrationFile implements Comparable<MigrationFile> {
     return clazzName;
   }
 
-  public String getMigrationProcessExtClassName() {
-    String clazzName =
-        String.format(
-            "io.collate.service.migration.%s.%s.Migration", dbPackageName, getVersionPackageName());
-    try {
-      Class.forName(clazzName);
-    } catch (ClassNotFoundException e) {
-      return null;
+  public String getVersionPackageName() {
+    StringBuilder arrayAsString = new StringBuilder();
+    for (int versionNumber : versionNumbers) {
+      arrayAsString.append(versionNumber);
     }
-    return clazzName;
+    return "v" + arrayAsString;
   }
 
   public String getMigrationsFilePath() {
@@ -187,14 +183,6 @@ public class MigrationFile implements Comparable<MigrationFile> {
       }
     }
     return 0;
-  }
-
-  private String getVersionPackageName() {
-    StringBuilder arrayAsString = new StringBuilder();
-    for (int versionNumber : versionNumbers) {
-      arrayAsString.append(versionNumber);
-    }
-    return "v" + arrayAsString;
   }
 
   public boolean isReprocessing() {

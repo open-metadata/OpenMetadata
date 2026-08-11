@@ -1,0 +1,106 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/announcement.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Announcement",
+  "description": "An Announcement is a time-bound notification associated with a data asset. It has a start and end time and is displayed to users viewing the asset during that period.",
+  "javaInterfaces": ["org.openmetadata.schema.NamedEntityInterface"],
+  "javaType": "org.openmetadata.schema.entity.feed.Announcement",
+  "type": "object",
+  "definitions": {
+    "announcementStatus": {
+      "javaType": "org.openmetadata.schema.type.AnnouncementStatus",
+      "description": "Status of the announcement based on its time window.",
+      "type": "string",
+      "enum": ["Active", "Expired", "Scheduled"],
+      "javaEnums": [
+        {"name": "Active"},
+        {"name": "Expired"},
+        {"name": "Scheduled"}
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier (UUID) for this announcement.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name for the announcement.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Announcement content in Markdown format.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "entityLink": {
+      "description": "Link to the entity this announcement is about.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    },
+    "startTime": {
+      "description": "Start time from when the announcement should be shown.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "endTime": {
+      "description": "End time when the announcement expires.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "$ref": "#/definitions/announcementStatus"
+    },
+    "createdBy": {
+      "description": "User who created the announcement.",
+      "type": "string"
+    },
+    "updatedBy": {
+      "description": "User who last updated the announcement.",
+      "type": "string"
+    },
+    "owners": {
+      "description": "Owners of this announcement.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "domains": {
+      "description": "Domains this announcement belongs to.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "reactions": {
+      "description": "Reactions to the announcement.",
+      "$ref": "../../type/reaction.json#/definitions/reactionList"
+    },
+    "createdAt": {
+      "description": "Timestamp when the announcement was created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "description": "Last update timestamp.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "href": {
+      "description": "Link to the resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the announcement.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "description", "startTime", "endTime"],
+  "additionalProperties": false
+}

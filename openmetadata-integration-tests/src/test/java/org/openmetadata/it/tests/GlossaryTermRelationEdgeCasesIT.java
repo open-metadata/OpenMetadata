@@ -486,8 +486,8 @@ public class GlossaryTermRelationEdgeCasesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_termWithBadRef,Term With Bad Ref,Test description,,synonym:nonExistent.term.fqn,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_termWithBadRef,Term With Bad Ref,Test description,,synonym:nonExistent.term.fqn,,,,,Draft,,,,",
             ns.prefix(""));
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, true);
@@ -504,8 +504,8 @@ public class GlossaryTermRelationEdgeCasesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_newTerm,New Term,Test description,,invalidType:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_newTerm,New Term,Test description,,invalidType:%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, true);

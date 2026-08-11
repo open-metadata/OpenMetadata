@@ -1,0 +1,31 @@
+{
+  "name": "DescriptionSuggestion",
+  "displayName": "Description Suggestion",
+  "taskType": "Suggestion",
+  "taskCategory": "MetadataUpdate",
+  "formSchema": {
+    "type": "object",
+    "required": [
+      "suggestedValue"
+    ],
+    "properties": {
+      "suggestedValue": {
+        "type": "string",
+        "title": "Suggested Description"
+      },
+      "reasoning": {
+        "type": "string",
+        "title": "Reason for suggestion"
+      }
+    }
+  },
+  "uiSchema": {
+    "suggestedValue": {
+      "ui:widget": "textarea"
+    },
+    "reasoning": {
+      "ui:widget": "textarea"
+    }
+  },
+  "fullyQualifiedName": "DescriptionSuggestion"
+}

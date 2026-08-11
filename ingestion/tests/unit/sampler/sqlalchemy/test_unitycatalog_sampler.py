@@ -12,6 +12,7 @@
 """
 Test Unity Catalog sampler functionality
 """
+
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
@@ -78,9 +79,7 @@ class UnityCatalogSamplerTest(TestCase):
         )
 
     @patch("metadata.sampler.sqlalchemy.databricks.sampler.databricks_get_connection")
-    @patch(
-        "metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface.build_table_orm"
-    )
+    @patch("metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface.build_table_orm")
     def test_handle_array_column(self, mock_build_table_orm, mock_get_connection):
         """Test array column detection"""
         mock_build_table_orm.return_value = _TestTableModel

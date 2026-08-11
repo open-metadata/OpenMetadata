@@ -1,6 +1,8 @@
 # RDF/Apache Jena Local Development Guide
 
-This guide documents how to set up RDF/Knowledge Graph support for local development with OpenMetadata running in IntelliJ IDEA and Apache Jena Fuseki running in Docker.
+This guide documents how to set up RDF/Knowledge Graph support for local development with OpenMetadata and Apache Jena Fuseki.
+
+For production sizing, tuning, compaction, scheduling, and monitoring, see [Setting up Apache Jena Fuseki efficiently](rdf-production-setup.md).
 
 ## Overview
 
@@ -28,16 +30,34 @@ OpenMetadata supports RDF (Resource Description Framework) for knowledge graph c
 
 ## Quick Start
 
-### Step 1: Start Apache Jena Fuseki
+### Step 1: Choose the Right Startup Mode
 
-Start the Fuseki triple store using Docker Compose:
+The standard local Docker flow does not enable RDF or start Fuseki:
 
 ```bash
 cd /path/to/OpenMetadata
-docker compose -f docker/development/docker-compose-fuseki.yml up -d
+./docker/run_local_docker.sh -d mysql
 ```
 
-This starts Fuseki with:
+For PostgreSQL-based development:
+
+```bash
+./docker/run_local_docker.sh -d postgresql
+```
+
+Use the RDF-specific startup script when you want the full Docker stack with Fuseki enabled:
+
+```bash
+./docker/run_local_docker_rdf.sh -d mysql
+```
+
+For PostgreSQL-based RDF development:
+
+```bash
+./docker/run_local_docker_rdf.sh -d postgresql
+```
+
+This RDF startup path starts OpenMetadata, the backing database, search, ingestion services, and Fuseki with:
 - **Port**: 3030
 - **Admin Password**: admin
 - **Dataset**: openmetadata
@@ -59,7 +79,17 @@ The Fuseki web UI is available at `http://localhost:3030` with credentials:
 
 ### Step 3: Configure IntelliJ Run Configuration
 
-Create or modify your IntelliJ run configuration for `OpenMetadataApplication` with these environment variables:
+If you are running the full RDF Docker stack with `run_local_docker_rdf.sh`, the Docker services already receive the RDF environment variables automatically.
+
+If you want to run the OpenMetadata server directly from IntelliJ while keeping Fuseki in Docker, start Fuseki separately:
+
+```bash
+docker compose -f docker/development/docker-compose.yml -f docker/development/docker-compose-fuseki.yml up -d fuseki
+```
+
+If your local backend uses PostgreSQL, swap `docker-compose.yml` for `docker-compose-postgres.yml`.
+
+Create or modify your IntelliJ run configuration for `OpenMetadataApplication` with these environment variables only when you want to run the OpenMetadata server directly from IntelliJ while keeping Fuseki in Docker:
 
 ```
 RDF_ENABLED=true
@@ -112,10 +142,16 @@ rdf:
   enabled: ${RDF_ENABLED:-false}
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
-  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  remoteEndpoint: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-"http://localhost:3030/openmetadata"}}
+  connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
+  requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
+  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-100}
+  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-100}
+  bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
+  inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
 ```
 
 ### Environment Variables
@@ -126,9 +162,16 @@ rdf:
 | `RDF_STORAGE_TYPE` | Storage backend type | `FUSEKI` |
 | `RDF_BASE_URI` | Base URI for RDF resources | `https://open-metadata.org/` |
 | `RDF_ENDPOINT` | Fuseki SPARQL endpoint URL | `http://localhost:3030/openmetadata` |
+| `RDF_REMOTE_ENDPOINT` | Deprecated fallback when `RDF_ENDPOINT` is unset | unset |
+| `RDF_CONNECT_TIMEOUT_MS` | Fuseki connection timeout | `2000` |
+| `RDF_REQUEST_TIMEOUT_MS` | Per-request timeout | `60000` |
+| `RDF_BULK_ENTITY_BATCH_SIZE` | Entity models per bulk write | `100` |
+| `RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE` | Relationship sources per bulk write | `100` |
+| `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | Detailed lineage edges per bulk write | `50` |
 | `RDF_REMOTE_USERNAME` | Fuseki admin username | `admin` |
 | `RDF_REMOTE_PASSWORD` | Fuseki admin password | `admin` |
 | `RDF_DATASET` | Fuseki dataset name | `openmetadata` |
+| `RDF_INFERENCE_ENABLED` | Enable in-process full-graph inference | `false` |
 
 ### Docker Compose Configuration
 
@@ -137,16 +180,19 @@ The Fuseki container (`docker/development/docker-compose-fuseki.yml`):
 ```yaml
 services:
   fuseki:
-    image: stain/jena-fuseki:5.0.0
+    build:
+      context: ../rdf-store
+      dockerfile: Dockerfile
+    image: openmetadata-fuseki:5.6.0
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"
     environment:
-      - ADMIN_PASSWORD=admin
-      - JVM_ARGS=-Xmx4g -Xms2g
-      - FUSEKI_BASE=/fuseki
+      - FUSEKI_ADMIN_PASSWORD=admin
+      - FUSEKI_OPENMETADATA_PASSWORD=openmetadata-secret
+      - JVM_ARGS=-Xmx1500m -Xms256m
     volumes:
-      - fuseki-data:/fuseki
+      - fuseki-tdb2-data:/fuseki-data
 ```
 
 ## API Endpoints
@@ -183,6 +229,33 @@ Content-Type: application/json
 }
 ```
 
+### Get Glossary Term Relationship Graph
+```bash
+# Get the full glossary term graph
+GET /api/v1/rdf/glossary/graph
+
+# Filter primary terms to a glossary
+GET /api/v1/rdf/glossary/graph?glossaryId=<glossary-id>
+
+# Filter to a glossary term and its direct incoming/outgoing neighbors
+GET /api/v1/rdf/glossary/graph?glossaryTermId=<glossary-term-id>
+
+# Require the selected term to belong to a glossary, while still returning
+# direct cross-glossary neighbors when relationships cross glossary boundaries
+GET /api/v1/rdf/glossary/graph?glossaryId=<glossary-id>&glossaryTermId=<glossary-term-id>
+```
+
+Optional query parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `glossaryId` | Filter primary terms to a glossary. |
+| `glossaryTermId` | Filter to a selected glossary term and its direct incoming/outgoing glossary-term relations. |
+| `relationTypes` | Comma-separated relation types to include. |
+| `limit` | Maximum number of terms to return. Default: `500`. |
+| `offset` | Pagination offset. Default: `0`. |
+| `includeIsolated` | Include terms without relations. Default: `true`. |
+
 ### Example Queries
 
 ```bash
@@ -199,6 +272,10 @@ curl -s -X POST \
   -H "Content-Type: application/json" \
   -d '{"query": "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"}' \
   http://localhost:8585/api/v1/rdf/sparql | jq
+
+# Get a selected glossary term graph
+curl -s -H "Authorization: Bearer <token>" \
+  "http://localhost:8585/api/v1/rdf/glossary/graph?glossaryId=<glossary-id>&glossaryTermId=<glossary-term-id>" | jq
 ```
 
 ## Indexing Entities to RDF
@@ -211,7 +288,7 @@ Trigger the RDF indexing application to populate the triple store with existing 
 curl -X POST \
   -H "Authorization: Bearer <admin-token>" \
   -H "Content-Type: application/json" \
-  -d '{"entities": ["all"], "recreateIndex": true, "batchSize": 100}' \
+  -d '{"entities": [], "recreateIndex": true, "batchSize": 100}' \
   http://localhost:8585/api/v1/apps/trigger/RdfIndexApp
 ```
 

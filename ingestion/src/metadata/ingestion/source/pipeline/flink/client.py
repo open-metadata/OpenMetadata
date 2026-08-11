@@ -12,7 +12,7 @@
 Client to interact with flink apis
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.pipeline.flinkConnection import (
     FlinkConnection,
@@ -45,7 +45,7 @@ class FlinkClient:
         )
         self.client = TrackedREST(client_config, source_name="flink")
 
-    def get_jobs(self) -> Optional[List[FlinkPipelineList]]:
+    def get_jobs(self) -> Optional[List[FlinkPipelineList]]:  # noqa: UP006, UP045
         response = self.client.get("jobs/overview")
         return FlinkPipelineList(**response)
 

@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { VersionStatus } from '../../../utils/EntityVersionUtils.interface';
 
-interface TagButtonProps {
+export interface TagButtonProps {
   label: string;
   icon?: React.ReactNode;
   className?: string;

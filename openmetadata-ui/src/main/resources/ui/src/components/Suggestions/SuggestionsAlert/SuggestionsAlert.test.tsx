@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import {
-  Suggestion,
-  SuggestionType,
-} from '../../../generated/entity/feed/suggestion';
+import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
 import SuggestionsProvider from '../SuggestionsProvider/SuggestionsProvider';
 import SuggestionsAlert from './SuggestionsAlert';
 

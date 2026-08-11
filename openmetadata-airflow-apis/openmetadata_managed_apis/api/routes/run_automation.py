@@ -13,16 +13,17 @@ Test the connection against a source system
 """
 
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
-from flask import Blueprint, Response, escape, request
-from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.utils.logger import routes_logger
+from flask import Blueprint, Response, request
+from markupsafe import escape
 from pydantic import ValidationError
 
 from metadata.automations.execute_runner import execute
 from metadata.ingestion.api.parser import parse_automation_workflow_gracefully
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import routes_logger
 
 logger = routes_logger()
 
@@ -37,6 +38,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
@@ -50,9 +52,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/run_automation", methods=["POST"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def run_automation() -> Response:
         """
         Given a WorkflowSource Schema, create the engine
@@ -62,9 +62,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
         json_request = request.get_json(cache=False)
 
         try:
-            automation_workflow = parse_automation_workflow_gracefully(
-                config_dict=json_request
-            )
+            automation_workflow = parse_automation_workflow_gracefully(config_dict=json_request)
 
             # we need to instantiate the secret manager in case secrets are passed
             SecretsManagerFactory(
@@ -76,9 +74,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
             execute(automation_workflow)
 
             return ApiResponse.success(
-                {
-                    "message": f"Workflow [{escape(automation_workflow.name)}] has been triggered."
-                }
+                {"message": f"Workflow [{escape(automation_workflow.name)}] has been triggered."}
             )
 
         except ValidationError as err:

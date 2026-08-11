@@ -68,8 +68,8 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               deletePostHandler={deletePostHandler}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
-              threadType={ThreadType.Task}
               updateThreadHandler={updateThreadHandler}
+              view="tasks"
               onCancel={onCancel}
             />
           </TabPane>
@@ -81,8 +81,8 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
               deletePostHandler={deletePostHandler}
               postFeedHandler={postFeedHandler}
               threadLink={threadLink}
-              threadType={ThreadType.Conversation}
               updateThreadHandler={updateThreadHandler}
+              view="conversations"
               onCancel={onCancel}
             />
           </TabPane>

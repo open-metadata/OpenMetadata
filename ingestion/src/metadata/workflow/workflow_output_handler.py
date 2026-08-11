@@ -15,7 +15,7 @@ Module handles the output messages from different workflows
 
 import time
 from statistics import mean
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union  # noqa: UP035
 
 from pydantic import BaseModel
 from tabulate import tabulate
@@ -24,7 +24,6 @@ from metadata.ingestion.api.status import TruncatedStackTraceError
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.lineage.models import QueryParsingFailures
 from metadata.utils.deprecation import deprecated
-from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
 from metadata.workflow.output_handler import (
@@ -45,12 +44,12 @@ class Failure(BaseModel):
     """
 
     name: str
-    failures: List[TruncatedStackTraceError]
+    failures: List[TruncatedStackTraceError]  # noqa: UP006
 
 
 @deprecated(message="Use 'workflow.print_status()' instead.", release="1.6")
 def print_status(
-    workflow: "BaseWorkflow",  # pyright: ignore[reportUndefinedVariable,reportUnknownParameterType]
+    workflow: "BaseWorkflow",  # pyright: ignore[reportUndefinedVariable,reportUnknownParameterType]  # noqa: F821
 ):
     workflow.print_status()  # pyright: ignore[reportUnknownMemberType]
 
@@ -63,8 +62,8 @@ def print_status(
     release="1.6",
 )
 def print_init_error(
-    exc: Union[Exception, Type[Exception]],
-    config: Dict[str, Any],
+    exc: Union[Exception, Type[Exception]],  # noqa: UP006, UP007
+    config: Dict[str, Any],  # noqa: UP006
     workflow_type: WorkflowType = WorkflowType.INGEST,
 ):
     # pylint: disable=W0212
@@ -82,8 +81,8 @@ class WorkflowOutputHandler:
     def print_status(
         self,
         result_status: WorkflowResultStatus,
-        steps: List[Step],
-        start_time: Optional[Any] = None,
+        steps: List[Step],  # noqa: UP006
+        start_time: Optional[Any] = None,  # noqa: UP045
         debug: bool = False,
     ):
         """
@@ -95,8 +94,7 @@ class WorkflowOutputHandler:
             log_ansi_encoded_string(
                 color=ANSI.BRIGHT_CYAN,
                 bold=True,
-                message="Workflow finished in time: "
-                + f"{pretty_print_time_duration(time.time() - start_time)}",
+                message="Workflow finished in time: " + f"{pretty_print_time_duration(time.time() - start_time)}",
             )
 
         if result_status == WorkflowResultStatus.FAILURE:
@@ -106,12 +104,10 @@ class WorkflowOutputHandler:
                 message=WORKFLOW_FAILURE_MESSAGE,
             )
 
-    def print_summary(self, steps: List[Step], debug: bool = False):
+    def print_summary(self, steps: List[Step], debug: bool = False):  # noqa: UP006
         """Prints the summary information for a Workflow Execution."""
         if debug:
             self._print_debug_summary(steps)
-
-        self._print_execution_time_summary()
 
         # In case of large query parsing error summary, this creates
         # issue of ingestion getting stuck and eventually killed.
@@ -123,8 +119,8 @@ class WorkflowOutputHandler:
 
         self._print_summary(steps)
 
-    def _print_summary(self, steps: List[Step]) -> None:
-        failures: List[Failure] = []
+    def _print_summary(self, steps: List[Step]) -> None:  # noqa: UP006
+        failures: List[Failure] = []  # noqa: UP006
         if not steps:
             log_ansi_encoded_string(message="No steps to process.")
             return
@@ -132,26 +128,18 @@ class WorkflowOutputHandler:
         for step in steps:
             step_summary = Summary.from_step(step)
 
-            failures.append(
-                Failure(name=step.name, failures=step.get_status().failures)
-            )
+            failures.append(Failure(name=step.name, failures=step.get_status().failures))
 
             log_ansi_encoded_string(bold=True, message=f"Workflow {step.name} Summary:")
-            log_ansi_encoded_string(
-                message=f"Processed records: {step_summary.records}"
-            )
-            log_ansi_encoded_string(
-                message=f"Updated records: {step_summary.updated_records}"
-            )
+            log_ansi_encoded_string(message=f"Processed records: {step_summary.records}")
+            log_ansi_encoded_string(message=f"Updated records: {step_summary.updated_records}")
             log_ansi_encoded_string(message=f"Warnings: {step_summary.warnings}")
 
             if step_summary.filtered:
                 log_ansi_encoded_string(message=f"Filtered: {step_summary.filtered}")
 
             log_ansi_encoded_string(message=f"Errors: {step_summary.errors}")
-            log_ansi_encoded_string(
-                message=f"Success %: {step.get_status().calculate_success()}"
-            )
+            log_ansi_encoded_string(message=f"Success %: {step.get_status().calculate_success()}")
 
         self._print_failures_if_apply(failures)
 
@@ -163,63 +151,18 @@ class WorkflowOutputHandler:
             message="Workflow Success %: " + f"{round(success_pct, 2)}",
         )
 
-    def _print_debug_summary(self, steps: List[Step]):
+    def _print_debug_summary(self, steps: List[Step]):  # noqa: UP006
         log_ansi_encoded_string(bold=True, message="Statuses detailed info:")
 
         for step in steps:
             log_ansi_encoded_string(bold=True, message=f"{step.name} Status:")
             log_ansi_encoded_string(message=step.get_status().as_string())
 
-    def _print_execution_time_summary(self):
-        """Log the ExecutionTimeTracker Summary."""
-        tracker = ExecutionTimeTracker()
-
-        summary_table: Dict[str, List[Union[str, int]]] = {
-            "Context": [],
-            "Total Time": [],
-            "Call Count": [],
-            "Avg Time": [],
-            "Min Time": [],
-            "Max Time": [],
-        }
-
-        for key in sorted(tracker.state.state.keys()):
-            metrics = tracker.state.state[key]
-            summary_table["Context"].append(key)
-            summary_table["Total Time"].append(
-                pretty_print_time_duration(metrics.total_time)
-            )
-            summary_table["Call Count"].append(metrics.call_count)
-            summary_table["Avg Time"].append(
-                pretty_print_time_duration(metrics.average_time)
-            )
-            summary_table["Min Time"].append(
-                pretty_print_time_duration(metrics.min_time)
-                if metrics.min_time is not None
-                else "N/A"
-            )
-            summary_table["Max Time"].append(
-                pretty_print_time_duration(metrics.max_time)
-                if metrics.max_time is not None
-                else "N/A"
-            )
-
-        if not summary_table["Context"]:
-            return
-
-        # Build alignment list: left for Context, right for all numeric/time columns
-        col_align = ["left"] + ["right"] * (len(summary_table) - 1)
-
-        log_ansi_encoded_string(bold=True, message="Execution Time Summary")
-        log_ansi_encoded_string(
-            message=f"\n{tabulate(summary_table, headers='keys', tablefmt='grid', colalign=col_align)}"
-        )
-
     def _print_query_parsing_issues(self):
         """Log the QueryParsingFailures Summary."""
         query_failures = QueryParsingFailures()
 
-        summary_table: Dict[str, List[Optional[str]]] = {
+        summary_table: Dict[str, List[Optional[str]]] = {  # noqa: UP006, UP045
             "Query": [],
             "Error": [],
         }
@@ -234,7 +177,7 @@ class WorkflowOutputHandler:
                 message=f"\n{tabulate(summary_table, tablefmt='grid', headers=list(summary_table.keys()))}"
             )
 
-    def _get_failures(self, failure: Failure) -> List[Dict[str, Optional[str]]]:
+    def _get_failures(self, failure: Failure) -> List[Dict[str, Optional[str]]]:  # noqa: UP006, UP045
         return [
             {
                 "From": failure.name,
@@ -245,7 +188,7 @@ class WorkflowOutputHandler:
             for f in failure.failures
         ]
 
-    def _print_failures_if_apply(self, failures: List[Failure]) -> None:
+    def _print_failures_if_apply(self, failures: List[Failure]) -> None:  # noqa: UP006
         # take only the ones that contain failures
         failures = [f for f in failures if f.failures]
         if failures:
@@ -259,15 +202,11 @@ class WorkflowOutputHandler:
             # the ingestion, the reason is unknown. Hence, we will be keeping
             # the number of failures logged to a smaller number like 10.
             # TODO: revisit this to see if we can increase this limit
-            if len(list(error_table.items())[0][1]) > 10:
-                log_ansi_encoded_string(
-                    bold=True, message="Showing the first 10 failures:"
-                )
+            if len(list(error_table.items())[0][1]) > 10:  # noqa: RUF015
+                log_ansi_encoded_string(bold=True, message="Showing the first 10 failures:")
                 # truncate list if number of values are over 10
                 error_table = {k: v[:10] for k, v in error_table.items()}
             else:
                 log_ansi_encoded_string(bold=True, message="List of failures:")
 
-            log_ansi_encoded_string(
-                message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}"
-            )
+            log_ansi_encoded_string(message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}")

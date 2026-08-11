@@ -11,7 +11,7 @@
 """Azure SQL source module"""
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 
@@ -59,18 +59,14 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AzureSQLConnection = config.serviceConnection.root.config
         if not isinstance(connection, AzureSQLConnection):
-            raise InvalidSourceException(
-                f"Expected AzureSQLConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AzureSQLConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -79,8 +75,8 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(AZURE_SQL_GET_DATABASES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.root.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -94,9 +90,7 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    database_fqn if self.source_config.useFqnForFiltering else new_database,
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -106,6 +100,4 @@ class AzuresqlSource(CommonDbSourceService, MultiDBSource):
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")

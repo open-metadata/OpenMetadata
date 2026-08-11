@@ -12,6 +12,7 @@
 """
 Test Credentials helpers
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.security.credentials.bitbucketCredentials import (
@@ -63,9 +64,7 @@ class TestCreds(TestCase):
 
         self.assertEqual(bb_original.repositoryName.root, "name")
         self.assertEqual(bb_updated.repositoryName.root, "new_name")
-        self.assertEqual(
-            bb_updated.repositoryOwner.root, bb_original.repositoryOwner.root
-        )
+        self.assertEqual(bb_updated.repositoryOwner.root, bb_original.repositoryOwner.root)
         self.assertEqual(bb_updated.token.root, bb_original.token.root)
         self.assertEqual(bb_updated.branch, bb_original.branch)
 
@@ -79,9 +78,7 @@ class TestCreds(TestCase):
 
         self.assertEqual(gl_original.repositoryName.root, "name")
         self.assertEqual(gl_updated.repositoryName.root, "new_name")
-        self.assertEqual(
-            gl_updated.repositoryOwner.root, gl_original.repositoryOwner.root
-        )
+        self.assertEqual(gl_updated.repositoryOwner.root, gl_original.repositoryOwner.root)
         self.assertEqual(gl_updated.token.root, gl_original.token.root)
 
     def test_get_credentials_from_url(self):
@@ -105,9 +102,7 @@ class TestCreds(TestCase):
             token="token",
         )
 
-        updated_not_owner = get_credentials_from_url(
-            original=original_not_owner, url=url
-        )
+        updated_not_owner = get_credentials_from_url(original=original_not_owner, url=url)
         self.assertEqual(updated_not_owner, original_not_owner)
 
         bb_url = "git@gitbucket.org:owner/repo.git"
@@ -129,9 +124,7 @@ class TestCreds(TestCase):
             branch="branch",
         )
 
-        bb_updated_not_owner = get_credentials_from_url(
-            original=bb_original_not_owner, url=bb_url
-        )
+        bb_updated_not_owner = get_credentials_from_url(original=bb_original_not_owner, url=bb_url)
         self.assertEqual(bb_updated_not_owner, bb_original_not_owner)
 
         gl_url = "git@gitlab.com:owner/repo.git"
@@ -151,7 +144,5 @@ class TestCreds(TestCase):
             token="token",
         )
 
-        gl_updated_not_owner = get_credentials_from_url(
-            original=gl_original_not_owner, url=gl_url
-        )
+        gl_updated_not_owner = get_credentials_from_url(original=gl_original_not_owner, url=gl_url)
         self.assertEqual(gl_updated_not_owner, gl_original_not_owner)

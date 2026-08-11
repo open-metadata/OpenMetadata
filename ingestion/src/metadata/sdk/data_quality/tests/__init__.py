@@ -1,8 +1,8 @@
 """Convenience classes that represent test definitions"""
 
-from .base_tests import *
-from .column_tests import *
-from .table_tests import *
+from .base_tests import *  # noqa: TID252
+from .column_tests import *  # noqa: TID252
+from .table_tests import *  # noqa: TID252
 
 __all__ = (
     # Base classes

@@ -1,7 +1,8 @@
 """
 Comprehensive unit tests for Table entity with full mock coverage.
 """
-import unittest
+
+import unittest  # noqa: I001
 from unittest.mock import MagicMock
 from uuid import UUID
 
@@ -98,9 +99,7 @@ class TestTableEntity(unittest.TestCase):
         # Assert
         self.assertEqual(result.id, expected_table.id)
         self.assertEqual(result.description, "Retrieved table")
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=TableEntity, entity_id=self.table_id, fields=None
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=TableEntity, entity_id=self.table_id, fields=None)
 
     def _skip_test_retrieve_table_with_fields(self):
         """Test retrieving a table with specific fields"""
@@ -137,9 +136,7 @@ class TestTableEntity(unittest.TestCase):
         self.assertEqual(result.owner.name, "john.doe")
         self.assertEqual(len(result.tags), 2)
         self.assertEqual(result.tags[0].tagFQN, "PII.Sensitive")
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=TableEntity, entity_id=self.table_id, fields=fields
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=TableEntity, entity_id=self.table_id, fields=fields)
 
     def test_retrieve_table_by_name(self):
         """Test retrieving a table by fully qualified name"""
@@ -157,9 +154,7 @@ class TestTableEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.table_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=TableEntity, fqn=self.table_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=TableEntity, fqn=self.table_fqn, fields=None)
 
     def test_update_table(self):
         """Test updating a table (PUT operation)"""
@@ -172,11 +167,7 @@ class TestTableEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(table_to_update))
-        current_entity.id = (
-            table_to_update.id
-            if hasattr(table_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = table_to_update.id if hasattr(table_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity
@@ -247,12 +238,8 @@ class TestTableEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(len(result.tableConstraints), 2)
-        self.assertEqual(
-            result.tableConstraints[0].constraintType, ConstraintType.PRIMARY_KEY
-        )
-        self.assertEqual(
-            result.tableConstraints[1].constraintType, ConstraintType.UNIQUE
-        )
+        self.assertEqual(result.tableConstraints[0].constraintType, ConstraintType.PRIMARY_KEY)
+        self.assertEqual(result.tableConstraints[1].constraintType, ConstraintType.UNIQUE)
 
     def test_table_with_joins(self):
         """Test retrieving table with join information"""
@@ -309,9 +296,7 @@ class TestTableEntity(unittest.TestCase):
 
         self.assertIsNotNone(result)
         if result is not None:
-            self.assertEqual(
-                [column.root for column in result.columns], ["id", "email"]
-            )
+            self.assertEqual([column.root for column in result.columns], ["id", "email"])
             self.assertEqual(result.rows[0][1], "user@example.com")
         self.mock_ometa.get_by_id.assert_not_called()
         self.mock_ometa.ingest_table_sample_data.assert_called_once()
@@ -353,9 +338,7 @@ class TestTableEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(result, csv_data)
-        self.mock_ometa.export_csv.assert_called_once_with(
-            entity=TableEntity, name="table_export"
-        )
+        self.mock_ometa.export_csv.assert_called_once_with(entity=TableEntity, name="table_export")
 
     def test_import_table_csv(self):
         # Mock CSV import

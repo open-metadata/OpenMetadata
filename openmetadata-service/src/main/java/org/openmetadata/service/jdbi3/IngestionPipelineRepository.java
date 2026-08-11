@@ -13,13 +13,17 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.sse.Sse;
+import jakarta.ws.rs.sse.SseEventSink;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,6 +37,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.Setter;
@@ -50,6 +56,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -63,15 +70,19 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressState;
+import org.openmetadata.service.monitoring.ServiceProgressStreamer;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -90,7 +101,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       "sourceConfig,airflowConfig,loggerLevel,enabled,deployed,processingEngine";
 
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
-  private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
+  public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
@@ -137,7 +148,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
     ingestionPipeline.setPipelineStatuses(
         fields.contains("pipelineStatuses")
-            ? getLatestPipelineStatus(ingestionPipeline)
+            ? getRecentPipelineStatuses(ingestionPipeline.getFullyQualifiedName())
             : ingestionPipeline.getPipelineStatuses());
 
     if (ingestionPipeline.getSourceConfig() != null
@@ -147,6 +158,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
           .map(appConfig -> appConfig.optString("type", null))
           .ifPresent(ingestionPipeline::setApplicationType);
+    }
+  }
+
+  @Override
+  public void setInheritedFields(IngestionPipeline ingestionPipeline, Fields fields) {
+    EntityReference serviceRef = ingestionPipeline.getService();
+    if (serviceRef == null) {
+      return;
+    }
+    try {
+      EntityInterface parent = Entity.getEntity(serviceRef, "owners,domains", ALL);
+      inheritOwners(ingestionPipeline, fields, parent);
+      inheritDomains(ingestionPipeline, fields, parent);
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Parent service {} not found for ingestion pipeline {}; skipping owner/domain inheritance",
+          serviceRef.getFullyQualifiedName(),
+          ingestionPipeline.getFullyQualifiedName());
     }
   }
 
@@ -170,10 +199,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Batch fetch service references for all pipelines
     Map<UUID, EntityReference> serviceRefs = batchFetchServices(pipelines);
 
-    // Batch fetch latest pipeline statuses if requested
-    Map<String, PipelineStatus> statusMap = Map.of();
+    // Batch fetch recent pipeline statuses if requested
+    Map<String, List<PipelineStatus>> statusMap = Map.of();
     if (fields.contains("pipelineStatuses")) {
-      statusMap = batchFetchLatestPipelineStatuses(pipelines);
+      statusMap = batchFetchRecentPipelineStatuses(pipelines);
     }
 
     for (IngestionPipeline pipeline : pipelines) {
@@ -202,22 +231,40 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  private Map<String, PipelineStatus> batchFetchLatestPipelineStatuses(
+  private Map<String, List<PipelineStatus>> batchFetchRecentPipelineStatuses(
       List<IngestionPipeline> pipelines) {
     List<String> fqnHashes =
         pipelines.stream()
             .map(p -> FullyQualifiedName.buildHash(p.getFullyQualifiedName()))
             .toList();
-    Map<String, String> jsonMap =
-        getLatestExtensionFromTimeSeriesBatch(fqnHashes, PIPELINE_STATUS_EXTENSION);
-    Map<String, PipelineStatus> result = new HashMap<>();
-    for (Map.Entry<String, String> entry : jsonMap.entrySet()) {
-      PipelineStatus status = JsonUtils.readValue(entry.getValue(), PipelineStatus.class);
-      if (status != null) {
-        result.put(entry.getKey(), status);
-      }
+    Map<String, List<String>> jsonMap =
+        getLatestExtensionsFromTimeSeriesBatch(
+            fqnHashes, PIPELINE_STATUS_EXTENSION, DEFAULT_RECENT_RUN_LIMIT);
+    Map<String, List<PipelineStatus>> result = new HashMap<>();
+    for (Map.Entry<String, List<String>> entry : jsonMap.entrySet()) {
+      result.put(entry.getKey(), toPipelineStatuses(entry.getValue()));
     }
     return result;
+  }
+
+  public List<PipelineStatus> getRecentPipelineStatuses(String ingestionPipelineFQN) {
+    String fqnHash = FullyQualifiedName.buildHash(ingestionPipelineFQN);
+    Map<String, List<String>> jsonMap =
+        getLatestExtensionsFromTimeSeriesBatch(
+            List.of(fqnHash), PIPELINE_STATUS_EXTENSION, DEFAULT_RECENT_RUN_LIMIT);
+    return toPipelineStatuses(jsonMap.getOrDefault(fqnHash, List.of()));
+  }
+
+  private static List<PipelineStatus> toPipelineStatuses(List<String> jsonValues) {
+    return jsonValues.stream()
+        .map(json -> JsonUtils.readValue(json, PipelineStatus.class))
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  public static PipelineStatus latestPipelineStatus(IngestionPipeline ingestionPipeline) {
+    List<PipelineStatus> statuses = ingestionPipeline.getPipelineStatuses();
+    return nullOrEmpty(statuses) ? null : statuses.getFirst();
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<IngestionPipeline> pipelines) {
@@ -341,10 +388,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ServiceEntityInterface service =
         Entity.getEntity(decrypted.getService(), "", Include.NON_DELETED);
 
-    if (isS3LogStorageEnabled() && getLogStorageConfiguration().getEnabled()) {
-      decrypted.setEnableStreamableLogs(true);
-    }
-
     PipelineServiceClientResponse deployResponse = deployIngestionPipeline(decrypted, service);
 
     if (deployResponse.getCode() != 200) {
@@ -401,7 +444,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("service", "openMetadataServerConnection", "processingEngine");
+    return List.of(
+        "service", "openMetadataServerConnection", "processingEngine", "pipelineStatuses");
   }
 
   @Override
@@ -473,20 +517,61 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected void postDelete(IngestionPipeline entity, boolean hardDelete) {
+    postDelete(entity, hardDelete, false);
+  }
+
+  private boolean postDelete(
+      IngestionPipeline entity, boolean hardDelete, boolean allowUnavailableRunner) {
     super.postDelete(entity, hardDelete);
-    // Delete deployed pipeline in the Pipeline Service Client
+    boolean wasRunnerCleanupSkipped = deleteDeployedPipeline(entity, allowUnavailableRunner);
+    deletePipelineStatuses(entity);
+    return wasRunnerCleanupSkipped;
+  }
+
+  boolean deleteDeployedPipeline(IngestionPipeline entity, boolean allowUnavailableRunner) {
+    boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
-      pipelineServiceClient.deletePipeline(entity);
+      try {
+        pipelineServiceClient.deletePipeline(entity);
+      } catch (IngestionRunnerUnavailableException exception) {
+        if (allowUnavailableRunner) {
+          wasRunnerCleanupSkipped = true;
+        } else {
+          throw exception;
+        }
+      }
     } else {
       LOG.debug(
           "Skipping pipeline service delete for '{}' because pipeline service client is not configured.",
           entity.getFullyQualifiedName());
     }
-    // Clean pipeline status
+    return wasRunnerCleanupSkipped;
+  }
+
+  private void deletePipelineStatuses(IngestionPipeline entity) {
     daoCollection
         .entityExtensionTimeSeriesDao()
         .delete(entity.getFullyQualifiedName(), PIPELINE_STATUS_EXTENSION);
   }
+
+  @Transaction
+  public ForcedDeleteResult forceDelete(String deletedBy, UUID id) {
+    RestUtil.DeleteResponse<IngestionPipeline> response =
+        deleteInternal(deletedBy, id, false, true);
+    boolean wasRunnerCleanupSkipped = postDelete(response.entity(), true, true);
+    deleteFromSearch(response.entity(), true);
+    if (wasRunnerCleanupSkipped) {
+      LOG.warn(
+          "Force delete skipped ingestion runner cleanup [user={}, pipelineFqn={}, pipelineId={}]",
+          deletedBy,
+          response.entity().getFullyQualifiedName(),
+          id);
+    }
+    return new ForcedDeleteResult(response, wasRunnerCleanupSkipped);
+  }
+
+  public record ForcedDeleteResult(
+      RestUtil.DeleteResponse<IngestionPipeline> response, boolean wasRunnerCleanupSkipped) {}
 
   @Override
   protected EntityReference getParentReference(IngestionPipeline entity) {
@@ -576,7 +661,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ChangeDescription change =
         addPipelineStatusChangeDescription(
             ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
-    ingestionPipeline.setPipelineStatuses(pipelineStatus);
+    ingestionPipeline.setPipelineStatuses(
+        getRecentPipelineStatuses(ingestionPipeline.getFullyQualifiedName()));
     ingestionPipeline.setChangeDescription(change);
 
     // Ensure entity reference is set before firing lifecycle event
@@ -632,7 +718,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         JsonUtils.readObjects(jsonResults, PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
-      allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+      allPipelineStatusList.addAll(
+          pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline));
     }
     allPipelineStatusList.addAll(pipelineStatusList);
     allPipelineStatusList.sort(
@@ -702,16 +789,56 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public PipelineStatus getPipelineStatus(String ingestionPipelineFQN, UUID pipelineStatusRunId) {
+    return getPipelineStatus(ingestionPipelineFQN, pipelineStatusRunId.toString());
+  }
+
+  public PipelineStatus getPipelineStatus(String ingestionPipelineFQN, String runId) {
     IngestionPipeline ingestionPipeline = findByName(ingestionPipelineFQN, Include.NON_DELETED);
     return JsonUtils.readValue(
         daoCollection
             .entityExtensionTimeSeriesDao()
             .getExtensionByKey(
                 RUN_ID_EXTENSION_KEY,
-                pipelineStatusRunId.toString(),
+                runId,
                 ingestionPipeline.getFullyQualifiedName(),
                 PIPELINE_STATUS_EXTENSION),
         PipelineStatus.class);
+  }
+
+  /**
+   * Upsert only the time-series record for a specific run without overwriting the pipeline-level
+   * current status. Use this when stopping a specific run while other runs may still be active.
+   * Inserts a new record if none exists for the runId, otherwise updates the existing one.
+   */
+  @Transaction
+  public void updatePipelineStatusByRunId(String fqn, PipelineStatus pipelineStatus) {
+    IngestionPipeline ingestionPipeline = findByName(fqn, Include.NON_DELETED);
+    String pipelineFqn = ingestionPipeline.getFullyQualifiedName();
+    String json = JsonUtils.pojoToJson(pipelineStatus);
+    PipelineStatus storedPipelineStatus =
+        JsonUtils.readValue(
+            daoCollection
+                .entityExtensionTimeSeriesDao()
+                .getLatestExtensionByKey(
+                    RUN_ID_EXTENSION_KEY,
+                    pipelineStatus.getRunId(),
+                    pipelineFqn,
+                    PIPELINE_STATUS_EXTENSION),
+            PipelineStatus.class);
+    if (storedPipelineStatus != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .updateExtensionByKey(
+              RUN_ID_EXTENSION_KEY,
+              pipelineStatus.getRunId(),
+              pipelineFqn,
+              PIPELINE_STATUS_EXTENSION,
+              json);
+    } else {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .insert(pipelineFqn, PIPELINE_STATUS_EXTENSION, PIPELINE_STATUS_JSON_SCHEMA, json);
+    }
   }
 
   @Transaction
@@ -885,13 +1012,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public static void validateProfileSample(IngestionPipeline ingestionPipeline) {
-
     JSONObject sourceConfigJson =
         new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-    String profileSampleType = sourceConfigJson.optString("profileSampleType");
-    double profileSample = sourceConfigJson.optDouble("profileSample");
-
-    EntityUtil.validateProfileSample(profileSampleType, profileSample);
+    JSONObject profileSampleConfig = sourceConfigJson.optJSONObject("profileSampleConfig");
+    if (profileSampleConfig == null) {
+      return;
+    }
+    JSONObject config = profileSampleConfig.optJSONObject("config");
+    if (config == null) {
+      return;
+    }
+    String profileSampleType = config.optString("profileSampleType", "");
+    double profileSample = config.optDouble("profileSample", Double.NaN);
+    if (!profileSampleType.isEmpty() && !Double.isNaN(profileSample)) {
+      EntityUtil.validateProfileSample(profileSampleType, profileSample);
+    }
   }
 
   /**
@@ -943,12 +1078,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public void closeStream(String pipelineFQN, UUID runId) {
+    if (!isLogStorageEnabled()) {
+      // Closing a stream is idempotent: if log storage isn't configured there
+      // is nothing to close, so we treat this as a no-op rather than an error.
+      // This lets defensive callers (e.g. exit handlers, cleanup paths) call
+      // close() without first having to know whether streaming was enabled.
+      LOG.debug(
+          "Log storage not configured; closeStream is a no-op for pipeline: {}, runId: {}",
+          pipelineFQN,
+          runId);
+      return;
+    }
     try {
-      if (isLogStorageEnabled()) {
-        logStorage.closeStream(pipelineFQN, runId);
-      } else {
-        throw new IllegalStateException("Log storage is not configured");
-      }
+      logStorage.closeStream(pipelineFQN, runId);
     } catch (Exception e) {
       LOG.error("Failed to close stream for pipeline: {}, runId: {}", pipelineFQN, runId, e);
       throw new RuntimeException("Failed to close stream", e);
@@ -1155,66 +1297,55 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  public Response streamProgress(String pipelineFQN, UUID runId) {
-    if (progressTracker == null) {
-      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-          .entity("Progress tracking is not configured")
-          .build();
+  public boolean isProgressTrackingEnabled() {
+    return progressTracker != null;
+  }
+
+  public void streamProgress(String pipelineFQN, UUID runId, SseEventSink eventSink, Sse sse) {
+    Consumer<ProgressUpdate> listener = update -> emitProgressUpdate(eventSink, sse, update);
+    Runnable onClose =
+        () -> progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
+    if (ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
+      progressTracker.registerProgressListener(pipelineFQN, runId, listener);
+      ProgressUpdate snapshot = getLatestProgressUpdate(pipelineFQN, runId);
+      if (snapshot != null) {
+        emitProgressUpdate(eventSink, sse, snapshot);
+      }
+    } else {
+      eventSink.close();
     }
+  }
 
-    return Response.ok()
-        .type("text/event-stream")
-        .entity(
-            (StreamingOutput)
-                output -> {
-                  try {
-                    output.write("retry: 1000\n\n".getBytes());
-                    output.flush();
+  private void emitProgressUpdate(SseEventSink eventSink, Sse sse, ProgressUpdate update) {
+    CompletionStage<?> event = sendProgressEvent(eventSink, sse, update);
+    if (isTerminalProgressUpdate(update)) {
+      event.whenComplete((result, error) -> ProgressSseManager.getInstance().close(eventSink));
+    }
+  }
 
-                    ProgressState currentState =
-                        progressTracker.getProgressState(pipelineFQN, runId);
-                    if (currentState != null && currentState.getLatestUpdate() != null) {
-                      String json = JsonUtils.pojoToJson(currentState.getLatestUpdate());
-                      output.write(
-                          String.format("data: %s\n\n", json).getBytes(StandardCharsets.UTF_8));
-                      output.flush();
-                    }
+  public void streamServiceProgress(String serviceFqn, SseEventSink eventSink, Sse sse) {
+    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker);
+  }
 
-                    Consumer<ProgressUpdate> listener =
-                        update -> {
-                          try {
-                            String json = JsonUtils.pojoToJson(update);
-                            output.write(
-                                String.format("data: %s\n\n", json)
-                                    .getBytes(StandardCharsets.UTF_8));
-                            output.flush();
-                          } catch (IOException e) {
-                            LOG.debug(
-                                "Client disconnected for progress stream {}/{}",
-                                pipelineFQN,
-                                runId);
-                            throw new RuntimeException(e);
-                          }
-                        };
+  private ProgressUpdate getLatestProgressUpdate(String pipelineFQN, UUID runId) {
+    ProgressState state = progressTracker.getProgressState(pipelineFQN, runId);
+    if (state != null && state.getLatestUpdate() != null) {
+      return state.getLatestUpdate();
+    }
+    return null;
+  }
 
-                    progressTracker.registerProgressListener(pipelineFQN, runId, listener);
+  private CompletionStage<?> sendProgressEvent(
+      SseEventSink eventSink, Sse sse, ProgressUpdate update) {
+    if (!eventSink.isClosed()) {
+      return eventSink.send(sse.newEvent(JsonUtils.pojoToJson(update)));
+    }
+    return CompletableFuture.completedFuture(null);
+  }
 
-                    try {
-                      while (!Thread.currentThread().isInterrupted()) {
-                        Thread.sleep(30000);
-                        output.write(": heartbeat\n\n".getBytes());
-                        output.flush();
-                      }
-                    } catch (InterruptedException e) {
-                      Thread.currentThread().interrupt();
-                    } finally {
-                      progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
-                    }
-                  } catch (Exception e) {
-                    LOG.error("Error streaming progress for {}/{}", pipelineFQN, runId, e);
-                  }
-                })
-        .build();
+  private boolean isTerminalProgressUpdate(ProgressUpdate update) {
+    return update.getUpdateType() == ProgressUpdateType.PIPELINE_COMPLETE
+        || update.getUpdateType() == ProgressUpdateType.ERROR;
   }
 
   public RestUtil.PutResponse<?> updateProgress(
@@ -1224,8 +1355,27 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
     }
 
-    progressTracker.updateProgress(fqn, runId, progressUpdate);
+    progressTracker.updateProgress(
+        fqn, runId, progressUpdate, discoveredPipeline(fqn, progressUpdate));
     return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
+  }
+
+  /**
+   * The pipeline entity to attach to the run's opening event, so the UI can discover a newly
+   * created agent from the stream itself. Loaded only for the DISCOVERY update (once per run) and
+   * never fails the progress update — a lookup error just omits the entity.
+   */
+  private IngestionPipeline discoveredPipeline(String fqn, ProgressUpdate update) {
+    IngestionPipeline result = null;
+    if (update.getUpdateType() == ProgressUpdateType.DISCOVERY) {
+      try {
+        result = getByName(null, fqn, getFields(""));
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not load ingestion pipeline {} for progress discovery: {}", fqn, e.getMessage());
+      }
+    }
+    return result;
   }
 
   public RestUtil.PutResponse<?> addOperationMetrics(
@@ -1241,8 +1391,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
+
+  // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.
+  // Default keeps the pipeline's own value; overrides resolve the pipeline's owning ingestion
+  // runner (service / test-suite / application) and derive the flag from it.
+  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {}
 
   public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
     return false; // Default implementation

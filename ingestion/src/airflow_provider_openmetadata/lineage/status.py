@@ -13,7 +13,7 @@
 OpenMetadata Airflow Provider utilities
 """
 
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List  # noqa: UP035
 
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -38,7 +38,7 @@ STATUS_MAP = {
 }
 
 
-def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):
+def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):  # noqa: UP006
     """
     Based on the task information and the total DAG tasks, cook the
     DAG status.
@@ -47,19 +47,14 @@ def get_dag_status(all_tasks: List[str], task_status: List[TaskStatus]):
     """
 
     if len(all_tasks) < len(task_status):
-        raise ValueError(
-            "We have more status than children:"
-            + f"children {all_tasks} vs. status {task_status}"
-        )
+        raise ValueError("We have more status than children:" + f"children {all_tasks} vs. status {task_status}")
 
     # We are still processing tasks...
     if len(all_tasks) > len(task_status):
         return StatusType.Pending
 
     # Check for any failure if all tasks have been processed
-    if len(all_tasks) == len(task_status) and StatusType.Failed in {
-        task.executionStatus for task in task_status
-    }:
+    if len(all_tasks) == len(task_status) and StatusType.Failed in {task.executionStatus for task in task_status}:
         return StatusType.Failed
 
     return StatusType.Successful
@@ -69,15 +64,15 @@ def add_status(
     operator: "BaseOperator",
     pipeline: Pipeline,
     metadata: OpenMetadata,
-    context: Dict,
+    context: Dict,  # noqa: UP006
 ) -> None:
     """
     Add status information for this execution date
     """
 
-    dag: "DAG" = context["dag"]
-    dag_run: "DagRun" = context["dag_run"]
-    task_instance: "TaskInstance" = context["task_instance"]
+    dag: "DAG" = context["dag"]  # noqa: UP037
+    dag_run: "DagRun" = context["dag_run"]  # noqa: UP037
+    task_instance: "TaskInstance" = context["task_instance"]  # noqa: UP037
 
     # Airflow 3.x uses logical_date instead of execution_date
     # Let this fail if we cannot properly extract & cast the start_date
@@ -95,11 +90,7 @@ def add_status(
     # We will append based on the current registered status
     if pipeline_status and pipeline_status.timestamp.root == execution_date:
         # If we are clearing a task, use the status of the new execution
-        task_status = [
-            task
-            for task in pipeline_status.taskStatus
-            if task.name != task_instance.task_id
-        ]
+        task_status = [task for task in pipeline_status.taskStatus if task.name != task_instance.task_id]
 
     # Prepare the new task status information based on the tasks already
     # visited and the current task
@@ -124,6 +115,4 @@ def add_status(
     )
 
     operator.log.info(f"Added status to DAG {updated_status}")
-    metadata.add_pipeline_status(
-        fqn=pipeline.fullyQualifiedName.root, status=updated_status
-    )
+    metadata.add_pipeline_status(fqn=pipeline.fullyQualifiedName.root, status=updated_status)

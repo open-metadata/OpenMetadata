@@ -21,7 +21,7 @@ import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.s
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,

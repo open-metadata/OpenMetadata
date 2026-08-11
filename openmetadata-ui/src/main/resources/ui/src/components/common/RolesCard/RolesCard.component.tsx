@@ -18,7 +18,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import RolesElement from '../RolesElement/RolesElement.component';
 import { RolesComponentProps } from './RolesCard.interfaces';
@@ -29,6 +29,8 @@ const RolesCard = ({
   updateUserDetails,
   selectedRoles,
   setSelectedRoles,
+  searchRolesOptions,
+  isRolesLoading,
 }: RolesComponentProps) => {
   const [isRolesEdit, setIsRolesEdit] = useState(false);
 
@@ -102,14 +104,18 @@ const RolesCard = ({
           {isRolesEdit ? (
             <Space className="w-full" direction="vertical">
               <Select
+                showSearch
                 aria-label="Select roles"
                 className="w-full"
                 defaultValue={selectedRoles}
+                filterOption={false}
                 id="select-role"
+                loading={isRolesLoading}
                 mode="multiple"
                 options={userRolesOption}
                 placeholder={`${t('label.role-plural')}...`}
                 onChange={handleOnRolesChange}
+                onSearch={searchRolesOptions}
               />
               <div className="flex justify-end" data-testid="buttons">
                 <Button

@@ -33,7 +33,9 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBox,
   descriptionBoxReadOnly,
+  fetchCompletedCsvAsyncJobResult,
   getApiContext,
+  getDefaultAdminAPIContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -81,6 +83,10 @@ const userName = user.data.email.split('@')[0];
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
 
+type CsvExportResponse = {
+  jobId: string;
+};
+
 let teamDetails: {
   name?: string;
   displayName?: string;
@@ -95,10 +101,33 @@ let teamDetails: {
   updatedEmail: `pwteamUpdated${uuid()}@example.com`,
 };
 
+const exportActiveTeamCsv = async (
+  page: Page,
+  apiContext: APIRequestContext
+) => {
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams/name/') &&
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('export-details-container').click();
+
+  const exportResponse = await exportResponsePromise;
+  expect(exportResponse.ok()).toBeTruthy();
+
+  const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+
+  return fetchCompletedCsvAsyncJobResult(apiContext, jobId);
+};
+
 const test = base.extend<{
   editOnlyUserPage: Page;
   dataConsumerPage: Page;
   ownerUserPage: Page;
+  scopedUserPage: Page;
 }>({
   editOnlyUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -118,8 +147,16 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  scopedUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await user.login(page);
+    await use(page);
+    await page.close();
+  },
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
     await afterAction();
   },
@@ -135,7 +172,9 @@ test.describe('Teams Page', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
     await user.delete(apiContext);
     await afterAction();
   });
@@ -149,7 +188,7 @@ test.describe('Teams Page', () => {
     await fetchOrganizationResponse;
   });
 
-  test('Teams Page Flow', async ({ page }) => {
+  test('Teams Page Flow', async ({ page, scopedUserPage }) => {
     await test.step('Create a new team', async () => {
       await checkTeamTabCount(page);
 
@@ -157,7 +196,7 @@ test.describe('Teams Page', () => {
 
       await page.getByTestId('add-team').click();
 
-      const newTeamData = await createTeam(page);
+      const newTeamData = await createTeam(page, true);
 
       teamDetails = {
         ...teamDetails,
@@ -225,16 +264,28 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Join team should work properly', async () => {
-      await page.locator('[data-testid="users"]').click();
+      const teamPageResponse = scopedUserPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/teams/name/') &&
+          response.request().method() === 'GET'
+      );
+      await scopedUserPage.goto(
+        `/settings/members/teams/${encodeURIComponent(teamDetails.name ?? '')}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await teamPageResponse;
 
-      // Click on join teams button
-      await page.locator('[data-testid="join-teams"]').click();
+      // join-teams is in the page header actions, not inside the users tab
+      await expect(
+        scopedUserPage.locator('[data-testid="join-teams"]')
+      ).toBeVisible();
+      await scopedUserPage.locator('[data-testid="join-teams"]').click();
 
-      await toastNotification(page, 'Team joined successfully!');
+      await toastNotification(scopedUserPage, 'Team joined successfully!');
 
       // Verify leave team button exists
       await expect(
-        page.locator('[data-testid="leave-team-button"]')
+        scopedUserPage.locator('[data-testid="leave-team-button"]')
       ).toBeVisible();
     });
 
@@ -302,24 +353,34 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Leave team flow should work properly', async () => {
-      await expect(page.locator('[data-testid="team-heading"]')).toContainText(
-        teamDetails?.updatedName ?? ''
+      await scopedUserPage.goto(
+        `/settings/members/teams/${encodeURIComponent(teamDetails.name ?? '')}`,
+        { waitUntil: 'domcontentloaded' }
       );
+      await waitForAllLoadersToDisappear(scopedUserPage);
 
-      // Click on Leave team
-      await page.locator('[data-testid="leave-team-button"]').click();
+      await expect(
+        scopedUserPage.locator('[data-testid="team-heading"]')
+      ).toContainText(teamDetails?.updatedName ?? '');
 
-      const leaveTeamResponse = page.waitForResponse(
+      const leaveTeamResponse = scopedUserPage.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/users/') &&
           response.request().method() === 'PATCH'
       );
+      // Click on Leave team
+      await scopedUserPage.locator('[data-testid="leave-team-button"]').click();
       // Click on confirm button
-      await page.locator('.ant-modal-footer').getByText('Confirm').click();
+      await scopedUserPage
+        .locator('.ant-modal-footer')
+        .getByText('Confirm')
+        .click();
       await leaveTeamResponse;
 
       // Verify that the "Join Teams" button is now visible
-      await expect(page.locator('[data-testid="join-teams"]')).toBeVisible();
+      await expect(
+        scopedUserPage.locator('[data-testid="join-teams"]')
+      ).toBeVisible();
     });
 
     await test.step('Soft Delete Team', async () => {
@@ -355,7 +416,11 @@ test.describe('Teams Page', () => {
         teamDetails?.updatedName ?? ''
       );
 
-      await hardDeleteTeam(page);
+      await hardDeleteTeam(
+        page,
+        teamDetails?.updatedName ?? teamDetails.name,
+        true
+      );
     });
   });
 
@@ -432,9 +497,15 @@ test.describe('Teams Page', () => {
         )
         .click();
 
-      const updateUserResponse = page.waitForResponse('/api/v1/users/*');
+      const patchUserPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/') &&
+          !response.url().includes('/api/v1/users/name/') &&
+          response.request().method() === 'PATCH'
+      );
       await page.getByTestId('teams-edit-save-btn').click();
-      await updateUserResponse;
+      const patchResponse = await patchUserPromise;
+      expect(patchResponse.status()).toBe(200);
 
       await expect(
         page.getByTestId('profile-teams-edit-popover')
@@ -469,7 +540,10 @@ test.describe('Teams Page', () => {
       team.responseData?.['displayName']
     );
 
-    await hardDeleteTeam(page);
+    await hardDeleteTeam(
+      page,
+      team.responseData?.['displayName'] ?? team.data.name
+    );
     await afterAction();
   });
 
@@ -515,7 +589,7 @@ test.describe('Teams Page', () => {
   });
 
   test('Export team', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+    const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
     const team = new TeamClass({
       name: `pw%team.export-${id}`,
@@ -540,17 +614,14 @@ test.describe('Teams Page', () => {
         team.data.displayName
       );
 
-      const downloadPromise = page.waitForEvent('download');
+      const csvContent = await exportActiveTeamCsv(page, apiContext);
 
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('export-details-container').click();
-      await page.fill('#fileName', team.data.name);
-      await page.click('#submit-button');
-      const download = await downloadPromise;
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      expect(csvContent).toContain(
+        'name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies'
+      );
     } finally {
       await team.delete(apiContext);
+      await afterAction();
     }
   });
 
@@ -733,7 +804,7 @@ test.describe('Teams Page', () => {
       page.getByTestId('team-hierarchy-table').getByRole('link')
     ).toContainText(team2Details.displayName);
 
-    await hardDeleteTeam(page);
+    await hardDeleteTeam(page, team1Details.name);
   });
 
   test('Total User Count should be rendered', async ({ page }) => {
@@ -858,13 +929,10 @@ test.describe('Teams Page with EditUser Permission', () => {
     await afterAction();
   });
 
-  test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
-    await redirectToHomePage(editOnlyUserPage);
-    await team2.visitTeamPage(editOnlyUserPage);
-  });
-
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
     await user.delete(apiContext);
     await user2.delete(apiContext);
     await team2.delete(apiContext);
@@ -873,6 +941,11 @@ test.describe('Teams Page with EditUser Permission', () => {
     await policy.delete(apiContext);
     await editOnlyUser.delete(apiContext);
     await afterAction();
+  });
+
+  test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
+    await redirectToHomePage(editOnlyUserPage);
+    await team2.visitTeamPage(editOnlyUserPage);
   });
 
   test('Add and Remove User for Team', async ({ editOnlyUserPage }) => {
@@ -973,7 +1046,7 @@ test.describe('Teams Page with Data Consumer User', () => {
       dataConsumerPage.getByTestId('add-placeholder-button')
     ).not.toBeVisible();
     await expect(
-      dataConsumerPage.getByTestId('no-data-placeholder')
+      dataConsumerPage.getByText('No assets linked yet')
     ).toBeVisible();
 
     // Role Tab
@@ -1019,7 +1092,9 @@ test.describe('Teams Page with Data Consumer User', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
     await user.delete(apiContext);
     await team2.delete(apiContext);
     await team.delete(apiContext);
@@ -1170,7 +1245,9 @@ test.describe('Teams Page action as Owner of Team', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
     await user.delete(apiContext);
     await dataProduct.delete(apiContext);
     await domain.delete(apiContext);

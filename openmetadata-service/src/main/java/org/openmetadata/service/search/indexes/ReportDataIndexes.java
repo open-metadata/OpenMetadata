@@ -11,6 +11,11 @@ public record ReportDataIndexes(ReportData reportData) implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return "reportData";
+  }
+
+  @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc) {
     Map<String, Object> doc = JsonUtils.getMap(reportData);
     doc.put("id", null);

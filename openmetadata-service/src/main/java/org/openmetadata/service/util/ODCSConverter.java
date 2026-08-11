@@ -330,8 +330,8 @@ public class ODCSConverter {
     if (status == null) return ODCSDataContract.OdcsStatus.DRAFT;
     return switch (status) {
       case APPROVED -> ODCSDataContract.OdcsStatus.ACTIVE;
-      case DEPRECATED -> ODCSDataContract.OdcsStatus.DEPRECATED;
       case ARCHIVED -> ODCSDataContract.OdcsStatus.RETIRED;
+      case DEPRECATED -> ODCSDataContract.OdcsStatus.DEPRECATED;
       case DRAFT, IN_REVIEW, REJECTED, UNPROCESSED -> ODCSDataContract.OdcsStatus.DRAFT;
     };
   }

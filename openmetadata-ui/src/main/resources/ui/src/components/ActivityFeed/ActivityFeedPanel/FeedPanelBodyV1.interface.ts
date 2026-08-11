@@ -11,22 +11,25 @@
  *  limitations under the License.
  */
 
+import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Thread } from '../../../generated/entity/feed/thread';
 
 export interface FeedPanelBodyPropV1 {
-  feed: Thread;
+  feed?: Thread;
+  activity?: ActivityEvent;
   className?: string;
   FeedContainerClassName?: string;
   showThread?: boolean;
   isOpenInDrawer?: boolean;
   onFeedClick?: (feed: Thread) => void;
+  onActivityClick?: (activity: ActivityEvent) => void;
   isActive?: boolean;
   isForFeedTab?: boolean;
   componentsVisibility?: {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
   };
-  hidePopover: boolean;
+  hidePopover?: boolean;
   showActivityFeedEditor?: boolean;
   onAfterClose?: () => void;
   onUpdateEntityDetails?: () => void;

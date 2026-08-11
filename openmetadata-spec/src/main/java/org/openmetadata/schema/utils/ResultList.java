@@ -47,6 +47,14 @@ public class ResultList<T> {
   @JsonProperty("warningsCount")
   private Integer warningsCount;
 
+  /**
+   * Records read but not indexed for a non-failure reason (e.g. stale-relationship orphans).
+   * Carried separately from {@link #errors} so callers can surface them as warnings — and record
+   * them — without failing the batch.
+   */
+  @JsonProperty("warnings")
+  private List<EntityError> warnings;
+
   public ResultList() {}
 
   public ResultList(List<T> data) {
@@ -201,5 +209,15 @@ public class ResultList<T> {
   @JsonProperty("warningsCount")
   public void setWarningsCount(Integer warningsCount) {
     this.warningsCount = warningsCount;
+  }
+
+  @JsonProperty("warnings")
+  public List<EntityError> getWarnings() {
+    return warnings;
+  }
+
+  @JsonProperty("warnings")
+  public void setWarnings(List<EntityError> warnings) {
+    this.warnings = warnings;
   }
 }

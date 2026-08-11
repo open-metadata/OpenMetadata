@@ -17,11 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,7 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.ContractSecurity;
-import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -53,7 +50,6 @@ import org.openmetadata.schema.entity.datacontract.FailedRule;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SchemaValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -75,8 +71,6 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SemanticsRule;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -88,7 +82,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -99,7 +92,6 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @Repository
@@ -252,6 +244,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private void postCreateOrUpdate(DataContract dataContract) {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       TestSuite testSuite = getOrCreateTestSuite(dataContract);
+      // Write the reverse edge testSuite -> dataContract BEFORE any pipeline work so a
+      // pipeline-service outage cannot leave the contract without its reverse link.
+      // TestSuiteRepository.onTestSuiteExecutionComplete guards on
+      // testSuite.getDataContract() != null; without this link every future callback silently
+      // skips updateContractDQResults and the contract sits at Running indefinitely.
+      if (testSuite != null) {
+        ensureTestSuiteToDataContractRelationship(testSuite.getId(), dataContract.getId());
+      }
       // Create the ingestion pipeline only if needed
       if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
         IngestionPipeline pipeline = createIngestionPipeline(testSuite);
@@ -264,9 +264,42 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
         testSuiteRepository.createOrUpdate(null, testSuite, ADMIN_USER_NAME);
         if (!pipeline.getDeployed()) {
-          prepareAndDeployIngestionPipeline(pipeline, testSuite);
+          // Deploy is best-effort at creation time: a pipeline-service outage or misconfiguration
+          // must not block contract creation nor lose the reverse relationship written above.
+          // The user can re-deploy via /validate later.
+          try {
+            prepareAndDeployIngestionPipeline(pipeline, testSuite);
+          } catch (RuntimeException e) {
+            // Narrow to RuntimeException: deployPipeline throws
+            // IngestionPipelineDeploymentException (WebServiceException) on transport failures
+            // and NPE when the pipeline client is not wired (test harness). Both are recoverable
+            // at /validate time. Checked exceptions still propagate.
+            LOG.warn(
+                "Failed to deploy DQ pipeline for data contract {}: {}",
+                dataContract.getFullyQualifiedName(),
+                e.getMessage());
+          }
         }
       }
+    }
+  }
+
+  private void ensureTestSuiteToDataContractRelationship(UUID testSuiteId, UUID dataContractId) {
+    List<CollectionDAO.EntityRelationshipRecord> existing =
+        daoCollection
+            .relationshipDAO()
+            .findTo(testSuiteId, Entity.TEST_SUITE, Relationship.CONTAINS.ordinal());
+    boolean alreadyLinked =
+        existing.stream()
+            .anyMatch(
+                r -> Entity.DATA_CONTRACT.equals(r.getType()) && dataContractId.equals(r.getId()));
+    if (!alreadyLinked) {
+      addRelationship(
+          testSuiteId,
+          dataContractId,
+          Entity.TEST_SUITE,
+          Entity.DATA_CONTRACT,
+          Relationship.CONTAINS);
     }
   }
 
@@ -1151,12 +1184,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         SecretsManagerFactory.getSecretsManager()
             .encryptOpenMetadataConnection(openMetadataServerConnection, false));
 
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     PipelineServiceClientResponse response =
-        pipelineServiceClient.deployPipeline(pipeline, testSuite);
+        ingestionPipelineRepository.deployIngestionPipeline(pipeline, testSuite);
     if (response.getCode() == 200) {
       pipeline.setDeployed(true);
-      IngestionPipelineRepository ingestionPipelineRepository =
-          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       ingestionPipelineRepository.createOrUpdate(null, pipeline, ADMIN_USER_NAME);
     }
   }
@@ -1768,44 +1801,22 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private void closeApprovalTask(DataContract entity, String comment) {
-    EntityLink about = new EntityLink(DATA_CONTRACT, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-    // Close User Tasks
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    } catch (EntityNotFoundException ex) {
-      LOG.info("No approval task found for data contract {}", entity.getFullyQualifiedName());
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   protected void updateTaskWithNewReviewers(DataContract dataContract) {
-    try {
-      EntityLink about = new EntityLink(DATA_CONTRACT, dataContract.getFullyQualifiedName());
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread originalTask =
-          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      dataContract =
-          Entity.getEntityByName(
-              Entity.DATA_CONTRACT,
-              dataContract.getFullyQualifiedName(),
-              "id,fullyQualifiedName,reviewers",
-              Include.ALL);
-
-      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-      updatedTask.getTask().withAssignees(new ArrayList<>(dataContract.getReviewers()));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-      RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-    } catch (EntityNotFoundException e) {
-      LOG.info(
-          "{} Task not found for data contract {}",
-          TaskType.RequestApproval,
-          dataContract.getFullyQualifiedName());
-    }
+    dataContract =
+        Entity.getEntityByName(
+            Entity.DATA_CONTRACT,
+            dataContract.getFullyQualifiedName(),
+            "id,fullyQualifiedName,reviewers",
+            Include.ALL);
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.updateApprovalTaskAssignees(
+        dataContract.getFullyQualifiedName(),
+        new ArrayList<>(dataContract.getReviewers()),
+        dataContract.getUpdatedBy());
   }
 }

@@ -21,149 +21,45 @@ import {
   WebAnalyticEventData,
   WebAnalyticEventType,
 } from '../generated/analytics/webAnalyticEventData';
-import {
-  CustomEvent,
-  CustomEventTypes,
-} from '../generated/analytics/webAnalyticEventType/customEvent';
 import { PageViewEvent } from '../generated/analytics/webAnalyticEventType/pageViewEvent';
 import { postWebAnalyticEvent } from '../rest/WebAnalyticsAPI';
 import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
-import { getPathNameFromWindowLocation } from './RouterUtils';
-
-/**
- * Check if url is valid or not and return the pathname
- * @param referrerURL referrer URL
- * @returns pathname
- */
-export const getReferrerPath = (referrerURL: string) => {
-  try {
-    const referrerURLObj = new URL(referrerURL);
-
-    return referrerURLObj.pathname;
-  } catch {
-    return '';
-  }
-};
-
-/**
- * Calculate the page load time and then convert it into seconds
- * @param performance
- * @returns pageLoadTime (in S)
- */
-export const getPageLoadTime = (performance: Performance) => {
-  // get the performance navigation timing
-  const performanceNavigationTiming = performance.getEntriesByType(
-    'navigation'
-  )[0] as PerformanceNavigationTiming;
-
-  return (
-    (performanceNavigationTiming.loadEventEnd -
-      performanceNavigationTiming.loadEventStart) /
-    1000
-  );
-};
 
 const handlePostAnalytic = async (
   webAnalyticEventData: WebAnalyticEventData
 ) => {
   try {
-    /**
-     * extend the session expiry if user continues to interact
-     * Let say expiry is at "5:45:23 PM", and user spent some time and then
-     * interact with other page in 2 minutes so expiry time will be extended to "5:47:23 PM"
-     */
     setSession(30, {}, true);
 
-    // collect the event data
     await postWebAnalyticEvent(webAnalyticEventData);
   } catch (error) {
-    // silently ignore the error
+    // eslint-disable-next-line no-console
+    console.error('Error tracking web analytic event:', error);
   }
 };
 
-/**
- * track the page view if user id is available.
- * @param pageData PageData
- * @param userId string
- */
 export const trackPageView = (pageData: AnalyticsData, userId?: string) => {
-  // Get the current session
-  const currentSession = getSession();
-
-  const { payload } = pageData;
-
-  const { location, navigator, performance, document } = window;
-  const { hostname } = location;
-
-  const pageLoadTime = getPageLoadTime(performance);
-
-  const { properties, meta } = payload;
-
-  const referrer = properties.referrer ?? document.referrer;
-
-  // timestamp for the current event
-  const timestamp = meta.ts;
-
-  if (userId) {
-    const pageViewEvent: PageViewEvent = {
-      fullUrl: properties.url,
-      url: properties.path,
-      hostname,
-      language: navigator.language,
-      screenSize: `${properties.width}x${properties.height}`,
-      userId,
-      sessionId: currentSession.id,
-      referrer,
-      pageLoadTime,
-    };
-
-    const webAnalyticEventData: WebAnalyticEventData = {
-      eventType: WebAnalyticEventType.PageView,
-      eventData: pageViewEvent,
-      timestamp,
-    };
-
-    handlePostAnalytic(webAnalyticEventData);
+  if (!userId) {
+    return;
   }
+
+  const currentSession = getSession();
+  const { properties, meta } = pageData.payload;
+
+  const pageViewEvent: PageViewEvent = {
+    fullUrl: properties.url,
+    url: properties.path,
+    userId,
+    sessionId: currentSession.id,
+  };
+
+  handlePostAnalytic({
+    eventType: WebAnalyticEventType.PageView,
+    eventData: pageViewEvent,
+    timestamp: meta.ts,
+  });
 };
 
-export const trackCustomEvent = (eventData: AnalyticsData, userId?: string) => {
-  // Get the current session
-  const currentSession = getSession();
-
-  const { payload } = eventData;
-
-  const { meta, event: eventValue } = payload;
-  const { location } = window;
-
-  // timestamp for the current event
-  const timestamp = meta.ts;
-
-  if (userId) {
-    const customEventData: CustomEvent = {
-      url: getPathNameFromWindowLocation(),
-      fullUrl: location.href,
-      hostname: location.hostname,
-      eventType: CustomEventTypes.Click,
-      sessionId: currentSession.id,
-      eventValue,
-    };
-
-    const webAnalyticEventData: WebAnalyticEventData = {
-      eventType: WebAnalyticEventType.CustomEvent,
-      eventData: customEventData,
-      timestamp,
-    };
-
-    handlePostAnalytic(webAnalyticEventData);
-  }
-};
-
-/**
- *
- * @param userId string
- * @returns AnalyticsInstance
- */
 export const getAnalyticInstance = (userId?: string): AnalyticsInstance => {
   return Analytics({
     app: 'OpenMetadata',
@@ -173,18 +69,12 @@ export const getAnalyticInstance = (userId?: string): AnalyticsInstance => {
         page: (pageData: AnalyticsData) => {
           trackPageView(pageData, userId);
         },
-        track: (trackingData: AnalyticsData) => {
-          trackCustomEvent(trackingData, userId);
-        },
       },
     ],
   });
 };
 
 export const resetWebAnalyticSession = () => {
-  // remove existing session first
   removeSession();
-
-  // then set new analytics session for 30 minutes
   setSession(30);
 };

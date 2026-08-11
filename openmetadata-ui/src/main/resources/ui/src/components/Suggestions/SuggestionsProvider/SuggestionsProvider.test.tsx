@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import {
   MOCK_SUGGESTIONS,
   MOCK_SUGGESTIONS_WITH_SAME_USER,
@@ -23,6 +22,7 @@ import {
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
+import { SuggestionType } from '../../../types/taskSuggestion';
 import * as toastUtils from '../../../utils/ToastUtils';
 import SuggestionsProvider, {
   useSuggestionsContext,

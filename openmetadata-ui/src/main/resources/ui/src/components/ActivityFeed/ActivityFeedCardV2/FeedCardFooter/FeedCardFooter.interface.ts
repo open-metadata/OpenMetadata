@@ -15,7 +15,7 @@ import { Post, Thread } from '../../../../generated/entity/feed/thread';
 
 export interface FeedCardFooterProps {
   feed: Thread;
-  post: Post;
+  post?: Post;
   isPost?: boolean;
   isForFeedTab?: boolean;
   componentsVisibility?: {

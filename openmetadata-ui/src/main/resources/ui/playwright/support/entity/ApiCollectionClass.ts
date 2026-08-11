@@ -18,11 +18,21 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
+  EntityReference,
   EntityTypeEndpoint,
   ResponseDataType,
   ResponseDataWithServiceType,
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+
+export interface APIEndpointType extends ResponseDataType {
+  responseSchema?: {
+    schemaFields: EntityReference[];
+  };
+  requestSchema?: {
+    schemaFields: EntityReference[];
+  };
+}
 
 export class ApiCollectionClass extends EntityClass {
   private serviceName: string;
@@ -56,7 +66,7 @@ export class ApiCollectionClass extends EntityClass {
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
-  apiEndpointResponseData: ResponseDataType = {} as ResponseDataType;
+  apiEndpointResponseData: APIEndpointType = {} as APIEndpointType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_COLLECTION);
@@ -244,7 +254,7 @@ export class ApiCollectionClass extends EntityClass {
   public set(data: {
     entity: ResponseDataWithServiceType;
     service: ResponseDataType;
-    apiEndpoint: ResponseDataType;
+    apiEndpoint: APIEndpointType;
   }): void {
     this.entityResponseData = data.entity;
     this.serviceResponseData = data.service;

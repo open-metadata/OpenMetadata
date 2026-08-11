@@ -32,6 +32,7 @@ import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import {
+  lazy,
   Reducer,
   useCallback,
   useEffect,
@@ -56,26 +57,31 @@ import { CSMode } from '../../../../../enums/codemirror.enum';
 import {
   PartitionIntervalTypes,
   ProfileSampleType,
+  SampleConfigType,
   TableProfilerConfig,
 } from '../../../../../generated/entity/data/table';
 import {
   getTableProfilerConfig,
   putTableProfileConfig,
 } from '../../../../../rest/tableAPI';
-import { reducerWithoutAction } from '../../../../../utils/CommonUtils';
+import { reducerWithoutAction } from '../../../../../utils/ObjectUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../../common/Loader/Loader';
 import SliderWithInput from '../../../../common/SliderWithInput/SliderWithInput';
-import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
 import '../table-profiler.less';
 import {
   ProfilerForm,
   ProfilerSettingModalState,
   ProfilerSettingsModalProps,
 } from '../TableProfiler.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../SchemaEditor/SchemaEditor'))
+);
 
 const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
   tableId,
@@ -176,11 +182,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       includeColumns,
       partitioning,
       profileQuery,
-      profileSample,
-      profileSampleType,
       excludeColumns,
       sampleDataCount,
+      profileSampleConfig,
     } = tableProfilerConfig;
+    const staticConfig = profileSampleConfig?.config;
+    const profileSample = staticConfig?.profileSample;
+    const profileSampleType = staticConfig?.profileSampleType;
     handleStateChange({
       sqlQuery: profileQuery ?? '',
       profileSample: profileSample,
@@ -293,17 +301,25 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         sampleDataCount,
       } = data;
 
+      const profileSample = profileSampleType
+        ? profileSampleType === ProfileSampleType.Percentage
+          ? profileSamplePercentage
+          : profileSampleRows
+        : undefined;
+
       const profileConfig: TableProfilerConfig = {
         excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
         profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-        profileSample: profileSampleType
-          ? profileSampleType === ProfileSampleType.Percentage
-            ? profileSamplePercentage
-            : profileSampleRows
-          : undefined,
-        profileSampleType: isUndefined(profileSampleType)
-          ? undefined
-          : profileSampleType,
+        profileSampleConfig:
+          profileSampleType && profileSample
+            ? {
+                sampleConfigType: SampleConfigType.Static,
+                config: {
+                  profileSample,
+                  profileSampleType,
+                },
+              }
+            : undefined,
         includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
           ? getIncludesColumns()
           : undefined,

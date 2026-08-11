@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """deltalake storage integration tests"""
+
 import deltalake
 import pandas as pd
 import pytest
@@ -46,7 +47,7 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ....integration_base import generate_name
+from ....integration_base import generate_name  # noqa: TID252
 
 TABLE_NAME = "TABLE"
 WRONG_TABLE_NAME = "WRONG_TABLE"
@@ -116,9 +117,7 @@ def service(metadata, deltalake_storage_environment):
         secret_key
     )
     yield service_entity
-    metadata.delete(
-        DatabaseService, service_entity.id, recursive=True, hard_delete=True
-    )
+    metadata.delete(DatabaseService, service_entity.id, recursive=True, hard_delete=True)
 
 
 @pytest.fixture(scope="module")

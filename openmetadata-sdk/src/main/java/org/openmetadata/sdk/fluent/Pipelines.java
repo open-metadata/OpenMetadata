@@ -253,6 +253,11 @@ public final class Pipelines {
     public PipelineDeleter delete() {
       return new PipelineDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Pipeline> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.pipelines(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -381,5 +386,15 @@ public final class Pipelines {
     public PipelineDeleter delete() {
       return new PipelineDeleter(client, pipeline.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().pipelines().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().pipelines().getContextByName(fqn);
   }
 }

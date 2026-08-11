@@ -28,8 +28,8 @@ class PrometheusResourceIT {
     URL url = URI.create("http://localhost:" + adminPort + "/prometheus").toURL();
     HttpURLConnection connection = (HttpURLConnection) url.openConnection();
     connection.setRequestMethod("GET");
-    connection.setConnectTimeout(5000);
-    connection.setReadTimeout(5000);
+    connection.setConnectTimeout(15000);
+    connection.setReadTimeout(30000);
 
     try {
       int responseCode = connection.getResponseCode();

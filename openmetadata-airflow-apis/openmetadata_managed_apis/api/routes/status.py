@@ -13,9 +13,10 @@ Return a list of the 10 last status for the ingestion Pipeline
 """
 
 import traceback
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint, Response
+
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import get_arg_dag_id, get_arg_only_queued
 from openmetadata_managed_apis.operations.status import status
@@ -34,6 +35,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
@@ -47,9 +49,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/status", methods=["GET"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def dag_status() -> Response:
         """
         Check the status of a DAG runs

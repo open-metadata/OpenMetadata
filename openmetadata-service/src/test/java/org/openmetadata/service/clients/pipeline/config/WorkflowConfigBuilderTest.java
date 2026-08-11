@@ -269,7 +269,6 @@ public class WorkflowConfigBuilderTest extends WorkflowConfigTest {
             + "  sourceConfig:\n"
             + "    config:\n"
             + "      type: \"TestSuite\"\n"
-            + "      profileSampleType: \"PERCENTAGE\"\n"
             + "processor:\n"
             + "  type: \"orm-test-runner\"\n"
             + "  config: {}\n"

@@ -1,6 +1,12 @@
+import json
 import uuid
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 from unittest import TestCase
+from urllib.parse import quote_plus
+
+import pytest
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import SecretStr
 
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
@@ -21,6 +27,18 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
     TableType,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
+    SecretsManagerClientLoader,
+)
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
+    SecretsManagerProvider,
+)
 from metadata.generated.schema.type.basic import (
     EntityExtension,
     EntityName,
@@ -28,11 +46,14 @@ from metadata.generated.schema.type.basic import (
     Markdown,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.connections.builders import get_password_secret
 from metadata.ingestion.models.custom_pydantic import BaseModel, CustomSecretStr
+from metadata.utils.secrets.secrets_manager import SecretsManager
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+from metadata.utils.singleton import Singleton
 
 
 class CustomPydanticValidationTest(TestCase):
-
     create_request = CreateTableRequest(
         name=EntityName("Sales::>Territory"),
         displayName="SalesTerritory",
@@ -67,12 +88,8 @@ class CustomPydanticValidationTest(TestCase):
                 ordinalPosition=9,
             ),
         ],
-        tableConstraints=[
-            TableConstraint(constraintType="PRIMARY_KEY", columns=["Sales::Last>Year"])
-        ],
-        databaseSchema=FullyQualifiedEntityName(
-            root='New Gyro 360.New Gyro 360."AdventureWorks2017.HumanResources"'
-        ),
+        tableConstraints=[TableConstraint(constraintType="PRIMARY_KEY", columns=["Sales::Last>Year"])],
+        databaseSchema=FullyQualifiedEntityName(root='New Gyro 360.New Gyro 360."AdventureWorks2017.HumanResources"'),
         extension=EntityExtension(
             root={
                 "DataQuality": '<div><p><b>Last evaluation:</b> 07/24/2023<br><b>Interval: </b>30 days <br><b>Next run:</b> 08/23/2023, 10:44:20<br><b>Measurement unit:</b> percent [%]</p><br><table><tbody><tr><th>Metric</th><th>Target</th><th>Latest result</th></tr><tr><td><p class="text-success">Completeness</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr><tr><td><p class="text-success">Integrity</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr><tr><td><p class="text-warning">Timeliness</p></td><td>90%</td><td><div class="bar fabric" style="width: 25%;"><strong>25%</strong></div></td></tr><tr><td><p class="text-warning">Uniqueness</p></td><td>90%</td><td><div class="bar fabric" style="width: 60%;"><strong>60%</strong></div></td></tr><tr><td><p class="text-success">Validity</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr></tbody></table><h3>Overall score of the table is: 77%</h3><hr style="border-width: 5px;"></div>'
@@ -83,37 +100,24 @@ class CustomPydanticValidationTest(TestCase):
     create_request_dashboard_datamodel = CreateDashboardDataModelRequest(
         name=EntityName('test"dashboarddatamodel"'),
         displayName='test"dashboarddatamodel"',
-        description=Markdown(
-            root="test__reserved__quote__dashboarddatamodel__reserved__quote__"
-        ),
+        description=Markdown(root="test__reserved__quote__dashboarddatamodel__reserved__quote__"),
         dataModelType=DataModelType.PowerBIDataModel,
-        service=FullyQualifiedEntityName(
-            root='New Gyro 360.New Gyro 360."AdventureWorks2017.HumanResources"'
-        ),
+        service=FullyQualifiedEntityName(root='New Gyro 360.New Gyro 360."AdventureWorks2017.HumanResources"'),
         columns=[
             Column(
                 name="struct",
                 dataType=DataType.STRUCT,
                 arrayDataType="UNKNOWN",
-                children=[
-                    Column(name='test "struct_children"', dataType=DataType.BIGINT)
-                ],
+                children=[Column(name='test "struct_children"', dataType=DataType.BIGINT)],
             )
         ],
     )
 
     def test_replace_separator(self):
+        assert self.create_request.name.root == "Sales__reserved__colon____reserved__arrow__Territory"
+        assert self.create_request.columns[0].name.root == "Sales__reserved__colon__Last__reserved__arrow__Year"
         assert (
-            self.create_request.name.root
-            == "Sales__reserved__colon____reserved__arrow__Territory"
-        )
-        assert (
-            self.create_request.columns[0].name.root
-            == "Sales__reserved__colon__Last__reserved__arrow__Year"
-        )
-        assert (
-            self.create_request.tableConstraints[0].columns[0]
-            == "Sales__reserved__colon__Last__reserved__arrow__Year"
+            self.create_request.tableConstraints[0].columns[0] == "Sales__reserved__colon__Last__reserved__arrow__Year"
         )
 
         assert (
@@ -151,17 +155,12 @@ class CustomPydanticValidationTest(TestCase):
                 Column(
                     name="struct",
                     dataType=DataType.STRUCT,
-                    children=[
-                        Column(name='test "struct_children"', dataType=DataType.BIGINT)
-                    ],
+                    children=[Column(name='test "struct_children"', dataType=DataType.BIGINT)],
                 )
             ],
         )
         assert fetch_response_revert_separator_3.name.root == 'test"dashboarddatamodel"'
-        assert (
-            fetch_response_revert_separator_3.columns[0].children[0].name.root
-            == 'test "struct_children"'
-        )
+        assert fetch_response_revert_separator_3.columns[0].children[0].name.root == 'test "struct_children"'
         assert fetch_response_revert_separator.name.root == "test::table"
         assert fetch_response_revert_separator_2.name.root == "test::table>"
 
@@ -174,7 +173,7 @@ class NestedModel(BaseModel):
 class RootModel(BaseModel):
     root_secret: CustomSecretStr
     nested: NestedModel
-    items: List[NestedModel]
+    items: List[NestedModel]  # noqa: UP006
 
 
 data = {
@@ -213,24 +212,54 @@ def test_model_dump_secrets():
 
 
 def test_model_dump_json_secrets():
+    assert model.model_validate_json(model.model_dump_json()).root_secret.get_secret_value() == "**********"
     assert (
-        model.model_validate_json(
-            model.model_dump_json()
-        ).root_secret.get_secret_value()
+        model.model_validate_json(model.model_dump_json(mask_secrets=True)).root_secret.get_secret_value()
         == "**********"
     )
     assert (
-        model.model_validate_json(
-            model.model_dump_json(mask_secrets=True)
-        ).root_secret.get_secret_value()
-        == "**********"
-    )
-    assert (
-        model.model_validate_json(
-            model.model_dump_json(mask_secrets=False)
-        ).root_secret.get_secret_value()
+        model.model_validate_json(model.model_dump_json(mask_secrets=False)).root_secret.get_secret_value()
         == "root_password"
     )
+
+
+class _LeakedSecretConnection(BaseModel):
+    password: CustomSecretStr
+
+
+class _LeakedSecretParams(PydanticBaseModel):
+    """Mirrors data-quality runtime-param models: a vanilla pydantic model
+    (no mask-by-default ``model_dump_json``) wrapping a generated connection."""
+
+    conn_config: _LeakedSecretConnection
+
+
+class TestPlainSecretStrInCustomSecretStrField:
+    """Regression test for the data-quality serialization crash.
+
+    Connection builders (snowflake/oracle/impala/hive) assign a plain pydantic
+    ``SecretStr`` to a ``CustomSecretStr``-typed field when auth has no password.
+    Data-quality runtime-param setters then serialize that config through a
+    vanilla ``model_dump_json()``. ``handle_secret`` must not pass
+    ``skip_secret_manager`` to a plain ``SecretStr`` whose base
+    ``get_secret_value`` rejects the kwarg.
+    """
+
+    def test_model_dump_json_does_not_crash_on_plain_secret(self):
+        connection = _LeakedSecretConnection(password=CustomSecretStr("real_password"))
+        connection.password = SecretStr("")
+
+        serialized = json.loads(_LeakedSecretParams(conn_config=connection).model_dump_json())
+
+        assert serialized["conn_config"]["password"] == ""
+
+    def test_python_dump_does_not_crash_on_plain_secret(self):
+        connection = _LeakedSecretConnection(password=CustomSecretStr("real_password"))
+        connection.password = SecretStr("plain_value")
+
+        dumped = _LeakedSecretParams(conn_config=connection).model_dump()
+
+        assert dumped["conn_config"]["password"] == "plain_value"
 
 
 # Additional comprehensive tests for enhanced functionality
@@ -321,9 +350,7 @@ class ExtendedCustomPydanticValidationTest(TestCase):
             name="測試__reserved__colon__表格__reserved__arrow__名稱",
             databaseSchema=self.sample_schema_ref,
             fullyQualifiedName="test.unicode",
-            columns=[
-                Column(name="unicode__reserved__quote__列", dataType=DataType.STRING)
-            ],
+            columns=[Column(name="unicode__reserved__quote__列", dataType=DataType.STRING)],
         )
         assert table_unicode.name.root == "測試::表格>名稱"
         assert table_unicode.columns[0].name.root == 'unicode"列'
@@ -334,9 +361,7 @@ class ExtendedCustomPydanticValidationTest(TestCase):
             name="table🚀__reserved__colon__data📊",
             databaseSchema=self.sample_schema_ref,
             fullyQualifiedName="test.emoji",
-            columns=[
-                Column(name="emoji__reserved__arrow__field🎯", dataType=DataType.STRING)
-            ],
+            columns=[Column(name="emoji__reserved__arrow__field🎯", dataType=DataType.STRING)],
         )
         assert table_emoji.name.root == "table🚀::data📊"
         assert table_emoji.columns[0].name.root == "emoji>field🎯"
@@ -410,9 +435,7 @@ class ExtendedCustomPydanticValidationTest(TestCase):
                 dataModelType=model_type,
                 columns=[
                     Column(
-                        name=ColumnName(
-                            f"metric__reserved__arrow__{model_type.value.lower()}"
-                        ),
+                        name=ColumnName(f"metric__reserved__arrow__{model_type.value.lower()}"),
                         dataType=DataType.DOUBLE,
                     )
                 ],
@@ -464,9 +487,7 @@ class ExtendedCustomPydanticValidationTest(TestCase):
                     constraintType="PRIMARY_KEY",
                     columns=["primary__reserved__quote__key"],
                 ),
-                TableConstraint(
-                    constraintType="UNIQUE", columns=["foreign__reserved__arrow__key"]
-                ),
+                TableConstraint(constraintType="UNIQUE", columns=["foreign__reserved__arrow__key"]),
             ],
             databaseSchema=FullyQualifiedEntityName("test__reserved__colon__db.schema"),
         )
@@ -476,22 +497,10 @@ class ExtendedCustomPydanticValidationTest(TestCase):
             comprehensive_request.name.root
             == "comprehensive__reserved__colon__table__reserved__arrow__name__reserved__quote__test"
         )
-        assert (
-            comprehensive_request.columns[0].name.root
-            == "primary__reserved__quote__key"
-        )
-        assert (
-            comprehensive_request.columns[1].name.root
-            == "foreign__reserved__arrow__key"
-        )
-        assert (
-            comprehensive_request.columns[2].name.root
-            == "nested__reserved__colon__struct"
-        )
-        assert (
-            comprehensive_request.columns[2].children[0].name.root
-            == "child__reserved__quote__field"
-        )
+        assert comprehensive_request.columns[0].name.root == "primary__reserved__quote__key"
+        assert comprehensive_request.columns[1].name.root == "foreign__reserved__arrow__key"
+        assert comprehensive_request.columns[2].name.root == "nested__reserved__colon__struct"
+        assert comprehensive_request.columns[2].children[0].name.root == "child__reserved__quote__field"
 
     def test_mixed_separator_edge_cases(self):
         """Test edge cases with mixed separators."""
@@ -521,17 +530,13 @@ class ExtendedCustomPydanticValidationTest(TestCase):
                 columns=[Column(name=ColumnName("col"), dataType=DataType.STRING)],
                 databaseSchema=FullyQualifiedEntityName("db.schema"),
             )
-            assert (
-                create_request.name.root == expected
-            ), f"Failed for input: {input_name}"
+            assert create_request.name.root == expected, f"Failed for input: {input_name}"
 
     def test_very_long_names_performance(self):
         """Test performance with very long names."""
         # Create very long names to test performance
         long_base_name = "very_long_table_name_" * 3
-        long_name_with_separators = (
-            f'{long_base_name}::separator>{long_base_name}"quote{long_base_name}'
-        )
+        long_name_with_separators = f'{long_base_name}::separator>{long_base_name}"quote{long_base_name}'
 
         create_request = CreateTableRequest(
             name=EntityName(long_name_with_separators),
@@ -550,9 +555,7 @@ class ExtendedCustomPydanticValidationTest(TestCase):
         # Test simple names without special characters
         simple_create = CreateTableRequest(
             name=EntityName("simple_table_name"),
-            columns=[
-                Column(name=ColumnName("simple_column"), dataType=DataType.STRING)
-            ],
+            columns=[Column(name=ColumnName("simple_column"), dataType=DataType.STRING)],
             databaseSchema=FullyQualifiedEntityName("db.schema"),
         )
 
@@ -575,7 +578,7 @@ class ExtendedCustomPydanticValidationTest(TestCase):
     def test_error_handling_invalid_models(self):
         """Test error handling with None and invalid models."""
         # Test with None entity
-        result = None
+        result = None  # noqa: F841
         # This would normally be called by the validation system
         # Just ensure no exceptions are thrown
 
@@ -616,8 +619,11 @@ class ExtendedCustomPydanticValidationTest(TestCase):
             (" test :: name ", " test __reserved__colon__ name "),
             # Multiple spaces
             ("test  ::  name", "test  __reserved__colon__  name"),
-            # Tabs and newlines (should be preserved)
-            ("test\t::\nname", "test\t__reserved__colon__\nname"),
+            # Tabs and newlines (now encoded as reserved keywords)
+            (
+                "test\t::\nname",
+                "test__reserved__tab____reserved__colon____reserved__newline__name",
+            ),
         ]
 
         for input_name, expected in whitespace_cases:
@@ -626,9 +632,7 @@ class ExtendedCustomPydanticValidationTest(TestCase):
                 columns=[Column(name=ColumnName("col"), dataType=DataType.STRING)],
                 databaseSchema=FullyQualifiedEntityName("db.schema"),
             )
-            assert (
-                create_request.name.root == expected
-            ), f"Failed for input: '{input_name}'"
+            assert create_request.name.root == expected, f"Failed for input: '{input_name}'"
 
     def test_table_constraints_comprehensive(self):
         """Test comprehensive table constraints scenarios."""
@@ -639,9 +643,7 @@ class ExtendedCustomPydanticValidationTest(TestCase):
         for i, constraint_type in enumerate(constraint_types):
             col_name = f"col_{i}__reserved__colon__constraint"
             columns.append(Column(name=ColumnName(col_name), dataType=DataType.STRING))
-            constraints.append(
-                TableConstraint(constraintType=constraint_type, columns=[col_name])
-            )
+            constraints.append(TableConstraint(constraintType=constraint_type, columns=[col_name]))
 
         create_request = CreateTableRequest(
             name=EntityName("constraints__reserved__arrow__test"),
@@ -699,10 +701,11 @@ class CustomSecretStrExtendedTest(TestCase):
         assert empty_secret.get_secret_value() == ""
         assert str(empty_secret) == ""
 
-        # Test None secret handling
+        # Test None secret handling: a null secret resolves to an empty string
+        # instead of propagating None (see the get_secret_value null guard).
         try:
             none_secret = CustomSecretStr(None)
-            assert none_secret.get_secret_value() is None
+            assert none_secret.get_secret_value() == ""
         except (TypeError, ValueError, AttributeError):
             # This is acceptable behavior for None values
             pass
@@ -712,9 +715,7 @@ class CustomSecretStrExtendedTest(TestCase):
         long_secret_value = "a" * 1000
         long_secret = CustomSecretStr(long_secret_value)
         assert long_secret.get_secret_value() == long_secret_value
-        assert (
-            str(long_secret) == "**********"
-        )  # Should still mask regardless of length
+        assert str(long_secret) == "**********"  # Should still mask regardless of length
 
     def test_special_character_secrets(self):
         """Test secrets with special characters."""
@@ -785,8 +786,8 @@ class CustomSecretStrExtendedTest(TestCase):
 
         class OptionalSecretModel(BaseModel):
             required_secret: CustomSecretStr
-            optional_secret: Optional[CustomSecretStr] = None
-            optional_value: Optional[str] = None
+            optional_secret: Optional[CustomSecretStr] = None  # noqa: UP045
+            optional_value: Optional[str] = None  # noqa: UP045
 
         # Test with all fields
         full_model = OptionalSecretModel(
@@ -812,8 +813,8 @@ class CustomSecretStrExtendedTest(TestCase):
         """Test secrets in lists and dictionaries."""
 
         class ComplexSecretModel(BaseModel):
-            secret_list: List[CustomSecretStr]
-            nested_secrets: List[dict]
+            secret_list: List[CustomSecretStr]  # noqa: UP006
+            nested_secrets: List[dict]  # noqa: UP006
 
         complex_data = {
             "secret_list": ["password1", "password2", "password3"],
@@ -829,9 +830,151 @@ class CustomSecretStrExtendedTest(TestCase):
         assert len(complex_model.secret_list) == 3
         assert all(str(secret) == "**********" for secret in complex_model.secret_list)
         assert all(
-            secret.get_secret_value() in ["password1", "password2", "password3"]
-            for secret in complex_model.secret_list
+            secret.get_secret_value() in ["password1", "password2", "password3"] for secret in complex_model.secret_list
         )
+
+
+class TestExternalSecretReferenceSerialization:
+    """Regression tests for https://github.com/open-metadata/openmetadata-collate/issues/4362.
+
+    Values prefixed with ``secret:`` are external secret references: the server
+    resolves them against an external secret manager instead of persisting the
+    raw value. The prefix MUST survive SDK serialization. If it is stripped, the
+    reference is sent as a plain secret and ends up stored in Collate's internal
+    secret manager rather than being resolved externally.
+
+    The SDK serializes create/update payloads with
+    ``model_dump_json(context={"mask_secrets": False})`` (see the PUT path in
+    ``metadata.ingestion.ometa.ometa_api``), so these tests exercise that exact
+    serialization with the default ``DBSecretsManager`` active, as it is once an
+    ometa client has been instantiated.
+    """
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def db_secrets_manager(self):
+        Singleton.clear_all()
+        SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        yield
+        Singleton.clear_all()
+
+    def test_prefix_preserved_for_custom_secret_str(self):
+        class Connection(BaseModel):
+            password: CustomSecretStr
+
+        connection = Connection(password=self.EXTERNAL_SECRET_REFERENCE)
+
+        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}))
+
+        assert serialized["password"] == self.EXTERNAL_SECRET_REFERENCE
+
+    def test_prefix_preserved_for_typed_service_connection(self):
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.EXTERNAL_SECRET_REFERENCE),
+            hostPort="localhost:3306",
+        )
+
+        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}, by_alias=True))
+
+        assert serialized["authType"]["password"] == self.EXTERNAL_SECRET_REFERENCE
+
+
+RESOLVED_EXTERNAL_SECRET = "resolved-external-password"
+
+
+class _FakeExternalSecretsManager(SecretsManager):
+    """Test double for an external secrets manager (e.g. AWS, Azure).
+
+    Resolves any reference id to a fixed value, so a test can tell real
+    resolution apart from mere ``secret:`` prefix stripping.
+    """
+
+    def get_string_value(self, secret_id: str) -> str:
+        return RESOLVED_EXTERNAL_SECRET
+
+
+class TestExternalSecretReferenceResolution:
+    """Guards the connect-time resolution path against the #4362 fix.
+
+    Preserving the ``secret:`` reference during serialization must NOT change how
+    ingestion resolves that reference when building a connection. Resolution runs
+    through a direct ``get_secret_value()`` call (see
+    ``metadata.ingestion.connections.builders.get_password_secret``), not through
+    serialization, so it stays intact. An external secrets manager is active
+    here, as it would be on a hybrid ingestion runner.
+    """
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def external_secrets_manager(self):
+        Singleton.clear_all()
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _FakeExternalSecretsManager()
+        yield
+        Singleton.clear_all()
+
+    def test_reference_resolves_for_connection_use(self):
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.EXTERNAL_SECRET_REFERENCE),
+            hostPort="localhost:3306",
+        )
+
+        password = get_password_secret(connection)
+
+        assert password.get_secret_value() == RESOLVED_EXTERNAL_SECRET
+
+    def test_reference_is_not_resolved_into_serialized_payload(self):
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.EXTERNAL_SECRET_REFERENCE),
+            hostPort="localhost:3306",
+        )
+
+        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}, by_alias=True))
+
+        assert serialized["authType"]["password"] == self.EXTERNAL_SECRET_REFERENCE
+        assert serialized["authType"]["password"] != RESOLVED_EXTERNAL_SECRET
+
+
+class _NullExternalSecretsManager(SecretsManager):
+    """Test double for a secrets manager holding a secret stored as ``null``."""
+
+    def get_string_value(self, secret_id: str) -> str:
+        return None
+
+
+class TestNullSecretResolution:
+    """Regression test for a secret stored as ``null`` in the secrets manager.
+
+    Resolving it must yield an empty string (with a warning), not ``None``.
+    A ``None`` value crashes downstream string callers such as URL building
+    with ``quote_plus`` (``TypeError: quote_from_bytes() expected bytes``).
+    """
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def null_secrets_manager(self):
+        Singleton.clear_all()
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _NullExternalSecretsManager()
+        yield
+        Singleton.clear_all()
+
+    def test_null_secret_resolves_to_empty_string(self):
+        resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert resolved == ""
+        assert isinstance(resolved, str)
+
+    def test_null_secret_is_quote_plus_safe(self):
+        resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert quote_plus(resolved) == ""
 
 
 class DashboardDataModelTransformationTest(TestCase):
@@ -839,18 +982,14 @@ class DashboardDataModelTransformationTest(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        self.sample_service = FullyQualifiedEntityName(
-            root='TestService.PowerBI."Analysis>Services::Environment"'
-        )
+        self.sample_service = FullyQualifiedEntityName(root='TestService.PowerBI."Analysis>Services::Environment"')
 
     def test_create_dashboard_datamodel_with_nested_children(self):
         """Test CreateDashboardDataModelRequest with nested children containing reserved keywords."""
         create_request = CreateDashboardDataModelRequest(
             name=EntityName('financial::report>model"quarterly'),
             displayName="Financial Report Model",
-            description=Markdown(
-                root="Financial reporting model with special characters"
-            ),
+            description=Markdown(root="Financial reporting model with special characters"),
             dataModelType=DataModelType.PowerBIDataModel,
             service=self.sample_service,
             columns=[
@@ -914,29 +1053,19 @@ class DashboardDataModelTransformationTest(TestCase):
         )
 
         # Verify top-level column name transformations
+        assert create_request.columns[0].name.root == "revenue__reserved__colon__metrics__reserved__arrow__summary"
         assert (
-            create_request.columns[0].name.root
-            == "revenue__reserved__colon__metrics__reserved__arrow__summary"
-        )
-        assert (
-            create_request.columns[1].name.root
-            == "expenses__reserved__colon__breakdown__reserved__arrow__categories"
+            create_request.columns[1].name.root == "expenses__reserved__colon__breakdown__reserved__arrow__categories"
         )
 
         # Verify nested children transformations (first level)
         revenue_column = create_request.columns[0]
-        assert (
-            revenue_column.children[0].name.root
-            == "total__reserved__colon__revenue__reserved__arrow__amount"
-        )
+        assert revenue_column.children[0].name.root == "total__reserved__colon__revenue__reserved__arrow__amount"
         assert (
             revenue_column.children[1].name.root
             == "currency__reserved__colon__code__reserved__arrow____reserved__quote__USD__reserved__quote__"
         )
-        assert (
-            revenue_column.children[2].name.root
-            == "nested__reserved__colon__struct__reserved__arrow__data"
-        )
+        assert revenue_column.children[2].name.root == "nested__reserved__colon__struct__reserved__arrow__data"
 
         # Verify deeply nested children transformations (second level)
         nested_struct = revenue_column.children[2]
@@ -951,10 +1080,7 @@ class DashboardDataModelTransformationTest(TestCase):
             expenses_column.children[0].name.root
             == "category__reserved__colon__name__reserved__arrow____reserved__quote__operations__reserved__quote__"
         )
-        assert (
-            expenses_column.children[1].name.root
-            == "amount__reserved__colon__value__reserved__arrow__total"
-        )
+        assert expenses_column.children[1].name.root == "amount__reserved__colon__value__reserved__arrow__total"
 
     def test_fetch_dashboard_datamodel_with_nested_children(self):
         """Test DashboardDataModel fetch with nested children containing encoded reserved keywords."""
@@ -967,16 +1093,12 @@ class DashboardDataModelTransformationTest(TestCase):
             fullyQualifiedName="service.financial__reserved__colon__report__reserved__arrow__model__reserved__quote__quarterly",
             columns=[
                 Column(
-                    name=ColumnName(
-                        "revenue__reserved__colon__metrics__reserved__arrow__summary"
-                    ),
+                    name=ColumnName("revenue__reserved__colon__metrics__reserved__arrow__summary"),
                     displayName="Revenue Metrics",
                     dataType=DataType.STRUCT,
                     children=[
                         Column(
-                            name=ColumnName(
-                                "total__reserved__colon__revenue__reserved__arrow__amount"
-                            ),
+                            name=ColumnName("total__reserved__colon__revenue__reserved__arrow__amount"),
                             displayName="Total Revenue",
                             dataType=DataType.DECIMAL,
                         ),
@@ -988,9 +1110,7 @@ class DashboardDataModelTransformationTest(TestCase):
                             dataType=DataType.STRING,
                         ),
                         Column(
-                            name=ColumnName(
-                                "nested__reserved__colon__struct__reserved__arrow__data"
-                            ),
+                            name=ColumnName("nested__reserved__colon__struct__reserved__arrow__data"),
                             displayName="Nested Structure",
                             dataType=DataType.STRUCT,
                             children=[
@@ -1006,9 +1126,7 @@ class DashboardDataModelTransformationTest(TestCase):
                     ],
                 ),
                 Column(
-                    name=ColumnName(
-                        "expenses__reserved__colon__breakdown__reserved__arrow__categories"
-                    ),
+                    name=ColumnName("expenses__reserved__colon__breakdown__reserved__arrow__categories"),
                     displayName="Expense Breakdown",
                     dataType=DataType.ARRAY,
                     arrayDataType=DataType.STRUCT,
@@ -1021,9 +1139,7 @@ class DashboardDataModelTransformationTest(TestCase):
                             dataType=DataType.STRING,
                         ),
                         Column(
-                            name=ColumnName(
-                                "amount__reserved__colon__value__reserved__arrow__total"
-                            ),
+                            name=ColumnName("amount__reserved__colon__value__reserved__arrow__total"),
                             displayName="Amount Value",
                             dataType=DataType.DECIMAL,
                         ),
@@ -1079,9 +1195,7 @@ class DashboardDataModelTransformationTest(TestCase):
         # Simulate storage (encoded form)
         stored_name = original_create.name.root  # Should be encoded
         stored_column_name = original_create.columns[0].name.root  # Should be encoded
-        stored_nested_name = (
-            original_create.columns[0].children[0].name.root
-        )  # Should be encoded
+        stored_nested_name = original_create.columns[0].children[0].name.root  # Should be encoded
 
         # Simulate fetch operation (create DashboardDataModel with stored values)
         fetched_model = DashboardDataModel(
@@ -1095,11 +1209,7 @@ class DashboardDataModelTransformationTest(TestCase):
                 Column(
                     name=ColumnName(stored_column_name),
                     dataType=DataType.STRUCT,
-                    children=[
-                        Column(
-                            name=ColumnName(stored_nested_name), dataType=DataType.INT
-                        )
-                    ],
+                    children=[Column(name=ColumnName(stored_nested_name), dataType=DataType.INT)],
                 )
             ],
         )
@@ -1107,19 +1217,11 @@ class DashboardDataModelTransformationTest(TestCase):
         # Verify fetch operation decodes correctly
         assert fetched_model.name.root == 'analytics::dashboard>model"test'
         assert fetched_model.columns[0].name.root == "metrics::summary>report"
-        assert (
-            fetched_model.columns[0].children[0].name.root == 'total::count>"records"'
-        )
+        assert fetched_model.columns[0].children[0].name.root == 'total::count>"records"'
 
         # Verify create operation encodes correctly
-        assert (
-            stored_name
-            == "analytics__reserved__colon__dashboard__reserved__arrow__model__reserved__quote__test"
-        )
-        assert (
-            stored_column_name
-            == "metrics__reserved__colon__summary__reserved__arrow__report"
-        )
+        assert stored_name == "analytics__reserved__colon__dashboard__reserved__arrow__model__reserved__quote__test"
+        assert stored_column_name == "metrics__reserved__colon__summary__reserved__arrow__report"
         assert (
             stored_nested_name
             == "total__reserved__colon__count__reserved__arrow____reserved__quote__records__reserved__quote__"

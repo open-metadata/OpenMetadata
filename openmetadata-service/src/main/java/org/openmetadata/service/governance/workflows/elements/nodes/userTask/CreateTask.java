@@ -1,0 +1,1226 @@
+/*
+ *  Copyright 2024 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
+
+import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
+import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.flowable.common.engine.api.FlowableObjectNotFoundException;
+import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.delegate.BpmnError;
+import org.flowable.engine.delegate.TaskListener;
+import org.flowable.engine.runtime.Execution;
+import org.flowable.identitylink.api.IdentityLink;
+import org.flowable.task.service.delegate.DelegateTask;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.RecognizerFeedback;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabelRecognizerMetadata;
+import org.openmetadata.schema.type.TaskAvailableTransition;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskExternalReference;
+import org.openmetadata.schema.type.TaskPriority;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
+import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.DurationUtil;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
+
+/**
+ * Flowable TaskListener that creates a Task entity (new system) when a workflow reaches an
+ * approval node. This replaces CreateApprovalTaskImpl for the new Task entity system.
+ *
+ * <p>Key differences from the legacy CreateApprovalTaskImpl:
+ * - Creates Task entity instead of Thread entity
+ * - Uses TaskRepository instead of FeedRepository
+ * - Links task to WorkflowInstance via workflowInstanceId
+ * - Cleaner separation from Feed/Thread complexity
+ */
+@Slf4j
+public class CreateTask implements TaskListener {
+  private static final String DEFAULT_SYSTEM_USER = "admin";
+  private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
+  private static final long INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 25L;
+  private static final long MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 250L;
+  private static final IntervalFunction WORKFLOW_MANAGED_DRAFT_LOOKUP_INTERVAL_FUNCTION =
+      attempt -> {
+        long retryDelayMillis =
+            INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS << Math.max(0, (int) attempt - 1);
+        return Math.min(retryDelayMillis, MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS);
+      };
+  private static final RetryConfig WORKFLOW_MANAGED_DRAFT_LOOKUP_RETRY_CONFIG =
+      RetryConfig.<Task>custom()
+          .maxAttempts(WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS)
+          .intervalFunction(WORKFLOW_MANAGED_DRAFT_LOOKUP_INTERVAL_FUNCTION)
+          .retryOnResult(task -> task == null)
+          .failAfterMaxAttempts(false)
+          .build();
+  private Expression inputNamespaceMapExpr;
+  private Expression assigneesVarNameExpr;
+  private Expression approvalThresholdExpr;
+  private Expression rejectionThresholdExpr;
+  private Expression taskTypeExpr;
+  private Expression taskCategoryExpr;
+  private Expression stageIdExpr;
+  private Expression stageDisplayNameExpr;
+  private Expression taskStatusExpr;
+  private Expression transitionMetadataExpr;
+
+  @Override
+  public void notify(DelegateTask delegateTask) {
+    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
+    try {
+      InputNamespaces inputNamespaces =
+          InputNamespaces.read(inputNamespaceMapExpr.getValue(delegateTask));
+      List<EntityReference> assignees = getAssignees(delegateTask);
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(
+              (String)
+                  varHandler.getNamespacedVariable(
+                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
+      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+
+      // Get approval threshold, default to 1 if not set
+      Integer approvalThreshold =
+          WorkflowVariableResolver.getThresholdValue(approvalThresholdExpr, delegateTask, 1);
+      Integer rejectionThreshold =
+          WorkflowVariableResolver.getThresholdValue(rejectionThresholdExpr, delegateTask, 1);
+
+      // Get task type and category
+      TaskEntityType taskType = getTaskType(delegateTask);
+      TaskCategory taskCategory = getTaskCategory(delegateTask);
+
+      // Get workflow instance ID from the process
+      UUID workflowInstanceId = getWorkflowInstanceId(delegateTask);
+
+      // Build workflow-specific payload for task types that need richer context.
+      Object payload = buildWorkflowPayload(taskType, inputNamespaces, varHandler);
+
+      // Create or update the Task entity for the current workflow stage
+      Task task =
+          createOrUpdateTask(
+              delegateTask,
+              entity,
+              assignees,
+              taskType,
+              taskCategory,
+              workflowInstanceId,
+              approvalThreshold,
+              rejectionThreshold,
+              payload);
+
+      if (task == null) {
+        return;
+      }
+
+      // Register with WorkflowHandler for resolution
+      WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
+
+      // Set the thresholds as task variables for use in WorkflowHandler
+      delegateTask.setVariable("approvalThreshold", approvalThreshold);
+      delegateTask.setVariable("rejectionThreshold", rejectionThreshold);
+      delegateTask.setVariable("approversList", new ArrayList<String>());
+      delegateTask.setVariable("rejectersList", new ArrayList<String>());
+      delegateTask.setVariable("taskEntityId", task.getId().toString());
+
+      LOG.info(
+          "[CreateTask] Created Task entity: id='{}', taskId='{}', type='{}', workflowInstanceId='{}'",
+          task.getId(),
+          task.getTaskId(),
+          taskType,
+          workflowInstanceId);
+
+    } catch (Exception exc) {
+      LOG.error(
+          String.format(
+              "[%s] Failure: ",
+              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          exc);
+      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
+      throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
+    }
+  }
+
+  private TaskEntityType getTaskType(DelegateTask delegateTask) {
+    String variableTaskType =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_TYPE);
+    if (variableTaskType != null && !variableTaskType.isEmpty()) {
+      return TaskEntityType.fromValue(variableTaskType);
+    }
+    if (taskTypeExpr != null) {
+      String typeStr = (String) taskTypeExpr.getValue(delegateTask);
+      if (typeStr != null && !typeStr.isEmpty()) {
+        return TaskEntityType.fromValue(typeStr);
+      }
+    }
+    TaskEntityType inferredTaskType = inferTaskTypeFromWorkflow(delegateTask);
+    if (inferredTaskType != null) {
+      return inferredTaskType;
+    }
+    return TaskEntityType.GlossaryApproval; // Backward-compat default
+  }
+
+  private TaskCategory getTaskCategory(DelegateTask delegateTask) {
+    String variableTaskCategory =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_CATEGORY);
+    if (variableTaskCategory != null && !variableTaskCategory.isEmpty()) {
+      return TaskCategory.fromValue(variableTaskCategory);
+    }
+    if (taskCategoryExpr != null) {
+      String categoryStr = (String) taskCategoryExpr.getValue(delegateTask);
+      if (categoryStr != null && !categoryStr.isEmpty()) {
+        return TaskCategory.fromValue(categoryStr);
+      }
+    }
+    TaskEntityType inferredTaskType = inferTaskTypeFromWorkflow(delegateTask);
+    if (inferredTaskType != null) {
+      String workflowRef =
+          inferredTaskType == TaskEntityType.CustomTask
+              ? "CustomTaskWorkflow"
+              : inferWorkflowDefinitionRef(delegateTask);
+      return TaskWorkflowLifecycleResolver.defaultTaskCategoryForWorkflowDefinitionRef(workflowRef);
+    }
+    return TaskCategory.Approval; // Backward-compat default
+  }
+
+  private TaskEntityType inferTaskTypeFromWorkflow(DelegateTask delegateTask) {
+    String workflowDefinitionRef = inferWorkflowDefinitionRef(delegateTask);
+    if (workflowDefinitionRef == null || workflowDefinitionRef.isBlank()) {
+      return null;
+    }
+    return TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef(
+        workflowDefinitionRef);
+  }
+
+  private String inferWorkflowDefinitionRef(DelegateTask delegateTask) {
+    String processDefinitionKey =
+        getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId());
+    if (processDefinitionKey == null || processDefinitionKey.isBlank()) {
+      return null;
+    }
+    return processDefinitionKey.endsWith("Trigger")
+        ? TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(processDefinitionKey)
+        : processDefinitionKey;
+  }
+
+  private UUID resolveWorkflowDefinitionId(
+      DelegateTask delegateTask, String workflowDefinitionIdValue) {
+    if (workflowDefinitionIdValue != null && !workflowDefinitionIdValue.isBlank()) {
+      return UUID.fromString(workflowDefinitionIdValue);
+    }
+    String workflowDefinitionRef = inferWorkflowDefinitionRef(delegateTask);
+    if (workflowDefinitionRef == null || workflowDefinitionRef.isBlank()) {
+      return null;
+    }
+    WorkflowDefinition workflowDefinition =
+        Entity.findByNameOrNull(
+            Entity.WORKFLOW_DEFINITION, workflowDefinitionRef, Include.NON_DELETED);
+    return workflowDefinition != null ? workflowDefinition.getId() : null;
+  }
+
+  private UUID getWorkflowInstanceId(DelegateTask delegateTask) {
+    Object workflowInstanceIdObj = delegateTask.getVariable("workflowInstanceId");
+    if (workflowInstanceIdObj != null) {
+      return UUID.fromString(workflowInstanceIdObj.toString());
+    }
+    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    return businessKey != null && !businessKey.isBlank() ? UUID.fromString(businessKey) : null;
+  }
+
+  private static String resolveProcessBusinessKey(String processInstanceId) {
+    if (processInstanceId == null || processInstanceId.isBlank()) {
+      return null;
+    }
+    org.flowable.engine.runtime.ProcessInstance processInstance =
+        WorkflowHandler.getInstance()
+            .getRuntimeService()
+            .createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .singleResult();
+    return processInstance != null ? processInstance.getBusinessKey() : null;
+  }
+
+  private List<EntityReference> getAssignees(DelegateTask delegateTask) {
+    List<EntityReference> assignees = new ArrayList<>();
+
+    // Read assignees from the workflow variable set by SetApprovalAssigneesImpl.
+    // This is more reliable than getCandidates() which may not reflect candidates
+    // added by earlier task listeners in the same "create" event.
+    if (assigneesVarNameExpr != null) {
+      String varName = assigneesVarNameExpr.getValue(delegateTask).toString();
+      Object varValue = delegateTask.getVariable(varName);
+      LOG.info(
+          "[CreateTask] Reading assignees: varName='{}', varValue type='{}', varValue='{}'",
+          varName,
+          varValue != null ? varValue.getClass().getName() : "null",
+          varValue);
+      if (varValue != null) {
+        List<String> assigneeLinks;
+        if (varValue instanceof String) {
+          assigneeLinks = JsonUtils.readValue((String) varValue, List.class);
+        } else {
+          assigneeLinks = JsonUtils.readOrConvertValue(varValue, List.class);
+        }
+        if (assigneeLinks != null) {
+          for (String link : assigneeLinks) {
+            try {
+              assignees.add(getEntityReferenceFromLinkString(link));
+            } catch (Exception e) {
+              LOG.warn("[CreateTask] Failed to resolve assignee '{}': {}", link, e.getMessage());
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback to Flowable task candidates/assignee
+    if (assignees.isEmpty()) {
+      Set<IdentityLink> candidates = delegateTask.getCandidates();
+      if (!candidates.isEmpty()) {
+        for (IdentityLink candidate : candidates) {
+          try {
+            assignees.add(getEntityReferenceFromLinkString(candidate.getUserId()));
+          } catch (Exception e) {
+            LOG.warn(
+                "[CreateTask] Failed to resolve candidate '{}': {}",
+                candidate.getUserId(),
+                e.getMessage());
+          }
+        }
+      } else if (delegateTask.getAssignee() != null) {
+        assignees.add(getEntityReferenceFromLinkString(delegateTask.getAssignee()));
+      }
+    }
+
+    return assignees;
+  }
+
+  private EntityReference getEntityReferenceFromLinkString(String entityLinkString) {
+    MessageParser.EntityLink assigneeEntityLink = MessageParser.EntityLink.parse(entityLinkString);
+    return Entity.getEntityReferenceByName(
+        assigneeEntityLink.getEntityType(), assigneeEntityLink.getEntityFQN(), Include.NON_DELETED);
+  }
+
+  private Task createOrUpdateTask(
+      DelegateTask delegateTask,
+      EntityInterface entity,
+      List<EntityReference> assignees,
+      TaskEntityType taskType,
+      TaskCategory taskCategory,
+      UUID workflowInstanceId,
+      Integer approvalThreshold,
+      Integer rejectionThreshold,
+      Object payload) {
+
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    UUID requestedTaskId = resolveRequestedTaskId(delegateTask);
+    String taskName =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_NAME);
+    String taskDisplayName =
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_DISPLAY_NAME);
+    String taskDescription =
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_DESCRIPTION);
+    String manualGrantReason = resolveManualGrantReason(delegateTask);
+    TaskPriority requestedPriority = resolveTaskPriority(delegateTask);
+    Object requestedPayload =
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_PAYLOAD);
+    Long requestedDueDate =
+        WorkflowVariableResolver.longVariable(delegateTask, WorkflowStartVariables.TASK_DUE_DATE);
+    Object requestedExternalReference =
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_EXTERNAL_REFERENCE);
+    Object requestedTags =
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_TAGS);
+    List<EntityReference> requestedReviewers =
+        WorkflowVariableResolver.entityReferencesVariable(
+            delegateTask, WorkflowStartVariables.TASK_REVIEWERS);
+    List<EntityReference> requestedAssignees =
+        WorkflowVariableResolver.entityReferencesVariable(
+            delegateTask, WorkflowStartVariables.TASK_ASSIGNEES);
+    EntityReference requestedCreatedBy =
+        WorkflowVariableResolver.entityReferenceVariable(
+            delegateTask, WorkflowStartVariables.TASK_CREATED_BY);
+    String requestedUpdatedBy =
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_UPDATED_BY);
+    String workflowDefinitionId =
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.WORKFLOW_DEFINITION_ID);
+    UUID resolvedWorkflowDefinitionId =
+        resolveWorkflowDefinitionId(delegateTask, workflowDefinitionId);
+    boolean workflowManagedDraftTask =
+        WorkflowVariableResolver.booleanVariable(
+            delegateTask, WorkflowStartVariables.TASK_WORKFLOW_MANAGED);
+    String taskFormSchemaId =
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_FORM_SCHEMA_ID);
+    Double taskFormSchemaVersion =
+        WorkflowVariableResolver.doubleVariable(
+            delegateTask, WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION);
+    String workflowStageId = WorkflowVariableResolver.stringExpression(stageIdExpr, delegateTask);
+    String workflowStageDisplayName =
+        WorkflowVariableResolver.stringExpression(stageDisplayNameExpr, delegateTask);
+    TaskEntityStatus stageStatus = resolveStageStatus(delegateTask);
+    List<TaskAvailableTransition> availableTransitions =
+        TaskWorkflowLifecycleResolver.parseTransitions(
+            transitionMetadataExpr != null ? transitionMetadataExpr.getValue(delegateTask) : null);
+    if (availableTransitions.isEmpty()) {
+      availableTransitions =
+          TaskWorkflowLifecycleResolver.resolveTransitionsForStage(
+              resolvedWorkflowDefinitionId, workflowStageId);
+    }
+
+    // Build the about reference
+    EntityReference aboutRef =
+        new EntityReference()
+            .withId(entity.getId())
+            .withType(Entity.getEntityTypeFromObject(entity))
+            .withName(entity.getName())
+            .withFullyQualifiedName(entity.getFullyQualifiedName());
+
+    // Build createdBy reference
+    EntityReference createdByRef =
+        resolveCreatedByReference(requestedCreatedBy, entity, payload, taskType);
+    String updatedBy =
+        requestedUpdatedBy != null && !requestedUpdatedBy.isBlank()
+            ? requestedUpdatedBy
+            : resolveUpdatedBy(entity, createdByRef);
+
+    Task existingTask =
+        findExistingTaskWithRetry(taskRepository, requestedTaskId, workflowManagedDraftTask);
+    if (shouldSkipDeletedWorkflowManagedDraftTask(
+        requestedTaskId, workflowManagedDraftTask, existingTask)) {
+      terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
+      return null;
+    }
+    Object priorApprovalPayload =
+        existingTask == null
+            ? findPriorOpenApprovalPayload(
+                taskRepository,
+                entity,
+                taskCategory,
+                resolvedWorkflowDefinitionId,
+                workflowInstanceId)
+            : null;
+    if (existingTask != null) {
+      LOG.info(
+          "[CreateTask] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
+          existingTask.getId(),
+          existingTask.getWorkflowStageId(),
+          assignees != null ? assignees.stream().map(EntityReference::getName).toList() : null,
+          requestedAssignees != null
+              ? requestedAssignees.stream().map(EntityReference::getName).toList()
+              : null);
+      Task currentTask =
+          taskRepository.get(null, existingTask.getId(), taskRepository.getFields("*"));
+      Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
+      UUID effectiveWorkflowDefinitionId =
+          resolvedWorkflowDefinitionId != null
+              ? resolvedWorkflowDefinitionId
+              : currentTask.getWorkflowDefinitionId();
+      if (availableTransitions.isEmpty()) {
+        availableTransitions =
+            TaskWorkflowLifecycleResolver.resolveTransitionsForStage(
+                effectiveWorkflowDefinitionId, workflowStageId);
+      }
+      List<EntityReference> resolvedAssignees =
+          resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees);
+      boolean preserveTerminalWorkflowState = isTerminalTaskStatus(currentTask.getStatus());
+      if (!preserveTerminalWorkflowState) {
+        updatedTask.setStatus(stageStatus != null ? stageStatus : updatedTask.getStatus());
+        updatedTask.setWorkflowStageId(workflowStageId);
+        updatedTask.setWorkflowStageDisplayName(
+            workflowStageDisplayName != null ? workflowStageDisplayName : workflowStageId);
+        updatedTask.setAvailableTransitions(availableTransitions);
+      }
+      if (resolvedAssignees != null) {
+        updatedTask.setAssignees(resolvedAssignees);
+      }
+      if (requestedReviewers != null) {
+        updatedTask.setReviewers(requestedReviewers);
+      }
+      updatedTask.setWorkflowInstanceId(
+          workflowInstanceId != null ? workflowInstanceId : updatedTask.getWorkflowInstanceId());
+      updatedTask.setUpdatedAt(System.currentTimeMillis());
+      updatedTask.setUpdatedBy(updatedBy);
+      updatedTask.setPayload(
+          requestedPayload != null
+              ? ChangePreviewUtils.preserveProposedChanges(
+                  requestedPayload, updatedTask.getPayload())
+              : updatedTask.getPayload());
+      if (effectiveWorkflowDefinitionId != null) {
+        updatedTask.setWorkflowDefinitionId(effectiveWorkflowDefinitionId);
+      }
+      if (taskFormSchemaId != null && !taskFormSchemaId.isBlank()) {
+        updatedTask.setTaskFormSchemaId(UUID.fromString(taskFormSchemaId));
+      }
+      if (taskFormSchemaVersion != null) {
+        updatedTask.setTaskFormSchemaVersion(taskFormSchemaVersion);
+      }
+      if (taskName != null && !taskName.isBlank()) {
+        updatedTask.setName(taskName);
+      }
+      if (taskDisplayName != null && !taskDisplayName.isBlank()) {
+        updatedTask.setDisplayName(taskDisplayName);
+      }
+      if (taskDescription != null && !taskDescription.isBlank()) {
+        updatedTask.setDescription(taskDescription);
+      }
+      if (requestedPriority != null) {
+        updatedTask.setPriority(requestedPriority);
+      }
+      Long effectiveDueDate =
+          resolveEffectiveDueDate(stageStatus, taskType, requestedPayload, requestedDueDate);
+      if (effectiveDueDate != null) {
+        updatedTask.setDueDate(effectiveDueDate);
+      }
+      updatedTask.setPayload(
+          withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
+      updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
+      updatedTask.setPayload(
+          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
+      if (requestedExternalReference != null) {
+        updatedTask.setExternalReference(
+            JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
+      }
+      if (requestedTags != null) {
+        updatedTask.setTags(
+            JsonUtils.convertValue(
+                requestedTags,
+                new com.fasterxml.jackson.core.type.TypeReference<List<TagLabel>>() {}));
+      }
+
+      return taskRepository.update(null, currentTask, updatedTask, updatedBy).getEntity();
+    }
+
+    // Create the task
+    Task task =
+        new Task()
+            .withId(requestedTaskId != null ? requestedTaskId : UUID.randomUUID())
+            .withType(taskType)
+            .withCategory(taskCategory)
+            .withStatus(stageStatus != null ? stageStatus : TaskEntityStatus.Open)
+            .withPriority(requestedPriority != null ? requestedPriority : TaskPriority.Medium)
+            .withAbout(aboutRef)
+            .withAssignees(
+                requestedAssignees != null && !requestedAssignees.isEmpty()
+                    ? requestedAssignees
+                    : assignees)
+            .withReviewers(requestedReviewers)
+            .withCreatedBy(createdByRef)
+            .withWorkflowInstanceId(workflowInstanceId)
+            .withWorkflowStageId(workflowStageId)
+            .withWorkflowStageDisplayName(
+                workflowStageDisplayName != null ? workflowStageDisplayName : workflowStageId)
+            .withAvailableTransitions(availableTransitions)
+            .withDescription(
+                taskDescription != null ? taskDescription : buildTaskDescription(entity, taskType))
+            .withPayload(
+                ChangePreviewUtils.preserveProposedChanges(
+                    requestedPayload != null
+                        ? requestedPayload
+                        : (payload != null ? payload : priorApprovalPayload),
+                    priorApprovalPayload))
+            .withCreatedAt(System.currentTimeMillis())
+            .withUpdatedAt(System.currentTimeMillis())
+            .withUpdatedBy(updatedBy);
+
+    if (taskName != null && !taskName.isBlank()) {
+      task.setName(taskName);
+    }
+    if (taskDisplayName != null && !taskDisplayName.isBlank()) {
+      task.setDisplayName(taskDisplayName);
+    }
+    if (resolvedWorkflowDefinitionId != null) {
+      task.setWorkflowDefinitionId(resolvedWorkflowDefinitionId);
+    }
+    if (taskFormSchemaId != null && !taskFormSchemaId.isBlank()) {
+      task.setTaskFormSchemaId(UUID.fromString(taskFormSchemaId));
+    }
+    if (taskFormSchemaVersion != null) {
+      task.setTaskFormSchemaVersion(taskFormSchemaVersion);
+    }
+    Long effectiveDueDate =
+        resolveEffectiveDueDate(stageStatus, taskType, requestedPayload, requestedDueDate);
+    if (effectiveDueDate != null) {
+      task.setDueDate(effectiveDueDate);
+    }
+    task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
+    task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
+    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
+    if (requestedExternalReference != null) {
+      task.setExternalReference(
+          JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
+    }
+    if (requestedTags != null) {
+      task.setTags(
+          JsonUtils.convertValue(
+              requestedTags,
+              new com.fasterxml.jackson.core.type.TypeReference<List<TagLabel>>() {}));
+    }
+
+    // Use the repository to create (handles taskId generation, FQN, relationships)
+    task = taskRepository.create(null, task);
+
+    // Create and publish ChangeEvent for notification system
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_CREATED)
+            .withEntityId(task.getId())
+            .withEntityType(Entity.TASK)
+            .withEntityFullyQualifiedName(task.getFullyQualifiedName())
+            .withUserName(updatedBy)
+            .withTimestamp(task.getUpdatedAt())
+            .withEntity(task);
+
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
+
+    // Send WebSocket Notification
+    WebsocketNotificationHandler.handleTaskNotification(task);
+
+    // Supersede any approval task still open from an earlier run of the same workflow, AFTER the
+    // new
+    // task has been created, so a rollback of the new-task transaction can't leave the prior run's
+    // Flowable process terminated behind a still-open OM task. One live approval per (entity,
+    // workflow) is the invariant.
+    supersedePriorApprovalTask(
+        delegateTask,
+        taskRepository,
+        entity,
+        taskCategory,
+        resolvedWorkflowDefinitionId,
+        workflowInstanceId,
+        updatedBy);
+
+    return task;
+  }
+
+  private void supersedePriorApprovalTask(
+      DelegateTask delegateTask,
+      TaskRepository taskRepository,
+      EntityInterface entity,
+      TaskCategory taskCategory,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId,
+      String updatedBy) {
+    // Best-effort cleanup: failing to supersede a prior task must never abort creation of the new
+    // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
+    if (taskCategory == TaskCategory.Approval) {
+      try {
+        taskRepository
+            .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
+            .stream()
+            .filter(
+                prior ->
+                    isSupersedablePriorApprovalTask(
+                        prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+            .forEach(
+                prior ->
+                    cancelAndTerminatePriorApproval(
+                        delegateTask, taskRepository, prior, updatedBy));
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Failed to supersede prior approval task(s) for entity '{}': {}",
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+  }
+
+  /**
+   * Find an open prior approval task on the same entity bound to the same workflow definition but
+   * a different workflow instance, and return its payload. Used to carry forward the {@code
+   * proposedChanges} blob across re-edits, since each entity edit spawns a fresh workflow run that
+   * creates a new Task (the prior task is closed asynchronously by {@link
+   * #supersedePriorApprovalTask}). Returns {@code null} when no eligible prior task exists.
+   */
+  static Object findPriorOpenApprovalPayload(
+      TaskRepository taskRepository,
+      EntityInterface entity,
+      TaskCategory taskCategory,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId) {
+    Object priorPayload = null;
+    if (taskCategory == TaskCategory.Approval && entity != null) {
+      try {
+        priorPayload =
+            taskRepository
+                .listNonTerminalTasksByEntityAndCategory(
+                    entity.getFullyQualifiedName(), taskCategory)
+                .stream()
+                .filter(
+                    prior ->
+                        isSupersedablePriorApprovalTask(
+                            prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+                .map(Task::getPayload)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Failed to lookup prior approval task payload for entity '{}': {}",
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+    return priorPayload;
+  }
+
+  static boolean isSupersedablePriorApprovalTask(
+      Task prior, UUID currentWorkflowDefinitionId, UUID currentWorkflowInstanceId) {
+    return prior != null
+        && currentWorkflowInstanceId != null
+        && currentWorkflowDefinitionId != null
+        && prior.getWorkflowInstanceId() != null
+        && !isTerminalTaskStatus(prior.getStatus())
+        && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
+        && currentWorkflowDefinitionId.equals(prior.getWorkflowDefinitionId());
+  }
+
+  private void cancelAndTerminatePriorApproval(
+      DelegateTask delegateTask, TaskRepository taskRepository, Task prior, String updatedBy) {
+    LOG.info(
+        "[CreateTask] Superseding prior approval task '{}' (workflowInstance '{}') with a newer run",
+        prior.getId(),
+        prior.getWorkflowInstanceId());
+    taskRepository.closeTask(prior, updatedBy, SUPERSEDED_BY_NEWER_RUN);
+    dispatchPriorInstanceTermination(
+        inferWorkflowDefinitionRef(delegateTask), prior.getId(), prior.getWorkflowInstanceId());
+  }
+
+  private void dispatchPriorInstanceTermination(
+      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
+    // Run on the shared async executor in its own transaction so deleting the superseded Flowable
+    // process can never poison the current task-creation transaction. Flowable runs as a standalone
+    // engine with its own JDBC connection, so closeTask() above already committed in a separate OM
+    // transaction before this dispatch. The worker reads the prior task straight from the database
+    // (not the entity cache) to observe that committed status, and only terminates the process when
+    // the task is actually terminal — so a still-live approval is never orphaned.
+    CompletableFuture.runAsync(
+            () -> terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId),
+            AsyncService.getInstance().getExecutorService())
+        .exceptionally(
+            ex -> {
+              LOG.error(
+                  "[CreateTask] Failed to terminate superseded workflow instance '{}'",
+                  priorInstanceId,
+                  ex);
+              return null;
+            });
+  }
+
+  private void terminateSupersededInstance(
+      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task prior = taskRepository.findCommittedTask(priorTaskId);
+    if (prior != null && isTerminalTaskStatus(prior.getStatus())) {
+      WorkflowHandler.getInstance()
+          .terminateWorkflowInstance(priorInstanceId, mainWorkflowName, SUPERSEDED_BY_NEWER_RUN);
+    } else {
+      LOG.debug(
+          "[CreateTask] Prior approval task '{}' is not terminal (status={}); leaving its workflow "
+              + "process intact",
+          priorTaskId,
+          prior == null ? null : prior.getStatus());
+    }
+  }
+
+  static List<EntityReference> resolveExistingTaskAssignees(
+      Task existingTask,
+      List<EntityReference> workflowAssignees,
+      List<EntityReference> requestedAssignees) {
+    List<EntityReference> existingAssignees = existingTask.getAssignees();
+    boolean hasExistingAssignees = existingAssignees != null && !existingAssignees.isEmpty();
+    boolean hasRequestedAssignees = requestedAssignees != null && !requestedAssignees.isEmpty();
+    boolean hasWorkflowAssignees = workflowAssignees != null && !workflowAssignees.isEmpty();
+    // API-created workflow-managed tasks seed taskAssignees into workflow start variables. The
+    // persisted task row is the source of truth once assignees are set — subsequent workflow
+    // callbacks must not overwrite it with BPMN candidates or the original snapshot.
+    if (hasRequestedAssignees && hasExistingAssignees) {
+      return null;
+    }
+    if (hasWorkflowAssignees) {
+      return workflowAssignees;
+    }
+    if (hasRequestedAssignees) {
+      return requestedAssignees;
+    }
+    return existingAssignees;
+  }
+
+  // Delegates to TaskRepository.isTerminalStatus so the two predicates can't drift when a new
+  // TaskEntityStatus value is added — the canonical NON_TERMINAL_TASK_STATUSES list on
+  // TaskRepository is the single source of truth. Kept as a static wrapper here for call-site
+  // readability at the workflow-lifecycle guards below.
+  static boolean isTerminalTaskStatus(TaskEntityStatus status) {
+    return TaskRepository.isTerminalStatus(status);
+  }
+
+  static boolean shouldSkipDeletedWorkflowManagedDraftTask(
+      UUID requestedTaskId, boolean workflowManagedDraftTask, Task existingTask) {
+    return workflowManagedDraftTask && requestedTaskId != null && existingTask == null;
+  }
+
+  static Task findExistingTaskWithRetry(
+      TaskRepository taskRepository, UUID requestedTaskId, boolean workflowManagedDraftTask) {
+    if (requestedTaskId == null) {
+      return null;
+    }
+
+    Supplier<Task> lookupTask =
+        () -> {
+          try {
+            return taskRepository.find(requestedTaskId, Include.ALL);
+          } catch (EntityNotFoundException ignored) {
+            LOG.debug(
+                "[CreateTask] Task '{}' not visible yet during workflow callback", requestedTaskId);
+            return null;
+          }
+        };
+
+    if (!workflowManagedDraftTask) {
+      return lookupTask.get();
+    }
+
+    Task existingTask =
+        Retry.decorateSupplier(
+                Retry.of(
+                    "workflowManagedDraftTaskLookup", WORKFLOW_MANAGED_DRAFT_LOOKUP_RETRY_CONFIG),
+                lookupTask)
+            .get();
+
+    if (existingTask == null) {
+      LOG.info(
+          "[CreateTask] Workflow-managed draft task '{}' remained unavailable after {} lookup attempts",
+          requestedTaskId,
+          WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS);
+    }
+
+    return existingTask;
+  }
+
+  private UUID resolveRequestedTaskId(DelegateTask delegateTask) {
+    String taskId =
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_ENTITY_ID);
+    if (taskId != null && !taskId.isBlank()) {
+      return UUID.fromString(taskId);
+    }
+    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    if (businessKey == null || businessKey.isBlank()) {
+      return null;
+    }
+    LOG.debug(
+        "[CreateTask] Falling back to process business key '{}' as requested task id", businessKey);
+    return UUID.fromString(businessKey);
+  }
+
+  private TaskEntityStatus resolveStageStatus(DelegateTask delegateTask) {
+    String stageStatus = WorkflowVariableResolver.stringExpression(taskStatusExpr, delegateTask);
+    if (stageStatus == null || stageStatus.isBlank()) {
+      return TaskEntityStatus.Open;
+    }
+    return TaskEntityStatus.fromValue(stageStatus);
+  }
+
+  static Long resolveEffectiveDueDate(
+      TaskEntityStatus stageStatus,
+      TaskEntityType taskType,
+      Object payload,
+      Long requestedDueDate) {
+    if (!isGrantedDataAccessRequest(stageStatus, taskType, payload)) {
+      return requestedDueDate;
+    }
+    String duration = readDataAccessRequestPayload(payload).getDuration();
+    if (duration == null || duration.isBlank()) {
+      return requestedDueDate;
+    }
+    return parseMillisFromIso8601Duration(duration, requestedDueDate);
+  }
+
+  /**
+   * Compute {@code payload.expirationDate} when the workflow enters the Granted stage. Anchoring
+   * on stage entry (instead of on the user-invoked transition) covers both the manual path
+   * (Approved → markAsGranted → Granted) and the PolicyAgent path (Review → approve →
+   * PolicyAgent[granted] → Granted). Returns null when the stage isn't Granted or the payload
+   * doesn't carry a parseable duration. Preserves an already-set {@code expirationDate} so a
+   * re-entry into Granted doesn't silently extend access.
+   */
+  static Long resolveEffectiveExpirationDate(
+      TaskEntityStatus stageStatus, TaskEntityType taskType, Object payload) {
+    if (!isGrantedDataAccessRequest(stageStatus, taskType, payload)) {
+      return null;
+    }
+    DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
+    if (darPayload.getExpirationDate() != null) {
+      return darPayload.getExpirationDate();
+    }
+    String duration = darPayload.getDuration();
+    if (duration == null || duration.isBlank()) {
+      return null;
+    }
+    return parseMillisFromIso8601Duration(duration, null);
+  }
+
+  /**
+   * Returns the payload with {@code expirationDate} merged in when the task enters Granted.
+   * Returns the original reference unchanged when there's nothing to add, so non-DAR workflows
+   * that target Granted aren't penalised and the input map is never mutated.
+   */
+  static Object withGrantExpirationDate(
+      TaskEntityStatus stageStatus, TaskEntityType taskType, Object payload) {
+    Long expiration = resolveEffectiveExpirationDate(stageStatus, taskType, payload);
+    if (expiration == null) {
+      return payload;
+    }
+    DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
+    if (darPayload.getExpirationDate() != null) {
+      return payload;
+    }
+    return darPayload.withExpirationDate(expiration);
+  }
+
+  private static boolean isGrantedDataAccessRequest(
+      TaskEntityStatus stageStatus, TaskEntityType taskType, Object payload) {
+    return stageStatus == TaskEntityStatus.Granted
+        && taskType == TaskEntityType.DataAccessRequest
+        && payload != null;
+  }
+
+  private static DataAccessRequestPayload readDataAccessRequestPayload(Object payload) {
+    // Task.payload is Object in the schema because the shape varies per taskType. The value
+    // reaches this method as a raw JSON String (Flowable variable serialization) or as a
+    // deserialized Map/POJO (repository read); handle both here rather than at every caller.
+    try {
+      DataAccessRequestPayload dar =
+          payload instanceof String json
+              ? JsonUtils.readValue(json, DataAccessRequestPayload.class)
+              : JsonUtils.convertValueLenient(payload, DataAccessRequestPayload.class);
+      // Deserializing a literal JSON null yields a null POJO; hand back an empty payload so
+      // callers can null-check getters instead of guarding every readDataAccessRequestPayload(...).
+      return dar != null ? dar : new DataAccessRequestPayload();
+    } catch (RuntimeException invalidPayload) {
+      LOG.trace("[CreateTask] Payload is not a DataAccessRequestPayload", invalidPayload);
+      throw new IllegalArgumentException("Invalid DataAccessRequest task payload", invalidPayload);
+    }
+  }
+
+  /**
+   * For approval task types (GlossaryApproval, RequestApproval), augment the task payload with a
+   * {@code proposedChanges} map computed from the target entity's change description, merged
+   * against any existing {@code proposedChanges} on the prior payload (set-cancellation). Returns
+   * the payload unchanged for non-approval task types or when the entity carries no change
+   * description.
+   */
+  static Object applyProposedChangesIfApproval(
+      TaskEntityType taskType, EntityInterface entity, Object payload) {
+    if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
+      return payload;
+    }
+    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload);
+  }
+
+  static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
+    Long millis = fallback;
+    try {
+      millis =
+          ZonedDateTime.now(ZoneOffset.UTC)
+              .plus(DurationUtil.parseIso8601(duration))
+              .toInstant()
+              .toEpochMilli();
+    } catch (DateTimeParseException invalid) {
+      LOG.warn(
+          "[CreateTask] Could not parse ISO-8601 duration '{}'; falling back to caller default",
+          duration);
+    }
+    return millis;
+  }
+
+  private TaskPriority resolveTaskPriority(DelegateTask delegateTask) {
+    String priority =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_PRIORITY);
+    if (priority == null || priority.isBlank()) {
+      return null;
+    }
+    return TaskPriority.fromValue(priority);
+  }
+
+  private String buildTaskDescription(EntityInterface entity, TaskEntityType taskType) {
+    return String.format("Approval required for %s", entity.getName());
+  }
+
+  /**
+   * Optional, workflow-supplied reason (only the Policy Agent DAR path sets it). Wrapped so a
+   * problem reading or typing it can never break task creation for the generic approval workflows
+   * (Glossary, etc.) that never set it — for those it returns null and {@link #mergeManualGrantReason}
+   * is a no-op.
+   */
+  private static String resolveManualGrantReason(DelegateTask delegateTask) {
+    try {
+      Object reason =
+          new WorkflowVariableHandler(delegateTask)
+              .getNamespacedVariable(GLOBAL_NAMESPACE, "manualGrantReason");
+      // Flowable process variables are untyped Object; the DAR path sets this as a String. Any
+      // other
+      // shape (or an unset variable → null) means "no reason", so mergeManualGrantReason no-ops.
+      return reason instanceof String s ? s : null;
+    } catch (Exception e) {
+      // Missing variable already returns null above; only a real lookup error reaches here.
+      LOG.debug("[CreateTask] Could not resolve manualGrantReason: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Attach a workflow-supplied reason (only the Policy Agent DAR path sets it) to the task payload
+   * as {@code manualGrantReason} — its own structured field, so the UI renders it separately from
+   * the description. Returns the payload unchanged for tasks/workflows that don't set one.
+   */
+  static Object mergeManualGrantReason(Object payload, String reason) {
+    Object result = payload;
+    if (reason != null && !reason.isBlank()) {
+      // manualGrantReason is only ever set on the DAR path. Reuse the tolerant reader that
+      // handles raw JSON String (Flowable variable serialization) and Map/POJO (repository read)
+      // payloads and never returns null; strict convertValue would throw on a String payload.
+      result = readDataAccessRequestPayload(payload).withManualGrantReason(reason);
+    }
+    return result;
+  }
+
+  private EntityReference resolveCreatedByReference(
+      EntityReference requestedCreatedBy,
+      EntityInterface entity,
+      Object payload,
+      TaskEntityType taskType) {
+    if (requestedCreatedBy != null && requestedCreatedBy.getId() != null) {
+      return requestedCreatedBy;
+    }
+    EntityReference payloadCreator = extractPayloadCreatedBy(payload, taskType);
+    if (payloadCreator != null) {
+      return payloadCreator;
+    }
+    String userName = entity != null ? entity.getUpdatedBy() : null;
+    if (userName == null || userName.isEmpty()) {
+      userName = DEFAULT_SYSTEM_USER;
+    }
+    try {
+      return Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED);
+    } catch (Exception e) {
+      return Entity.getEntityReferenceByName(Entity.USER, DEFAULT_SYSTEM_USER, Include.NON_DELETED);
+    }
+  }
+
+  static EntityReference extractPayloadCreatedBy(Object payload, TaskEntityType taskType) {
+    if (taskType != TaskEntityType.RecognizerFeedbackApproval
+        && taskType != TaskEntityType.DataQualityReview) {
+      return null;
+    }
+    RecognizerFeedbackTaskPayload feedbackPayload = readRecognizerFeedbackTaskPayload(payload);
+    RecognizerFeedback feedback = feedbackPayload != null ? feedbackPayload.feedback() : null;
+    if (feedback == null || feedback.getCreatedBy() == null) {
+      return null;
+    }
+    return feedback.getCreatedBy();
+  }
+
+  private static RecognizerFeedbackTaskPayload readRecognizerFeedbackTaskPayload(Object payload) {
+    // Task.payload is Object in the schema because the shape varies per taskType. The value
+    // reaches this method as a raw JSON String (Flowable variable serialization), the concrete
+    // POJO (in-process reuse), or a deserialized Map (repository read); handle all three here.
+    try {
+      if (payload instanceof RecognizerFeedbackTaskPayload feedbackPayload) {
+        return feedbackPayload;
+      }
+      if (payload instanceof String json) {
+        return JsonUtils.readValueLenient(json, RecognizerFeedbackTaskPayload.class);
+      }
+      return JsonUtils.convertValueLenient(payload, RecognizerFeedbackTaskPayload.class);
+    } catch (RuntimeException invalidPayload) {
+      LOG.trace("[CreateTask] Payload is not a RecognizerFeedbackTaskPayload", invalidPayload);
+      throw new IllegalArgumentException(
+          "Invalid recognizer feedback task payload", invalidPayload);
+    }
+  }
+
+  private String resolveUpdatedBy(EntityInterface entity, EntityReference createdByRef) {
+    if (entity != null && entity.getUpdatedBy() != null && !entity.getUpdatedBy().isEmpty()) {
+      return entity.getUpdatedBy();
+    }
+    if (createdByRef != null
+        && createdByRef.getName() != null
+        && !createdByRef.getName().isEmpty()) {
+      return createdByRef.getName();
+    }
+    return DEFAULT_SYSTEM_USER;
+  }
+
+  private Object buildWorkflowPayload(
+      TaskEntityType taskType,
+      InputNamespaces inputNamespaces,
+      WorkflowVariableHandler varHandler) {
+    if (taskType != TaskEntityType.RecognizerFeedbackApproval
+        && taskType != TaskEntityType.DataQualityReview) {
+      return null;
+    }
+    String recognizerNamespace =
+        inputNamespaces.namespaceForOrDefault(RECOGNIZER_FEEDBACK, GLOBAL_NAMESPACE);
+    try {
+      String feedbackJson =
+          (String) varHandler.getNamespacedVariable(recognizerNamespace, RECOGNIZER_FEEDBACK);
+      if (feedbackJson == null || feedbackJson.isEmpty()) {
+        return null;
+      }
+      RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
+      return new RecognizerFeedbackTaskPayload(feedback, resolveRecognizerMetadata(feedback));
+    } catch (Exception e) {
+      LOG.warn("Failed to build recognizer feedback payload for task: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private record RecognizerFeedbackTaskPayload(
+      RecognizerFeedback feedback, TagLabelRecognizerMetadata recognizer) {}
+
+  private void terminateDeletedWorkflowManagedDraftTask(
+      DelegateTask delegateTask, UUID requestedTaskId) {
+    String processInstanceId = delegateTask.getProcessInstanceId();
+    RuntimeService runtimeService = WorkflowHandler.getInstance().getRuntimeService();
+    String terminationReason =
+        String.format(
+            "Workflow-managed draft task %s was deleted before workflow materialization",
+            requestedTaskId);
+
+    try {
+      String terminationMessageName =
+          deriveTerminationMessageName(delegateTask.getTaskDefinitionKey());
+      if (terminationMessageName != null) {
+        Execution execution =
+            runtimeService
+                .createExecutionQuery()
+                .processInstanceId(processInstanceId)
+                .messageEventSubscriptionName(terminationMessageName)
+                .singleResult();
+        if (execution != null) {
+          LOG.info(
+              "[CreateTask] Draft task '{}' was deleted before materialization; "
+                  + "terminating workflow instance '{}' via message '{}'",
+              requestedTaskId,
+              processInstanceId,
+              terminationMessageName);
+          runtimeService.messageEventReceived(terminationMessageName, execution.getId());
+          return;
+        }
+      }
+
+      LOG.info(
+          "[CreateTask] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
+          requestedTaskId,
+          processInstanceId);
+      // Reason string matches WorkflowFailureListener's "Workflow-managed draft task " prefix.
+      runtimeService.deleteProcessInstance(processInstanceId, terminationReason);
+    } catch (FlowableObjectNotFoundException e) {
+      LOG.debug(
+          "[CreateTask] Workflow instance '{}' already ended while handling deleted draft task '{}'",
+          processInstanceId,
+          requestedTaskId);
+    }
+  }
+
+  private String deriveTerminationMessageName(String taskDefinitionKey) {
+    if (taskDefinitionKey == null || taskDefinitionKey.isBlank()) {
+      return null;
+    }
+    int lastDot = taskDefinitionKey.lastIndexOf('.');
+    if (lastDot < 0) {
+      return null;
+    }
+    return taskDefinitionKey.substring(0, lastDot) + ".terminateProcess";
+  }
+
+  private TagLabelRecognizerMetadata resolveRecognizerMetadata(RecognizerFeedback feedback) {
+    if (feedback == null || feedback.getEntityLink() == null || feedback.getTagFQN() == null) {
+      return null;
+    }
+
+    try {
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(feedback.getEntityLink());
+      String targetFQN = entityLink.getFullyQualifiedFieldValue();
+
+      CollectionDAO.TagUsageDAO tagUsageDAO = Entity.getCollectionDAO().tagUsageDAO();
+      List<TagLabel> tags = tagUsageDAO.getTags(targetFQN);
+      return tags.stream()
+          .filter(tagLabel -> feedback.getTagFQN().equals(tagLabel.getTagFQN()))
+          .findFirst()
+          .filter(tagLabel -> tagLabel.getMetadata() != null)
+          .map(tagLabel -> tagLabel.getMetadata().getRecognizer())
+          .orElse(null);
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to resolve recognizer metadata for feedback '{}': {}",
+          feedback.getId(),
+          e.getMessage());
+      return null;
+    }
+  }
+}

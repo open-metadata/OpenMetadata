@@ -54,7 +54,7 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
         FROM v_catalog.view_columns
         WHERE lower(table_name) = '{table}'
         AND {schema_condition}
-    """
+    """  # noqa: W291
 )
 
 VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
@@ -134,4 +134,4 @@ FROM query_profiles p
       ON p.TRANSACTION_ID = r.TRANSACTION_ID
      AND p.STATEMENT_ID = r.STATEMENT_ID
 LIMIT 1
-"""
+"""  # noqa: W291

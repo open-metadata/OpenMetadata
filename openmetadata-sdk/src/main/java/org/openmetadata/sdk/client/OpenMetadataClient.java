@@ -36,16 +36,21 @@ import org.openmetadata.sdk.services.databases.StoredProcedureService;
 import org.openmetadata.sdk.services.datacontracts.DataContractService;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
+import org.openmetadata.sdk.services.drives.ContextFileService;
+import org.openmetadata.sdk.services.drives.FolderService;
 import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.sdk.services.events.NotificationTemplateService;
+import org.openmetadata.sdk.services.feed.AnnouncementService;
 import org.openmetadata.sdk.services.feed.FeedService;
+import org.openmetadata.sdk.services.feed.TaskFormSchemaService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 import org.openmetadata.sdk.services.governance.AIGovernancePolicyService;
 import org.openmetadata.sdk.services.governance.WorkflowDefinitionService;
 import org.openmetadata.sdk.services.importexport.ImportExportAPI;
 import org.openmetadata.sdk.services.ingestion.IngestionPipelineService;
+import org.openmetadata.sdk.services.knowledge.PageService;
 import org.openmetadata.sdk.services.lineage.LineageAPI;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
@@ -65,6 +70,8 @@ import org.openmetadata.sdk.services.storages.DirectoryService;
 import org.openmetadata.sdk.services.storages.FileService;
 import org.openmetadata.sdk.services.storages.SpreadsheetService;
 import org.openmetadata.sdk.services.storages.WorksheetService;
+import org.openmetadata.sdk.services.system.SystemSettingsService;
+import org.openmetadata.sdk.services.tasks.TaskService;
 import org.openmetadata.sdk.services.teams.PersonaService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.TeamService;
@@ -115,9 +122,17 @@ public class OpenMetadataClient {
   private final SpreadsheetService spreadsheets;
   private final WorksheetService worksheets;
 
+  // Context Center
+  private final FolderService folders;
+  private final ContextFileService contextFiles;
+  private final PageService pages;
+
   // Glossary
   private final GlossaryService glossaries;
   private final GlossaryTermService glossaryTerms;
+
+  // System settings
+  private final SystemSettingsService settings;
 
   // Classification
   private final ClassificationService classifications;
@@ -189,6 +204,15 @@ public class OpenMetadataClient {
   private final McpServerService mcpServers;
   private final PromptTemplateService promptTemplates;
 
+  // Tasks
+  private final TaskService tasks;
+
+  // Announcements
+  private final AnnouncementService announcements;
+
+  // Task Form Schemas
+  private final TaskFormSchemaService taskFormSchemas;
+
   public OpenMetadataClient(OpenMetadataConfig config) {
     this.config = config;
     this.httpClient = new OpenMetadataHttpClient(config);
@@ -224,9 +248,15 @@ public class OpenMetadataClient {
     this.spreadsheets = new SpreadsheetService(httpClient);
     this.worksheets = new WorksheetService(httpClient);
 
+    // Initialize Context Center services
+    this.folders = new FolderService(httpClient);
+    this.contextFiles = new ContextFileService(httpClient);
+    this.pages = new PageService(httpClient);
+
     // Initialize glossary services
     this.glossaries = new GlossaryService(httpClient);
     this.glossaryTerms = new GlossaryTermService(httpClient);
+    this.settings = new SystemSettingsService(httpClient);
 
     // Initialize classification services
     this.classifications = new ClassificationService(httpClient);
@@ -297,6 +327,15 @@ public class OpenMetadataClient {
     this.aiApplications = new AIApplicationService(httpClient);
     this.mcpServers = new McpServerService(httpClient);
     this.promptTemplates = new PromptTemplateService(httpClient);
+
+    // Initialize task services
+    this.tasks = new TaskService(httpClient);
+
+    // Initialize announcement services
+    this.announcements = new AnnouncementService(httpClient);
+
+    // Initialize task form schema services
+    this.taskFormSchemas = new TaskFormSchemaService(httpClient);
 
     // Initialize feed service
     this.feed = new FeedService(httpClient);
@@ -403,6 +442,19 @@ public class OpenMetadataClient {
     return worksheets;
   }
 
+  // Context Center Service Getters
+  public FolderService folders() {
+    return folders;
+  }
+
+  public ContextFileService contextFiles() {
+    return contextFiles;
+  }
+
+  public PageService pages() {
+    return pages;
+  }
+
   // Glossary Service Getters
   public GlossaryService glossaries() {
     return glossaries;
@@ -410,6 +462,10 @@ public class OpenMetadataClient {
 
   public GlossaryTermService glossaryTerms() {
     return glossaryTerms;
+  }
+
+  public SystemSettingsService settings() {
+    return settings;
   }
 
   // Classification Service Getters
@@ -590,6 +646,21 @@ public class OpenMetadataClient {
 
   public PromptTemplateService promptTemplates() {
     return promptTemplates;
+  }
+
+  // Task Service Getter
+  public TaskService tasks() {
+    return tasks;
+  }
+
+  // Announcement Service Getter
+  public AnnouncementService announcements() {
+    return announcements;
+  }
+
+  // Task Form Schema Service Getter
+  public TaskFormSchemaService taskFormSchemas() {
+    return taskFormSchemas;
   }
 
   /**

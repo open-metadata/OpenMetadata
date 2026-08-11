@@ -62,8 +62,8 @@ export const IngestionRecentRuns = <
             .slice(-5) ?? [];
 
         setRecentRunStatus(
-          (runs.length === 0 && ingestionPipeline?.pipelineStatuses
-            ? [ingestionPipeline.pipelineStatuses]
+          (runs.length === 0 && ingestionPipeline?.pipelineStatuses?.length
+            ? ingestionPipeline.pipelineStatuses
             : runs) as T[]
         );
       }

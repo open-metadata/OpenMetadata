@@ -12,6 +12,7 @@
 """
 Validate conversion between OpenMetadata and SQLAlchemy ORM
 """
+
 from unittest import TestCase
 
 import sqlalchemy
@@ -190,9 +191,7 @@ class ProfilerWorkflowTest(TestCase):
         orm_table = ometa_to_sqa_orm(table=table, metadata=self.metadata)
 
         assert orm_table.__tablename__ == "table1-snflk"
-        assert (
-            orm_table.__table_args__.get("schema") == "one-schema"
-        )  # Schema gets generated correctly
+        assert orm_table.__table_args__.get("schema") == "one-schema"  # Schema gets generated correctly
         assert orm_table.id.compile().string == '"one-schema"."table1-snflk"."id"'
 
         self.metadata.delete(

@@ -13,26 +13,37 @@
 DBTCloud Source Model module
 """
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class AliasedModel(BaseModel):
+    """
+    Base for the models whose dbt Cloud payload keys collide with Python names.
+    Without `populate_by_name` the aliased fields can only be populated by their
+    API key, so constructing an instance with the Python field name silently
+    leaves the field as None.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class DBTSchedule(BaseModel):
-    cron: Optional[str] = None
+    cron: Optional[str] = None  # noqa: UP045
 
 
 class DBTJob(BaseModel):
     id: int
     name: str
-    description: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
     created_at: str
-    updated_at: Optional[str] = None
+    updated_at: Optional[str] = None  # noqa: UP045
     state: int
-    job_type: Optional[str] = None
-    schedule: Optional[DBTSchedule] = None
+    job_type: Optional[str] = None  # noqa: UP045
+    schedule: Optional[DBTSchedule] = None  # noqa: UP045
     project_id: int
-    environment_id: Optional[int] = None
+    environment_id: Optional[int] = None  # noqa: UP045
 
 
 class Pagination(BaseModel):
@@ -41,50 +52,51 @@ class Pagination(BaseModel):
 
 
 class Extra(BaseModel):
-    pagination: Optional[Pagination] = None
+    pagination: Optional[Pagination] = None  # noqa: UP045
 
 
-class DBTJobList(BaseModel):
-    Jobs: List[DBTJob] = Field(alias="data")
-    extra: Optional[Extra] = None
+class DBTJobList(AliasedModel):
+    Jobs: List[DBTJob] = Field(alias="data")  # noqa: UP006
+    extra: Optional[Extra] = None  # noqa: UP045
 
 
-class DBTRun(BaseModel):
-    id: Optional[int] = None
+class DBTRun(AliasedModel):
+    id: Optional[int] = None  # noqa: UP045
     status: int
-    status_message: Optional[str] = None
-    state: Optional[str] = Field(None, alias="status_humanized")
-    href: Optional[str] = None
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    duration: Optional[str] = None
+    status_message: Optional[str] = None  # noqa: UP045
+    state: Optional[str] = Field(None, alias="status_humanized")  # noqa: UP045
+    href: Optional[str] = None  # noqa: UP045
+    started_at: Optional[str] = None  # noqa: UP045
+    finished_at: Optional[str] = None  # noqa: UP045
+    duration: Optional[str] = None  # noqa: UP045
 
 
-class DBTRunList(BaseModel):
-    Runs: Optional[List[DBTRun]] = Field([], alias="data")
-    extra: Optional[Extra] = None
+class DBTRunList(AliasedModel):
+    Runs: Optional[List[DBTRun]] = Field([], alias="data")  # noqa: UP006, UP045
+    extra: Optional[Extra] = None  # noqa: UP045
 
 
-class DBTSources(BaseModel):
-    uniqueId: Optional[str] = None
-    name: Optional[str] = None
-    dbtschema: Optional[str] = Field(None, alias="schema")
-    database: Optional[str] = None
-    runGeneratedAt: Optional[str] = None
-    extra: Optional[Extra] = None
+class DBTSources(AliasedModel):
+    uniqueId: Optional[str] = None  # noqa: N815, UP045
+    name: Optional[str] = None  # noqa: UP045
+    dbtschema: Optional[str] = Field(None, alias="schema")  # noqa: UP045
+    database: Optional[str] = None  # noqa: UP045
+    runGeneratedAt: Optional[str] = None  # noqa: N815, UP045
+    extra: Optional[Extra] = None  # noqa: UP045
 
 
-class DBTModel(BaseModel):
-    uniqueId: Optional[str] = None
-    name: Optional[str] = None
-    dbtschema: Optional[str] = Field(None, alias="schema")
-    database: Optional[str] = None
-    runGeneratedAt: Optional[str] = None
-    dependsOn: Optional[List[str]] = None
+class DBTModel(AliasedModel):
+    uniqueId: Optional[str] = None  # noqa: N815, UP045
+    name: Optional[str] = None  # noqa: UP045
+    dbtschema: Optional[str] = Field(None, alias="schema")  # noqa: UP045
+    database: Optional[str] = None  # noqa: UP045
+    runGeneratedAt: Optional[str] = None  # noqa: N815, UP045
+    dependsOn: Optional[List[str]] = None  # noqa: N815, UP006, UP045
+    compiledCode: Optional[str] = None  # noqa: N815, UP045
 
 
 class DBTModelList(BaseModel):
-    models: Optional[List[DBTModel]] = []
-    seeds: Optional[List[DBTModel]] = []
-    sources: Optional[List[DBTModel]] = []
-    extra: Optional[Extra] = None
+    models: Optional[List[DBTModel]] = []  # noqa: UP006, UP045
+    seeds: Optional[List[DBTModel]] = []  # noqa: UP006, UP045
+    sources: Optional[List[DBTModel]] = []  # noqa: UP006, UP045
+    extra: Optional[Extra] = None  # noqa: UP045

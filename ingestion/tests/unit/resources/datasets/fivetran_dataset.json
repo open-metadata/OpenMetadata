@@ -26,7 +26,7 @@
         "connected_by": "solving_jogger",
         "created_at": "2022-07-25T05:55:02.292119Z",
         "succeeded_at": "2022-07-25T08:34:31.425131Z",
-        "failed_at": null,
+        "failed_at": "2022-07-24T15:20:00.000000Z",
         "paused": false,
         "pause_after_trial": false,
         "sync_frequency": 360,

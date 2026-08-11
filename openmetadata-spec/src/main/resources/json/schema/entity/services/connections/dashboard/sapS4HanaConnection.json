@@ -1,0 +1,147 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/sapS4HanaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapS4HanaConnection",
+  "description": "SAP S/4HANA Connection Config for Embedded Analytics",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection",
+  "definitions": {
+    "sapS4HanaType": {
+      "description": "SAP S/4HANA service type",
+      "type": "string",
+      "enum": ["SapS4Hana"],
+      "default": "SapS4Hana"
+    },
+    "sapS4HanaBasicAuthType": {
+      "title": "Basic Auth",
+      "description": "Username and password credentials for SAP S/4HANA.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
+      "properties": {
+        "authType": {
+          "title": "Auth Type",
+          "description": "Authentication type identifier.",
+          "type": "string",
+          "enum": ["basic"],
+          "default": "basic"
+        },
+        "username": {
+          "title": "Username",
+          "description": "Username to authenticate with SAP S/4HANA.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Password to authenticate with SAP S/4HANA.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": ["username", "password"],
+      "additionalProperties": false
+    },
+    "sapS4HanaOAuthType": {
+      "title": "OAuth 2.0 Client Credentials",
+      "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
+      "properties": {
+        "authType": {
+          "title": "Auth Type",
+          "description": "Authentication type identifier.",
+          "type": "string",
+          "enum": ["oauth2"],
+          "default": "oauth2"
+        },
+        "clientId": {
+          "title": "Client ID",
+          "description": "OAuth 2.0 client ID registered in SAP.",
+          "type": "string"
+        },
+        "clientSecret": {
+          "title": "Client Secret",
+          "description": "OAuth 2.0 client secret.",
+          "type": "string",
+          "format": "password"
+        },
+        "tokenEndpoint": {
+          "title": "Token Endpoint",
+          "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["clientId", "clientSecret", "tokenEndpoint"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sapS4HanaType",
+      "default": "SapS4Hana"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/sapS4HanaBasicAuthType"
+        },
+        {
+          "$ref": "#/definitions/sapS4HanaOAuthType"
+        }
+      ]
+    },
+    "clientNumber": {
+      "title": "Client Number",
+      "description": "SAP client number (Mandant), typically a 3-digit string (e.g. '100').",
+      "type": "string",
+      "default": "100"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate validation, 'validate' to verify against a CA certificate.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "description": "CA certificate, client certificate, and private key for SSL validation. Required when verifySSL is 'validate'.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Dashboard Filter Pattern"
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Chart Filter Pattern"
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Data Model Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsLineageExtraction": {
+      "title": "Supports Lineage Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "authType"]
+}

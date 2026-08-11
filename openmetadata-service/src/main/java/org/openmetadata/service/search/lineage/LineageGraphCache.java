@@ -53,6 +53,17 @@ public interface LineageGraphCache {
   void invalidateAll();
 
   /**
+   * Invalidates every cached graph whose root FQN, nodes map, or edge endpoints reference
+   * the given FQN. Used after lineage edges touching the FQN are added or deleted so stale
+   * graphs are not served.
+   *
+   * @param fqn Fully qualified name of the entity whose graphs should be evicted
+   */
+  default void invalidateIfGraphContains(String fqn) {
+    invalidateAll();
+  }
+
+  /**
    * Gets cache statistics for monitoring and metrics.
    *
    * @return Cache statistics including hits, misses, evictions, etc.

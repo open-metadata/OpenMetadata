@@ -76,9 +76,7 @@ class NullCount(StaticMetric):
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
-                logger.debug(
-                    f"Error while computing 'Null Count' for column '{self.col.name}': {err}"
-                )
+                logger.debug(f"Error while computing 'Null Count' for column '{self.col.name}': {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
@@ -86,9 +84,7 @@ class NullCount(StaticMetric):
         """Returns the logic to compute this metrics using Pandas"""
         return PandasComputation[int, int](
             create_accumulator=lambda: 0,
-            update_accumulator=lambda acc, df: NullCount.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: NullCount.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 

@@ -127,6 +127,10 @@ export interface Container {
      */
     retentionPeriod?: string;
     /**
+     * Sample data for the container.
+     */
+    sampleData?: TableData;
+    /**
      * Link to the storage service where this container is hosted in.
      */
     service: EntityReference;
@@ -764,9 +768,6 @@ export interface CustomMetric {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
@@ -1007,6 +1008,22 @@ export interface AccessDetails {
      * Timestamp of data asset accessed for creation, update, read.
      */
     timestamp: number;
+}
+
+/**
+ * Sample data for the container.
+ *
+ * This schema defines the type to capture rows of sample data for a table.
+ */
+export interface TableData {
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
 }
 
 /**

@@ -91,6 +91,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -98,6 +99,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String TASKS_FIELD = "tasks";
   private static final String PIPELINE_UPDATE_FIELDS = "tasks";
   private static final String PIPELINE_PATCH_FIELDS = "tasks";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("tasks.description");
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
   public PipelineRepository() {
@@ -107,8 +109,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         Pipeline.class,
         Entity.getCollectionDAO().pipelineDAO(),
         PIPELINE_PATCH_FIELDS,
-        PIPELINE_UPDATE_FIELDS);
+        PIPELINE_UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("pipelineStatus", this::fetchAndSetPipelineStatuses);
@@ -462,7 +469,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                     .bind("entityFQNHash", entityFQNHash)
                     .bind("extension", PIPELINE_STATUS_EXTENSION)
                     .bind("jsonSchema", "pipelineStatus")
-                    .bind("json", JsonUtils.pojoToJson(pipelineStatus))
+                    .bind(
+                        "json",
+                        JsonStorageUtils.sanitizeNulCharacters(
+                            JsonUtils.pojoToJson(pipelineStatus)))
                     .add();
               }
               batch.execute();
@@ -882,6 +892,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     if (tasks != null) {
       tasks.forEach(
           t -> {
+            FullyQualifiedName.validateFqnName(t.getName());
             String taskFqn = FullyQualifiedName.add(parentFQN, t.getName());
             t.setFullyQualifiedName(taskFqn);
           });
@@ -969,10 +980,17 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID pipelineId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.PIPELINE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(pipelineId, serviceRef);
+      try {
+        EntityReference serviceRef =
+            Entity.getEntityReferenceById(
+                Entity.PIPELINE_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
+        serviceMap.put(pipelineId, serviceRef);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Skipping pipeline {} whose service was concurrently deleted: {}",
+            pipelineId,
+            e.getMessage());
+      }
     }
 
     return serviceMap;

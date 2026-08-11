@@ -11,7 +11,8 @@
 """
 Helper mixin to handle services
 """
-from typing import Type, TypeVar
+
+from typing import Type, TypeVar  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -39,9 +40,7 @@ class OMetaServiceMixin:
 
     config: OpenMetadataConnection
 
-    def get_create_service_from_source(
-        self, entity: Type[T], config: WorkflowSource
-    ) -> C:
+    def get_create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> C:  # noqa: UP006
         """
         Prepare a CreateService request from source config
         :param entity: Service Type
@@ -56,12 +55,10 @@ class OMetaServiceMixin:
         return create_entity_class(
             name=config.serviceName,
             serviceType=config.serviceConnection.root.config.type.value,
-            connection=config.serviceConnection.root
-            if self.config.storeServiceConnection
-            else None,
+            connection=config.serviceConnection.root if self.config.storeServiceConnection else None,
         )
 
-    def create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> T:
+    def create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> T:  # noqa: UP006
         """
         Create a service of type T.
 
@@ -75,12 +72,10 @@ class OMetaServiceMixin:
         :return: Created Service
         """
 
-        create_service = self.get_create_service_from_source(
-            entity=entity, config=config
-        )
+        create_service = self.get_create_service_from_source(entity=entity, config=config)
         return self.create_or_update(create_service)
 
-    def get_service_or_create(self, entity: Type[T], config: WorkflowSource) -> T:
+    def get_service_or_create(self, entity: Type[T], config: WorkflowSource) -> T:  # noqa: UP006
         """
         Fetches a service by name, or creates
         it using the WorkflowSource config
@@ -88,6 +83,4 @@ class OMetaServiceMixin:
         :param config: WorkflowSource
         :return: Entity Service of T
         """
-        return self.get_by_name(
-            entity, config.serviceName
-        ) or self.create_service_from_source(entity, config)
+        return self.get_by_name(entity, config.serviceName) or self.create_service_from_source(entity, config)

@@ -19,7 +19,7 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.NodeFactory;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
@@ -48,7 +48,10 @@ public class MainWorkflow {
     // Add Nodes
     for (WorkflowNodeDefinitionInterface nodeDefinitionObj : workflowDefinition.getNodes()) {
       NodeInterface node =
-          NodeFactory.createNode(nodeDefinitionObj, workflowDefinition.getConfig());
+          NodeFactory.createNode(
+              nodeDefinitionObj,
+              workflowDefinition.getConfig(),
+              workflowDefinition.getFullyQualifiedName());
       node.addToWorkflow(model, process);
 
       Optional.ofNullable(node.getRuntimeExceptionBoundaryEvent())
@@ -104,19 +107,13 @@ public class MainWorkflow {
     }
 
     private void validateNode(WorkflowNodeDefinitionInterface nodeDefinition) {
-      Map<String, String> inputNamespaceMap =
-          (Map<String, String>)
-              JsonUtils.readOrConvertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.read(nodeDefinition.getInputNamespaceMap());
 
-      if (inputNamespaceMap == null) {
-        return;
-      }
-
-      for (Map.Entry<String, String> entry : inputNamespaceMap.entrySet()) {
+      for (Map.Entry<String, String> entry : inputNamespaces.namespaces().entrySet()) {
         String variable = entry.getKey();
         String namespace = entry.getValue();
 
-        if (namespace.equals(GLOBAL_NAMESPACE)) {
+        if (GLOBAL_NAMESPACE.equals(namespace)) {
           if (!(validateGlobalContainsVariable(variable) || triggerIsNoOp())) {
             throw new RuntimeException(
                 String.format(

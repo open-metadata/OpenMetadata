@@ -8,6 +8,7 @@ import org.openmetadata.schema.api.services.CreateMlModelService.MlModelServiceT
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.type.MlModelConnection;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating MlModelService entities in integration tests.
@@ -38,7 +39,8 @@ public class MlModelServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test MLflow service");
 
-    return SdkClients.adminClient().mlModelServices().create(request);
+    return ns.trackRoot(
+        Entity.MLMODEL_SERVICE, SdkClients.adminClient().mlModelServices().create(request));
   }
 
   /** Get ML model service by ID. */

@@ -20,19 +20,25 @@ import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { getJsonTreeObject } from '../../utils/exploreDiscovery';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
-const table1 = new TableClass();
-const user = new UserClass();
-const domain = new Domain();
+let table: TableClass;
+let table1: TableClass;
+let user: UserClass;
+let domain: Domain;
 
 test.describe('Explore Assets Discovery', () => {
   test.beforeAll(async ({ browser }) => {
+    table = new TableClass();
+    table1 = new TableClass();
+    user = new UserClass();
+    domain = new Domain();
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await user.create(apiContext);
@@ -80,7 +86,9 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -102,7 +110,9 @@ test.describe('Explore Assets Discovery', () => {
       true
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -124,7 +134,9 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -145,7 +157,7 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );
@@ -169,7 +181,7 @@ test.describe('Explore Assets Discovery', () => {
       true
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );
@@ -193,7 +205,7 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );
@@ -215,21 +227,7 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();
 
-    await expect(
-      page
-        .locator('.ant-modal-title')
-        .getByText(
-          `Delete table "${
-            table1.entityResponseData.displayName ??
-            table1.entityResponseData.name
-          }"`
-        )
-    ).toBeVisible();
-
-    await page.getByTestId('confirmation-text-input').click();
-    await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-    await expect(page.getByTestId('confirm-button')).toBeEnabled();
+    await page.getByTestId('delete-modal').waitFor();
 
     await page.getByTestId('confirm-button').click();
 
@@ -275,7 +273,7 @@ test.describe('Explore Assets Discovery', () => {
         .getByTestId(user.responseData.displayName)
     ).not.toBeAttached();
 
-    await page.getByTestId('close-btn').click();
+    await page.keyboard.press('Escape');
 
     // The domain should not be visible in the domains filter when the deleted switch is off
     await page.click('[data-testid="search-dropdown-Domains"]');
@@ -298,7 +296,7 @@ test.describe('Explore Assets Discovery', () => {
         .getByTestId(domain.responseData.displayName)
     ).not.toBeAttached();
 
-    await page.getByTestId('close-btn').click();
+    await page.keyboard.press('Escape');
   });
 
   test('Should display domain and owner of deleted asset in suggestions when showDeleted is on', async ({
@@ -308,7 +306,8 @@ test.describe('Explore Assets Discovery', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Click on the show deleted toggle button
-    await page.getByTestId('show-deleted').click();
+    await page.getByRole('button', { name: 'Tools' }).click();
+    await page.getByRole('menuitemradio', { name: 'Deleted' }).click();
 
     await waitForAllLoadersToDisappear(page);
 
@@ -329,18 +328,26 @@ test.describe('Explore Assets Discovery', () => {
       page.getByTestId('drop-down-menu').getByTestId(ownerSearchText)
     ).toBeAttached();
 
+    // Arm before the option click: immediate-apply fires the query on the click
+    const fetchWithOwner = page.waitForResponse(
+      `/api/v1/search/query?*deleted=true*ownerDisplayName*${ownerSearchText}*`
+    );
     await page
       .getByTestId('drop-down-menu')
       .getByTestId(ownerSearchText)
       .click();
-
-    const fetchWithOwner = page.waitForResponse(
-      `/api/v1/search/query?*deleted=true*ownerDisplayName*${ownerSearchText}*`
-    );
-    await page.getByTestId('update-btn').click();
+    await clickUpdateButtonIfVisible(page);
     await fetchWithOwner;
 
     await waitForAllLoadersToDisappear(page);
+
+    // Close the Owners dropdown before opening the next — immediate-apply keeps
+    // it open after selection, and a stale open menu has its own search-input
+    await page.keyboard.press('Escape');
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(ownerSearchText)
+      .waitFor({ state: 'detached' });
 
     // The domain should be visible in the domains filter when the deleted switch is on
     const domainSearchText = domain.responseData.displayName.toLowerCase();
@@ -359,25 +366,37 @@ test.describe('Explore Assets Discovery', () => {
       page.getByTestId('drop-down-menu').getByTestId(domainSearchText)
     ).toBeAttached();
 
-    await page
-      .getByTestId('drop-down-menu')
-      .getByTestId(domainSearchText)
-      .click();
-
+    // Arm before the option click: immediate-apply fires the query on the click
     const fetchWithDomain = page.waitForResponse(
       `/api/v1/search/query?*deleted=true*domains.displayName.keyword*${getEncodedFqn(
         domainSearchText,
         true
       )}*`
     );
-    await page.getByTestId('update-btn').click();
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .click();
+    await clickUpdateButtonIfVisible(page);
     await fetchWithDomain;
 
     await waitForAllLoadersToDisappear(page);
 
+    // Close the Domains dropdown before opening the Data Assets one
+    await page.keyboard.press('Escape');
+
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(domainSearchText)
+      .waitFor({ state: 'detached' });
+
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
     await page.click('[data-testid="search-dropdown-Data Assets"]');
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
     await expect(
       page.getByTestId('drop-down-menu').getByTestId('table')

@@ -14,20 +14,20 @@
 import { Card, Space, Typography } from 'antd';
 import { FC, useMemo } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../../../../assets/svg/announcements-v1.svg';
-import { Thread } from '../../../../generated/entity/feed/thread';
+import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
 import RichTextEditorPreviewerV1 from '../../RichTextEditor/RichTextEditorPreviewerV1';
 import './AnnouncementCard.less';
 
 interface Props {
   onClick: () => void;
-  announcement: Thread;
+  announcement: AnnouncementEntity;
 }
 
 const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
   const { title, message } = useMemo(
     () => ({
-      title: announcement.message,
-      message: announcement?.announcement?.description,
+      title: announcement.displayName ?? announcement.name,
+      message: announcement.description,
     }),
     [announcement]
   );

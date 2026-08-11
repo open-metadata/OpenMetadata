@@ -11,8 +11,11 @@
 """
 REST Auth & Client for Apache Superset
 """
+
 import json
 import traceback
+
+from cachetools import LRUCache
 
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
@@ -101,6 +104,8 @@ class SupersetAPIClient:
             verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = TrackedREST(client_config, source_name="superset")
+        self._datasource_cache = LRUCache(maxsize=512)
+        self._database_cache = LRUCache(maxsize=512)
 
     def get_dashboard_count(self) -> int:
         resp_dashboards = self.client.get("/dashboard/?q=(page:0,page_size:1)")
@@ -123,9 +128,7 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard count")
         return 0
 
-    def fetch_dashboards(
-        self, current_page: int, page_size: int
-    ) -> SupersetDashboardCount:
+    def fetch_dashboards(self, current_page: int, page_size: int) -> SupersetDashboardCount:
         """
         Fetch dashboards
 
@@ -138,12 +141,10 @@ class SupersetAPIClient:
         """
 
         try:
-            dashboard_response = self.client.get(
-                f"/dashboard/?q=(page:{current_page},page_size:{page_size})"
-            )
+            dashboard_response = self.client.get(f"/dashboard/?q=(page:{current_page},page_size:{page_size})")
             if dashboard_response:
                 dashboard_list = SupersetDashboardCount(**dashboard_response)
-                return dashboard_list
+                return dashboard_list  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard list")
@@ -164,7 +165,7 @@ class SupersetAPIClient:
             response = self.client.get(f"/dashboard/{dashboard_id}")
             if response:
                 dashboard = FetchedDashboard(**response)
-                return dashboard
+                return dashboard  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch dashboard {dashboard_id}")
@@ -204,12 +205,10 @@ class SupersetAPIClient:
         """
 
         try:
-            chart_response = self.client.get(
-                f"/chart/?q=(page:{current_page},page_size:{page_size})"
-            )
+            chart_response = self.client.get(f"/chart/?q=(page:{current_page},page_size:{page_size})")
             if chart_response:
                 chart_list = SupersetChart(**chart_response)
-                return chart_list
+                return chart_list  # noqa: RET504
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the charts list")
@@ -217,7 +216,7 @@ class SupersetAPIClient:
 
     def fetch_charts_with_id(self, chart_id: str):
         response = self.client.get(f"/chart/{chart_id}")
-        return response
+        return response  # noqa: RET504
 
     def fetch_datasource(self, datasource_id: str) -> SupersetDatasource:
         """
@@ -228,11 +227,15 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-
+        # Cache only real responses; a transient failure must stay retryable, not
+        # poison the id with an empty result for the rest of the run.
+        if datasource_id in self._datasource_cache:
+            return self._datasource_cache[datasource_id]
         try:
             datasource_response = self.client.get(f"/dataset/{datasource_id}")
             if datasource_response:
                 datasource_list = SupersetDatasource(**datasource_response)
+                self._datasource_cache[datasource_id] = datasource_list
                 return datasource_list
         except Exception:
             logger.debug(traceback.format_exc())
@@ -249,11 +252,14 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-
+        # Cache only real responses; keep transient failures retryable.
+        if database_id in self._database_cache:
+            return self._database_cache[database_id]
         try:
             database_response = self.client.get(f"/database/{database_id}")
             if database_response:
                 database_list = ListDatabaseResult(**database_response)
+                self._database_cache[database_id] = database_list
                 return database_list
         except Exception:
             logger.debug(traceback.format_exc())

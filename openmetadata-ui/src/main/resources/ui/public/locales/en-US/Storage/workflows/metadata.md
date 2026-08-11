@@ -28,6 +28,40 @@ Set the `Enable Debug Log` toggle to set the logging level of the process to deb
 $$
 
 $$section
+### Default Manifest $(id="defaultManifest")
+
+Lowest-priority fallback manifest used only when neither the global `storageMetadataConfigSource` nor a bucket-specific `openmetadata.json` provides entries for a given bucket. Useful when an administrator wants to seed an initial manifest from the pipeline config while letting bucket owners self-serve by uploading their own manifest later.
+
+**Precedence** (highest to lowest):
+
+1. The global `storageMetadataConfigSource` (if configured).
+2. The bucket's own `openmetadata.json` manifest file.
+3. `defaultManifest` from this pipeline config.
+
+The matching rules are the same as a bucket-level `openmetadata.json`, but the schema differs by location. In `defaultManifest`, each entry **must include `containerName`** because this pipeline-level fallback can target multiple buckets. In a bucket-level `openmetadata.json`, the file already belongs to a single bucket, so `containerName` is not required. Each entry accepts either a literal `dataPath` or a glob-style pattern — use `*` for a single path segment, `**` for any depth, and `?` for a single character.
+
+**`defaultManifest` example** (note the required `containerName`):
+
+```json
+{
+  "entries": [
+    {
+      "containerName": "analytics-prod",
+      "dataPath": "data/*/events/*.parquet",
+      "structureFormat": "parquet",
+      "autoPartitionDetection": true
+    },
+    {
+      "containerName": "analytics-prod",
+      "dataPath": "logs/**/*.json",
+      "structureFormat": "json"
+    }
+  ]
+}
+```
+$$
+
+$$section
 ### Override Metadata $(id="overrideMetadata")
 
 Set the `Override Metadata` toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source.

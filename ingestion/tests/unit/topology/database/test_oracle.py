@@ -115,9 +115,7 @@ MOCK_DATABASE = Database(
     fullyQualifiedName="oracle_source_test.sample_database",
     displayName="sample_database",
     description="",
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"),
 )
 
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -165,9 +163,7 @@ EXPECTED_STORED_PROCEDURE = [
         name=EntityName("sample_procedure"),
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         storedProcedureType=StoredProcedureType.StoredProcedure,
-        databaseSchema=FullyQualifiedEntityName(
-            "oracle_source_test.sample_database.sample_schema"
-        ),
+        databaseSchema=FullyQualifiedEntityName("oracle_source_test.sample_database.sample_schema"),
     )
 ]
 
@@ -176,9 +172,7 @@ EXPECTED_STORED_PACKAGE = [
         name=EntityName("sample_package"),
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         storedProcedureType=StoredProcedureType.StoredPackage,
-        databaseSchema=FullyQualifiedEntityName(
-            "oracle_source_test.sample_database.sample_schema"
-        ),
+        databaseSchema=FullyQualifiedEntityName("oracle_source_test.sample_database.sample_schema"),
     )
 ]
 
@@ -189,59 +183,45 @@ class OracleUnitTest(TestCase):
     Oracle Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_oracle_config)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(
-                mock_oracle_config["workflowConfig"]["openMetadataServerConfig"]
-            )
+            OpenMetadataConnection.model_validate(mock_oracle_config["workflowConfig"]["openMetadataServerConfig"])
         )
         self.oracle = OracleSource.create(
             mock_oracle_config["source"],
             self.metadata,
         )
-        self.oracle.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.oracle.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.oracle.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [
-            either.right
-            for either in self.oracle.yield_database(MOCK_DATABASE.name.root)
-        ]
+        assert EXPECTED_DATABASE == [either.right for either in self.oracle.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
 
         self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
-        assert EXPECTED_DATABASE_SCHEMA == [
-            either.right
-            for either in self.oracle.yield_database_schema(
-                MOCK_DATABASE_SCHEMA.name.root
-            )
+        assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
+            either.right for either in self.oracle.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)
         ]
-        self.oracle.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.oracle.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_stored_procedure(self):
-        assert EXPECTED_STORED_PROCEDURE == [
-            either.right
-            for either in self.oracle.yield_stored_procedure(MOCK_STORED_PROCEDURE)
+        assert EXPECTED_STORED_PROCEDURE == [  # noqa: SIM300
+            either.right for either in self.oracle.yield_stored_procedure(MOCK_STORED_PROCEDURE)
         ]
 
     def test_yield_stored_package(self):
-        assert EXPECTED_STORED_PACKAGE == [
-            either.right
-            for either in self.oracle.yield_stored_procedure(MOCK_STORED_PACKAGE)
+        assert EXPECTED_STORED_PACKAGE == [  # noqa: SIM300
+            either.right for either in self.oracle.yield_stored_procedure(MOCK_STORED_PACKAGE)
         ]
 
     def test_stored_procedure_queries_have_order_by(self):
@@ -316,26 +296,22 @@ class OracleUnitTest(TestCase):
             "test_schema",
         ) in mock_dialect.all_view_definitions
 
-        expected_view_def_definition = "CREATE OR REPLACE VIEW test_view_with_def AS SELECT * FROM test_table WHERE id > 0"
-        expected_view_ddl_definition = "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+        expected_view_def_definition = (
+            "CREATE OR REPLACE VIEW test_view_with_def AS SELECT * FROM test_table WHERE id > 0"
+        )
+        expected_view_ddl_definition = (
+            "CREATE OR REPLACE FORCE VIEW test_schema.test_view_with_ddl AS SELECT * FROM complex_table"
+        )
 
-        assert (
-            mock_dialect.all_view_definitions[("test_view_with_def", "test_schema")]
-            == expected_view_def_definition
-        )
-        assert (
-            mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")]
-            == expected_view_ddl_definition
-        )
+        assert mock_dialect.all_view_definitions[("test_view_with_def", "test_schema")] == expected_view_def_definition
+        assert mock_dialect.all_view_definitions[("test_view_with_ddl", "test_schema")] == expected_view_ddl_definition
 
     def test_get_stored_procedures(self):
         """
         Test fetching stored procedures with filter
         """
         self.oracle.source_config.includeStoredProcedures = True
-        self.oracle.source_config.storedProcedureFilterPattern = FilterPattern(
-            includes=["sp_include"]
-        )
+        self.oracle.source_config.storedProcedureFilterPattern = FilterPattern(includes=["sp_include"])
         self.oracle.context.get().__dict__["database"] = "test_db"
         self.oracle.context.get().__dict__["database_schema"] = "test_schema"
 
@@ -383,11 +359,7 @@ class OracleUnitTest(TestCase):
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        list(
-            self.oracle._get_stored_procedures_internal(
-                "SELECT * WHERE owner = '{schema}'"
-            )
-        )
+        list(self.oracle._get_stored_procedures_internal("SELECT * WHERE owner = '{schema}'"))
 
         executed_query = str(mock_conn.execute.call_args[0][0])
         assert "SAMPLE_SCHEMA" in executed_query
@@ -398,24 +370,18 @@ class TestOraclePreserveIdentifierCase:
     """Test Oracle source behavior when preserveIdentifierCase=True."""
 
     def setup_method(self):
-        patcher = patch(
-            "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-        )
+        patcher = patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
         patcher.start()
         metadata = OpenMetadata(
             OpenMetadataConnection.model_validate(
-                mock_oracle_config_preserve_case["workflowConfig"][
-                    "openMetadataServerConfig"
-                ]
+                mock_oracle_config_preserve_case["workflowConfig"]["openMetadataServerConfig"]
             )
         )
         self.oracle = OracleSource.create(
             mock_oracle_config_preserve_case["source"],
             metadata,
         )
-        self.oracle.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.oracle.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         patcher.stop()
 
     def test_normalize_name_returns_name_as_is(self):
@@ -444,11 +410,7 @@ class TestOraclePreserveIdentifierCase:
         mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
         mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
 
-        list(
-            self.oracle._get_stored_procedures_internal(
-                "SELECT * WHERE owner = '{schema}'"
-            )
-        )
+        list(self.oracle._get_stored_procedures_internal("SELECT * WHERE owner = '{schema}'"))
 
         executed_query = str(mock_conn.execute.call_args[0][0])
         assert "sample_Schema" in executed_query
@@ -468,9 +430,7 @@ class TestOraclePreserveIdentifierCase:
         mock_connection = MagicMock()
         mock_dialect = OracleDialect()
         mock_dialect.normalize_name = types.MethodType(normalize_name, mock_dialect)
-        mock_dialect._prepare_reflection_args = MagicMock(
-            return_value=("MyTable", "MySchema", "", None)
-        )
+        mock_dialect._prepare_reflection_args = MagicMock(return_value=("MyTable", "MySchema", "", None))
         mock_dialect.get_pk_constraint = MagicMock(return_value={"name": "PK_MYTABLE"})
 
         class MockRow:
@@ -501,9 +461,7 @@ class TestOraclePreserveIdentifierCase:
         ]
         mock_connection.execute.return_value = rows
 
-        result = get_indexes_preserve_case(
-            mock_dialect, mock_connection, "MyTable", schema="MySchema"
-        )
+        result = get_indexes_preserve_case(mock_dialect, mock_connection, "MyTable", schema="MySchema")
 
         assert len(result) == 1
         assert result[0]["name"] == "IDX_EMPLOYEE_ID"
@@ -524,9 +482,7 @@ class TestOraclePreserveIdentifierCase:
         mock_connection = MagicMock()
         mock_dialect = OracleDialect()
         mock_dialect.normalize_name = types.MethodType(normalize_name, mock_dialect)
-        mock_dialect._prepare_reflection_args = MagicMock(
-            return_value=("MyTable", "MySchema", "", None)
-        )
+        mock_dialect._prepare_reflection_args = MagicMock(return_value=("MyTable", "MySchema", "", None))
         mock_dialect.get_pk_constraint = MagicMock(return_value={"name": "PK_MYTABLE"})
 
         class MockRow:
@@ -547,11 +503,172 @@ class TestOraclePreserveIdentifierCase:
         ]
         mock_connection.execute.return_value = rows
 
-        result = get_indexes_preserve_case(
-            mock_dialect, mock_connection, "MyTable", schema="MySchema"
-        )
+        result = get_indexes_preserve_case(mock_dialect, mock_connection, "MyTable", schema="MySchema")
 
         assert len(result) == 1
         assert result[0]["name"] == "IDX_DEPARTMENT"
         assert result[0]["column_names"] == ["DeptName"]
         assert result[0]["unique"] is False
+
+
+class TestOracleViewDefinitionFallback:
+    """Issue #30319: in Oracle thick mode (OCI), a view whose LONG definition
+    (DBA_VIEWS.TEXT / DBA_MVIEWS.QUERY) exceeds OCI's bounded fetch buffer raises
+    ORA-01406 / DPI-1037 during the bulk array fetch. That aborts the whole bulk
+    query, so every view's definition ends up empty. The bulk fetch must fall
+    back to per-view retrieval so one oversized/failing view cannot blank the
+    rest.
+    """
+
+    @staticmethod
+    def _bulk_query_lowercase():
+        # Mirrors ORACLE_VIEW_DEFINITIONS: the LOWER() calls mean the cache keys
+        # are lowercased.
+        return (
+            'SELECT LOWER(v.view_name) AS "view_name", LOWER(v.owner) AS "schema", text AS "view_def" FROM DBA_VIEWS v'
+        )
+
+    def _make_connection(self, names_rows, texts=None, ddls=None, fail_text=(), fail_ddl=()):
+        """Mock connection that routes each fallback query to canned results.
+
+        texts/ddls map a view name to the raw text / GET_DDL string it returns
+        (None simulates a NULL text). fail_text / fail_ddl name the views whose
+        single-row text read or GET_DDL raises. The bulk query always truncates.
+        """
+        from unittest.mock import MagicMock
+
+        from sqlalchemy.exc import DatabaseError
+
+        texts = texts or {}
+        ddls = ddls or {}
+
+        def scalar_result(value):
+            res = MagicMock()
+            res.scalar.return_value = value
+            return res
+
+        def execute(clause, params=None):
+            sql = str(clause)
+            if "GET_DDL" in sql:  # last-resort per-view GET_DDL
+                name = params["name"]
+                if name in fail_ddl:
+                    raise DatabaseError("get_ddl", None, Exception("ORA-31603"))
+                return scalar_result(ddls.get(name))
+            if "object_type" in sql:  # names-only fallback listing
+                res = MagicMock()
+                res.fetchall.return_value = names_rows
+                return res
+            if ":name" in sql:  # single-row raw text/query read
+                name = params["name"]
+                if name in fail_text:
+                    raise DatabaseError("text", None, Exception("ORA-01406"))
+                return scalar_result(texts.get(name))
+            # the bulk view-definition query with the LONG column -> truncates
+            raise DatabaseError(
+                "bulk",
+                None,
+                Exception("DPI-1037: column at array position 13 fetched with error 1406"),
+            )
+
+        conn = MagicMock()
+        conn.execute.side_effect = execute
+        conn.engine.url.database = "test_db"
+        return conn
+
+    def test_bulk_truncation_recovers_views_via_per_view_fallback(self):
+        """A truncating bulk fetch recovers each view, and one failing view is isolated."""
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        dialect = OracleDialect()
+        dialect.table_prefix = "DBA"
+        names_rows = [
+            ("SAM", "GOOD_VIEW", "VIEW"),
+            ("SAM", "MV1", "MATERIALIZED_VIEW"),
+            ("SAM", "NULL_TEXT", "VIEW"),
+            ("SAM", "BAD_VIEW", "VIEW"),
+        ]
+        conn = self._make_connection(
+            names_rows,
+            texts={"GOOD_VIEW": "SELECT * FROM t", "MV1": "SELECT count(*) FROM t", "NULL_TEXT": None},
+            ddls={"NULL_TEXT": "CREATE FORCE VIEW SAM.NULL_TEXT AS SELECT 1 FROM dual"},
+            fail_text=("BAD_VIEW",),
+            fail_ddl=("BAD_VIEW",),
+        )
+
+        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+
+        defs = dialect.all_view_definitions
+        # Raw text is the primary source (no extra privileges needed).
+        assert defs[("good_view", "sam")] == "CREATE OR REPLACE VIEW GOOD_VIEW AS SELECT * FROM t"
+        assert defs[("mv1", "sam")] == "CREATE OR REPLACE VIEW MV1 AS SELECT count(*) FROM t"
+        # NULL text falls back to GET_DDL, mirroring the bulk query.
+        assert defs[("null_text", "sam")] == "CREATE FORCE VIEW SAM.NULL_TEXT AS SELECT 1 FROM dual"
+        # A view that fails both reads is skipped, not fatal to the rest.
+        assert ("bad_view", "sam") not in defs
+
+    def test_fallback_keeps_native_case_for_preserve_identifier_case(self):
+        """With preserveIdentifierCase set on the dialect, fallback keys stay verbatim."""
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        dialect = OracleDialect()
+        dialect.table_prefix = "DBA"
+        dialect.preserve_identifier_case = True
+        conn = self._make_connection([("Sam", "MyView", "VIEW")], texts={"MyView": "SELECT 1"})
+
+        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+
+        assert dialect.all_view_definitions[("MyView", "Sam")] == "CREATE OR REPLACE VIEW MyView AS SELECT 1"
+
+    def test_non_database_error_is_not_routed_through_fallback(self):
+        """A non-DatabaseError during the bulk read must propagate, not trigger the fallback."""
+        from unittest.mock import MagicMock
+
+        import pytest
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        conn = MagicMock()
+        conn.execute.side_effect = ValueError("bug in row handling")
+        conn.engine.url.database = "db"
+        dialect = OracleDialect()
+
+        with pytest.raises(ValueError):
+            get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+
+    def test_successful_bulk_fetch_does_not_trigger_fallback(self):
+        """When the bulk fetch succeeds, definitions come from it and no fallback query runs."""
+        from unittest.mock import MagicMock
+
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        class Row:
+            view_name = "v1"
+            schema = "sam"
+            view_def = "SELECT 1 FROM dual"
+            view_ddl = None
+
+        conn = MagicMock()
+        conn.execute.return_value = [Row()]
+        conn.engine.url.database = "db"
+        dialect = OracleDialect()
+
+        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+
+        assert dialect.all_view_definitions[("v1", "sam")] == "CREATE OR REPLACE VIEW v1 AS SELECT 1 FROM dual"
+        # Only the bulk query executed: no names listing, no per-view reads.
+        assert conn.execute.call_count == 1

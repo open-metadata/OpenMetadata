@@ -14,13 +14,16 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
@@ -42,6 +45,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyCo
 @Slf4j
 public class SubjectCache {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
+  private static final String USER_CONTEXT_FIELDS =
+      "roles,teams,isAdmin,profile,domains,personas,defaultPersona";
   private static final String TEAM_FIELDS = "defaultRoles,policies,parents,profile,domains";
 
   static class UserPoliciesContext {
@@ -54,15 +59,14 @@ public class SubjectCache {
     }
   }
 
-  private static final LoadingCache<String, UserPoliciesContext> USER_POLICIES_CACHE =
+  private static volatile LoadingCache<String, UserPoliciesContext> USER_POLICIES_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
           .expireAfterWrite(2, TimeUnit.MINUTES)
           .recordStats()
           .build(new UserPoliciesLoader());
 
-  // Cache for user context to avoid expensive database lookups on every authorization
-  private static final LoadingCache<String, User> USER_CONTEXT_CACHE =
+  private static volatile LoadingCache<String, User> USER_CONTEXT_CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
           .expireAfterWrite(15, TimeUnit.MINUTES)
@@ -70,6 +74,26 @@ public class SubjectCache {
           .build(new UserContextLoader());
 
   private SubjectCache() {}
+
+  /**
+   * Rebuild auth caches with configured max entries. TTLs are kept at their original values
+   * (2 min for policies, 15 min for user context) because they serve different freshness needs.
+   */
+  public static void initCaches(int maxEntries) {
+    USER_POLICIES_CACHE =
+        CacheBuilder.newBuilder()
+            .maximumSize(maxEntries)
+            .expireAfterWrite(2, TimeUnit.MINUTES)
+            .recordStats()
+            .build(new UserPoliciesLoader());
+    USER_CONTEXT_CACHE =
+        CacheBuilder.newBuilder()
+            .maximumSize(maxEntries)
+            .expireAfterWrite(15, TimeUnit.MINUTES)
+            .recordStats()
+            .build(new UserContextLoader());
+    LOG.info("Auth caches initialized: maxEntries={}", maxEntries);
+  }
 
   public static List<PolicyContext> getPolicies(String userName) {
     try {
@@ -95,6 +119,28 @@ public class SubjectCache {
     USER_CONTEXT_CACHE.invalidate(userName);
   }
 
+  public static void invalidateUserContext(String userName) {
+    LOG.debug("Invalidating user context cache for user: {}", userName);
+    USER_CONTEXT_CACHE.invalidate(userName);
+  }
+
+  public static void invalidateUserContexts(List<EntityReference> users) {
+    Set<String> userNames = new HashSet<>();
+    for (EntityReference user : listOrEmpty(users)) {
+      if (user == null || nullOrEmpty(user.getName())) {
+        invalidateAllUserContexts();
+        return;
+      }
+      userNames.add(user.getName());
+    }
+    userNames.forEach(SubjectCache::invalidateUserContext);
+  }
+
+  public static void invalidateAllUserContexts() {
+    LOG.info("Invalidating all user context caches");
+    USER_CONTEXT_CACHE.invalidateAll();
+  }
+
   public static void invalidateAll() {
     LOG.info("Invalidating all user policy caches");
     USER_POLICIES_CACHE.invalidateAll();
@@ -106,7 +152,7 @@ public class SubjectCache {
       return USER_CONTEXT_CACHE.get(userName);
     } catch (Exception e) {
       LOG.warn("Failed to load user context from cache for user {}", userName, e);
-      return Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+      return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
     }
   }
 
@@ -127,7 +173,7 @@ public class SubjectCache {
     @Override
     public @NonNull User load(@CheckForNull String userName) {
       LOG.debug("Loading user context from database for user: {}", userName);
-      return Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+      return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
     }
   }
 

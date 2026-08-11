@@ -1,0 +1,109 @@
+{
+  "realm": "om-azure-saml",
+  "enabled": true,
+  "displayName": "OpenMetadata Azure SAML",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "clients": [
+    {
+      "clientId": "http://localhost:8585/api/v1/saml/metadata",
+      "name": "OpenMetadata",
+      "enabled": true,
+      "protocol": "saml",
+      "publicClient": true,
+      "frontchannelLogout": true,
+      "redirectUris": ["http://localhost:8585/*"],
+      "baseUrl": "http://localhost:8585",
+      "adminUrl": "http://localhost:8585",
+      "attributes": {
+        "saml.assertion.signature": "true",
+        "saml.authnstatement": "true",
+        "saml.client.signature": "false",
+        "saml.encrypt": "false",
+        "saml.force.name.id.format": "true",
+        "saml.force.post.binding": "true",
+        "saml.multivalued.roles": "false",
+        "saml.server.signature": "true",
+        "saml.signature.algorithm": "RSA_SHA256",
+        "saml_assertion_consumer_url_post": "http://localhost:8585/api/v1/saml/acs",
+        "saml_force_name_id_format": "true",
+        "saml_name_id_format": "email"
+      },
+      "protocolMappers": [
+        {
+          "name": "Email",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "email",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "email",
+            "user.attribute": "email"
+          }
+        },
+        {
+          "name": "Display Name",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "http://schemas.microsoft.com/identity/claims/displayname",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "displayname",
+            "user.attribute": "displayName"
+          }
+        },
+        {
+          "name": "Given Name",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "givenname",
+            "user.attribute": "firstName"
+          }
+        },
+        {
+          "name": "Surname",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
+            "attribute.nameformat": "Basic",
+            "friendly.name": "surname",
+            "user.attribute": "lastName"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "azure.saml@openmetadata.local",
+      "email": "azure.saml@openmetadata.local",
+      "firstName": "Azure",
+      "lastName": "SAML",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "attributes": {
+        "displayName": ["Azure SAML User"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "OpenMetadata@123",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

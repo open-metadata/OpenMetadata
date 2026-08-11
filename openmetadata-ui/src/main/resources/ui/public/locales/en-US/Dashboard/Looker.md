@@ -47,14 +47,21 @@ $$
 
 If we choose to inform the GitHub credentials to ingest LookML Views:
 
+$$section
 #### Repository Owner $(id="repositoryOwner")
 
 The owner (user or organization) of a GitHub repository. For example, in https://github.com/open-metadata/OpenMetadata, the owner is `open-metadata`.
 
+$$
+
+$$section
 #### Repository Name $(id="repositoryName")
 
 The name of a GitHub repository. For example, in https://github.com/open-metadata/OpenMetadata, the name is `OpenMetadata`.
 
+$$
+
+$$section
 #### API Token $(id="token")
 
 Token to use the API. This is required for private repositories and to ensure we don't hit API limits.
@@ -70,5 +77,7 @@ $$note
 If your GitHub organization has SAML Single Sign-On (SSO) enabled, you must authorize your Personal Access Token for SSO access after creating it. Without this authorization, you will receive a 403 error when attempting to clone the repository.
 
 Follow these <a href="https://docs.github.com/en/enterprise-cloud@latest/authentication/authenticating-with-single-sign-on/authorizing-a-personal-access-token-for-use-with-single-sign-on" target="_blank">steps</a> to authorize your token for use with SAML SSO.
+
+$$
 
 $$

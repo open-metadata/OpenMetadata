@@ -11,7 +11,7 @@
 
 """Partition utility"""
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import (
     PartitionColumnDetails,
@@ -33,8 +33,8 @@ logger = sampler_logger()
 
 def validate_athena_injected_partitioning(
     table_partitions: TablePartition,
-    table_profiler_config: Optional[TableProfilerConfig],
-    profiler_partitioning_config: Optional[PartitionProfilerConfig],
+    table_profiler_config: Optional[TableProfilerConfig],  # noqa: UP045
+    profiler_partitioning_config: Optional[PartitionProfilerConfig],  # noqa: UP045
 ) -> None:
     """Validate Athena partitioning. Injected partition need to be defined
     in the table profiler c onfig for the profiler to work correctly. We'll throw an
@@ -50,29 +50,23 @@ def validate_athena_injected_partitioning(
         "https://docs.open-metadata.org/v1.3.x/connectors/ingestion/workflows/profiler#profiler-options "
     )
 
-    column_partitions: Optional[List[PartitionColumnDetails]] = table_partitions.columns
+    column_partitions: Optional[List[PartitionColumnDetails]] = table_partitions.columns  # noqa: UP006, UP045
     if not column_partitions:
         raise RuntimeError("Table partition is set but no columns are defined.")
 
     for column_partition in column_partitions:
         if column_partition.intervalType == PartitionIntervalTypes.INJECTED:
             if table_profiler_config is None or profiler_partitioning_config is None:
-                raise RuntimeError(
-                    error_msg.format(column_name=column_partition.columnName)
-                )
+                raise RuntimeError(error_msg.format(column_name=column_partition.columnName))
 
-            if (
-                profiler_partitioning_config.partitionColumnName
-                != column_partition.columnName
-            ):
-                raise RuntimeError(
-                    error_msg.format(column_name=column_partition.columnName)
-                )
+            if profiler_partitioning_config.partitionColumnName != column_partition.columnName:
+                raise RuntimeError(error_msg.format(column_name=column_partition.columnName))
 
 
 def get_partition_details(
-    entity: Table, entity_config: Optional[TableConfig] = None
-) -> Optional[PartitionProfilerConfig]:
+    entity: Table,
+    entity_config: Optional[TableConfig] = None,  # noqa: UP045
+) -> Optional[PartitionProfilerConfig]:  # noqa: UP045
     """Build PartitionProfilerConfig object from entity
 
     Args:
@@ -90,18 +84,14 @@ def get_partition_details(
     table_partition = getattr(entity, "tablePartition", None)
 
     # Profiler config
-    profiler_partitioning_config: Optional[PartitionProfilerConfig] = None
-    profiler_config: Optional[TableProfilerConfig] = getattr(
-        entity, "tableProfilerConfig", None
-    )
+    profiler_partitioning_config: Optional[PartitionProfilerConfig] = None  # noqa: UP045
+    profiler_config: Optional[TableProfilerConfig] = getattr(entity, "tableProfilerConfig", None)  # noqa: UP045
     if profiler_config:
         profiler_partitioning_config = getattr(profiler_config, "partitioning", None)
 
     if table_partition and service_type == DatabaseServiceType.Athena:
         # if table is an Athena table and it has been partitioned we need to validate injected partitioning
-        validate_athena_injected_partitioning(
-            table_partition, profiler_config, profiler_partitioning_config
-        )
+        validate_athena_injected_partitioning(table_partition, profiler_config, profiler_partitioning_config)
         return profiler_partitioning_config
 
     if profiler_partitioning_config:
@@ -114,14 +104,10 @@ def get_partition_details(
     return None
 
 
-def _handle_bigquery_partition(
-    entity: Table, table_partition: TablePartition
-) -> Optional[PartitionProfilerConfig]:
+def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -> Optional[PartitionProfilerConfig]:  # noqa: UP045
     """Bigquery specific logic for partitions"""
     if table_partition:
-        column_partitions: Optional[
-            List[PartitionColumnDetails]
-        ] = entity.tablePartition.columns
+        column_partitions: Optional[List[PartitionColumnDetails]] = entity.tablePartition.columns  # noqa: UP006, UP045
         if not column_partitions:
             raise TypeError("table partition missing. Skipping table")
 
@@ -131,9 +117,7 @@ def _handle_bigquery_partition(
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName=partition.columnName,
-                partitionIntervalUnit=PartitionIntervalUnit.DAY
-                if partition.interval != "HOUR"
-                else partition.interval,
+                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
                 partitionInterval=1,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
@@ -143,12 +127,8 @@ def _handle_bigquery_partition(
         if partition.intervalType == PartitionIntervalTypes.INGESTION_TIME:
             return PartitionProfilerConfig(
                 enablePartitioning=True,
-                partitionColumnName="_PARTITIONDATE"
-                if partition.interval == "DAY"
-                else "_PARTITIONTIME",
-                partitionIntervalUnit=PartitionIntervalUnit.DAY
-                if partition.interval != "HOUR"
-                else partition.interval,
+                partitionColumnName="_PARTITIONDATE" if partition.interval == "DAY" else "_PARTITIONTIME",
+                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
                 partitionInterval=1,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,

@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Dict, Set
+from typing import Dict, Set  # noqa: UP035
 
 from sqlalchemy.sql.type_api import TypeEngine
 
@@ -18,18 +18,18 @@ from metadata.profiler.orm.types.trino import TrinoArray, TrinoMap, TrinoStruct
 
 
 class TrinoMapTypes(CommonMapTypes):
-    _TYPE_MAP_OVERRIDE = {
+    _TYPE_MAP_OVERRIDE = {  # noqa: RUF012
         DataType.ARRAY: TrinoArray,
         DataType.MAP: TrinoMap,
         DataType.STRUCT: TrinoStruct,
     }
-    _TYPE_MAP = {
+    _TYPE_MAP = {  # noqa: RUF012
         **CommonMapTypes._TYPE_MAP,
         **_TYPE_MAP_OVERRIDE,
     }
 
     @classmethod
-    def map_sqa_to_om_types(cls) -> Dict[TypeEngine, Set[DataType]]:
+    def map_sqa_to_om_types(cls) -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
         """returns an ORM type"""
         # pylint: disable=import-outside-toplevel
 

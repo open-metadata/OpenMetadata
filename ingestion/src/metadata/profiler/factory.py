@@ -12,6 +12,7 @@
 """
 Factory class for creating profiler interface objects
 """
+
 from abc import ABC, abstractmethod
 
 

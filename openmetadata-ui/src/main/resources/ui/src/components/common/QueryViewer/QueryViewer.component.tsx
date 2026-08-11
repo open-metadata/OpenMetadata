@@ -13,13 +13,17 @@
 import { Button, Card, Space, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, split } from 'lodash';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './query-viewer.style.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 const QueryViewer = ({
   title,

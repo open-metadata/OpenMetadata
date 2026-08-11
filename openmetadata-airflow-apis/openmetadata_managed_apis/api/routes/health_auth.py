@@ -12,13 +12,14 @@
 Health endpoint. Globally accessible
 """
 
-from typing import Callable
+from typing import Callable  # noqa: UP035
 
 from flask import Blueprint
+
 from openmetadata_managed_apis.operations.health import health_response
 from openmetadata_managed_apis.utils.logger import routes_logger
 
-try:
+try:  # noqa: SIM105
     pass
 except ImportError:
     pass
@@ -36,6 +37,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
@@ -49,9 +51,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/health-auth", methods=["GET"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)])
     def health_auth():
         """
         /auth-health endpoint to check Airflow REST status without auth

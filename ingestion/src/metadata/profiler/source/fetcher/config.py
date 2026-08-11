@@ -24,25 +24,19 @@ class EntityFilterConfigInterface(Protocol):
     """Interface for the OM workflow source configs that allow filtering"""
 
     @property
-    def classificationFilterPattern(self) -> Optional[FilterPattern]:
-        ...
+    def classificationFilterPattern(self) -> Optional[FilterPattern]: ...  # noqa: N802, UP045
 
     @property
-    def databaseFilterPattern(self) -> Optional[FilterPattern]:
-        ...
+    def databaseFilterPattern(self) -> Optional[FilterPattern]: ...  # noqa: N802, UP045
 
     @property
-    def schemaFilterPattern(self) -> Optional[FilterPattern]:
-        ...
+    def schemaFilterPattern(self) -> Optional[FilterPattern]: ...  # noqa: N802, UP045
 
     @property
-    def tableFilterPattern(self) -> Optional[FilterPattern]:
-        ...
+    def tableFilterPattern(self) -> Optional[FilterPattern]: ...  # noqa: N802, UP045
 
     @property
-    def useFqnForFiltering(self) -> Optional[bool]:
-        ...
+    def useFqnForFiltering(self) -> Optional[bool]: ...  # noqa: N802, UP045
 
     @property
-    def includeViews(self) -> Optional[bool]:
-        ...
+    def includeViews(self) -> Optional[bool]: ...  # noqa: N802, UP045

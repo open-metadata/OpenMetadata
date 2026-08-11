@@ -1,0 +1,62 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../../../../../../styles/variables.less';
+
+.manifest-json-widget {
+  .manifest-json-widget-resize-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    resize: vertical;
+    overflow: auto;
+    min-height: 180px;
+    // Give the user a tall ceiling so they can read large manifests.
+    max-height: 80vh;
+    border: 1px solid @grey-22;
+    border-radius: var(--om-radius-sm);
+
+    // Flex-fill the wrapper so the editor container keeps its full height even
+    // when empty. `.manifest-json-widget-editor` (schema-editor-container) is
+    // position:relative, so the CodeMirror below can absolutely fill it.
+    .manifest-json-widget-editor {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    // CodeMirror defaults to 300px and a `height: 100%` won't resolve against a
+    // flex item, so it collapses to its content (~1 line) when empty. Absolutely
+    // filling the relative container pins it to the real box height instead.
+    .CodeMirror {
+      position: absolute;
+      inset: 0;
+      height: auto !important;
+    }
+
+    // The sample manifest is shown only as a placeholder: keep its line breaks
+    // so it fills the editor, and mute the colour with the global placeholder
+    // token so it reads as a hint. !important overrides CodeMirror's white-space.
+    .CodeMirror-placeholder,
+    .CodeMirror-placeholder.CodeMirror-line-like {
+      color: var(--tw-color-text-placeholder);
+      white-space: pre-wrap !important;
+    }
+  }
+
+  // Hint so users notice the draggable corner.
+  .manifest-json-widget-resize-hint {
+    color: @grey-28;
+    font-size: var(--om-font-size-xs);
+    margin-top: var(--om-space-4);
+    display: block;
+  }
+}

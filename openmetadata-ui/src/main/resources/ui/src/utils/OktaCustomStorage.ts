@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { StorageProvider } from '@okta/okta-auth-js';
+import type { StorageProvider } from '@okta/okta-auth-js';
 import { swTokenStorage } from './SwTokenStorage';
 import { isServiceWorkerAvailable } from './SwTokenStorageUtils';
 
@@ -19,8 +19,8 @@ const OKTA_TOKENS_KEY = 'okta_tokens';
 
 export class OktaCustomStorage implements StorageProvider {
   private memoryCache: Record<string, string> = {};
-  private isServiceWorkerAvailable: boolean;
-  private initPromise: Promise<void>;
+  private readonly isServiceWorkerAvailable: boolean;
+  private readonly initPromise: Promise<void>;
 
   constructor() {
     this.isServiceWorkerAvailable = isServiceWorkerAvailable();
@@ -66,9 +66,9 @@ export class OktaCustomStorage implements StorageProvider {
     return this.memoryCache[key] || null;
   }
 
-  async setItem(key: string, value: string): Promise<void> {
+  setItem(key: string, value: string) {
     this.memoryCache[key] = value;
-    await this.persistToStorage();
+    this.persistToStorage();
   }
 
   removeItem(key: string): void {

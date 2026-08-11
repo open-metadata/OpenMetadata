@@ -21,10 +21,7 @@ class TestVisitColumnWithStructQuoting:
         column.name = "customer_id"
 
         mock_visit_column.return_value = "customers_with_address.customer_id"
-        assert (
-            _visit_column_with_struct_quoting(compiler, column)
-            == "customers_with_address.customer_id"
-        )
+        assert _visit_column_with_struct_quoting(compiler, column) == "customers_with_address.customer_id"
 
         mock_visit_column.return_value = "customer_id"
         assert _visit_column_with_struct_quoting(compiler, column) == "customer_id"
@@ -35,17 +32,11 @@ class TestVisitColumnWithStructQuoting:
         column.name = "address.street"
 
         mock_visit_column.return_value = "customers_with_address.address.street"
-        assert (
-            _visit_column_with_struct_quoting(compiler, column)
-            == 'customers_with_address."address"."street"'
-        )
+        assert _visit_column_with_struct_quoting(compiler, column) == 'customers_with_address."address"."street"'
 
         column.name = "address.geo.lat"
         mock_visit_column.return_value = "customers_with_address.address.geo.lat"
-        assert (
-            _visit_column_with_struct_quoting(compiler, column)
-            == 'customers_with_address."address"."geo"."lat"'
-        )
+        assert _visit_column_with_struct_quoting(compiler, column) == 'customers_with_address."address"."geo"."lat"'
 
         column.name = "address.city"
         mock_visit_column.return_value = "address.city"

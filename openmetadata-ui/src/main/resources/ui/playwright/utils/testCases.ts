@@ -13,10 +13,23 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  TEST_CASE_LAST_RUN_BANNER_TEST_IDS,
+  type TestCaseLastRunBannerStatus,
+} from '../constant/dataQuality';
 import { TableClass } from '../support/entity/TableClass';
-import { toastNotification } from './common';
+import {
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
+  toastNotification,
+  uuid,
+} from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { fillTagDetails, pressKeyXTimes } from './importUtils';
+import {
+  fillTagDetails,
+  pressKeyXTimes,
+  startCsvPreviewAndWaitForGrid,
+} from './importUtils';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -37,6 +50,39 @@ export const getFailedRowsData = (table: TableClass) => {
     }),
   };
 };
+
+export const verifyTestCaseLastRunBanner = async (
+  page: Page,
+  status: TestCaseLastRunBannerStatus
+) => {
+  const banner = page.getByTestId(TEST_CASE_LAST_RUN_BANNER_TEST_IDS[status]);
+
+  await expect(banner).toBeVisible();
+
+  return banner;
+};
+
+type CsvExportResponse = {
+  jobId: string;
+};
+
+type CsvExportDownload = {
+  suggestedFilename: () => string;
+  saveAs: (filePath: string) => Promise<void>;
+  text: () => Promise<string>;
+};
+
+const createCsvExportDownload = (
+  suggestedFilename: string,
+  csvContent: string
+): CsvExportDownload => ({
+  suggestedFilename: () => suggestedFilename,
+  saveAs: async (filePath: string) => {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, csvContent);
+  },
+  text: async () => csvContent,
+});
 
 export const setupTestCaseWithFailedRows = async (
   apiContext: APIRequestContext,
@@ -60,9 +106,7 @@ export const setupTestCaseWithFailedRows = async (
 export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`delete-${testCaseName}`).click();
-  await page.fill('#deleteTextInput', 'DELETE');
-
-  await expect(page.getByTestId('confirm-button')).toBeEnabled();
+  await page.getByTestId('confirm-button').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=true'
@@ -71,6 +115,27 @@ export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await deleteResponse;
 
   await toastNotification(page, /deleted successfully!/);
+};
+
+export const submitTestCaseForm = async (page: Page) => {
+  const testCaseResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases') &&
+      response.request().method() === 'POST'
+  );
+  await page.getByTestId('create-btn').click();
+  const response = await testCaseResponse;
+
+  expect(response.status()).toBe(201);
+
+  // Wait for the drawer to close — this is the definitive signal that test
+  // case creation and any subsequent pipeline/deploy actions triggered by the
+  // form have finished. Unlike waiting for toast or specific API responses
+  // (which may or may not fire, or may be slow), the drawer closes only after
+  // the applicable submit flow completes.
+  await page.getByTestId('test-case-form-v1').waitFor({ state: 'detached' });
+
+  return response;
 };
 
 export const waitForPermissionsResponse = (page: Page) =>
@@ -115,6 +180,31 @@ export const waitForTestSuiteListResponse = (page: Page) =>
       res.request().method() === 'GET' &&
       res.status() === 200
   );
+
+/**
+ * Waits for the entity Pipeline tab / pipeline card list request that loads TestSuite
+ * ingestion pipelines (owners + pipelineStatuses, paginated).
+ */
+export const waitForTestSuiteIngestionPipelinesListResponse = (page: Page) =>
+  page.waitForResponse((res) => {
+    const url = res.url();
+    const method = res.request().method();
+
+    return (
+      method === 'GET' &&
+      url.includes('/api/v1/services/ingestionPipelines') &&
+      url.includes('pipelineStatuses') &&
+      url.includes('pipelineType=TestSuite')
+    );
+  });
+
+export const confirmIngestionPipelineHardDelete = async (page: Page) => {
+  const deleteResponse = page.waitForResponse(
+    '/api/v1/services/ingestionPipelines/*?hardDelete=true'
+  );
+  await page.getByTestId('confirm-button').click();
+  await deleteResponse;
+};
 
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
@@ -169,8 +259,12 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     .click();
   await responsePromise;
 
-  const { service, database, databaseSchema, displayName } =
-    table.entityResponseData;
+  const {
+    service,
+    database,
+    databaseSchema,
+    name: tableName,
+  } = table.entityResponseData;
 
   if (!service || !database || !databaseSchema) {
     throw new Error(
@@ -178,18 +272,28 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     );
   }
 
-  await expect(page.getByTestId('breadcrumb-link').nth(0)).toHaveText(
-    `${service.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(1)).toHaveText(
-    `${database.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(2)).toHaveText(
-    `${databaseSchema.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(3)).toHaveText(
-    `${displayName}/`
-  );
+  // The detail page renders a compact asset trail built from the table FQN
+  // (service > ... > table > test case): the middle crumbs (database and
+  // schema) are collapsed into the "..." menu and labels use entity names.
+  const breadcrumb = page.getByTestId('breadcrumb');
+
+  await expect(
+    breadcrumb.getByRole('link', { name: service.name })
+  ).toBeVisible();
+  await expect(breadcrumb.getByRole('link', { name: tableName })).toBeVisible();
+
+  await breadcrumb
+    .getByRole('button', { name: 'Show hidden breadcrumbs' })
+    .click();
+
+  await expect(
+    page.getByRole('menuitemradio', { name: database.name })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('menuitemradio', { name: databaseSchema.name })
+  ).toBeVisible();
+
+  await page.keyboard.press('Escape');
 
   const tableResponsePromise = page.waitForResponse(
     (res) =>
@@ -197,8 +301,17 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
       res.request().method() === 'GET' &&
       res.status() === 200
   );
-  await page.getByTestId('breadcrumb-link').nth(3).click();
+  await breadcrumb.getByRole('link', { name: tableName }).click();
   await tableResponsePromise;
+
+  // The crumb opens the table's default tab; return to the Data Quality
+  // tab the flow started from so follow-up steps find the test case list.
+  await page.getByTestId('profiler').click();
+  const testCaseResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testCases/search/list?*fields=*'
+  );
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+  await testCaseResponse;
 };
 
 export const findSystemTestDefinition = async (page: Page) => {
@@ -292,22 +405,34 @@ export const navigateToGlobalDataQuality = async (page: Page) => {
 /**
  * Perform complete export workflow for test cases
  * @param page - Playwright page object
- * @returns Download object from Playwright
+ * @returns Download-compatible object backed by the async CSV job result
  */
-export const performTestCaseExport = async (page: Page) => {
-  await expect(page.getByTestId('export-button')).toBeVisible();
-  await page.getByTestId('export-button').click();
-  await page.locator('#export-form').waitFor({
-    state: 'visible',
-  });
-  await expect(page.locator('#export-form')).toBeVisible();
-  await expect(page.locator('#submit-button')).not.toBeDisabled();
+export const performTestCaseExport = async (
+  page: Page,
+  fileName = `test-cases-${uuid()}`
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases/name/') &&
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
 
-  const downloadPromise = page.waitForEvent('download');
-  await page.locator('#submit-button').click();
-  const download = await downloadPromise;
+  try {
+    await expect(page.getByTestId('export-button')).toBeVisible();
+    await page.getByTestId('export-button').click();
 
-  return download;
+    const exportResponse = await exportResponsePromise;
+    expect(exportResponse.ok()).toBeTruthy();
+
+    const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+    const csvContent = await fetchCompletedCsvAsyncJobResult(apiContext, jobId);
+
+    return createCsvExportDownload(`${fileName}.csv`, csvContent);
+  } finally {
+    await afterAction();
+  }
 };
 
 /**
@@ -332,9 +457,7 @@ export const navigateToImportPage = async (
 export const uploadCSVFile = async (page: Page, filePath: string) => {
   await page.locator('[type="file"]').waitFor({ state: 'attached' });
   await page.setInputFiles('[type="file"]', filePath);
-  await page.getByTestId('upload-file-widget').waitFor({
-    state: 'hidden',
-  });
+  await startCsvPreviewAndWaitForGrid(page);
 };
 
 /**
@@ -609,7 +732,7 @@ export const performE2EExportImportFlow = async (
   await test.step('Export test case details to downloads folder', async () => {
     await visitDataQualityTab(page, table);
     await clickManageButton(page, 'table');
-    const download = await performTestCaseExport(page);
+    const download = await performTestCaseExport(page, table.entity.name);
 
     const filename = download.suggestedFilename();
     expect(filename).toContain('.csv');
@@ -628,6 +751,8 @@ export const performE2EExportImportFlow = async (
       .locator('[type="file"]')
       .setInputFiles(['downloads/' + exportedFile]);
 
+    await startCsvPreviewAndWaitForGrid(page);
+
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
@@ -644,8 +769,8 @@ export const performE2EExportImportFlow = async (
     await page.getByRole('button', { name: 'Next' }).click();
 
     await validateImportStatus(page, {
-      passed: '3',
-      processed: '6',
+      passed: '2',
+      processed: '5',
       failed: '3',
     });
 
@@ -702,7 +827,7 @@ export const performE2EExportImportFlow = async (
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
-      .locator('[aria-colindex="2"]');
+      .locator('[aria-colindex="3"]');
     await displayNameCell1.dblclick();
     await page.keyboard.type(' - Updated via Bulk Edit');
     await page.keyboard.press('Enter');
@@ -712,7 +837,7 @@ export const performE2EExportImportFlow = async (
     const displayNameCell2 = page
       .locator('.rdg-row')
       .nth(1)
-      .locator('[aria-colindex="2"]');
+      .locator('[aria-colindex="3"]');
     await displayNameCell2.dblclick();
     await page.keyboard.type(' - Bulk Edited');
     await page.keyboard.press('Enter');
@@ -722,16 +847,16 @@ export const performE2EExportImportFlow = async (
     await page
       .locator('.rdg-row')
       .nth(0)
-      .locator('[aria-colindex="1"]')
-      .click(); // Click Name column to ensure focus
+      .locator('[aria-colindex="2"]')
+      .click(); // Click Name column (colindex=2) to ensure focus
     await pressKeyXTimes(page, 9, 'ArrowRight'); // Navigate from Name (2) to Tags (11) = 9 presses
     await fillTagDetails(page, 'PII.Sensitive');
 
     await page.getByRole('button', { name: 'Next' }).click();
 
     await validateImportStatus(page, {
-      passed: '3',
-      processed: '3',
+      passed: '2',
+      processed: '2',
       failed: '0',
     });
 

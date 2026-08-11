@@ -11,6 +11,7 @@
 """
 StarRocks lineage module
 """
+
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.starrocks.queries import STARROCKS_SQL_STATEMENT
 from metadata.ingestion.source.database.starrocks.query_parser import (

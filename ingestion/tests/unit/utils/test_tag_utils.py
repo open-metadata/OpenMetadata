@@ -11,6 +11,7 @@
 """
 Test tag_utils module
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock
 
@@ -173,9 +174,7 @@ class TestTagUtils(TestCase):
             tag_name="   ",
             classification_name="test_class",
         )
-        self.assertIsNone(
-            result, "get_tag_label should return None for whitespace-only tag_name"
-        )
+        self.assertIsNone(result, "get_tag_label should return None for whitespace-only tag_name")
 
         # Test with None should also be handled gracefully
         result = get_tag_label(

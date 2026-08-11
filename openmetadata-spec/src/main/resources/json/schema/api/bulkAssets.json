@@ -9,6 +9,11 @@
     "assets": {
       "description": "List of assets to be created against which the glossary needs to be added.",
       "$ref": "../type/entityReferenceList.json"
+    },
+    "dryRun": {
+      "description": "If true, returns a preview of what would change without applying any modifications.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

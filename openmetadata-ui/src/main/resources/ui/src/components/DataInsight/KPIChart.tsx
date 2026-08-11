@@ -54,7 +54,7 @@ import {
 import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
+import { CustomTooltip, renderLegend } from '../../utils/DataInsightChartUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';

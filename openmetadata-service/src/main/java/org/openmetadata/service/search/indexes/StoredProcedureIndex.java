@@ -1,29 +1,36 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public record StoredProcedureIndex(StoredProcedure storedProcedure) implements SearchIndex {
+public record StoredProcedureIndex(StoredProcedure storedProcedure) implements DataAssetIndex {
 
   @Override
   public Object getEntity() {
     return storedProcedure;
   }
 
+  @Override
+  public String getEntityTypeName() {
+    return Entity.STORED_PROCEDURE;
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // "service" is stripped from the stored JSON (StoredProcedureRepository
+    // .getFieldsStrippedFromStorageJson) and re-derived from the parent schema, gated behind
+    // "service"/"databaseSchema"/"database" in setFieldsInBulk. Reindex fetches only the declared
+    // fields, so without this the ServiceBackedIndex mixin sees a null service and drops it from
+    // the search doc.
+    fields.add(Entity.FIELD_SERVICE);
+    return Set.copyOf(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(storedProcedure, Entity.STORED_PROCEDURE);
-    doc.putAll(commonAttributes);
-    ParseTags parseTags =
-        new ParseTags(Entity.getEntityTags(Entity.STORED_PROCEDURE, storedProcedure));
-    doc.put("tags", parseTags.getTags());
-    doc.put("upstreamLineage", SearchIndex.getLineageData(storedProcedure.getEntityReference()));
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("service", getEntityWithDisplayName(storedProcedure.getService()));
     doc.put("processedLineage", storedProcedure.getProcessedLineage());
     return doc;
   }

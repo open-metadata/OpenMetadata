@@ -1,5 +1,5 @@
 import textwrap
-from typing import List
+from typing import List  # noqa: UP035
 
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
@@ -40,15 +40,11 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
         self.database = catalog
         self.schema = runner.schema_name
 
-    def _get_metrics_from_queries(
-        self, ddls: List[QueryResult], operation: str
-    ) -> List[SystemProfile]:
-        return TypeAdapter(List[SystemProfile]).validate_python(
+    def _get_metrics_from_queries(self, ddls: List[QueryResult], operation: str) -> List[SystemProfile]:  # noqa: UP006
+        return TypeAdapter(List[SystemProfile]).validate_python(  # noqa: UP006
             [
                 {
-                    "timestamp": datetime_to_timestamp(
-                        ddl.start_time, milliseconds=True
-                    ),
+                    "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
                     "operation": operation,
                     "rowsAffected": ddl.rows,
                 }
@@ -56,7 +52,7 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             ]
         )
 
-    def get_inserts(self) -> List[SystemProfile]:
+    def get_inserts(self) -> List[SystemProfile]:  # noqa: UP006
         operations = ", ".join(
             [
                 f"'{DatabaseDMLOperations.WRITE.value}'",
@@ -77,11 +73,9 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             ),
             DatabaseDMLOperations.INSERT.value,
         )
-        return self._get_metrics_from_queries(
-            queries, DatabaseDMLOperations.INSERT.value
-        )
+        return self._get_metrics_from_queries(queries, DatabaseDMLOperations.INSERT.value)
 
-    def get_deletes(self) -> List[SystemProfile]:
+    def get_deletes(self) -> List[SystemProfile]:  # noqa: UP006
         operations = ", ".join(
             [
                 f"'{DatabaseDMLOperations.DELETE.value}'",
@@ -102,11 +96,9 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             ),
             DatabaseDMLOperations.DELETE.value,
         )
-        return self._get_metrics_from_queries(
-            queries, DatabaseDMLOperations.DELETE.value
-        )
+        return self._get_metrics_from_queries(queries, DatabaseDMLOperations.DELETE.value)
 
-    def get_updates(self) -> List[SystemProfile]:
+    def get_updates(self) -> List[SystemProfile]:  # noqa: UP006
         operations = ", ".join(
             [
                 f"'{DatabaseDMLOperations.UPDATE.value}'",
@@ -127,6 +119,4 @@ class DatabricksSystemMetricsComputer(SystemMetricsComputer, CacheProvider):
             ),
             DatabaseDMLOperations.UPDATE.value,
         )
-        return self._get_metrics_from_queries(
-            queries, DatabaseDMLOperations.UPDATE.value
-        )
+        return self._get_metrics_from_queries(queries, DatabaseDMLOperations.UPDATE.value)

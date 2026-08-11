@@ -22,6 +22,7 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
+import jakarta.json.JsonException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.ProcessingException;
@@ -47,10 +48,12 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     LOG.debug(ex.getMessage());
     if (ex instanceof RuleValidationException) {
       return getRuleViolationResponse(ex);
-    } else if (ex instanceof ProcessingException
-        || ex instanceof IllegalArgumentException
-        || ex instanceof BadRequestException) {
-      return getResponse(Response.status(Response.Status.BAD_REQUEST).build(), ex);
+    } else if (ex instanceof BadRequestException || ex instanceof IllegalArgumentException) {
+      return getResponse(BAD_REQUEST, ex.getMessage());
+    } else if (ex instanceof JsonException) {
+      return getResponse(BAD_REQUEST, ex.getMessage());
+    } else if (ex instanceof ProcessingException) {
+      return getResponse(BAD_REQUEST, "Invalid request parameter");
     } else if (ex instanceof UnableToExecuteStatementException) {
       if (ex.getCause() instanceof SQLIntegrityConstraintViolationException
           || ex.getCause() instanceof PSQLException
@@ -104,11 +107,14 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
   }
 
   public static Response getResponse(Response.Status status, String message) {
-    return Response.status(status)
-        .type(APPLICATION_JSON_TYPE)
-        .entity(new ErrorMessage(status.getStatusCode(), message))
-        .header("WWW-Authenticate", "om-auth")
-        .build();
+    Response.ResponseBuilder builder =
+        Response.status(status)
+            .type(APPLICATION_JSON_TYPE)
+            .entity(new ErrorMessage(status.getStatusCode(), message));
+    if (status == UNAUTHORIZED) {
+      builder.header("WWW-Authenticate", "om-auth");
+    }
+    return builder.build();
   }
 
   private Response getRuleViolationResponse(Throwable ex) {

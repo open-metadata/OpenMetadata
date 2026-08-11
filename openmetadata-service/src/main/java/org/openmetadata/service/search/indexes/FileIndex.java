@@ -1,15 +1,12 @@
 package org.openmetadata.service.search.indexes;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.data.File;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
 
-public class FileIndex implements SearchIndex {
+public class FileIndex implements DataAssetIndex {
   final Set<String> excludeFileFields = Set.of("changeDescription", "incrementalChangeDescription");
   final File file;
 
@@ -23,22 +20,31 @@ public class FileIndex implements SearchIndex {
   }
 
   @Override
+  public String getEntityTypeName() {
+    return Entity.FILE;
+  }
+
+  @Override
   public Set<String> getExcludedFields() {
     return excludeFileFields;
   }
 
-  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.FILE, file));
-    List<TagLabel> tags = new ArrayList<>(parseTags.getTags());
+  @Override
+  public Object getIndexServiceType() {
+    return file.getServiceType();
+  }
 
-    Map<String, Object> commonAttributes = getCommonAttributesMap(file, Entity.FILE);
-    doc.putAll(commonAttributes);
-    doc.put("tags", tags);
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("classificationTags", parseTags.getClassificationTags());
-    doc.put("glossaryTags", parseTags.getGlossaryTags());
-    doc.put("serviceType", file.getServiceType());
-    doc.put("service", getEntityWithDisplayName(file.getService()));
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // FileRepository.clearFields nulls columns when "columns" is absent from the field set.
+    // Without requesting it, file column-name search breaks after reindex — same pattern as
+    // WorksheetIndex.
+    fields.add("columns");
+    return Set.copyOf(fields);
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put("directory", getEntityWithDisplayName(file.getDirectory()));
     doc.put("fileType", file.getFileType());
     doc.put("mimeType", file.getMimeType());
@@ -51,7 +57,6 @@ public class FileIndex implements SearchIndex {
     doc.put("createdTime", file.getCreatedTime());
     doc.put("modifiedTime", file.getModifiedTime());
     doc.put("lastModifiedBy", getEntityWithDisplayName(file.getLastModifiedBy()));
-    doc.put("upstreamLineage", SearchIndex.getLineageData(file.getEntityReference()));
     return doc;
   }
 

@@ -8,19 +8,17 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Test airflow lineage operator and hook.
+Validate that the OpenMetadata Lineage Operator ingests a DAG run and its inlets/outlets.
 
-This test is coupled with the example DAG `lineage_tutorial_operator`.
-
-With the `docker compose up` setup, you can debug the progress
-by setting breakpoints in this file.
+The DAG, the Airflow connection and the OpenMetadata entities are all created here, so the
+suite depends on nothing beyond a reachable OpenMetadata server.
 """
+
 import time
-from typing import Optional
-from unittest import TestCase
+from datetime import datetime, timezone
 
+import pytest
 import requests
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -28,312 +26,201 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
-)
 from metadata.generated.schema.entity.data.pipeline import Pipeline, StatusType
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-    DatabaseServiceType,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-# These variables are just here to validate elements in the local deployment
-OM_HOST_PORT = "http://localhost:8585/api"
-OM_JWT = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-AIRFLOW_HOST = "http://localhost:8080"
-AIRFLOW_API_ROOT = f"{AIRFLOW_HOST}/api/v2/"
-AIRFLOW_USERNAME = "admin"
-AIRFLOW_PASSWORD = "admin"
-DEFAULT_OM_AIRFLOW_CONNECTION = "openmetadata_conn_id"
-OM_LINEAGE_DAG_NAME = "lineage_tutorial_operator"
+from ..integration_base import get_create_service  # noqa: TID252
+from .conftest import OM_CONNECTION_ID  # noqa: TID252
+
+DAG_ID = "lineage_tutorial_operator"
+DAG_DESCRIPTION = "A simple tutorial DAG"
 PIPELINE_SERVICE_NAME = "airflow_lineage_op_service"
 
+DB_SERVICE_NAME = "test-service-table-lineage"
+DATABASE_NAME = "test-db"
+SCHEMA_NAME = "test-schema"
+INLET_NAMES = ("lineage-test-inlet", "lineage-test-inlet2")
+OUTLET_NAME = "lineage-test-outlet"
+SCHEMA_FQN = f"{DB_SERVICE_NAME}.{DATABASE_NAME}.{SCHEMA_NAME}"
 
-def get_airflow_jwt_token() -> str:
-    """Get JWT token from Airflow 3.x auth endpoint"""
-    token_url = f"{AIRFLOW_HOST}/auth/token"
-    payload = {"username": AIRFLOW_USERNAME, "password": AIRFLOW_PASSWORD}
-    response = requests.post(token_url, json=payload, timeout=10)
-    if response.status_code in (200, 201):
-        return response.json().get("access_token")
-    raise RuntimeError(
-        f"Failed to get JWT token: {response.status_code} - {response.text}"
+DAG_SOURCE = f'''
+"""DAG owned by tests/integration/airflow/test_airflow_lineage.py."""
+from datetime import datetime, timedelta
+
+from airflow import DAG
+from airflow.providers.standard.operators.bash import BashOperator
+
+from airflow_provider_openmetadata.hooks.openmetadata import OpenMetadataHook
+from airflow_provider_openmetadata.lineage.operator import OpenMetadataLineageOperator
+
+with DAG(
+    "{DAG_ID}",
+    default_args={{"owner": "openmetadata", "retries": 0, "retry_delay": timedelta(seconds=5)}},
+    description="{DAG_DESCRIPTION}",
+    schedule=None,
+    is_paused_upon_creation=True,
+    start_date=datetime(2021, 1, 1),
+    catchup=False,
+) as dag:
+    print_date = BashOperator(
+        task_id="print_date",
+        bash_command="date",
+        outlets=[{{"tables": ["{SCHEMA_FQN}.{OUTLET_NAME}"]}}],
     )
 
+    sleep = BashOperator(
+        task_id="sleep",
+        bash_command="sleep 1",
+        inlets=[{{"tables": ["{SCHEMA_FQN}.{INLET_NAMES[0]}", "{SCHEMA_FQN}.{INLET_NAMES[1]}"]}}],
+    )
 
-def get_airflow_headers() -> dict:
-    """Get authentication headers for Airflow 3.x API requests"""
-    jwt_token = get_airflow_jwt_token()
-    return {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {jwt_token}",
-    }
+    templated = BashOperator(
+        task_id="templated",
+        bash_command='echo "{{{{ ds }}}}"',
+    )
+
+    lineage_op = OpenMetadataLineageOperator(
+        task_id="lineage_op",
+        server_config=OpenMetadataHook("{OM_CONNECTION_ID}").get_conn(),
+        service_name="{PIPELINE_SERVICE_NAME}",
+        only_keep_dag_lineage=True,
+    )
+
+    print_date >> [sleep, templated] >> lineage_op
+'''
 
 
-def get_task_status_type_by_name(pipeline: Pipeline, name: str) -> Optional[StatusType]:
-    """
-    Given a pipeline, get its status by name
-    """
+def _task_status(pipeline: Pipeline, name: str):
     return next(
-        (
-            status.executionStatus
-            for status in pipeline.pipelineStatus.taskStatus
-            if status.name == name
-        ),
+        (status.executionStatus for status in pipeline.pipelineStatus.taskStatus if status.name == name),
         None,
     )
 
 
-class AirflowLineageTest(TestCase):
-    """
-    This test will trigger an Airflow DAG and validate that the
-    OpenMetadata Lineage Operator can properly handle the
-    metadata ingestion and processes inlets and outlets.
-    """
-
-    server_config = OpenMetadataConnection(
-        hostPort=OM_HOST_PORT,
-        authProvider="openmetadata",
-        securityConfig=OpenMetadataJWTClientConfig(jwtToken=OM_JWT),
+@pytest.fixture(scope="module")
+def om_entities(metadata):
+    """The database service, schema and tables the DAG declares as inlets and outlets."""
+    service = metadata.create_or_update(data=get_create_service(entity=DatabaseService, name=DB_SERVICE_NAME))
+    database = metadata.create_or_update(
+        data=CreateDatabaseRequest(name=DATABASE_NAME, service=service.fullyQualifiedName)
     )
-    metadata = OpenMetadata(server_config)
-
-    assert metadata.health_check()
-
-    service = CreateDatabaseServiceRequest(
-        name="test-service-table-lineage",
-        serviceType=DatabaseServiceType.Mysql,
-        connection=DatabaseConnection(
-            config=MysqlConnection(
-                username="username",
-                authType=BasicAuth(password="password"),
-                hostPort="http://localhost:1234",
-            )
-        ),
+    db_schema = metadata.create_or_update(
+        data=CreateDatabaseSchemaRequest(name=SCHEMA_NAME, database=database.fullyQualifiedName)
     )
-    service_type = "databaseService"
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients: Table Entity + DAG
-        """
-
-        service_entity = cls.metadata.create_or_update(data=cls.service)
-
-        create_db = CreateDatabaseRequest(
-            name="test-db",
-            service=service_entity.fullyQualifiedName,
-        )
-
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
-
-        create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema",
-            database=create_db_entity.fullyQualifiedName,
-        )
-
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        create_inlet = CreateTableRequest(
-            name="lineage-test-inlet",
-            databaseSchema=create_schema_entity.fullyQualifiedName,
-            columns=[Column(name="id", dataType=DataType.BIGINT)],
-        )
-
-        create_inlet_2 = CreateTableRequest(
-            name="lineage-test-inlet2",
-            databaseSchema=create_schema_entity.fullyQualifiedName,
-            columns=[Column(name="id", dataType=DataType.BIGINT)],
-        )
-
-        create_outlet = CreateTableRequest(
-            name="lineage-test-outlet",
-            databaseSchema=create_schema_entity.fullyQualifiedName,
-            columns=[Column(name="id", dataType=DataType.BIGINT)],
-        )
-
-        cls.metadata.create_or_update(data=create_inlet)
-        cls.metadata.create_or_update(data=create_inlet_2)
-        cls.table_outlet = cls.metadata.create_or_update(data=create_outlet)
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """
-        Clean up
-        """
-
-        db_service = cls.metadata.get_by_name(
-            entity=DatabaseService, fqn="test-service-table-lineage"
-        )
-        if db_service:
-            service_id = str(db_service.id.root)
-            cls.metadata.delete(
-                entity=DatabaseService,
-                entity_id=service_id,
-                recursive=True,
-                hard_delete=True,
+    tables = {}
+    for table_name in (*INLET_NAMES, OUTLET_NAME):
+        tables[table_name] = metadata.create_or_update(
+            data=CreateTableRequest(
+                name=table_name,
+                databaseSchema=db_schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.BIGINT)],
             )
-
-        # Service ID created from the Airflow Lineage Operator in the
-        # example DAG
-        pipeline_service = cls.metadata.get_by_name(
-            entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-        )
-        if pipeline_service:
-            pipeline_service_id = str(pipeline_service.id.root)
-            cls.metadata.delete(
-                entity=PipelineService,
-                entity_id=pipeline_service_id,
-                recursive=True,
-                hard_delete=True,
-            )
-
-    def test_dag_runs(self) -> None:
-        """
-        Trigger the Airflow DAG and wait until it runs.
-
-        Note that the DAG definition is in examples/airflow_lineage_operator.py
-        and it is expected to fail. This will allow us to validate
-        the task status afterward.
-        """
-
-        headers = get_airflow_headers()
-
-        # 1. Validate that the OpenMetadata connection exists
-        res = requests.get(
-            AIRFLOW_API_ROOT + f"connections/{DEFAULT_OM_AIRFLOW_CONNECTION}",
-            headers=headers,
-        )
-        if res.status_code != 200:
-            raise RuntimeError(
-                f"Could not fetch {DEFAULT_OM_AIRFLOW_CONNECTION} connection: {res.status_code} - {res.text}"
-            )
-
-        # 2. Enable the DAG
-        res = requests.patch(
-            AIRFLOW_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}",
-            json={"is_paused": False},
-            headers=headers,
-        )
-        if res.status_code != 200:
-            raise RuntimeError(
-                f"Could not enable {OM_LINEAGE_DAG_NAME} DAG: {res.status_code} - {res.text}"
-            )
-
-        # 3. Trigger the DAG (Airflow 3.x requires logical_date)
-        from datetime import datetime, timezone
-
-        res = requests.post(
-            AIRFLOW_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}/dagRuns",
-            json={"logical_date": datetime.now(timezone.utc).isoformat()},
-            headers=headers,
-        )
-        if res.status_code != 200:
-            raise RuntimeError(
-                f"Could not trigger {OM_LINEAGE_DAG_NAME} DAG: {res.status_code} - {res.text}"
-            )
-        dag_run_id = res.json()["dag_run_id"]
-
-        # 4. Wait until the DAG is flagged as `successful` or `failed`
-        state = "queued"
-        tries = 0
-        max_tries = 12  # 60 seconds total (12 * 5 seconds)
-        while state not in ("success", "failed") and tries < max_tries:
-            tries += 1
-            time.sleep(5)
-
-            res = requests.get(
-                AIRFLOW_API_ROOT + f"dags/{OM_LINEAGE_DAG_NAME}/dagRuns/{dag_run_id}",
-                headers=headers,
-            )
-            dag_run_data = res.json()
-            state = dag_run_data.get("state")
-            print(f"Try {tries}/{max_tries}: DAG state = {state}")
-
-        if state not in ("success", "failed"):
-            raise RuntimeError(
-                f"DAG {OM_LINEAGE_DAG_NAME} has not finished on time. Last state: {state}"
-            )
-
-    def test_pipeline_created(self) -> None:
-        """
-        Validate that the pipeline has been created
-        """
-        pipeline_service: PipelineService = self.metadata.get_by_name(
-            entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-        )
-        self.assertIsNotNone(pipeline_service)
-
-        pipeline: Pipeline = self.metadata.get_by_name(
-            entity=Pipeline,
-            fqn=f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
-            fields=["tasks", "pipelineStatus"],
-        )
-        self.assertIsNotNone(pipeline)
-
-        expected_task_names = set((task.name for task in pipeline.tasks))
-        self.assertEqual(
-            expected_task_names, {"print_date", "sleep", "templated", "lineage_op"}
         )
 
-        self.assertEqual(pipeline.description.root, "A simple tutorial DAG")
+    yield tables
 
-        # Validate status
-        self.assertIsNotNone(
-            pipeline.pipelineStatus, "Pipeline status should be collected via REST API"
-        )
-        self.assertEqual(
-            get_task_status_type_by_name(pipeline, "print_date"), StatusType.Successful
-        )
-        self.assertEqual(
-            get_task_status_type_by_name(pipeline, "sleep"), StatusType.Successful
-        )
-        self.assertEqual(
-            get_task_status_type_by_name(pipeline, "templated"), StatusType.Successful
+    metadata.delete(entity=DatabaseService, entity_id=service.id, recursive=True, hard_delete=True)
+    pipeline_service = metadata.get_by_name(entity=PipelineService, fqn=PIPELINE_SERVICE_NAME)
+    if pipeline_service:
+        metadata.delete(
+            entity=PipelineService,
+            entity_id=pipeline_service.id,
+            recursive=True,
+            hard_delete=True,
         )
 
-    def test_pipeline_lineage(self) -> None:
-        """
-        Validate that the pipeline has proper lineage
-        """
-        root_name = "test-service-table-lineage.test-db.test-schema"
 
-        # Check that both inlets have the same outlet
-        for inlet_table in [
-            f"{root_name}.lineage-test-inlet",
-            f"{root_name}.lineage-test-inlet2",
-        ]:
-            lineage = self.metadata.get_lineage_by_name(
-                entity=Table,
-                fqn=inlet_table,
-            )
-            node_names = set((node["name"] for node in lineage.get("nodes") or []))
-            self.assertEqual(node_names, {"lineage-test-outlet"})
-            self.assertEqual(len(lineage.get("downstreamEdges")), 1)
-            self.assertEqual(
-                lineage["downstreamEdges"][0]["toEntity"],
-                str(self.table_outlet.id.root),
-            )
-            self.assertEqual(
-                lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"][
-                    "fullyQualifiedName"
-                ],
-                f"{PIPELINE_SERVICE_NAME}.{OM_LINEAGE_DAG_NAME}",
-            )
+@pytest.fixture(scope="module")
+def registered_dag(airflow_container, airflow_dag_dir, airflow_api, airflow_headers, om_entities):
+    """DAG_ID, once the dag-processor has picked the file up."""
+    dag_file = airflow_dag_dir / f"{DAG_ID}.py"
+    dag_file.write_text(DAG_SOURCE)
+    dag_file.chmod(0o644)
+
+    deadline = time.monotonic() + 180
+    while time.monotonic() < deadline:
+        response = requests.get(f"{airflow_api}/dags/{DAG_ID}", headers=airflow_headers, timeout=30)
+        if response.status_code == 200:
+            return DAG_ID
+        time.sleep(5)
+
+    errors = requests.get(f"{airflow_api}/importErrors", headers=airflow_headers, timeout=30)
+    # An empty importErrors list means the processor never read the file at all, so show
+    # it what it can actually see in the mount.
+    listing = airflow_container.exec("ls -la /opt/airflow/dags")
+    raise TimeoutError(
+        f"{DAG_ID} never registered.\nImport errors: {errors.text}\n"
+        f"Container view of /opt/airflow/dags:\n{listing.output.decode(errors='replace')}"
+    )
+
+
+@pytest.fixture(scope="module")
+def dag_run(airflow_api, airflow_headers, registered_dag):
+    """A finished run of the lineage DAG."""
+    unpause = requests.patch(
+        f"{airflow_api}/dags/{registered_dag}",
+        json={"is_paused": False},
+        headers=airflow_headers,
+        timeout=30,
+    )
+    assert unpause.status_code == 200, f"Could not unpause {registered_dag}: {unpause.text}"
+
+    triggered = requests.post(
+        f"{airflow_api}/dags/{registered_dag}/dagRuns",
+        json={"logical_date": datetime.now(timezone.utc).isoformat()},
+        headers=airflow_headers,
+        timeout=30,
+    )
+    assert triggered.status_code in (200, 201), f"Could not trigger {registered_dag}: {triggered.text}"
+    run_id = triggered.json()["dag_run_id"]
+
+    deadline = time.monotonic() + 300
+    state = "queued"
+    while state not in ("success", "failed") and time.monotonic() < deadline:
+        time.sleep(5)
+        response = requests.get(
+            f"{airflow_api}/dags/{registered_dag}/dagRuns/{run_id}",
+            headers=airflow_headers,
+            timeout=30,
+        )
+        state = response.json().get("state")
+
+    assert state in ("success", "failed"), f"{registered_dag} did not finish in time. Last state: {state}"
+
+    return run_id
+
+
+def test_pipeline_created(metadata, dag_run):
+    assert metadata.get_by_name(entity=PipelineService, fqn=PIPELINE_SERVICE_NAME) is not None
+
+    pipeline = metadata.get_by_name(
+        entity=Pipeline,
+        fqn=f"{PIPELINE_SERVICE_NAME}.{DAG_ID}",
+        fields=["tasks", "pipelineStatus"],
+    )
+
+    assert pipeline is not None
+    assert {task.name for task in pipeline.tasks} == {"print_date", "sleep", "templated", "lineage_op"}
+    assert pipeline.description.root == DAG_DESCRIPTION
+    assert pipeline.pipelineStatus is not None, "Pipeline status should be collected via REST API"
+    assert _task_status(pipeline, "print_date") == StatusType.Successful
+    assert _task_status(pipeline, "sleep") == StatusType.Successful
+    assert _task_status(pipeline, "templated") == StatusType.Successful
+
+
+def test_pipeline_lineage(metadata, om_entities, dag_run):
+    outlet_id = str(om_entities[OUTLET_NAME].id.root)
+
+    for inlet_name in INLET_NAMES:
+        lineage = metadata.get_lineage_by_name(entity=Table, fqn=f"{SCHEMA_FQN}.{inlet_name}")
+
+        assert {node["name"] for node in lineage.get("nodes") or []} == {OUTLET_NAME}
+        assert len(lineage.get("downstreamEdges")) == 1
+        assert lineage["downstreamEdges"][0]["toEntity"] == outlet_id
+        assert (
+            lineage["downstreamEdges"][0]["lineageDetails"]["pipeline"]["fullyQualifiedName"]
+            == f"{PIPELINE_SERVICE_NAME}.{DAG_ID}"
+        )

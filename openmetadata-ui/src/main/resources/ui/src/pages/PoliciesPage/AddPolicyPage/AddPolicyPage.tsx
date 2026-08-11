@@ -31,8 +31,7 @@ import {
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
-import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getIsErrorMatch } from '../../../utils/APIUtils';
 import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
@@ -200,11 +199,7 @@ const AddPolicyPage = () => {
                 entity: t('label.policy'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>
-              {t('message.add-policy-message', {
-                brandName: brandClassBase.getPageTitle(),
-              })}
-            </Typography.Text>
+            <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
           </>
         ),
         className: 'content-resizable-panel-container',

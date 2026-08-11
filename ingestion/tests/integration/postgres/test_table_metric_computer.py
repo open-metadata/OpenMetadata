@@ -38,14 +38,14 @@ class Base(DeclarativeBase):
 
 class MetricComputerTestTable(Base):
     __tablename__ = "metric_computer_test"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "public"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
 
 
 class NonExistentModel(Base):
     __tablename__ = "nonexistent_table_xyz"
-    __table_args__ = {"schema": "public"}
+    __table_args__ = {"schema": "public"}  # noqa: RUF012
     id = Column(Integer, primary_key=True)
 
 
@@ -54,10 +54,7 @@ def pg_engine(postgres_container):  # noqa: F811
     engine = create_engine(postgres_container.get_connection_url())
     with engine.connect() as conn:
         conn.execute(
-            text(
-                "CREATE TABLE IF NOT EXISTS public.metric_computer_test "
-                "(id INTEGER PRIMARY KEY, name VARCHAR(256))"
-            )
+            text("CREATE TABLE IF NOT EXISTS public.metric_computer_test (id INTEGER PRIMARY KEY, name VARCHAR(256))")
         )
         conn.execute(
             text(

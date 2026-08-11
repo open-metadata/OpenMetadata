@@ -26,7 +26,7 @@ import {
 } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
-const user = new UserClass();
+let user: UserClass;
 const admin = new AdminClass();
 
 // Create 2 page and authenticate 1 with admin and another with normal user
@@ -48,6 +48,7 @@ const test = base.extend<{ adminPage: Page; userPage: Page }>({
 // Create new user with admin login
 base.beforeAll(async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
+  user = new UserClass();
   await user.create(apiContext);
   await afterAction();
 });
@@ -98,7 +99,7 @@ test.describe('Profiler Configuration Page', () => {
 
       await expect(
         adminPage.locator('#metricConfiguration_0_dataType_help')
-      ).toHaveText('Data Type is required.');
+      ).toHaveText(/Data Type is required/);
 
       await adminPage.click('[data-testid="cancel-button"]');
       await adminPage.waitForURL('**/settings/preferences');
@@ -173,7 +174,7 @@ test.describe('Profiler Configuration Page', () => {
 
       await toastNotification(
         adminPage,
-        /Profiler Configuration updated successfully./
+        /Profiler Configuration updated successfully/
       );
     });
 
@@ -317,7 +318,7 @@ test.describe('Profiler Configuration Page', () => {
 
       await toastNotification(
         adminPage,
-        /Profiler Configuration updated successfully./
+        /Profiler Configuration updated successfully/
       );
     });
   });

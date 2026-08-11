@@ -54,6 +54,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
+
   public DashboardDataModelRepository() {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
@@ -61,8 +63,13 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         DashboardDataModel.class,
         Entity.getCollectionDAO().dashboardDataModelDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
@@ -160,6 +167,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public void storeEntities(List<DashboardDataModel> entities) {
     storeMany(entities);
+  }
+
+  @Override
+  protected List<Column> getColumnsForExtensionPersistence(DashboardDataModel entity) {
+    return entity.getColumns();
   }
 
   @Override
@@ -400,6 +412,21 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     String after = toIndex < total ? String.valueOf(toIndex) : null;
 
     return new ResultList<>(paginatedColumns, before, after, total);
+  }
+
+  public Column enrichSingleColumnFields(
+      DashboardDataModel dataModel, Column column, String fieldsParam) {
+    if (fieldsParam == null) {
+      return column;
+    }
+    List<Column> singleton = new ArrayList<>(List.of(column));
+    if (fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
+    }
+    if (fieldsParam.contains("extension")) {
+      column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
+    }
+    return column;
   }
 
   public ResultList<Column> searchDataModelColumnsById(

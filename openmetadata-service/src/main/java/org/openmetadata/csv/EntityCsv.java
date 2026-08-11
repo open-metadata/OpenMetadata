@@ -63,6 +63,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
@@ -127,6 +128,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_SKIPPED = "skipped";
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
+  private static final String NAME_PATTERN_VALIDATION_PREFIX = "name must match ";
+  private static final String EMAIL_FORMAT_VALIDATION = "email must be a well-formed email address";
 
   // Additional fields for export/import with multiple entity types
   public static final String FIELD_ENTITY_TYPE = "entityType";
@@ -142,6 +145,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
   protected final String importedBy;
   protected int recordIndex = 0;
+  protected String rowEntityType = null;
+  private final Set<Long> countedFailureRecords = new HashSet<>();
 
   // Queue for batching entity creates/updates - processed after each batch of CSV records
   protected final List<PendingEntityOperation> pendingEntityOperations = new ArrayList<>();
@@ -224,7 +229,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (!validateHeaders(records.get(recordIndex++))) {
       return importResult;
     }
-    importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
 
     int totalRows = records.size() - 1; // Exclude header row
     int batchNumber = 0;
@@ -232,11 +236,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     // Validate and load each record with batch progress tracking
     while (recordIndex < records.size()) {
+      if (callback != null) {
+        callback.checkpoint();
+      }
       processRecord(resultsPrinter, records);
       rowsInBatch++;
 
       // Send progress notification after each batch
       if (rowsInBatch >= DEFAULT_BATCH_SIZE || recordIndex >= records.size()) {
+        if (callback != null) {
+          callback.checkpoint();
+        }
         // Flush pending entity operations using batch DB operations
         flushPendingEntityOperations();
         // Flush any pending batched updates (e.g., column updates for tables)
@@ -293,6 +303,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     int batchNumber = 0;
 
     for (T entity : entities) {
+      if (callback != null) {
+        callback.checkpoint();
+      }
       addRecord(csvFile, entity);
       exported++;
 
@@ -315,7 +328,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     String path =
         String.format(
-            ".*json/data/%s/%sCsvDocumentation.json$", effectiveEntityType, effectiveEntityType);
+            ".*json/data/%s/%sCsvDocumentation\\.json$",
+            Pattern.quote(effectiveEntityType), Pattern.quote(effectiveEntityType));
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
       if (jsonDataFiles.isEmpty()) {
@@ -410,6 +424,53 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs;
   }
 
+  /**
+   * An empty domain column clears direct domains (unchanged behavior) but must not wipe the
+   * entity's inherited domains: they are never exported to the CSV, and rules such as "Data Product
+   * Domain Validation" need them to evaluate the entity's effective domain. So on an empty column
+   * only the inherited references from the already-loaded entity are carried over; they are dropped
+   * again after rule evaluation (see {@link #dropInheritedDomains}), so they are never persisted as
+   * a direct domain.
+   */
+  public List<EntityReference> getDomains(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      List<EntityReference> existingDomains) {
+    List<EntityReference> result = null;
+    if (processRecord) {
+      List<EntityReference> parsedFromCsv = getDomains(printer, csvRecord, fieldNumber);
+      result = parsedFromCsv;
+      if (parsedFromCsv == null) {
+        List<EntityReference> inheritedDomains =
+            listOrEmpty(existingDomains).stream()
+                .filter(domain -> Boolean.TRUE.equals(domain.getInherited()))
+                .toList();
+        result = inheritedDomains.isEmpty() ? null : inheritedDomains;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Inherited domains are supplied to an updated entity only so platform rules evaluate against its
+   * effective domain. The import persistence path stores whatever domains the entity carries as
+   * direct relationships, so the inherited ones must be removed once the rules have run; the entity
+   * keeps re-inheriting from its parent on read.
+   */
+  private void dropInheritedDomains(EntityInterface entity) {
+    List<EntityReference> domains = entity.getDomains();
+    if (!nullOrEmpty(domains)) {
+      List<EntityReference> directDomains = new ArrayList<>();
+      for (EntityReference domain : domains) {
+        if (!Boolean.TRUE.equals(domain.getInherited())) {
+          directDomains.add(domain);
+        }
+      }
+      entity.setDomains(directDomains.isEmpty() ? null : directDomains);
+    }
+  }
+
   /** Owner field is in entityName format */
   public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
     if (!processRecord) {
@@ -456,17 +517,25 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return entity;
   }
 
+  protected EntityReference getEntityReferenceByName(String entityType, String fqn) {
+    EntityInterface entity =
+        entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
+    return entity != null
+        ? entity.getEntityReference()
+        : Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+  }
+
   protected final EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn) {
     if (nullOrEmpty(fqn)) {
       return null;
     }
-    EntityInterface entity = getEntityByName(entityType, fqn);
-    if (entity == null) {
+    try {
+      return getEntityReferenceByName(entityType, fqn);
+    } catch (EntityNotFoundException ex) {
       deferredFailure(csvRecord, entityNotFound(fieldNumber, entityType, fqn));
       return null;
     }
-    return entity.getEntityReference();
   }
 
   protected final List<EntityReference> getEntityReferences(
@@ -605,9 +674,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       String key = extensions.substring(0, separatorIndex);
       String value = extensions.substring(separatorIndex + 1);
 
-      if (key.isEmpty() || value.isEmpty()) {
+      if (key.isEmpty()) {
         deferredFailure(csvRecord, invalidExtension(fieldNumber, key, value));
         return null;
+      }
+      if (value.isEmpty()) {
+        continue;
       }
       extensionMap.put(key, value);
     }
@@ -616,20 +688,26 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return extensionMap;
   }
 
+  private String currentEntityType() {
+    return rowEntityType != null ? rowEntityType : entityType;
+  }
+
   private void validateExtension(
       CSVPrinter printer, int fieldNumber, CSVRecord csvRecord, Map<String, Object> extensionMap)
       throws IOException {
+    String effectiveEntityType = currentEntityType();
     for (Map.Entry<String, Object> entry : extensionMap.entrySet()) {
       String fieldName = entry.getKey();
       Object fieldValue = entry.getValue();
 
-      Schema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
+      Schema jsonSchema = TypeRegistry.instance().getSchema(effectiveEntityType, fieldName);
       if (jsonSchema == null) {
         deferredFailure(csvRecord, invalidCustomPropertyKey(fieldNumber, fieldName));
         return;
       }
-      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
-      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
+      String customPropertyType =
+          TypeRegistry.getCustomPropertyType(effectiveEntityType, fieldName);
+      String propertyConfig = TypeRegistry.getCustomPropertyConfig(effectiveEntityType, fieldName);
 
       switch (customPropertyType) {
         case "entityReference", "entityReferenceList" -> {
@@ -976,10 +1054,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   private boolean validateHeaders(CSVRecord csvRecord) {
-    importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
     if (expectedHeaders.equals(csvRecord.toList())) {
       return true;
     }
+    importResult.withNumberOfRowsProcessed(1);
     importResult.withNumberOfRowsFailed(1);
     documentFailure(invalidHeader(recordToString(expectedHeaders), recordToString(csvRecord)));
     return false;
@@ -1050,6 +1128,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         if (isUpdate) {
@@ -1086,7 +1165,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } catch (Exception ex) {
       pendingCsvResults.put(csvRecord, ex.getMessage());
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
       importResult.setStatus(ApiStatus.FAILURE);
       return;
@@ -1094,7 +1173,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     if (Response.Status.CREATED.equals(responseStatus)) {
       pendingCsvResults.put(csvRecord, ENTITY_CREATED);
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       // For dry run, count as passed immediately since no batch operations occur
       // For actual import, will be counted after successful batch operations
       if (Boolean.TRUE.equals(importResult.getDryRun())) {
@@ -1102,7 +1181,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else {
       pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       // For dry run, count as passed immediately since no batch operations occur
       // For actual import, will be counted after successful batch operations
       if (Boolean.TRUE.equals(importResult.getDryRun())) {
@@ -1143,6 +1222,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         if (isUpdate) {
@@ -1176,7 +1256,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } catch (Exception ex) {
       pendingCsvResults.put(csvRecord, ex.getMessage());
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
       importResult.setStatus(ApiStatus.FAILURE);
       return;
@@ -1184,7 +1264,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     if (Response.Status.CREATED.equals(responseStatus)) {
       pendingCsvResults.put(csvRecord, ENTITY_CREATED);
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       // For dry run, count as passed immediately since no batch operations occur
       // For actual import, will be counted after successful batch operations
       if (Boolean.TRUE.equals(importResult.getDryRun())) {
@@ -1192,7 +1272,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     } else {
       pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       // For dry run, count as passed immediately since no batch operations occur
       // For actual import, will be counted after successful batch operations
       if (Boolean.TRUE.equals(importResult.getDryRun())) {
@@ -1473,10 +1553,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     String userNameEmailViolation = "";
 
-    if (violations == null || violations.isEmpty()) {
-      userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
-    } else if (!violations.contains("name must match \"^((?!::).)*$\"")
-        && !violations.contains("email must be a well-formed email address")) {
+    if (shouldValidateUserNameWithEmailPrefix(violationList)) {
       userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
     }
 
@@ -1502,7 +1579,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             .submit(() -> createChangeEventForUserAndUpdateInES(response, importedBy));
       } catch (Exception ex) {
         pendingCsvResults.put(csvRecord, ex.getMessage());
-        importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+        importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
         importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
         importResult.setStatus(ApiStatus.FAILURE);
         return;
@@ -1521,6 +1598,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
     }
+  }
+
+  private static boolean shouldValidateUserNameWithEmailPrefix(List<String> violationList) {
+    return violationList.stream()
+        .noneMatch(
+            violation ->
+                violation.startsWith(NAME_PATTERN_VALIDATION_PREFIX)
+                    || EMAIL_FORMAT_VALIDATION.equals(violation));
   }
 
   protected void createSchemaEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
@@ -1554,7 +1639,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       schema =
           Entity.getEntityByNameWithExcludedFields(
-              DATABASE_SCHEMA, schemaFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+              DATABASE_SCHEMA, schemaFqn, "owners,tags,extension", Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
       schema =
@@ -1586,7 +1671,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, schema.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1648,7 +1733,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         table =
             Entity.getEntityByNameWithExcludedFields(
-                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+                TABLE, tableFqn, "owners,tags,extension", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Simulate a table for validation without persisting it
         table =
@@ -1702,7 +1787,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, table.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1769,7 +1854,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             Entity.getEntityByName(
                 STORED_PROCEDURE,
                 entityFQN,
-                "name,displayName,fullyQualifiedName",
+                "name,displayName,fullyQualifiedName,domains",
                 Include.NON_DELETED);
       } catch (Exception ex) {
         // Simulate a stored procedure for validation without persisting it
@@ -1788,7 +1873,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             getEntityWithDependencyResolution(
                 STORED_PROCEDURE,
                 entityFQN,
-                "name,displayName,fullyQualifiedName",
+                "name,displayName,fullyQualifiedName,domains",
                 Include.NON_DELETED);
       } catch (Exception ex) {
         LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
@@ -1830,7 +1915,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withTags(tagLabels)
         .withCertification(certification)
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, sp.getDomains()))
         .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 11));
 
@@ -1858,7 +1943,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         // Count this row as processed and passed - it will be persisted with the table
         if (processRecord) {
           pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
-          importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+          importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
           importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
         }
         return;
@@ -1963,7 +2048,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       tableContext.csvRecords.add(csvRecord);
       // Queue result for later - actual success/failure determined after batch patch
       pendingCsvResults.put(csvRecord, ENTITY_UPDATED);
-      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
+      importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
       importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
   }
@@ -2264,15 +2349,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
     recordList.addAll(inputRecord.toList());
     printer.printRecord(recordList);
-    importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+    importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber() - 1);
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
   }
 
   /** Helper method for deferred error handling to maintain CSV record ordering */
   private void deferredFailure(CSVRecord csvRecord, String errorMessage) {
     pendingCsvResults.put(csvRecord, errorMessage);
-    importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber());
-    importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+    importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
+    if (countedFailureRecords.add(csvRecord.getRecordNumber())) {
+      importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+    }
     importResult.setStatus(ApiStatus.FAILURE);
     processRecord = false;
   }
@@ -2282,8 +2369,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> recordList = listOf(IMPORT_FAILED, failedReason);
     recordList.addAll(inputRecord.toList());
     printer.printRecord(recordList);
-    importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
-    importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+    importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber() - 1);
+    if (countedFailureRecords.add(inputRecord.getRecordNumber())) {
+      importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+    }
     processRecord = false;
   }
 
@@ -2319,7 +2408,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     if (!validateHeaders(records.get(recordIndex++))) {
       return importResult;
     }
-    importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
 
     int totalRows = records.size() - 1; // Exclude header row
     int batchNumber = 0;

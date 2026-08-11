@@ -12,6 +12,7 @@
 """
 Data quality utility for the metadata CLI
 """
+
 import sys
 import traceback
 from pathlib import Path
@@ -40,15 +41,11 @@ def run_test(config_path: Path) -> None:
         from metadata.workflow.data_quality import TestSuiteWorkflow
 
         workflow_config_dict = load_config_file(config_path)
-        logger.debug(
-            "Using workflow config:\n%s", redacted_config(workflow_config_dict)
-        )
+        logger.debug("Using workflow config:\n%s", redacted_config(workflow_config_dict))
         workflow = TestSuiteWorkflow.create(workflow_config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        WorkflowInitErrorHandler.print_init_error(
-            exc, workflow_config_dict, PipelineType.TestSuite
-        )
+        WorkflowInitErrorHandler.print_init_error(exc, workflow_config_dict, PipelineType.TestSuite)
         sys.exit(1)
 
     execute_workflow(workflow=workflow, config_dict=workflow_config_dict)

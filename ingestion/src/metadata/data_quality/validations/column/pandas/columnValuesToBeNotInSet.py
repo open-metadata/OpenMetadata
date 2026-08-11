@@ -15,7 +15,7 @@ Validator for column value to be not in set test case
 
 from ast import literal_eval
 from collections import defaultdict
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -56,9 +56,7 @@ class ColumnValuesToBeNotInSetValidator(
 ):
     """Validator for column value to be not in set test case"""
 
-    def _run_results(
-        self, metric: Metrics, column: SQALikeColumn, **kwargs
-    ) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn, **kwargs) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -74,7 +72,7 @@ class ColumnValuesToBeNotInSetValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -99,14 +97,12 @@ class ColumnValuesToBeNotInSetValidator(
         dimension_results = []
 
         try:
-            forbidden_values = test_params[
-                BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES
-            ]
+            forbidden_values = test_params[BaseColumnValuesToBeNotInSetValidator.FORBIDDEN_VALUES]
 
             dfs = self.runner
-            count_in_set_impl = add_props(values=forbidden_values)(
-                Metrics.countInSet.value
-            )(column).get_pandas_computation()
+            count_in_set_impl = add_props(values=forbidden_values)(Metrics.countInSet.value)(
+                column
+            ).get_pandas_computation()
             row_count_impl = Metrics.rowCount().get_pandas_computation()
 
             dimension_aggregates = defaultdict(
@@ -117,33 +113,27 @@ class ColumnValuesToBeNotInSetValidator(
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.countInSet.name
-                    ] = count_in_set_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.countInSet.name],
-                        group_df,
+                    dimension_aggregates[dimension_value][Metrics.countInSet.name] = (
+                        count_in_set_impl.update_accumulator(
+                            dimension_aggregates[dimension_value][Metrics.countInSet.name],
+                            group_df,
+                        )
                     )
-                    dimension_aggregates[dimension_value][
-                        Metrics.rowCount.name
-                    ] = row_count_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.rowCount.name] = row_count_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.rowCount.name],
                         group_df,
                     )
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                count_in_set = count_in_set_impl.aggregate_accumulator(
-                    agg[Metrics.countInSet.name]
-                )
-                row_count = row_count_impl.aggregate_accumulator(
-                    agg[Metrics.rowCount.name]
-                )
+                count_in_set = count_in_set_impl.aggregate_accumulator(agg[Metrics.countInSet.name])
+                row_count = row_count_impl.aggregate_accumulator(agg[Metrics.rowCount.name])
 
                 results_data.append(
                     {

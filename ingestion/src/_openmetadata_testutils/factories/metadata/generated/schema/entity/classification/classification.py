@@ -15,8 +15,8 @@ from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntit
 
 class AutoClassificationConfigFactory(factory.Factory):
     enabled = True
-    conflictResolution = ConflictResolution.highest_confidence
-    minimumConfidence = 0.6
+    conflictResolution = ConflictResolution.highest_confidence  # noqa: N815
+    minimumConfidence = 0.6  # noqa: N815
 
     class Meta:
         model = AutoClassificationConfig
@@ -25,12 +25,10 @@ class AutoClassificationConfigFactory(factory.Factory):
 class ClassificationFactory(factory.Factory):
     id = RootSubFactory(UuidFactory)
     name = factory.LazyAttribute(lambda o: EntityName(root=o.fqn))
-    fullyQualifiedName = factory.LazyAttribute(
-        lambda o: FullyQualifiedEntityName(root=o.fqn)
-    )
+    fullyQualifiedName = factory.LazyAttribute(lambda o: FullyQualifiedEntityName(root=o.fqn))  # noqa: N815
     description = RootSubFactory(MarkdownFactory)
-    mutuallyExclusive = True
-    autoClassificationConfig = factory.SubFactory(AutoClassificationConfigFactory)
+    mutuallyExclusive = True  # noqa: N815
+    autoClassificationConfig = factory.SubFactory(AutoClassificationConfigFactory)  # noqa: N815
 
     class Meta:
         model = Classification

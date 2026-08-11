@@ -2,7 +2,7 @@
 Test helpers for SQL lineage testing across multiple parsers.
 """
 
-from typing import List, NamedTuple, Optional, Set, Tuple
+from typing import List, NamedTuple, Optional, Set, Tuple  # noqa: UP035
 
 import networkx as nx
 from collate_sqllineage.core.models import Column, SubQuery, Table
@@ -25,9 +25,9 @@ PARSER_MAP = {
 
 class TestColumnQualifierTuple(NamedTuple):
     column: str
-    qualifier: Optional[str]
-    is_subquery: Optional[bool] = False
-    subquery: Optional[str] = None
+    qualifier: Optional[str]  # noqa: UP045
+    is_subquery: Optional[bool] = False  # noqa: UP045
+    subquery: Optional[str] = None  # noqa: UP045
 
 
 @timeout(seconds=LINEAGE_PARSING_TIMEOUT)
@@ -51,10 +51,7 @@ def _create_lineage_runner_with_timeout_for_table_lineage(
     elapsed = time.time() - start
 
     # Clean, informative logging
-    print(
-        f"\n[{parser_name}] ✓ Parsed in {elapsed:.3f}s: "
-        f"{source_count} sources, {target_count} targets"
-    )
+    print(f"\n[{parser_name}] ✓ Parsed in {elapsed:.3f}s: {source_count} sources, {target_count} targets")  # noqa: T201
 
     return lr
 
@@ -79,7 +76,7 @@ def _create_lineage_runner_with_timeout_for_column_lineage(
     elapsed = time.time() - start
 
     # Clean, informative logging
-    print(
+    print(  # noqa: T201
         f"\n[{parser_name}] ✓ Parsed in {elapsed:.3f}s: "
         f"{source_count} sources, {target_count} targets, {column_count} column lineages"
     )
@@ -89,9 +86,9 @@ def _create_lineage_runner_with_timeout_for_column_lineage(
 
 def assert_table_lineage(
     lr: LineageRunner,
-    source_tables: Optional[Set[str]] = None,
-    target_tables: Optional[Set[str]] = None,
-    parser_name: str = None,
+    source_tables: Optional[Set[str]] = None,  # noqa: UP006, UP045
+    target_tables: Optional[Set[str]] = None,  # noqa: UP006, UP045
+    parser_name: str = None,  # noqa: RUF013
 ):
     """
     Assert table lineage matches expected values.
@@ -103,32 +100,26 @@ def assert_table_lineage(
     """
     parser_prefix = f"[{parser_name}] " if parser_name else ""
 
-    for _type, actual, expected in zip(
+    for _type, actual, expected in zip(  # noqa: B905
         ["Source", "Target"],
         [lr.source_tables, lr.target_tables],
         [source_tables, target_tables],
     ):
-        actual = set(actual)
-        expected = (
-            set()
-            if expected is None
-            else {Table(t) if isinstance(t, str) else t for t in expected}
-        )
+        actual = set(actual)  # noqa: PLW2901
+        expected = set() if expected is None else {Table(t) if isinstance(t, str) else t for t in expected}  # noqa: PLW2901
         assert actual == expected, (
             f"\n\t{parser_prefix}Expected Lineage: {expected}"
             f"\n\t{parser_prefix}Actual Lineage:   {actual}"
             f"\n\t{parser_prefix}Differences:"
-            f"\n\t - Missing: {expected-actual}"
-            f"\n\t - Extra:   {actual-expected}"
+            f"\n\t - Missing: {expected - actual}"
+            f"\n\t - Extra:   {actual - expected}"
         )
 
 
 def assert_column_lineage(
     lr: LineageRunner,
-    column_lineages: Optional[
-        List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]
-    ] = None,
-    parser_name: str = None,
+    column_lineages: Optional[List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]] = None,  # noqa: UP006, UP045
+    parser_name: str = None,  # noqa: RUF013
 ):
     """
     Assert column lineage matches expected values.
@@ -168,8 +159,8 @@ def assert_column_lineage(
         f"\n\t{parser_prefix}Expected Lineage: {expected}"
         f"\n\t{parser_prefix}Actual Lineage:   {actual}"
         f"\n\t{parser_prefix}Differences:"
-        f"\n\t - Missing: {expected-actual}"
-        f"\n\t - Extra:   {actual-expected}"
+        f"\n\t - Missing: {expected - actual}"
+        f"\n\t - Extra:   {actual - expected}"
     )
 
 
@@ -193,26 +184,21 @@ def assert_table_lineage_graphs_match(
     graph1 = lr1._sql_holder.graph
     graph2 = lr2._sql_holder.graph
 
-    table_graph1 = graph1.subgraph(
-        [n for n in graph1.nodes() if not isinstance(n, Column)]
-    )
-    table_graph2 = graph2.subgraph(
-        [n for n in graph2.nodes() if not isinstance(n, Column)]
-    )
+    table_graph1 = graph1.subgraph([n for n in graph1.nodes() if not isinstance(n, Column)])
+    table_graph2 = graph2.subgraph([n for n in graph2.nodes() if not isinstance(n, Column)])
 
     nodes1, edges1 = len(table_graph1.nodes()), len(table_graph1.edges())
     nodes2, edges2 = len(table_graph2.nodes()), len(table_graph2.edges())
 
-    print(
+    print(  # noqa: T201
         f"  Checking {name1} vs {name2} ({nodes1}n/{edges1}e vs {nodes2}n/{edges2}e)...",
         end=" ",
         flush=True,
     )
     assert nx.is_isomorphic(table_graph1, table_graph2), (
-        f"\n\tTable-level graph with {name1}: {table_graph1}\n\t"
-        f"Table-level graph with {name2}: {table_graph2}"
+        f"\n\tTable-level graph with {name1}: {table_graph1}\n\tTable-level graph with {name2}: {table_graph2}"
     )
-    print("✓")
+    print("✓")  # noqa: T201
 
 
 @timeout(seconds=LINEAGE_PARSING_TIMEOUT)
@@ -236,21 +222,19 @@ def assert_column_lineage_graphs_match(
     nodes1, edges1 = len(graph1.nodes()), len(graph1.edges())
     nodes2, edges2 = len(graph2.nodes()), len(graph2.edges())
 
-    print(
+    print(  # noqa: T201
         f"  Checking {name1} vs {name2} ({nodes1}n/{edges1}e vs {nodes2}n/{edges2}e)...",
         end=" ",
         flush=True,
     )
-    assert nx.is_isomorphic(graph1, graph2), (
-        f"\n\tGraph with {name1}: {graph1}\n\t" f"Graph with {name2}: {graph2}"
-    )
-    print("✓")
+    assert nx.is_isomorphic(graph1, graph2), f"\n\tGraph with {name1}: {graph1}\n\tGraph with {name2}: {graph2}"
+    print("✓")  # noqa: T201
 
 
-def assert_table_lineage_equal(
+def assert_table_lineage_equal(  # noqa: C901
     sql: str,
-    source_tables: Optional[Set[str]] = None,
-    target_tables: Optional[Set[str]] = None,
+    source_tables: Optional[Set[str]] = None,  # noqa: UP006, UP045
+    target_tables: Optional[Set[str]] = None,  # noqa: UP006, UP045
     dialect: str = "ansi",
     test_sqlglot: bool = True,
     test_sqlfluff: bool = True,
@@ -281,11 +265,9 @@ def assert_table_lineage_equal(
             lr_sqlglot = _create_lineage_runner_with_timeout_for_table_lineage(
                 sql, dialect, SqlGlotLineageAnalyzer, "SqlGlot"
             )
-            assert_table_lineage(
-                lr_sqlglot, source_tables, target_tables, parser_name="SqlGlot"
-            )
+            assert_table_lineage(lr_sqlglot, source_tables, target_tables, parser_name="SqlGlot")
             runners.append(("sqlglot", lr_sqlglot))
-            print("[SqlGlot] ✅ Table lineage assertion passed.")
+            print("[SqlGlot] ✅ Table lineage assertion passed.")  # noqa: T201
         except TimeoutError:
             message = (
                 f"[SqlGlot] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
@@ -293,17 +275,17 @@ def assert_table_lineage_equal(
             )
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except AssertionError as ae:
-            message = f"[SqlGlot] ❌ Table lineage assertion failed: {str(ae)}"
+            message = f"[SqlGlot] ❌ Table lineage assertion failed: {str(ae)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except Exception as e:
-            message = f"[SqlGlot] ❌ Unexpected error: {str(e)}"
+            message = f"[SqlGlot] ❌ Unexpected error: {str(e)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
 
     # SqlFluff (second)
     if test_sqlfluff:
@@ -311,11 +293,9 @@ def assert_table_lineage_equal(
             lr_sqlfluff = _create_lineage_runner_with_timeout_for_table_lineage(
                 sql, dialect, SqlFluffLineageAnalyzer, "SqlFluff"
             )
-            assert_table_lineage(
-                lr_sqlfluff, source_tables, target_tables, parser_name="SqlFluff"
-            )
+            assert_table_lineage(lr_sqlfluff, source_tables, target_tables, parser_name="SqlFluff")
             runners.append(("sqlfluff", lr_sqlfluff))
-            print("[SqlFluff] ✅ Table lineage assertion passed.")
+            print("[SqlFluff] ✅ Table lineage assertion passed.")  # noqa: T201
         except TimeoutError:
             message = (
                 f"[SqlFluff] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
@@ -323,17 +303,17 @@ def assert_table_lineage_equal(
             )
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except AssertionError as ae:
-            message = f"[SqlFluff] ❌ Table lineage assertion failed: {str(ae)}"
+            message = f"[SqlFluff] ❌ Table lineage assertion failed: {str(ae)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except Exception as e:
-            message = f"[SqlFluff] ❌ Unexpected error: {str(e)}"
+            message = f"[SqlFluff] ❌ Unexpected error: {str(e)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
 
     # SqlParse (third)
     if test_sqlparse:
@@ -341,11 +321,9 @@ def assert_table_lineage_equal(
             lr_sqlparse = _create_lineage_runner_with_timeout_for_table_lineage(
                 sql, dialect, SqlParseLineageAnalyzer, "SqlParse"
             )
-            assert_table_lineage(
-                lr_sqlparse, source_tables, target_tables, parser_name="SqlParse"
-            )
+            assert_table_lineage(lr_sqlparse, source_tables, target_tables, parser_name="SqlParse")
             runners.append(("sqlparse", lr_sqlparse))
-            print("[SqlParse] ✅ Table lineage assertion passed.")
+            print("[SqlParse] ✅ Table lineage assertion passed.")  # noqa: T201
         except TimeoutError:
             message = (
                 f"[SqlParse] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
@@ -353,22 +331,20 @@ def assert_table_lineage_equal(
             )
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except AssertionError as ae:
-            message = f"[SqlParse] ❌ Table lineage assertion failed: {str(ae)}"
+            message = f"[SqlParse] ❌ Table lineage assertion failed: {str(ae)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except Exception as e:
-            message = f"[SqlParse] ❌ Unexpected error: {str(e)}"
+            message = f"[SqlParse] ❌ Unexpected error: {str(e)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
 
     if len(runners) > 1 and not skip_graph_check:
-        print(
-            f"\n[Graph Check] Comparing table lineage graphs across {len(runners)} parsers..."
-        )
+        print(f"\n[Graph Check] Comparing table lineage graphs across {len(runners)} parsers...")  # noqa: T201
         for i in range(len(runners) - 1):
             for j in range(i + 1, len(runners)):
                 name1, runner1 = runners[i]
@@ -377,12 +353,8 @@ def assert_table_lineage_equal(
                 # Get graph stats for error reporting
                 graph1 = runner1._sql_holder.graph
                 graph2 = runner2._sql_holder.graph
-                table_graph1 = graph1.subgraph(
-                    [n for n in graph1.nodes() if not isinstance(n, Column)]
-                )
-                table_graph2 = graph2.subgraph(
-                    [n for n in graph2.nodes() if not isinstance(n, Column)]
-                )
+                table_graph1 = graph1.subgraph([n for n in graph1.nodes() if not isinstance(n, Column)])
+                table_graph2 = graph2.subgraph([n for n in graph2.nodes() if not isinstance(n, Column)])
                 nodes1, edges1 = len(table_graph1.nodes()), len(table_graph1.edges())
                 nodes2, edges2 = len(table_graph2.nodes()), len(table_graph2.edges())
 
@@ -393,7 +365,7 @@ def assert_table_lineage_equal(
                         name1,
                         name2,
                     )
-                    print(
+                    print(  # noqa: T201
                         f"[Graph Check] ✅ Table lineage graph comparison passed "
                         f"between {name1} ({nodes1}n/{edges1}e) and {name2} ({nodes2}n/{edges2}e)."
                     )
@@ -405,33 +377,30 @@ def assert_table_lineage_equal(
                     )
                     failed = True
                     failed_reason += f"{message}\n\n"
-                    print(message)
+                    print(message)  # noqa: T201
                 except AssertionError as ae:
                     message = (
-                        f"[Graph Check] ❌ Table lineage graph comparison failed"
-                        f" between {name1} and {name2}: {str(ae)}"
+                        f"[Graph Check] ❌ Table lineage graph comparison failed between {name1} and {name2}: {str(ae)}"  # noqa: RUF010
                     )
                     failed = True
                     failed_reason += f"{message}\n\n"
-                    print(message)
+                    print(message)  # noqa: T201
                 except Exception as e:
                     message = (
                         f"[Graph Check] ❌ Unexpected error during table lineage graph "
-                        f"comparison between {name1} and {name2}: {str(e)}"
+                        f"comparison between {name1} and {name2}: {str(e)}"  # noqa: RUF010
                     )
                     failed = True
                     failed_reason += f"{message}\n\n"
-                    print(message)
+                    print(message)  # noqa: T201
 
     if failed:
         raise AssertionError(failed_reason)
 
 
-def assert_column_lineage_equal(
+def assert_column_lineage_equal(  # noqa: C901
     sql: str,
-    column_lineages: Optional[
-        List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]
-    ] = None,
+    column_lineages: Optional[List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]] = None,  # noqa: UP006, UP045
     dialect: str = "ansi",
     test_sqlglot: bool = True,
     test_sqlfluff: bool = True,
@@ -463,7 +432,7 @@ def assert_column_lineage_equal(
             )
             assert_column_lineage(lr_sqlglot, column_lineages, parser_name="SqlGlot")
             runners.append(("sqlglot", lr_sqlglot))
-            print("[SqlGlot] ✅ Column lineage assertion passed.")
+            print("[SqlGlot] ✅ Column lineage assertion passed.")  # noqa: T201
         except TimeoutError:
             message = (
                 f"[SqlGlot] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
@@ -471,17 +440,17 @@ def assert_column_lineage_equal(
             )
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except AssertionError as ae:
-            message = f"[SqlGlot] ❌ Column lineage assertion failed: {str(ae)}"
+            message = f"[SqlGlot] ❌ Column lineage assertion failed: {str(ae)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except Exception as e:
-            message = f"[SqlGlot] ❌ Unexpected error: {str(e)}"
+            message = f"[SqlGlot] ❌ Unexpected error: {str(e)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
 
     # SqlFluff (second)
     if test_sqlfluff:
@@ -491,7 +460,7 @@ def assert_column_lineage_equal(
             )
             assert_column_lineage(lr_sqlfluff, column_lineages, parser_name="SqlFluff")
             runners.append(("sqlfluff", lr_sqlfluff))
-            print("[SqlFluff] ✅ Column lineage assertion passed.")
+            print("[SqlFluff] ✅ Column lineage assertion passed.")  # noqa: T201
         except TimeoutError:
             message = (
                 f"[SqlFluff] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
@@ -499,17 +468,17 @@ def assert_column_lineage_equal(
             )
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except AssertionError as ae:
-            message = f"[SqlFluff] ❌ Column lineage assertion failed: {str(ae)}"
+            message = f"[SqlFluff] ❌ Column lineage assertion failed: {str(ae)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except Exception as e:
-            message = f"[SqlFluff] ❌ Unexpected error: {str(e)}"
+            message = f"[SqlFluff] ❌ Unexpected error: {str(e)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
 
     # SqlParse (third)
     if test_sqlparse:
@@ -519,7 +488,7 @@ def assert_column_lineage_equal(
             )
             assert_column_lineage(lr_sqlparse, column_lineages, parser_name="SqlParse")
             runners.append(("sqlparse", lr_sqlparse))
-            print("[SqlParse] ✅ Column lineage assertion passed.")
+            print("[SqlParse] ✅ Column lineage assertion passed.")  # noqa: T201
         except TimeoutError:
             message = (
                 f"[SqlParse] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
@@ -527,23 +496,21 @@ def assert_column_lineage_equal(
             )
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except AssertionError as ae:
-            message = f"[SqlParse] ❌ Column lineage assertion failed: {str(ae)}"
+            message = f"[SqlParse] ❌ Column lineage assertion failed: {str(ae)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
         except Exception as e:
-            message = f"[SqlParse] ❌ Unexpected error: {str(e)}"
+            message = f"[SqlParse] ❌ Unexpected error: {str(e)}"  # noqa: RUF010
             failed = True
             failed_reason += f"{message}\n\n"
-            print(message)
+            print(message)  # noqa: T201
 
     # Compare graphs between all enabled parsers - ALL must match
     if not skip_graph_check:
-        print(
-            f"\n[Graph Check] Comparing column lineage graphs across {len(runners)} parsers..."
-        )
+        print(f"\n[Graph Check] Comparing column lineage graphs across {len(runners)} parsers...")  # noqa: T201
         for i in range(len(runners) - 1):
             for j in range(i + 1, len(runners)):
                 name1, runner1 = runners[i]
@@ -562,7 +529,7 @@ def assert_column_lineage_equal(
                         name1,
                         name2,
                     )
-                    print(
+                    print(  # noqa: T201
                         f"[Graph Check] ✅ Column lineage graph comparison passed "
                         f"between {name1} ({nodes1}n/{edges1}e) and {name2} ({nodes2}n/{edges2}e)."
                     )
@@ -574,23 +541,23 @@ def assert_column_lineage_equal(
                     )
                     failed = True
                     failed_reason += f"{message}\n\n"
-                    print(message)
+                    print(message)  # noqa: T201
                 except AssertionError as ae:
                     message = (
                         f"[Graph Check] ❌ Column lineage graph comparison failed"
-                        f" between {name1} and {name2}: {str(ae)}"
+                        f" between {name1} and {name2}: {str(ae)}"  # noqa: RUF010
                     )
                     failed = True
                     failed_reason += f"{message}\n\n"
-                    print(message)
+                    print(message)  # noqa: T201
                 except Exception as e:
                     message = (
                         f"[Graph Check] ❌ Unexpected error during column lineage graph "
-                        f"comparison between {name1} and {name2}: {str(e)}"
+                        f"comparison between {name1} and {name2}: {str(e)}"  # noqa: RUF010
                     )
                     failed = True
                     failed_reason += f"{message}\n\n"
-                    print(message)
+                    print(message)  # noqa: T201
 
     if failed:
         raise AssertionError(failed_reason)
@@ -611,6 +578,5 @@ def assert_lr_graphs_match(
     :param name2: Name of second parser (for error messages)
     """
     assert nx.is_isomorphic(lr1._sql_holder.graph, lr2._sql_holder.graph), (
-        f"\n\tGraph with {name1}: {lr1._sql_holder.graph}\n\t"
-        f"Graph with {name2}: {lr2._sql_holder.graph}"
+        f"\n\tGraph with {name1}: {lr1._sql_holder.graph}\n\tGraph with {name2}: {lr2._sql_holder.graph}"
     )

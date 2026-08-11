@@ -31,8 +31,6 @@ class DB2ProfilerInterface(SQAProfilerInterface):
     def _programming_error_static_metric(self, runner, column, exc, session, metrics):
         # pylint: disable=protected-access
         if exc.orig and "overflow" in exc.orig._message:
-            logger.info(
-                f"Computing metrics without sum for {runner.table_name}.{column.name}"
-            )
+            logger.info(f"Computing metrics without sum for {runner.table_name}.{column.name}")
             return self._compute_static_metrics_wo_sum(metrics, runner, session, column)
         return None

@@ -521,7 +521,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         Column.builder().type("Column").width("auto").items(List.of(imageItem)).build();
 
     TextBlock textBlock1 = createTextBlock("Connection Successful ✅", "Bolder", "Large");
-    TextBlock textBlock2 = createTextBlock(CONNECTION_TEST_DESCRIPTION, null, null);
+    TextBlock textBlock2 = createTextBlock(getConnectionTestDescription(), null, null);
 
     Column column2 =
         Column.builder()
@@ -534,7 +534,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         ColumnSet.builder().type("ColumnSet").columns(List.of(column1, column2)).build();
 
     // Create the footer text block
-    TextBlock footerTextBlock = createTextBlock("OpenMetadata", "Lighter", "Small");
+    TextBlock footerTextBlock = createTextBlock(getProductName(), "Lighter", "Small");
     footerTextBlock.setHorizontalAlignment("Center");
     footerTextBlock.setSpacing("Medium");
     footerTextBlock.setSeparator(true);
@@ -630,7 +630,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   private TextBlock createFooterMessage() {
     return TextBlock.builder()
         .type("TextBlock")
-        .text(TEMPLATE_FOOTER)
+        .text(getProductName() + " Change Event")
         .size("Small")
         .weight("Lighter")
         .horizontalAlignment("Center")
@@ -666,6 +666,6 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   private Image createOMImageMessage() {
-    return Image.builder().type("Image").url("https://imgur.com/kOOPEG4.png").size("Small").build();
+    return Image.builder().type("Image").url(getLogoUrl()).size("Small").build();
   }
 }

@@ -12,6 +12,7 @@
 """
 Test Kubernetes Secrets Manager
 """
+
 import base64
 import os
 from unittest import TestCase
@@ -51,9 +52,7 @@ class TestKubernetesSecretsManager(TestCase):
                 "KUBERNETES_IN_CLUSTER": "true",
             },
         ):
-            secrets_manager = KubernetesSecretsManager(
-                loader=SecretsManagerClientLoader.env
-            )
+            secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
             # Verify in-cluster config was loaded
             mock_config.load_incluster_config.assert_called_once()
@@ -77,15 +76,11 @@ class TestKubernetesSecretsManager(TestCase):
                 "KUBERNETES_KUBECONFIG_PATH": "/path/to/kubeconfig",
             },
         ):
-            secrets_manager = KubernetesSecretsManager(
-                loader=SecretsManagerClientLoader.env
-            )
+            secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
             # Verify kubeconfig was loaded with correct path
             mock_config.load_incluster_config.assert_not_called()
-            mock_config.load_kube_config.assert_called_once_with(
-                config_file="/path/to/kubeconfig"
-            )
+            mock_config.load_kube_config.assert_called_once_with(config_file="/path/to/kubeconfig")
 
             # Verify namespace is set correctly
             self.assertEqual(secrets_manager.namespace, "custom-namespace")
@@ -104,17 +99,13 @@ class TestKubernetesSecretsManager(TestCase):
         mock_client.CoreV1Api.return_value = mock_core_v1_api
 
         with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
-            secrets_manager = KubernetesSecretsManager(
-                loader=SecretsManagerClientLoader.env
-            )
+            secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
             # Test retrieving secret
             result = secrets_manager.get_string_value("test-secret")
 
             # Verify API call
-            mock_core_v1_api.read_namespaced_secret.assert_called_once_with(
-                name="test-secret", namespace="default"
-            )
+            mock_core_v1_api.read_namespaced_secret.assert_called_once_with(name="test-secret", namespace="default")
 
             # Verify result
             self.assertEqual(result, "test-secret-value")
@@ -125,15 +116,11 @@ class TestKubernetesSecretsManager(TestCase):
         """Test secret not found returns None"""
         # Setup mock client to raise 404 error
         mock_core_v1_api = MagicMock()
-        mock_core_v1_api.read_namespaced_secret.side_effect = (
-            lambda **kwargs: self._raise_api_exception(404)
-        )
+        mock_core_v1_api.read_namespaced_secret.side_effect = lambda **kwargs: self._raise_api_exception(404)
         mock_client.CoreV1Api.return_value = mock_core_v1_api
 
         with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
-            secrets_manager = KubernetesSecretsManager(
-                loader=SecretsManagerClientLoader.env
-            )
+            secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
             # Test retrieving non-existent secret
             result = secrets_manager.get_string_value("non-existent-secret")
@@ -147,15 +134,11 @@ class TestKubernetesSecretsManager(TestCase):
         """Test API error is raised"""
         # Setup mock client to raise non-404 error
         mock_core_v1_api = MagicMock()
-        mock_core_v1_api.read_namespaced_secret.side_effect = (
-            lambda **kwargs: self._raise_api_exception(500)
-        )
+        mock_core_v1_api.read_namespaced_secret.side_effect = lambda **kwargs: self._raise_api_exception(500)
         mock_client.CoreV1Api.return_value = mock_core_v1_api
 
         with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
-            secrets_manager = KubernetesSecretsManager(
-                loader=SecretsManagerClientLoader.env
-            )
+            secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
             # Test retrieving secret with API error
             with self.assertRaises(ApiException):
@@ -179,9 +162,7 @@ class TestKubernetesSecretsManager(TestCase):
         mock_client.CoreV1Api.return_value = mock_core_v1_api
 
         with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
-            secrets_manager = KubernetesSecretsManager(
-                loader=SecretsManagerClientLoader.env
-            )
+            secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
             # Test retrieving secret
             result = secrets_manager.get_string_value("test-secret")
@@ -203,9 +184,7 @@ class TestKubernetesSecretsManager(TestCase):
         mock_client.CoreV1Api.return_value = mock_core_v1_api
 
         with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
-            secrets_manager = KubernetesSecretsManager(
-                loader=SecretsManagerClientLoader.env
-            )
+            secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
             # Test with name that contains special characters
             # The sanitization is now handled in the backend, so we pass the name as-is

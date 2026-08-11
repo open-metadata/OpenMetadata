@@ -29,8 +29,8 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
-import { getEntityName } from '../../utils/EntityUtils';
-import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { getTestSuiteDetailsPath } from '../../utils/TestSuiteUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -71,7 +71,7 @@ const TestSuiteIngestionPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: getDataQualityPagePath(),
+          url: observabilityRouterClassBase.getDataQualityPagePath(),
         },
         {
           name: getEntityName(

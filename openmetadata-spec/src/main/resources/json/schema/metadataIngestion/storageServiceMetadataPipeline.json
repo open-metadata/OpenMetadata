@@ -31,6 +31,7 @@
     "storageMetadataConfigSource": {
       "mask": true,
       "title": "Storage Metadata Configuration Source",
+      "description": "Global manifest source. When configured, entries here take precedence over any bucket-level openmetadata.json and over defaultManifest for buckets whose containerName matches.",
       "oneOf": [
         {
           "$ref": "#/definitions/noMetadataConfigurationSource"
@@ -69,6 +70,14 @@
       "type": "boolean",
       "default": false,
       "title": "Include Tags"
+    },
+    "defaultManifest": {
+      "title": "Default Manifest (JSON)",
+      "description": "Fallback manifest applied to any bucket that does not have its own openmetadata.json file. If a bucket has a manifest file, that file takes precedence and this value is ignored for that bucket. Paste the same JSON you would place in a bucket's openmetadata.json file — entries accept literal paths or glob-style dataPath patterns.",
+      "type": "string",
+      "uiFieldType": "code",
+      "format": "json",
+      "default": null
     }
   },
   "additionalProperties": false

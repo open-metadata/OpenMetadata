@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { FC } from 'react';
 import entityRightPanelClassBase, {
   EntityRightPanelClassBase,
 } from './EntityRightPanelClassBase';
@@ -27,11 +26,10 @@ describe('EntityRightPanelClassBase', () => {
     expect(instance).toBeInstanceOf(EntityRightPanelClassBase);
   });
 
-  it('should return null from getKnowLedgeArticlesWidget method', () => {
-    const widget: FC<{ entityId: string; entityType: string }> | null =
-      instance.getKnowLedgeArticlesWidget();
+  it('should return KnowledgePages from getKnowLedgeArticlesWidget method', () => {
+    const widget = instance.getKnowLedgeArticlesWidget();
 
-    expect(widget).toBeNull();
+    expect(widget).toBeDefined();
   });
 
   it('should return a valid React component when getKnowLedgeArticlesWidget is not null', () => {

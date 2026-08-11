@@ -1,0 +1,101 @@
+name: Connector bug report
+description: Bug in a specific data connector (Snowflake, Databricks, BigQuery, etc.)
+labels: ["bug", "Ingestion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a connector bug! Before you go further:
+        - Search [existing issues](https://github.com/open-metadata/OpenMetadata/issues) for duplicates.
+        - Check the [connector docs](https://docs.open-metadata.org/latest/connectors) and [Slack](https://slack.open-metadata.org/) for known workarounds.
+        - **Redact credentials, hostnames, emails, and other sensitive data** from logs and config before submitting.
+  - type: input
+    id: connector
+    attributes:
+      label: Connector
+      description: Name of the affected connector. See the [connector docs](https://docs.open-metadata.org/latest/connectors) for the full supported list.
+      placeholder: "e.g. Snowflake, Databricks, BigQuery, Power BI"
+    validations:
+      required: true
+  - type: dropdown
+    id: feature_area
+    attributes:
+      label: Feature area
+      description: Which part of the connector is broken?
+      options:
+        - Metadata ingestion
+        - Lineage
+        - Profiler / Data Quality
+        - Usage
+        - Test Connection
+        - Authentication / Connection
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: describe
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To Reproduce
+      description: Steps or screenshots to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: connection_config
+    attributes:
+      label: Connection / ingestion config
+      description: Paste the relevant YAML. **Redact credentials, hostnames, and other sensitive values.**
+      render: yaml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log output. Redact sensitive data.
+      render: shell
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 14.4 / Ubuntu 22.04 / Windows 11"
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      placeholder: "3.11.7"
+  - type: input
+    id: om_version
+    attributes:
+      label: OpenMetadata version
+      placeholder: "1.9.2"
+  - type: input
+    id: ingestion_version
+    attributes:
+      label: OpenMetadata Ingestion package version
+      placeholder: "openmetadata-ingestion==1.9.2"
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Anything else that helps us understand the problem. Redact sensitive data.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched for duplicate issues.
+          required: true
+        - label: I removed credentials, hostnames, emails, and other sensitive data from logs and config.
+          required: true

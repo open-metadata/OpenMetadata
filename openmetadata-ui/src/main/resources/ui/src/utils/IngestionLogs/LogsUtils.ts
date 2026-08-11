@@ -14,7 +14,7 @@ import { AxiosError } from 'axios';
 import { round } from 'lodash';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
-import { IngestionPipelineLogByIdInterface } from '../../pages/LogsViewerPage/LogsViewerPage.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../../interface/IngestionPipelineLogs.interface';
 import { getApplicationLogs } from '../../rest/applicationAPI';
 import {
   downloadIngestionPipelineLogsById,
@@ -26,6 +26,11 @@ export const getLogsFromResponse = (
   res: IngestionPipelineLogByIdInterface,
   pipelineType: string
 ) => {
+  // A by-fqn fetch returns the logs under a generic `logs` key (no pipeline type to select a
+  // *_task field); prefer it, falling back to the type-specific field for by-id responses.
+  if (res.logs) {
+    return res.logs;
+  }
   switch (pipelineType) {
     case PipelineType.Metadata:
       return res.ingestion_task || '';
@@ -62,7 +67,8 @@ export const getLogsFromResponse = (
 export const fetchLogsRecursively = async (
   ingestionId: string,
   pipelineType: string,
-  after?: string
+  after?: string,
+  runId?: string
 ) => {
   let logs = '';
 
@@ -70,7 +76,7 @@ export const fetchLogsRecursively = async (
     data: { total, after: afterCursor, ...rest },
   } =
     pipelineType === PipelineType.Application
-      ? await getApplicationLogs(ingestionId, after)
+      ? await getApplicationLogs(ingestionId, after, runId)
       : await getIngestionPipelineLogById(ingestionId, after);
   logs = logs.concat(getLogsFromResponse(rest, pipelineType));
   if (afterCursor && total) {
@@ -78,7 +84,7 @@ export const fetchLogsRecursively = async (
     useDownloadProgressStore.getState().updateProgress(progress);
 
     logs = logs.concat(
-      await fetchLogsRecursively(ingestionId, pipelineType, afterCursor)
+      await fetchLogsRecursively(ingestionId, pipelineType, afterCursor, runId)
     );
   }
 
@@ -101,13 +107,18 @@ export const downloadIngestionLog = async (ingestionId?: string) => {
   }
 };
 
-export const downloadAppLogs = async (appName?: string) => {
+export const downloadAppLogs = async (appName?: string, runId?: string) => {
   if (!appName) {
     return '';
   }
 
   try {
-    return await fetchLogsRecursively(appName, PipelineType.Application);
+    return await fetchLogsRecursively(
+      appName,
+      PipelineType.Application,
+      undefined,
+      runId
+    );
   } catch (err) {
     showErrorToast(err as AxiosError);
 

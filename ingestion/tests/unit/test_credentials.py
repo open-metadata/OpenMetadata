@@ -11,6 +11,7 @@
 """
 Test Credentials helper module
 """
+
 from unittest import TestCase
 
 from pydantic import AnyUrl, SecretStr
@@ -109,9 +110,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
         with self.assertLogs(Loggers.UTILS.value, level="INFO") as log:
-            set_google_credentials(
-                GCPCredentials(gcpConfig=gcp_values, gcpImpersonateServiceAccount=None)
-            )
+            set_google_credentials(GCPCredentials(gcpConfig=gcp_values, gcpImpersonateServiceAccount=None))
             self.assertIn(
                 "Using External account credentials to authenticate with GCP services.",
                 log.output[0],

@@ -12,21 +12,13 @@
   ],
   "definitions": {
     "profileSampleType": {
-      "description": "Type of Profile Sample (percentage or rows)",
-      "type": "string",
-      "enum": [
-        "PERCENTAGE",
-        "ROWS"
-      ],
-      "default": "PERCENTAGE"
+      "$ref": "../../type/basic.json#/definitions/profileSampleType"
     },
     "samplingMethodType": {
-      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
-      "type": "string",
-      "enum": [
-        "BERNOULLI",
-        "SYSTEM"
-      ]
+      "$ref": "../../type/basic.json#/definitions/samplingMethodType"
+    },
+    "profileSampleConfig": {
+      "$ref": "../../type/samplingConfig.json#/definitions/profileSampleConfig"
     },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
@@ -243,7 +235,7 @@
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
       "minLength": 1,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
     },
     "partitionIntervalTypes": {
       "javaType": "org.openmetadata.schema.type.PartitionIntervalTypes",
@@ -667,42 +659,46 @@
           "default": null
         },
         "cardinalityDistribution": {
-          "description": "Cardinality distribution showing top categories with an 'Others' bucket.",
-          "type": "object",
-          "properties": {
-            "categories": {
-              "description": "List of category names including 'Others'.",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "counts": {
-              "description": "List of counts corresponding to each category.",
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
-            "percentages": {
-              "description": "List of percentages corresponding to each category.",
-              "type": "array",
-              "items": {
-                "type": "number"
-              }
-            },
-            "allValuesUnique": {
-              "description": "Flag indicating that all values in the column are unique, so no distribution is calculated.",
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
+          "$ref": "#/definitions/cardinalityDistribution"
         }
       },
       "required": [
         "name",
         "timestamp"
       ],
+      "additionalProperties": false
+    },
+    "cardinalityDistribution": {
+      "description": "Cardinality distribution showing top categories with an 'Others' bucket.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.CardinalityDistribution",
+      "properties": {
+        "categories": {
+          "description": "List of category names including 'Others'.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "counts": {
+          "description": "List of counts corresponding to each category.",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "percentages": {
+          "description": "List of percentages corresponding to each category.",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "allValuesUnique": {
+          "description": "Flag indicating that all values in the column are unique, so no distribution is calculated.",
+          "type": "boolean"
+        }
+      },
       "additionalProperties": false
     },
     "dmlOperationType": {
@@ -839,17 +835,6 @@
       "javaType": "org.openmetadata.schema.type.TableProfilerConfig",
       "description": "This schema defines the type for Table profile config.",
       "properties": {
-        "profileSampleType": {
-          "$ref": "#/definitions/profileSampleType"
-        },
-        "profileSample": {
-          "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
-          "type": "number",
-          "default": null
-        },
-        "samplingMethodType": {
-          "$ref": "#/definitions/samplingMethodType"
-        },
         "sampleDataCount": {
           "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
           "type": "integer",
@@ -859,7 +844,7 @@
         "randomizedSample": {
           "description": "Whether to randomize the sample data or not.",
           "type": "boolean",
-          "default": true
+          "default": false
         },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
@@ -902,6 +887,9 @@
           "description": "Table Specific configuration for Profiling it with a Spark Engine. It is ignored for other engines.",
           "$ref": "#/definitions/sparkTableProfilerConfig",
           "default": null
+        },
+        "profileSampleConfig": {
+          "$ref": "#/definitions/profileSampleConfig"
         }
       }
     },
@@ -913,17 +901,6 @@
         "timestamp": {
           "description": "Timestamp on which profile is taken.",
           "$ref": "../../type/basic.json#/definitions/timestamp"
-        },
-        "profileSample": {
-          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
-          "type": "number",
-          "default": null
-        },
-        "profileSampleType": {
-          "$ref": "#/definitions/profileSampleType"
-        },
-        "samplingMethodType": {
-          "$ref": "#/definitions/samplingMethodType"
         },
         "columnCount": {
           "description": "No.of columns in the table.",
@@ -949,6 +926,14 @@
             "$ref": "#/definitions/customMetricProfile"
           },
           "default": null
+        },
+        "profileSample": {
+          "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
+          "type": "number",
+          "default": null
+        },
+        "profileSampleType": {
+          "$ref": "#/definitions/profileSampleType"
         }
       },
       "required": [

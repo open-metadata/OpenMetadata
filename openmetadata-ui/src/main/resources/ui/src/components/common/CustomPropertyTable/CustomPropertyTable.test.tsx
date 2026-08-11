@@ -12,11 +12,11 @@
  */
 
 import {
-  act,
   render,
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
+import { act } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
@@ -50,11 +50,16 @@ jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
+jest.mock('../EmptyPlaceholder/CreatePlaceholder', () => {
+  return jest.fn().mockReturnValue(<div>CreatePlaceholder.component</div>);
+});
+
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn().mockReturnValue({
     data: {},
     onUpdate: jest.fn(),
@@ -176,7 +181,7 @@ describe('Test CustomProperty Table Component', () => {
       );
     });
     const noDataPlaceHolder = await screen.findByText(
-      'ErrorPlaceHolder.component'
+      'CreatePlaceholder.component'
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();
@@ -207,7 +212,7 @@ describe('Test CustomProperty Table Component', () => {
     await waitForElementToBeRemoved(() => screen.getByText('Skeleton.loader'));
 
     const noDataPlaceHolder = await screen.findByText(
-      'ErrorPlaceHolder.component'
+      'CreatePlaceholder.component'
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();

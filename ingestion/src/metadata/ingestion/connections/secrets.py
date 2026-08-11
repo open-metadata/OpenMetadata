@@ -12,6 +12,7 @@
 """
 Connection secrets utils
 """
+
 from functools import wraps
 
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
@@ -20,16 +21,10 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 # Annotated CustomSecretStr does not like the get_secret_value()
 # pylint: disable=no-member
 def update_connection_opts_args(connection):
-    if (
-        hasattr(connection, "connectionOptions")
-        and connection.connectionOptions
-        and connection.connectionOptions.root
-    ):
+    if hasattr(connection, "connectionOptions") and connection.connectionOptions and connection.connectionOptions.root:
         for key, value in connection.connectionOptions.root.items():
             if isinstance(value, str):
-                connection.connectionOptions.root[key] = CustomSecretStr(
-                    value
-                ).get_secret_value()
+                connection.connectionOptions.root[key] = CustomSecretStr(value).get_secret_value()
     if (
         hasattr(connection, "connectionArguments")
         and connection.connectionArguments
@@ -37,9 +32,7 @@ def update_connection_opts_args(connection):
     ):
         for key, value in connection.connectionArguments.root.items():
             if isinstance(value, str):
-                connection.connectionArguments.root[key] = CustomSecretStr(
-                    value
-                ).get_secret_value()
+                connection.connectionArguments.root[key] = CustomSecretStr(value).get_secret_value()
 
 
 def connection_with_options_secrets(fn):

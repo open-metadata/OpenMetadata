@@ -12,6 +12,7 @@
 """
 Secrets manager implementation using AWS Secrets Manager
 """
+
 import traceback
 from typing import Optional
 
@@ -36,11 +37,9 @@ class AWSSecretsManager(AWSBasedSecretsManager):
     """
 
     def __init__(self, loader: SecretsManagerClientLoader):
-        super().__init__(
-            client="secretsmanager", provider=SecretsManagerProvider.aws, loader=loader
-        )
+        super().__init__(client="secretsmanager", provider=SecretsManagerProvider.aws, loader=loader)
 
-    def get_string_value(self, secret_id: str) -> Optional[str]:
+    def get_string_value(self, secret_id: str) -> Optional[str]:  # noqa: UP045
         """
         :param secret_id: The secret id to retrieve. Current stage is always retrieved.
         :return: The value of the secret. When the secret is a string, the value is
@@ -57,13 +56,7 @@ class AWSSecretsManager(AWSBasedSecretsManager):
         except ClientError as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Couldn't get value for secret [{secret_id}]: {err}")
-            raise err
+            raise err  # noqa: TRY201
         if "SecretString" in response:
-            return (
-                response["SecretString"]
-                if response["SecretString"] != NULL_VALUE
-                else None
-            )
-        raise ValueError(
-            f"SecretString for secret [{secret_id}] not present in the response."
-        )
+            return response["SecretString"] if response["SecretString"] != NULL_VALUE else None
+        raise ValueError(f"SecretString for secret [{secret_id}] not present in the response.")

@@ -43,14 +43,14 @@ const waitForTourBadgeWithRetry = async (
   }
 };
 
-const expectTourBadge = async (page: Page, step: string, timeout = 10000) => {
-  const badge = page.locator('[data-tour-elem="badge"]');
-  await badge.waitFor({ state: 'visible', timeout });
-  await expect
-    .poll(async () => (await badge.textContent())?.trim(), {
-      timeout,
-    })
-    .toBe(step);
+const expectTourBadge = async (page: Page, step: string, timeout = 30000) => {
+  // A single web-first assertion. The badge re-renders on every step transition,
+  // so a separate visibility wait followed by a text poll gave the transition two
+  // independent budgets to lose against; toHaveText auto-waits for the element to
+  // attach *and* carry the expected step, and reports the actual step on failure.
+  await expect(page.locator('[data-tour-elem="badge"]')).toHaveText(step, {
+    timeout,
+  });
 };
 
 const validateTourSteps = async (page: Page) => {
@@ -70,16 +70,18 @@ const validateTourSteps = async (page: Page) => {
 
   await page.getByTestId('searchBox').fill('dim_a');
 
-  const [searchResponse] = await Promise.all([
-    page.waitForResponse((res) => res.url().includes('/search/query')),
-    page.getByTestId('searchBox').press('Enter'),
-  ]);
-
-  expect(searchResponse.status()).toBe(200);
+  // The tour search is fully mock-driven and fires no API call; pressing Enter
+  // advances the tour to the Explore step, which must render the mocked result
+  // card without hitting the backend.
+  await page.getByTestId('searchBox').press('Enter');
 
   await waitForAllLoadersToDisappear(page);
 
   await expectTourBadge(page, '4');
+
+  await expect(
+    page.getByTestId('sample_data.ecommerce_db.shopify.dim_address')
+  ).toBeVisible();
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();
@@ -189,14 +191,28 @@ test.describe(
     });
 
     test('Tour should work from welcome screen', async ({ page }) => {
-      await page
+      test.slow();
+
+      const isAlertVisible = await page
         .getByTestId('whats-new-alert-card')
-        .locator('.whats-new-alert-close')
-        .click();
+        .isVisible();
+      if (isAlertVisible) {
+        await page
+          .getByTestId('whats-new-alert-card')
+          .locator('.whats-new-alert-close')
+          .click();
+      }
       await page.getByText('Take a product tour to get started!').click();
       await page.waitForURL('**/tour');
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+      const isWelcomeScreenVisible = await page
+        .getByTestId('welcome-screen')
+        .isVisible();
+      if (isWelcomeScreenVisible) {
+        await page.getByTestId('welcome-screen-close-btn').click();
+      }
 
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,

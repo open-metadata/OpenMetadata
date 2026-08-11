@@ -78,8 +78,7 @@ public class EntityRelationshipRepository {
       queryCount++;
 
       try {
-        List<EntityReference> typeRefs =
-            Entity.getEntityReferencesByIdsRespectingInclude(entityType, ids, include);
+        List<EntityReference> typeRefs = Entity.getEntityReferencesByIds(entityType, ids, include);
         refs.addAll(typeRefs);
       } catch (Exception e) {
         // Fallback for partial failures - fetch individually to handle deleted entities gracefully
@@ -89,7 +88,7 @@ public class EntityRelationshipRepository {
             e.getMessage());
         for (UUID id : ids) {
           try {
-            refs.add(Entity.getEntityReferenceByIdRespectingInclude(entityType, id, include));
+            refs.add(Entity.getEntityReferenceById(entityType, id, include));
           } catch (EntityNotFoundException ex) {
             // Skip deleted or missing entities
             skippedCount++;

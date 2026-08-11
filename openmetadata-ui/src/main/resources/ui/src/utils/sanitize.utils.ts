@@ -18,7 +18,7 @@ export const getSanitizeContent = (html: string): string => {
   const entityLinks: string[] = [];
   let entityLinkIndex = 0;
 
-  const protectedHtml = html.replace(entityLinkRegex, (match) => {
+  const protectedHtml = html.replaceAll(entityLinkRegex, (match) => {
     entityLinks.push(match);
 
     return `__ENTITY_LINK_${entityLinkIndex++}__`;

@@ -36,9 +36,7 @@ class TestMWAAClientInitialization:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        aws_credentials = AWSCredentials(
-            awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-        )
+        aws_credentials = AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1")
         environment_name = "test-env"
 
         client = MWAAClient(aws_credentials, environment_name)
@@ -62,23 +60,17 @@ class TestMWAAClientInvokeRestApi:
         mock_aws_client_cls.return_value = mock_aws_client
 
         expected_response = {"dags": [{"dag_id": "test_dag"}]}
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": expected_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": expected_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
         result = client._invoke_rest_api("/dags")
 
         assert result == expected_response
-        mock_mwaa_client.invoke_rest_api.assert_called_once_with(
-            Name="test-env", Path="/dags", Method="GET"
-        )
+        mock_mwaa_client.invoke_rest_api.assert_called_once_with(Name="test-env", Path="/dags", Method="GET")
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
     def test_invoke_rest_api_with_query_params(self, mock_aws_client_cls):
@@ -87,14 +79,10 @@ class TestMWAAClientInvokeRestApi:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"dags": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"dags": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -112,14 +100,10 @@ class TestMWAAClientInvokeRestApi:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"success": True}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"success": True}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -140,14 +124,10 @@ class TestMWAAClientInvokeRestApi:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"success": True}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"success": True}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -166,14 +146,10 @@ class TestMWAAClientInvokeRestApi:
         mock_aws_client_cls.return_value = mock_aws_client
 
         json_response = '{"dags": [{"dag_id": "test"}]}'
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": json_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": json_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -183,23 +159,17 @@ class TestMWAAClientInvokeRestApi:
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.logger")
-    def test_invoke_rest_api_invalid_json_response(
-        self, mock_logger, mock_aws_client_cls
-    ):
+    def test_invoke_rest_api_invalid_json_response(self, mock_logger, mock_aws_client_cls):
         mock_aws_client = MagicMock()
         mock_mwaa_client = MagicMock()
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
         invalid_json = "invalid json response"
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": invalid_json
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": invalid_json}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -219,9 +189,7 @@ class TestMWAAClientInvokeRestApi:
         mock_mwaa_client.invoke_rest_api.side_effect = Exception("AWS Error")
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -243,9 +211,7 @@ class TestMWAAClientBasicMethods:
         mock_aws_client_cls.return_value = mock_aws_client
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -261,14 +227,10 @@ class TestMWAAClientBasicMethods:
         mock_aws_client_cls.return_value = mock_aws_client
 
         expected_response = {"dags": [{"dag_id": "test_dag"}]}
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": expected_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": expected_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -290,14 +252,10 @@ class TestMWAAClientBasicMethods:
         mock_aws_client_cls.return_value = mock_aws_client
 
         expected_response = {"tasks": [{"task_id": "task1"}]}
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": expected_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": expected_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -315,14 +273,10 @@ class TestMWAAClientBasicMethods:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"tasks": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"tasks": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -340,14 +294,10 @@ class TestMWAAClientBasicMethods:
         mock_aws_client_cls.return_value = mock_aws_client
 
         expected_response = {"dag_runs": [{"dag_run_id": "run1"}]}
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": expected_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": expected_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -367,14 +317,10 @@ class TestMWAAClientBasicMethods:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"dag_runs": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"dag_runs": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -394,14 +340,10 @@ class TestMWAAClientBasicMethods:
         mock_aws_client_cls.return_value = mock_aws_client
 
         expected_response = {"task_instances": [{"task_id": "task1"}]}
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": expected_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": expected_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -429,14 +371,10 @@ class TestMWAAClientPagination:
             "dags": [{"dag_id": "dag1"}, {"dag_id": "dag2"}],
             "total_entries": 2,
         }
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": page_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": page_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -465,9 +403,7 @@ class TestMWAAClientPagination:
         mock_mwaa_client.invoke_rest_api.side_effect = responses
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -479,9 +415,7 @@ class TestMWAAClientPagination:
         assert mock_mwaa_client.invoke_rest_api.call_count == 2
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
-    def test_paginate_without_total_entries_fetches_until_short_page(
-        self, mock_aws_client_cls
-    ):
+    def test_paginate_without_total_entries_fetches_until_short_page(self, mock_aws_client_cls):
         mock_aws_client = MagicMock()
         mock_mwaa_client = MagicMock()
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
@@ -496,9 +430,7 @@ class TestMWAAClientPagination:
         ]
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -518,9 +450,7 @@ class TestMWAAClientPagination:
         mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": None}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -535,14 +465,10 @@ class TestMWAAClientPagination:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"dags": [], "total_entries": 0}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"dags": [], "total_entries": 0}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -558,14 +484,10 @@ class TestMWAAClientPagination:
         mock_aws_client_cls.return_value = mock_aws_client
 
         page_response = {"dags": [{"dag_id": "dag1"}], "total_entries": 1}
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": page_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": page_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -597,14 +519,10 @@ class TestMWAAClientBuildDagDetails:
                 }
             ]
         }
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": tasks_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": tasks_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -645,14 +563,10 @@ class TestMWAAClientBuildDagDetails:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"tasks": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"tasks": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -679,14 +593,10 @@ class TestMWAAClientBuildDagDetails:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"tasks": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"tasks": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -709,14 +619,10 @@ class TestMWAAClientBuildDagDetails:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"tasks": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"tasks": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -737,9 +643,7 @@ class TestMWAAClientBuildDagDetails:
         mock_mwaa_client.invoke_rest_api.side_effect = Exception("Task fetch failed")
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -779,14 +683,10 @@ class TestMWAAClientGetDagRuns:
                 },
             ]
         }
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": runs_response
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": runs_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -820,9 +720,7 @@ class TestMWAAClientGetDagRuns:
         mock_mwaa_client.invoke_rest_api.side_effect = Exception("API Error")
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -838,14 +736,10 @@ class TestMWAAClientGetDagRuns:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"dag_runs": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"dag_runs": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -880,14 +774,10 @@ class TestMWAAClientGetTaskInstancesForRun:
                 },
             ]
         }
-        mock_mwaa_client.invoke_rest_api.side_effect = [
-            {"RestApiResponse": instances_response}
-        ]
+        mock_mwaa_client.invoke_rest_api.side_effect = [{"RestApiResponse": instances_response}]
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -903,9 +793,7 @@ class TestMWAAClientGetTaskInstancesForRun:
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.logger")
-    def test_get_task_instances_for_run_api_error(
-        self, mock_logger, mock_aws_client_cls
-    ):
+    def test_get_task_instances_for_run_api_error(self, mock_logger, mock_aws_client_cls):
         mock_aws_client = MagicMock()
         mock_mwaa_client = MagicMock()
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
@@ -914,9 +802,7 @@ class TestMWAAClientGetTaskInstancesForRun:
         mock_mwaa_client.invoke_rest_api.side_effect = Exception("API Error")
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -932,14 +818,10 @@ class TestMWAAClientGetTaskInstancesForRun:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.side_effect = [
-            {"RestApiResponse": {"task_instances": []}}
-        ]
+        mock_mwaa_client.invoke_rest_api.side_effect = [{"RestApiResponse": {"task_instances": []}}]
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -954,14 +836,10 @@ class TestMWAAClientGetTaskInstancesForRun:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.side_effect = [
-            {"RestApiResponse": {"task_instances": []}}
-        ]
+        mock_mwaa_client.invoke_rest_api.side_effect = [{"RestApiResponse": {"task_instances": []}}]
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -986,14 +864,10 @@ class TestMWAAClientEdgeCases:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"tasks": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"tasks": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -1009,14 +883,10 @@ class TestMWAAClientEdgeCases:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"tasks": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"tasks": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -1032,14 +902,10 @@ class TestMWAAClientEdgeCases:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": {"tasks": []}
-        }
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": {"tasks": []}}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -1055,19 +921,11 @@ class TestMWAAClientEdgeCases:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        runs_response = {
-            "dag_runs": [
-                {"state": "success", "logical_date": "2025-01-01T00:00:00+00:00"}
-            ]
-        }
-        mock_mwaa_client.invoke_rest_api.return_value = {
-            "RestApiResponse": runs_response
-        }
+        runs_response = {"dag_runs": [{"state": "success", "logical_date": "2025-01-01T00:00:00+00:00"}]}
+        mock_mwaa_client.invoke_rest_api.return_value = {"RestApiResponse": runs_response}
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 
@@ -1083,19 +941,11 @@ class TestMWAAClientEdgeCases:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        instances_response = {
-            "task_instances": [
-                {"state": "success", "start_date": "2025-01-01T00:01:00+00:00"}
-            ]
-        }
-        mock_mwaa_client.invoke_rest_api.side_effect = [
-            {"RestApiResponse": instances_response}
-        ]
+        instances_response = {"task_instances": [{"state": "success", "start_date": "2025-01-01T00:01:00+00:00"}]}
+        mock_mwaa_client.invoke_rest_api.side_effect = [{"RestApiResponse": instances_response}]
 
         client = MWAAClient(
-            AWSCredentials(
-                awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"
-            ),
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
             "test-env",
         )
 

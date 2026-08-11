@@ -83,7 +83,13 @@ export class DataQualityPageObject extends RightPanelBase {
    * @returns DataQualityPageObject for method chaining
    */
   async navigateToDataQualityTab(): Promise<DataQualityPageObject> {
+    const testCasesResponse = this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/dataQuality/testCases/search/list') &&
+        resp.request().method() === 'GET'
+    );
     await this.rightPanel.navigateToTab('data quality');
+    await testCasesResponse;
     await this.waitForLoadersToDisappear();
     return this;
   }

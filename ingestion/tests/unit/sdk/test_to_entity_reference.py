@@ -1,6 +1,7 @@
 """
 Unit tests for the to_entity_reference helper function.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID

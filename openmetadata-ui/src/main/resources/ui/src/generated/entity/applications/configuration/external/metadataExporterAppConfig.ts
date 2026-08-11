@@ -391,7 +391,7 @@ export interface GCPImpersonateServiceAccountValues {
  */
 export enum Scheme {
     Bigquery = "bigquery",
-    DatabricksConnector = "databricks+connector",
+    Databricks = "databricks",
     Snowflake = "snowflake",
     Trino = "trino",
 }

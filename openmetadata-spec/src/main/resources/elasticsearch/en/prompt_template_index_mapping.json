@@ -260,7 +260,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "mlFeatures": {
         "properties": {
@@ -560,6 +561,14 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "entityType": {
         "type": "keyword",
         "fields": {
@@ -694,6 +703,10 @@
       "ownerName": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "lineageSqlQueries": {
+        "type": "object",
+        "enabled": false
       }
     }
   }

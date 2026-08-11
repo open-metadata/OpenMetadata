@@ -15,7 +15,7 @@ Validator for column values sum to be between test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Optional, Union
+from typing import List, Optional, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -60,7 +60,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             res = self._run_results(Metrics.sum, column)
 
             metric_values = {Metrics.sum.name: res}
@@ -68,7 +68,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -77,10 +77,8 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
-        test_result_values = self._get_test_result_values(metric_values)
+        result_message = self._format_result_message(metric_values, test_params=test_params)
+        test_result_values = self._get_test_result_values(metric_values)  # noqa: F841
 
         return self.get_test_case_result_object(
             self.execution_date,
@@ -108,7 +106,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
             self.MAX_BOUND: self.get_max_bound(self.MAX_BOUND),
         }
 
-    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
+    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:  # noqa: UP045
         """Get metrics that need to be computed for this test
 
         Args:
@@ -121,9 +119,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
             Metrics.sum.name: Metrics.sum,
         }
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: dict
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict) -> TestEvaluation:
         """Evaluate the max-to-be-between test condition
 
         For max test, the condition passes if the max value is within the specified bounds.
@@ -157,8 +153,8 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for max-to-be-between test
 
@@ -171,9 +167,7 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
             str: Formatted result message
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValueSumToBeBetween._format_result_message"
-            )
+            raise ValueError("test_params is required for columnValueSumToBeBetween._format_result_message")
 
         sum_value = metric_values[Metrics.sum.name]
         min_bound = test_params[self.MIN_BOUND]
@@ -184,10 +178,10 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found sum={sum_value} vs. the expected min={min_bound}, max={max_bound}"
             )
-        else:
+        else:  # noqa: RET505
             return f"Found sum={sum_value} vs. the expected min={min_bound}, max={max_bound}."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result values for max-to-be-between test
 
         Args:
@@ -204,18 +198,18 @@ class BaseColumnValuesSumToBeBetweenValidator(BaseTestValidator):
         ]
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         raise NotImplementedError
 
     @abstractmethod
     def _execute_dimensional_validation(
         self,
-        column: Union[SQALikeColumn, Column],
-        dimension_col: Union[SQALikeColumn, Column],
+        column: Union[SQALikeColumn, Column],  # noqa: UP007
+        dimension_col: Union[SQALikeColumn, Column],  # noqa: UP007
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation query for a single dimension column
 
         Args:

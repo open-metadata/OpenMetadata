@@ -32,18 +32,6 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-// Mock Transi18next component
-jest.mock('../../../../utils/CommonUtils', () => ({
-  Transi18next: jest
-    .fn()
-    .mockImplementation(({ i18nKey, renderElement, values }) => (
-      <div data-testid="trans-component">
-        {i18nKey} - {values?.entity} - {values?.docs}
-        {renderElement}
-      </div>
-    )),
-}));
-
 // Mock Loader component
 jest.mock('../../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(({ size }) => (
@@ -87,8 +75,10 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/test-entity-link'),
+}));
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName || entity?.name || ''),
@@ -273,10 +263,9 @@ describe('CustomPropertiesSection', () => {
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveAttribute('data-type', 'PERMISSION');
 
-      const transComponent = screen.getByTestId('trans-component');
-
-      expect(transComponent).toBeInTheDocument();
-      expect(transComponent).toHaveTextContent('message.no-access-placeholder');
+      expect(errorPlaceholder).toHaveTextContent(
+        'message.no-access-placeholder'
+      );
 
       expect(screen.queryByTestId('search-bar')).not.toBeInTheDocument();
       expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
@@ -297,10 +286,7 @@ describe('CustomPropertiesSection', () => {
       expect(errorPlaceholder).toBeInTheDocument();
       expect(errorPlaceholder).toHaveAttribute('data-type', 'CUSTOM');
 
-      const transComponent = screen.getByTestId('trans-component');
-
-      expect(transComponent).toBeInTheDocument();
-      expect(transComponent).toHaveTextContent(
+      expect(errorPlaceholder).toHaveTextContent(
         'message.no-custom-properties-entity'
       );
 

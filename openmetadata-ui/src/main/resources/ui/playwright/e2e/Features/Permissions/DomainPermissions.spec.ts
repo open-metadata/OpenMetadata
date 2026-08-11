@@ -16,18 +16,13 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
-import { addCustomPropertiesForEntity } from '../../../utils/customProperty';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   assignRoleToUser,
   cleanupPermissions,
   initializePermissions,
 } from '../../../utils/permission';
-import {
-  settingClick,
-  SettingOptionsType,
-  sidebarClick,
-} from '../../../utils/sidebar';
+import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
 const testUser = new UserClass();
@@ -65,23 +60,10 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 });
 
 const domain = new Domain();
-const customPropertyName = `pwDomainCustomProperty${uuid()}`;
 
-test.beforeAll('Setup domain and custom property', async ({ browser }) => {
+test.beforeAll('Setup domain', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await domain.create(apiContext);
-
-  // Create custom property for domain once
-  const page = await browser.newPage();
-  await adminUser.login(page);
-  await settingClick(page, 'domains' as SettingOptionsType, true);
-  await addCustomPropertiesForEntity({
-    page,
-    propertyName: customPropertyName,
-    customPropertyData: { description: 'Test domain custom property' },
-    customType: 'String',
-  });
-  await page.close();
 
   await afterAction();
 });

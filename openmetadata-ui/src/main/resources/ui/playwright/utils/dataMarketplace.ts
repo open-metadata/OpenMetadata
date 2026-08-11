@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { startCase } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -47,7 +48,9 @@ export const closeSearchPopover = async (page: Page) => {
 
 export const verifyGreetingBanner = async (page: Page, displayName: string) => {
   await expect(page.getByTestId('marketplace-greeting')).toBeVisible();
-  await expect(page.getByTestId('greeting-text')).toContainText(displayName);
+  await expect(page.getByTestId('greeting-text')).toContainText(
+    startCase(displayName)
+  );
 };
 
 export const createAnnouncementViaApi = async (
@@ -56,15 +59,15 @@ export const createAnnouncementViaApi = async (
   message: string,
   description: string
 ) => {
-  const startTime = Math.floor(Date.now() / 1000);
-  const endTime = startTime + 86400;
-  const response = await apiContext.post('/api/v1/feed', {
+  const startTime = Date.now();
+  const endTime = startTime + 86400 * 1000;
+  const response = await apiContext.post('/api/v1/announcements', {
     data: {
-      message,
-      about: entityLink,
-      from: 'admin',
-      type: 'Announcement',
-      announcementDetails: { description, startTime, endTime },
+      displayName: message,
+      description,
+      entityLink,
+      startTime,
+      endTime,
     },
   });
   expect(response.ok()).toBeTruthy();
@@ -74,7 +77,7 @@ export const createAnnouncementViaApi = async (
 
 export const deleteAnnouncementViaApi = async (
   apiContext: APIRequestContext,
-  threadId: string
+  announcementId: string
 ) => {
-  await apiContext.delete(`/api/v1/feed/${threadId}`);
+  await apiContext.delete(`/api/v1/announcements/${announcementId}`);
 };

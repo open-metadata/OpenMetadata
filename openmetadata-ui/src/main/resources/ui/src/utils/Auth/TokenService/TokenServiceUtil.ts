@@ -12,7 +12,6 @@
  */
 import { AxiosError } from 'axios';
 import { AccessTokenResponse } from '../../../rest/auth-API';
-import { extractDetailsFromToken } from '../../AuthProvider.util';
 import { getOidcToken } from '../../SwTokenStorageUtils';
 
 const REFRESH_IN_PROGRESS_KEY = 'refreshInProgress'; // Key to track if refresh is in progress
@@ -28,6 +27,9 @@ class TokenService {
   renewToken: RenewTokenCallback | null = null;
   refreshSuccessCallback: (() => void) | null = null;
   private static _instance: TokenService;
+  private inFlightRefresh: Promise<
+    string | AccessTokenResponse | null | void
+  > | null = null;
 
   constructor() {
     this.clearRefreshInProgress();
@@ -77,45 +79,64 @@ class TokenService {
     });
   }
 
-  // Refresh the token if it is expired
+  // Refresh the token, coalescing concurrent callers in this tab (the proactive
+  // expiry timer, the visibility handler, the SSE stream and the 401 interceptor
+  // can all fire together) onto a single in-flight refresh so each awaits the
+  // SAME result — returning `undefined` to the losers previously made the 401
+  // interceptor treat an in-progress refresh as a failure and log the user out.
+  // There is no "skip if still valid" fast path: every caller invokes this only
+  // when a refresh is actually needed (token at/near expiry, or a server 401),
+  // and that check only ever blocked a genuinely-needed refresh on clock skew /
+  // server-side revocation.
   async refreshToken() {
-    if (this.isTokenUpdateInProgress()) {
-      return;
+    if (!this.inFlightRefresh) {
+      this.inFlightRefresh = this.performRefresh().finally(() => {
+        this.inFlightRefresh = null;
+      });
     }
 
-    // Set refresh in progress immediately to prevent race conditions
-    this.setRefreshInProgress();
+    return this.inFlightRefresh;
+  }
 
-    try {
-      const oldToken = await getOidcToken();
-      const { isExpired, timeoutExpiry } = extractDetailsFromToken(oldToken);
+  private async performRefresh() {
+    const oldToken = await getOidcToken();
 
-      // If token is expired or timeoutExpiry is less than 0 then try to silent signIn
-      if (isExpired || timeoutExpiry <= 0) {
-        // Logic to refresh the token
-        const newToken = await this.fetchNewToken();
-        if (newToken) {
-          // Wait briefly for token to be persisted in SW+IndexedDB before notifying
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          this.refreshSuccessCallback?.();
-          // To update all the tabs on updating channel token
-          // Notify all tabs that the token has been refreshed
-          localStorage.setItem(REFRESHED_KEY, 'true');
-        }
-
-        return newToken;
-      } else {
-        // Token doesn't need refreshing, clear the flag
-        this.clearRefreshInProgress();
-
-        return null;
+    // Another tab is already refreshing: wait (bounded) for it to broadcast a new
+    // token rather than racing a second /auth/refresh (which would rotate the
+    // refresh token out from under the first request and 401 this tab). If the
+    // sibling does not deliver in time, fall through and refresh here rather than
+    // logging the user out.
+    if (this.isTokenUpdateInProgress()) {
+      const siblingToken = await this.waitForTokenPersistence(oldToken);
+      if (siblingToken) {
+        return siblingToken;
       }
-    } catch (error) {
-      // Clear refresh flag on error to prevent deadlock
+    }
+
+    this.setRefreshInProgress();
+    const renewResult = await this.fetchNewToken();
+
+    // A value renewer (MSAL/Okta/Auth0/Basic/Generic) returns the token directly
+    // and has already awaited setOidcToken — that is success even if the SAME
+    // id_token is re-issued (forceRefresh only refreshes the access token), so we
+    // must not require the stored token to change. Public OIDC silent renew
+    // instead returns null/void and delivers the new token asynchronously via an
+    // iframe callback (OidcAuthenticator.signInSilently), so its result tells us
+    // nothing — fall back to whatever actually lands in storage. Only a falsy
+    // result with no token landing in the window is a genuine failure.
+    const refreshedToken =
+      renewResult || (await this.waitForTokenPersistence(oldToken));
+    if (!refreshedToken) {
+      // fetchNewToken only clears the flag when a renewer actually ran.
       this.clearRefreshInProgress();
 
-      throw error;
+      return null;
     }
+    this.refreshSuccessCallback?.();
+    // Notify all tabs that the token has been refreshed.
+    localStorage.setItem(REFRESHED_KEY, 'true');
+
+    return (await getOidcToken()) || refreshedToken;
   }
 
   // Call renewal method according to the provider
@@ -125,20 +146,18 @@ class TokenService {
       try {
         response = await this.renewToken();
       } catch (error) {
-        // Silent Frame window timeout error since it doesn't affect refresh token process
-        if ((error as AxiosError).message !== 'Frame window timed out') {
-          // Perform logout for any error
-          this.clearRefreshInProgress();
+        // Token renewal failures are usually caused by the user's session/browser
+        // environment (e.g. popups blocked, frame window timeout, silent auth
+        // interrupted). They don't require a thrown error — log for diagnostics
+        // and return null so callers fall back to their normal auth flow.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `Failed to refresh token: ${(error as AxiosError | Error).message}`
+        );
 
-          throw new Error(
-            `Failed to refresh token: ${(error as Error).message}`
-          );
-        }
-        // Do nothing
+        return null;
       } finally {
-        // If response is not null then clear the refresh flag
-        // For Callback based refresh token, response will be void
-        response && this.clearRefreshInProgress();
+        this.clearRefreshInProgress();
       }
     }
 
@@ -161,19 +180,25 @@ class TokenService {
     return localStorage.getItem(REFRESH_IN_PROGRESS_KEY) === 'true';
   }
 
-  private async waitForTokenPersistence(oldToken: string) {
+  // Poll (bounded) until the stored token differs from oldToken, returning the
+  // new token or null if it never changes in the window. Checks at t=0 first so a
+  // token that already landed (a sibling tab that just wrote it, or a value
+  // renewer that awaited setOidcToken) is returned without an artificial delay.
+  private async waitForTokenPersistence(
+    oldToken: string
+  ): Promise<string | null> {
     const maxAttempts = 20;
     const delayMs = 50;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-
       const currentToken = await getOidcToken();
-
       if (currentToken && currentToken !== oldToken) {
-        return;
+        return currentToken;
       }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
+
+    return null;
   }
 }
 

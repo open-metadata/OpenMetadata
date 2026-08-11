@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -64,6 +65,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("fields.description");
 
   public SearchIndexRepository() {
     super(
@@ -72,8 +74,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         SearchIndex.class,
         Entity.getCollectionDAO().searchIndexDAO(),
         "",
-        "");
+        "",
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_FOLLOWERS, this::fetchAndSetFollowers);
@@ -310,6 +317,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   private void setFieldFQN(String parentFQN, List<SearchIndexField> fields) {
     fields.forEach(
         c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
           String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(fieldFqn);
           if (c.getChildren() != null) {

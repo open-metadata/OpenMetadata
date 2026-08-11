@@ -88,12 +88,11 @@ Now review the implementation quality.
 **Python:**
 - [ ] pytest style (plain `assert`, no `unittest.TestCase`)
 - [ ] Type hints on public functions
-- [ ] `make py_format && make lint` passes
+- [ ] `make py_format && make py_format_check` passes
 - [ ] Pydantic 2.x patterns (not v1 compatibility layer)
 
 **TypeScript/React:**
 - [ ] No `any` types — use proper types or `unknown` with type guards
-- [ ] No MUI imports — use `openmetadata-ui-core-components`
 - [ ] Tailwind classes use `tw:` prefix
 - [ ] Strings use i18n (`t('label.xxx')`) not string literals
 - [ ] CSS custom properties for colors/spacing, no hardcoded values

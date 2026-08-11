@@ -17,7 +17,6 @@ import { get, isEqual } from 'lodash';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { updateUserDetail } from '../rest/userAPI';
 import { User } from './../generated/entity/teams/user';
-import { getImages } from './CommonUtils';
 import i18n from './i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
@@ -25,6 +24,28 @@ import {
 } from './ProfilerUtils';
 import { showErrorToast } from './ToastUtils';
 import userClassBase from './UserClassBase';
+
+export const imageTypes = {
+  image: 's96-c',
+  image192: 's192-c',
+  image24: 's24-c',
+  image32: 's32-c',
+  image48: 's48-c',
+  image512: 's512-c',
+  image72: 's72-c',
+};
+
+export const getImages = (imageUri: string) => {
+  const imagesObj: typeof imageTypes = imageTypes;
+  for (const type in imageTypes) {
+    imagesObj[type as keyof typeof imageTypes] = imageUri.replace(
+      's96-c',
+      imageTypes[type as keyof typeof imageTypes]
+    );
+  }
+
+  return imagesObj;
+};
 
 export const getUserDataFromOidc = (
   userData: User,
@@ -34,10 +55,7 @@ export const getUserDataFromOidc = (
     ? getImages(oidcUser.profile.picture)
     : undefined;
   const profileEmail = oidcUser.profile.email;
-  const email =
-    profileEmail && profileEmail.indexOf('@') !== -1
-      ? profileEmail
-      : userData.email;
+  const email = profileEmail?.includes('@') ? profileEmail : userData.email;
 
   return {
     ...userData,

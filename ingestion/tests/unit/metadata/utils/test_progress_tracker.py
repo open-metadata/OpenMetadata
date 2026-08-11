@@ -27,15 +27,11 @@ class TestEntityProgress:
         assert progress.estimate_remaining_seconds() is None
 
     def test_estimate_remaining_seconds_returns_none_when_complete(self) -> None:
-        progress = EntityProgress(
-            total=100, processed=100, processing_times=[0.1, 0.2, 0.15]
-        )
+        progress = EntityProgress(total=100, processed=100, processing_times=[0.1, 0.2, 0.15])
         assert progress.estimate_remaining_seconds() is None
 
     def test_estimate_remaining_seconds_calculates_correctly(self) -> None:
-        progress = EntityProgress(
-            total=100, processed=50, processing_times=[1.0, 1.0, 1.0]
-        )
+        progress = EntityProgress(total=100, processed=50, processing_times=[1.0, 1.0, 1.0])
         remaining = progress.estimate_remaining_seconds()
         assert remaining == 50  # 50 remaining * 1.0 avg time
 
@@ -50,16 +46,12 @@ class TestEntityProgress:
         assert progress.get_processing_rate() is None
 
     def test_get_processing_rate_calculates_correctly(self) -> None:
-        progress = EntityProgress(
-            total=100, processed=50, processing_times=[0.5, 0.5, 0.5]
-        )
+        progress = EntityProgress(total=100, processed=50, processing_times=[0.5, 0.5, 0.5])
         rate = progress.get_processing_rate()
         assert rate == 2.0  # 1 / 0.5 = 2 entities per second
 
     def test_to_dict_format(self) -> None:
-        progress = EntityProgress(
-            total=100, processed=25, processing_times=[2.0, 2.0, 2.0]
-        )
+        progress = EntityProgress(total=100, processed=25, processing_times=[2.0, 2.0, 2.0])
         result = progress.to_dict()
         assert result["total"] == 100
         assert result["processed"] == 25

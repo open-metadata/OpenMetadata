@@ -20,23 +20,42 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.VoteRequest;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Domain entity operations.
@@ -236,6 +255,65 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     Domain fetched = client.domains().get(domain.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
     assertFalse(fetched.getOwners().isEmpty());
+  }
+
+  @Test
+  void test_subDomainInheritsOwnersExpertsAndChildrenCount(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    EntityReference ownerRef = testUser1().getEntityReference();
+    String expertFqn = testUser2().getFullyQualifiedName();
+
+    Domain parent =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("inheritParent"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withOwners(List.of(ownerRef))
+                .withExperts(List.of(expertFqn))
+                .withDescription("Parent with owner and expert"));
+
+    Domain child =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("inheritChild"))
+                .withDomainType(DomainType.SOURCE_ALIGNED)
+                .withParent(parent.getFullyQualifiedName())
+                .withDescription("Subdomain with no owner or expert"));
+
+    Domain grandChild =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("inheritGrandChild"))
+                .withDomainType(DomainType.SOURCE_ALIGNED)
+                .withParent(child.getFullyQualifiedName())
+                .withDescription("Grand subdomain"));
+
+    Domain fetchedChild = client.domains().get(child.getId().toString(), "owners,experts");
+    assertFalse(fetchedChild.getOwners().isEmpty(), "subdomain must inherit owner from parent");
+    assertEquals(ownerRef.getId(), fetchedChild.getOwners().get(0).getId());
+    assertFalse(fetchedChild.getExperts().isEmpty(), "subdomain must inherit experts from parent");
+
+    Domain fetchedGrandChild =
+        client.domains().get(grandChild.getId().toString(), "owners,experts");
+    assertFalse(
+        fetchedGrandChild.getOwners().isEmpty(),
+        "depth-2 subdomain must inherit owner from ancestor");
+
+    Domain parentWithCount = client.domains().get(parent.getId().toString(), "childrenCount");
+    assertEquals(2, parentWithCount.getChildrenCount().intValue());
+    Domain childWithCount = client.domains().get(child.getId().toString(), "childrenCount");
+    assertEquals(1, childWithCount.getChildrenCount().intValue());
+
+    ListParams params =
+        new ListParams().setFields("owners,experts,childrenCount").withLimit(1000000);
+    Domain listedChild =
+        listEntities(params).getData().stream()
+            .filter(domain -> child.getId().equals(domain.getId()))
+            .findFirst()
+            .orElseThrow();
+    assertFalse(listedChild.getOwners().isEmpty(), "bulk list must inherit owner on subdomain");
+    assertEquals(1, listedChild.getChildrenCount().intValue());
   }
 
   @Test
@@ -1152,5 +1230,323 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     // Verify old child FQN no longer works
     assertThrows(Exception.class, () -> getEntityByName(oldChildFqn));
+  }
+
+  @Test
+  void softDeletedExpert_notReturnedInSingleGet(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("domain_expert");
+    User expert =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Expert user for domain soft-delete test"));
+
+    CreateDomain create =
+        new CreateDomain()
+            .withName(ns.prefix("domain_softdel"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withExperts(List.of(expert.getFullyQualifiedName()))
+            .withDescription("Domain for soft-delete expert test");
+    Domain domain = createEntity(create);
+
+    client.users().delete(expert.getId().toString());
+
+    Domain byId = client.domains().get(domain.getId().toString(), "experts");
+    assertTrue(
+        byId.getExperts() == null || byId.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear in single GET by ID");
+
+    Domain byName = client.domains().getByName(domain.getFullyQualifiedName(), "experts");
+    assertTrue(
+        byName.getExperts() == null || byName.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear in single GET by name");
+  }
+
+  @Test
+  void softDeletedExpert_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("domain_expert_list");
+    User expert =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Expert user for domain list soft-delete test"));
+
+    CreateDomain create =
+        new CreateDomain()
+            .withName(ns.prefix("domain_softdel_list"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withExperts(List.of(expert.getFullyQualifiedName()))
+            .withDescription("Domain for soft-delete expert list test");
+    Domain domain = createEntity(create);
+
+    client.users().delete(expert.getId().toString());
+
+    Domain listed = null;
+    ListParams params = new ListParams().setFields("experts").withLimit(100);
+    while (listed == null) {
+      ListResponse<Domain> page = listEntities(params);
+      listed =
+          page.getData().stream()
+              .filter(d -> d.getId().equals(domain.getId()))
+              .findFirst()
+              .orElse(null);
+      String after = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (listed != null || after == null) break;
+      params = new ListParams().setFields("experts").withLimit(100).setAfter(after);
+    }
+    assertNotNull(listed, "Domain not found in list");
+    assertTrue(
+        listed.getExperts() == null || listed.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear in list endpoint");
+  }
+
+  @Test
+  void softDeletedExpert_notReturnedInListWithIncludeAll(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("domain_expert_all");
+    User expert =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withDescription("Expert user for domain include-all soft-delete test"));
+
+    CreateDomain create =
+        new CreateDomain()
+            .withName(ns.prefix("domain_softdel_all"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withExperts(List.of(expert.getFullyQualifiedName()))
+            .withDescription("Domain for include-all soft-delete expert test");
+    Domain domain = createEntity(create);
+
+    client.users().delete(expert.getId().toString());
+
+    Domain listed = null;
+    ListParams params =
+        new ListParams().setFields("experts").withLimit(100).addFilter("include", "all");
+    while (listed == null) {
+      ListResponse<Domain> page = listEntities(params);
+      listed =
+          page.getData().stream()
+              .filter(d -> d.getId().equals(domain.getId()))
+              .findFirst()
+              .orElse(null);
+      String after = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (listed != null || after == null) break;
+      params =
+          new ListParams()
+              .setFields("experts")
+              .withLimit(100)
+              .addFilter("include", "all")
+              .setAfter(after);
+    }
+    assertNotNull(listed, "Domain not found in list with include=all");
+    assertTrue(
+        listed.getExperts() == null || listed.getExperts().isEmpty(),
+        "Soft-deleted expert must not appear even when include=all (applies to top-level only)");
+  }
+
+  @Test
+  void softDeletedFollower_notReturnedInListEndpoint(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String userName = ns.shortPrefix("follower_list");
+    User follower =
+        client
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    Domain domain = createEntity(createRequest(ns.prefix("dom_follower"), ns));
+
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + domain.getId() + "/followers",
+            follower.getId(),
+            ChangeEvent.class);
+
+    client.users().delete(follower.getId().toString());
+
+    ListParams params = new ListParams().setFields("followers").withLimit(1000000);
+    ListResponse<Domain> list = listEntities(params);
+    Domain listed =
+        list.getData().stream()
+            .filter(d -> d.getId().equals(domain.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Domain not found in list"));
+    assertTrue(
+        listed.getFollowers() == null || listed.getFollowers().isEmpty(),
+        "Soft-deleted follower must not appear in list endpoint");
+  }
+
+  @Test
+  void softDeletedVoter_notReturnedInListEndpoint(TestNamespace ns) {
+    String userName = ns.shortPrefix("voter_list");
+    String userEmail = userName + "@test.openmetadata.org";
+
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    User voter =
+        adminClient.users().create(new CreateUser().withName(userName).withEmail(userEmail));
+
+    Domain domain = createEntity(createRequest(ns.prefix("dom_voter"), ns));
+
+    OpenMetadataClient voterClient = SdkClients.createClient(userEmail, userEmail, new String[] {});
+    voterClient
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/domains/" + domain.getId() + "/vote",
+            new VoteRequest().withUpdatedVoteType(VoteRequest.VoteType.VOTED_UP),
+            ChangeEvent.class);
+
+    adminClient.users().delete(voter.getId().toString());
+
+    ListParams params = new ListParams().setFields("votes").withLimit(1000000);
+    ListResponse<Domain> list = listEntities(params);
+    Domain listed =
+        list.getData().stream()
+            .filter(d -> d.getId().equals(domain.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Domain not found in list"));
+    Votes votes = listed.getVotes();
+    boolean voterInUpVotes =
+        votes != null
+            && votes.getUpVoters() != null
+            && votes.getUpVoters().stream()
+                .anyMatch(ref -> ref != null && voter.getId().equals(ref.getId()));
+    assertFalse(voterInUpVotes, "Soft-deleted voter must not appear in list endpoint votes");
+  }
+
+  // ===================================================================
+  // Issue #28696 (domain analogue): a prefix-extension rename — where the new
+  // name keeps the old name as a prefix (e.g. "sales" -> "sales global") — must
+  // keep every linked asset, subdomain, and the domain doc itself pointing at
+  // the new FQN in search, and must NOT touch a sibling domain that merely
+  // shares a textual prefix ("salesforce"). The domain FQN-prefix scripts are
+  // boundary-aware (equals(oldFqn) || startsWith(oldFqn + '.')), so this is
+  // idempotent and prefix-safe; this locks that contract in (the prior rename
+  // tests only prepended "renamed_", never extending the name as a prefix).
+  // ===================================================================
+  @Test
+  void test_renameDomainPrefixExtension_keepsAssetSubdomainAndSiblingFqnInSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    // Dot-free names so FQNs stay unquoted and the new FQN literally startsWith the old one.
+    String parentName = "dom_" + ns.shortPrefix();
+    Domain parent =
+        createEntity(
+            new CreateDomain()
+                .withName(parentName)
+                .withDisplayName("Customer Domain")
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Parent domain for prefix-rename search regression (#28696)"));
+    String oldParentFqn = parent.getFullyQualifiedName();
+
+    Domain subdomain =
+        createEntity(
+            new CreateDomain()
+                .withName("sub_" + ns.shortPrefix())
+                .withDomainType(DomainType.SOURCE_ALIGNED)
+                .withParent(oldParentFqn)
+                .withDescription("Subdomain exercising the child-prefix branch"));
+    String subName = subdomain.getName();
+
+    // Sibling shares the parent's textual prefix WITHOUT a '.' boundary; it must never be
+    // rewritten.
+    Domain sibling =
+        createEntity(
+            new CreateDomain()
+                .withName(parentName + "x")
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Sibling domain that only shares a textual prefix"));
+    String siblingFqn = sibling.getFullyQualifiedName();
+
+    Table asset = createTableInDomain(ns, "clv", oldParentFqn);
+    String assetId = asset.getId().toString();
+
+    awaitAssetDomainFqn(client, mapper, assetId, oldParentFqn);
+
+    // Prefix-extension rename + displayName change (UI rename shape).
+    parent.setName(parentName + " renamed");
+    parent.setDisplayName("Customer Domain Renamed");
+    Domain renamed = patchEntity(parent.getId().toString(), parent);
+    String newParentFqn = renamed.getFullyQualifiedName();
+    assertNotEquals(oldParentFqn, newParentFqn);
+    assertTrue(
+        newParentFqn.startsWith(oldParentFqn),
+        "Reproduction requires the new FQN to extend the old FQN as a prefix: " + newParentFqn);
+
+    // Domain doc, subdomain (child prefix), and the asset must all follow to the new FQN...
+    verifyDomainInSearch(newParentFqn, parent.getId().toString());
+    verifyDomainInSearch(newParentFqn + "." + subName, subdomain.getId().toString());
+    awaitAssetDomainFqn(client, mapper, assetId, newParentFqn);
+
+    // ...and the prefix-sharing sibling must stay exactly as it was (no double / no spillover).
+    verifyDomainInSearch(siblingFqn, sibling.getId().toString());
+  }
+
+  private Table createTableInDomain(TestNamespace ns, String suffix, String domainFqn) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create()
+            .name(ns.shortPrefix("dom_db_" + suffix))
+            .in(service.getFullyQualifiedName())
+            .execute();
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.shortPrefix("dom_tbl_" + suffix))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+            .withDomains(List.of(domainFqn));
+    return client.tables().create(createTable);
+  }
+
+  private void awaitAssetDomainFqn(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedDomainFqn) {
+    Awaitility.await("asset " + tableId + " carries domain FQN " + expectedDomainFqn + " in search")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> domainFqns = new ArrayList<>();
+              for (JsonNode domain : hits.get(0).path("_source").path("domains")) {
+                domainFqns.add(domain.path("fullyQualifiedName").asText());
+              }
+              assertTrue(
+                  domainFqns.contains(expectedDomainFqn),
+                  "Expected asset domain FQN '"
+                      + expectedDomainFqn
+                      + "' on table search doc but found "
+                      + domainFqns);
+            });
   }
 }

@@ -13,20 +13,24 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import {
-  TaskType,
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from '../../../../generated/entity/feed/thread';
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
+import { TaskEntityStatus, TaskEntityType } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider as mockUseActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import MyTaskWidget from './MyTaskWidget';
 
+// A name carrying characters that must not survive into the path unescaped —
+// an ordinary fixture name cannot distinguish an encoded link from a raw one.
+const PATH_SENSITIVE_USERNAME = 'a.b/c d';
+
+const mockCurrentUser = { ...mockUserData };
+
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
-    currentUser: mockUserData,
+    currentUser: mockCurrentUser,
   })),
 }));
 
@@ -55,32 +59,32 @@ const mockProps = {
   ],
 };
 
-const mockEntityThread: Thread[] = [
+const mockTasks = [
   {
     id: '1',
-    message: 'Task 1',
-    about: 'test.task1',
-    task: {
-      status: ThreadTaskStatus.Open,
-      id: 1,
-      type: TaskType.RequestDescription,
-      assignees: [],
+    taskId: 'TASK-00001',
+    status: TaskEntityStatus.Open,
+    type: TaskEntityType.DescriptionUpdate,
+    assignees: [],
+    about: {
+      type: 'table',
+      fullyQualifiedName: 'service.db.schema.task1',
+      name: 'task1',
     },
-    type: ThreadType.Task,
-    updatedAt: 1640995200000,
+    createdAt: 1640995200000,
   },
   {
     id: '2',
-    message: 'Task 2',
-    about: 'test.task2',
-    task: {
-      status: ThreadTaskStatus.Open,
-      id: 2,
-      type: TaskType.RequestDescription,
-      assignees: [],
+    taskId: 'TASK-00002',
+    status: TaskEntityStatus.Open,
+    type: TaskEntityType.DescriptionUpdate,
+    assignees: [],
+    about: {
+      type: 'table',
+      fullyQualifiedName: 'service.db.schema.task2',
+      name: 'task2',
     },
-    type: ThreadType.Task,
-    updatedAt: 1641081600000,
+    createdAt: 1641081600000,
   },
 ];
 
@@ -104,10 +108,11 @@ const renderMyTaskWidget = (props = {}) => {
 describe('MyTaskWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCurrentUser.name = mockUserData.name;
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
-      getFeedData: jest.fn(),
-      entityThread: mockEntityThread,
+      getTaskData: jest.fn(),
+      tasks: mockTasks,
     });
   });
 
@@ -121,8 +126,8 @@ describe('MyTaskWidget', () => {
   it('renders empty state when no tasks', () => {
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
-      getFeedData: jest.fn(),
-      entityThread: [],
+      getTaskData: jest.fn(),
+      tasks: [],
     });
 
     renderMyTaskWidget();
@@ -137,19 +142,41 @@ describe('MyTaskWidget', () => {
     expect(screen.getByTestId('KnowledgePanel.MyTask')).toBeInTheDocument();
   });
 
-  it('calls getFeedData on mount with correct parameters', () => {
-    const mockGetFeedData = jest.fn();
+  it('builds an absolute, encoded view more link for the task tab', () => {
+    // The link was hand-rolled as `users/${name}/task` — relative and unencoded.
+    // The expected href is spelled out rather than interpolated so that dropping
+    // getEncodedFqn (or the leading slash) fails here.
+    mockCurrentUser.name = PATH_SENSITIVE_USERNAME;
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
-      getFeedData: mockGetFeedData,
-      entityThread: mockEntityThread,
+      getTaskData: jest.fn(),
+      tasks: Array.from({ length: PAGE_SIZE_BASE + 1 }, (_, index) => ({
+        ...mockTasks[0],
+        id: `${index}`,
+        taskId: `TASK-${index}`,
+      })),
+    });
+
+    renderMyTaskWidget();
+
+    expect(screen.getByText('label.view-more').closest('a')).toHaveAttribute(
+      'href',
+      '/users/a.b%2Fc%20d/task'
+    );
+  });
+
+  it('calls getFeedData on mount with correct parameters', () => {
+    const mockGetTaskData = jest.fn();
+    (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
+      loading: false,
+      getTaskData: mockGetTaskData,
+      tasks: mockTasks,
     });
     renderMyTaskWidget();
 
-    expect(mockGetFeedData).toHaveBeenCalledWith(
+    expect(mockGetTaskData).toHaveBeenCalledWith(
       'OWNER_OR_FOLLOWS',
       undefined,
-      'Task',
       undefined,
       undefined,
       undefined,

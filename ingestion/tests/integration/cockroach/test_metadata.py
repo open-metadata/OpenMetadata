@@ -22,7 +22,7 @@ def prepare_cockroach(cockroach_container):
         INSERT INTO test_table (name, age) VALUES 
             ('John Doe', 25),
             ('Jane Smith', 30);
-        """,
+        """,  # noqa: W291
     ]
     with engine.connect() as conn:
         for stmt in sql:
@@ -56,9 +56,7 @@ def test_ingest_metadata(
 ):
     run_workflow(MetadataWorkflow, ingestion_config)
 
-    table = metadata.get_by_name(
-        entity=Table, fqn=table_fqn.format(service=db_service.fullyQualifiedName.root)
-    )
+    table = metadata.get_by_name(entity=Table, fqn=table_fqn.format(service=db_service.fullyQualifiedName.root))
     assert table
     assert table.fullyQualifiedName.root.split(".")[-1] == "test_table"
 
@@ -66,8 +64,4 @@ def test_ingest_metadata(
         column = next((col for col in table.columns if col.name.root == name), None)
         assert column is not None
         assert column.dataType.name.lower() == properties["type"]
-        assert (
-            column.constraint == Constraint.PRIMARY_KEY
-            if name == "id"
-            else Constraint.NULL
-        )
+        assert column.constraint == Constraint.PRIMARY_KEY if name == "id" else Constraint.NULL

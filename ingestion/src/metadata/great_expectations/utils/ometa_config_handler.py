@@ -27,7 +27,7 @@ from metadata.utils.logger import great_expectations_logger
 logger = great_expectations_logger()
 
 
-def env(key: str) -> Optional[Any]:
+def env(key: str) -> Optional[Any]:  # noqa: UP045
     """Render environment variable from jinja template
 
     Args:
@@ -46,9 +46,7 @@ def create_jinja_environment(template_path: str) -> Environment:
         template_path: path to the folder holding the template
     """
 
-    environment = Environment(
-        loader=FileSystemLoader(template_path), autoescape=select_autoescape()
-    )
+    environment = Environment(loader=FileSystemLoader(template_path), autoescape=select_autoescape())
     environment.globals["env"] = env
 
     return environment
@@ -63,11 +61,9 @@ def render_template(environment: Environment, template_file: str = "config.yml")
     Returns:
         str
     """
-    file_type = os.path.splitext(template_file)
+    file_type = os.path.splitext(template_file)  # noqa: PTH122
     if file_type[1] not in {".yaml", ".yml"}:
-        raise TypeError(
-            f"Unsupported file type: {file_type}. Type should be `.yaml` or `.yml`"
-        )
+        raise TypeError(f"Unsupported file type: {file_type}. Type should be `.yaml` or `.yml`")
 
     try:
         tmplt = environment.get_template(template_file)
@@ -79,9 +75,7 @@ def render_template(environment: Environment, template_file: str = "config.yml")
             tmplt = environment.get_template("config.yaml")
             return tmplt.render()
         except TemplateNotFound as exc:
-            raise TemplateNotFound(
-                f"Config file at {environment.loader.searchpath} not found"
-            ) from exc
+            raise TemplateNotFound(f"Config file at {environment.loader.searchpath} not found") from exc
 
 
 def create_ometa_connection_obj(config: str) -> OpenMetadataConnection:

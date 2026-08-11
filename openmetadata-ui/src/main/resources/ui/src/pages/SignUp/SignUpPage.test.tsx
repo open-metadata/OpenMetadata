@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { createUser } from '../../rest/userAPI';
-import { getImages } from '../../utils/CommonUtils';
+import { getImages } from '../../utils/UserDataUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';
 import SignUp from './SignUpPage';
 
@@ -50,13 +51,12 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/UserDataUtils', () => ({
   getImages: jest
     .fn()
     .mockResolvedValue(
       'https://lh3.googleusercontent.com/a/ALm5wu0HwEPhAbyRha16cUHrEum-zxTDzj6KZiqYsT5Y=s96-c'
     ),
-  Transi18next: jest.fn().mockReturnValue('text'),
 }));
 
 jest.mock('../../utils/AuthProvider.util', () => ({
@@ -84,7 +84,7 @@ describe('SignUp page', () => {
     const emailInput = screen.getByTestId('email-input');
     const selectTeamLabel = screen.getByTestId('select-team-label');
     const createButton = screen.getByTestId('create-button');
-    const loadingContent = await screen.queryByTestId('loading-content');
+    const loadingContent = screen.queryByTestId('loading-content');
     const submitButton = screen.getByTestId('create-button');
 
     expect(logo).toBeInTheDocument();
@@ -109,13 +109,9 @@ describe('SignUp page', () => {
 
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
-    const fullNameInput = screen.getByTestId(
-      'full-name-input'
-    ) as HTMLInputElement;
-    const userNameInput = screen.getByTestId(
-      'username-input'
-    ) as HTMLInputElement;
-    const emailInput = screen.getByTestId('email-input') as HTMLInputElement;
+    const fullNameInput = screen.getByTestId('full-name-input');
+    const userNameInput = screen.getByTestId('username-input');
+    const emailInput = screen.getByTestId('email-input');
     const submitButton = screen.getByTestId('create-button');
 
     expect(form).toBeInTheDocument();

@@ -106,9 +106,15 @@ pipelineServiceClientConfiguration:
 fernetConfiguration:
   fernetKey: ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ
 objectStorage:
-  enabled: false
-  provider: NOOP
-  maxFileSize: 5242880
+  enabled: true
+  provider: s3
+  maxFileSize: 1048576
+  s3:
+    bucketName: test-bucket
+    region: us-east-1
+    accessKey: minio
+    secretKey: minio123
+    endpoint: http://placeholder:9000
 
 # RDF Configuration - will be dynamically configured by TestSuiteBootstrap
 rdf:

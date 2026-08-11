@@ -30,7 +30,6 @@ import io.fabric8.kubernetes.api.model.SecurityContext;
 import io.fabric8.kubernetes.api.model.SecurityContextBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,6 +37,7 @@ import org.openmetadata.operator.model.OMJobResource;
 import org.openmetadata.operator.model.OMJobSpec;
 import org.openmetadata.operator.model.OMJobStatus;
 import org.openmetadata.operator.util.EnvVarUtils;
+import org.openmetadata.operator.util.KubernetesNameBuilder;
 import org.openmetadata.operator.util.LabelBuilder;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.slf4j.Logger;
@@ -52,6 +52,7 @@ public class PodManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(PodManager.class);
   private static final String PIPELINE_STATUS = "pipelineStatus";
+  private static final int MAX_POD_NAME_LENGTH = 253;
 
   private final KubernetesClient client;
 
@@ -192,27 +193,12 @@ public class PodManager {
    * Find main pod for an OMJob
    */
   public Optional<Pod> findMainPod(OMJobResource omJob) {
-    // First try with operator-created pod selector
     Optional<Pod> pod = findPod(omJob, LabelBuilder.buildMainPodSelector(omJob));
-
     if (pod.isPresent()) {
       return pod;
     }
 
-    // If not found, try with server-created pod selector (fallback for compatibility)
-    Map<String, String> serverSelector = new HashMap<>();
-    serverSelector.put(LabelBuilder.LABEL_OMJOB_NAME, omJob.getMetadata().getName());
-    serverSelector.put(LabelBuilder.LABEL_POD_TYPE, LabelBuilder.POD_TYPE_MAIN);
-    // Note: server-created pods have app.kubernetes.io/managed-by = openmetadata
-
-    Optional<Pod> serverPod = findPod(omJob, serverSelector);
-
-    if (serverPod.isPresent()) {
-      LOG.info("Found server-created main pod for OMJob: {}", omJob.getMetadata().getName());
-      return serverPod;
-    }
-
-    // Last resort: try to find by pod name if it was recorded in status
+    // Fallback: try to find by pod name if it was recorded in status
     String recordedPodName = omJob.getStatus() != null ? omJob.getStatus().getMainPodName() : null;
     if (recordedPodName != null && !recordedPodName.isEmpty()) {
       try {
@@ -238,7 +224,32 @@ public class PodManager {
    * Find exit handler pod for an OMJob
    */
   public Optional<Pod> findExitHandlerPod(OMJobResource omJob) {
-    return findPod(omJob, LabelBuilder.buildExitHandlerSelector(omJob));
+    Optional<Pod> pod = findPod(omJob, LabelBuilder.buildExitHandlerSelector(omJob));
+    if (pod.isPresent()) {
+      return pod;
+    }
+
+    // Fallback: try to find by pod name if it was recorded in status
+    String recordedPodName =
+        omJob.getStatus() != null ? omJob.getStatus().getExitHandlerPodName() : null;
+    if (recordedPodName != null && !recordedPodName.isEmpty()) {
+      try {
+        Pod namedPod =
+            client
+                .pods()
+                .inNamespace(omJob.getMetadata().getNamespace())
+                .withName(recordedPodName)
+                .get();
+        if (namedPod != null) {
+          LOG.info("Found exit handler pod by name for OMJob: {}", omJob.getMetadata().getName());
+          return Optional.of(namedPod);
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not find pod by name {}: {}", recordedPodName, e.getMessage());
+      }
+    }
+
+    return Optional.empty();
   }
 
   /**
@@ -284,12 +295,19 @@ public class PodManager {
    */
   public void deletePods(OMJobResource omJob) {
     LOG.info("Deleting pods for OMJob: {}", omJob.getMetadata().getName());
+    String namespace = omJob.getMetadata().getNamespace();
     Map<String, String> selector = LabelBuilder.buildPodSelector(omJob);
 
     try {
-      client.pods().inNamespace(omJob.getMetadata().getNamespace()).withLabels(selector).delete();
-      LOG.info("Deleted pods for OMJob: {}", omJob.getMetadata().getName());
-
+      List<Pod> pods = client.pods().inNamespace(namespace).withLabels(selector).list().getItems();
+      if (pods == null) {
+        pods = List.of();
+      }
+      for (Pod pod : pods) {
+        String podName = pod.getMetadata().getName();
+        client.pods().inNamespace(namespace).withName(podName).delete();
+        LOG.info("Deleted pod: {}", podName);
+      }
     } catch (Exception e) {
       LOG.warn("Failed to delete pods for OMJob: {}", omJob.getMetadata().getName(), e);
     }
@@ -318,6 +336,7 @@ public class PodManager {
                 .withServiceAccountName(podSpec.getServiceAccountName())
                 .withImagePullSecrets(podSpec.getImagePullSecrets())
                 .withNodeSelector(podSpec.getNodeSelector())
+                .withTolerations(podSpec.getTolerations())
                 .withSecurityContext(podSpec.getSecurityContext())
                 .withContainers(buildContainer(omJob, podSpec, envOverride))
                 .build())
@@ -408,11 +427,35 @@ public class PodManager {
   }
 
   private String generateMainPodName(OMJobResource omJob) {
-    return omJob.getMetadata().getName() + "-main";
+    return buildPodName(omJob, "-main");
   }
 
   private String generateExitHandlerPodName(OMJobResource omJob) {
-    return omJob.getMetadata().getName() + "-exit";
+    return buildPodName(omJob, "-exit");
+  }
+
+  private String buildPodName(OMJobResource omJob, String suffix) {
+    // Kubernetes pod names can be up to 253 characters (DNS subdomain limit).
+    // The OMJob name label is derived from omJob.getMetadata().getName()
+    // and sanitized by LabelBuilder to satisfy the separate 63-character label limit.
+    // It is not derived from the generated pod name.
+    String baseName = omJob.getMetadata().getName();
+
+    // Account for suffix length when calculating max base name length.
+    int maxBaseLength = MAX_POD_NAME_LENGTH - suffix.length();
+    String podName =
+        KubernetesNameBuilder.fitNameWithHash(baseName, maxBaseLength, "omjob") + suffix;
+
+    // Log a warning if the original name was truncated to fit the DNS subdomain limit.
+    if (!podName.equals(omJob.getMetadata().getName() + suffix)) {
+      LOG.warn(
+          "Pod name for OMJob {} was truncated from {} to {} to comply with Kubernetes DNS name length limits",
+          omJob.getMetadata().getName(),
+          omJob.getMetadata().getName() + suffix,
+          podName);
+    }
+
+    return podName;
   }
 
   private String determinePipelineStatus(OMJobResource omJob) {

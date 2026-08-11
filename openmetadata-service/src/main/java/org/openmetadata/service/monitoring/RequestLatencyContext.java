@@ -360,7 +360,7 @@ public class RequestLatencyContext {
         long unphasedServerNanos = Math.max(0L, serverTimeNanos - phaseExclusiveNanos);
         long jsonKB = context.jsonBytesDeserialized.get() / 1024;
         int jsonOps = context.jsonDeserializeCount.get();
-        LOG.warn(
+        LOG.info(
             "Slow request - {} {}, total: {}ms, db: {}ms, search: {}ms, auth: {}ms, rdf: {}ms,"
                 + " server: {}ms, dbOps: {}, searchOps: {}, rdfOps: {}, jsonKB: {}, jsonOps:"
                 + " {}{}, unphasedServer: {}ms{}{}",

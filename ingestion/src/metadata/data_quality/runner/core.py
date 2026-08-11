@@ -13,7 +13,6 @@
 Main class to run data tests
 """
 
-
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger
@@ -37,4 +36,4 @@ class DataTestsRunner:
             test_case,
         )
 
-        return result
+        return result  # noqa: RET504

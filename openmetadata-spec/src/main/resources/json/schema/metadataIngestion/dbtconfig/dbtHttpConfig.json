@@ -31,6 +31,25 @@
       "title": "DBT Sources HTTP File Path",
       "description": "DBT sources http file path to extract freshness test results information.",
       "type": "string"
+    },
+    "dbtHttpHeaders": {
+      "title": "DBT HTTP Headers",
+      "description": "Custom HTTP headers to include in every request when fetching dbt artifacts (e.g. Authorization for private GitLab/GitHub repos).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "dbtVerifySSL": {
+      "title": "DBT Verify SSL",
+      "description": "SSL/TLS verification mode when fetching dbt artifacts over HTTPS.",
+      "$ref": "../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "dbtSSLConfig": {
+      "title": "DBT SSL Config",
+      "description": "SSL certificate configuration for validating the server certificate when fetching dbt artifacts.",
+      "$ref": "../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
     }
   },
   "additionalProperties": false,

@@ -14,9 +14,13 @@
 import unittest
 from unittest.mock import MagicMock, Mock
 
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
+    _get_args_and_kwargs,
+    _update_coltype,
     get_view_definition,
+    ischema_names,
 )
 
 
@@ -34,9 +38,7 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_view_definition_with_create_view(self):
         """Test that view definition with CREATE VIEW is not modified"""
-        self.mock_view.view_definition = (
-            "CREATE VIEW test_schema.test_view AS SELECT * FROM table1"
-        )
+        self.mock_view.view_definition = "CREATE VIEW test_schema.test_view AS SELECT * FROM table1"
 
         result = get_view_definition(
             self.mock_self,
@@ -45,9 +47,7 @@ class TestGetViewDefinition(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1"
-        )
+        self.assertEqual(result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1")
 
     def test_view_definition_without_create_view(self):
         """Test that view definition without CREATE VIEW gets it prepended"""
@@ -60,13 +60,13 @@ class TestGetViewDefinition(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1"
-        )
+        self.assertEqual(result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1")
 
     def test_view_definition_with_sql_comment_before_create(self):
         """Test view definition with SQL comment before CREATE VIEW (expected scenario)"""
-        self.mock_view.view_definition = "/* some comment */\n\tCREATE VIEW test_schema.test_view AS SELECT * FROM table1"
+        self.mock_view.view_definition = (
+            "/* some comment */\n\tCREATE VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
 
         result = get_view_definition(
             self.mock_self,
@@ -82,7 +82,9 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_view_definition_removes_schema_binding(self):
         """Test that WITH NO SCHEMA BINDING is removed"""
-        self.mock_view.view_definition = "CREATE VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
+        self.mock_view.view_definition = (
+            "CREATE VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
+        )
 
         result = get_view_definition(
             self.mock_self,
@@ -91,15 +93,11 @@ class TestGetViewDefinition(unittest.TestCase):
             schema="test_schema",
         )
 
-        self.assertEqual(
-            result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1 "
-        )
+        self.assertEqual(result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1 ")
 
     def test_materialized_view_definition_with_create(self):
         """Test that view definition with CREATE MATERIALIZED VIEW is not modified"""
-        self.mock_view.view_definition = (
-            "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
-        )
+        self.mock_view.view_definition = "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
 
         result = get_view_definition(
             self.mock_self,
@@ -115,9 +113,7 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_materialized_view_definition_without_create(self):
         """Test that materialized view definition without CREATE gets CREATE VIEW prepended"""
-        self.mock_view.view_definition = (
-            "SELECT * FROM table1 JOIN table2 ON table1.id = table2.id"
-        )
+        self.mock_view.view_definition = "SELECT * FROM table1 JOIN table2 ON table1.id = table2.id"
 
         result = get_view_definition(
             self.mock_self,
@@ -133,7 +129,9 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_materialized_view_definition_removes_schema_binding(self):
         """Test that WITH NO SCHEMA BINDING is removed from materialized view"""
-        self.mock_view.view_definition = "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
+        self.mock_view.view_definition = (
+            "CREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
+        )
 
         result = get_view_definition(
             self.mock_self,
@@ -149,7 +147,9 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_materialized_view_with_comment_before_create(self):
         """Test materialized view definition with SQL comment before CREATE MATERIALIZED VIEW"""
-        self.mock_view.view_definition = "/* some comment */\n\tCREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+        self.mock_view.view_definition = (
+            "/* some comment */\n\tCREATE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
 
         result = get_view_definition(
             self.mock_self,
@@ -165,9 +165,7 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_view_definition_with_create_or_replace_view(self):
         """Test that view definition with CREATE OR REPLACE VIEW is not modified"""
-        self.mock_view.view_definition = (
-            "CREATE OR REPLACE VIEW test_schema.test_view AS SELECT * FROM table1"
-        )
+        self.mock_view.view_definition = "CREATE OR REPLACE VIEW test_schema.test_view AS SELECT * FROM table1"
 
         result = get_view_definition(
             self.mock_self,
@@ -183,7 +181,9 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_materialized_view_definition_with_create_or_replace(self):
         """Test that definition with CREATE OR REPLACE MATERIALIZED VIEW is not modified"""
-        self.mock_view.view_definition = "CREATE OR REPLACE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+        self.mock_view.view_definition = (
+            "CREATE OR REPLACE MATERIALIZED VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
 
         result = get_view_definition(
             self.mock_self,
@@ -199,9 +199,7 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_external_view_definition_with_create(self):
         """Test that view definition with CREATE EXTERNAL VIEW is not modified"""
-        self.mock_view.view_definition = (
-            "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1"
-        )
+        self.mock_view.view_definition = "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1"
 
         result = get_view_definition(
             self.mock_self,
@@ -217,7 +215,9 @@ class TestGetViewDefinition(unittest.TestCase):
 
     def test_external_view_definition_removes_schema_binding(self):
         """Test that WITH NO SCHEMA BINDING is removed from external view"""
-        self.mock_view.view_definition = "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
+        self.mock_view.view_definition = (
+            "CREATE EXTERNAL VIEW test_schema.test_view AS SELECT * FROM table1 WITH NO SCHEMA BINDING"
+        )
 
         result = get_view_definition(
             self.mock_self,
@@ -289,17 +289,223 @@ class TestGetAllRelationInfoCache(unittest.TestCase):
             self._make_result([self._make_relation("t2", "schema_2")]),
         ]
 
-        r1 = _get_all_relation_info(
-            self.mock_self, self.mock_connection, schema="schema_1"
-        )
+        r1 = _get_all_relation_info(self.mock_self, self.mock_connection, schema="schema_1")
         self.assertEqual({k.name for k in r1}, {"t1"})
 
-        r2 = _get_all_relation_info(
-            self.mock_self, self.mock_connection, schema="schema_2"
-        )
+        r2 = _get_all_relation_info(self.mock_self, self.mock_connection, schema="schema_2")
         self.assertEqual({k.name for k in r2}, {"t2"})
 
         self.assertEqual(self.mock_connection.execute.call_count, 2)
+
+
+class TestRedshiftColumnTypeParsing(unittest.TestCase):
+    """Test Redshift column type argument parsing."""
+
+    def test_timestamp_without_time_zone_precision_uses_keyword_argument(self):
+        """Timestamp precision must not be passed as positional timezone."""
+        args, kwargs = _get_args_and_kwargs("0", "timestamp without time zone", "timestamp(0) without time zone")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": False})
+
+        coltype = _update_coltype(
+            ischema_names["timestamp without time zone"],
+            args,
+            kwargs,
+            "timestamp without time zone",
+            "created_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertFalse(coltype.timezone)
+
+    def test_timestamp_with_time_zone_precision_uses_keyword_argument(self):
+        """Timestamp with time zone keeps precision and timezone keywords."""
+        args, kwargs = _get_args_and_kwargs("0", "timestamp with time zone", "timestamp(0) with time zone")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": True})
+
+        coltype = _update_coltype(
+            ischema_names["timestamp with time zone"],
+            args,
+            kwargs,
+            "timestamp with time zone",
+            "created_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertTrue(coltype.timezone)
+
+    def test_time_without_time_zone_precision_uses_keyword_argument(self):
+        """Time precision must not be passed as positional timezone."""
+        args, kwargs = _get_args_and_kwargs("0", "time without time zone", "time(0) without time zone")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": False})
+
+        coltype = _update_coltype(
+            ischema_names["time without time zone"],
+            args,
+            kwargs,
+            "time without time zone",
+            "started_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertFalse(coltype.timezone)
+
+    def test_numeric_and_character_varying_positional_arguments_are_unchanged(self):
+        """Non-time types keep their established positional parsing."""
+        numeric_args, numeric_kwargs = _get_args_and_kwargs("10,2", "numeric", "numeric(10,2)")
+        varchar_args, varchar_kwargs = _get_args_and_kwargs("255", "character varying", "character varying(255)")
+
+        self.assertEqual(numeric_args, (10, 2))
+        self.assertEqual(numeric_kwargs, {})
+        self.assertEqual(varchar_args, (255,))
+        self.assertEqual(varchar_kwargs, {})
+
+
+class TestRedshiftIntervalParsing(unittest.TestCase):
+    """Test Redshift interval column type argument parsing."""
+
+    def test_interval_with_precision_uses_keyword_argument(self):
+        """interval(N) must route precision through kwargs, not positional args."""
+        args, kwargs = _get_args_and_kwargs("6", "interval", "interval(6)")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 6})
+
+        coltype = _update_coltype(
+            ischema_names["interval"],
+            args,
+            kwargs,
+            "interval",
+            "duration",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 6)
+        self.assertIsNone(coltype.fields)
+
+    def test_interval_with_fields_and_precision_uses_keyword_arguments(self):
+        """interval <fields>(N) must route both precision and fields through kwargs."""
+        args, kwargs = _get_args_and_kwargs("6", "interval day to second", "interval day to second(6)")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 6, "fields": "day to second"})
+
+        coltype = _update_coltype(
+            ischema_names["interval"],
+            args,
+            kwargs,
+            "interval",
+            "duration",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 6)
+        self.assertEqual(coltype.fields, "day to second")
+
+    def test_interval_without_precision_keeps_args_empty(self):
+        """Bare interval must produce empty args and empty kwargs."""
+        args, kwargs = _get_args_and_kwargs(None, "interval", "interval")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {})
+
+
+class TestRedshiftNumericParsing(unittest.TestCase):
+    """Test Redshift numeric column type argument parsing."""
+
+    def test_numeric_with_precision_only_does_not_crash(self):
+        """numeric(N) without scale must parse precision-only without ValueError."""
+        args, kwargs = _get_args_and_kwargs("10", "numeric", "numeric(10)")
+
+        self.assertEqual(args, (10,))
+        self.assertEqual(kwargs, {})
+
+        coltype = _update_coltype(
+            ischema_names["numeric"],
+            args,
+            kwargs,
+            "numeric",
+            "amount",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 10)
+        self.assertIsNone(coltype.scale)
+
+    def test_numeric_with_precision_and_scale_unchanged(self):
+        """Regression: numeric(P,S) must continue to parse both as positional args."""
+        args, kwargs = _get_args_and_kwargs("10,2", "numeric", "numeric(10,2)")
+
+        self.assertEqual(args, (10, 2))
+        self.assertEqual(kwargs, {})
+
+        coltype = _update_coltype(
+            ischema_names["numeric"],
+            args,
+            kwargs,
+            "numeric",
+            "amount",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 10)
+        self.assertEqual(coltype.scale, 2)
+
+    def test_numeric_without_charlen_keeps_args_empty(self):
+        """Bare numeric must produce empty args and empty kwargs."""
+        args, kwargs = _get_args_and_kwargs(None, "numeric", "numeric")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {})
+
+    def test_numeric_with_space_after_comma_falls_back_to_init_args(self):
+        """numeric(P, S) with a space must still parse precision and scale."""
+        args, kwargs = _get_args_and_kwargs(None, "numeric", "numeric(10, 2)")
+
+        self.assertEqual(args, (10, 2))
+        self.assertEqual(kwargs, {})
+
+
+class TestRedshiftExternalTableTypeMapping(unittest.TestCase):
+    """
+    Spectrum/Glue external tables emit Hive-style column types via
+    svv_external_columns. Types like `string` and `double` must resolve to
+    concrete OpenMetadata types instead of UNKNOWN (issue #29589), otherwise
+    column-level data quality test selection shows "No data".
+    """
+
+    def test_external_hive_types_resolve_to_concrete_types(self):
+        """Each Spectrum type is registered and maps to the expected type."""
+        expected = {
+            "string": "VARCHAR",
+            "double": "DOUBLE",
+            "char": "CHAR",
+            "tinyint": "TINYINT",
+        }
+
+        for external_type, expected_om_type in expected.items():
+            with self.subTest(external_type=external_type):
+                self.assertIn(
+                    external_type,
+                    ischema_names,
+                    f"'{external_type}' is not registered in ischema_names",
+                )
+                # Resolve an instantiated type, matching how the dialect passes
+                # column types into the parser during reflection.
+                resolved = ColumnTypeParser.get_column_type(ischema_names[external_type]())
+                self.assertEqual(
+                    resolved,
+                    expected_om_type,
+                    f"'{external_type}' resolved to {resolved}, expected {expected_om_type}",
+                )
 
 
 if __name__ == "__main__":

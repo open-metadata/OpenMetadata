@@ -73,7 +73,7 @@ $$
 
 ## IAM Auth Config
 
-$$note 
+$$note
 If you are using IAM auth, add <br />`"ssl": {"ssl-mode": "allow"}` under Connection Arguments
 $$
 

@@ -90,27 +90,23 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
 }));
 
 /**
- * mock i18next
+ * Minimal DataTransfer polyfill — jsdom does not implement it, and the core
+ * FileUploadDropZone builds a FileList via `new DataTransfer()` when forwarding
+ * the selected files to its onDrop handlers.
  */
+if (typeof global.DataTransfer === 'undefined') {
+  global.DataTransfer = class {
+    constructor() {
+      const files = [];
+      files.item = (index) => files[index] ?? null;
+      this.items = {
+        add: (file) => files.push(file),
+      };
+      this.files = files;
+    }
+  };
+}
 
-jest.mock('i18next', () => ({
-  ...jest.requireActual('i18next'),
-  use: jest.fn(),
-  init: jest.fn(),
-  t: jest.fn().mockImplementation((key) => key),
-}));
-
-jest.mock('utils/i18next/LocalUtil', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key) => key,
-  }),
-  detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
-  t: (key) => key,
-  translateWithNestedKeys: jest.fn((key, params) => {
-    return params ? `${key}_${JSON.stringify(params)}` : key;
-  }),
-  dir: jest.fn().mockReturnValue('ltr'),
-}));
 /**
  * mock react-i18next
  */
@@ -162,69 +158,29 @@ jest.mock('./utils/EnvironmentUtils', () => ({
   isDev: jest.fn().mockReturnValue('test'),
 }));
 
-/**
- * Mock MUI theme to provide proper theme context
- * Note: We keep the actual ThemeProvider so tests can wrap components properly
- */
-jest.mock('@mui/material/styles', () => {
-  const actual = jest.requireActual('@mui/material/styles');
-
-  return {
-    ...actual,
-  };
-});
-
-/**
- * Mock @mui/styled-engine to prevent styled-components/emotion conflicts in tests
- * Note: We keep ThemeContext from the actual package to allow ThemeProvider to work properly
- */
-jest.mock('@mui/styled-engine', () => {
-  const actual = jest.requireActual('@mui/styled-engine');
-
+jest.mock('./utils/i18next/LocalUtil', () => {
   const React = require('react');
 
-  const styled = (component) => () => {
-    return React.forwardRef((props, ref) => {
-      return React.createElement(component, { ...props, ref });
-    });
-  };
-
   return {
-    ...actual,
+    Transi18next: jest
+      .fn()
+      .mockImplementation(({ i18nKey, renderElement, values }) => {
+        const valueArr = Object.values(values ?? {});
+
+        return React.createElement('div', { 'data-testid': i18nKey }, [
+          i18nKey,
+          renderElement,
+          valueArr,
+        ]);
+      }),
     __esModule: true,
-    default: styled,
-    styled,
-    keyframes: () => 'mock-keyframes',
-    css: (...args) => args,
-    internal_mutateStyles: jest.fn(),
-    internal_serializeStyles: jest.fn(),
-  };
-});
-
-/**
- * Mock @mui/material components for consistent testing
- */
-jest.mock('@mui/material', () => {
-  const React = require('react');
-
-  const styled = (component) => () => component;
-
-  return {
-    ...jest.requireActual('@mui/material'),
-    Button: React.forwardRef(({ children, onClick, ...props }, ref) =>
-      React.createElement(
-        'button',
-        { ...props, onClick, ref, 'data-testid': props['data-testid'] },
-        children
-      )
-    ),
-    Grid: React.forwardRef(({ children, ...props }, ref) =>
-      React.createElement(
-        'div',
-        { ...props, ref, 'data-testid': props['data-testid'] },
-        children
-      )
-    ),
-    styled,
+    default: {
+      t: jest.fn().mockImplementation((key) => key),
+      on: jest.fn(),
+    },
+    t: jest.fn().mockImplementation((key) => key),
+    translateWithNestedKeys: jest.fn().mockImplementation((key, params) => {
+      return params ? `${key}_${JSON.stringify(params)}` : key;
+    }),
   };
 });

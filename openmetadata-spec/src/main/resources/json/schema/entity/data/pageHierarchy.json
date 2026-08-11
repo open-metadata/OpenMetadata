@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/pageHierarchy.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Page Hierarchy",
+  "description": "This schema defines the Page entity with Hierarchy.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.PageHierarchy",
+  "definitions": {
+    "pageHierarchyList": {
+      "type": "array",
+      "items": {
+        "$ref": "pageHierarchy.json"
+      },
+      "default": null
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier for the Page.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "pageType": {
+      "description": "Page type",
+      "$ref": "./page.json#/definitions/pageType"
+    },
+    "name": {
+      "description": "A unique name of the Page/.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Description of the Page.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "parent": {
+      "description": "Parent Knowledge Page.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "children" : {
+      "excludedFromEqualsAndHashCode": true,
+      "description" : "Children of this Knowledge Page.",
+      "$ref" : "#/definitions/pageHierarchyList"
+    },
+    "childrenCount" : {
+      "excludedFromEqualsAndHashCode": true,
+      "description" : "Children Count of the Pages",
+      "type" : "integer",
+      "default": 0
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

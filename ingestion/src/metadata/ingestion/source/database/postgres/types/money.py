@@ -13,7 +13,6 @@
 Custom sqlalchemy type for Postgres MONEY type
 """
 
-
 from sqlalchemy.dialects.postgresql import MONEY
 from sqlalchemy.sql.sqltypes import String
 

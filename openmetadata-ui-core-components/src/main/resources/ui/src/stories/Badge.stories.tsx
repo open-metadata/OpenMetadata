@@ -115,6 +115,9 @@ export const BadgeColors: StoryObj = {
 export const Sizes: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <Badge color="brand" size="xs" type="pill-color">
+        XSmall
+      </Badge>
       <Badge color="brand" size="sm" type="pill-color">
         Small
       </Badge>

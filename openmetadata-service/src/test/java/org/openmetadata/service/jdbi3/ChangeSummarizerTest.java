@@ -8,6 +8,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -77,6 +78,21 @@ public class ChangeSummarizerTest {
   }
 
   @Test
+  public void test_multiLevelNestedDescription() {
+    ChangeSummarizer<Container> containerChangeSummarizer =
+        new ChangeSummarizer<>(Container.class, Set.of("dataModel.columns.description"));
+    String fieldName = "dataModel.columns.column1.description";
+    List<FieldChange> changes = List.of(new FieldChange().withName(fieldName));
+
+    Map<String, ChangeSummary> result =
+        containerChangeSummarizer.summarizeChanges(
+            Map.of(), changes, ChangeSource.MANUAL, "testUser", System.currentTimeMillis());
+
+    assertEquals(1, result.size());
+    Assertions.assertTrue(result.containsKey(fieldName));
+  }
+
+  @Test
   public void test_nonExistentField() {
     String fieldName = "nonExistentField";
     try {
@@ -128,5 +144,29 @@ public class ChangeSummarizerTest {
     Set<String> result = changeSummarizer.processDeleted(List.of(fieldChange));
     assertEquals(1, result.size());
     assertEquals("columns.c'_+# 1.description", result.iterator().next());
+  }
+
+  @Test
+  public void test_deleteColumnDescription() {
+    FieldChange fieldChange =
+        new FieldChange().withName("columns.column1.description").withOldValue("some description");
+
+    Set<String> result = changeSummarizer.processDeleted(List.of(fieldChange));
+    assertEquals(1, result.size());
+    assertEquals("columns.column1.description", result.iterator().next());
+  }
+
+  @Test
+  public void test_deleteMultiLevelNestedColumnDescription() {
+    ChangeSummarizer<Container> containerChangeSummarizer =
+        new ChangeSummarizer<>(Container.class, Set.of("dataModel.columns.description"));
+    FieldChange fieldChange =
+        new FieldChange()
+            .withName("dataModel.columns.column1.description")
+            .withOldValue("some description");
+
+    Set<String> result = containerChangeSummarizer.processDeleted(List.of(fieldChange));
+    assertEquals(1, result.size());
+    assertEquals("dataModel.columns.column1.description", result.iterator().next());
   }
 }

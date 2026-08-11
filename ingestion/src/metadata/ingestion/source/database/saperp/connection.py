@@ -12,17 +12,19 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.sapErpConnection import (
-    SapErpConnection,
+    SapErpConnection as SapErpConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.saperp.client import SapErpClient
@@ -32,25 +34,27 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def get_connection(connection: SapErpConnection) -> SapErpClient:
-    return SapErpClient(connection)
+class SapErpConnection(BaseConnection[SapErpConnectionConfig, SapErpClient]):
+    def _get_client(self) -> SapErpClient:
+        connection = self.service_connection
+        return SapErpClient(connection)
 
-
-def test_connection(
-    metadata: OpenMetadata,
-    client: SapErpClient,
-    service_connection: SapErpConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    test_fn = {
-        "GetTables": client.test_table_api,
-        "GetColumns": client.test_column_api,
-    }
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        client = self.client
+        service_connection = self.service_connection
+        test_fn = {
+            "GetTables": client.test_table_api,
+            "GetColumns": client.test_column_api,
+        }
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

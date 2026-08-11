@@ -27,10 +27,7 @@ public class LoggingProgressListener implements ReindexingProgressListener {
   @Override
   public void onJobStarted(ReindexingJobContext context) {
     LOG.info(
-        "Reindexing job started - Job ID: {}, Source: {}, Distributed: {}",
-        context.getJobId(),
-        context.getSource(),
-        context.isDistributed());
+        "Reindexing job started - Job ID: {}, Source: {}", context.getJobId(), context.getSource());
   }
 
   @Override
@@ -45,17 +42,16 @@ public class LoggingProgressListener implements ReindexingProgressListener {
     logger.addInitDetail("Max Concurrent Requests", config.maxConcurrentRequests());
     logger.addInitDetail("Payload Size", formatBytes(config.payloadSize()));
     logger.addInitDetail("Auto-tune", config.autoTune() ? "Enabled" : "Disabled");
-    logger.addInitDetail("Recreate Index", config.recreateIndex() ? "Yes" : "No");
-    logger.addInitDetail("Distributed Mode", config.useDistributedIndexing() ? "Yes" : "No");
+    logger.addInitDetail("Indexing Mode", "Staged indexes with alias promotion");
 
     logger.logInitialization();
   }
 
   @Override
   public void onIndexRecreationStarted(Set<String> entities) {
-    LOG.info("Starting index recreation for {} entity types", entities.size());
+    LOG.info("Preparing staged indexes for {} entity types", entities.size());
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Entities to recreate: {}", String.join(", ", entities));
+      LOG.debug("Entities to stage: {}", String.join(", ", entities));
     }
   }
 

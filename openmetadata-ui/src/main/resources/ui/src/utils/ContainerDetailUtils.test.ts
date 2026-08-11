@@ -16,9 +16,8 @@ import { Column, DataType } from '../generated/entity/data/container';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
-} from './ContainerDetailUtils';
+} from './ContainerDetailPureUtils';
 import { getEntityDetailsPath } from './RouterUtils';
-
 const mockTagOptions = [
   {
     tagFQN: 'PII.Sensitive',

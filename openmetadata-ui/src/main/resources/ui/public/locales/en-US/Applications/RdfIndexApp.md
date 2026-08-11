@@ -1,22 +1,59 @@
-# RDF Knowledge Graph Indexing Application
+# RDF Knowledge Graph Indexing
 
-This schema defines configuration for RDF Knowledge Graph Indexing Application.
+Configuration for RDF knowledge graph indexing.
+
+$$section
+### Entities $(id="entities")
+
+List of entities that you need to reindex. Leave empty to index all supported entities.
+
+$$
+
+$$section
+### Recreate RDF Store $(id="recreateIndex")
+
+Clear the RDF store before indexing.
+
+$$
 
 $$section
 ### Batch Size $(id="batchSize")
 
-Maximum number of entities to process in a batch (Default 100).
+Maximum number of entities processed in a batch.
 
 $$
 
 $$section
-### entities $(id="entities")
+### Producer Threads $(id="producerThreads")
+
+Number of producer threads to use for non-distributed RDF indexing.
 
 $$
 
 $$section
-### Clear RDF Data $(id="recreateIndex")
+### Consumer Threads $(id="consumerThreads")
 
-Clear all existing RDF triples before re-indexing. Use this to remove stale data from the RDF store.
+Number of consumer threads to use for non-distributed RDF indexing.
+
+$$
+
+$$section
+### Queue Size $(id="queueSize")
+
+Internal queue size for non-distributed RDF indexing.
+
+$$
+
+$$section
+### Use Distributed Indexing $(id="useDistributedIndexing")
+
+Enable distributed RDF indexing with partition coordination and recovery.
+
+$$
+
+$$section
+### Partition Size $(id="partitionSize")
+
+Number of entities per partition for distributed RDF indexing.
 
 $$

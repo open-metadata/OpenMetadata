@@ -17,6 +17,7 @@ import { EntityUtilClassBase } from './EntityUtilClassBase';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getServiceDetailsPath,
 } from './RouterUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
@@ -29,7 +30,7 @@ jest.mock('../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
 
-jest.mock('./CommonUtils', () => ({
+jest.mock('./FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
 }));
 
@@ -49,7 +50,7 @@ jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteDetailsPath: jest.fn(),
 }));
 
-jest.mock('./TableUtils', () => ({
+jest.mock('./TableDropdownOptions', () => ({
   ExtraTableDropdownOptions: jest.fn(),
 }));
 
@@ -226,6 +227,43 @@ describe('EntityUtilClassBase', () => {
     );
   });
 
+  it('should return service details path for driveService entity type', () => {
+    const fqn = 'test.driveService';
+    entityUtil.getEntityLink(EntityType.DRIVE_SERVICE, fqn);
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'driveServices');
+  });
+
+  it('should return service details path for securityService entity type', () => {
+    const fqn = 'test.securityService';
+    entityUtil.getEntityLink(EntityType.SECURITY_SERVICE, fqn);
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'securityServices');
+  });
+
+  it('should fall through to the default table path for ingestion pipelines', () => {
+    // The logs viewer is now an in-place modal (no route), so ingestion-pipeline
+    // entity links resolve to the default entity path instead of a `/logs` URL.
+    const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+    entityUtil.getEntityLink(
+      EntityType.INGESTION_PIPELINE,
+      fqn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'databaseServices',
+      'bigquery-beta'
+    );
+
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      fqn,
+      undefined,
+      undefined
+    );
+  });
+
   describe('getFqnParts', () => {
     it('should return undefined columnFqn if type is NOT provided', () => {
       const fqn = 'service.database.schema.table';
@@ -293,6 +331,20 @@ describe('EntityUtilClassBase', () => {
 
       // Implementation detail: it initializes entityFqn = fqn, and only changes if length > 4
       expect(result).toEqual({ entityFqn: fqn, columnFqn: undefined });
+    });
+  });
+
+  describe('getEntityTypes', () => {
+    it('should return the list of OSS entity types', () => {
+      const types = entityUtil.getEntityTypes();
+
+      expect(types).toEqual(Object.values(EntityType));
+      expect(types).toContain(EntityType.TABLE);
+      expect(types).toContain(EntityType.GLOSSARY_TERM);
+    });
+
+    it('should not contain Collate-only types absent from the enum', () => {
+      expect(entityUtil.getEntityTypes()).not.toContain('aiAutomation');
     });
   });
 });

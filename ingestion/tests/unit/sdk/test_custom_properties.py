@@ -1,6 +1,7 @@
 """
 Unit tests for custom property operations in SDK.
 """
+
 from unittest.mock import Mock, patch
 from uuid import UUID
 
@@ -68,9 +69,7 @@ class TestCustomPropertyUpdater:
         result = updater.execute()
 
         # Verify
-        mock_client.get_by_id.assert_called_once_with(
-            entity=Table, entity_id="test-id", fields=["extension"]
-        )
+        mock_client.get_by_id.assert_called_once_with(entity=Table, entity_id="test-id", fields=["extension"])
         mock_client.patch.assert_called_once()
         assert result == updated_table
 
@@ -83,9 +82,7 @@ class TestCustomPropertyUpdater:
 
         # Setup mock entity with existing extension
         mock_table = Mock(spec=Table)
-        existing_extension = basic.EntityExtension(
-            root={"existingKey": "existingValue"}
-        )
+        existing_extension = basic.EntityExtension(root={"existingKey": "existingValue"})
         mock_table.extension = existing_extension
         mock_table_copy = Mock(spec=Table)
         mock_table.model_copy = Mock(return_value=mock_table_copy)
@@ -98,7 +95,7 @@ class TestCustomPropertyUpdater:
         # Execute update
         updater = CustomPropertyUpdater(Table, "test-id")
         updater.with_property("newKey", "newValue")
-        result = updater.execute()
+        result = updater.execute()  # noqa: F841
 
         # Verify the extension was updated correctly
         mock_client.patch.assert_called_once()
@@ -117,9 +114,7 @@ class TestCustomPropertyUpdater:
 
         # Setup mock entity with existing extension
         mock_table = Mock(spec=Table)
-        existing_extension = basic.EntityExtension(
-            root={"key1": "value1", "key2": "value2"}
-        )
+        existing_extension = basic.EntityExtension(root={"key1": "value1", "key2": "value2"})
         mock_table.extension = existing_extension
         mock_table_copy = Mock(spec=Table)
         mock_table_copy.extension = None
@@ -133,7 +128,7 @@ class TestCustomPropertyUpdater:
         # Execute clear all
         updater = CustomPropertyUpdater(Table, "test-id")
         updater.clear_all()
-        result = updater.execute()
+        result = updater.execute()  # noqa: F841
 
         # Verify extension was cleared
         mock_client.patch.assert_called_once()
@@ -158,11 +153,9 @@ class TestCustomPropertyUpdater:
         mock_client.patch.return_value = updated_table
 
         # Execute update by FQN
-        updater = CustomPropertyUpdater(
-            Table, "service.database.schema.table", is_fqn=True
-        )
+        updater = CustomPropertyUpdater(Table, "service.database.schema.table", is_fqn=True)
         updater.with_property("key", "value")
-        result = updater.execute()
+        result = updater.execute()  # noqa: F841
 
         # Verify get_by_name was called
         mock_client.get_by_name.assert_called_once_with(
@@ -189,9 +182,7 @@ class TestCustomProperties:
 
     def test_update_by_name(self):
         """Test creating updater by name/FQN."""
-        updater = CustomProperties.update_by_name(
-            Table, "service.database.schema.table"
-        )
+        updater = CustomProperties.update_by_name(Table, "service.database.schema.table")
         assert isinstance(updater, CustomPropertyUpdater)
         assert updater.entity_type == Table
         assert updater.identifier == "service.database.schema.table"
@@ -280,9 +271,7 @@ class TestIntegrationWithBaseEntity:
         mock_client.patch.return_value = mock_table
 
         # Use BaseEntity method
-        updater = Tables.update_custom_properties_by_name(
-            "service.database.schema.table"
-        )
+        updater = Tables.update_custom_properties_by_name("service.database.schema.table")
         assert isinstance(updater, CustomPropertyUpdater)
 
         # Execute update

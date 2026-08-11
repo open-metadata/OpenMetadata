@@ -110,3 +110,4 @@ SET json = json::jsonb - 'inputPorts' - 'outputPorts'
 WHERE jsonSchema = 'dataProduct'
   AND (json::jsonb ?? 'inputPorts' OR json::jsonb ?? 'outputPorts');
 
+

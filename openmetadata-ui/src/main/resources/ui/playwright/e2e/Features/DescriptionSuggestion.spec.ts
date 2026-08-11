@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,427 +10,585 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../../support/entity/ContainerClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { createTableDescriptionSuggestions } from '../../utils/suggestions';
-import { performUserLogin } from '../../utils/user';
+import { getApiContext } from '../../utils/common';
+import {
+  addCommentToTask,
+  buildTaskRoute,
+  closeTaskFromDetails,
+  createDescriptionTaskFromForm,
+  editDescriptionAndAccept,
+  openEntityTasksTab,
+  openTaskDetails,
+  openTaskForm,
+} from '../../utils/taskWorkflow';
 
+const requesterUser = new UserClass();
+const reviewerUser = new UserClass();
 const table = new TableClass();
-const table2 = new TableClass();
-const user1 = new UserClass();
-const user2 = new UserClass();
-const user3 = new UserClass();
-let entityLinkList: string[];
+const topic = new TopicClass();
+const container = new ContainerClass();
+const apiEndpoint = new ApiEndpointClass();
+const createdTaskIds: string[] = [];
+
+const ENTITY_ENDPOINTS = {
+  table: '/api/v1/tables/name/',
+  topic: '/api/v1/topics/name/',
+  container: '/api/v1/containers/name/',
+  apiEndpoint: '/api/v1/apiEndpoints/name/',
+} as const;
+
+const findFieldByPath = (
+  fields: Array<{
+    name: string;
+    children?: unknown[];
+    description?: string;
+  }> = [],
+  pathSegments: string[]
+): { description?: string } | undefined => {
+  const [currentField, ...remainingSegments] = pathSegments;
+  const matchedField = fields.find((field) => field.name === currentField);
+
+  if (!matchedField) {
+    return undefined;
+  }
+
+  if (remainingSegments.length === 0) {
+    return matchedField;
+  }
+
+  return findFieldByPath(
+    (matchedField.children as Array<{
+      name: string;
+      children?: unknown[];
+      description?: string;
+    }>) ?? [],
+    remainingSegments
+  );
+};
+
+const fetchEntityDetails = async (
+  apiContext: APIRequestContext,
+  entityType: keyof typeof ENTITY_ENDPOINTS,
+  fqn: string
+) => {
+  const response = await apiContext.get(
+    `${ENTITY_ENDPOINTS[entityType]}${encodeURIComponent(fqn)}?fields=*`
+  );
+
+  return response.json();
+};
+
+const getPlainTextDescription = (description?: string) =>
+  (description ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 test.describe.serial(
-  'Description Suggestions Table Entity',
+  'Description Task Workflows',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.slow(true);
 
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { afterAction, apiContext } = await performAdminLogin(browser);
-      await table.create(apiContext);
-      await table2.create(apiContext);
+    test.beforeAll('Setup users and entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      entityLinkList = table.entityLinkColumnsName.map(
-        (entityLinkName) =>
-          `<#E::table::${table.entityResponseData.fullyQualifiedName}::columns::${entityLinkName}>`
-      );
-      await user1.create(apiContext);
-      await user2.create(apiContext);
-      await user3.create(apiContext);
+      try {
+        await requesterUser.create(apiContext);
+        await requesterUser.setAdminRole(apiContext);
+        await reviewerUser.create(apiContext);
+        await reviewerUser.setAdminRole(apiContext);
 
-      // Create suggestions for both users
-      for (const entityLink of entityLinkList) {
-        await createTableDescriptionSuggestions(apiContext, entityLink);
+        await table.create(apiContext);
+        await table.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/description',
+              value: '',
+            },
+          ],
+        });
+
+        await topic.create(apiContext);
+        await container.create(apiContext);
+        await apiEndpoint.create(apiContext);
+      } finally {
+        await afterAction();
       }
-
-      await afterAction();
     });
 
-    test('View, Close, Reject and Accept the Suggestions', async ({
-      browser,
-    }) => {
-      const { page, afterAction } = await performAdminLogin(browser);
-
-      await test.step('View and Open the Suggestions', async () => {
-        await redirectToHomePage(page);
-        await table.visitEntityPage(page);
-
-        await expect(page.getByText('Suggested Descriptions')).toBeVisible();
-
-        const allAvatarSuggestion = page
-          .getByTestId('asset-description-container')
-          .getByTestId('profile-avatar');
-
-        // Two users profile will be visible, 3rd one will come after AllFetch is clicked
-        await expect(allAvatarSuggestion).toHaveCount(1);
-
-        // Click the first avatar
-        await allAvatarSuggestion.nth(0).click();
-
-        // Actions Buttons should be visible
-        await expect(page.getByTestId('accept-all-suggestions')).toBeVisible();
-        await expect(page.getByTestId('reject-all-suggestions')).toBeVisible();
-        await expect(page.getByTestId('close-suggestion')).toBeVisible();
-
-        // All Column Suggestions Card should be visible
-        await expect(
-          page.getByTestId('suggested-SuggestDescription-card')
-        ).toHaveCount(table.entityLinkColumnsName.length);
-
-        // Close the suggestions
-        await page.getByTestId('close-suggestion').click();
-
-        await expect(allAvatarSuggestion).toHaveCount(1); // suggestion should not reject or disappear
-      });
-
-      await test.step('Accept Single Suggestion', async () => {
-        const allAvatarSuggestion = page
-          .getByTestId('asset-description-container')
-          .getByTestId('profile-avatar');
-
-        // Click the first avatar
-        await allAvatarSuggestion.nth(0).click();
-
-        const singleResolveResponse = page.waitForResponse(
-          '/api/v1/suggestions/*/accept'
-        );
-
-        await page
-          .locator(
-            `[data-row-key*=${table.columnsName[0]}] [data-testid="accept-suggestion"]`
-          )
-          .click();
-
-        await singleResolveResponse;
-
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-
-        // since we accepted one suggestion, the badge count should be total-1
-        await expect(
-          page
-            .getByTestId('asset-description-container')
-            .locator(
-              `.ant-badge [title="${table.entityLinkColumnsName.length - 1}"]`
-            )
-        ).toBeVisible();
-
-        await expect(
-          page.locator(
-            `[data-row-key*=${table.columnsName[0]}] [data-testid="description"]`
-          )
-        ).toContainText('this is suggested data description');
-      });
-
-      await test.step('Accept Nested Suggestion', async () => {
-        const allAvatarSuggestion = page
-          .getByTestId('asset-description-container')
-          .getByTestId('profile-avatar');
-
-        // Click the first avatar
-        await allAvatarSuggestion.nth(0).click();
-
-        const singleResolveResponse = page.waitForResponse(
-          '/api/v1/suggestions/*/accept'
-        );
-
-        await page
-          .locator(
-            `[data-row-key*=${table.columnsName[5]}] [data-testid="accept-suggestion"]`
-          )
-          .click();
-
-        await singleResolveResponse;
-
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-
-        // since we accepted two suggestions, the badge count should be total-2
-        await expect(
-          page
-            .getByTestId('asset-description-container')
-            .locator(
-              `.ant-badge [title="${table.entityLinkColumnsName.length - 2}"]`
-            )
-        ).toBeVisible();
-
-        await expect(
-          page.locator(
-            `[data-row-key*=${table.columnsName[5]}] [data-testid="description"]`
-          )
-        ).toContainText('this is suggested data description');
-      });
-
-      await test.step('Reject Single Suggestion', async () => {
-        const allAvatarSuggestion = page
-          .getByTestId('asset-description-container')
-          .getByTestId('profile-avatar');
-
-        // Click the first avatar
-        await allAvatarSuggestion.nth(0).click();
-
-        const singleResolveResponse = page.waitForResponse(
-          '/api/v1/suggestions/*/reject'
-        );
-
-        await page
-          .locator(
-            `[data-row-key*=${table.columnsName[1]}] [data-testid="reject-suggestion"]`
-          )
-          .click();
-
-        await singleResolveResponse;
-
-        // since we accepted two suggestions and rejected one, the badge count should be total-3
-        await expect(
-          page
-            .getByTestId('asset-description-container')
-            .locator(
-              `.ant-badge [title="${table.entityLinkColumnsName.length - 3}"]`
-            )
-        ).toBeVisible();
-
-        await expect(
-          page.locator(
-            `[data-row-key*=${table.columnsName[1]}] [data-testid="description"]`
-          )
-        ).not.toContainText('this is suggested data description');
-      });
-
-      await test.step('Accept all Suggestion', async () => {
-        const allAvatarSuggestion = page
-          .getByTestId('asset-description-container')
-          .getByTestId('profile-avatar');
-
-        // Click the first avatar
-        await allAvatarSuggestion.nth(0).click();
-
-        const acceptResponse = page.waitForResponse(
-          '/api/v1/suggestions/accept-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
-        );
-
-        await page.click(`[data-testid="accept-all-suggestions"]`);
-
-        await acceptResponse;
-
-        // check the third column description, since other two are already checked
-        await expect(
-          page.locator(
-            `[data-row-key*=${table.columnsName[5]}] [data-testid="description"]`
-          )
-        ).toContainText('this is suggested data description');
-
-        // Actions Buttons should not be visible
-        await expect(
-          page.getByTestId('accept-all-suggestions')
-        ).not.toBeVisible();
-        await expect(
-          page.getByTestId('reject-all-suggestions')
-        ).not.toBeVisible();
-        await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
-      });
-
-      await afterAction();
-    });
-
-    test('Reject All Suggestions', async ({ browser }) => {
-      const { page, afterAction } = await performAdminLogin(browser);
-      const { afterAction: afterAction2, apiContext: apiContext2 } =
-        await performUserLogin(browser, user1);
-
-      for (const entityLink of entityLinkList) {
-        await createTableDescriptionSuggestions(apiContext2, entityLink);
-      }
-
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-
-      const allAvatarSuggestion = page
-        .getByTestId('asset-description-container')
-        .getByTestId('profile-avatar');
-
-      // Click the first avatar
-      await allAvatarSuggestion.nth(0).click();
-
-      const rejectResponse = page.waitForResponse(
-        '/api/v1/suggestions/reject-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
-      );
-
-      await page.click(`[data-testid="reject-all-suggestions"]`);
-
-      await rejectResponse;
-
-      // check the last column description
-      await expect(
-        page.locator(
-          `[data-row-key*=${table.columnsName[1]}] [data-testid="description"]`
-        )
-      ).not.toContainText('this is suggested data description');
-
-      // Actions Buttons should not be visible
-      await expect(
-        page.getByTestId('accept-all-suggestions')
-      ).not.toBeVisible();
-      await expect(
-        page.getByTestId('reject-all-suggestions')
-      ).not.toBeVisible();
-      await expect(page.getByTestId('close-suggestion')).not.toBeVisible();
-
-      await afterAction();
-      await afterAction2();
-    });
-
-    test('Fetch on avatar click and then all Pending Suggestions button click', async ({
-      browser,
-    }) => {
-      const { page, afterAction } = await performAdminLogin(browser);
-      const { afterAction: afterAction2, apiContext: apiContext2 } =
-        await performUserLogin(browser, user1);
-      const { afterAction: afterAction3, apiContext: apiContext3 } =
-        await performUserLogin(browser, user2);
-      const { afterAction: afterAction4, apiContext: apiContext4 } =
-        await performUserLogin(browser, user3);
-
-      for (const entityLink of entityLinkList) {
-        await createTableDescriptionSuggestions(apiContext2, entityLink);
-        await createTableDescriptionSuggestions(apiContext3, entityLink);
-        await createTableDescriptionSuggestions(apiContext4, entityLink);
-      }
-
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-
-      const avatarSuggestion = page.waitForResponse(
-        `/api/v1/suggestions?entityFQN=*userId=*`
-      );
-      await page
-        .getByTestId('asset-description-container')
-        .getByTestId('profile-avatar')
-        .nth(0)
-        .click();
-
-      await avatarSuggestion;
-
-      await expect(page.getByTestId('more-suggestion-button')).toBeVisible();
-
-      const fetchMoreSuggestionResponse = page.waitForResponse(
-        '/api/v1/suggestions?entityFQN=*&limit=*'
-      );
-      await page.getByTestId('more-suggestion-button').click();
-      await fetchMoreSuggestionResponse;
-
-      const allAvatarSuggestion = page
-        .getByTestId('asset-description-container')
-        .getByTestId('profile-avatar');
-
-      // Click the first avatar
-      await expect(allAvatarSuggestion).toHaveCount(3);
-
-      await afterAction();
-      await afterAction2();
-      await afterAction3();
-      await afterAction4();
-    });
-
-    test('Should auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions', async ({
-      browser,
-    }) => {
-      const { page, afterAction } = await performAdminLogin(browser);
-      const { afterAction: afterAction2, apiContext: apiContext2 } =
-        await performUserLogin(browser, user1);
-      const { afterAction: afterAction3, apiContext: apiContext3 } =
-        await performUserLogin(browser, user2);
-      const { afterAction: afterAction4, apiContext: apiContext4 } =
-        await performUserLogin(browser, user3);
-
-      for (const entityLink of entityLinkList) {
-        await createTableDescriptionSuggestions(apiContext2, entityLink);
-        await createTableDescriptionSuggestions(apiContext3, entityLink);
-        await createTableDescriptionSuggestions(apiContext4, entityLink);
-      }
-
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-
-      for (let index = 0; index < 3; index++) {
-        const avatarSuggestion = page.waitForResponse(
-          `/api/v1/suggestions?entityFQN=*userId=*`
-        );
-        await page
-          .getByTestId('asset-description-container')
-          .getByTestId('profile-avatar')
-          .nth(0)
-          .click();
-
-        await avatarSuggestion;
-
-        const fetchSuggestionResponse = page.waitForResponse(
-          '/api/v1/suggestions?entityFQN=*&limit=*'
-        );
-        const rejectAllSuggestionResponse = page.waitForResponse(
-          '/api/v1/suggestions/reject-all?userId=*&entityFQN=*&suggestionType=SuggestDescription'
-        );
-        await page.getByTestId('reject-all-suggestions').click();
-        await rejectAllSuggestionResponse;
-
-        const allAvatarSuggestion = page
-          .getByTestId('asset-description-container')
-          .getByTestId('profile-avatar');
-
-        // On last avatar accept/reject click, if there is still more suggestion pending. Then auto fetch them.
-        if (index !== 2) {
-          await expect(
-            page.getByTestId('more-suggestion-button')
-          ).toBeVisible();
-          await expect(allAvatarSuggestion).toHaveCount(3 - (index + 1));
-        } else {
-          await fetchSuggestionResponse;
-
-          await expect(
-            page.getByTestId('more-suggestion-button')
-          ).not.toBeVisible();
-
-          await expect(allAvatarSuggestion).toHaveCount(0);
+    test.afterAll('Cleanup users and entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        for (const taskId of createdTaskIds) {
+          await apiContext
+            .delete(`/api/v1/tasks/${taskId}?hardDelete=true`)
+            .catch(() => undefined);
         }
+        await apiEndpoint.delete(apiContext);
+        await container.delete(apiContext);
+        await topic.delete(apiContext);
+        await table.delete(apiContext);
+        await reviewerUser.delete(apiContext);
+        await requesterUser.delete(apiContext);
+      } finally {
+        await afterAction();
       }
-
-      await afterAction();
-      await afterAction2();
-      await afterAction3();
-      await afterAction4();
     });
 
-    test('Should fetch initial 10 suggestions on entity change from table1 to table2', async ({
+    test('should add and accept a requested table description', async ({
+      page,
       browser,
     }) => {
-      // Jumping from one table to another table to check if the suggestions are fetched correctly
-      // due to provider boundary on entity.
+      const requestedDescription =
+        'Requested description added by the assignee';
 
-      const { page, afterAction } = await performAdminLogin(browser);
-
-      await redirectToHomePage(page);
-
-      const suggestionFetchCallResponse = page.waitForResponse(
-        '/api/v1/suggestions?entityFQN=*&limit=10'
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'request-description',
+          entityType: 'table',
+          fqn: table.entityResponseData.fullyQualifiedName,
+        })
       );
-      await table2.visitEntityPage(page);
-      await suggestionFetchCallResponse;
 
-      const suggestionFetchCallResponse2 = page.waitForResponse(
-        '/api/v1/suggestions?entityFQN=*&limit=10'
+      const task = await createDescriptionTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+      });
+      createdTaskIds.push(task.id);
+
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await table.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editDescriptionAndAccept(reviewerPage, requestedDescription);
+
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'table',
+                table.entityResponseData.fullyQualifiedName
+              );
+
+              return getPlainTextDescription(entity.description);
+            })
+            .toBe(requestedDescription);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
+
+    test('should edit and accept a suggested table column description', async ({
+      page,
+      browser,
+    }) => {
+      const columnPath = table.entityLinkColumnsName[5];
+      const editedSuggestion =
+        'Edited suggestion accepted for the nested table column';
+
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'update-description',
+          entityType: 'table',
+          fqn: table.entityResponseData.fullyQualifiedName,
+          field: 'columns',
+          value: columnPath,
+        })
       );
-      await table.visitEntityPage(page);
-      await suggestionFetchCallResponse2;
 
-      await afterAction();
+      const task = await createDescriptionTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+        description: 'Initial suggestion for the nested table column',
+      });
+      createdTaskIds.push(task.id);
+
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await table.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editDescriptionAndAccept(reviewerPage, editedSuggestion);
+
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'table',
+                table.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.columns ?? [],
+                columnPath.split('.')
+              );
+
+              return getPlainTextDescription(field?.description);
+            })
+            .toBe(editedSuggestion);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
+
+    test('should add and accept a requested topic schema field description', async ({
+      page,
+      browser,
+    }) => {
+      const topicFieldPath = [
+        topic.children[0].name,
+        topic.children[0].children?.[0].name ?? '',
+        'last_name',
+      ].join('.');
+      const addedDescription =
+        'Assignee-added description for the topic schema field';
+
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'request-description',
+          entityType: 'topic',
+          fqn: topic.entityResponseData.fullyQualifiedName,
+          field: 'messageSchema.schemaFields',
+          value: topicFieldPath,
+        })
+      );
+
+      const task = await createDescriptionTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+      });
+      createdTaskIds.push(task.id);
+
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await topic.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editDescriptionAndAccept(reviewerPage, addedDescription);
+
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'topic',
+                topic.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.messageSchema?.schemaFields ?? [],
+                topicFieldPath.split('.')
+              );
+
+              return getPlainTextDescription(field?.description);
+            })
+            .toBe(addedDescription);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
+
+    test('should add and accept a requested api endpoint request schema field description', async ({
+      page,
+      browser,
+    }) => {
+      const requestFieldPath = 'default.name.last_name';
+      const addedDescription =
+        'Assignee-added description for the api request schema field';
+
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'request-description',
+          entityType: 'apiEndpoint',
+          fqn: apiEndpoint.entityResponseData.fullyQualifiedName,
+          field: 'requestSchema.schemaFields',
+          value: requestFieldPath,
+        })
+      );
+
+      const task = await createDescriptionTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+      });
+      createdTaskIds.push(task.id);
+
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await apiEndpoint.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editDescriptionAndAccept(reviewerPage, addedDescription);
+
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'apiEndpoint',
+                apiEndpoint.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.requestSchema?.schemaFields ?? [],
+                requestFieldPath.split('.')
+              );
+
+              return getPlainTextDescription(field?.description);
+            })
+            .toBe(addedDescription);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
+
+    test('should edit and accept a suggested api endpoint response schema field description', async ({
+      page,
+      browser,
+    }) => {
+      const responseFieldPath = 'default.name.last_name';
+      const editedSuggestion =
+        'Edited suggestion accepted for the api response schema field';
+
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'update-description',
+          entityType: 'apiEndpoint',
+          fqn: apiEndpoint.entityResponseData.fullyQualifiedName,
+          field: 'responseSchema.schemaFields',
+          value: responseFieldPath,
+        })
+      );
+
+      const task = await createDescriptionTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+        description: 'Initial suggestion for the api response schema field',
+      });
+      createdTaskIds.push(task.id);
+
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await apiEndpoint.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await editDescriptionAndAccept(reviewerPage, editedSuggestion);
+
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'apiEndpoint',
+                apiEndpoint.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.responseSchema?.schemaFields ?? [],
+                responseFieldPath.split('.')
+              );
+
+              return getPlainTextDescription(field?.description);
+            })
+            .toBe(editedSuggestion);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
+
+    test('should decline a requested api endpoint request schema field description', async ({
+      page,
+      browser,
+    }) => {
+      const requestFieldPath = 'default.club_name';
+      const originalDescription = '';
+
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'request-description',
+          entityType: 'apiEndpoint',
+          fqn: apiEndpoint.entityResponseData.fullyQualifiedName,
+          field: 'requestSchema.schemaFields',
+          value: requestFieldPath,
+        })
+      );
+
+      const task = await createDescriptionTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+      });
+      createdTaskIds.push(task.id);
+
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await apiEndpoint.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await addCommentToTask(
+          reviewerPage,
+          'Declining the api request schema field description task.'
+        );
+        await closeTaskFromDetails(reviewerPage);
+
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const taskResponse = await apiContext.get(
+                `/api/v1/tasks/${task.id}`
+              );
+              const taskDetails = await taskResponse.json();
+
+              return taskDetails.status !== 'Open';
+            })
+            .toBe(true);
+
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'apiEndpoint',
+                apiEndpoint.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(
+                entity.requestSchema?.schemaFields ?? [],
+                requestFieldPath.split('.')
+              );
+
+              return getPlainTextDescription(field?.description);
+            })
+            .toBe(originalDescription);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
+    });
+
+    test('should decline a suggested container column description', async ({
+      page,
+      browser,
+    }) => {
+      const containerColumnName =
+        container.entityResponseData.dataModel?.columns?.[0].name ?? '';
+      const originalDescription = getPlainTextDescription(
+        container.entityResponseData.dataModel?.columns?.[0].description
+      );
+
+      await requesterUser.login(page);
+      await openTaskForm(
+        page,
+        buildTaskRoute({
+          action: 'update-description',
+          entityType: 'container',
+          fqn: container.entityResponseData.fullyQualifiedName,
+          field: 'dataModel.columns',
+          value: containerColumnName,
+        })
+      );
+
+      const task = await createDescriptionTaskFromForm({
+        page,
+        assigneeName: reviewerUser.responseData.name,
+        description: 'Suggestion that should be declined for the container',
+      });
+      createdTaskIds.push(task.id);
+
+      const reviewerPage = await browser.newPage();
+      try {
+        await reviewerUser.login(reviewerPage);
+        await container.visitEntityPage(reviewerPage);
+        await openEntityTasksTab(reviewerPage);
+        await openTaskDetails(reviewerPage, task);
+        await addCommentToTask(
+          reviewerPage,
+          'Declining the container description task.'
+        );
+        await closeTaskFromDetails(reviewerPage);
+
+        const { apiContext, afterAction } = await getApiContext(reviewerPage);
+        try {
+          await expect
+            .poll(async () => {
+              const taskResponse = await apiContext.get(
+                `/api/v1/tasks/${task.id}`
+              );
+              const taskDetails = await taskResponse.json();
+
+              return taskDetails.status !== 'Open';
+            })
+            .toBe(true);
+
+          await expect
+            .poll(async () => {
+              const entity = await fetchEntityDetails(
+                apiContext,
+                'container',
+                container.entityResponseData.fullyQualifiedName
+              );
+              const field = findFieldByPath(entity.dataModel?.columns ?? [], [
+                containerColumnName,
+              ]);
+
+              return getPlainTextDescription(field?.description);
+            })
+            .toBe(originalDescription);
+        } finally {
+          await afterAction();
+        }
+      } finally {
+        await reviewerPage.close();
+      }
     });
   }
 );

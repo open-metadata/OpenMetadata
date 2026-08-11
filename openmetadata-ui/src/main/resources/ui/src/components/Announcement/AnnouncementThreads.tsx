@@ -14,40 +14,30 @@
 import { Divider, Typography } from 'antd';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Post, Thread } from '../../generated/entity/feed/thread';
+import { AnnouncementEntity } from '../../rest/announcementsAPI';
 import { isActiveAnnouncement } from '../../utils/AnnouncementsUtils';
-import { getFeedListWithRelativeDays } from '../../utils/FeedUtils';
 import { AnnouncementThreadListProp } from './Announcement.interface';
 import './announcement.less';
 import AnnouncementFeedCard from './AnnouncementFeedCard.component';
 
 const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
-  threads,
+  announcements,
   editPermission,
-  postFeed,
   onConfirmation,
-  updateThreadHandler,
+  updateAnnouncementHandler,
 }) => {
   const { t } = useTranslation();
-  const { updatedFeedList: updatedThreads } =
-    getFeedListWithRelativeDays(threads);
 
   const { activeAnnouncements, inActiveAnnouncements } = useMemo(() => {
-    return updatedThreads.reduce(
+    return announcements.reduce(
       (
         acc: {
-          activeAnnouncements: Thread[];
-          inActiveAnnouncements: Thread[];
+          activeAnnouncements: AnnouncementEntity[];
+          inActiveAnnouncements: AnnouncementEntity[];
         },
-        cv: Thread
+        cv: AnnouncementEntity
       ) => {
-        if (
-          cv.announcement &&
-          isActiveAnnouncement(
-            cv.announcement?.startTime,
-            cv.announcement?.endTime
-          )
-        ) {
+        if (isActiveAnnouncement(cv.startTime, cv.endTime)) {
           acc.activeAnnouncements.push(cv);
         } else {
           acc.inActiveAnnouncements.push(cv);
@@ -60,33 +50,23 @@ const AnnouncementThreads: FC<AnnouncementThreadListProp> = ({
         inActiveAnnouncements: [],
       }
     );
-  }, [updatedThreads]);
+  }, [announcements]);
 
   const getAnnouncements = useCallback(
-    (announcements: Thread[]) => {
-      return announcements.map((thread) => {
-        const mainFeed = {
-          message: thread.message,
-          postTs: thread.threadTs,
-          from: thread.createdBy,
-          id: thread.id,
-          reactions: thread.reactions,
-        } as Post;
-
+    (announcementList: AnnouncementEntity[]) => {
+      return announcementList.map((announcement) => {
         return (
           <AnnouncementFeedCard
+            announcement={announcement}
             editPermission={editPermission}
-            feed={mainFeed}
-            key={thread.id}
-            postFeed={postFeed}
-            task={thread}
-            updateThreadHandler={updateThreadHandler}
+            key={announcement.id}
+            updateAnnouncementHandler={updateAnnouncementHandler}
             onConfirmation={onConfirmation}
           />
         );
       });
     },
-    [editPermission, postFeed, updateThreadHandler, onConfirmation]
+    [editPermission, updateAnnouncementHandler, onConfirmation]
   );
 
   return (

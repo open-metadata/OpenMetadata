@@ -198,12 +198,18 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  default: { t: jest.fn().mockReturnValue('') },
+  t: jest.fn().mockReturnValue(''),
+  translateWithNestedKeys: jest.fn().mockReturnValue(''),
   Transi18next: jest
     .fn()
     .mockImplementation(({ i18nKey }) => (
       <span data-testid="trans-i18next">{i18nKey}</span>
     )),
+}));
+
+jest.mock('../../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => {
     if (fqn?.includes('::columns::')) {
       return fqn.split('::columns::')[0];
@@ -229,14 +235,14 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest
     .fn()
     .mockImplementation((entityLink: string) => {
       if (entityLink.includes('::columns::')) {
         const parts = entityLink.split('::columns::');
 
-        return parts[parts.length - 1];
+        return parts.at(-1);
       }
 
       return null;

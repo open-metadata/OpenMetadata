@@ -25,10 +25,8 @@ import { FEED_WIDGET_FILTER_OPTIONS } from '../../../constants/Widgets.constant'
 import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getAllFeeds } from '../../../rest/feedsAPI';
 import { getUserPath } from '../../../utils/RouterUtils';
 import ActivityFeedListV1New from '../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -49,7 +47,13 @@ const MyFeedWidgetInternal = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
-  const { loading, entityThread, getFeedData } = useActivityFeedProvider();
+  const {
+    isActivityLoading,
+    activityEvents,
+    fetchActivityEvents,
+    fetchMyActivityFeed,
+    fetchFollowingActivity,
+  } = useActivityFeedProvider();
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
     FeedFilter.ALL
   );
@@ -65,21 +69,35 @@ const MyFeedWidgetInternal = ({
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
+  // Each filter maps to its own endpoint: ALL is every event, OWNER is entities
+  // owned by the user or their teams, FOLLOWS is entities they follow.
+  const fetchActivityForFilter = useCallback(() => {
+    switch (selectedFilter) {
+      case FeedFilter.OWNER:
+        fetchMyActivityFeed({ limit: PAGE_SIZE_MEDIUM });
+
+        break;
+      case FeedFilter.FOLLOWS:
+        fetchFollowingActivity({ limit: PAGE_SIZE_MEDIUM });
+
+        break;
+      default:
+        fetchActivityEvents({ limit: PAGE_SIZE_MEDIUM });
+    }
+  }, [
+    selectedFilter,
+    fetchActivityEvents,
+    fetchMyActivityFeed,
+    fetchFollowingActivity,
+  ]);
+
   const handleUpdateEntityDetails = useCallback(() => {
-    getAllFeeds();
-  }, [getAllFeeds]);
+    fetchActivityForFilter();
+  }, [fetchActivityForFilter]);
 
   useEffect(() => {
-    getFeedData(
-      selectedFilter as unknown as FeedFilter,
-      undefined,
-      ThreadType.Conversation,
-      undefined,
-      undefined,
-      undefined,
-      PAGE_SIZE_MEDIUM
-    );
-  }, [getFeedData, selectedFilter]);
+    fetchActivityForFilter();
+  }, [fetchActivityForFilter]);
 
   const widgetData = useMemo(
     () => currentLayout?.find((w) => w.i === widgetKey),
@@ -91,8 +109,9 @@ const MyFeedWidgetInternal = ({
   }, [currentLayout, widgetKey]);
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && entityThread?.length > PAGE_SIZE_BASE,
-    [entityThread, loading]
+    () =>
+      Boolean(!isActivityLoading) && activityEvents?.length > PAGE_SIZE_BASE,
+    [activityEvents, isActivityLoading]
   );
 
   const userActivityFeedLink = useMemo(
@@ -117,18 +136,18 @@ const MyFeedWidgetInternal = ({
   const widgetBody = useMemo(() => {
     return (
       <>
-        {isEmpty(entityThread) ? (
+        {isEmpty(activityEvents) ? (
           emptyState
         ) : (
           <div className="entity-list-body">
             <div className="cards-scroll-container flex-1 overflow-y-auto">
               <ActivityFeedListV1New
                 isFeedWidget
+                activityList={activityEvents.slice(0, PAGE_SIZE_BASE)}
                 emptyPlaceholderText={t('label.no-recent-activity')}
-                feedList={entityThread.slice(0, PAGE_SIZE_BASE)}
                 hidePopover={false}
                 isFullSizeWidget={isFullSizeWidget}
-                isLoading={loading}
+                isLoading={isActivityLoading ?? false}
                 onAfterClose={handleCloseClick}
                 onUpdateEntityDetails={handleUpdateEntityDetails}
               />
@@ -139,8 +158,8 @@ const MyFeedWidgetInternal = ({
     );
   }, [
     emptyState,
-    entityThread,
-    loading,
+    activityEvents,
+    isActivityLoading,
     handleCloseClick,
     handleUpdateEntityDetails,
     currentUser,
@@ -190,7 +209,7 @@ const MyFeedWidgetInternal = ({
     <WidgetWrapper
       dataTestId="KnowledgePanel.ActivityFeed"
       header={widgetHeader}
-      loading={loading}>
+      loading={isActivityLoading}>
       <div className="feed-widget-container" id="feedWidgetData">
         <div className="feed-content flex-1">
           {widgetBody}

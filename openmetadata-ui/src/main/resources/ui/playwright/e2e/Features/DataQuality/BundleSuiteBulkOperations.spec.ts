@@ -30,13 +30,15 @@ import { test } from '../../fixtures/pages';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table1 = new TableClass();
-const table2 = new TableClass();
+let table1: TableClass;
+let table2: TableClass;
 const bundleTestSuite = new BundleTestSuiteClass();
 let bundleSuiteName: string;
 let existingBundleSuiteName: string;
 
 test.beforeAll(async ({ browser }) => {
+  table1 = new TableClass();
+  table2 = new TableClass();
   const { apiContext, afterAction } = await createNewPage(browser);
 
   await table1.create(apiContext);
@@ -138,16 +140,14 @@ test('Bulk selection operations', async ({ page }) => {
   });
 
   await test.step('Select all and unselect all', async () => {
-    const selectAllCheckbox = page
-      .locator('thead input[type="checkbox"]')
-      .first();
-    await selectAllCheckbox.check();
+    const selectAllCheckbox = page.locator('thead label[slot="selection"]');
+    await selectAllCheckbox.click();
     await expect(page.getByText(/\d+ test case\(s\) selected/)).toBeVisible();
     await expect(
       page.getByTestId('add-selected-to-bundle-suite')
     ).toBeVisible();
 
-    await selectAllCheckbox.uncheck();
+    await selectAllCheckbox.click();
     await expect(
       page.getByTestId('add-selected-to-bundle-suite')
     ).not.toBeVisible();

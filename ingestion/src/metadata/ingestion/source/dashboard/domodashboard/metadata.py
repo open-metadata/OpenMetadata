@@ -13,7 +13,7 @@ DomoDashboard source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -67,18 +67,14 @@ class DomodashboardSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: DomoDashboardConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDashboardConnection):
-            raise InvalidSourceException(
-                f"Expected DomoDashboardConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DomoDashboardConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[DomoDashboardDetails]]:
+    def get_dashboards_list(self) -> Optional[List[DomoDashboardDetails]]:  # noqa: UP006, UP045
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
         dashboards = self.client.domo.page_list()
@@ -103,9 +99,7 @@ class DomodashboardSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: DomoDashboardDetails) -> dict:
         return dashboard
 
-    def get_owner_ref(
-        self, dashboard_details: DomoDashboardDetails
-    ) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: DomoDashboardDetails) -> Optional[EntityReferenceList]:  # noqa: UP045
         try:
             if not self.source_config.includeOwners:
                 return None
@@ -113,35 +107,23 @@ class DomodashboardSource(DashboardServiceSource):
                 try:
                     owner_details = self.client.domo.users_get(owner.id)
                     if owner_details.get("email"):
-                        return self.metadata.get_reference_by_email(
-                            owner_details["email"]
-                        )
+                        return self.metadata.get_reference_by_email(owner_details["email"])
                 except Exception as exc:
-                    logger.warning(
-                        f"Error while getting details of user {owner.displayName} - {exc}"
-                    )
+                    logger.warning(f"Error while getting details of user {owner.displayName} - {exc}")
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
-    def yield_dashboard(
-        self, dashboard_details: DomoDashboardDetails
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: DomoDashboardDetails) -> Iterable[Either[CreateDashboardRequest]]:
         try:
-            dashboard_url = (
-                f"{self.service_connection.instanceDomain}page/{dashboard_details.id}"
-            )
+            dashboard_url = f"{self.service_connection.instanceDomain}page/{dashboard_details.id}"
 
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=(
-                    Markdown(dashboard_details.description)
-                    if dashboard_details.description
-                    else None
-                ),
+                description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -183,16 +165,14 @@ class DomodashboardSource(DashboardServiceSource):
                 )
             )
 
-    def get_owners(self, owners: List[dict]) -> List[DomoOwner]:
+    def get_owners(self, owners: List[dict]) -> List[DomoOwner]:  # noqa: UP006
         domo_owner = []
         for owner in owners:
-            domo_owner.append(
-                DomoOwner(id=str(owner["id"]), displayName=owner["displayName"])
-            )
+            domo_owner.append(DomoOwner(id=str(owner["id"]), displayName=owner["displayName"]))  # noqa: PERF401
 
         return domo_owner
 
-    def get_page_details(self, page_id) -> Optional[DomoDashboardDetails]:
+    def get_page_details(self, page_id) -> Optional[DomoDashboardDetails]:  # noqa: UP045
         try:
             pages = self.client.domo.page_get(page_id)
             return DomoDashboardDetails(
@@ -204,53 +184,44 @@ class DomodashboardSource(DashboardServiceSource):
                 owners=self.get_owners(pages.get("owners", [])),
             )
         except Exception as exc:
-            logger.warning(
-                f"Error while getting details from collection page {page_id} - {exc}"
-            )
+            logger.warning(f"Error while getting details from collection page {page_id} - {exc}")
             logger.debug(traceback.format_exc())
             return None
 
-    def get_chart_ids(self, collection_ids: List[Any]):
+    def get_chart_ids(self, collection_ids: List[Any]):  # noqa: UP006
         chart_ids = []
         for collection_id in collection_ids or []:
             chart_id = self.get_page_details(page_id=collection_id)
             for chart in chart_id.cardIds:
-                chart_ids.append(chart)
+                chart_ids.append(chart)  # noqa: PERF402
         return chart_ids
 
-    def yield_dashboard_chart(
-        self, dashboard_details: DomoDashboardDetails
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: DomoDashboardDetails) -> Iterable[Either[CreateChartRequest]]:
         chart_ids = dashboard_details.cardIds
         chart_id_from_collection = self.get_chart_ids(dashboard_details.collectionIds)
         chart_ids.extend(chart_id_from_collection)
         for chart_id in chart_ids:
-            chart: Optional[DomoChartDetails] = None
+            chart: Optional[DomoChartDetails] = None  # noqa: UP045
             try:
                 chart = self.client.custom.get_chart_details(page_id=chart_id)
                 chart_url = (
-                    f"{self.service_connection.instanceDomain}page/"
-                    f"{dashboard_details.id}/kpis/details/{chart_id}"
+                    f"{self.service_connection.instanceDomain}page/{dashboard_details.id}/kpis/details/{chart_id}"
                 )
 
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 if chart.name:
-                    yield Either(
-                        right=CreateChartRequest(
-                            name=EntityName(str(chart_id)),
-                            description=(
-                                Markdown(chart.description)
-                                if chart.description
-                                else None
-                            ),
-                            displayName=chart.name,
-                            sourceUrl=SourceUrl(chart_url),
-                            service=self.context.get().dashboard_service,
-                            chartType=get_standard_chart_type(chart.metadata.chartType),
-                        )
+                    chart_request = CreateChartRequest(
+                        name=EntityName(str(chart_id)),
+                        description=(Markdown(chart.description) if chart.description else None),
+                        displayName=chart.name,
+                        sourceUrl=SourceUrl(chart_url),
+                        service=self.context.get().dashboard_service,
+                        chartType=get_standard_chart_type(chart.metadata.chartType),
                     )
+                    yield Either(right=chart_request)
+                    self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 name = chart.name if chart else ""
                 yield Either(
@@ -264,6 +235,6 @@ class DomodashboardSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: dict,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """No lineage implemented"""

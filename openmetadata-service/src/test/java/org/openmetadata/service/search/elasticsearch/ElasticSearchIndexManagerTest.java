@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
@@ -327,6 +328,21 @@ class ElasticSearchIndexManagerTest {
   }
 
   @Test
+  void testUpdateIndex_ExtractsMappingsFromFullIndexJson() throws IOException {
+    // putMapping only accepts the mappings sub-object, not a full index JSON with settings/aliases
+    String fullIndexJson =
+        "{\"settings\":{\"number_of_shards\":1},"
+            + "\"mappings\":{\"properties\":{\"field1\":{\"type\":\"text\"}}},"
+            + "\"aliases\":{}}";
+    when(indexMapping.getIndexName(CLUSTER_ALIAS)).thenReturn(TEST_INDEX);
+    when(indicesClient.putMapping(any(PutMappingRequest.class))).thenReturn(putMappingResponse);
+
+    assertDoesNotThrow(() -> indexManager.updateIndex(indexMapping, fullIndexJson));
+
+    verify(indicesClient).putMapping(any(PutMappingRequest.class));
+  }
+
+  @Test
   void testCreateIndex_ClientNotAvailable() {
     ElasticSearchIndexManager managerWithNullClient =
         new ElasticSearchIndexManager(null, CLUSTER_ALIAS);
@@ -574,6 +590,34 @@ class ElasticSearchIndexManagerTest {
 
     assertTrue(result.isEmpty());
     verify(indicesClient).getAlias(any(GetAliasRequest.class));
+  }
+
+  @Test
+  void testListIndicesByPrefix_EmptyPrefixScopesToClusterAlias() throws IOException {
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+    when(getAliasResponse.aliases()).thenReturn(Map.of());
+
+    indexManager.listIndicesByPrefix("");
+
+    var captor = forClass(GetAliasRequest.class);
+    verify(indicesClient).getAlias(captor.capture());
+    assertEquals(
+        List.of(CLUSTER_ALIAS + IndexMapping.INDEX_NAME_SEPARATOR + "*"),
+        captor.getValue().index());
+  }
+
+  @Test
+  void testListIndicesByPrefix_EmptyPrefixWithoutClusterAliasUsesWildcard() throws IOException {
+    ElasticSearchIndexManager unscopedManager =
+        new ElasticSearchIndexManager(elasticsearchClient, "");
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+    when(getAliasResponse.aliases()).thenReturn(Map.of());
+
+    unscopedManager.listIndicesByPrefix(null);
+
+    var captor = forClass(GetAliasRequest.class);
+    verify(indicesClient).getAlias(captor.capture());
+    assertEquals(List.of("*"), captor.getValue().index());
   }
 
   @Test

@@ -11,8 +11,9 @@
 """
 Conflict resolution for auto-classification tags.
 """
+
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List  # noqa: UP035
 
 from metadata.generated.schema.entity.classification.classification import (
     Classification,
@@ -32,9 +33,9 @@ class ConflictResolver:
 
     def resolve_conflicts(
         self,
-        scored_tags: List[ScoredTag],
-        enabled_classifications: List[Classification],
-    ) -> List[ScoredTag]:
+        scored_tags: List[ScoredTag],  # noqa: UP006
+        enabled_classifications: List[Classification],  # noqa: UP006
+    ) -> List[ScoredTag]:  # noqa: UP006
         """
         Apply conflict resolution per classification.
 
@@ -51,11 +52,11 @@ class ConflictResolver:
         if not scored_tags:
             return []
 
-        by_classification: Dict[str, List[ScoredTag]] = defaultdict(list)
+        by_classification: Dict[str, List[ScoredTag]] = defaultdict(list)  # noqa: UP006
         for scored_tag in scored_tags:
             by_classification[scored_tag.classification_name].append(scored_tag)
 
-        resolved: List[ScoredTag] = []
+        resolved: List[ScoredTag] = []  # noqa: UP006
 
         for classification in enabled_classifications:
             config = classification.autoClassificationConfig
@@ -69,9 +70,7 @@ class ConflictResolver:
                 continue
 
             minimum_confidence = config.minimumConfidence or 0.0
-            tags_above_threshold = [
-                tag for tag in tags_in_classification if tag.score >= minimum_confidence
-            ]
+            tags_above_threshold = [tag for tag in tags_in_classification if tag.score >= minimum_confidence]
 
             if not tags_above_threshold:
                 logger.debug(
@@ -79,17 +78,11 @@ class ConflictResolver:
                 )
                 continue
 
-            logger.debug(
-                f"Classification {classification_name}: {len(tags_above_threshold)} tags above threshold"
-            )
+            logger.debug(f"Classification {classification_name}: {len(tags_above_threshold)} tags above threshold")
 
             if classification.mutuallyExclusive:
-                conflict_resolution = (
-                    config.conflictResolution or ConflictResolution.highest_confidence
-                )
-                winner = self._select_winner(
-                    tags_above_threshold, strategy=conflict_resolution
-                )
+                conflict_resolution = config.conflictResolution or ConflictResolution.highest_confidence
+                winner = self._select_winner(tags_above_threshold, strategy=conflict_resolution)
                 logger.info(
                     f"Classification {classification_name} (mutually exclusive): "
                     + f"Selected {winner.tag.fullyQualifiedName} with score {winner.score:.3f}"
@@ -104,9 +97,7 @@ class ConflictResolver:
 
         return resolved
 
-    def _select_winner(
-        self, tags: List[ScoredTag], strategy: ConflictResolution
-    ) -> ScoredTag:
+    def _select_winner(self, tags: List[ScoredTag], strategy: ConflictResolution) -> ScoredTag:  # noqa: UP006
         """
         Select winning tag based on strategy.
 
@@ -124,13 +115,15 @@ class ConflictResolver:
             return tags[0]
 
         if strategy == ConflictResolution.highest_confidence:
-            winner = max(tags, key=lambda t: (t.score, t.priority))
-            logger.debug(
-                f"Strategy: highest_confidence -> {winner.tag.fullyQualifiedName} (score={winner.score:.3f})"
-            )
+            # Sibling tags often share a generic content recognizer (e.g. DateTime and
+            # BirthDate both use DateRecognizer), so they tie on score. A column-name match
+            # is the distinguishing per-column evidence and breaks the tie ahead of the
+            # static priority prior; priority then disambiguates same-specificity ties.
+            winner = max(tags, key=lambda t: (t.score, t.column_name_matched, t.priority))
+            logger.debug(f"Strategy: highest_confidence -> {winner.tag.fullyQualifiedName} (score={winner.score:.3f})")
             return winner
 
-        elif strategy == ConflictResolution.highest_priority:
+        elif strategy == ConflictResolution.highest_priority:  # noqa: RET505
             winner = max(tags, key=lambda t: (t.priority, t.score))
             logger.debug(
                 f"Strategy: highest_priority -> {winner.tag.fullyQualifiedName} (priority={winner.priority}, score={winner.score:.3f})"
@@ -148,9 +141,7 @@ class ConflictResolver:
             winner = max(tags, key=get_depth)
             winner_fqn_str = winner.tag.fullyQualifiedName or "Unknown"
             depth = winner_fqn_str.count(".")
-            logger.debug(
-                f"Strategy: most_specific -> {winner_fqn_str} (depth={depth}, score={winner.score:.3f})"
-            )
+            logger.debug(f"Strategy: most_specific -> {winner_fqn_str} (depth={depth}, score={winner.score:.3f})")
             return winner
 
         else:

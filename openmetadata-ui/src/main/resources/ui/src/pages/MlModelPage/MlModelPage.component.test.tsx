@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { getMlModelByFQN } from '../../rest/mlModelAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import MlModelPageComponent from './MlModelPage.component';
 
 const mockData = {
@@ -183,6 +184,12 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
+jest.mock('../../hooks/useFqn', () => ({
+  useFqn: jest.fn(() => ({
+    entityFqn: 'eta_predictions',
+  })),
+}));
+
 jest.mock('../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: {
     Create: true,
@@ -212,9 +219,11 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 describe('Test MlModel Entity Page', () => {
   it('Should render component', async () => {
-    const { container } = render(<MlModelPageComponent />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <MlModelPageComponent />
+      </MemoryRouter>
+    );
 
     const mlModelDetailComponent = await findByTestId(
       container,
@@ -226,11 +235,20 @@ describe('Test MlModel Entity Page', () => {
 
   it('Should render error component if API fails', async () => {
     (getMlModelByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
+      Promise.reject(new Error('failed'))
     );
-    const { container } = render(<MlModelPageComponent />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <MlModelPageComponent />
+      </MemoryRouter>
+    );
+
+    await waitFor(
+      () => {
+        expect(getMlModelByFQN).toHaveBeenCalled();
+      },
+      { timeout: 5000 }
+    );
 
     const errorComponent = await findByTestId(container, 'no-data-placeholder');
 

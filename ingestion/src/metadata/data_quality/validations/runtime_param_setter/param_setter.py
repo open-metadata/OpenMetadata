@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Module that defines the RuntimeParameterSetter class."""
+
 from abc import ABC, abstractmethod
 
 from pydantic import BaseModel

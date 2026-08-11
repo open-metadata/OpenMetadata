@@ -15,7 +15,6 @@ import { Button, Typography } from 'antd';
 import { FunctionComponent, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import { getExplorePath } from '../../utils/RouterUtils';
 
 type SearchOptionsProp = {
@@ -53,11 +52,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
         to={getExplorePath({ search: searchText })}
         onClick={() => setIsOpen(false)}>
         {searchText}
-        <Typography.Text>
-          {t('label.in-open-metadata', {
-            brandName: brandClassBase.getPageTitle(),
-          })}
-        </Typography.Text>
+        <Typography.Text>{t('label.in-open-metadata')}</Typography.Text>
       </Link>
       {options.map((option) => (
         <Button

@@ -12,8 +12,9 @@
 """
 Validator for column value length to be between test case
 """
+
 import math
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -50,7 +51,7 @@ class ColumnValueLengthsToBeBetweenValidator(
 ):
     """Validator for column value length to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -106,7 +107,7 @@ class ColumnValueLengthsToBeBetweenValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for max with proper aggregation
 
         Uses the statistical aggregation helper to:
@@ -132,14 +133,10 @@ class ColumnValueLengthsToBeBetweenValidator(
                 DIMENSION_TOTAL_COUNT_KEY: Metrics.rowCount().fn(),
                 Metrics.minLength.name: Metrics.minLength(column).fn(),
                 Metrics.maxLength.name: Metrics.maxLength(column).fn(),
-                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(
-                    LenFn(column)
-                ),
+                DIMENSION_FAILED_COUNT_KEY: checker.build_row_level_violations_sqa(LenFn(column)),
             }
 
-            normalized_dimension = self._get_normalized_dimension_expression(
-                dimension_col
-            )
+            normalized_dimension = self._get_normalized_dimension_expression(dimension_col)
 
             result_rows = self._run_dimensional_validation_query(
                 source=self.runner.dataset,
@@ -148,9 +145,7 @@ class ColumnValueLengthsToBeBetweenValidator(
                 top_n=top_n,
             )
 
-            return self._process_dimension_rows(
-                result_rows, dimension_col.name, metrics_to_compute, test_params
-            )
+            return self._process_dimension_rows(result_rows, dimension_col.name, metrics_to_compute, test_params)
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional query: {exc}")

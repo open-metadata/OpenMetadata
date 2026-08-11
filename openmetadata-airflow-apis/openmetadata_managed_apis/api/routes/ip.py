@@ -13,21 +13,23 @@ IP endpoint
 """
 
 import traceback
-from typing import Callable, Optional
+from typing import Callable, Optional  # noqa: UP035
 
 import requests
-from flask import Blueprint, escape
-from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.utils.logger import routes_logger
+from flask import Blueprint
+from markupsafe import escape
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import NewConnectionError
+
+from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import routes_logger
 
 logger = routes_logger()
 
 IP_SERVICES = ["https://api.ipify.org", "https://api.my-ip.io/ip"]
 
 
-def _get_ip_safely(url: str) -> Optional[str]:
+def _get_ip_safely(url: str) -> Optional[str]:  # noqa: UP045
     """
     Safely retrieve the public IP
     :param url: Service giving us the IP
@@ -36,12 +38,10 @@ def _get_ip_safely(url: str) -> Optional[str]:
 
     try:
         host_ip = requests.get(url)
-        return host_ip.text
+        return host_ip.text  # noqa: TRY300
     except (NewConnectionError, ConnectionError, ValueError) as err:
         logger.debug(traceback.format_exc())
-        logger.warning(
-            f"Could not extract IP info from {url} due to {err}. Retrying..."
-        )
+        logger.warning(f"Could not extract IP info from {url} due to {err}. Retrying...")
         return None
 
 
@@ -55,6 +55,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
     from airflow.security import permissions
+
     from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
     from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
@@ -68,9 +69,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     @blueprint.route("/ip", methods=["GET"])
     @csrf.exempt
-    @requires_access_decorator(
-        [(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)]
-    )
+    @requires_access_decorator([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def get_host_ip():
         """
         /ip endpoint to check Airflow host IP. Users will need to whitelist

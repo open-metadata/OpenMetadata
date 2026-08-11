@@ -14,6 +14,7 @@ You can run this DAG from the default OM installation.
 For this DAG to run properly we expected an OpenMetadata
 Airflow connection named `openmetadata_conn_id`.
 """
+
 from datetime import datetime
 from textwrap import dedent
 
@@ -152,13 +153,7 @@ with DAG(
     t1 = BashOperator(
         task_id="print_date",
         bash_command="date",
-        outlets=[
-            {
-                "tables": [
-                    "test-service-table-lineage.test-db.test-schema.lineage-test-outlet"
-                ]
-            }
-        ],
+        outlets=[{"tables": ["test-service-table-lineage.test-db.test-schema.lineage-test-outlet"]}],
     )
 
     t2 = BashOperator(
@@ -176,9 +171,7 @@ with DAG(
         ],
     )
 
-    dag.doc_md = (
-        __doc__  # providing that you have a docstring at the beginning of the DAG
-    )
+    dag.doc_md = __doc__  # providing that you have a docstring at the beginning of the DAG
     dag.doc_md = """
     This is a documentation placed anywhere
     """  # otherwise, type it like this

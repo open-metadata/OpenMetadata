@@ -50,6 +50,7 @@
         "CustomDatabase",
         "Dbt",
         "SapHana",
+        "SapSuccessFactors",
         "MongoDB",
         "Cassandra",
         "Couchbase",
@@ -69,7 +70,10 @@
         "Dremio",
         "MicrosoftFabric",
         "BurstIQ",
-        "Informix"
+        "Informix",
+        "Iomete",
+        "QuestDB",
+        "SapBw4Hana"
       ],
       "javaEnums": [
         {
@@ -178,6 +182,9 @@
           "name": "SapHana"
         },
         {
+          "name": "SapSuccessFactors"
+        },
+        {
           "name": "MongoDB"
         },
         {
@@ -236,6 +243,15 @@
         },
         {
           "name": "Informix"
+        },
+        {
+          "name": "Iomete"
+        },
+        {
+          "name": "QuestDB"
+        },
+        {
+          "name": "SapBw4Hana"
         }
       ]
     },
@@ -320,6 +336,9 @@
             },
             {
               "$ref": "./connections/database/salesforceConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapSuccessFactorsConnection.json"
             },
             {
               "$ref": "./connections/database/singleStoreConnection.json"
@@ -407,6 +426,15 @@
             },
             {
               "$ref": "./connections/database/informixConnection.json"
+            },
+            {
+              "$ref": "./connections/database/iometeConnection.json"
+            },
+            {
+              "$ref": "./connections/database/questdbConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapBw4HanaConnection.json"
             }
           ]
         }
@@ -457,6 +485,9 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "version": {
       "description": "Metadata version of the entity.",

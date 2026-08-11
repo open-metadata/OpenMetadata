@@ -12,6 +12,7 @@
 """
 Test KafkaConnect service discovery and caching functionality
 """
+
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
@@ -58,9 +59,7 @@ class TestServiceCaching(TestCase):
 
         return service
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
     def test_database_services_property_caches_results(self, mock_parent_init):
         """Test that database_services property caches results"""
         mock_parent_init.return_value = None
@@ -77,9 +76,7 @@ class TestServiceCaching(TestCase):
         mock_metadata.list_all_entities.return_value = iter(mock_db_services)
 
         source = KafkaconnectSource(mock_config, mock_metadata)
-        source.metadata = (
-            mock_metadata  # Set metadata manually since parent __init__ is mocked
-        )
+        source.metadata = mock_metadata  # Set metadata manually since parent __init__ is mocked
 
         # First access - should call list_all_entities
         services1 = source.database_services
@@ -94,9 +91,7 @@ class TestServiceCaching(TestCase):
         # Verify same object is returned (cached)
         self.assertIs(services1, services2)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
     def test_messaging_services_property_caches_results(self, mock_parent_init):
         """Test that messaging_services property caches results"""
         mock_parent_init.return_value = None
@@ -106,17 +101,13 @@ class TestServiceCaching(TestCase):
 
         mock_metadata = Mock()
         mock_msg_services = [
-            self._create_mock_messaging_service(
-                "kafka-prod", "broker1:9092,broker2:9092"
-            ),
+            self._create_mock_messaging_service("kafka-prod", "broker1:9092,broker2:9092"),
             self._create_mock_messaging_service("kafka-dev", "localhost:9092"),
         ]
         mock_metadata.list_all_entities.return_value = iter(mock_msg_services)
 
         source = KafkaconnectSource(mock_config, mock_metadata)
-        source.metadata = (
-            mock_metadata  # Set metadata manually since parent __init__ is mocked
-        )
+        source.metadata = mock_metadata  # Set metadata manually since parent __init__ is mocked
 
         # First access - should call list_all_entities
         services1 = source.messaging_services
@@ -147,12 +138,8 @@ class TestServiceDiscovery(TestCase):
         service.connection.config.hostPort = host_port
         return service
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
-    def test_find_database_service_by_hostname_matches_correctly(
-        self, mock_parent_init
-    ):
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
+    def test_find_database_service_by_hostname_matches_correctly(self, mock_parent_init):
         """Test finding database service by hostname with port stripping"""
         mock_parent_init.return_value = None
 
@@ -161,38 +148,24 @@ class TestServiceDiscovery(TestCase):
 
         mock_metadata = Mock()
         mock_db_services = [
-            self._create_mock_db_service(
-                "mysql-prod", "Mysql", "mysql.example.com:3306"
-            ),
-            self._create_mock_db_service(
-                "postgres-prod", "Postgres", "postgres.example.com:5432"
-            ),
+            self._create_mock_db_service("mysql-prod", "Mysql", "mysql.example.com:3306"),
+            self._create_mock_db_service("postgres-prod", "Postgres", "postgres.example.com:5432"),
         ]
         mock_metadata.list_all_entities.return_value = iter(mock_db_services)
 
         source = KafkaconnectSource(mock_config, mock_metadata)
-        source.metadata = (
-            mock_metadata  # Set metadata manually since parent __init__ is mocked
-        )
+        source.metadata = mock_metadata  # Set metadata manually since parent __init__ is mocked
 
         # Test matching MySQL service
-        result = source.find_database_service_by_hostname(
-            "Mysql", "mysql.example.com:3306"
-        )
+        result = source.find_database_service_by_hostname("Mysql", "mysql.example.com:3306")
         self.assertEqual(result, "mysql-prod")
 
         # Test matching with protocol prefix
-        result = source.find_database_service_by_hostname(
-            "Mysql", "jdbc:mysql://mysql.example.com:3306/db"
-        )
+        result = source.find_database_service_by_hostname("Mysql", "jdbc:mysql://mysql.example.com:3306/db")
         self.assertEqual(result, "mysql-prod")
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
-    def test_find_messaging_service_by_brokers_matches_correctly(
-        self, mock_parent_init
-    ):
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
+    def test_find_messaging_service_by_brokers_matches_correctly(self, mock_parent_init):
         """Test finding messaging service by broker endpoints"""
         mock_parent_init.return_value = None
 
@@ -206,16 +179,12 @@ class TestServiceDiscovery(TestCase):
         kafka_service.name.root = "kafka-prod"
         kafka_service.connection = Mock()
         kafka_service.connection.config = Mock()
-        kafka_service.connection.config.bootstrapServers = (
-            "broker1.example.com:9092,broker2.example.com:9092"
-        )
+        kafka_service.connection.config.bootstrapServers = "broker1.example.com:9092,broker2.example.com:9092"
 
         mock_metadata.list_all_entities.return_value = iter([kafka_service])
 
         source = KafkaconnectSource(mock_config, mock_metadata)
-        source.metadata = (
-            mock_metadata  # Set metadata manually since parent __init__ is mocked
-        )
+        source.metadata = mock_metadata  # Set metadata manually since parent __init__ is mocked
 
         # Test matching with protocol prefix
         result = source.find_messaging_service_by_brokers(
@@ -231,9 +200,7 @@ class TestServiceDiscovery(TestCase):
 class TestTopicSearchByPrefix(TestCase):
     """Test topic search by prefix fallback mechanism"""
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
     def test_search_topics_by_prefix_finds_matching_topics(self, mock_parent_init):
         """Test searching for topics by database.server.name prefix"""
         mock_parent_init.return_value = None
@@ -265,9 +232,7 @@ class TestTopicSearchByPrefix(TestCase):
         mock_metadata.list_all_entities.return_value = iter([topic1, topic2, topic3])
 
         source = KafkaconnectSource(mock_config, mock_metadata)
-        source.metadata = (
-            mock_metadata  # Set metadata manually since parent __init__ is mocked
-        )
+        source.metadata = mock_metadata  # Set metadata manually since parent __init__ is mocked
 
         # Search for topics with prefix "myserver"
         result = source._search_topics_by_prefix("myserver", "kafka-prod")
@@ -281,12 +246,8 @@ class TestTopicSearchByPrefix(TestCase):
         self.assertEqual(result[0].fqn, 'kafka-prod."myserver.public.users"')
         self.assertEqual(result[1].fqn, 'kafka-prod."myserver.public.orders"')
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
-    def test_search_topics_by_prefix_returns_empty_when_none_match(
-        self, mock_parent_init
-    ):
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
+    def test_search_topics_by_prefix_returns_empty_when_none_match(self, mock_parent_init):
         """Test that search returns empty list when no topics match"""
         mock_parent_init.return_value = None
 
@@ -308,12 +269,8 @@ class TestTopicSearchByPrefix(TestCase):
 
         self.assertEqual(len(result), 0)
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
-    def test_search_topics_by_prefix_handles_no_messaging_service(
-        self, mock_parent_init
-    ):
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
+    def test_search_topics_by_prefix_handles_no_messaging_service(self, mock_parent_init):
         """Test that search handles None messaging service gracefully"""
         mock_parent_init.return_value = None
 
@@ -334,12 +291,8 @@ class TestTopicSearchByPrefix(TestCase):
 class TestCDCTopicFallback(TestCase):
     """Test CDC topic parsing with table.include.list fallback"""
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
-    def test_parse_cdc_topics_from_config_with_table_include_list(
-        self, mock_parent_init
-    ):
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
+    def test_parse_cdc_topics_from_config_with_table_include_list(self, mock_parent_init):
         """Test parsing topics from table.include.list"""
         mock_parent_init.return_value = None
 
@@ -366,12 +319,8 @@ class TestCDCTopicFallback(TestCase):
         self.assertEqual(result[1].name, "myserver.public.orders")
         self.assertEqual(result[2].name, "myserver.inventory.products")
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
-    def test_parse_cdc_topics_returns_empty_without_table_include_list(
-        self, mock_parent_init
-    ):
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
+    def test_parse_cdc_topics_returns_empty_without_table_include_list(self, mock_parent_init):
         """Test that parsing returns empty when table.include.list is missing"""
         mock_parent_init.return_value = None
 
@@ -399,9 +348,7 @@ class TestCDCTopicFallback(TestCase):
         # Should log warning about missing table.include.list
         self.assertTrue(any("table.include.list" in message for message in log.output))
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.__init__")
     def test_parse_cdc_topics_supports_table_whitelist_legacy(self, mock_parent_init):
         """Test that table.whitelist (legacy key) is also supported"""
         mock_parent_init.return_value = None

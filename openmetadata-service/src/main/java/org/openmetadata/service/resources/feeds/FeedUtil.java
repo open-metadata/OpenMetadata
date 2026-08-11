@@ -16,10 +16,15 @@ package org.openmetadata.service.resources.feeds;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 public final class FeedUtil {
 
@@ -32,17 +37,32 @@ public final class FeedUtil {
   }
 
   public static void cleanUpTaskForAssignees(UUID entityId, String entityType) {
-    List<String> userTasks =
-        Entity.getCollectionDAO().feedDAO().listThreadsByTaskAssignee(entityId.toString());
-    List<Thread> threads = JsonUtils.readObjects(userTasks, Thread.class);
-    for (Thread thread : threads) {
-      List<EntityReference> assignees = thread.getTask().getAssignees();
-      assignees.removeIf(
-          entityReference ->
-              entityReference.getId().equals(entityId)
-                  && entityReference.getType().equals(entityType));
-      thread.getTask().setAssignees(assignees);
-      Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    List<EntityReference> taskRefs =
+        taskRepository.findTo(
+            entityId, entityType, Relationship.ASSIGNED_TO, Entity.TASK, Include.ALL);
+
+    Fields taskFields = taskRepository.getFields("assignees,about,createdBy,reviewers,watchers");
+    for (EntityReference taskRef : taskRefs) {
+      Task task = taskRepository.get(null, taskRef.getId(), taskFields);
+      List<EntityReference> assignees = task.getAssignees();
+      if (assignees == null || assignees.isEmpty()) {
+        continue;
+      }
+
+      boolean changed =
+          assignees.removeIf(
+              entityReference ->
+                  entityReference.getId().equals(entityId)
+                      && entityReference.getType().equals(entityType));
+
+      if (!changed) {
+        continue;
+      }
+
+      assignees.sort(EntityUtil.compareEntityReference);
+      task.setAssignees(assignees);
+      taskRepository.createOrUpdate(null, task, Entity.ADMIN_USER_NAME);
     }
   }
 }

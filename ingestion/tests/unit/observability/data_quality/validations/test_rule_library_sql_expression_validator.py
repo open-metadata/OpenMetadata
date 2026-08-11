@@ -170,24 +170,15 @@ class TestBaseValidatorCompileSqlExpression:
 
         assert result == "SELECT my_column FROM db.schema.my_table WHERE value >= 100"
 
-    def test_compile_raises_error_when_no_sql_expression(
-        self, base_validator_with_runtime_params
-    ):
-        base_validator_with_runtime_params.runtime_params.test_definition.sqlExpression = (
-            None
-        )
+    def test_compile_raises_error_when_no_sql_expression(self, base_validator_with_runtime_params):
+        base_validator_with_runtime_params.runtime_params.test_definition.sqlExpression = None
 
-        with pytest.raises(
-            ValueError, match="Test definition does not have sqlExpression defined"
-        ):
-            base_validator_with_runtime_params.compile_sql_expression(
-                column_name="col", table_name="table"
-            )
+        with pytest.raises(ValueError, match="Test definition does not have sqlExpression defined"):
+            base_validator_with_runtime_params.compile_sql_expression(column_name="col", table_name="table")
 
     def test_compile_with_multiple_params(self, base_validator_with_runtime_params):
         base_validator_with_runtime_params.runtime_params.test_definition.sqlExpression = _mock_sql_query(
-            "SELECT {{ column_name }} FROM {{ table_name }} "
-            "WHERE value >= {{ minValue }} AND value <= {{ maxValue }}"
+            "SELECT {{ column_name }} FROM {{ table_name }} WHERE value >= {{ minValue }} AND value <= {{ maxValue }}"
         )
 
         param1 = Mock()
@@ -204,35 +195,24 @@ class TestBaseValidatorCompileSqlExpression:
             column_name="revenue", table_name="sales.orders"
         )
 
-        assert (
-            result
-            == "SELECT revenue FROM sales.orders WHERE value >= 10 AND value <= 100"
-        )
+        assert result == "SELECT revenue FROM sales.orders WHERE value >= 10 AND value <= 100"
 
-    def test_compile_raises_error_on_invalid_jinja_syntax(
-        self, base_validator_with_runtime_params
-    ):
+    def test_compile_raises_error_on_invalid_jinja_syntax(self, base_validator_with_runtime_params):
         base_validator_with_runtime_params.runtime_params.test_definition.sqlExpression = _mock_sql_query(
             "SELECT {{ column_name } FROM {{ table_name }}"
         )
 
         with pytest.raises(ValueError, match="Invalid Jinja2 syntax"):
-            base_validator_with_runtime_params.compile_sql_expression(
-                column_name="col", table_name="table"
-            )
+            base_validator_with_runtime_params.compile_sql_expression(column_name="col", table_name="table")
 
-    def test_compile_raises_error_on_undefined_variable(
-        self, base_validator_with_runtime_params
-    ):
+    def test_compile_raises_error_on_undefined_variable(self, base_validator_with_runtime_params):
         base_validator_with_runtime_params.runtime_params.test_definition.sqlExpression = _mock_sql_query(
             "SELECT {{ column_name }} FROM {{ table_name }} WHERE val > {{ undefined_param }}"
         )
         base_validator_with_runtime_params.test_case.parameterValues = []
 
         with pytest.raises(ValueError, match="Undefined variable in SQL expression"):
-            base_validator_with_runtime_params.compile_sql_expression(
-                column_name="col", table_name="table"
-            )
+            base_validator_with_runtime_params.compile_sql_expression(column_name="col", table_name="table")
 
 
 class TestSQAValidatorCompileSqlExpression:
@@ -266,24 +246,18 @@ class TestSQAValidatorCompileSqlExpression:
         param.value = "100"
         sqa_validator.test_case.parameterValues = [param]
 
-        result = sqa_validator.compile_sql_expression(
-            column_name="my_column", table_name="db.schema.my_table"
-        )
+        result = sqa_validator.compile_sql_expression(column_name="my_column", table_name="db.schema.my_table")
 
         assert isinstance(result, tuple)
         assert len(result) == 2
 
         compiled_sql, bind_params = result
-        assert (
-            compiled_sql
-            == "SELECT my_column FROM db.schema.my_table WHERE value >= :threshold"
-        )
+        assert compiled_sql == "SELECT my_column FROM db.schema.my_table WHERE value >= :threshold"
         assert bind_params == {"threshold": "100"}
 
     def test_compile_with_multiple_user_params(self, sqa_validator):
         sqa_validator.runtime_params.test_definition.sqlExpression = _mock_sql_query(
-            "SELECT {{ column_name }} FROM {{ table_name }} "
-            "WHERE value >= {{ minVal }} AND value <= {{ maxVal }}"
+            "SELECT {{ column_name }} FROM {{ table_name }} WHERE value >= {{ minVal }} AND value <= {{ maxVal }}"
         )
 
         param1 = Mock()
@@ -312,9 +286,7 @@ class TestSQAValidatorCompileSqlExpression:
         )
         sqa_validator.test_case.parameterValues = []
 
-        compiled_sql, bind_params = sqa_validator.compile_sql_expression(
-            column_name="id", table_name="users"
-        )
+        compiled_sql, bind_params = sqa_validator.compile_sql_expression(column_name="id", table_name="users")
 
         assert compiled_sql == "SELECT id FROM users WHERE 1=1"
         assert bind_params == {}

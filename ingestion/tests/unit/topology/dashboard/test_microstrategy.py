@@ -12,22 +12,35 @@
 """
 Test Microstrategy using the topology
 """
+
 from datetime import datetime
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
+
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.microstrategy.metadata import (
     MicrostrategySource,
 )
 from metadata.ingestion.source.dashboard.microstrategy.models import (
+    MstrChapter,
     MstrDashboard,
+    MstrDashboardDetails,
     MstrOwner,
+    MstrPage,
     MstrProject,
+    MstrVisualization,
 )
 
 mock_micro_config = {
@@ -42,9 +55,7 @@ mock_micro_config = {
                 "password": "password",
             }
         },
-        "sourceConfig": {
-            "config": {"type": "DashboardMetadata", "includeOwners": True}
-        },
+        "sourceConfig": {"config": {"type": "DashboardMetadata", "includeOwners": True}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -101,16 +112,12 @@ class MicroStrategyUnitTest(TestCase):
     MicroStrategy Unit Testtest_dbt
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.microstrategy.metadata.MicrostrategySource.test_connection"
-    )
-    @patch(
-        "metadata.ingestion.source.dashboard.microstrategy.connection.get_connection"
-    )
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    @patch("metadata.ingestion.source.dashboard.microstrategy.metadata.MicrostrategySource.test_connection")
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
+    def __init__(self, methodName, create_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
-        get_connection.return_value = False
+        create_connection.return_value.client = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_micro_config)
         self.microstrategy = MicrostrategySource.create(
             mock_micro_config["source"],
@@ -181,3 +188,80 @@ class MicroStrategyUnitTest(TestCase):
         self.assertIsNotNone(dashboard.owner)
         self.assertEqual(dashboard.owner.name, "Administrator")
         self.assertEqual(dashboard.owner.id, "54F3D26011D2896560009A8E67019608")
+
+    def test_chart_source_state_populated(self):
+        """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
+        MOCK_DASHBOARD_SERVICE = DashboardService(  # noqa: N806
+            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+            name="mock_microstrategy",
+            fullyQualifiedName=FullyQualifiedEntityName("mock_microstrategy"),
+            connection=DashboardConnection(),
+            serviceType=DashboardServiceType.MicroStrategy,
+        )
+        self.microstrategy.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        mock_details = MstrDashboardDetails(
+            id="dash1",
+            name="Test Dashboard",
+            projectId="proj1",
+            projectName="Test Project",
+            currentChapter="ch1",
+            chapters=[
+                MstrChapter(
+                    key="ch1",
+                    name="Chapter 1",
+                    pages=[
+                        MstrPage(
+                            key="pg1",
+                            name="Page 1",
+                            visualizations=[
+                                MstrVisualization(key="v1", name="Chart A", visualizationType="grid"),
+                                MstrVisualization(key="v2", name="Chart B", visualizationType="bar"),
+                            ],
+                        )
+                    ],
+                )
+            ],
+            datasets=[],
+        )
+        self.microstrategy.chart_source_state = set()
+        list(self.microstrategy.yield_dashboard_chart(mock_details))
+        assert len(self.microstrategy.chart_source_state) == 2
+        for fqn in self.microstrategy.chart_source_state:
+            assert "mock_microstrategy" in fqn
+
+
+def test_microstrategy_connection_logs_out_on_close():
+    """The owner carries the API-session logout, so closing the owner logs out."""
+    from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+        MicroStrategyConnection as MicroStrategyConnectionConfig,
+    )
+    from metadata.ingestion.source.dashboard.microstrategy.connection import (
+        MicroStrategyConnection,
+    )
+
+    service_connection = MicroStrategyConnectionConfig(
+        hostPort="https://demo.microstrategy.com", username="username", password="password"
+    )
+    with patch("metadata.ingestion.source.dashboard.microstrategy.connection.MicroStrategyClient") as mock_client_cls:
+        client = mock_client_cls.return_value
+        connection = MicroStrategyConnection(service_connection)
+        assert connection.client is client
+        connection.close()
+        client.close_api_session.assert_called_once()
+
+
+def test_microstrategy_logs_out_when_init_test_connection_fails():
+    """A test-connection failure in __init__ still logs out the API session the
+    client opened when it was built."""
+    with (
+        patch("metadata.ingestion.source.dashboard.microstrategy.connection.MicroStrategyClient") as mock_client_cls,
+        patch(
+            "metadata.ingestion.source.dashboard.dashboard_service.run_test_connection",
+            side_effect=RuntimeError("cannot connect"),
+        ),
+        pytest.raises(RuntimeError),
+    ):
+        client = mock_client_cls.return_value
+        MicrostrategySource.create(mock_micro_config["source"], MagicMock())
+
+    client.close_api_session.assert_called_once()

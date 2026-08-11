@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Topic test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
@@ -48,9 +49,7 @@ class TestOMetaTopicAPI:
     - create_topic: Topic factory (function scope)
     """
 
-    def test_create(
-        self, metadata, messaging_service, topic_request, expected_fqn, create_topic
-    ):
+    def test_create(self, metadata, messaging_service, topic_request, expected_fqn, create_topic):
         """
         We can create a Topic and we receive it back as Entity
         """
@@ -90,9 +89,7 @@ class TestOMetaTopicAPI:
         res = metadata.create_or_update(data=updated_entity)
 
         # Verify update
-        assert (
-            res.service.fullyQualifiedName == messaging_service.fullyQualifiedName.root
-        )
+        assert res.service.fullyQualifiedName == messaging_service.fullyQualifiedName.root
         assert res_create.id == res.id
         assert res.owners.root[0].id == user.id
 
@@ -159,9 +156,7 @@ class TestOMetaTopicAPI:
         """
         created = create_topic(topic_request)
 
-        res = metadata.get_entity_version(
-            entity=Topic, entity_id=created.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=Topic, entity_id=created.id.root, version=0.1)
 
         # Check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
@@ -172,8 +167,6 @@ class TestOMetaTopicAPI:
         Test retrieving EntityReference for a topic
         """
         created = create_topic(topic_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=Topic, fqn=created.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Topic, fqn=created.fullyQualifiedName)
 
         assert created.id == entity_ref.id

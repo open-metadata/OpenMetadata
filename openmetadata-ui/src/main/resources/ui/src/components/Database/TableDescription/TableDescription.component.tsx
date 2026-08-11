@@ -18,10 +18,11 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import DescriptionSourceBadge from '../../common/DescriptionSourceBadge/DescriptionSourceBadge';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
@@ -37,7 +38,16 @@ const TableDescription = ({
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
   const { selectedUserSuggestions } = useSuggestionsContext();
-  const { onThreadLinkSelect } = useGenericContext();
+  const { onThreadLinkSelect, changeSummary } = useGenericContext();
+
+  const changeSummaryKey = useMemo(() => {
+    const columnName =
+      entityType === EntityType.TABLE
+        ? EntityLink.getTableColumnNameFromColumnFqn(columnData.fqn, false)
+        : columnData.fqn;
+
+    return `columns.${columnName}.description`;
+  }, [entityType, columnData.fqn]);
 
   const entityLink = useMemo(
     () =>
@@ -92,6 +102,9 @@ const TableDescription = ({
       direction="vertical"
       id={`field-description-${index}`}>
       {descriptionContent}
+      <DescriptionSourceBadge
+        changeSummaryEntry={changeSummary?.[changeSummaryKey]}
+      />
 
       {!suggestionData && !isReadOnly ? (
         <div className="d-flex items-baseline gap-4">

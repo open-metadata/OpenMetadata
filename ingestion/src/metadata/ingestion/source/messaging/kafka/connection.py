@@ -12,20 +12,19 @@
 """
 Source connection handler
 """
+
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Optional, Union
 
-from confluent_kafka import DeserializingConsumer
+from confluent_kafka import Consumer
 from confluent_kafka.admin import AdminClient, KafkaException
-from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import SchemaRegistryClient
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
-    KafkaConnection,
+    KafkaConnection as KafkaConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
@@ -33,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.messaging.redpandaCon
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
@@ -41,13 +41,13 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class InvalidKafkaCreds(Exception):
+class InvalidKafkaCreds(Exception):  # noqa: N818
     """
     Class to indicate invalid kafka credentials exception
     """
 
 
-class SchemaRegistryException(Exception):
+class SchemaRegistryException(Exception):  # noqa: N818
     """
     Class to indicate invalid schema registry not initialized
     """
@@ -56,17 +56,32 @@ class SchemaRegistryException(Exception):
 TIMEOUT_SECONDS = 10
 
 
-@dataclass
+# librdkafka rejects nothing, so consumer-only keys would silently ride along.
+CONSUMER_ONLY_CONFIG_KEYS = ("group.id", "enable.auto.commit", "auto.offset.reset")
+
+
 class KafkaClient:
-    def __init__(self, admin_client, schema_registry_client, consumer_client) -> None:
+    def __init__(self, admin_client, schema_registry_client, consumer_factory) -> None:
         self.admin_client = admin_client
         self.schema_registry_client = schema_registry_client  # Optional
-        self.consumer_client = consumer_client
+        self._consumer_factory = consumer_factory
+        self._consumer_client = None
+
+    @property
+    def consumer_client(self):
+        """Built on first use. Only sample-data runs need a consumer, and creating
+        one dials the broker — needless work on every other ingestion."""
+        if self._consumer_client is None:
+            self._consumer_client = self._consumer_factory()
+        return self._consumer_client
+
+    def close_consumer(self) -> None:
+        if self._consumer_client is not None:
+            self._consumer_client.close()
+            self._consumer_client = None
 
 
-def get_connection(
-    connection: Union[KafkaConnection, RedpandaConnection]
-) -> KafkaClient:
+def get_connection(connection: Union[KafkaConnectionConfig, RedpandaConnection]) -> KafkaClient:  # noqa: UP007
     """
     Create connection
     """
@@ -77,61 +92,45 @@ def get_connection(
         if connection.saslUsername:
             consumer_config["sasl.username"] = connection.saslUsername
         if connection.saslPassword:
-            consumer_config[
-                "sasl.password"
-            ] = connection.saslPassword.get_secret_value()
+            consumer_config["sasl.password"] = connection.saslPassword.get_secret_value()
         if connection.saslMechanism:
             consumer_config["sasl.mechanism"] = connection.saslMechanism.value
 
-        if (
-            connection.consumerConfig.get("security.protocol") is None
-            and connection.securityProtocol
-        ):
+        if connection.consumerConfig.get("security.protocol") is None and connection.securityProtocol:
             consumer_config["security.protocol"] = connection.securityProtocol.value
 
     if connection.basicAuthUserInfo:
-        schema_registry_config[
-            "basic.auth.user.info"
-        ] = connection.basicAuthUserInfo.get_secret_value()
+        schema_registry_config["basic.auth.user.info"] = connection.basicAuthUserInfo.get_secret_value()
 
-    admin_client_config = consumer_config
+    admin_client_config = {k: v for k, v in consumer_config.items() if k not in CONSUMER_ONLY_CONFIG_KEYS}
     admin_client_config["bootstrap.servers"] = connection.bootstrapServers
     admin_client = AdminClient(admin_client_config)
 
     schema_registry_client = None
-    consumer_client = None
-
     if connection.schemaRegistryURL:
         schema_registry_config["url"] = str(connection.schemaRegistryURL)
         schema_registry_client = SchemaRegistryClient(schema_registry_config)
 
-        consumer_config["bootstrap.servers"] = connection.bootstrapServers
-        if "group.id" not in consumer_config:
-            consumer_config["group.id"] = "openmetadata-consumer"
-        if "auto.offset.reset" not in consumer_config:
-            consumer_config["auto.offset.reset"] = "largest"
-        consumer_config["enable.auto.commit"] = False
-
-        avro_deserializer = AvroDeserializer(
-            schema_registry_client=schema_registry_client
-        )
-        consumer_config["value.deserializer"] = avro_deserializer
-
-        consumer_client = DeserializingConsumer(consumer_config)
+    # Messages are handed back as raw bytes and decoded per topic, so sample data
+    # works for every schema type and does not require a Schema Registry.
+    consumer_config["bootstrap.servers"] = connection.bootstrapServers
+    consumer_config.setdefault("group.id", "openmetadata-consumer")
+    consumer_config.setdefault("auto.offset.reset", "largest")
+    consumer_config["enable.auto.commit"] = False
 
     return KafkaClient(
         admin_client=admin_client,
         schema_registry_client=schema_registry_client,
-        consumer_client=consumer_client,
+        consumer_factory=lambda: Consumer(consumer_config),
     )
 
 
 def test_connection(
     metadata: OpenMetadata,
     client: KafkaClient,
-    service_connection: Union[KafkaConnection, RedpandaConnection],
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
+    service_connection: Union[KafkaConnectionConfig, RedpandaConnection],  # noqa: UP007
+    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
@@ -140,9 +139,9 @@ def test_connection(
 
     def custom_executor():
         try:
-            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics
+            client.admin_client.list_topics(timeout=TIMEOUT_SECONDS).topics  # noqa: B018
         except KafkaException as err:
-            raise InvalidKafkaCreds(
+            raise InvalidKafkaCreds(  # noqa: B904
                 f"Failed to fetch topics due to: {err}. "
                 "Please validate credentials and check if you are using correct security protocol"
             )
@@ -168,3 +167,24 @@ def test_connection(
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
+
+
+class KafkaConnection(BaseConnection[KafkaConnectionConfig, KafkaClient]):
+    def _get_client(self) -> KafkaClient:
+        client = get_connection(self.service_connection)
+        self._on_close(client.close_consumer)
+        return client
+
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        return test_connection(
+            metadata,
+            self.client,
+            self.service_connection,
+            automation_workflow,
+            timeout_seconds,
+        )

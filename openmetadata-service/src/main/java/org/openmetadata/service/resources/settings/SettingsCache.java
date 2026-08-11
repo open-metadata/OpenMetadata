@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
@@ -46,6 +47,7 @@ import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
@@ -167,6 +169,9 @@ public class SettingsCache {
                       .withJwtTokenExpiryTime(3600));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+
+    // Initialise App Configuration (tenant-wide "first impression" default app mode)
+    seedAppConfiguration(applicationConfig);
 
     // Initialise Search Settings
     Settings storedSearchSettings =
@@ -364,7 +369,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#1890ff",
+                  "#1570ef",
                   null,
                   null),
               createRelationType(
@@ -377,7 +382,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.EQUIVALENCE,
                   true,
-                  "#722ed1",
+                  "#b42318",
                   null,
                   null),
               createRelationType(
@@ -390,7 +395,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#f5222d",
+                  "#b54708",
                   null,
                   null),
               createRelationType(
@@ -403,7 +408,7 @@ public class SettingsCache {
                   true,
                   RelationCategory.HIERARCHICAL,
                   true,
-                  "#597ef7",
+                  "#067647",
                   null,
                   null),
               createRelationType(
@@ -416,7 +421,7 @@ public class SettingsCache {
                   true,
                   RelationCategory.HIERARCHICAL,
                   true,
-                  "#85a5ff",
+                  "#4e5ba6",
                   null,
                   null),
               createRelationType(
@@ -429,7 +434,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.HIERARCHICAL,
                   true,
-                  "#13c2c2",
+                  "#026aa2",
                   null,
                   null),
               createRelationType(
@@ -442,7 +447,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.HIERARCHICAL,
                   true,
-                  "#36cfc9",
+                  "#155eef",
                   null,
                   null),
               createRelationType(
@@ -455,7 +460,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#faad14",
+                  "#6938ef",
                   null,
                   null),
               createRelationType(
@@ -468,7 +473,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#ffc53d",
+                  "#ba24d5",
                   null,
                   null),
               createRelationType(
@@ -481,7 +486,7 @@ public class SettingsCache {
                   false,
                   RelationCategory.ASSOCIATIVE,
                   true,
-                  "#eb2f96",
+                  "#c11574",
                   null,
                   null));
 
@@ -490,6 +495,28 @@ public class SettingsCache {
               .withConfigType(GLOSSARY_TERM_RELATION_SETTINGS)
               .withConfigValue(
                   new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+  }
+
+  /**
+   * Seeds {@link SettingsType#APP_CONFIGURATION} from yaml on first boot only. If a DB row
+   * already exists, yaml is ignored - the DB is the source of truth once seeded, and admins
+   * mutate it at runtime via {@code /v1/system/settings/appConfiguration}.
+   *
+   * <p>Extracted from {@link #createDefaultConfiguration} so it can be unit tested in isolation
+   * without exercising every other settings-seed block in that method.
+   */
+  public static void seedAppConfiguration(OpenMetadataApplicationConfig applicationConfig) {
+    Settings storedAppConfig =
+        Entity.getSystemRepository().getConfigWithKey(APP_CONFIGURATION.toString());
+    if (storedAppConfig == null) {
+      AppConfiguration appConfig =
+          applicationConfig.getAppConfiguration() != null
+              ? applicationConfig.getAppConfiguration()
+              : new AppConfiguration();
+      Settings setting =
+          new Settings().withConfigType(APP_CONFIGURATION).withConfigValue(appConfig);
       Entity.getSystemRepository().createNewSetting(setting);
     }
   }
@@ -534,13 +561,18 @@ public class SettingsCache {
 
   public static <T> T getSettingOrDefault(
       SettingsType settingName, T defaultValue, Class<T> clazz) {
+    T result = defaultValue;
     try {
       Object configValue = CACHE.get(settingName.toString()).getConfigValue();
-      return JsonUtils.convertValue(configValue, clazz);
+      result = JsonUtils.convertValue(configValue, clazz);
+    } catch (CacheLoader.InvalidCacheLoadException ex) {
+      // The loader returns null for a setting that was never configured. Serving the caller's
+      // default is what this method exists for, so it is not a failure.
+      LOG.debug("Setting {} is not configured, using the supplied default", settingName);
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
-      return defaultValue;
     }
+    return result;
   }
 
   public static void cleanUp() {

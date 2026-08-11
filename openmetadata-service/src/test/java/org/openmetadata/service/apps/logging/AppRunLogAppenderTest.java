@@ -192,7 +192,7 @@ class AppRunLogAppenderTest {
   @Test
   void formatLineProducesJsonMatchingDropwizardLayout() {
     LoggingEvent event = createEvent("reindex started", Map.of());
-    event.setLoggerName("org.openmetadata.service.apps.bundles.searchIndex.SearchIndexExecutor");
+    event.setLoggerName("org.openmetadata.service.apps.bundles.searchIndex.ReindexingOrchestrator");
     event.setTimeStamp(1774260643332L);
     String line = AppRunLogAppender.formatLine(event);
     assertTrue(line.startsWith("{\"timestamp\":1774260643332,"), "should start with timestamp");
@@ -200,7 +200,7 @@ class AppRunLogAppenderTest {
     assertTrue(line.contains("\"thread\":\"test-thread\""), "should contain thread");
     assertTrue(
         line.contains(
-            "\"logger\":\"org.openmetadata.service.apps.bundles.searchIndex.SearchIndexExecutor\""),
+            "\"logger\":\"org.openmetadata.service.apps.bundles.searchIndex.ReindexingOrchestrator\""),
         "should contain full logger name");
     assertTrue(line.contains("\"message\":\"reindex started\""), "should contain message");
     assertTrue(line.endsWith("}"), "should be valid JSON object");

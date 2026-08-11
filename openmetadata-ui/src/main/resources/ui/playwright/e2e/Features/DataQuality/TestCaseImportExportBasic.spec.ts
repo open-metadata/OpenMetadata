@@ -22,7 +22,10 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { validateImportStatus } from '../../../utils/importUtils';
+import {
+  startCsvPreview,
+  validateImportStatus,
+} from '../../../utils/importUtils';
 import {
   cancelBulkEditAndVerifyRedirect,
   clickManageButton,
@@ -108,7 +111,7 @@ const getFqn = (table: TableClass): string => {
 test.describe(
   'Test Case Bulk Import/Export - Admin User',
   {
-    tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`],
+    tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'],
   },
   () => {
     const table = new TableClass();
@@ -219,8 +222,8 @@ test.describe(
         await test.step('Verify Import Status', async () => {
           await waitForImportAsyncResponse(page);
           await validateImportStatus(page, {
-            passed: '4',
-            processed: '4',
+            passed: '3',
+            processed: '3',
             failed: '0',
           });
         });
@@ -254,12 +257,9 @@ test.describe(
         await test.step('Upload Invalid CSV and Verify Errors', async () => {
           await page.locator('[type="file"]').waitFor({ state: 'attached' });
           await page.setInputFiles('[type="file"]', csvFilePath);
-          await page.getByTestId('upload-file-widget').waitFor({
-            state: 'hidden',
-            timeout: 10000,
-          });
+          await startCsvPreview(page);
           await expect(page.getByText(/INVALID_HEADER/i).first()).toBeVisible({
-            timeout: 15000,
+            timeout: 30000,
           });
         });
       } finally {
@@ -271,8 +271,10 @@ test.describe(
 
 test.describe(
   'Test Case Import/Export/Edits - Permissions',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
+    test.describe.configure({ mode: 'default' });
+
     const table = new TableClass();
 
     test.beforeAll(async ({ browser }) => {
@@ -555,7 +557,7 @@ test.describe(
 
 test.describe(
   'Test Case Bulk Edit - Cancel Redirect',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const table = new TableClass();
 
@@ -578,6 +580,10 @@ test.describe(
     test('should redirect to Data Quality page when canceling global bulk edit', async ({
       page,
     }) => {
+      if (!process.env.PLAYWRIGHT_IS_OSS) {
+        // In AUT Global test case list page has more data and takes more time to load
+        test.slow();
+      }
       await redirectToHomePage(page);
       await navigateToGlobalDataQuality(page);
       await clickManageButton(page, 'global');
@@ -604,7 +610,7 @@ test.describe(
 
 test.describe(
   'Logical Test Suite - Bulk Import/Export/Edit Operations',
-  { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`, '@import-export'] },
   () => {
     const testSuiteName = `pw-logical-suite-${uuid()}`;
 

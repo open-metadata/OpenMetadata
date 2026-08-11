@@ -42,6 +42,12 @@ export interface BulkOperationResult {
  */
 export interface Response {
     /**
+     * True when a dryRun preview detected a side effect on this request (e.g., a domain move or
+     * broken data product relationship). UI clients can use this flag to decide whether to show
+     * a confirmation prompt before committing.
+     */
+    hasSideEffects?: boolean;
+    /**
      * Message for the request.
      */
     message?: string;

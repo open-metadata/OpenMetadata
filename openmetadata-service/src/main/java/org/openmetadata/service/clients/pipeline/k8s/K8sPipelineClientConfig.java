@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.openapi.models.V1LocalObjectReference;
+import io.kubernetes.client.openapi.models.V1Toleration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,6 +54,7 @@ public class K8sPipelineClientConfig {
   private static final String RUN_AS_NON_ROOT_KEY = "runAsNonRoot";
   private static final String EXTRA_ENV_VARS_KEY = "extraEnvVars";
   private static final String POD_ANNOTATIONS_KEY = "podAnnotations";
+  private static final String TOLERATIONS_KEY = "tolerations";
   private static final String STARTING_DEADLINE_SECONDS_KEY = "startingDeadlineSeconds";
   private static final String SKIP_INIT_KEY = "skipInit";
 
@@ -85,6 +87,7 @@ public class K8sPipelineClientConfig {
   // Extra configuration
   private final Map<String, String> extraEnvVars;
   private final Map<String, String> podAnnotations;
+  private final List<V1Toleration> tolerations;
   private final int startingDeadlineSeconds;
   private final boolean skipInit;
 
@@ -124,6 +127,7 @@ public class K8sPipelineClientConfig {
     List<String> rawExtraEnvs = parseListSafely(params.get(EXTRA_ENV_VARS_KEY));
     this.extraEnvVars = getConfigMap(rawExtraEnvs, ":");
     this.podAnnotations = parseKeyValuePairs(getStringParam(params, POD_ANNOTATIONS_KEY, ""));
+    this.tolerations = parseTolerations(params.get(TOLERATIONS_KEY));
     // Default to 0 seconds - prevents CronJobs from trying to catch up any missed executions
     // This eliminates duplicate executions when AutoPilot deploys pipelines
     this.startingDeadlineSeconds = getIntParam(params, STARTING_DEADLINE_SECONDS_KEY, 60);
@@ -235,6 +239,44 @@ public class K8sPipelineClientConfig {
 
   private Map<String, String> parseNodeSelector(String nodeSelectorStr) {
     return parseKeyValuePairs(nodeSelectorStr);
+  }
+
+  @SuppressWarnings("unchecked")
+  private List<V1Toleration> parseTolerations(Object value) {
+    if (value == null) {
+      return List.of();
+    }
+    try {
+      if (value instanceof List<?> rawList) {
+        List<V1Toleration> result = new ArrayList<>();
+        for (Object item : rawList) {
+          if (item instanceof Map<?, ?> map) {
+            V1Toleration toleration = new V1Toleration();
+            if (map.get("key") != null) {
+              toleration.setKey(map.get("key").toString());
+            }
+            if (map.get("operator") != null) {
+              toleration.setOperator(map.get("operator").toString());
+            }
+            if (map.get("value") != null) {
+              toleration.setValue(map.get("value").toString());
+            }
+            if (map.get("effect") != null) {
+              toleration.setEffect(map.get("effect").toString());
+            }
+            if (map.get("tolerationSeconds") != null) {
+              toleration.setTolerationSeconds(
+                  Long.parseLong(map.get("tolerationSeconds").toString()));
+            }
+            result.add(toleration);
+          }
+        }
+        return result;
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to parse tolerations [{}]: {}", value, e.getMessage());
+    }
+    return List.of();
   }
 
   private Map<String, String> parseKeyValuePairs(String pairsStr) {

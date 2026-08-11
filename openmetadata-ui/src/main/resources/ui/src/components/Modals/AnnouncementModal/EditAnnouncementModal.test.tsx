@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { DateTime } from 'luxon';
-import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
 import * as ToastUtils from '../../../utils/ToastUtils';
 import EditAnnouncementModal from './EditAnnouncementModal';
 
@@ -40,7 +39,7 @@ const mockShowErrorToast = ToastUtils.showErrorToast as jest.MockedFunction<
   typeof ToastUtils.showErrorToast
 >;
 
-const mockAnnouncement: AnnouncementDetails = {
+const mockAnnouncement = {
   description: 'Test announcement description',
   startTime: DateTime.now().plus({ hours: 1 }).toMillis(),
   endTime: DateTime.now().plus({ hours: 3 }).toMillis(),

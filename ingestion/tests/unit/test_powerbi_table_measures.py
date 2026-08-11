@@ -25,9 +25,7 @@ test_cases = {
                 name="test_measure",
                 dataType=DataType.MEASURE_VISIBLE,
                 dataTypeDisplay=DataType.MEASURE_VISIBLE,
-                description=Markdown(
-                    "Expression : SUM(Sales)\n\nDescription : Test Description"
-                ),
+                description=Markdown("Expression : SUM(Sales)\n\nDescription : Test Description"),
             )
         ],
     },
@@ -45,9 +43,7 @@ test_cases = {
                 name="hidden_measure",
                 dataType=DataType.MEASURE_HIDDEN,
                 dataTypeDisplay=DataType.MEASURE_HIDDEN,
-                description=Markdown(
-                    "Expression : AVG(Profit)\n\nDescription : Hidden"
-                ),
+                description=Markdown("Expression : AVG(Profit)\n\nDescription : Hidden"),
             )
         ],
     },
@@ -64,9 +60,7 @@ test_cases = {
                 name="complex_measure",
                 dataType=DataType.MEASURE_VISIBLE,
                 dataTypeDisplay=DataType.MEASURE_VISIBLE,
-                description=Markdown(
-                    "Expression : SUM(Table[Column]) - SUM(OtherTable[OtherColumn])\n\n"
-                ),
+                description=Markdown("Expression : SUM(Table[Column]) - SUM(OtherTable[OtherColumn])\n\n"),
             )
         ],
     },
@@ -116,7 +110,7 @@ def test_get_child_measures(test_case_name, test_case):
 
     assert result_columns
 
-    for expected_col, actual_col in zip(test_case["expected"], result_columns):
+    for expected_col, actual_col in zip(test_case["expected"], result_columns):  # noqa: B905
         assert actual_col.name == expected_col.name
         assert actual_col.dataType == expected_col.dataType
         assert actual_col.dataTypeDisplay == expected_col.dataTypeDisplay

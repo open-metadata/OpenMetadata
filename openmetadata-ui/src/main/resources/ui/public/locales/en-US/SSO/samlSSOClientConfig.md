@@ -1,8 +1,3 @@
----
-title: SAML SSO Configuration | OpenMetadata
-description: Configure SAML Single Sign-On for OpenMetadata with complete field reference
-slug: /main-concepts/metadata-standard/schemas/security/client/saml-sso
----
 
 SAML (Security Assertion Markup Language) SSO enables users to log in using SAML Identity Providers like Active Directory Federation Services (ADFS), Shibboleth, or other enterprise identity providers.
 
@@ -32,7 +27,8 @@ To configure SAML authentication, follow these steps:
 
 **Important:** The SP Entity ID and ACS URL are generated automatically based on your OpenMetadata URL and cannot be changed. You must use these exact values in your IdP configuration for SAML to work.
 
-## <span data-id="enableSelfSignup">Enable Self Signup</span>
+$$section
+## Enable Self Signup $(id="enableSelfSignup")
 
 - **Definition:** Allows users to automatically create accounts on first SAML login.
 - **Options:** Enabled | Disabled
@@ -41,22 +37,28 @@ To configure SAML authentication, follow these steps:
 - **Note:** Disable for stricter control over user access
 
 ## Identity Provider (IdP) Configuration
+$$
 
-### <span data-id="entityId">IdP Entity ID</span>
+$$section
+### IdP Entity ID $(id="entityId")
 
 - **Definition:** Unique identifier for the Identity Provider.
 - **Example:** https://adfs.company.com/adfs/services/trust
 - **Why it matters:** SAML messages use this to identify the IdP.
 - **Note:** Must match exactly what's configured in your IdP
+$$
 
-### <span data-id="ssoLoginUrl">SSO Login URL</span>
+$$section
+### SSO Login URL $(id="ssoLoginUrl")
 
 - **Definition:** URL where users are redirected to authenticate with the IdP.
 - **Example:** https://adfs.company.com/adfs/ls/
 - **Why it matters:** This is where authentication requests are sent.
 - **Note:** Usually provided by your IdP administrator
+$$
 
-### <span data-id="idpX509Certificate">IdP X509 Certificate</span>
+$$section
+### IdP X509 Certificate $(id="idpX509Certificate")
 
 - **Definition:** Public certificate used to verify SAML assertions from the IdP.
 - **Example:** -----BEGIN CERTIFICATE-----\nMIIC...certificate content...\n-----END CERTIFICATE-----
@@ -65,8 +67,10 @@ To configure SAML authentication, follow these steps:
   - Must be the actual certificate, not just the fingerprint
   - Include the BEGIN/END lines
   - Can be multi-line
+$$
 
-### <span data-id="nameId">Name ID Format</span>
+$$section
+### Name ID Format $(id="nameId")
 
 - **Definition:** Format of the SAML NameID element that identifies users.
 - **Default:** urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
@@ -75,8 +79,10 @@ To configure SAML authentication, follow these steps:
 - **Note:** Email format is most common and recommended
 
 ## Service Provider (SP) Configuration
+$$
 
-### <span data-id="entityId">SP Entity ID</span>
+$$section
+### SP Entity ID $(id="entityId")
 
 - **Definition:** Unique identifier for OpenMetadata as a Service Provider.
 - **Example:** https://openmetadata.company.com
@@ -86,8 +92,10 @@ To configure SAML authentication, follow these steps:
   - **This field is read-only** - it cannot be edited
   - **Copy this value** and paste it as the Entity ID (or Application ID) in your SAML Identity Provider configuration
   - Must match exactly in your IdP's trusted applications list
+$$
 
-### <span data-id="acs">Assertion Consumer Service (ACS) URL</span>
+$$section
+### Assertion Consumer Service (ACS) URL $(id="acs")
 
 - **Definition:** URL where the IdP sends SAML assertions after authentication.
 - **Example:** https://openmetadata.company.com/callback
@@ -98,15 +106,19 @@ To configure SAML authentication, follow these steps:
   - **Copy this value** and paste it as the ACS URL (also called Reply URL, Callback URL, or Consumer URL) in your SAML Identity Provider configuration
   - Format is always: `{your-domain}/callback`
   - Must be registered exactly in your IdP configuration
+$$
 
-### <span data-id="spX509Certificate">SP X509 Certificate</span>
+$$section
+### SP X509 Certificate $(id="spX509Certificate")
 
 - **Definition:** Public certificate for OpenMetadata (Service Provider).
 - **Example:** -----BEGIN CERTIFICATE-----\nMIIC...certificate content...\n-----END CERTIFICATE-----
 - **Why it matters:** Used by IdP to verify signed SAML requests from OpenMetadata.
 - **Note:** Required if signing SAML requests
+$$
 
-### <span data-id="spPrivateKey">SP Private Key</span>
+$$section
+### SP Private Key $(id="spPrivateKey")
 
 - **Definition:** Private key for signing and encryption (Service Provider only).
 - **Example:** -----BEGIN PRIVATE KEY-----\nMIIE...private key content...\n-----END PRIVATE KEY-----
@@ -116,48 +128,60 @@ To configure SAML authentication, follow these steps:
   - Required if signing or encryption is enabled
 
 ## Security Configuration
+$$
 
-### <span data-id="strictMode">Strict Mode</span>
+$$section
+### Strict Mode $(id="strictMode")
 
 - **Definition:** Only accept valid signed and encrypted assertions if relevant flags are set.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Enhances security by enforcing signature and encryption validation.
 - **Note:** Enable for production environments
+$$
 
-### <span data-id="tokenValidity">Token Validity (seconds)</span>
+$$section
+### Token Validity (seconds) $(id="tokenValidity")
 
 - **Definition:** Validity period (in seconds) for JWT tokens created from SAML response.
 - **Default:** 3600 (1 hour)
 - **Example:** 7200 (2 hours)
 - **Why it matters:** Controls how long users stay logged in after SAML authentication.
 - **Note:** This controls the OpenMetadata JWT token lifetime, not the SAML assertion lifetime
+$$
 
-### <span data-id="sendSignedAuthRequest">Send Signed Auth Request</span>
+$$section
+### Send Signed Auth Request $(id="sendSignedAuthRequest")
 
 - **Definition:** Whether to sign authentication requests sent to IdP.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Ensures authenticity of requests from OpenMetadata.
 - **Note:** Requires SP private key configuration
+$$
 
-### <span data-id="signSpMetadata">Sign SP Metadata</span>
+$$section
+### Sign SP Metadata $(id="signSpMetadata")
 
 - **Definition:** Whether to sign Service Provider metadata.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Ensures integrity of metadata exchanged with IdP.
 - **Note:** Recommended for production environments
+$$
 
-### <span data-id="wantAssertionsSigned">Want Assertions Signed</span>
+$$section
+### Want Assertions Signed $(id="wantAssertionsSigned")
 
 - **Definition:** Require SAML assertions to be digitally signed by IdP.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Ensures assertions haven't been tampered with.
 - **Note:** Highly recommended for security
+$$
 
-### <span data-id="wantMessagesSigned">Want Messages Signed</span>
+$$section
+### Want Messages Signed $(id="wantMessagesSigned")
 
 - **Definition:** Require SAML messages to be digitally signed by IdP.
 - **Default:** false
@@ -166,8 +190,10 @@ To configure SAML authentication, follow these steps:
 - **Note:** Provides additional security beyond assertion signing
 
 ## Advanced Configuration
+$$
 
-### <span data-id="debugMode">Debug Mode</span>
+$$section
+### Debug Mode $(id="debugMode")
 
 - **Definition:** Enable debug logging for SAML authentication process.
 - **Default:** false
@@ -182,8 +208,10 @@ To configure SAML authentication, follow these steps:
 ## Authorizer Configuration
 
 The following settings control authorization and access control across OpenMetadata. These settings apply globally to all authentication providers.
+$$
 
-### <span data-id="adminPrincipals">Admin Principals</span>
+$$section
+### Admin Principals $(id="adminPrincipals")
 
 - **Definition:** List of user principals who will have admin access to OpenMetadata.
 - **Example:** ["john.doe", "jane.admin", "admin"]
@@ -192,23 +220,29 @@ The following settings control authorization and access control across OpenMetad
   - Use usernames (NOT full email addresses)
   - At least one admin principal is required
   - For SAML, username is derived from NameID (if email format, uses part before @)
+$$
 
-### <span data-id="principalDomain">Principal Domain</span>
+$$section
+### Principal Domain $(id="principalDomain")
 
 - **Definition:** Default domain for user principals.
 - **Example:** company.com
 - **Why it matters:** Used to construct full user principals when only username is provided.
 - **Note:** Typically your organization's domain
+$$
 
-### <span data-id="enforcePrincipalDomain">Enforce Principal Domain</span>
+$$section
+### Enforce Principal Domain $(id="enforcePrincipalDomain")
 
 - **Definition:** Whether to enforce that all users belong to the principal domain.
 - **Default:** false
 - **Example:** true
 - **Why it matters:** Adds an extra layer of security by restricting access to users from specific domains.
 - **Note:** When enabled, only users from the configured principal domain can access OpenMetadata
+$$
 
-### <span data-id="allowedDomains">Allowed Domains</span>
+$$section
+### Allowed Domains $(id="allowedDomains")
 
 - **Definition:** List of email domains that are permitted to access OpenMetadata.
 - **Example:** ["company.com", "partner.com"]
@@ -218,3 +252,4 @@ The following settings control authorization and access control across OpenMetad
   - When `enforcePrincipalDomain` is enabled, only users with email addresses from these domains can access OpenMetadata
   - Leave empty or use single `principalDomain` if you only have one domain
   - Use this field for multi-domain organizations
+$$

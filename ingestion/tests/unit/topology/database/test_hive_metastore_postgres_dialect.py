@@ -113,9 +113,7 @@ class TestHivePostgresMetastoreDialectGetTableColumns:
         ]
         mock_connection.execute.return_value = mock_result
 
-        result = self.dialect._get_table_columns(
-            mock_connection, "test_table", "test_schema"
-        )
+        result = self.dialect._get_table_columns(mock_connection, "test_table", "test_schema")
 
         executed_query = str(mock_connection.execute.call_args[0][0])
         assert "WITH" in executed_query.upper()

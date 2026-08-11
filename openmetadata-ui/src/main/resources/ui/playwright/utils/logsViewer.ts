@@ -18,6 +18,73 @@ import {
 } from '../constant/logsViewer';
 import { waitForAllLoadersToDisappear } from './entity';
 
+/**
+ * Distinctive marker injected into mocked log payloads. Tests assert the
+ * LogViewerModal body renders this string, proving logs are shown at a call
+ * site without depending on a real backend job.
+ */
+export const LOG_VIEWER_MARKER = 'PLAYWRIGHT_LOG_MARKER';
+
+/**
+ * Deterministic multi-line log text that embeds the marker on every line.
+ */
+export const buildMarkerLogText = (marker = LOG_VIEWER_MARKER): string =>
+  Array.from(
+    { length: 20 },
+    (_, index) => `${marker} log line ${index + 1}`
+  ).join('\n');
+
+/**
+ * Assert the LogViewerModal is open and its body shows the injected marker.
+ */
+export const assertLogViewerShowsLogs = async (
+  page: Page,
+  marker = LOG_VIEWER_MARKER
+): Promise<void> => {
+  await expect(page.getByTestId('log-viewer-title')).toBeVisible();
+  await expect(page.getByTestId('log-viewer-body')).toContainText(marker);
+};
+
+export const navigateToBundleSuiteWithPagination = async (
+  page: Page,
+  bundleSuiteFqn: string,
+  maxPages = 15
+): Promise<void> => {
+  const encodedBundleSuiteFqn = encodeURIComponent(bundleSuiteFqn);
+
+  for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    await waitForAllLoadersToDisappear(page);
+
+    const bundleSuiteLink = page
+      .getByTestId('test-suite-table')
+      .locator(`a[href*="${encodedBundleSuiteFqn}"]`)
+      .first();
+
+    if (await bundleSuiteLink.isVisible()) {
+      await bundleSuiteLink.click();
+      await waitForAllLoadersToDisappear(page);
+
+      return;
+    }
+
+    const nextBtn = page.locator('[data-testid="next"]');
+
+    if (!(await nextBtn.isVisible()) || !(await nextBtn.isEnabled())) {
+      break;
+    }
+
+    const listResponse = page.waitForResponse((r) =>
+      r.url().includes('/api/v1/dataQuality/testSuites/search/list')
+    );
+    await nextBtn.click();
+    await listResponse;
+  }
+
+  throw new Error(
+    `Bundle suite ${bundleSuiteFqn} was not found after checking ${maxPages} page(s)`
+  );
+};
+
 export async function waitForFirstPipelineStatusNotQueued(page: Page) {
   await expect(async () => {
     await page.reload();

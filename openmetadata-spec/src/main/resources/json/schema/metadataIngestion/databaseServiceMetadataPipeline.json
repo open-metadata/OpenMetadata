@@ -90,6 +90,12 @@
       "default": true,
       "title": "Include Tags"
     },
+    "includeCustomProperties": {
+      "description": "Optional configuration to toggle the ingestion of source-specific custom properties (e.g. Iceberg table properties) onto the entity extension. When disabled, no custom property definitions are registered and no extension values are set.",
+      "type": "boolean",
+      "default": false,
+      "title": "Include Custom Properties"
+    },
     "includeOwners":{
       "title": "Include Owners",
       "description": "Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.",

@@ -45,12 +45,10 @@ import { searchQuery } from '../../../../../rest/searchAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -201,10 +199,7 @@ export const UserTab = ({
     }
   }, [currentTeam, pageSize, pagingCursor]);
 
-  const isTeamDeleted = useMemo(
-    () => currentTeam.deleted ?? false,
-    [currentTeam]
-  );
+  const isTeamDeleted = currentTeam.deleted ?? false;
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [

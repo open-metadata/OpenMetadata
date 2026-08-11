@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -61,6 +63,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class MlModelRepository extends EntityRepository<MlModel> {
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
   private static final String MODEL_PATCH_FIELDS = "dashboard";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("mlFeatures.description");
 
   public MlModelRepository() {
     super(
@@ -69,8 +72,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         MlModel.class,
         Entity.getCollectionDAO().mlModelDAO(),
         MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS);
+        MODEL_UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboard", this::fetchAndSetDashboards);
@@ -191,13 +199,26 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID mlModelId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.MLMODEL_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(mlModelId, serviceRef);
+      EntityReference serviceRef = resolveServiceRefLeniently(UUID.fromString(record.getFromId()));
+      if (serviceRef != null) {
+        serviceMap.put(mlModelId, serviceRef);
+      }
     }
 
     return serviceMap;
+  }
+
+  private EntityReference resolveServiceRefLeniently(UUID serviceId) {
+    EntityReference serviceRef = null;
+    try {
+      serviceRef = Entity.getEntityReferenceById(Entity.MLMODEL_SERVICE, serviceId, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      // The parent service can be hard-deleted concurrently (e.g. a sibling test's cascade delete)
+      // between the relationship lookup above and this resolution. The ml model row is mid-cascade
+      // and about to be removed, so tolerate the missing service rather than failing the read.
+      LOG.debug("MlModel service {} not found (concurrent delete); skipping", serviceId);
+    }
+    return serviceRef;
   }
 
   @Override
@@ -216,6 +237,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {
     mlSources.forEach(
         s -> {
+          FullyQualifiedName.validateFqnName(s.getName());
           if (s.getDataSource() != null) {
             s.setFullyQualifiedName(
                 FullyQualifiedName.add(s.getDataSource().getFullyQualifiedName(), s.getName()));
@@ -228,6 +250,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
     mlFeatures.forEach(
         f -> {
+          FullyQualifiedName.validateFqnName(f.getName());
           String featureFqn = FullyQualifiedName.add(parentFQN, f.getName());
           f.setFullyQualifiedName(featureFqn);
           if (f.getFeatureSources() != null) {
@@ -519,6 +542,31 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           addedList,
           deletedList,
           mlFeatureMatch);
+
+      for (MlFeature updatedFeature : listOrEmpty(updatedModel.getMlFeatures())) {
+        MlFeature storedFeature =
+            listOrEmpty(origModel.getMlFeatures()).stream()
+                .filter(feature -> mlFeatureMatch.test(feature, updatedFeature))
+                .findAny()
+                .orElse(null);
+        if (storedFeature == null) {
+          continue;
+        }
+
+        updateMlFeatureDescription(storedFeature, updatedFeature);
+      }
+    }
+
+    private void updateMlFeatureDescription(MlFeature originalFeature, MlFeature updatedFeature) {
+      if (operation.isPut() && !nullOrEmpty(originalFeature.getDescription()) && updatedByBot()) {
+        updatedFeature.setDescription(originalFeature.getDescription());
+        return;
+      }
+
+      recordChange(
+          "mlFeatures." + originalFeature.getName() + ".description",
+          originalFeature.getDescription(),
+          updatedFeature.getDescription());
     }
 
     private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) {

@@ -18,7 +18,7 @@ import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequ
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import { DataInsightCustomChartResult } from './DataInsightAPI';
 import APIClient from './index';
 

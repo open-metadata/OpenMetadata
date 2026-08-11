@@ -14,7 +14,7 @@ import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/Act
 import { CURATED_ASSETS_SORT_BY_KEYS } from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FeedFilter, MyTaskFilter } from '../enums/mydata.enum';
-import { getEntityName } from '../utils/EntityUtils';
+import { getEntityName } from '../utils/EntityNameUtils';
 
 export const TAB_SUPPORTED_FILTER = [
   ActivityFeedTabs.ALL,

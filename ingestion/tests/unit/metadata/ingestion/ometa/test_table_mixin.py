@@ -22,6 +22,7 @@ into safe primitives before model_dump_json() is called, including:
   - nested list / dict                   (ARRAY, STRUCT, MAP, HSTORE columns)
   - arbitrary opaque objects             (catch-all for unknown driver types)
 """
+
 import datetime
 import decimal
 import ipaddress
@@ -154,9 +155,7 @@ class TestIngestTableSampleDataPreprocessing:
     def test_decimal_infinity_converted_to_string(self):
         mixin = _make_mixin()
         table = _make_table()
-        sample_data = TableData(
-            columns=["val_col"], rows=[[decimal.Decimal("Infinity")]]
-        )
+        sample_data = TableData(columns=["val_col"], rows=[[decimal.Decimal("Infinity")]])
         mixin.client.put.return_value = None
         mixin.ingest_table_sample_data(table, sample_data)
         assert sample_data.rows[0][0] == "Infinity"
@@ -200,27 +199,17 @@ class TestSanitizeSampleDataValue:
         assert result.startswith("[base64]")
 
     def test_ipv4_to_string(self):
-        assert (
-            _sanitize_sample_data_value(ipaddress.IPv4Address("192.168.1.1"))
-            == "192.168.1.1"
-        )
+        assert _sanitize_sample_data_value(ipaddress.IPv4Address("192.168.1.1")) == "192.168.1.1"
 
     def test_ipv6_to_string(self):
-        assert (
-            _sanitize_sample_data_value(ipaddress.IPv6Address("2001:db8::1"))
-            == "2001:db8::1"
-        )
+        assert _sanitize_sample_data_value(ipaddress.IPv6Address("2001:db8::1")) == "2001:db8::1"
 
     def test_uuid_to_string(self):
         uid = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
-        assert (
-            _sanitize_sample_data_value(uid) == "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
-        )
+        assert _sanitize_sample_data_value(uid) == "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 
     def test_decimal_finite_to_float(self):
-        assert _sanitize_sample_data_value(decimal.Decimal("3.14")) == pytest.approx(
-            3.14
-        )
+        assert _sanitize_sample_data_value(decimal.Decimal("3.14")) == pytest.approx(3.14)
 
     def test_decimal_infinity_to_string(self):
         assert _sanitize_sample_data_value(decimal.Decimal("Infinity")) == "Infinity"

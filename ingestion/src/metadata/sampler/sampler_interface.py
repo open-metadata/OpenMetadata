@@ -11,51 +11,29 @@
 """
 Interface for sampler
 """
+
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set, Union
+from functools import cached_property
+from typing import Any, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     SampleDataIngestionConfig,
 )
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfilerConfig,
-    PartitionProfilerConfig,
-    Table,
-    TableData,
-)
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    ProcessingEngine,
-)
+from metadata.generated.schema.entity.data.table import TableData
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import TableConfig
+from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
-from metadata.sampler.config import (
-    get_exclude_columns,
-    get_include_columns,
-    get_profile_sample_config,
-    get_sample_data_count_config,
-    get_sample_query,
-)
-from metadata.sampler.models import SampleConfig
-from metadata.sampler.partition import get_partition_details
+from metadata.sampler.config import resolve_static_sampling_config
+from metadata.sampler.sampler_config import SamplerConfig
 from metadata.utils.constants import (
     SAMPLE_DATA_DEFAULT_COUNT,
     SAMPLE_DATA_MAX_CELL_LENGTH,
 )
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
-from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = sampler_logger()
 
@@ -66,134 +44,63 @@ class SamplerInterface(ABC):
     data quality, profiling, etc.
     """
 
-    # pylint: disable=too-many-instance-attributes, too-many-arguments
     def __init__(
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Any,
         ometa_client: OpenMetadata,
-        entity: Table,
-        include_columns: Optional[List[ColumnProfilerConfig]] = None,
-        exclude_columns: Optional[List[str]] = None,
-        sample_config: SampleConfig = SampleConfig(),
-        partition_details: Optional[PartitionProfilerConfig] = None,
-        sample_query: Optional[str] = None,
-        storage_config: Optional[DataStorageConfig] = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,
+        entity: ClassifiableEntityType,
+        config: Optional[SamplerConfig] = None,  # noqa: UP045
         **__,
     ):
+        resolved_config = config or SamplerConfig()
         self.ometa_client = ometa_client
-        self._sample = None
-        self._columns: List[SQALikeColumn] = []
-        self.sample_config = sample_config
-
         self.entity = entity
-        self.include_columns = include_columns or []
-        self.exclude_columns = exclude_columns or []
-        self.sample_query = sample_query
-        self.sample_limit = sample_data_count
-        self.partition_details = partition_details
-        self.storage_config = storage_config
-        self.processing_engine = processing_engine
-
         self.service_connection_config = service_connection_config
-        self.connection = get_ssl_connection(self.service_connection_config)
+        self.sample_config = resolved_config.sample_config
+        self.sample_limit = resolved_config.sample_data_count or SAMPLE_DATA_DEFAULT_COUNT
+        self.upload_sample_storage_config = resolved_config.upload_sample_storage_config
+        self._columns: List[SQALikeColumn] = []  # noqa: UP006
+        self._row_count = None
+        self._sample_config: StaticSamplingConfig | None = None
+        self.partition_details: Any = None
+        self.sample_query: Optional[str] = None  # noqa: UP045
 
-    # pylint: disable=too-many-arguments, too-many-locals
     @classmethod
     def create(
         cls,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Any,
         ometa_client: OpenMetadata,
-        entity: Table,
-        schema_entity: DatabaseSchema,
-        database_entity: Database,
-        table_config: Optional[TableConfig] = None,
-        storage_config: Optional[DataStorageConfig] = None,
-        default_sample_config: Optional[SampleConfig] = None,
-        default_sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
-        processing_engine: Optional[ProcessingEngine] = None,
+        entity: ClassifiableEntityType,
+        config: Optional[SamplerConfig] = None,  # noqa: UP045
         **kwargs,
     ) -> "SamplerInterface":
-        """Create sampler"""
-
-        sample_data_count = get_sample_data_count_config(
-            entity=entity,
-            schema_entity=schema_entity,
-            database_entity=database_entity,
-            entity_config=table_config,
-            default_sample_data_count=default_sample_data_count,
-        )
-        sample_config = get_profile_sample_config(
-            entity=entity,
-            schema_entity=schema_entity,
-            database_entity=database_entity,
-            entity_config=table_config,
-            default_sample_config=default_sample_config,
-        )
-        sample_query = get_sample_query(entity=entity, entity_config=table_config)
-        partition_details = get_partition_details(
-            entity=entity, entity_config=table_config
-        )
-        include_columns = get_include_columns(entity, entity_config=table_config)
-        exclude_columns = get_exclude_columns(entity, entity_config=table_config)
-
+        """Create sampler from a pre-built SamplerConfig."""
         return cls(
             service_connection_config=service_connection_config,
             ometa_client=ometa_client,
             entity=entity,
-            include_columns=include_columns,
-            exclude_columns=exclude_columns,
-            sample_config=sample_config,
-            partition_details=partition_details,
-            sample_query=sample_query,
-            storage_config=storage_config,
-            sample_data_count=sample_data_count,
-            processing_engine=processing_engine,
+            config=config or SamplerConfig(),
             **kwargs,
         )
 
-    @property
-    def columns(self) -> List[SQALikeColumn]:
+    @cached_property
+    def _resolve_sample_config(self) -> StaticSamplingConfig | None:
+        """Get the static sampling config. Use cached_property to cache the
+        result since it can be used multiple times during the sampling process
+        and contains a potentially expensive computation.
         """
-        Return the list of columns to profile
-        by skipping the columns to ignore.
-        """
-
-        if self._columns:
-            return self._columns
-
-        if self._get_included_columns():
-            self._columns = [
-                column
-                for column in self.get_columns()
-                if column.name in self._get_included_columns()
-            ]
-
-        if not self._get_included_columns():
-            self._columns = [
-                column
-                for column in self._columns or self.get_columns()
-                if column.name not in self._get_excluded_columns()
-            ]
-
-        return self._columns
-
-    def _get_excluded_columns(self) -> Set[str]:
-        """Get excluded  columns for table being profiled"""
-        if self.exclude_columns:
-            return set(self.exclude_columns)
-        return set()
-
-    def _get_included_columns(self) -> Set[str]:
-        """Get include columns for table being profiled"""
-        if self.include_columns:
-            return {
-                include_col.columnName
-                for include_col in self.include_columns
-                if include_col.columnName
-            }
-        return set()
+        self._sample_config = resolve_static_sampling_config(
+            sample_config=self.sample_config.profileSampleConfig,
+            row_count=(
+                self._get_asset_row_count()
+                if (
+                    self.sample_config.profileSampleConfig
+                    and self.sample_config.profileSampleConfig.sampleConfigType == SampleConfigType.DYNAMIC
+                )
+                else None
+            ),
+        )
+        return self._sample_config
 
     @property
     @abstractmethod
@@ -222,18 +129,22 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:
-        """Fetch sample data
-
-        Args:
-            columns (Optional[List]): List of columns to fetch
-        """
+    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
+        """Fetch sample data"""
         raise NotImplementedError
 
     @abstractmethod
-    def get_columns(self) -> List[SQALikeColumn]:
+    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
         """get columns"""
         raise NotImplementedError
+
+    def _get_asset_row_count(self) -> int:
+        """Default row-count implementation: returns 0. Override where row count is available."""
+        logger.info(
+            "Row count fetching is not implemented for this sampler. "
+            "Returning 0 as default row count. Dynamic sampling will be ignored."
+        )
+        return self._row_count or 0
 
     @staticmethod
     def _truncate_cell(value: Any) -> Any:
@@ -242,10 +153,7 @@ class SamplerInterface(ABC):
             return value[:SAMPLE_DATA_MAX_CELL_LENGTH]
         return value
 
-    @calculate_execution_time(store=False)
-    def generate_sample_data(
-        self, sample_data_config: Optional[SampleDataIngestionConfig] = None
-    ) -> TableData:
+    def generate_sample_data(self, sample_data_config: Optional[SampleDataIngestionConfig] = None) -> TableData:  # noqa: UP045
         """Fetch and ingest sample data
 
         Returns:
@@ -254,42 +162,24 @@ class SamplerInterface(ABC):
         if sample_data_config is None:
             # if there is no global config, default to storing and reading sample data to ensure backward compatibility
             # and availability of sample data for downstream steps
-            sample_data_config = SampleDataIngestionConfig(
-                storeSampleData=True, readSampleData=True
-            )
+            sample_data_config = SampleDataIngestionConfig(storeSampleData=True, readSampleData=True)
 
-        if (
-            not sample_data_config.storeSampleData
-            and not sample_data_config.readSampleData
-        ):
-            logger.info(
-                "Both storing and reading of sample data are disabled. Skipping sample data generation."
-            )
+        if not sample_data_config.storeSampleData and not sample_data_config.readSampleData:
+            logger.info("Both storing and reading of sample data are disabled. Skipping sample data generation.")
             return TableData(rows=[], columns=[])
         try:
-
-            # Stores overwrites reading since if we are storing the data, we want to fetch it
-            # as well to pass down the pipeline. If we are not storing, but reading is enabled,
-            # we still want to fetch the data to pass down the pipeline, but we won't store it.
             if sample_data_config.readSampleData or sample_data_config.storeSampleData:
-                logger.debug(
-                    f"Fetching sample data for {self.entity.fullyQualifiedName.root}..."
-                )
+                logger.debug(f"Fetching sample data for {self.entity.fullyQualifiedName.root}...")
                 table_data = self.fetch_sample_data(self.columns)
-                # Truncate large cell values to prevent OOM in downstream
-                # processing (NLP, serialization, etc.)
                 table_data.rows = [
                     [self._truncate_cell(cell) for cell in row]
-                    for row in table_data.rows[
-                        : min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)
-                    ]
+                    for row in table_data.rows[: min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)]
                 ]
-                # Only store the data if configured to do so
-                if self.storage_config and sample_data_config.storeSampleData:
+                if self.upload_sample_storage_config and sample_data_config.storeSampleData:
                     upload_sample_data(
                         data=table_data,
                         entity=self.entity,
-                        sample_storage_config=self.storage_config,
+                        sample_storage_config=self.upload_sample_storage_config,
                     )
                 return table_data
 
@@ -298,7 +188,15 @@ class SamplerInterface(ABC):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
-            raise err
+            raise err  # noqa: TRY201
 
-    def close(self):
+    @property
+    def columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+        """Return the sampled columns list. Subclasses with include/exclude
+        column filtering (database samplers) override this property."""
+        if not self._columns:
+            self._columns = self.get_columns()
+        return self._columns
+
+    def close(self):  # noqa: B027
         """Default noop"""

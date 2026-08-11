@@ -15,15 +15,15 @@ import {
   InfoCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
+import { toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { get, isEmpty, isString } from 'lodash';
+import { get, isString } from 'lodash';
 import React from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
 import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
-import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
 
 export const getIconAndClassName = (type: AlertBarProps['type']) => {
   switch (type) {
@@ -71,26 +71,10 @@ export const getIconAndClassName = (type: AlertBarProps['type']) => {
   }
 };
 
-export const hashCode = (str: string) => {
-  let hash = 0,
-    i,
-    chr;
-  if (isEmpty(str)) {
-    return hash;
-  }
-  for (i = 0; i < str.length; i++) {
-    chr = str.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
-    hash |= 0; // Convert to 32bit integer
-  }
-
-  return hash;
-};
-
 /**
  * Display an error toast message.
  * @param error error text or AxiosError object
- * @param fallbackText Fallback error message to the displayed.
+ * @param fallbackText Fallback error message to be displayed.
  * @param autoCloseTimer Set the delay in ms to close the toast automatically.
  */
 export const showErrorToast = (
@@ -114,9 +98,6 @@ export const showErrorToast = (
     errorMessage = getErrorText(error, fallback);
     isRuleViolation =
       get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
-    // do not show error toasts for 401
-    // since they will be intercepted and the user will be redirected to the signin page
-    // except for principal domain mismatch errors
     if (
       error &&
       (error.response?.status === ClientErrors.UNAUTHORIZED ||
@@ -131,11 +112,14 @@ export const showErrorToast = (
   }
   callback && callback(errorMessage);
 
-  const alertType = isRuleViolation ? 'warning' : 'error';
-
-  useAlertStore
-    .getState()
-    .addAlert({ type: alertType, message: errorMessage }, autoCloseTimer);
+  if (isRuleViolation) {
+    toast.warning(errorMessage, { timeout: autoCloseTimer ?? 5000 });
+  } else {
+    toast.error(
+      errorMessage,
+      autoCloseTimer ? { timeout: autoCloseTimer } : {}
+    );
+  }
 };
 
 /**
@@ -143,10 +127,8 @@ export const showErrorToast = (
  * @param message success message.
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
-export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'success', message }, autoCloseTimer);
+export const showSuccessToast = (message: string, autoCloseTimer = 3000) => {
+  toast.success(message, { timeout: autoCloseTimer });
 };
 
 /**
@@ -155,9 +137,7 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showWarningToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'warning', message }, autoCloseTimer);
+  toast.warning(message, { timeout: autoCloseTimer });
 };
 
 /**
@@ -166,5 +146,5 @@ export const showWarningToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore.getState().addAlert({ type: 'info', message }, autoCloseTimer);
+  toast.info(message, { timeout: autoCloseTimer });
 };

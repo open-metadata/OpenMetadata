@@ -16,14 +16,14 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FC, useCallback } from 'react';
+import { FC, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsForm from './TagsForm';
 import { ClassificationFormDrawerProps } from './TagsPage.interface';
 
 const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
   open,
-  formRef,
+  form,
   classifications,
   isTier,
   isLoading,
@@ -31,6 +31,7 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
   onSubmit,
 }) => {
   const { t } = useTranslation();
+  const submitRef = useRef<() => void>(() => void 0);
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -43,8 +44,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
 
   return (
     <SlideoutMenu
+      className="tw:z-999"
       data-testid="classification-form-drawer"
       isOpen={open}
+      width={480}
       onOpenChange={handleOpenChange}>
       {({ close }) => (
         <>
@@ -59,9 +62,10 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
               isClassification
               showMutuallyExclusive
               data={classifications}
-              formRef={formRef}
+              form={form}
               isEditing={false}
               isTier={isTier}
+              submitRef={submitRef}
               onSubmit={onSubmit}
             />
           </SlideoutMenu.Content>
@@ -79,7 +83,7 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
                 data-testid="save-button"
                 isDisabled={isLoading}
                 isLoading={isLoading}
-                onClick={() => formRef.submit()}>
+                onClick={() => submitRef.current()}>
                 {t('label.save')}
               </Button>
             </div>

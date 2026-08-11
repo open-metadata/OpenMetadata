@@ -117,8 +117,7 @@ export interface Profile {
     /**
      * No.of rows in the table. This is always executed on the whole table.
      */
-    rowCount?:           number;
-    samplingMethodType?: SamplingMethodType;
+    rowCount?: number;
     /**
      * Table size in GB
      */
@@ -126,10 +125,7 @@ export interface Profile {
     /**
      * Timestamp on which profile is taken.
      */
-    timestamp?: number;
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
+    timestamp?:               number;
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Number of values that contain distinct values.
@@ -316,14 +312,6 @@ export enum DMLOperationType {
 export enum ProfileSampleType {
     Percentage = "PERCENTAGE",
     Rows = "ROWS",
-}
-
-/**
- * Type of Sampling Method (BERNOULLI or SYSTEM)
- */
-export enum SamplingMethodType {
-    Bernoulli = "BERNOULLI",
-    System = "SYSTEM",
 }
 
 /**

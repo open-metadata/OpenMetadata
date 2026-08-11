@@ -11,30 +11,40 @@
 """
 Utils module to define overrided sqlalchamy methods
 """
+
 # pylint: disable=protected-access,unused-argument
 import re
+import traceback
 
 from sqlalchemy import sql, text, util
 from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
 from sqlalchemy.engine import reflection
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
     GET_VIEW_NAMES,
     ORACLE_CONSTRAINTS,
+    ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES,
     ORACLE_GET_COLUMNS,
+    ORACLE_GET_MVIEW_QUERY_BY_NAME,
     ORACLE_GET_TABLE_NAMES,
+    ORACLE_GET_VIEW_DEFINITION_BY_NAME,
+    ORACLE_GET_VIEW_TEXT_BY_NAME,
     ORACLE_IDENTITY_TYPE,
     ORACLE_TABLE_COMMENTS,
     ORACLE_TABLE_COMMENTS_PRESERVE_CASE,
     ORACLE_VIEW_DEFINITIONS,
     ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE,
 )
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+
+logger = ingestion_logger()
 
 
 def get_table_prefix_from_connection(service_connection) -> str:
@@ -50,7 +60,7 @@ def get_table_comment(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -69,7 +79,7 @@ def get_view_definition(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -86,36 +96,104 @@ def get_view_definition(
 @reflection.cache
 def get_all_view_definitions(self, connection, query):
     """
-    Method to fetch view definition of all available views
+    Method to fetch view definition of all available views.
+
+    The bulk query reads the view text from the LONG columns DBA_VIEWS.TEXT /
+    DBA_MVIEWS.QUERY. In Oracle thick mode a view whose definition is larger than
+    OCI's LONG fetch buffer raises ORA-01406 while the row is being fetched,
+    which aborts the whole array fetch and leaves every view without a
+    definition. On that database error, fall back to reading each definition on
+    its own so one oversized or failing view cannot blank out the rest.
+    See https://github.com/open-metadata/OpenMetadata/issues/30319
     """
     self.all_view_definitions = {}
     self.current_db: str = connection.engine.url.database  # type: ignore
-    result = connection.execute(text(query))
-    for view in result:
-        if hasattr(view, "view_def") and hasattr(view, "schema"):
-            view_definition = view.view_def
-            if not view_definition and hasattr(view, "view_ddl"):
-                view_definition = view.view_ddl
-            else:
-                view_definition = (
-                    f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
-                )
-            self.all_view_definitions[(view.view_name, view.schema)] = view_definition
-
-        elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
-            view_definition = view.VIEW_DEF
-            if not view_definition and hasattr(view, "VIEW_DDL"):
-                view_definition = view.VIEW_DDL
-            else:
-                view_definition = (
-                    f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
-                )
-            self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
+    try:
+        for view in connection.execute(text(query)):
+            _store_bulk_view_definition(self, view)
+    except DatabaseError as exc:
+        logger.warning(f"Bulk Oracle view-definition fetch failed ({exc}). Falling back to per-view retrieval.")
+        logger.debug(traceback.format_exc())
+        _get_view_definitions_individually(self, connection)
 
 
-def _get_col_type(
-    self, coltype, precision, scale, length, colname
-):  # pylint: disable=too-many-branches
+def _store_bulk_view_definition(self, view) -> None:
+    """Store one row of the bulk ORACLE_VIEW_DEFINITIONS result. Thin mode
+    returns lowercase attribute names and thick mode uppercase, so both cases
+    are handled.
+    """
+    if hasattr(view, "view_def") and hasattr(view, "schema"):
+        view_definition = view.view_def
+        if not view_definition and hasattr(view, "view_ddl"):
+            view_definition = view.view_ddl
+        else:
+            view_definition = f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
+        self.all_view_definitions[(view.view_name, view.schema)] = view_definition
+
+    elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
+        view_definition = view.VIEW_DEF
+        if not view_definition and hasattr(view, "VIEW_DDL"):
+            view_definition = view.VIEW_DDL
+        else:
+            view_definition = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
+        self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
+
+
+def _get_view_definitions_individually(self, connection) -> None:
+    """Populate self.all_view_definitions one view at a time. Each fetch is
+    isolated so a view that truncates or errors is skipped instead of aborting
+    the whole run. Used only as the fallback after the bulk fetch fails.
+    """
+    # Match the cache-key casing that get_view_definition uses for lookups:
+    # lowercased by default, kept verbatim when preserveIdentifierCase is set.
+    normalize = (lambda value: value) if getattr(self, "preserve_identifier_case", False) else str.lower
+    prefix = _get_table_prefix(self)
+    view_names = connection.execute(text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=prefix))).fetchall()
+    for owner, name, object_type in view_names:
+        try:
+            definition = _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
+        except DatabaseError as exc:
+            logger.warning(f"Could not fetch view definition for {owner}.{name}: {exc}")
+            logger.debug(traceback.format_exc())
+            continue
+        if definition:
+            self.all_view_definitions[(normalize(name), normalize(owner))] = definition
+
+
+def _read_scalar(result):
+    """Return a scalar result, materializing a LOB locator to str if needed."""
+    value = result.scalar()
+    return value.read() if value is not None and hasattr(value, "read") else value
+
+
+def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type):
+    """Fetch one view's definition without the bulk LONG array truncation.
+
+    Reads the raw text/query with a single-row query first. A single-row fetch is
+    not an array fetch, so it does not hit ORA-01406, and it needs no privileges
+    beyond the bulk read (this is the same column SQLAlchemy's Oracle dialect
+    reads). Only when the text is NULL or still cannot be read does it fall back
+    to DBMS_METADATA.GET_DDL, mirroring the bulk query's text-else-GET_DDL logic.
+    """
+    is_mview = object_type == "MATERIALIZED_VIEW"
+    text_query = ORACLE_GET_MVIEW_QUERY_BY_NAME if is_mview else ORACLE_GET_VIEW_TEXT_BY_NAME
+    try:
+        raw_text = _read_scalar(
+            connection.execute(text(text_query.format(prefix=prefix)), {"owner": owner, "name": name})
+        )
+        if raw_text:
+            return f"CREATE OR REPLACE VIEW {name} AS {raw_text}"
+    except DatabaseError:
+        logger.debug(f"Single-row text read failed for {owner}.{name}, using GET_DDL")
+    return _read_scalar(
+        connection.execute(
+            text(ORACLE_GET_VIEW_DEFINITION_BY_NAME),
+            {"object_type": object_type, "name": name, "owner": owner},
+        )
+    )
+
+
+def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: disable=too-many-branches
     raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
@@ -151,7 +229,7 @@ def _get_col_type(
 
 # pylint: disable=too-many-locals
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):
+def get_columns(self, connection, table_name, schema=None, **kw):  # noqa: C901
     """
 
     Dialect method overridden to add raw data type
@@ -169,11 +247,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     if resolve_synonyms:
         try:
-            rows = list(
-                self._get_synonyms(
-                    connection, schema, [table_name], dblink, info_cache=info_cache
-                )
-            )
+            rows = list(self._get_synonyms(connection, schema, [table_name], dblink, info_cache=info_cache))
         except Exception:
             rows = []
 
@@ -205,9 +279,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     identity_cols = "NULL as default_on_null, NULL as identity_options"
     if self.server_version_info >= (12,):
-        identity_cols = ORACLE_IDENTITY_TYPE.format(
-            dblink=dblink, prefix=_get_table_prefix(self)
-        )
+        identity_cols = ORACLE_IDENTITY_TYPE.format(dblink=dblink, prefix=_get_table_prefix(self))
 
     params = {"table_name": table_name}
 
@@ -238,9 +310,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         default_on_nul = row[9]
         identity_options = row[10]
 
-        coltype, raw_coltype = self._get_col_type(
-            coltype, precision, scale, length, colname
-        )
+        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname)
 
         computed = None
         if generated == "YES":
@@ -287,13 +357,8 @@ def get_table_names(self, connection, schema=None, **kw):
 
     if self.exclude_tablespaces:
         exclude_tablespace = ", ".join([f"'{ts}'" for ts in self.exclude_tablespaces])
-        tablespace = (
-            "nvl(tablespace_name, 'no tablespace') "
-            f"NOT IN ({exclude_tablespace}) AND "
-        )
-    sql_str = ORACLE_GET_TABLE_NAMES.format(
-        tablespace=tablespace, prefix=_get_table_prefix(self)
-    )
+        tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
+    sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(self))
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
     return [row[0] for row in cursor]
 
@@ -333,9 +398,7 @@ def get_mview_names(self, schema=None):
 @reflection.cache
 def get_mview_names_dialect(self, connection, schema=None, **kw):
     schema = self.denormalize_name(schema or self.default_schema_name)
-    sql_query = sql.text(
-        GET_MATERIALIZED_VIEW_NAMES.format(prefix=_get_table_prefix(self))
-    )
+    sql_query = sql.text(GET_MATERIALIZED_VIEW_NAMES.format(prefix=_get_table_prefix(self)))
     cursor = connection.execute(sql_query, {"owner": self.denormalize_name(schema)})
     return [self.normalize_name(row[0]) for row in cursor]
 
@@ -348,7 +411,7 @@ def _get_constraint_data(self, connection, table_name, schema=None, dblink="", *
 
     rp = connection.execute(sql.text(text), params)
     constraint_data = rp.fetchall()
-    return constraint_data
+    return constraint_data  # noqa: RET504
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +445,7 @@ def get_table_comment_preserve_case(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -396,9 +459,7 @@ def get_table_comment_preserve_case(
         connection,
         table_name=table_name,
         schema=schema,
-        query=ORACLE_TABLE_COMMENTS_PRESERVE_CASE.format(
-            prefix=_get_table_prefix(self)
-        ),
+        query=ORACLE_TABLE_COMMENTS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
     )
 
 
@@ -407,7 +468,7 @@ def get_view_definition_preserve_case(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -421,14 +482,12 @@ def get_view_definition_preserve_case(
         connection,
         table_name=view_name,
         schema=schema,
-        query=ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE.format(
-            prefix=_get_table_prefix(self)
-        ),
+        query=ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
     )
 
 
 @reflection.cache
-def get_indexes_preserve_case(
+def get_indexes_preserve_case(  # noqa: C901
     self,
     connection,
     table_name,
@@ -517,8 +576,8 @@ def get_indexes_preserve_case(
         info_cache=kw.get("info_cache"),
     )
 
-    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
-    enabled = dict(DISABLED=False, ENABLED=True)
+    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)  # noqa: C408
+    enabled = dict(DISABLED=False, ENABLED=True)  # noqa: C408
     oracle_sys_col = re.compile(r"SYS_NC\d+\$", re.IGNORECASE)
 
     index = None
@@ -531,7 +590,7 @@ def get_indexes_preserve_case(
             continue
 
         if raw_index_name != last_index_name:
-            index = dict(
+            index = dict(  # noqa: C408
                 name=index_name_normalized,
                 column_names=[],
                 dialect_options={},
