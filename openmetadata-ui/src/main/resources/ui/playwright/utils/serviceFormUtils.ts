@@ -46,23 +46,23 @@ export const selectOneOfOption = async (
   const selectWidget = page.getByTestId(selectTestId);
 
   if (await selectWidget.isVisible({ timeout: 1000 }).catch(() => false)) {
-    const combobox = selectWidget.getByRole('combobox');
+    // The testid sits on the react-aria Select wrapper. Click the wrapper (not
+    // the visually hidden native `combobox` it renders for form submission —
+    // clicking that never opens the listbox) so the popover opens.
+    await selectWidget.click();
 
-    if (await combobox.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await combobox.click({
-        // eslint-disable-next-line playwright/no-force-option -- some oneOf selectors are partially covered by the field wrapper
-        force: true,
-      });
-    } else {
-      await selectWidget.click();
-    }
+    const popoverOption = page
+      .locator('.core-one-of-field-select-popover:visible')
+      .getByRole('option', { name: optionName })
+      .first();
+    const anyOption = page.getByRole('option', { name: optionName }).first();
 
-    const option = page.getByRole('option', { name: optionName });
+    for (const option of [popoverOption, anyOption]) {
+      if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await option.click();
 
-    if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await option.click();
-
-      return;
+        return;
+      }
     }
 
     await page
@@ -156,29 +156,20 @@ export const fillSupersetFormDetails = async ({
     );
   }
 
-  // Select the ingestion runner if the selector is visible
+  // Select the ingestion runner if the selector is visible. The runner control
+  // migrated from an antd Select to a react-aria Select — clicking the trigger
+  // opens a role="listbox" of runner options instead of an `.ant-select-dropdown`.
   const runnerSelector = page.getByTestId('select-widget-root/ingestionRunner');
 
   if (await runnerSelector.isVisible()) {
     await runnerSelector.click();
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
 
-    // Search for the runner using the search input
-    await runnerSelector.locator('input').fill('CollateSaaS');
+    const runnerOption = page
+      .getByRole('option', { name: /Collate SaaS/i })
+      .first();
+    await runnerOption.waitFor({ state: 'visible' });
+    await runnerOption.click();
 
-    // Using data-key which relies on `name` which is more reliable data in AUTs
-    // instead of data-testid which depends on the `displayName` which can change
-    await page
-      .locator('.ant-select-dropdown:visible [data-key="CollateSaaS"]')
-      .waitFor({ state: 'visible' });
-    await page
-      .locator('.ant-select-dropdown:visible [data-key="CollateSaaS"]')
-      .click();
-
-    await expect(
-      page.getByTestId('select-widget-root/ingestionRunner')
-    ).toContainText('Collate SaaS');
+    await expect(runnerSelector).toContainText('Collate SaaS');
   }
 };

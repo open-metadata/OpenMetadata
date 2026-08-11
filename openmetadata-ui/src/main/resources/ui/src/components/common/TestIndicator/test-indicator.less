@@ -13,12 +13,12 @@
 
 @import '../../../styles/variables.less';
 
-@successColor: #f7fbf9;
-@failedColor: #fbf8f8;
-@abortedColor: #fbfaf9;
-@success-border: #b0e7d4;
-@failure-border: #fec0ac;
-@abort-border: #fee39c;
+@successColor: var(--om-legacy-color-f7fbf9);
+@failedColor: var(--om-legacy-color-fbf8f8);
+@abortedColor: var(--om-legacy-color-fbfaf9);
+@success-border: var(--om-legacy-color-b0e7d4);
+@failure-border: var(--om-legacy-color-fec0ac);
+@abort-border: var(--om-legacy-color-fee39c);
 
 .test-indicator {
   width: 24px;
@@ -26,7 +26,7 @@
   border-radius: 50%;
   .test-value {
     color: @grey-4;
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
   }
 
   &.success {

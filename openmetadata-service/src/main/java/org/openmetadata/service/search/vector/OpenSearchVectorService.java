@@ -27,6 +27,7 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -394,12 +395,22 @@ public class OpenSearchVectorService implements VectorIndexService {
    * representative — the mechanism that lets a get_asset_context bundle carry only excerpts.
    */
   public List<String> searchChunksByParent(String parentId, String query, int k) {
+    return searchChunksByParent(parentId, query, k, null);
+  }
+
+  /**
+   * As above, resolving context memory visibility for {@code subjectContext}. Needed even though the
+   * parent is known: a parent may be a restricted memory, which yields no passages without it.
+   */
+  public List<String> searchChunksByParent(
+      String parentId, String query, int k, SubjectContext subjectContext) {
     List<String> passages = new ArrayList<>();
     try {
       ensureChunkIndex();
       float[] vector = embeddingClient.embedQuery(query);
       Map<String, List<String>> filters = Map.of("parentId", List.of(parentId));
-      String queryJson = VectorSearchQueryBuilder.build(vector, k, 0, k, filters, 0.0);
+      String queryJson =
+          VectorSearchQueryBuilder.build(vector, k, 0, k, filters, 0.0, subjectContext);
       String response =
           executeGenericRequest("POST", "/" + getChunkIndexName() + "/_search", queryJson);
       JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
@@ -434,14 +445,30 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * Begins a staged recreate for a full-recreate run: pre-flights the embedding client (a broken
    * client would make the whole run pointless), sweeps generations orphaned by crashed runs, and
-   * creates the next generation bare — no aliases, so reads keep hitting the old chunks. Throws on
-   * any failure; nothing has been destroyed at that point.
+   * creates the next generation bare — no aliases, so reads keep hitting the old chunks.
+   *
+   * <p>Returns {@code null} when the embedding client cannot serve a request, meaning "not staged":
+   * the caller carries on with a normal in-place reindex and the existing chunks stay live, exactly
+   * as they do for a partial recreate. An unreachable embedding provider is a reason not to stage a
+   * generation we could never finish — it is not a reason to fail the entity reindex, which does
+   * not need embeddings at all. Note the provider is only exercised here: client construction makes
+   * no call to it, and live indexing logs and continues on embedding errors, so a deployment with
+   * semantic search enabled but no working provider looks healthy right up until a reindex.
+   *
+   * <p>Still throws on genuine staging failures (indeterminate live-target probe, index create) —
+   * those mean the cluster is in a state where continuing could destroy live chunks.
    */
   public String beginStagedChunkRecreate() {
-    preflightEmbedding();
+    if (!isEmbeddingAvailable()) {
+      LOG.warn(
+          "Embedding pre-flight failed — skipping the staged chunk recreate. The entity reindex "
+              + "continues and existing chunks stay live; orphaned chunks, if any, are swept by the "
+              + "next recreate that runs with a working embedding provider.");
+      return null;
+    }
     synchronized (stagedChunkLock) {
       String base = getChunkIndexName();
-      String liveTarget = resolveLiveChunkTarget(base);
+      String liveTarget = requireResolvedLiveChunkTarget(base);
       deleteOrphanChunkGenerations(base, liveTarget);
       String generation = nextChunkGenerationName(base);
       try {
@@ -479,12 +506,18 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  private void preflightEmbedding() {
+  /**
+   * Whether the embedding client can actually serve a request. Logged rather than thrown: the only
+   * caller treats an unavailable provider as "do not stage", and the stack trace belongs in the log
+   * next to the provider's own error, not wrapped in a reindex failure.
+   */
+  private boolean isEmbeddingAvailable() {
     try {
       embeddingClient.embedQuery("chunk index recreate pre-flight");
+      return true;
     } catch (Exception e) {
-      throw new RuntimeException(
-          "Refusing to start a staged chunk-index recreate: embedding client pre-flight failed", e);
+      LOG.warn("Embedding client pre-flight failed: {}", e.getMessage(), e);
+      return false;
     }
   }
 
@@ -560,7 +593,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
       if (generation != null) {
         String base = getChunkIndexName();
-        String oldTarget = resolveLiveChunkTarget(base);
+        String oldTarget = requireResolvedLiveChunkTarget(base);
         try {
           executeGenericRequest(
               "POST",
@@ -656,29 +689,51 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * The physical index currently serving chunk reads: the alias target when the read name is an
    * alias (post-promotion layout), the legacy physical index when it exists under the read name,
-   * or null on a fresh install.
+   * or null on a fresh install. Throws when the cluster cannot answer, so callers can distinguish
+   * "nothing is live" from "could not tell".
    */
-  private String resolveLiveChunkTarget(String base) {
+  private String resolveLiveChunkTargetStrict(String base) throws IOException {
     String target = null;
-    try {
+    // Boolean alias probe first: on the pre-promotion physical-index layout no alias exists, and
+    // a direct GET /_alias/{base} logs that expected 404 as an ERROR with a stack trace.
+    if (client.indices().existsAlias(a -> a.name(base)).value()) {
       String response = executeGenericRequest("GET", "/_alias/" + base, null);
       Iterator<String> names = MAPPER.readTree(response).fieldNames();
       if (names.hasNext()) {
         target = names.next();
       }
-    } catch (Exception e) {
-      LOG.debug("No alias named {} — checking for a legacy physical index", base);
-    }
-    if (target == null) {
-      try {
-        if (client.indices().exists(x -> x.index(base)).value()) {
-          target = base;
-        }
-      } catch (Exception e) {
-        LOG.warn("Could not resolve live chunk target for {}: {}", base, e.getMessage());
-      }
+    } else if (client.indices().exists(x -> x.index(base)).value()) {
+      LOG.debug("No alias named {} — serving chunks from the legacy physical index", base);
+      target = base;
     }
     return target;
+  }
+
+  /**
+   * Lenient resolution for the ensure/create path: a wrongly-null target there can only make an
+   * index create attempt fail and be retried — it can never delete anything.
+   */
+  private String resolveLiveChunkTarget(String base) {
+    String target = null;
+    try {
+      target = resolveLiveChunkTargetStrict(base);
+    } catch (Exception e) {
+      LOG.warn("Could not resolve live chunk target for {}: {}", base, e.getMessage());
+    }
+    return target;
+  }
+
+  /**
+   * Strict resolution for destructive paths (orphan sweep, alias swap): an indeterminate probe
+   * aborts the operation, because a null target would read as "nothing is live" and let the sweep
+   * delete the live generation.
+   */
+  private String requireResolvedLiveChunkTarget(String base) {
+    try {
+      return resolveLiveChunkTargetStrict(base);
+    } catch (Exception e) {
+      throw new RuntimeException("Cannot determine the live chunk target for " + base, e);
+    }
   }
 
   /**
@@ -850,8 +905,15 @@ public class OpenSearchVectorService implements VectorIndexService {
    * fields unmapped (on a {@code dynamic:false} index) while docs are still stamped with the new
    * {@code docVersion} — defeating the rollout. Omitting the unchanged vector avoids that
    * all-or-nothing failure; the remaining fields are additive (new fields) or legal no-ops
-   * (unchanged keyword/text/integer). Absent-on-old-docs fields simply do not match until a Search
-   * Reindex backfills them, so there is zero regression before the backfill runs.
+   * (unchanged keyword/text/integer).
+   *
+   * <p>Absent-on-old-docs fields are inert for anything that merely scores or widens on them, so
+   * those upgrades carry no regression before the backfill runs. That is <b>not</b> true of a field a
+   * filter restricts on: {@code visibility} is required by the context memory clause in {@link
+   * VectorSearchQueryBuilder}, where absence means exclusion rather than indifference. Memory chunks
+   * written before it was stamped therefore stay out of every KNN result until a Search Reindex
+   * restamps them — deliberately, since an unstamped document may be a Private memory. Weigh that
+   * before making any future field a filter depends on.
    */
   private String buildChunkMappingUpgradeBody() {
     ObjectNode properties = buildChunkProperties();
@@ -882,8 +944,24 @@ public class OpenSearchVectorService implements VectorIndexService {
             .set("method", method);
     var properties = MAPPER.createObjectNode();
     properties.set("embedding", embedding);
+    // The three metric enums are mapped as real keywords, not source-only: they are cheap to index
+    // and are the natural facets to filter a metric search on (granularity DAY vs MONTH).
+    // visibility/sharedWithIds carry context memory privacy onto the chunk
+    // docs: the memory visibility filter is applied to every vector query, so a chunk that does not
+    // index these is either unfilterable or invisible to its own owner.
     for (String keyword :
-        List.of("parentId", "fingerprint", "entityType", "fullyQualifiedName", "serviceType")) {
+        List.of(
+            "parentId",
+            "fingerprint",
+            "entityType",
+            "fullyQualifiedName",
+            "serviceType",
+            "metricType",
+            "granularity",
+            "unitOfMeasurement",
+            "customUnitOfMeasurement",
+            "visibility",
+            "sharedWithIds")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
     // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
@@ -906,8 +984,9 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("domains", objectKeyword("name"));
     properties.set("tier", objectKeyword("tagFQN"));
     properties.set("certification", certificationMapping());
-    // owners is a `nested` type: NLQ owner filters run a nested query over owners.name.
-    properties.set("owners", nestedNameKeyword());
+    // owners is a `nested` type: NLQ owner filters run a nested query over owners.name, and the
+    // context memory visibility filter runs one over owners.id.
+    properties.set("owners", nestedOwnersMapping());
     properties.set("service", nameDisplayNameObject());
     properties.set("database", nameDisplayNameObject());
     // Map name+displayName like service/database: buildDenormalizedFields copies both onto the
@@ -917,6 +996,11 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("columns", columnsMapping());
     properties.set(
         "relatedTerms", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
+    // Display-only: semantic_search returns a metric's expression, nothing filters or scores on it,
+    // and the code is already searchable through textToEmbed. `enabled: false` keeps it in _source
+    // without paying to index it on a dynamic:false index.
+    properties.set(
+        "metricExpression", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
     return properties;
   }
 
@@ -943,16 +1027,12 @@ public class OpenSearchVectorService implements VectorIndexService {
                     .set(field, MAPPER.createObjectNode().put("type", "keyword")));
   }
 
-  private ObjectNode nestedNameKeyword() {
+  private ObjectNode nestedOwnersMapping() {
+    var properties = MAPPER.createObjectNode();
+    properties.set("name", MAPPER.createObjectNode().put("type", "keyword"));
+    properties.set("id", MAPPER.createObjectNode().put("type", "keyword"));
     return (ObjectNode)
-        MAPPER
-            .createObjectNode()
-            .put("type", "nested")
-            .set(
-                "properties",
-                MAPPER
-                    .createObjectNode()
-                    .set("name", MAPPER.createObjectNode().put("type", "keyword")));
+        MAPPER.createObjectNode().put("type", "nested").set("properties", properties);
   }
 
   private ObjectNode nameDisplayNameObject() {
@@ -1303,7 +1383,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       int from,
       int k,
       double threshold,
-      String preference) {
+      String preference,
+      SubjectContext subjectContext) {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embedQuery(query);
@@ -1321,7 +1402,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector, overFetchSize, rawOffset, k, filters, threshold);
+                queryVector, overFetchSize, rawOffset, k, filters, threshold, subjectContext);
         String endpoint =
             SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", preference);
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
@@ -1384,6 +1465,9 @@ public class OpenSearchVectorService implements VectorIndexService {
       hitMap.put("_score", score);
 
       String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
+      // Persist the fallback into the result map so consumers (e.g. SemanticSearchTool collapsing
+      // chunks by entity) see the same parentId this grouping used, matching the ES service.
+      hitMap.put("parentId", parentId);
       List<Map<String, Object>> group =
           byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>());
       // During chunk-index migration the same chunk can surface twice — once from the legacy
@@ -1643,6 +1727,30 @@ public class OpenSearchVectorService implements VectorIndexService {
     } catch (Exception e) {
       LOG.error(
           "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void clearEntityEmbedding(String entityIndexName, String entityId) {
+    // A doc merge cannot delete keys, so removal has to go through a script.
+    try {
+      String fieldsJson = MAPPER.writeValueAsString(EMBEDDING_SOURCE_FIELDS);
+      String updateBody =
+          "{\"script\":{\"source\":\"for (field in params.fields) { ctx._source.remove(field) }\","
+              + "\"params\":{\"fields\":"
+              + fieldsJson
+              + "}}}";
+      executeGenericRequest(
+          "POST",
+          "/" + entityIndexName + "/_update/" + entityId + "?retry_on_conflict=3",
+          updateBody);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to clear embedding for entity {} in {}: {}",
+          entityId,
+          entityIndexName,
+          e.getMessage(),
+          e);
     }
   }
 

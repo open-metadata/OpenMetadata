@@ -185,7 +185,7 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <Badge
-          className="tw:cursor-pointer tw:text-utility-brand-700 tw:ring-utility-brand-100 tw:bg-utility-brand-50 hover:tw:bg-utility-brand-50"
+          className="tw:cursor-pointer tw:text-utility-brand-700 tw:outline-utility-brand-100 tw:bg-utility-brand-50 hover:tw:bg-utility-brand-50"
           color="brand"
           size="sm"
           type="color">

@@ -700,7 +700,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
             })}
             ref={searchInputRef}
             value={searchValue}
-            wrapperClassName="tw:bg-transparent! tw:shadow-none! tw:ring-0!"
+            wrapperClassName="tw:bg-transparent! tw:shadow-none! tw:outline-0!"
             onChange={handleSearchChange}
           />
         </div>

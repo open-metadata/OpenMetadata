@@ -39,14 +39,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
+import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
@@ -92,7 +91,7 @@ import {
 } from '../../../../utils/StringUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -723,17 +722,27 @@ const AssetsTabs = forwardRef(
         );
       } else {
         return (
-          <ErrorPlaceHolder
-            buttonId="data-assets-add-button"
-            buttonTitle={t('label.add-entity', { entity: t('label.asset') })}
-            className="border-none"
-            heading={t('message.no-data-message', {
-              entity: t('label.data-asset-lowercase-plural'),
+          <CreatePlaceholder
+            actions={
+              permissions.Create
+                ? [
+                    {
+                      key: 'add-asset',
+                      id: 'data-assets-add-button',
+                      label: t('label.add-entity', {
+                        entity: t('label.asset'),
+                      }),
+                      color: 'primary',
+                      onPress: onAddAsset,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('message.link-assets-description', {
+              entity: getEntityTypeString(type),
             })}
-            icon={<FolderEmptyIcon />}
-            permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-            onClick={onAddAsset}
+            icon={<EmptyAssetIcon className="tw:text-utility-brand-600" />}
+            title={t('label.no-assets-linked-yet')}
           />
         );
       }
@@ -835,7 +844,9 @@ const AssetsTabs = forwardRef(
             />
           </div>
         ) : (
-          <div className="h-full">{assetErrorPlaceHolder}</div>
+          <div className="h-full tw:relative tw:min-h-90">
+            {assetErrorPlaceHolder}
+          </div>
         ),
       [
         type,

@@ -86,12 +86,12 @@ import {
 
 const FILTER_BUTTON_BASE_CLS =
   'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
-  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:ring-1 tw:ring-inset' +
+  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:outline-1 tw:-outline-offset-1' +
   ' tw:cursor-pointer tw:transition tw:duration-100' +
-  ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
+  ' tw:ease-linear hover:tw:outline-brand tw:whitespace-nowrap';
 
-const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
+const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:outline-primary`;
+const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:outline-utility-brand-100`;
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
@@ -225,7 +225,9 @@ const ContextCenterMemoriesPage: FC = () => {
       const [totalVisible, pinnedVisible, createdByMeVisible] =
         await Promise.all([
           getVisibleMemoryCount(),
-          getVisibleMemoryCount({ pinned: true }),
+          // TODO: Unhide when pin feature releases in post-2.0
+          // getVisibleMemoryCount({ pinned: true }),
+          Promise.resolve(0),
           authorFilter
             ? getVisibleMemoryCount({ author: authorFilter })
             : Promise.resolve(0),
@@ -488,6 +490,11 @@ const ContextCenterMemoriesPage: FC = () => {
     [memoryCounts, t]
   );
 
+  const allAssetsLabel = t('label.all-entity', {
+    entity: t('label.asset-plural'),
+  });
+  const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
+
   const headerActions = (
     <Button
       color="primary"
@@ -649,7 +656,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 <DataAssetSelectList
                   allowAllOption
                   placeholder={t('label.search-assets-by-name-or-path')}
-                  popoverPlacement="bottom"
+                  popoverPlacement="bottom start"
                   renderTrigger={({ open }) => (
                     <AriaButton
                       className={classNames(
@@ -676,10 +683,7 @@ const ContextCenterMemoriesPage: FC = () => {
                               : 'tw:text-secondary'
                           }
                           weight="medium">
-                          {selectedAsset?.label ??
-                            t('label.all-entity', {
-                              entity: t('label.asset-plural'),
-                            })}
+                          {selectedAsset?.label ?? allAssetsLabel}
                         </Typography>
                       </div>
                       <ChevronDown
@@ -730,8 +734,7 @@ const ContextCenterMemoriesPage: FC = () => {
                             : 'tw:text-secondary'
                         }
                         weight="medium">
-                        {selectedAuthor?.label ??
-                          t('label.all-entity', { entity: t('label.author') })}
+                        {selectedAuthor?.label ?? allAuthorsLabel}
                       </Typography>
                     </div>
                     <ChevronDown
@@ -756,6 +759,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       />
                     </div>
                     <Dropdown.Menu
+                      className="tw:max-h-90 tw:overflow-y-auto"
                       selectedKeys={selectedAuthor ? [selectedAuthor.id] : []}
                       selectionMode="single"
                       onAction={(key) => {
@@ -778,12 +782,8 @@ const ContextCenterMemoriesPage: FC = () => {
                       <Dropdown.Item
                         id="all-authors"
                         key="all-authors"
-                        textValue={t('label.all-entity', {
-                          entity: t('label.author'),
-                        })}>
-                        <span>
-                          {t('label.all-entity', { entity: t('label.author') })}
-                        </span>
+                        textValue={allAuthorsLabel}>
+                        <span>{allAuthorsLabel}</span>
                       </Dropdown.Item>
                       {isAuthorOptionsLoading && (
                         <Dropdown.Item

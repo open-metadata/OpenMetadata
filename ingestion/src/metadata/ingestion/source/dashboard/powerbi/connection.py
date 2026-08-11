@@ -196,6 +196,7 @@ class PowerBIConnection(BaseConnection[PowerBIConnectionConfig, PowerBiClient]):
         file_client = None
         if self.service_connection.pbitFilesSource:
             file_client = PowerBiFileClient(self.service_connection)
+            self._on_close(file_client.delete_tmp_files)
         return PowerBiClient(
             api_client=PowerBiApiClient(self.service_connection),
             file_client=file_client,

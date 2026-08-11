@@ -21,7 +21,8 @@ import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
-import { REACTION_EMOJIS, reactOnFeed } from '../../utils/activityFeed';
+import { insertActivityEventForTest } from '../../utils/activityAPI';
+import { REACTION_EMOJIS, reactOnFeedCard } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   redirectToHomePage,
@@ -32,11 +33,14 @@ import {
 import {
   navigateToCustomizeLandingPage,
   setUserDefaultPersona,
+  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { editDisplayName } from '../../utils/user';
+import { selectActivityFeedFilterAndVerifyEndpoint } from '../../utils/widgetFilters';
 
 const test = base;
+test.use({ storageState: undefined });
 
 const adminUser = new UserClass();
 
@@ -80,12 +84,28 @@ const waitForConversationMaterialization = async ({
     .toBe(true);
 };
 
+// Mirrors PAGE_SIZE_BASE in src/constants/constants.ts. The widget renders the
+// first PAGE_SIZE_BASE events and only shows "View More" beyond that, so seeding
+// one extra makes the footer link mandatory instead of incidental.
+const FEED_WIDGET_PAGE_SIZE = 15;
+const SEEDED_OWNED_ACTIVITY_COUNT = FEED_WIDGET_PAGE_SIZE + 1;
+const ACTIVITY_FEED_WIDGET_KEY = 'KnowledgePanel.ActivityFeed';
+
 test.describe('FeedWidget on landing page', () => {
   let adminUser: UserClass;
   let user1: UserClass;
   let entity: TableClass;
   let extraEntity: TableClass;
+  let ownedTable: TableClass;
+  let followedTable: TableClass;
   let testPersona: PersonaClass;
+
+  // The widget is filter-scoped, so the fixture has to give every filter
+  // something of its own: My Data reads entities the user owns, Following reads
+  // the FOLLOWS relationship. Without both, those filters return an empty list
+  // and the tests below can only assert a URL, never rendered content.
+  const ownedActivityMarker = `Owned table activity ${uuid()}`;
+  const followedActivityMarker = `Followed table activity ${uuid()}`;
 
   test.beforeAll(
     'setup: seed entities, users, create persona, and customize widget',
@@ -96,6 +116,8 @@ test.describe('FeedWidget on landing page', () => {
       user1 = new UserClass();
       entity = new TableClass();
       extraEntity = new TableClass();
+      ownedTable = new TableClass();
+      followedTable = new TableClass();
       testPersona = new PersonaClass();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -109,8 +131,34 @@ test.describe('FeedWidget on landing page', () => {
         await extraEntity.create(apiContext);
         await testPersona.create(apiContext, [adminUser.responseData.id]);
 
+        await ownedTable.create(apiContext);
+        await ownedTable.setOwner(apiContext, {
+          id: adminUser.responseData.id,
+          type: 'user',
+        });
+
+        // Each event carries the run-unique marker so a card can be pinned by
+        // text. Workers in a shard share one database, so the top of the global
+        // feed belongs to whichever spec inserted last — index-based targeting
+        // is not stable there.
+        for (let index = 0; index < SEEDED_OWNED_ACTIVITY_COUNT; index++) {
+          await insertActivityEventForTest(
+            apiContext,
+            ownedTable,
+            `${ownedActivityMarker} ${index}`
+          );
+        }
+
+        await followedTable.create(apiContext);
+        await followedTable.followTable(apiContext, adminUser.responseData.id);
+        await insertActivityEventForTest(
+          apiContext,
+          followedTable,
+          followedActivityMarker
+        );
+
         // Set up widget in a separate page context
-        const adminPage = await browser.newPage();
+        const adminPage = await browser.newPage({ storageState: undefined });
         await adminUser.login(adminPage);
 
         try {
@@ -127,7 +175,7 @@ test.describe('FeedWidget on landing page', () => {
 
           // Ensure Activity Feed widget is full size
           const activityFeedWidget = adminPage.getByTestId(
-            'KnowledgePanel.ActivityFeed'
+            ACTIVITY_FEED_WIDGET_KEY
           );
 
           await expect(activityFeedWidget).toBeVisible();
@@ -158,6 +206,17 @@ test.describe('FeedWidget on landing page', () => {
     }
   );
 
+  test.afterAll('cleanup: delete seeded tables', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await ownedTable.delete(apiContext);
+      await followedTable.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
   test.beforeEach(async ({ page }) => {
     await adminUser.login(page);
     await redirectToHomePage(page);
@@ -168,7 +227,7 @@ test.describe('FeedWidget on landing page', () => {
   test('renders widget wrapper and header with sort dropdown', async ({
     page,
   }) => {
-    const widget = page.getByTestId('KnowledgePanel.ActivityFeed');
+    const widget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
 
     await expect(widget).toBeVisible();
 
@@ -202,7 +261,7 @@ test.describe('FeedWidget on landing page', () => {
   });
 
   test('clicking title navigates to explore page', async ({ page }) => {
-    const widget = page.getByTestId('KnowledgePanel.ActivityFeed');
+    const widget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
 
     await expect(widget).toBeVisible();
 
@@ -217,162 +276,157 @@ test.describe('FeedWidget on landing page', () => {
     expect(page.url()).toContain('/activity_feed/all');
   });
 
-  test('feed body renders content or empty state', async ({ page }) => {
-    const widget = page.getByTestId('KnowledgePanel.ActivityFeed');
+  test('feed body renders seeded activity and no empty state', async ({
+    page,
+  }) => {
+    const widget = page.getByTestId(ACTIVITY_FEED_WIDGET_KEY);
 
     await expect(widget).toBeVisible();
 
-    // Wait for feed content to load
     const container = page.locator('#feedWidgetData');
 
     await expect(container).toBeVisible();
 
-    // Check for either content or any type of empty state
     const messageContainers = container.locator(
       '[data-testid="message-container"]'
     );
-    const emptyState = container.locator(
-      '[data-testid="no-data-placeholder-container"]'
-    );
-    const widgetEmptyState = container.locator(
-      '[data-testid="widget-empty-state"]'
-    );
 
-    const hasMessages = (await messageContainers.count()) > 0;
-    const hasEmpty = (await emptyState.count()) > 0;
-    const hasWidgetEmpty = (await widgetEmptyState.count()) > 0;
-
-    expect(hasMessages || hasEmpty || hasWidgetEmpty).toBe(true);
+    await expect(messageContainers.first()).toBeVisible();
+    await expect(
+      container.locator('[data-testid="no-data-placeholder-container"]')
+    ).toHaveCount(0);
+    await expect(
+      container.locator('[data-testid="widget-empty-state"]')
+    ).toHaveCount(0);
   });
 
-  test('changing filter triggers feed reload', async ({ page }) => {
-    const widget = page.getByTestId('KnowledgePanel.ActivityFeed');
+  test('changing the filter refetches from that filter endpoint', async ({
+    page,
+  }) => {
+    const widget = await waitForLandingPageWidget(
+      page,
+      ACTIVITY_FEED_WIDGET_KEY
+    );
 
-    await expect(widget).toBeVisible();
+    // Each filter owns an endpoint; asserting the request AND the rendered card
+    // is what stops a filter silently reusing another filter's feed.
+    await selectActivityFeedFilterAndVerifyEndpoint(
+      page,
+      widget,
+      'My Data',
+      '/api/v1/activity/my-feed'
+    );
 
-    const sortDropdown = widget.getByTestId('widget-sort-by-dropdown');
+    await expect(
+      widget
+        .getByTestId('message-container')
+        .filter({ hasText: ownedActivityMarker })
+        .first()
+    ).toBeVisible();
 
-    await expect(sortDropdown).toBeVisible();
+    await selectActivityFeedFilterAndVerifyEndpoint(
+      page,
+      widget,
+      'Following',
+      '/api/v1/activity/following'
+    );
 
-    // Switch to My Data filter
-    await sortDropdown.click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
+    await expect(
+      widget
+        .getByTestId('message-container')
+        .filter({ hasText: followedActivityMarker })
+        .first()
+    ).toBeVisible();
 
-    const myDataOption = page.getByRole('menuitem', { name: 'My Data' });
+    await selectActivityFeedFilterAndVerifyEndpoint(
+      page,
+      widget,
+      'All Activity',
+      '/api/v1/activity'
+    );
 
-    await myDataOption.click();
-
-    // Wait for dropdown to close after selection
-    await expect(page.locator('.ant-dropdown')).not.toBeVisible();
-
-    // Switch back to All Activity
-    await sortDropdown.click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
-
-    const allActivityOption = page.getByRole('menuitem', {
-      name: 'All Activity',
-    });
-    if (await allActivityOption.isVisible()) {
-      await allActivityOption.click();
-      await expect(page.locator('.ant-dropdown')).not.toBeVisible();
-    }
+    // The global stream is shared with every other worker in this shard, so a
+    // specific card cannot be asserted here — only that the list is populated.
+    await expect(widget.getByTestId('message-container').first()).toBeVisible();
   });
 
-  test('footer shows view more link when applicable', async ({ page }) => {
-    const widget = page.getByTestId('KnowledgePanel.ActivityFeed');
+  test('footer view more navigates to the user activity feed', async ({
+    page,
+  }) => {
+    const widget = await waitForLandingPageWidget(
+      page,
+      ACTIVITY_FEED_WIDGET_KEY
+    );
 
-    await expect(widget).toBeVisible();
+    // The seeded events exceed PAGE_SIZE_BASE under My Data, so the link is
+    // guaranteed rather than incidental.
+    await selectActivityFeedFilterAndVerifyEndpoint(
+      page,
+      widget,
+      'My Data',
+      '/api/v1/activity/my-feed'
+    );
 
-    // Check if View More link exists (only visible when there are enough feed items)
     const viewMoreLink = widget.getByRole('link', { name: /View More/i });
+    const expectedLink = `/users/${adminUser.responseData.name}/activity_feed/all`;
 
-    // View More is only shown when activityEvents.length > PAGE_SIZE_BASE
-    const isViewMoreVisible = await viewMoreLink
-      .isVisible({ timeout: 3000 })
-      .catch(() => false);
+    await expect(viewMoreLink).toBeVisible();
+    await expect(viewMoreLink).toHaveAttribute('href', expectedLink);
 
-    if (isViewMoreVisible) {
-      // Click and verify navigation
-      await viewMoreLink.click();
-
-      // Should navigate away from home page
-      expect(page.url()).not.toMatch(/home|welcome/i);
-    } else {
-      // When there's no View More, verify the widget title link works instead
-      const titleLink = widget.getByText('Activity Feed');
-      if (await titleLink.isVisible()) {
-        await titleLink.click();
-        // Should navigate to user activity feed
-        expect(page.url()).toContain('/users/');
-      }
-    }
+    await viewMoreLink.click();
+    await page.waitForURL(`**${expectedLink}`);
   });
 
-  test('feed cards render with proper structure when available', async ({
-    page,
-  }) => {
-    const container = page.locator('#feedWidgetData');
-
-    await expect(container).toBeVisible();
-
-    const messageContainers = container.locator(
-      '[data-testid="message-container"]'
+  test('feed cards render header text and timestamp', async ({ page }) => {
+    const widget = await waitForLandingPageWidget(
+      page,
+      ACTIVITY_FEED_WIDGET_KEY
     );
 
-    // When there's no feed data, the widget shows empty state instead of cards
-    if ((await messageContainers.count()) === 0) {
-      // Verify empty state is shown
-      const emptyState = container.locator(
-        '[data-testid="widget-empty-state"]'
-      );
-      const placeholderContainer = container.locator(
-        '[data-testid="no-data-placeholder-container"]'
-      );
-      const hasEmpty =
-        (await emptyState.count()) > 0 ||
-        (await placeholderContainer.count()) > 0;
-      expect(hasEmpty).toBe(true);
+    await selectActivityFeedFilterAndVerifyEndpoint(
+      page,
+      widget,
+      'My Data',
+      '/api/v1/activity/my-feed'
+    );
 
-      return;
-    }
+    const seededCard = widget
+      .getByTestId('message-container')
+      .filter({ hasText: ownedActivityMarker })
+      .first();
 
-    const firstCard = messageContainers.first();
-
-    await expect(firstCard).toBeVisible();
-
-    // Verify typical feed card elements
-    const headerText = firstCard.locator('[data-testid="headerText"]');
-    const timestamp = firstCard.locator('[data-testid="timestamp"]');
-
-    // Check elements exist if available
-    if ((await headerText.count()) > 0) {
-      await expect(headerText).toBeVisible();
-    }
-    if ((await timestamp.count()) > 0) {
-      await expect(timestamp).toBeVisible();
-    }
+    await expect(seededCard).toBeVisible();
+    await expect(seededCard.getByTestId('headerText')).toBeVisible();
+    await expect(seededCard.getByTestId('timestamp')).toBeVisible();
   });
 
-  test('emoji reactions can be added when feed messages exist', async ({
+  test('emoji reactions can be added and toggled off on a feed card', async ({
     page,
   }) => {
-    const messages = page.locator('[data-testid="message-container"]');
-    if ((await messages.count()) === 0) {
-      // nothing to react to; skip gracefully
-      return;
-    }
-
-    const firstMessage = messages.first();
-
-    await expect(firstMessage).toBeVisible();
-
-    // Add reactions using helper (acts on the first feed index 1)
-    await reactOnFeed(page, 1);
-
-    // Verify reactions are visible
-    const reactionContainer = firstMessage.locator(
-      '[data-testid="feed-reaction-container"]'
+    const widget = await waitForLandingPageWidget(
+      page,
+      ACTIVITY_FEED_WIDGET_KEY
     );
+
+    await selectActivityFeedFilterAndVerifyEndpoint(
+      page,
+      widget,
+      'My Data',
+      '/api/v1/activity/my-feed'
+    );
+
+    // Pin the card by its marker: the list re-renders after every reaction, so
+    // an index would not resolve to the same card on the toggle-off pass.
+    const seededCard = widget
+      .getByTestId('message-container')
+      .filter({ hasText: ownedActivityMarker })
+      .first();
+
+    await expect(seededCard).toBeVisible();
+
+    await reactOnFeedCard(page, seededCard);
+
+    const reactionContainer = seededCard.getByTestId('feed-reaction-container');
 
     await expect(reactionContainer).toBeVisible();
 
@@ -380,78 +434,42 @@ test.describe('FeedWidget on landing page', () => {
       await expect(reactionContainer).toContainText(emoji);
     }
 
-    // Toggle off the same reactions
-    await reactOnFeed(page, 1);
+    await reactOnFeedCard(page, seededCard);
 
-    // Container remains visible even if counts change
     await expect(reactionContainer).toBeVisible();
   });
 
-  test('thread drawer opens from reply count and allows posting a reply', async ({
+  test('activity cards expose no thread affordances on the landing widget', async ({
     page,
   }) => {
-    const messages = page.locator('[data-testid="message-container"]');
+    const widget = await waitForLandingPageWidget(
+      page,
+      ACTIVITY_FEED_WIDGET_KEY
+    );
 
-    // Skip if no messages available
-    if ((await messages.count()) === 0) {
-      return;
-    }
+    await selectActivityFeedFilterAndVerifyEndpoint(
+      page,
+      widget,
+      'My Data',
+      '/api/v1/activity/my-feed'
+    );
 
-    const firstMessage = messages.first();
+    const seededCard = widget
+      .getByTestId('message-container')
+      .filter({ hasText: ownedActivityMarker })
+      .first();
 
-    await expect(firstMessage).toBeVisible();
+    await expect(seededCard).toBeVisible();
 
-    // Open thread drawer via reply count or clicking the card
-    const replyCountBtn = firstMessage.locator('[data-testid="reply-count"]');
+    // The widget renders activity events, not conversation threads: there is no
+    // reply count, and it passes no onActivityClick, so no drawer opens. Thread
+    // drawer behaviour is covered on the entity feed in ActivityAPI.spec.ts.
+    await expect(seededCard.getByTestId('reply-count')).toHaveCount(0);
 
-    if ((await replyCountBtn.count()) > 0) {
-      await replyCountBtn.click();
-    } else {
-      await firstMessage.click();
-    }
+    await seededCard.click();
 
-    // Wait for drawer to appear
-    const drawer = page.locator('.ant-drawer-content');
-
-    await expect(drawer).toBeVisible();
-
-    // Try to post a reply if comment input is available
-    const commentInput = drawer.locator('[data-testid="comments-input-field"]');
-
-    if (await commentInput.count()) {
-      await commentInput.click();
-
-      // Fill in the editor
-      const editorField = page.locator(
-        '[data-testid="editor-wrapper"] .ql-editor'
-      );
-      await editorField.fill('Widget thread automated reply');
-
-      // Wait for send button to be enabled and send reply
-      const sendButton = page.getByTestId('send-button');
-
-      await expect(sendButton).toBeEnabled();
-
-      const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
-      await sendButton.click();
-      await sendReply;
-
-      // Verify reply appears
-      await expect(
-        drawer.locator('[data-testid="feed-replies"]')
-      ).toContainText('Widget thread automated reply');
-    }
-
-    // Close drawer
-    const closeBtn = drawer.locator('[data-testid="closeDrawer"]');
-    if (await closeBtn.count()) {
-      await closeBtn.click();
-    } else {
-      await page.keyboard.press('Escape');
-    }
-
-    // Verify drawer is closed
-    await expect(drawer).not.toBeVisible();
+    await expect(page.locator('.ant-drawer-content')).toHaveCount(0);
+    expect(page.url()).toContain('/my-data');
   });
 });
 
@@ -465,13 +483,13 @@ test.describe('Mention notifications in Notification Box', () => {
     user1Page: Page;
   }>({
     adminPage: async ({ browser }, use) => {
-      const page = await browser.newPage();
+      const page = await browser.newPage({ storageState: undefined });
       await adminUser.login(page);
       await use(page);
       await page.close();
     },
     user1Page: async ({ browser }, use) => {
-      const page = await browser.newPage();
+      const page = await browser.newPage({ storageState: undefined });
       await user1.login(page);
       await use(page);
       await page.close();

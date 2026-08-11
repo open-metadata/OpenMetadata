@@ -203,6 +203,8 @@ class OpenSearchBulkSinkBehaviorTest {
           processorConstruction.constructed().getFirst();
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
+      // The bulk sink consults this to keep restricted ContextMemory out of the vector index.
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       entityMock
           .when(() -> Entity.buildSearchIndex(Entity.TEST_CASE, entity))
           .thenReturn(
@@ -647,6 +649,9 @@ class OpenSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
@@ -783,6 +788,9 @@ class OpenSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
@@ -838,6 +846,9 @@ class OpenSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
@@ -888,6 +899,9 @@ class OpenSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
@@ -941,6 +955,9 @@ class OpenSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
@@ -1005,6 +1022,9 @@ class OpenSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    // A real entity always resolves a reference; the bulk sink consults it via
+    // Entity.isVectorEmbeddable to keep restricted ContextMemory out of the vector index.
+    when(entity.getEntityReference()).thenReturn(new EntityReference().withType("table"));
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);

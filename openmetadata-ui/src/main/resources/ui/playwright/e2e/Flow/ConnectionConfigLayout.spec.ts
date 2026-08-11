@@ -62,6 +62,12 @@ const chooseSelectOption = async (
 const mockSuccessfulSnowflakeTestConnection = async (page: Page) => {
   const workflowId = 'pw-snowflake-test-workflow';
 
+  await page.route('**/api/v1/services/ingestionPipelines/status', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 200, platform: 'airflow' }),
+    })
+  );
   await page.route('**/api/v1/services/databaseServices/name/**', (route) =>
     route.fulfill({ status: 404, body: '' })
   );
@@ -593,6 +599,8 @@ test.describe('Connection config layout', () => {
     await tableSection
       .getByRole('button', { name: 'Show equivalent regex' })
       .click();
-    await expect(tableSection.getByText('includes += orders')).toBeVisible();
+    await expect(
+      tableSection.getByText('includes += .*orders.*')
+    ).toBeVisible();
   });
 });

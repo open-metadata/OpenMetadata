@@ -81,7 +81,7 @@ class RuleEvaluatorTest {
 
   @BeforeAll
   public static void setup() {
-    TeamRepository teamRepository = mock(TeamRepository.class);
+    TeamRepository teamRepository = stubIndexingPolicy(mock(TeamRepository.class));
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
     Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
         .thenAnswer(
@@ -127,24 +127,25 @@ class RuleEvaluatorTest {
                         new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
                     Team.class));
 
-    tableRepository = mock(TableRepository.class);
+    tableRepository = stubIndexingPolicy(mock(TableRepository.class));
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
     Mockito.when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
     Mockito.when(tableRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
 
-    DatabaseRepository databaseRepository = mock(DatabaseRepository.class);
+    DatabaseRepository databaseRepository = stubIndexingPolicy(mock(DatabaseRepository.class));
     Mockito.when(databaseRepository.getEntityType()).thenReturn(Entity.DATABASE);
     Mockito.when(databaseRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(Database.class, Entity.DATABASE, databaseRepository);
 
-    DatabaseSchemaRepository databaseSchemaRepository = mock(DatabaseSchemaRepository.class);
+    DatabaseSchemaRepository databaseSchemaRepository =
+        stubIndexingPolicy(mock(DatabaseSchemaRepository.class));
     Mockito.when(databaseSchemaRepository.getEntityType()).thenReturn(Entity.DATABASE_SCHEMA);
     Mockito.when(databaseSchemaRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(DatabaseSchema.class, Entity.DATABASE_SCHEMA, databaseSchemaRepository);
 
-    DomainRepository domainRepository = mock(DomainRepository.class);
+    DomainRepository domainRepository = stubIndexingPolicy(mock(DomainRepository.class));
     Mockito.when(domainRepository.getEntityType()).thenReturn(Entity.DOMAIN);
     Mockito.when(domainRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(Domain.class, Entity.DOMAIN, domainRepository);
@@ -156,7 +157,8 @@ class RuleEvaluatorTest {
                         new ImmutablePair<>(Entity.DOMAIN, i.getArgument(1))),
                     Domain.class));
 
-    DataProductRepository dataProductRepository = mock(DataProductRepository.class);
+    DataProductRepository dataProductRepository =
+        stubIndexingPolicy(mock(DataProductRepository.class));
     Mockito.when(dataProductRepository.getEntityType()).thenReturn(Entity.DATA_PRODUCT);
     Mockito.when(dataProductRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     Entity.registerEntity(DataProduct.class, Entity.DATA_PRODUCT, dataProductRepository);
@@ -344,7 +346,7 @@ class RuleEvaluatorTest {
 
   @Test
   void test_isReviewer() {
-    GlossaryRepository glossaryRepository = mock(GlossaryRepository.class);
+    GlossaryRepository glossaryRepository = stubIndexingPolicy(mock(GlossaryRepository.class));
     Entity.registerEntity(Glossary.class, Entity.GLOSSARY, glossaryRepository);
 
     User reviewer = new User().withId(UUID.randomUUID()).withName("reviewerUser");
@@ -1237,5 +1239,17 @@ class RuleEvaluatorTest {
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     LOG.info("Context reset to default state after test completion.");
+  }
+
+  /**
+   * These repository registrations are global and never torn down, so each stand-in has to answer
+   * the indexing policy hooks the way a real repository does. A bare mock answers false, which
+   * would make {@link Entity#isSearchIndexable} report every entity of that type as non-indexable
+   * for the rest of the JVM and break unrelated tests that run later.
+   */
+  private static <T extends EntityRepository<?>> T stubIndexingPolicy(T repository) {
+    Mockito.doReturn(true).when(repository).isSearchIndexable(any());
+    Mockito.doReturn(true).when(repository).isVectorEmbeddable(any());
+    return repository;
   }
 }

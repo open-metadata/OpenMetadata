@@ -38,7 +38,7 @@
 
 .app-runtime-disabled-badge {
   width: max-content;
-  margin: -4px 0 8px;
+  margin: calc(-1 * var(--om-space-4)) 0 var(--om-space-8);
 }
 
 .app-details-page-layout {
@@ -47,14 +47,14 @@
   .lazy-log-container {
     .react-lazylog-searchbar {
       position: absolute;
-      z-index: 9;
+      z-index: var(--om-z-9);
       top: -30px;
       background: unset;
       padding: unset;
 
       .react-lazylog-searchbar-input {
         height: 30px;
-        border-radius: 4px;
+        border-radius: var(--om-radius-sm);
         background: unset;
         color: @text-color;
       }

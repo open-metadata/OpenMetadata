@@ -37,6 +37,7 @@ public class McpServerMapper implements EntityMapper<McpServer, CreateMcpServer>
         .withPrompts(create.getPrompts())
         .withGovernanceMetadata(create.getGovernanceMetadata())
         .withDataAccessSummary(create.getDataAccessSummary())
+        .withUsageMetrics(create.getUsageMetrics())
         .withSecurityMetrics(create.getSecurityMetrics())
         .withSourceCode(create.getSourceCode())
         .withDeploymentUrl(create.getDeploymentUrl())

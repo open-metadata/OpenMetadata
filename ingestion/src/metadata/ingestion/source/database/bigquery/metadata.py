@@ -14,11 +14,11 @@ Bigquery source module
 """
 
 import os
+import threading
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from google import auth
-from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
@@ -81,6 +81,7 @@ from metadata.ingestion.source.database.bigquery.helper import (
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
+    get_policy_tag_client,
 )
 from metadata.ingestion.source.database.bigquery.incremental_table_processor import (
     BigQueryIncrementalTableProcessor,
@@ -95,6 +96,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_TABLE_DDLS,
     BIGQUERY_GET_TABLE_DDLS_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
+    BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -112,9 +114,15 @@ from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.sqlalchemy_utils import is_complex_type
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
+
+# The databaseSchema node runs multi-threaded, so these caches are shared across schemas
+# being processed concurrently and must be keyed by the fully qualified name.
+DATASET_OBJ_CACHE_SIZE = 512
+TABLE_OBJ_CACHE_SIZE = 2048
 
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,
@@ -240,17 +248,19 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self.incremental = incremental_configuration
         self.incremental_table_processor: Optional[BigQueryIncrementalTableProcessor] = None  # noqa: UP045
 
-        self._current_schema_tables = {}
-        self._current_dataset_obj = None
+        self._table_obj_cache: LRUCache = LRUCache(capacity=TABLE_OBJ_CACHE_SIZE)
+        self._dataset_obj_cache: LRUCache = LRUCache(capacity=DATASET_OBJ_CACHE_SIZE)
         self._policy_tag_cache = {}
         self._taxonomy_cache = {}
         self._taxonomy_to_tags = {}
         self._table_ddl_cache = {}
         self._policy_tag_client = None
+        self._policy_tag_prefetch_key: Optional[Tuple[str, ...]] = None  # noqa: UP045, UP006
+        self._policy_tag_lock = threading.Lock()
 
         if self.service_connection.includePolicyTags:
             try:
-                self._policy_tag_client = PolicyTagManagerClient()
+                self._policy_tag_client = get_policy_tag_client(self.service_connection)
             except Exception as exc:
                 logger.warning(f"Failed to initialize PolicyTagManagerClient: {exc}")
 
@@ -365,8 +375,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         database = self.context.get().database
         dataset_ref = f"{database}.{schema_name}"
 
-        self._current_schema_tables.clear()
-        self._current_dataset_obj = None
         self._prefetch_table_ddls(schema_name)
         clear_constraint_cache_for_schema(database, schema_name)
 
@@ -415,11 +423,24 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return super().get_table_description(schema_name=schema_name, table_name=table_name, inspector=inspector)
 
     def get_dataset_obj(self, schema_name: str):
-        """Get dataset object with per-schema caching"""
-        if self._current_dataset_obj is None:
-            database = self.context.get().database
-            self._current_dataset_obj = self.client.get_dataset(f"{database}.{schema_name}")
-        return self._current_dataset_obj
+        """Get dataset object with per-schema caching.
+
+        Keyed by `project.dataset`: the schema node emits tags and the schema entity before
+        its table child node runs, so a cache that is not keyed hands one schema's
+        description and labels to the next one.
+        """
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        dataset_ref = f"{database}.{schema_name}"
+        try:
+            # Read in one locked operation: a check-then-get would let a concurrent
+            # eviction drop the key in between and raise on the read.
+            return self._dataset_obj_cache.get(dataset_ref)
+        except KeyError:
+            pass
+
+        dataset_obj = self.client.get_dataset(dataset_ref)  # pyright: ignore[reportOptionalMemberAccess]
+        self._dataset_obj_cache.put(dataset_ref, dataset_obj)
+        return dataset_obj
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
@@ -455,44 +476,101 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
         yield from super().yield_life_cycle_data(_)
 
+    def _get_schema_region(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+        """Resolve the dataset's region for region-scoped INFORMATION_SCHEMA queries."""
+        region = None
+        try:
+            dataset_obj = self.get_dataset_obj(schema_name)
+            region = getattr(dataset_obj, "location", None)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                "Could not resolve dataset region for schema '%s', falling back to dataset-scoped query: %s",
+                schema_name,
+                exc,
+            )
+        return region
+
+    def get_life_cycle_query(self):
+        """
+        Build the life cycle query.
+
+        When the dataset region is resolvable we use the region-scoped variant that
+        also captures the last-modified timestamp from INFORMATION_SCHEMA.TABLE_STORAGE
+        (which is only exposed at region/org level). Otherwise we fall back to the
+        dataset-scoped created-only query.
+        """
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        region = self._get_schema_region(schema_name)
+        if region:
+            query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
+                database_name=database, schema_name=schema_name, region=region
+            )
+        else:
+            query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=database, schema_name=schema_name)
+        return query
+
     def _prefetch_policy_tags(self):
         """Pre-fetch all policy tags at schema level to avoid per-column API calls"""
         if not self.service_connection.includePolicyTags:
-            return
-
-        self._policy_tag_cache.clear()
-        self._taxonomy_cache.clear()
-        self._taxonomy_to_tags.clear()
-
-        if not self._policy_tag_client:
-            logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
             return
 
         list_project_ids = [self.context.get().database]
         if self.service_connection.taxonomyProjectID:
             list_project_ids.extend(self.service_connection.taxonomyProjectID)
 
-        for project_id in list_project_ids:
-            try:
-                parent = f"projects/{project_id}/locations/{self.service_connection.taxonomyLocation}"
-                taxonomies = list(self._policy_tag_client.list_taxonomies(parent=parent))
+        # This runs once per schema, so key the caches on the projects they hold
+        # rather than refetching every taxonomy for each dataset. Keying on the
+        # project list (not a done-flag) keeps a multi-project run from ever
+        # serving one project's taxonomies to another.
+        prefetch_key = tuple(list_project_ids)
 
-                for taxonomy in taxonomies:
-                    self._taxonomy_cache[taxonomy.name] = taxonomy.display_name
+        # The databaseSchema node fans out across threads (threads=True in
+        # database_service.py), so schemas reach this concurrently on one source
+        # instance. The lock makes a losing thread wait for a fully built cache
+        # instead of reading one mid-population, and the caches are swapped in
+        # rather than mutated so a consumer holding a reference never observes a
+        # half-filled dict.
+        with self._policy_tag_lock:
+            if prefetch_key == self._policy_tag_prefetch_key:
+                return
 
-                    if taxonomy.display_name not in self._taxonomy_to_tags:
-                        self._taxonomy_to_tags[taxonomy.display_name] = []
+            policy_tag_cache: Dict[str, Dict[str, str]] = {}  # noqa: UP006
+            taxonomy_cache: Dict[str, str] = {}  # noqa: UP006
+            taxonomy_to_tags: Dict[str, List[str]] = {}  # noqa: UP006
 
-                    policy_tags = list(self._policy_tag_client.list_policy_tags(parent=taxonomy.name))
+            if self._policy_tag_client:
+                for project_id in list_project_ids:
+                    try:
+                        parent = f"projects/{project_id}/locations/{self.service_connection.taxonomyLocation}"
+                        taxonomies = list(self._policy_tag_client.list_taxonomies(parent=parent))
 
-                    for tag in policy_tags:
-                        self._policy_tag_cache[tag.name] = {
-                            "display_name": tag.display_name,
-                            "taxonomy": taxonomy.display_name,
-                        }
-                        self._taxonomy_to_tags[taxonomy.display_name].append(tag.display_name)
-            except Exception as exc:
-                logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")
+                        for taxonomy in taxonomies:
+                            taxonomy_cache[taxonomy.name] = taxonomy.display_name
+                            taxonomy_to_tags.setdefault(taxonomy.display_name, [])
+
+                            policy_tags = list(self._policy_tag_client.list_policy_tags(parent=taxonomy.name))
+
+                            for tag in policy_tags:
+                                policy_tag_cache[tag.name] = {
+                                    "display_name": tag.display_name,
+                                    "taxonomy": taxonomy.display_name,
+                                }
+                                taxonomy_to_tags[taxonomy.display_name].append(tag.display_name)
+                    except Exception as exc:
+                        logger.warning(f"Error pre-fetching policy tags for {project_id}: {exc}")
+            else:
+                logger.warning("PolicyTagManagerClient not initialized, skipping policy tag fetch")
+
+            self._policy_tag_cache = policy_tag_cache
+            self._taxonomy_cache = taxonomy_cache
+            self._taxonomy_to_tags = taxonomy_to_tags
+            # Set last, so a thread released from the lock above always sees
+            # fully built caches. Set even when a project failed: a denied
+            # taxonomy read will not start succeeding later in the same run, and
+            # retrying it per schema only repeats the warning.
+            self._policy_tag_prefetch_key = prefetch_key
 
     def _prefetch_table_ddls(self, schema_name: str):
         """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""
@@ -706,16 +784,19 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
-        if table_name in self._current_schema_tables:
-            return self._current_schema_tables[table_name]
-
         schema_name = self.context.get().database_schema
         database = self.context.get().database
-        logger.debug(f"Fetching table object for {database}.{schema_name}.{table_name} using BigQuery API")
+        cache_key = f"{database}.{schema_name}.{table_name}"
+        try:
+            return self._table_obj_cache.get(cache_key)
+        except KeyError:
+            pass
+
+        logger.debug(f"Fetching table object for {cache_key} using BigQuery API")
         bq_table_fqn = fqn._build(database, schema_name, table_name)
         table_obj = self.client.get_table(bq_table_fqn)
 
-        self._current_schema_tables[table_name] = table_obj
+        self._table_obj_cache.put(cache_key, table_obj)
         return table_obj
 
     def yield_table_tags(self, table_name_and_type: Tuple[str, str]):  # noqa: UP006
@@ -996,7 +1077,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 and table.external_data_configuration.hive_partitioning
             ):
                 # Ingesting External Hive Partitioned Tables
-                from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+                from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel
                     HivePartitioningOptions,  # noqa: TC002
                 )
 

@@ -97,6 +97,36 @@ describe('Test TagsViewer Component', () => {
     expect(sizeTags).toHaveLength(6);
   });
 
+  // antd Tag renders a bare span. Without a role it is invisible to the guard that keeps a
+  // clickable row or card from stealing a nested control's click, so "+n more" navigated the card
+  // instead of opening the remaining tags; without a tab stop it was keyboard-unreachable too.
+  it('exposes "+n more" as a real control, not a bare span', () => {
+    render(<TagsViewer tags={tags} />);
+
+    const plusButton = screen.getByTestId('plus-more-count');
+
+    expect(plusButton).toHaveAttribute('role', 'button');
+    expect(plusButton).toHaveAttribute('tabindex', '0');
+  });
+
+  it('activates "+n more" from the keyboard', () => {
+    const onParentClick = jest.fn();
+    render(
+      // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+      <div onClick={onParentClick}>
+        <TagsViewer tags={tags} />
+      </div>
+    );
+
+    const plusButton = screen.getByTestId('plus-more-count');
+    const onClick = jest.fn();
+    plusButton.addEventListener('click', onClick);
+
+    fireEvent.keyDown(plusButton, { key: 'Enter' });
+
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
   it('Should render all tags on read more click', () => {
     render(<TagsViewer displayType={DisplayType.READ_MORE} tags={tags} />);
 

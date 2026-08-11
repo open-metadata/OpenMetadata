@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
-import { format } from 'date-fns';
 import { isEmpty, split, toLower } from 'lodash';
+import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import type { ComponentType, ReactElement } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -142,13 +142,17 @@ const DimensionalityTab = () => {
         return;
       }
 
-      const resultDate = format(new Date(result.timestamp), 'yyyy-MM-dd');
+      const resultDate = DateTime.fromJSDate(
+        new Date(result.timestamp)
+      ).toFormat('yyyy-MM-dd');
       const existing = dimensionMap.get(dimensionValue);
 
       if (!existing || !existing.timestamp) {
         dimensionMap.set(dimensionValue, result);
       } else {
-        const existingDate = format(new Date(existing.timestamp), 'yyyy-MM-dd');
+        const existingDate = DateTime.fromJSDate(
+          new Date(existing.timestamp)
+        ).toFormat('yyyy-MM-dd');
         const existingTime = existing.timestamp;
         const currentTime = result.timestamp;
 
@@ -310,7 +314,7 @@ const DimensionalityTab = () => {
                 entityText: selectedDimension || '',
               })}
             </p>
-            <div className="tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary">
+            <div className="tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:outline-1 tw:outline-secondary">
               <Table aria-label={selectedDimension ?? ''}>
                 <Table.Header columns={dimensionTableColumns}>
                   {(col) => (

@@ -65,6 +65,7 @@ const DataQualityProvider = ({
     const {
       currentPage: _currentPage,
       pageSize: _pageSize,
+      searchValue: _searchValue,
       ...filters
     } = params;
 

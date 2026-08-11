@@ -17,7 +17,7 @@
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--om-space-6);
   min-width: 0;
   overflow: hidden;
 }
@@ -29,20 +29,20 @@
 // Chip pills for tags / glossary / domains / data products / related metrics.
 .csv-chip {
   background: @grey-36;
-  border-radius: 6px;
+  border-radius: var(--om-radius-md);
   color: @grey-700;
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   font-weight: @font-medium;
   max-width: 160px;
   overflow: hidden;
-  padding: 2px 8px;
+  padding: var(--om-space-2) var(--om-space-8);
   text-overflow: ellipsis;
   white-space: nowrap;
 
   &-tag {
-    background: #f4f3ff;
-    color: #5925dc;
+    background: var(--om-color-purple-50);
+    color: var(--om-color-purple-700);
   }
 
   &-glossary {
@@ -67,7 +67,7 @@
 }
 
 .csv-cell-chips-custom-properties {
-  gap: 8px;
+  gap: var(--om-space-8);
 }
 
 .csv-chip-value {
@@ -80,13 +80,13 @@
   align-items: center;
   display: inline-flex;
   flex-shrink: 0;
-  gap: 6px;
+  gap: var(--om-space-6);
   max-width: 180px;
 }
 
 .csv-owner-name {
   color: @grey-800;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -98,33 +98,33 @@
   color: @white;
   display: inline-flex;
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--om-font-size-11);
   font-weight: @font-semibold;
   height: 24px;
   justify-content: center;
   width: 24px;
 
   &.avatar-0 {
-    background: #7f56d9;
+    background: var(--om-legacy-color-7f56d9);
   }
 
   &.avatar-1 {
-    background: #1570ef;
+    background: var(--om-color-brand-600);
   }
 
   &.avatar-2 {
-    background: #16b364;
+    background: var(--om-color-green-500);
   }
 
   &.avatar-3 {
-    background: #ef6820;
+    background: var(--om-legacy-color-ef6820);
   }
 
   &.avatar-4 {
-    background: #ee46bc;
+    background: var(--om-color-pink-500);
   }
 
   &.avatar-5 {
-    background: #0ba5ec;
+    background: var(--om-color-blue-light-500);
   }
 }

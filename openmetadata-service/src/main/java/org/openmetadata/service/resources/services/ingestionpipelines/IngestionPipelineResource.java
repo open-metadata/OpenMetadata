@@ -36,6 +36,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -85,6 +86,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository.ForcedDeleteResult;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
@@ -104,6 +106,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.RestUtil;
 
 // TODO merge with workflows
 @Slf4j
@@ -118,6 +121,8 @@ public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
+  static final String RUNNER_CLEANUP_HEADER = "X-OpenMetadata-Runner-Cleanup";
+  static final String RUNNER_CLEANUP_SKIPPED = "skipped-unavailable";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = "owners,followers";
@@ -883,6 +888,8 @@ public class IngestionPipelineResource
       description = "Delete an ingestion pipeline by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "400", description = "Force requires hardDelete=true"),
+        @ApiResponse(responseCode = "403", description = "Force requires administrator access"),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response delete(
@@ -892,10 +899,57 @@ public class IngestionPipelineResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description =
+                  "Allow an administrator to hard-delete metadata when the ingestion runner is unavailable. "
+                      + "The external workflow might require manual cleanup. (Default = `false`)")
+          @QueryParam("force")
+          @DefaultValue("false")
+          boolean force,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response =
+        force
+            ? forceDelete(uriInfo, securityContext, id, hardDelete)
+            : delete(uriInfo, securityContext, id, false, hardDelete);
+    return response;
+  }
+
+  private Response forceDelete(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean hardDelete) {
+    authorizeForceDelete(securityContext, id);
+    validateForceDelete(hardDelete);
+    String userName = securityContext.getUserPrincipal().getName();
+    ForcedDeleteResult result = repository.forceDelete(userName, id);
+    limits.invalidateCache(entityType);
+    addHref(uriInfo, result.response().entity());
+    return toForceDeleteResponse(result);
+  }
+
+  private void authorizeForceDelete(SecurityContext securityContext, UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContext.Operation.DELETE));
+    authorizer.authorizeAdmin(securityContext);
+  }
+
+  static void validateForceDelete(boolean hardDelete) {
+    if (!hardDelete) {
+      throw new BadRequestException(
+          "Force deleting an ingestion pipeline requires hardDelete=true");
+    }
+  }
+
+  private Response toForceDeleteResponse(ForcedDeleteResult result) {
+    RestUtil.DeleteResponse<IngestionPipeline> deleteResponse = result.response();
+    Response.ResponseBuilder responseBuilder = Response.fromResponse(deleteResponse.toResponse());
+    if (result.wasRunnerCleanupSkipped()) {
+      responseBuilder.header(RUNNER_CLEANUP_HEADER, RUNNER_CLEANUP_SKIPPED);
+    }
+    return responseBuilder.build();
   }
 
   @DELETE
@@ -970,25 +1024,48 @@ public class IngestionPipelineResource
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  /**
+   * Resolve the ingestion pipeline from a path segment that is either its Id (UUID) or its
+   * fullyQualifiedName. Accepting the fqn lets a client fetch logs directly by the pipeline's
+   * fully-qualified name — the identifier the logs are stored under — without first looking up the
+   * pipeline Id, and keeps the log URL stable for a pipeline across its lifetime. The Id form is
+   * unchanged and remains fully supported.
+   */
+  private IngestionPipeline getIngestionPipelineByIdOrName(
+      UriInfo uriInfo, SecurityContext securityContext, String idOrName, String fields) {
+    try {
+      UUID pipelineId = UUID.fromString(idOrName);
+      return getInternal(uriInfo, securityContext, pipelineId, fields, Include.NON_DELETED);
+    } catch (IllegalArgumentException notAUuid) {
+      // Not a UUID -> treat the segment as the pipeline's fullyQualifiedName.
+      return getByNameInternal(uriInfo, securityContext, idOrName, fields, Include.NON_DELETED);
+    }
+  }
+
   @GET
   @Path("/logs/{id}/last")
   @Operation(
       summary = "Retrieve all logs from last ingestion pipeline run",
-      description = "Get all logs from last ingestion pipeline run by `Id`.",
+      description =
+          "Get all logs from last ingestion pipeline run by `Id` or `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description =
                 "JSON object with the task instance name of the ingestion on each key and log in the value",
             content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Logs for the ingestion pipeline are not found")
       })
   public Response getLastIngestionLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+      @Parameter(
+              description = "Id (UUID) or fullyQualifiedName of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("id")
-          UUID id,
+          String id,
       @Parameter(
               description = "Returns log chunk after this cursor",
               schema = @Schema(type = "string"))
@@ -1004,8 +1081,8 @@ public class IngestionPipelineResource
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
     IngestionPipeline ingestionPipeline =
-        getInternal(
-            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner", Include.NON_DELETED);
+        getIngestionPipelineByIdOrName(
+            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
     Map<String, String> lastIngestionLogs;
     boolean useStreamableLogs =
         ingestionPipeline.getEnableStreamableLogs()
@@ -1048,112 +1125,110 @@ public class IngestionPipelineResource
   @Operation(
       operationId = "downloadLastIngestionLogs",
       summary = "Download all logs from last ingestion pipeline run as a stream",
-      description = "Stream all logs from last ingestion pipeline run by `Id` for download.",
+      description =
+          "Stream all logs from last ingestion pipeline run by `Id` or `fullyQualifiedName` for download.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Log content as a downloadable stream",
             content = @Content(mediaType = "application/octet-stream")),
-        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Logs for the ingestion pipeline are not found")
       })
   public Response downloadLastIngestionLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+      @Parameter(
+              description = "Id (UUID) or fullyQualifiedName of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("id")
-          UUID id) {
-    try {
-      if (pipelineServiceClient == null) {
-        return Response.status(200).entity("Pipeline Client Disabled").build();
-      }
-      IngestionPipeline ingestionPipeline =
-          getInternal(
-              uriInfo,
-              securityContext,
-              id,
-              "pipelineStatuses,ingestionRunner",
-              Include.NON_DELETED);
+          String id) {
+    if (pipelineServiceClient == null) {
+      return Response.status(200).entity("Pipeline Client Disabled").build();
+    }
+    // Resolve the pipeline up front (no surrounding catch) so an unknown Id/fqn surfaces as 404,
+    // like getLastIngestionLogs. The streaming body below runs after this method returns, so its
+    // failures were never caught here anyway.
+    IngestionPipeline ingestionPipeline =
+        getIngestionPipelineByIdOrName(
+            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
 
-      String filename =
-          String.format(
-              "ingestion_logs_%s_%d.txt", ingestionPipeline.getName(), System.currentTimeMillis());
+    String filename =
+        String.format(
+            "ingestion_logs_%s_%d.txt", ingestionPipeline.getName(), System.currentTimeMillis());
 
-      boolean useStreamableLogs =
-          ingestionPipeline.getEnableStreamableLogs()
-              || (ingestionPipeline.getIngestionRunner() != null
-                  && repository.isIngestionRunnerStreamableLogsEnabled(
-                      ingestionPipeline.getIngestionRunner()));
+    boolean useStreamableLogs =
+        ingestionPipeline.getEnableStreamableLogs()
+            || (ingestionPipeline.getIngestionRunner() != null
+                && repository.isIngestionRunnerStreamableLogsEnabled(
+                    ingestionPipeline.getIngestionRunner()));
 
-      StreamingOutput streamingOutput =
-          output -> {
-            String cursor = null;
-            boolean hasMoreData = true;
+    StreamingOutput streamingOutput =
+        output -> {
+          String cursor = null;
+          boolean hasMoreData = true;
 
-            while (hasMoreData) {
-              Map<String, String> logChunk;
+          while (hasMoreData) {
+            Map<String, String> logChunk;
 
-              if (useStreamableLogs) {
-                // Get logs using the repository's log storage picking up the last runId
-                PipelineStatus latestStatus =
-                    IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
-                String runId = latestStatus == null ? null : latestStatus.getRunId();
-                if (CommonUtil.nullOrEmpty(runId)) {
-                  throw new PipelineServiceClientException(
-                      "No runId found for the last ingestion pipeline run");
-                }
-
-                Map<String, Object> lastIngestionLogsMap =
-                    repository.getLogs(
-                        ingestionPipeline.getFullyQualifiedName(),
-                        UUID.fromString(runId),
-                        cursor,
-                        1000);
-                logChunk =
-                    lastIngestionLogsMap.entrySet().stream()
-                        .filter(entry -> entry.getValue() != null)
-                        .collect(
-                            Collectors.toMap(
-                                Map.Entry::getKey, entry -> entry.getValue().toString()));
-                Object logs = logChunk.remove("logs");
-                if (logs != null) {
-                  logChunk.put(
-                      TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
-                      logs.toString());
-                }
-              } else {
-                // Get the logs from the service client
-                logChunk = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+            if (useStreamableLogs) {
+              // Get logs using the repository's log storage picking up the last runId
+              PipelineStatus latestStatus =
+                  IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+              String runId = latestStatus == null ? null : latestStatus.getRunId();
+              if (CommonUtil.nullOrEmpty(runId)) {
+                throw new PipelineServiceClientException(
+                    "No runId found for the last ingestion pipeline run");
               }
 
-              if (logChunk == null || logChunk.isEmpty()) {
-                break;
+              Map<String, Object> lastIngestionLogsMap =
+                  repository.getLogs(
+                      ingestionPipeline.getFullyQualifiedName(),
+                      UUID.fromString(runId),
+                      cursor,
+                      1000);
+              logChunk =
+                  lastIngestionLogsMap.entrySet().stream()
+                      .filter(entry -> entry.getValue() != null)
+                      .collect(
+                          Collectors.toMap(
+                              Map.Entry::getKey, entry -> entry.getValue().toString()));
+              Object logs = logChunk.remove("logs");
+              if (logs != null) {
+                logChunk.put(
+                    TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
+                    logs.toString());
               }
+            } else {
+              // Get the logs from the service client
+              logChunk = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+            }
 
-              for (Map.Entry<String, String> entry : logChunk.entrySet()) {
-                if (entry.getValue() != null
-                    && !entry.getKey().equals("after")
-                    && !entry.getKey().equals("total")) {
-                  output.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
-                  output.write("\n".getBytes(StandardCharsets.UTF_8));
-                }
-              }
-              output.flush();
+            if (logChunk == null || logChunk.isEmpty()) {
+              break;
+            }
 
-              cursor = logChunk.get("after");
-              if (cursor == null) {
-                hasMoreData = false;
+            for (Map.Entry<String, String> entry : logChunk.entrySet()) {
+              if (entry.getValue() != null
+                  && !entry.getKey().equals("after")
+                  && !entry.getKey().equals("total")) {
+                output.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                output.write("\n".getBytes(StandardCharsets.UTF_8));
               }
             }
-          };
+            output.flush();
 
-      return Response.ok(streamingOutput)
-          .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
-          .build();
-    } catch (Exception e) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity("Error downloading logs: " + e.getMessage())
-          .build();
-    }
+            cursor = logChunk.get("after");
+            if (cursor == null) {
+              hasMoreData = false;
+            }
+          }
+        };
+
+    return Response.ok(streamingOutput)
+        .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+        .build();
   }
 
   @PUT

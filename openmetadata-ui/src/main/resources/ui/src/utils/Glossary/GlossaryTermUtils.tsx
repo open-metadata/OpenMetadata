@@ -142,7 +142,7 @@ export const getGlossaryTermDetailPageTabs = (
             key: EntityTabs.GLOSSARY_TERMS,
             children: (
               <GlossaryTermTab
-                className="p-md glossary-term-table-container"
+                className="glossary-term-table-container"
                 isGlossary={false}
               />
             ),

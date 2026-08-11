@@ -13,15 +13,21 @@
 
 import { groupBy, isEmpty, reduce } from 'lodash';
 import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
-import { AUTOPILOT_AGENTS_STATUS_ORDERED_LIST } from '../constants/AgentsStatusWidget.constant';
 import {
-  COLLATE_AUTO_TIER_APP_NAME,
-  COLLATE_DATA_QUALITY_APP_NAME,
-  COLLATE_DOCUMENTATION_APP_NAME,
+  AUTOPILOT_AGENTS_STATUS_ORDERED_LIST,
+  AUTOPILOT_AUTOMATION_TEMPLATES,
+} from '../constants/AgentsStatusWidget.constant';
+import {
+  DATA_QUALITY_AUTOMATION_TEMPLATE,
+  DOCUMENTATION_AUTOMATION_TEMPLATE,
+  TIER_AUTOMATION_TEMPLATE,
 } from '../constants/Applications.constant';
 import { NO_RUNS_STATUS } from '../constants/ServiceInsightsTab.constants';
 import { AgentStatus } from '../enums/ServiceInsights.enum';
-import { Status } from '../generated/entity/applications/appRunRecord';
+import {
+  AppRunRecord,
+  Status,
+} from '../generated/entity/applications/appRunRecord';
 import {
   PipelineState,
   PipelineType,
@@ -40,16 +46,113 @@ export const getAgentLabelFromType = (agentType: string) => {
       return t('label.auto-classification');
     case PipelineType.Profiler:
       return t('label.profiler');
-    case COLLATE_DOCUMENTATION_APP_NAME:
+    case DOCUMENTATION_AUTOMATION_TEMPLATE:
       return t('label.documentation');
-    case COLLATE_DATA_QUALITY_APP_NAME:
+    case DATA_QUALITY_AUTOMATION_TEMPLATE:
       return t('label.data-quality');
-    case COLLATE_AUTO_TIER_APP_NAME:
+    case TIER_AUTOMATION_TEMPLATE:
       return t('label.auto-tier');
     default:
       return '';
   }
 };
+
+/**
+ * Resolves the AutoPilot template an automation belongs to from its
+ * `{serviceName}_{template}` name, e.g. `mysql_prod_TierAutomation` ->
+ * `TierAutomation`. Returns undefined for names matching no known template.
+ */
+export const getAutomationTemplate = (name: string): string | undefined =>
+  AUTOPILOT_AUTOMATION_TEMPLATES.find((template) =>
+    name.endsWith(`_${template}`)
+  );
+
+/** Per-step summary an automation run carries under `status`. */
+export interface AutomationRunStep {
+  records?: number;
+  updated_records?: number;
+  warnings?: number;
+  errors?: number;
+}
+
+/**
+ * Minimal run shape the converter needs. Kept structural, and keyed on the state
+ * as a plain string, so callers holding their own generated `PipelineState` enum
+ * can pass their runs without a cast.
+ */
+export interface AutomationRunLike {
+  pipelineState?: string;
+  startDate?: number;
+  endDate?: number;
+  timestamp?: number;
+  runId?: string;
+  status?: AutomationRunStep[];
+}
+
+const PipelineStateToAppRunStatusMap: Record<string, Status> = {
+  [PipelineState.Queued]: Status.Pending,
+  [PipelineState.Success]: Status.Success,
+  [PipelineState.Failed]: Status.Failed,
+  // A partial run finished with warnings, not failures: the agent widgets and the
+  // AI Automations pages both count it as successful.
+  [PipelineState.PartialSuccess]: Status.Success,
+  [PipelineState.Running]: Status.Running,
+  [PipelineState.Stopped]: Status.Stopped,
+};
+
+const sumStep = (steps: AutomationRunStep[], field: keyof AutomationRunStep) =>
+  steps.reduce((total, step) => total + (step[field] ?? 0), 0);
+
+/**
+ * Rolls the run's per-step summaries into the `jobStats` the agent cards read.
+ * `records` is the processed-asset count the run history also shows, so it feeds
+ * both the success and total buckets; errors and warnings sum across steps.
+ * Returns undefined when the run carries no steps, leaving the counts blank
+ * rather than showing zeros.
+ */
+const buildSuccessContext = (
+  steps: AutomationRunStep[]
+): AppRunRecord['successContext'] => {
+  if (steps.length === 0) {
+    return undefined;
+  }
+  const records = sumStep(steps, 'records');
+
+  return {
+    stats: {
+      jobStats: {
+        totalRecords: records,
+        successRecords: records,
+        failedRecords: sumStep(steps, 'errors'),
+        warningRecords: sumStep(steps, 'warnings'),
+      },
+    },
+  };
+};
+
+/**
+ * Maps an automation run onto the `AppRunRecord` shape the agent widgets read.
+ * The run carries `pipelineState` and `startDate`/`endDate`; `AppRunRecord` wants
+ * a scalar `status` and `startTime`/`endTime`, so the fields are renamed and the
+ * state enum mapped. The per-step `status` summaries roll up into `successContext`
+ * so the cards show the same asset counts as the run history.
+ */
+export const automationRunToAppRunRecord = (
+  run: AutomationRunLike
+): AppRunRecord => ({
+  startTime: run.startDate,
+  endTime: run.endDate,
+  timestamp: run.timestamp,
+  executionTime:
+    run.startDate === undefined
+      ? undefined
+      : (run.endDate ?? Date.now()) - run.startDate,
+  status: run.pipelineState
+    ? PipelineStateToAppRunStatusMap[run.pipelineState]
+    : undefined,
+  successContext: buildSuccessContext(run.status ?? []),
+  properties: run.runId ? { pipelineRunId: run.runId } : undefined,
+});
 
 export const getAgentStatusLabelFromStatus = (
   status?: PipelineState | Status | typeof NO_RUNS_STATUS

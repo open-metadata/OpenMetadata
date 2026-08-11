@@ -233,15 +233,11 @@ function DatabaseSchemaVersionPage() {
       },
       backHandler: () => {
         navigate(
-          getEntityDetailsPath(
-            EntityType.DATABASE_SCHEMA,
-            decodedEntityFQN,
-            tab
-          )
+          getEntityDetailsPath(EntityType.DATABASE_SCHEMA, decodedEntityFQN)
         );
       },
     }),
-    [decodedEntityFQN, decodedEntityFQN, tab]
+    [decodedEntityFQN]
   );
 
   const handleTabChange = (activeKey: string) => {
