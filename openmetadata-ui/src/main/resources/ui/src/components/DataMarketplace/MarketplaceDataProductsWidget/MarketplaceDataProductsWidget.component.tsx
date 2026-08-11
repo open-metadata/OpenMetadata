@@ -223,7 +223,11 @@ const MarketplaceDataProductsWidget = ({
             weight="semibold">
             {t('label.new')} {t('label.data-product-plural')}
           </Typography>
-          <Typography as="span" className="tw:text-xs tw:text-text-tertiary">
+          <Typography
+            as="span"
+            className="tw:text-text-secondary"
+            size="text-sm"
+            weight="regular">
             {t('label.recently-created-entity', {
               entity: t('label.data-product-plural'),
             })}

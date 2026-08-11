@@ -206,7 +206,11 @@ const MarketplaceDomainsWidget = ({
             weight="semibold">
             {t('label.new')} {t('label.domain-plural')}
           </Typography>
-          <Typography as="span" className="tw:text-xs tw:text-text-tertiary">
+          <Typography
+            as="span"
+            className="tw:text-text-secondary"
+            size="text-sm"
+            weight="regular">
             {t('label.recently-created-entity', {
               entity: t('label.domain-plural'),
             })}

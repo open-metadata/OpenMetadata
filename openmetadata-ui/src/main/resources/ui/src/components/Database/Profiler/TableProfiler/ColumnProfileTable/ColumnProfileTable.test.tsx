@@ -43,7 +43,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ),
       Head: jest
         .fn()
-        .mockImplementation(({ label }: { label: string }) => <th>{label}</th>),
+        .mockImplementation(
+          ({
+            isRowHeader,
+            label,
+          }: {
+            isRowHeader?: boolean;
+            label: string;
+          }) => (
+            <th data-row-header={isRowHeader ? 'true' : undefined}>{label}</th>
+          )
+        ),
       Body: jest
         .fn()
         .mockImplementation(
@@ -191,6 +201,16 @@ describe('Test ColumnProfileTable component', () => {
       await screen.findByTestId('column-profile-table-container')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('searchbar')).toBeInTheDocument();
+  });
+
+  it('should mark the name column as the row header', async () => {
+    await act(async () => {
+      render(<ColumnProfileTable />, { wrapper: MemoryRouter });
+    });
+
+    expect(
+      await screen.findByRole('columnheader', { name: 'label.name' })
+    ).toHaveAttribute('data-row-header', 'true');
   });
 
   it('should render without crashing even if column is undefined', async () => {

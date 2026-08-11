@@ -20,6 +20,7 @@ import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +61,7 @@ public interface JobDAO {
   long insertJobInternal(
       @Bind("jobType") String jobType,
       @Bind("methodName") String methodName,
-      @Bind("jobArgs") String jobArgs,
+      @BindJson("jobArgs") String jobArgs,
       @Bind("createdBy") String createdBy,
       @Bind("runAt") Long runAt);
 
@@ -80,7 +81,7 @@ public interface JobDAO {
   long insertTrackedJobInternal(
       @Bind("jobType") String jobType,
       @Bind("methodName") String methodName,
-      @Bind("jobArgs") String jobArgs,
+      @BindJson("jobArgs") String jobArgs,
       @Bind("createdBy") String createdBy,
       @Bind("runAt") Long runAt,
       @Bind("progress") int progress,

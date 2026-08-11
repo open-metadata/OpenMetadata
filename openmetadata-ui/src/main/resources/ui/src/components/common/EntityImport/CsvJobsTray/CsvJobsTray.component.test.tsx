@@ -154,12 +154,8 @@ describe('CsvJobsTray', () => {
       await screen.findByText('label.background-job-plural')
     ).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: /label.background-job-plural/ })
-    );
-
     expect(
-      screen.getByText('label.exported-entity-plural')
+      await screen.findByText('label.exported-entity-plural')
     ).toBeInTheDocument();
   });
 

@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bookworm
+FROM python:3.12-slim-bookworm
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
 # before configuring third-party apt repositories.
@@ -33,6 +33,10 @@ RUN dpkg --configure -a \
     libkrb5-dev \
     default-jre-headless \
     openssl \
+    # mysqlclient 2.2+ locates libmysqlclient through pkg-config (2.1.x used
+    # mysql_config) and has no Linux wheels, so it always builds from source.
+    # The slim base omits pkg-config, unlike the python:3.12-bookworm base.
+    pkg-config \
     # To ensure compatibility with unixodbc package
     odbcinst=2.3.11-2+deb12u1 \
     postgresql \
@@ -49,12 +53,13 @@ RUN dpkg --configure -a \
     # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
     # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
     # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
-    # wget -> tracked; upstream fix pending, no-op until Debian ships it).
+    # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
     # --only-upgrade is a no-op for packages not present in the base image.
     && apt-get -qq install -y --only-upgrade \
          libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
          libpam0g libpam-modules libpam-modules-bin libpam-runtime \
          curl libcurl4 libcurl3-gnutls libmariadb3 wget \
+         perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
@@ -107,6 +112,13 @@ RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
 RUN chown -R openmetadata:openmetadata /ingestion
 ENV HOME=/home/openmetadata
 ENV PATH="/home/openmetadata/.local/bin:${PATH}"
+
+# Refresh the interpreter-level pip before dropping privileges. The per-user
+# pip upgrade below only writes to ~/.local, so the base image's
+# /usr/local copy stays on disk and image scanners keep reporting it
+# (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
+RUN pip install --no-cache-dir --upgrade "pip>=26.2,<27"
+
 USER openmetadata
 
 # Disable pip cache dir
@@ -117,7 +129,7 @@ ENV PIP_QUIET=1
 
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 

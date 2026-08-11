@@ -1204,21 +1204,26 @@
           "matchType": "standard"
         },
         {
-          "field": "mlFeatures.name",
+          "field": "fields.name",
           "boost": 8.0,
           "matchType": "standard"
         },
         {
-          "field": "mlFeatures.description",
+          "field": "fields.name.keyword",
+          "boost": 2.0,
+          "matchType": "exact"
+        },
+        {
+          "field": "fields.description",
           "boost": 1.0,
           "matchType": "standard"
         }
       ],
       "aggregations": [
         {
-          "name": "mlFeatures.name.keyword",
+          "name": "fields.name.keyword",
           "type": "terms",
-          "field": "mlFeatures.name.keyword"
+          "field": "fields.name.keyword"
         }
       ],
       "scoreMode": "sum",
@@ -1227,8 +1232,8 @@
         "name",
         "displayName",
         "description",
-        "mlFeatures.name",
-        "mlFeatures.description"
+        "fields.name",
+        "fields.description"
       ],
       "matchTypeBoostMultipliers": {
         "exactMatchMultiplier": 2.0,
@@ -3370,11 +3375,15 @@
           "description": "Search on parts of the hierarchical name for flexible matching."
         },
         {
-          "name": "searchIndex.responseSchema.name",
+          "name": "fields.name",
           "description": "Search on the names of fields indexed in the search index."
         },
         {
-          "name": "searchIndex.responseSchema.description",
+          "name": "fields.name.keyword",
+          "description": "Exact match on a search index field name for precise lookups."
+        },
+        {
+          "name": "fields.description",
           "description": "Search on field descriptions to find search indexes with fields serving specific purposes."
         },
         {

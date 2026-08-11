@@ -43,14 +43,14 @@
   }
 
   .ant-tree-treenode {
-    padding: 4px 0;
+    padding: var(--om-space-4) 0;
   }
 
   &.ant-tree-directory {
     .ant-tree-treenode-selected {
       &:hover::before,
       &::before {
-        background: #f4f0fd;
+        background: var(--om-legacy-color-f4f0fd);
         border-left: 2px solid @primary-color;
       }
     }
@@ -63,7 +63,7 @@
   .ant-tree-node-selected {
     .ant-tree-title {
       color: @primary-color;
-      font-weight: 700;
+      font-weight: var(--om-font-weight-bold);
     }
   }
 

@@ -72,6 +72,21 @@ import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 
+// Stretch the antd table so its body fills the panel height even with only a
+// few rows — otherwise the body shrinks to its content (scroll.y sets
+// max-height, not height) and the horizontal scrollbar floats mid-panel with
+// empty space below it.
+const TAG_TABLE_FILL_CLASSNAME = [
+  'tw:h-full',
+  'tw:[&_.ant-spin-nested-loading]:h-full',
+  'tw:[&_.ant-spin-container]:h-full',
+  'tw:[&_.ant-table]:h-full tw:[&_.ant-table]:flex tw:[&_.ant-table]:flex-col',
+  'tw:[&_.ant-table-container]:flex-1 tw:[&_.ant-table-container]:min-h-0',
+  'tw:[&_.ant-table-container]:flex tw:[&_.ant-table-container]:flex-col',
+  'tw:[&_.ant-table-header]:shrink-0',
+  'tw:[&_.ant-table-body]:flex-1 tw:[&_.ant-table-body]:!max-h-none',
+].join(' ');
+
 const ClassificationDetails = forwardRef(
   (
     {
@@ -388,7 +403,9 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="h-full overflow-y-auto" data-testid="tags-container">
+      <div
+        className="h-full classification-details-container"
+        data-testid="tags-container">
         {currentClassification && (
           <Row data-testid="header" wrap={false}>
             <Col flex="auto">
@@ -486,7 +503,7 @@ const ClassificationDetails = forwardRef(
             onUpdate={(updatedData: Classification) =>
               Promise.resolve(handleUpdateClassification?.(updatedData))
             }>
-            <Row className="m-t-md" gutter={16}>
+            <Row className="m-t-md classification-details-content" gutter={16}>
               <Col span={18}>
                 <Card className="classification-details-card">
                   <div className="m-b-sm" data-testid="description-container">
@@ -526,6 +543,7 @@ const ClassificationDetails = forwardRef(
                     </Box>
                   ) : (
                     <Table
+                      className={TAG_TABLE_FILL_CLASSNAME}
                       columns={tableColumn}
                       customPaginationProps={{
                         currentPage,
@@ -541,7 +559,10 @@ const ClassificationDetails = forwardRef(
                       loading={isLoading}
                       pagination={false}
                       rowKey="id"
-                      scroll={{ x: true }}
+                      scroll={{
+                        x: 'max-content',
+                        y: 'calc(100vh - 380px - var(--ant-navbar-height))',
+                      }}
                       size="small"
                     />
                   )}

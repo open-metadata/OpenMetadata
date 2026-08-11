@@ -95,6 +95,23 @@ describe('LogsUtils', () => {
       );
       expect(getLogsFromResponse(res, 'unknown_pipeline')).toBe('');
     });
+
+    it('should return the generic logs key whatever the pipeline type', () => {
+      const res: IngestionPipelineLogByIdInterface = { logs: 'fqn_logs' };
+
+      expect(getLogsFromResponse(res, PipelineType.Metadata)).toBe('fqn_logs');
+      expect(getLogsFromResponse(res, PipelineType.Profiler)).toBe('fqn_logs');
+      expect(getLogsFromResponse(res, 'unknown_pipeline')).toBe('fqn_logs');
+    });
+
+    it('should prefer the generic logs key over the type-specific field', () => {
+      const res: IngestionPipelineLogByIdInterface = {
+        logs: 'fqn_logs',
+        ingestion_task: 'metadata_logs',
+      };
+
+      expect(getLogsFromResponse(res, PipelineType.Metadata)).toBe('fqn_logs');
+    });
   });
 
   describe('fetchLogsRecursively', () => {

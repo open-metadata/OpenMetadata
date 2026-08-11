@@ -50,7 +50,7 @@ const SignUp = () => {
   } = useApplicationStore();
 
   const [loading, setLoading] = useState<boolean>(false);
-  const OMDLogo = useMemo(() => brandClassBase.getMonogram().svg, []);
+  const OMDLogo = brandClassBase.getMonogram().svg;
 
   const handleCreateNewUser: FormProps['onFinish'] = async (data) => {
     setLoading(true);

@@ -45,6 +45,7 @@ const RecentlyViewedCarousel = ({
             name: entity.displayName,
             serviceType: entity.serviceType,
           },
+          undefined,
           'entity-icon'
         ),
         name: entity.displayName,

@@ -18,10 +18,7 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
-import {
-  forceFreshTableReads,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   confirmIngestionPipelineHardDelete,
   submitTestCaseForm,
@@ -43,7 +40,6 @@ test(
     test.slow(true);
 
     await redirectToHomePage(page);
-    await forceFreshTableReads(page);
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
@@ -57,7 +53,10 @@ test(
      * selects the new test case, sets a weekly schedule, deploys, and verifies success modal.
      */
     await test.step('Create a new pipeline', async () => {
-      await page.getByText('Data Observability').click();
+      await page
+        .getByTestId('profiler')
+        .getByText('Data Observability')
+        .click();
       await page
         .getByRole('tab', {
           name: 'Table Profile',
@@ -246,7 +245,6 @@ test(
     test.slow(true);
 
     await redirectToHomePage(page);
-    await forceFreshTableReads(page);
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
@@ -262,7 +260,7 @@ test(
       testCaseNames
     );
     await table.visitEntityPage(page, table.entity.displayName);
-    await page.getByText('Data Observability').click();
+    await page.getByTestId('profiler').getByText('Data Observability').click();
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     const ingestionPipelinesListResponse =

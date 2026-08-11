@@ -16,6 +16,7 @@ working with OpenMetadata entities.
 """
 
 import traceback
+import types
 from collections import OrderedDict
 from collections.abc import Generator
 from itertools import chain
@@ -145,7 +146,10 @@ class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
     def _unwrap_annotation(annotation):
         """Unwrap Optional and other Union types to get the actual model class."""
         origin = get_origin(annotation)
-        if origin is Union:
+        # PEP 604 unions (`X | None`) report `types.UnionType`, not `typing.Union`. Generated
+        # models emit that form, so matching only `Union` here silently stops unwrapping and
+        # nested env keys never get case-normalized.
+        if origin in (Union, types.UnionType):
             args = get_args(annotation)
             for arg in args:
                 if arg is not type(None) and hasattr(arg, "model_fields"):
@@ -454,6 +458,8 @@ class OpenMetadata(
             .replace("chatconversation", "chatConversation")
             .replace("eventsubscription", "eventSubscription")
             .replace("mcpserver", "mcpServer")
+            .replace("llmmodel", "llmModel")
+            .replace("aiapplication", "aiApplication")
         )
         class_path = ".".join(
             filter(

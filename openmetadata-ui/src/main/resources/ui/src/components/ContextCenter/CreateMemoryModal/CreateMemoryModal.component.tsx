@@ -198,6 +198,16 @@ const EmptyLinkedAssets: FC = () => {
   );
 };
 
+const EmptyTags: FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Typography className="tw:text-utility-gray-400" size="text-xs">
+      {t('label.no-tags-added')}
+    </Typography>
+  );
+};
+
 const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
   assets,
 }) => {
@@ -797,8 +807,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         {!isViewOnly && (
                           <DataAssetSelectList
                             placeholder={t('label.search-assets-to-link')}
-                            popoverAlign="right"
                             popoverClassName="tw:h-100"
+                            popoverPlacement="bottom end"
                             renderTrigger={({ open }) => (
                               <Button
                                 className="tw:px-2.5 tw:py-1.5"
@@ -966,6 +976,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               </Typography>
                             </div>
                             <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
+                              {isViewOnly && selectedTags.length === 0 && (
+                                <EmptyTags />
+                              )}
                               {selectedTags.map((tag) =>
                                 isViewOnly ? (
                                   <Badge

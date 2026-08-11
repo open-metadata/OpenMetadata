@@ -39,7 +39,7 @@ import { LineageLayersProps } from './LineageLayers.interface';
 
 const LAYER_BUTTON_CLASSES = [
   'tw:flex-col tw:gap-1 tw:px-4 tw:py-2 tw:text-[10px] tw:font-medium tw:text-primary',
-  'tw:whitespace-normal tw:break-words tw:hover:ring-brand tw:hover:z-10',
+  'tw:whitespace-normal tw:break-words tw:hover:after:outline-brand tw:hover:z-10',
   'tw:selected:bg-brand-primary tw:selected:text-primary',
 ].join(' ');
 
@@ -198,7 +198,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
     <PopoverTrigger isOpen={isLayersOpen} onOpenChange={setIsLayersOpen}>
       <Button
         className={classNames(LAYER_BUTTON_CLASSES, 'tw:bg-primary', {
-          'tw:ring-brand tw:z-10 tw:[&>svg]:text-fg-brand-primary':
+          'tw:after:outline-brand tw:z-10 tw:[&>svg]:text-fg-brand-primary':
             isLayersOpen,
         })}
         color="secondary"

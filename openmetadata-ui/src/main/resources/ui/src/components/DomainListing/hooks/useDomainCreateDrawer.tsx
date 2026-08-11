@@ -18,7 +18,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
-import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import {
+  setCreateEntityFieldError,
+  submitAndClose,
+} from '../../../utils/FormDrawerUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
@@ -59,7 +62,22 @@ export const useDomainCreateDrawer = (onCreated?: () => void) => {
             form.reset();
           },
           t,
+          suppressErrorToast: true,
         });
+      } catch (error) {
+        setCreateEntityFieldError(
+          error,
+          form,
+          'name',
+          t('message.entity-with-name-already-exists', {
+            entity: t('label.domain'),
+          }),
+          t('server.add-entity-error', {
+            entity: t('label.domain').toLowerCase(),
+          })
+        );
+
+        throw error;
       } finally {
         setIsLoading(false);
       }

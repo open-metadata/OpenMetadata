@@ -48,7 +48,6 @@ public class DataRetention extends AbstractNativeApplication {
   private IndexingError failureDetails = null;
 
   private final FeedRepository feedRepository;
-  private final CollectionDAO.FeedDAO feedDAO;
 
   private final EntityTimeSeriesDAO testCaseResultsDAO;
   private final EntityTimeSeriesDAO profileDataDAO;
@@ -58,7 +57,6 @@ public class DataRetention extends AbstractNativeApplication {
     super(collectionDAO, searchRepository);
     this.eventSubscriptionDAO = collectionDAO.eventSubscriptionDAO();
     this.feedRepository = Entity.getFeedRepository();
-    this.feedDAO = Entity.getCollectionDAO().feedDAO();
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
@@ -210,7 +208,7 @@ public class DataRetention extends AbstractNativeApplication {
     long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
 
     List<UUID> threadIdsToDelete =
-        feedDAO.fetchConversationThreadIdsOlderThan(cutoffMillis, BATCH_SIZE);
+        feedRepository.fetchConversationThreadIdsOlderThan(cutoffMillis, BATCH_SIZE);
 
     if (threadIdsToDelete.isEmpty()) {
       LOG.info(

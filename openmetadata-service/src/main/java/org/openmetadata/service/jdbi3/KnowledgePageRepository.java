@@ -229,8 +229,15 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       List<CollectionDAO.EntityRelationshipObject> records) {
     Map<String, Set<UUID>> idsByType = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
+      String fromType = record.getFromEntity();
+      // Skip types that have no repository (e.g. search-index-only pseudo-types such as
+      // tableColumn): resolving them throws EntityNotFoundException, and a single stray
+      // relationship row would otherwise fail the whole list response.
+      if (!Entity.hasEntityRepository(fromType)) {
+        continue;
+      }
       idsByType
-          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .computeIfAbsent(fromType, type -> new HashSet<>())
           .add(UUID.fromString(record.getFromId()));
     }
     Map<String, EntityReference> refById = new HashMap<>();
@@ -394,7 +401,11 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       List<EntityReference> filtered = filterOutDomainsAndDataProducts(relatedEntities);
       knowledgePage.withRelatedEntities(filtered);
     }
-    EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities());
+    // Capture the return so unresolvable refs (e.g. search-index-only pseudo-types such as
+    // tableColumn) are dropped before they are stored — otherwise they persist as HAS rows and
+    // fail every later read that resolves them via getEntityRepository.
+    knowledgePage.withRelatedEntities(
+        EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities()));
 
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
@@ -770,7 +781,13 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
     validateTaskThread(threadContext);
     TaskType taskType = threadContext.getThread().getTask().getType();
-    return new ApprovalTaskWorkflow(threadContext);
+    FeedRepository.TaskWorkflow workflow;
+    if (EntityUtil.isApprovalTask(taskType)) {
+      workflow = new ApprovalTaskWorkflow(threadContext);
+    } else {
+      workflow = super.getTaskWorkflow(threadContext);
+    }
+    return workflow;
   }
 
   public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {
