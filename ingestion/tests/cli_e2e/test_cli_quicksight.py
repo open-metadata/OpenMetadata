@@ -95,10 +95,12 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
             params={"service": "local_quicksight", "fields": "charts,dataModels"},
         ).entities
         for d in dashboards:
+            charts = d.charts.root if d.charts else []
+            data_models = d.dataModels.root if d.dataModels else []
             print(  # noqa: T201
                 f"[verify] dashboard {d.name.root!r} ({d.displayName!r}): "
-                f"charts={[c.displayName or c.name for c in d.charts or []]} "
-                f"dataModels={[m.displayName or m.name for m in d.dataModels or []]}"
+                f"charts={[c.displayName or c.name for c in charts]} "
+                f"dataModels={[m.displayName or m.name for m in data_models]}"
             )
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
