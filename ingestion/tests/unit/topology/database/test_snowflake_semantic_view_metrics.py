@@ -13,10 +13,12 @@
 import inspect
 import threading
 from unittest.mock import MagicMock
+from uuid import UUID
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Language, MetricType, Type
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
@@ -258,6 +260,56 @@ def test_yield_table_metrics_does_not_flush_when_the_view_has_no_metrics():
 
     assert records == []
     source.metadata.get_by_name.assert_not_called()
+
+
+def test_lineage_resolves_the_name_the_metadata_stage_emitted():
+    """End-to-end name round-trip across the two independent call sites.
+
+    The metadata stage writes the Metric under a name built from topology context
+    values; the lineage workflow later re-derives that name from raw
+    INFORMATION_SCHEMA rows to attach the `view -> Metric` edge. Nothing but
+    ``build_metric_name`` keeps them in agreement, and the existing lineage test
+    stubs the resolver to accept any name -- so only this test fails if they drift.
+    """
+    from metadata.ingestion.source.database.snowflake.semantic_view_lineage import (
+        SnowflakeSemanticViewLineage,
+    )
+
+    # the metadata stage sees a *quoted* schema/view from the topology context
+    source = _make_source()
+    source.context.get.return_value = MagicMock(
+        database_service="snowflake_svc", database="TEST_DB", database_schema='"SALES"'
+    )
+    source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
+    emitted = _metric_requests(source.yield_table_metrics((f'"{VIEW}"', TableType.SemanticView)))
+    ingested = {r.name.root for r in emitted}
+    assert ingested, "metadata stage emitted no metrics"
+
+    # the lineage workflow sees the same objects *unquoted*, straight from the catalog
+    view_entity = MagicMock()
+    view_entity.id = Uuid(root=UUID("11111111-1111-1111-1111-111111111111"))
+    metric_entity = MagicMock()
+    metric_entity.id = Uuid(root=UUID("22222222-2222-2222-2222-222222222222"))
+    resolved = []
+
+    def _resolve_metric(name):
+        resolved.append(name)
+        return metric_entity if name in ingested else None
+
+    extractor = SnowflakeSemanticViewLineage(
+        service_name="snowflake_svc",
+        engine=MagicMock(),
+        database_filter_pattern=None,
+        resolve_table_by_fqn=lambda _f: view_entity,
+        resolve_metric_by_name=_resolve_metric,
+    )
+    requests = list(
+        extractor._build_view_metric_edges("TEST_DB", "SALES", VIEW, view_entity, ["total_revenue", "order_count"])
+    )
+
+    edges = [r.right for r in requests if r.right is not None]
+    assert sorted(resolved) == sorted(ingested)
+    assert len(edges) == len(ingested)
 
 
 def test_yield_table_metrics_skips_non_semantic_tables():
