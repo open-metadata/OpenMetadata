@@ -189,7 +189,11 @@ jobs:
           set -o pipefail
           source env/bin/activate
           cd ingestion
+          set +e
           nox --no-venv -s unit-tests 2>&1 | tee unit-test-run.log
+          test_exit_code=${PIPESTATUS[0]}
+          echo "$test_exit_code" > unit-test-exit-code.txt
+          exit "$test_exit_code"
         shell: bash
 
       - name: Classify Python unit test outcome
@@ -199,8 +203,13 @@ jobs:
           TEST_PROFILE: python-unit
           TEST_STEP_OUTCOME: ${{ steps.unit-tests.outcome }}
         run: |
+          test_exit_code=""
+          if [[ -s ingestion/unit-test-exit-code.txt ]]; then
+            read -r test_exit_code < ingestion/unit-test-exit-code.txt
+          fi
           python3 .github/scripts/classify_test_outcome.py \
             --step-outcome "$TEST_STEP_OUTCOME" \
+            --exit-code "$test_exit_code" \
             --report-glob 'ingestion/junit/test-results-*.xml' \
             --diagnostic-glob 'ingestion/*-test-run.log' \
             --diagnostic-glob 'ingestion/static-checks-run.log' \
@@ -217,6 +226,7 @@ jobs:
             ingestion/ci-diagnostics/outcome.json
             ingestion/*-test-run.log
             ingestion/static-checks-run.log
+            ingestion/unit-test-exit-code.txt
           if-no-files-found: warn
           retention-days: 14
           compression-level: 1

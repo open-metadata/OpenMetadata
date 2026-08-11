@@ -1,9 +1,11 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.service.governance.workflows.Workflow.APPROVE_CONDITION;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_APPROVE_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_REJECT_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.REJECT_CONDITION;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
@@ -13,6 +15,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -52,6 +55,7 @@ import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.engine.runtime.ProcessInstanceQuery;
 import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -79,6 +83,7 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
+import org.openmetadata.service.util.FreshReadScope;
 
 @Slf4j
 public class WorkflowHandler {
@@ -111,6 +116,11 @@ public class WorkflowHandler {
   // versions on long-lived deployments. Fetching them one page at a time keeps memory bounded and
   // lets the loop stop cleanly the moment the backlog for THIS key is fully drained.
   private static final int CLEANUP_BATCH_SIZE = 100;
+
+  // Max entity ids per Flowable OR-chained query when cancelling running instances during a
+  // bulk hard-delete. Keeps the generated statement inside driver parameter limits (Postgres
+  // caps at 32767 bind params; MySQL is lower under some JDBC configs).
+  private static final int CANCEL_BATCH_SIZE = 100;
 
   /**
    * Message name used by the Collate Policy Agent node's await event. The batch coordinator delivers
@@ -283,8 +293,9 @@ public class WorkflowHandler {
     // Add Expression Manager
     processEngineConfiguration.setExpressionManager(new DefaultExpressionManager(expressionMap));
 
-    // Add Global Failure Listener
-    processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
+    // Add Global Failure Listener + per-job ThreadLocal cleanup for the async executor pool
+    processEngineConfiguration.setEventListeners(
+        List.of(new WorkflowFailureListener(), new WorkflowThreadCleanupListener()));
 
     boolean engineBuilt = false;
     try {
@@ -698,9 +709,17 @@ public class WorkflowHandler {
     }
   }
 
+  /**
+   * Signals are delivered synchronously, so the whole workflow — filters, attribute gates, status
+   * transitions — runs inline on the caller's thread. Those gates decide whether an entity gets an
+   * approval task at all, so they read fresh rather than trusting an in-process cache that a write on
+   * another node may not have invalidated.
+   */
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
-    runtimeService.signalEventReceived(signal, variables);
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      runtimeService.signalEventReceived(signal, variables);
+    }
   }
 
   private void unlockJobsOnStartup() {
@@ -912,6 +931,15 @@ public class WorkflowHandler {
   }
 
   private boolean resolveTaskInternal(
+      UUID customTaskId, Map<String, Object> variables, boolean legacyThreadTask) {
+    // Completing a user task continues the workflow inline, re-running the attribute gates that
+    // decide the entity's next status — same freshness requirement as triggerWithSignal.
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      return resolveTaskWithFreshReads(customTaskId, variables, legacyThreadTask);
+    }
+  }
+
+  private boolean resolveTaskWithFreshReads(
       UUID customTaskId, Map<String, Object> variables, boolean legacyThreadTask) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
@@ -1491,6 +1519,55 @@ public class WorkflowHandler {
   }
 
   /**
+   * Cancel every running MainWorkflow process instance whose relatedEntityId variable matches
+   * the given entity id. Called from EntityRepository.hardDelete so downstream nodes do not
+   * hit EntityNotFoundException on an entity that no longer exists.
+   */
+  public void cancelInstancesForEntity(UUID entityId, String reason) {
+    if (entityId != null) {
+      cancelInstancesForEntities(List.of(entityId), reason);
+    }
+  }
+
+  /**
+   * Batch variant of {@link #cancelInstancesForEntity}. Uses Flowable's OR builder in bounded
+   * sub-chunks so a large subtree hard-delete does not fan out into thousands of
+   * variableValueEquals queries. The count() gate short-circuits when the engine has zero
+   * running instances, which is the common case on tenants that don't use governance workflows.
+   */
+  public void cancelInstancesForEntities(Collection<UUID> entityIds, String reason) {
+    if (entityIds == null || entityIds.isEmpty()) {
+      return;
+    }
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    if (runtimeService.createProcessInstanceQuery().count() == 0) {
+      return;
+    }
+    String namespacedVar = getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE);
+    List<UUID> ids = new ArrayList<>(entityIds.size());
+    for (UUID id : entityIds) {
+      if (id != null) {
+        ids.add(id);
+      }
+    }
+    for (int i = 0; i < ids.size(); i += CANCEL_BATCH_SIZE) {
+      List<UUID> subChunk = ids.subList(i, Math.min(i + CANCEL_BATCH_SIZE, ids.size()));
+      ProcessInstanceQuery query = runtimeService.createProcessInstanceQuery().or();
+      for (UUID id : subChunk) {
+        query = query.variableValueEquals(namespacedVar, id.toString());
+      }
+      List<ProcessInstance> instances = query.endOr().list();
+      for (ProcessInstance pi : instances) {
+        try {
+          runtimeService.deleteProcessInstance(pi.getId(), reason);
+        } catch (FlowableException ignored) {
+          // Instance already ending or gone; deleteProcessInstance is idempotent enough here.
+        }
+      }
+    }
+  }
+
+  /**
    * Deliver the Policy Agent "result ready" message to a parked DAR process instance, waking its
    * PolicyAgent node so it resolves immediately instead of waiting for the safety timer. No-op if the
    * instance is not currently waiting on that message (already resolved, not yet parked, or the timer
@@ -1742,7 +1819,9 @@ public class WorkflowHandler {
 
     // Fallback to original behavior for non-periodic trigger types.
     try {
-      runtimeService.startProcessInstanceByKey(baseProcessKey);
+      // Trigger BPMN's CallActivity has inheritBusinessKey=true; passing a businessKey
+      // here ensures the spawned MainWorkflow inherits a non-null WorkflowInstance UUID.
+      runtimeService.startProcessInstanceByKey(baseProcessKey, UUID.randomUUID().toString());
       return true;
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error("No process definition found for key: {}", baseProcessKey);
@@ -1756,7 +1835,7 @@ public class WorkflowHandler {
     for (String processKey : processKeys) {
       try {
         LOG.info("Triggering process with key: {}", processKey);
-        runtimeService.startProcessInstanceByKey(processKey);
+        runtimeService.startProcessInstanceByKey(processKey, UUID.randomUUID().toString());
         anyStarted = true;
       } catch (Exception e) {
         LOG.error("Failed to start process: {}", processKey, e);

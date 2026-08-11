@@ -1002,6 +1002,7 @@ public class TagRepository extends EntityRepository<Tag> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveRecognizerConfigOnPut();
       compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
@@ -1026,6 +1027,17 @@ public class TagRepository extends EntityRepository<Tag> {
                   original.getAutoClassificationPriority(),
                   updated.getAutoClassificationPriority()));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
+    }
+
+    // CreateTag defaults recognizers to empty and autoClassificationEnabled to false, so a PUT
+    // that never mentions them is indistinguishable from one clearing them. Clear via PATCH.
+    private void preserveRecognizerConfigOnPut() {
+      if (operation != Operation.PUT || !nullOrEmpty(updated.getRecognizers())) {
+        return;
+      }
+      updated.setRecognizers(original.getRecognizers());
+      updated.setAutoClassificationEnabled(original.getAutoClassificationEnabled());
+      updated.setAutoClassificationPriority(original.getAutoClassificationPriority());
     }
 
     /**
