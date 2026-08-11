@@ -36,6 +36,7 @@ import {
 import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
+import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -619,6 +620,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await testCaseResponse;
       await waitForIncidentTask(actorPage, testCaseFqn);
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await reassignIncidentTask(actorPage, assignee1);
@@ -725,6 +727,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await actorPage.goto(testCasePageUrl);
 
       await testCaseResponse;
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await addAssigneeFromPopoverWidget({
