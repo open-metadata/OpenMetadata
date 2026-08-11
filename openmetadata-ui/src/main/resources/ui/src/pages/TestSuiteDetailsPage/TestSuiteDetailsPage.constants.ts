@@ -11,5 +11,10 @@
  *  limitations under the License.
  */
 
-export { useTestSuiteDetailsPage } from './hooks/useTestSuiteDetailsPage';
-export type { UseTestSuiteDetailsPageResult } from './TestSuiteDetailsPage.interface';
+import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+
+export const NON_FILTERING_TEST_CASE_PARAMS = new Set<
+  keyof ListTestCaseParamsBySearch
+>(['testSuiteId', 'offset', 'sortField', 'sortType']);
+
+export const TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS = 5;
