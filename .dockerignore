@@ -1,2 +1,3 @@
 docker/development/docker-volume
 docker/docker-compose-quickstart/docker-volume
+ingestion/src/metadata/generated

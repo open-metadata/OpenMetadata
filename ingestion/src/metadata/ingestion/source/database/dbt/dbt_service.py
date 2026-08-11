@@ -180,12 +180,8 @@ class DbtServiceTopology(ServiceTopology):
                     consumer=["yield_data_models"],
                     nullable=True,
                 ),
-                NodeStage(
-                    type_=AddLineageRequest,
-                    processor="create_dbt_metric_lineage",
-                    nullable=True,
-                ),
             ],
+            post_process=["drain_dbt_metrics"],
         )
     )
 

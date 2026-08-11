@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/type/entityReferenceInput.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entity Reference Input",
+  "description": "Inbound-request shape of an entity reference. Callers address the target by `id` OR by `fullyQualifiedName` — the server resolves either to a fully-populated EntityReference before persisting. Same field set as EntityReference so existing clients that also send optional metadata (`name`, `displayName`, `description`, `deleted`, `inherited`, `href`) continue to validate.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.EntityReferenceInput",
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies an entity instance. Optional when `fullyQualifiedName` is provided.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "type": {
+      "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name of the entity instance.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the entity instance. When set without `id`, the server resolves it to the target entity.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of entity.",
+      "$ref": "basic.json#/definitions/markdown"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this entity.",
+      "type": "string"
+    },
+    "deleted": {
+      "description": "If true the entity referred to has been soft-deleted.",
+      "type": "boolean"
+    },
+    "inherited": {
+      "description": "If true the relationship indicated by this entity reference is inherited from the parent entity.",
+      "type": "boolean"
+    },
+    "href": {
+      "description": "Link to the entity resource.",
+      "$ref": "basic.json#/definitions/href"
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

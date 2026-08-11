@@ -14,13 +14,14 @@
 DBT source methods.
 """
 
-import contextlib
 import re
 import traceback
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
 
+from metadata.domain.metrics import MetricIngestionFeature
+from metadata.domain.metrics.naming import build_qualified_metric_name
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -30,13 +31,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import (
-    Language,
     Metric,
-    MetricDimension,
-    MetricExpression,
-    MetricFilter,
-    MetricGranularity,
-    MetricMeasure,
 )
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -78,6 +73,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
@@ -126,10 +122,9 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
-    map_dbt_metric_type,
-    order_metrics_by_dependency,
     validate_custom_property_value,
 )
+from metadata.ingestion.source.database.dbt.metric_adapter import normalize_dbt_metric
 from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
@@ -169,6 +164,7 @@ class DbtSource(DbtServiceSource):
         # per referencing model. Bounded by the number of distinct upstream nodes in the
         # project and reset per project in yield_data_models.
         self.reported_unresolved_upstreams: set[str] = set()
+        self.metric_feature = MetricIngestionFeature()
         self._load_omd_custom_properties()
 
     @classmethod
@@ -945,7 +941,7 @@ class DbtSource(DbtServiceSource):
         if not metrics:
             return
         logger.debug(f"Found {len(metrics)} dbt metrics to process")
-        for key in order_metrics_by_dependency(metrics):
+        for key in metrics:
             self.context.get().dbt_metrics[key] = {
                 "metric_node": metrics[key],
                 "semantic_models": semantic_models,
@@ -1319,45 +1315,14 @@ class DbtSource(DbtServiceSource):
         semantic_models = metric_entry["semantic_models"]
         all_metrics = metric_entry.get("all_metrics") or {}
         try:
-            metric_name = metric_node.name
-            dbt_type = getattr(metric_node.type, "value", str(metric_node.type))
-            metric_type = map_dbt_metric_type(dbt_type)
-
-            description = getattr(metric_node, "description", None) or ""
-            label = getattr(metric_node, "label", None)
-
-            type_params = getattr(metric_node, "type_params", None)
-            metric_expression, related_metrics = self._build_expression_and_related(dbt_type, type_params, all_metrics)
-
-            dimensions = self._extract_dimensions(metric_node, semantic_models, all_metrics)
-            measures = self._extract_measures(metric_node, semantic_models, all_metrics)
-            filters = self._extract_filters(metric_node)
-
-            granularity = None
-            time_gran = getattr(metric_node, "time_granularity", None)
-            if time_gran:
-                gran_value = getattr(time_gran, "value", str(time_gran)).upper()
-                with contextlib.suppress(ValueError):
-                    granularity = MetricGranularity(gran_value)
-
-            tags = self._extract_metric_tags(metric_node)
-
-            create_metric = CreateMetricRequest(
-                name=metric_name,
-                displayName=label or metric_name,
-                description=description,
-                metricType=metric_type,
-                metricExpression=metric_expression,
-                granularity=granularity,
-                relatedMetrics=related_metrics,
-                dimensions=dimensions or None,
-                measures=measures or None,
-                filters=filters or None,
-                tags=tags or None,
+            definition = normalize_dbt_metric(
+                metric_node,
+                semantic_models,
+                service_name=self.config.serviceName,
+                all_metrics=all_metrics,
+                tags=tuple(self._extract_metric_tags(metric_node)),
             )
-
-            yield Either(right=create_metric)
-
+            self.metric_feature.accept(definition)
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
@@ -1367,155 +1332,33 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    def _build_expression_and_related(self, dbt_type, type_params, all_metrics):
-        builders = {
-            "simple": self._simple_metric_expression,
-            "derived": self._derived_metric_expr_and_related,
-            "ratio": self._ratio_metric_expr_and_related,
-            "cumulative": self._cumulative_metric_expression,
-            "conversion": self._conversion_metric_expression,
-        }
-        metric_expression = None
-        related_metrics = None
-        builder = builders.get(dbt_type)
-        if builder and type_params:
-            metric_expression, related_metrics = builder(type_params)
-        if related_metrics:
-            related_metrics = self._filter_known_metrics(related_metrics, all_metrics)
-        return metric_expression, related_metrics
+    def drain_dbt_metrics(self) -> Iterable[Either]:
+        """Emit the buffered metrics, flush the sink, then build their lineage.
 
-    @staticmethod
-    def _simple_metric_expression(type_params):
-        expression = None
-        measure_ref = getattr(type_params, "measure", None)
-        measure_name = getattr(measure_ref, "name", None) if measure_ref else None
-        if measure_name:
-            expression = MetricExpression(language=Language.SQL, code=measure_name)
-        return expression, None
+        The lineage step resolves each metric through the API, so the metrics
+        must be persisted before those lookups run.
+        """
+        yield from self.metric_feature.drain()
+        metric_entries = list(self.context.get().dbt_metrics.values())
+        if not metric_entries:
+            return
+        yield Either(right=Barrier(reason="dbt_metrics_flush"))
+        for metric_entry in metric_entries:
+            yield from self.create_dbt_metric_lineage(metric_entry)
 
-    @staticmethod
-    def _derived_metric_expr_and_related(type_params):
-        expression = None
-        expr = getattr(type_params, "expr", None)
-        if expr:
-            expression = MetricExpression(language=Language.SQL, code=expr)
-        sub_metrics = getattr(type_params, "metrics", None) or []
-        related = [getattr(m, "name", str(m)) for m in sub_metrics] or None
-        return expression, related
-
-    @staticmethod
-    def _ratio_metric_expr_and_related(type_params):
-        expression = None
-        numerator = getattr(type_params, "numerator", None)
-        denominator = getattr(type_params, "denominator", None)
-        num_name = getattr(numerator, "name", str(numerator)) if numerator else ""
-        den_name = getattr(denominator, "name", str(denominator)) if denominator else ""
-        related = [name for name in (num_name, den_name) if name] or None
-        if num_name and den_name:
-            expression = MetricExpression(language=Language.SQL, code=f"{num_name} / {den_name}")
-        return expression, related
-
-    @staticmethod
-    def _cumulative_window_str(type_params):
-        window_str = ""
-        cum_params = getattr(type_params, "cumulative_type_params", None)
-        window = getattr(cum_params, "window", None) if cum_params else None
-        if window:
-            count = getattr(window, "count", "")
-            gran = getattr(window, "granularity", None)
-            gran_val = getattr(gran, "value", str(gran)) if gran else ""
-            window_str = f" over {count} {gran_val}" if count else ""
-        return window_str
-
-    @staticmethod
-    def _cumulative_metric_expression(type_params):
-        expression = None
-        measure_ref = getattr(type_params, "measure", None)
-        measure_name = getattr(measure_ref, "name", None) if measure_ref else None
-        if measure_name:
-            window_str = DbtSource._cumulative_window_str(type_params)
-            expression = MetricExpression(language=Language.SQL, code=f"cumulative({measure_name}{window_str})")
-        return expression, None
-
-    @staticmethod
-    def _conversion_metric_expression(type_params):
-        expression = None
-        conv = getattr(type_params, "conversion_type_params", None)
-        if conv:
-            base = getattr(conv, "base_measure", None)
-            conversion = getattr(conv, "conversion_measure", None)
-            base_name = getattr(base, "name", "") if base else ""
-            conv_name = getattr(conversion, "name", "") if conversion else ""
-            entity = getattr(conv, "entity", "")
-            expression = MetricExpression(
-                language=Language.SQL,
-                code=f"conversion({base_name} -> {conv_name}, entity={entity})",
-            )
-        return expression, None
-
-    @staticmethod
-    def _filter_known_metrics(related_metrics, all_metrics):
-        known = {name for node in all_metrics.values() if (name := getattr(node, "name", None))}
-        return [name for name in related_metrics if name in known] or None
-
-    def _extract_dimensions(self, metric_node, semantic_models, all_metrics=None) -> list[MetricDimension]:
-        result = []
-        models = (
-            find_semantic_models_transitive(metric_node, semantic_models, all_metrics)
-            if all_metrics
-            else find_semantic_models_for_metric(metric_node, semantic_models)
+    def _qualified_metric_name(self, metric_node) -> str:
+        return build_qualified_metric_name(
+            self.config.serviceName,
+            str(getattr(metric_node, "package_name", "") or ""),
+            metric_node.name,
         )
-        seen = set()
-        for sm in models:
-            for dim in getattr(sm, "dimensions", None) or []:
-                if dim.name in seen:
-                    continue
-                seen.add(dim.name)
-                dim_type = getattr(dim.type, "value", str(dim.type)).upper() if dim.type else None
-                result.append(
-                    MetricDimension(
-                        name=dim.name,
-                        type=dim_type,
-                        description=getattr(dim, "description", None),
-                        expression=getattr(dim, "expr", None),
-                    )
-                )
-        return result
 
-    def _extract_measures(self, metric_node, semantic_models, all_metrics=None) -> list[MetricMeasure]:
-        result = []
-        models = (
-            find_semantic_models_transitive(metric_node, semantic_models, all_metrics)
-            if all_metrics
-            else find_semantic_models_for_metric(metric_node, semantic_models)
+    @staticmethod
+    def _metric_node_by_name(all_metrics: dict, name: str):
+        return next(
+            (node for node in all_metrics.values() if getattr(node, "name", None) == name),
+            None,
         )
-        seen = set()
-        for sm in models:
-            for measure in getattr(sm, "measures", None) or []:
-                if measure.name in seen:
-                    continue
-                seen.add(measure.name)
-                agg_value = getattr(measure.agg, "value", str(measure.agg)) if measure.agg else None
-                result.append(
-                    MetricMeasure(
-                        name=measure.name,
-                        aggregation=agg_value,
-                        description=getattr(measure, "description", None),
-                        expression=getattr(measure, "expr", None),
-                    )
-                )
-        return result
-
-    def _extract_filters(self, metric_node) -> list[MetricFilter]:
-        result = []
-        filter_obj = getattr(metric_node, "filter", None)
-        if filter_obj:
-            where_filters = getattr(filter_obj, "where_filters", None) or []
-            for wf in where_filters:
-                sql_template = getattr(wf, "where_sql_template", None)
-                if sql_template:
-                    result.append(MetricFilter(where=sql_template))
-        return result
 
     def _extract_metric_tags(self, metric_node) -> list:
         tags = getattr(metric_node, "tags", None) or []
@@ -1536,7 +1379,7 @@ class DbtSource(DbtServiceSource):
         semantic_models = metric_entry["semantic_models"]
         all_metrics = metric_entry.get("all_metrics") or {}
 
-        metric_name = metric_node.name
+        metric_name = self._qualified_metric_name(metric_node)
         metric_entity = self.metadata.get_by_name(
             entity=Metric,
             fqn=metric_name,
@@ -1600,7 +1443,10 @@ class DbtSource(DbtServiceSource):
         # Metric → Metric lineage (for derived/ratio/conversion metrics)
         for parent_name in find_dependent_metric_names(metric_node):
             try:
-                parent_entity = self.metadata.get_by_name(entity=Metric, fqn=parent_name)
+                parent_node = self._metric_node_by_name(all_metrics, parent_name)
+                if parent_node is None:
+                    continue
+                parent_entity = self.metadata.get_by_name(entity=Metric, fqn=self._qualified_metric_name(parent_node))
                 if not parent_entity:
                     continue
                 columns_lineage = self._build_metric_metric_column_lineage(parent_entity, metric_entity)

@@ -71,8 +71,8 @@
       }
     },
     "assets": {
-      "description": "Data assets (tables, dashboards, etc.) this metric is computed on or applies to.",
-      "$ref": "../../type/entityReferenceList.json",
+      "description": "Data assets (tables, dashboards, etc.) this metric is computed on or applies to. Each item is addressable by `id` OR `fullyQualifiedName`; the server resolves fqn refs to the underlying entity at write time.",
+      "$ref": "../../type/entityReferenceInputList.json",
       "default": null
     },
     "owners": {

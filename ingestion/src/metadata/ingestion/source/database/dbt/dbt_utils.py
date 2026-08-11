@@ -1170,37 +1170,6 @@ def find_semantic_models_transitive(
     return result
 
 
-def order_metrics_by_dependency(metrics: dict[str, Any]) -> list[str]:
-    """Order metric node ids so a metric is emitted after the metrics it depends on.
-
-    dbt manifests list metrics in arbitrary dict order, so a derived/ratio metric
-    can appear before the metric it references. Emitting in dependency order lets
-    ``relatedMetrics`` resolve against already-created parents. A DFS post-order
-    with a visited guard keeps the traversal safe against circular dependencies.
-    """
-    name_to_key = {}
-    for key, node in metrics.items():
-        name = getattr(node, "name", None)
-        if name:
-            name_to_key[name] = key
-    ordered: list[str] = []
-    visited: set[str] = set()
-
-    def visit(key: str) -> None:
-        if key in visited:
-            return
-        visited.add(key)
-        for dep_name in find_dependent_metric_names(metrics[key]):
-            dep_key = name_to_key.get(dep_name)
-            if dep_key is not None and dep_key != key:
-                visit(dep_key)
-        ordered.append(key)
-
-    for key in metrics:
-        visit(key)
-    return ordered
-
-
 def find_dependent_metric_names(metric) -> list[str]:
     """Get metric names from depends_on.nodes that are metric references."""
     depends_on = getattr(metric, "depends_on", None)

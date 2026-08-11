@@ -13,11 +13,13 @@ This script generates the Python models from the JSON Schemas definition. Additi
 pydantic class used for the password fields with the `CustomSecretStr` pydantic class which retrieves the secrets
 from a configured secrets' manager.
 """
+
 import glob
 import os
 import re
 
 from datamodel_code_generator.imports import Import
+
 # `model.pydantic` held the Pydantic v1 models and was removed in datamodel-code-generator 0.60+.
 # We generate with `--output-model-type pydantic_v2.BaseModel`, so patch the v2 type map.
 from datamodel_code_generator.model import pydantic_v2 as pydantic_model
@@ -40,7 +42,9 @@ UNICODE_REGEX_REPLACEMENT_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
 ]
 
-args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member".split(" ")
+args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member".split(
+    " "
+)
 
 main(args)
 
@@ -53,7 +57,9 @@ for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
         file_.write(content)
 
 # Add missing Union import
-MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",]
+MISSING_IMPORTS = [
+    f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",
+]
 WRITE_AFTER = "from __future__ import annotations"
 
 for file_path in MISSING_IMPORTS:
@@ -81,7 +87,9 @@ for file_path in MISSING_IMPORTS:
 # construction time -- that would make it impossible to ever construct the
 # raw-named object that transform_entity_names is meant to encode, breaking
 # tests in tests/unit/models/test_custom_basemodel_validation.py.
-generated_files = glob.glob(f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True)
+generated_files = glob.glob(
+    f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True
+)
 
 patterns_to_remove = [
     "pattern='^((?!::).)*$',",
@@ -113,9 +121,12 @@ for file_path in DATETIME_AWARE_FILE_PATHS:
         content = f.read()
         content = content.replace(
             "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
-            "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel"
+            "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel",
         )
-        content = content.replace("from datetime import date, time", "from datetime import date, time, datetime")
+        content = content.replace(
+            "from datetime import date, time",
+            "from datetime import date, time, datetime",
+        )
         content = content.replace("AwareDatetime", "datetime")
     with open(file_path, "w", encoding=UTF_8) as f:
         f.write(content)
@@ -136,13 +147,19 @@ for file_path in DATETIME_AWARE_FILE_PATHS:
 # This is a stopgap for the Python models only. The real fix is a discriminator on
 # `type` in openmetadata-spec/.../metadataIngestion/workflow.json, which would
 # resolve the union deterministically for the Java and TypeScript consumers too.
-UNION_MODE_FILE = f"{ingestion_path}src/metadata/generated/schema/metadataIngestion/workflow.py"
-SOURCE_CONFIG_BLOCK = re.compile(r"(class SourceConfig\(BaseModel\):.*?\n    \) )= None\n", re.DOTALL)
+UNION_MODE_FILE = (
+    f"{ingestion_path}src/metadata/generated/schema/metadataIngestion/workflow.py"
+)
+SOURCE_CONFIG_BLOCK = re.compile(
+    r"(class SourceConfig\(BaseModel\):.*?\n    [)\]] )= None\n", re.DOTALL
+)
 
 with open(UNION_MODE_FILE, "r", encoding=UTF_8) as f:
     content = f.read()
 
-content, applied = SOURCE_CONFIG_BLOCK.subn(r'\1= Field(None, union_mode="left_to_right")\n', content, count=1)
+content, applied = SOURCE_CONFIG_BLOCK.subn(
+    r'\1= Field(None, union_mode="left_to_right")\n', content, count=1
+)
 if applied != 1:
     # Fail loudly: silently skipping this leaves every `type`-less workflow config
     # resolving to the wrong pipeline model at runtime.

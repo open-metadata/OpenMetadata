@@ -14,6 +14,7 @@ Snowflake source module
 
 import json  # noqa: I001
 import traceback
+from copy import deepcopy
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
@@ -65,9 +66,29 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.domain.metrics import MetricIngestionFeature
+from metadata.ingestion.models.topology import NodeStage
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
+from metadata.ingestion.source.database.snowflake.metric_adapter import (
+    normalize_snowflake_metric,
+)
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
+from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.source.database.snowflake.semantic_view import (
+    SemanticCatalogCache,
+    build_columns,
+    fetch_definition,
+    fetch_view_names,
+)
+from metadata.ingestion.source.database.snowflake.semantic_view.lineage import (
+    BaseTableEdge,
+    build_view_lineage,
+    to_metric_lineage_request,
+    to_view_lineage_request,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -207,6 +228,24 @@ def _show_column(row, name: str):
     return result
 
 
+# Base-table -> view edges wait for every schema to be walked, since a base table
+# may live in one this run has not reached. This caps that wait: past it, edges are
+# emitted early and any still-unwritten base table fails visibly at the sink.
+_MAX_PENDING_VIEW_LINEAGE = 5_000
+
+_SNOWFLAKE_TOPOLOGY = deepcopy(DatabaseServiceTopology())
+_SNOWFLAKE_TOPOLOGY.table.stages.append(
+    NodeStage(  # pyright: ignore[reportCallIssue]
+        type_=CreateMetricRequest,
+        processor="yield_semantic_view_metrics",
+        nullable=True,
+    )
+)
+_SNOWFLAKE_TOPOLOGY.root.post_process = list(_SNOWFLAKE_TOPOLOGY.root.post_process or []) + [
+    "drain_semantic_view_metrics",
+]
+
+
 # pylint: disable=too-many-public-methods
 class SnowflakeSource(
     ExternalTableLineageMixin,
@@ -219,6 +258,7 @@ class SnowflakeSource(
     """
 
     service_connection: SnowflakeConnection
+    topology = _SNOWFLAKE_TOPOLOGY
 
     def __init__(
         self,
@@ -228,6 +268,11 @@ class SnowflakeSource(
         incremental_configuration: IncrementalConfig,
     ):
         super().__init__(config, metadata)
+        self.metric_feature = MetricIngestionFeature()
+        self._pending_view_lineage: list[tuple[str, BaseTableEdge]] = []
+        self._pending_metric_lineage: list[tuple[str, str]] = []
+        self._semantic_catalog_cache = SemanticCatalogCache()
+        self._semantic_view_names_by_schema: dict[str, list[str]] = {}
         self.partition_details = {}
         self.schema_desc_map = {}
         self.database_desc_map = {}
@@ -831,7 +876,47 @@ class SnowflakeSource(
         if self.service_connection.includeStages:
             table_list.extend(self._get_stage_names_and_types(schema_name))
 
+        if getattr(self.service_connection, "includeSemanticViews", False):
+            try:
+                table_list.extend(self._get_semantic_view_names_and_types(schema_name))
+            except Exception as exc:
+                logger.warning(f"Failed to list semantic views in schema [{schema_name}]: {exc}")
+                logger.debug(traceback.format_exc())
+
         return table_list
+
+    def _get_semantic_view_names_and_types(self, schema_name: str) -> list[TableNameAndType]:
+        """Semantic views enter the normal Table lifecycle as ``TableType.SemanticView``
+        so ``yield_table``, tag inheritance and ``mark_tables_as_deleted`` all apply."""
+        self._semantic_view_names_by_schema[schema_name] = fetch_view_names(self.connection, schema_name)
+        return [
+            TableNameAndType(name=view, type_=TableType.SemanticView)
+            for view in self._semantic_view_names_by_schema[schema_name]
+        ]
+
+    def _get_semantic_view_columns(self, schema_name: str, table_name: str):
+        """Populate a semantic view's Table columns from the dim/fact/metric catalog.
+        Returns SQLAlchemy-shape dicts so ``sql_column_handler.process_column`` maps
+        them into OM ``Column`` entities via the standard type-parser path."""
+        try:
+            catalog = self._semantic_view_catalog(schema_name, table_name)
+        except Exception as exc:
+            logger.warning(f"Failed to fetch semantic-view catalog for {schema_name}.{table_name}: {exc}")
+            logger.debug(traceback.format_exc())
+            return []
+        return build_columns(
+            dimensions=catalog.dimensions,
+            facts=catalog.facts,
+            metrics=catalog.metrics,
+        )
+
+    def _semantic_view_catalog(self, schema_name: str, table_name: str):
+        """Slice the LRU-cached schema-wide catalog for one view. First lookup
+        per schema fires 3 or 4 queries (dim/fact/metric + tables); every
+        subsequent view in the same schema is a cache hit."""
+        view_names = self._semantic_view_names_by_schema.get(schema_name) or [table_name]
+        schema_catalog = self._semantic_catalog_cache.get_or_load(self.connection, schema_name, view_names)
+        return schema_catalog.view(table_name)
 
     def _get_org_name(self) -> Optional[str]:  # noqa: UP045
         try:
@@ -1068,6 +1153,9 @@ class SnowflakeSource(
         if table_type == TableType.Stage:
             return []
 
+        if table_type == TableType.SemanticView:
+            return self._get_semantic_view_columns(schema_name, table_name)
+
         # For streams, we will use source table/view's columns
         # since stream does not define columns separately in Snowflake
         if table_type == TableType.Stream:
@@ -1150,6 +1238,8 @@ class SnowflakeSource(
                 # Snowflake Stage does not have a DDL or definition,
                 # so we will return None for stage type
                 pass
+            elif table_type == TableType.SemanticView:
+                schema_definition = fetch_definition(self.connection, f"{schema_name}.{table_name}")
             elif self.source_config.includeDDL or table_type == TableType.Dynamic:
                 schema_definition = inspector.get_table_ddl(self.connection, table_name, schema_name)
             schema_definition = str(schema_definition).strip() if schema_definition is not None else None
@@ -1323,3 +1413,103 @@ class SnowflakeSource(
                 table_tags.append(label)
 
         return table_tags if table_tags else None
+
+    def yield_semantic_view_metrics(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either]:  # noqa: UP006
+        """Accept every reusable metric on ``table_name_and_type`` (a semantic
+        view) into ``self.metric_feature``. Runs per Table row on ``.table``
+        (producer yields plain ``(name, TableType)`` tuples, matching
+        ``yield_table``). Drain fires at ``root.post_process``."""
+        table_name, table_type = table_name_and_type
+        if table_type != TableType.SemanticView:
+            return
+        ctx = self.context.get()
+        service = ctx.database_service  # pyright: ignore[reportAttributeAccessIssue]
+        database = ctx.database  # pyright: ignore[reportAttributeAccessIssue]
+        schema = ctx.database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        try:
+            catalog = self._semantic_view_catalog(schema, table_name)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"semantic-view/{schema}.{table_name}",
+                    error=f"failed to fetch catalog: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return
+        base_fqn_by_logical = {
+            logical: f"{service}.{cat}.{sch}.{name}" for logical, (cat, sch, name) in catalog.base_tables.items()
+        }
+        view_fqn = f"{service}.{database}.{schema}.{table_name}"
+        if self.source_config.processViewLineage:
+            self._buffer_view_lineage(view_fqn, catalog, base_fqn_by_logical)
+            if len(self._pending_view_lineage) >= _MAX_PENDING_VIEW_LINEAGE:
+                logger.warning(
+                    "Buffered semantic-view lineage reached %d edges; emitting them now. "
+                    "Edges whose base table lives in a schema this run has not reached yet "
+                    "will not resolve.",
+                    len(self._pending_view_lineage),
+                )
+                yield from self._flush_view_lineage()
+        for metric_row in catalog.metrics:
+            try:
+                definition = normalize_snowflake_metric(
+                    service_name=service,
+                    database=database,
+                    schema=schema,
+                    view=table_name,
+                    metric_row=metric_row,
+                    dimension_rows=catalog.dimensions,
+                    fact_rows=catalog.facts,
+                )
+                self.metric_feature.accept(definition)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=f"semantic-metric/{schema}.{table_name}",
+                        error=f"accept failed: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                continue
+            if self.source_config.processViewLineage:
+                self._pending_metric_lineage.append((view_fqn, definition.name))
+
+    def drain_semantic_view_metrics(self) -> Iterable[Either]:
+        """Drain metric definitions, flush the sink, then emit buffered lineage.
+
+        Lineage endpoints resolve fqn-only references at write time, so the
+        target Tables and Metrics must be persisted before the edges are sent.
+        """
+        yield from self.metric_feature.drain()
+        if not (self._pending_view_lineage or self._pending_metric_lineage):
+            return
+        yield from self._flush_view_lineage()
+        for view_fqn, metric_name in self._pending_metric_lineage:
+            yield Either(right=to_metric_lineage_request(view_fqn, metric_name))
+        self._pending_metric_lineage.clear()
+
+    def _flush_view_lineage(self) -> Iterable[Either]:
+        """Emit buffered base-table → view edges behind a sink flush."""
+        yield Either(right=Barrier(reason="semantic_view_lineage_flush"))  # pyright: ignore[reportCallIssue]
+        for view_fqn, edge in self._pending_view_lineage:
+            yield Either(right=to_view_lineage_request(view_fqn, edge))
+        self._pending_view_lineage.clear()
+
+    def _buffer_view_lineage(
+        self,
+        view_fqn: str,
+        catalog,
+        base_fqn_by_logical: dict[str, str],
+    ) -> None:
+        """Buffer base-table → view edges. Edges hold bare column names; the
+        request objects are built at emission so a long run stays cheap."""
+        if not base_fqn_by_logical:
+            return
+        self._pending_view_lineage.extend(
+            (view_fqn, edge)
+            for edge in build_view_lineage(
+                catalog=catalog,
+                base_table_fqns_by_logical={k.lower(): v for k, v in base_fqn_by_logical.items()},
+            )
+        )

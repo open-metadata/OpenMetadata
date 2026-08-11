@@ -1,0 +1,11 @@
+{
+    "$id": "https://open-metadata.org/schema/type/entityReferenceInputList.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Entity Reference Input List",
+    "description": "List of EntityReferenceInput items. Used on inbound Create requests where each reference may be addressed by `id` OR `fullyQualifiedName`.",
+    "type": "array",
+    "items": {
+        "$ref": "entityReferenceInput.json"
+    },
+    "default": null
+}
