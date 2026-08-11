@@ -307,6 +307,8 @@
     "browse-estate": "Navegar pelo acervo",
     "browse-glossary": "Navegar no glossário",
     "bulk-edit": "Edição em massa",
+    "bulk-edit-all": "Edição em massa de todos",
+    "bulk-edit-count": "Edição em massa ({{count}} selecionados)",
     "bulk-import-entity": "Importação em massa de {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

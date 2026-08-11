@@ -307,6 +307,8 @@
     "browse-estate": "Veri Mirasına Gözat",
     "browse-glossary": "Sözlüğe göz at",
     "bulk-edit": "Toplu Düzenleme",
+    "bulk-edit-all": "Tümünü Toplu Düzenle",
+    "bulk-edit-count": "Toplu Düzenleme ({{count}} seçili)",
     "bulk-import-entity": "{{entity}} toplu içe aktarma",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

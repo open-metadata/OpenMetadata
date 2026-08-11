@@ -1690,4 +1690,47 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await page.locator('thead label[slot="selection"]').click();
     await expect(page.locator('.metric-list-selection-bar')).not.toBeVisible();
   });
+
+    test('MetricListPage clicking anywhere in a row navigates to metric details', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      const searchResponse = waitForMetricsSearchResponse(page);
+      await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
+
+      const row = page
+        .locator('tr')
+        .filter({ hasText: fixtures.prefix })
+        .first();
+      await expect(row).toBeVisible();
+
+      await row.locator('.metric-status-pill').first().click();
+
+      await expect(page).toHaveURL(/\/metric\//);
+    });
+
+    test('MetricListPage clicking the row checkbox selects without navigating', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await waitForMetricsPage(page);
+      const searchResponse = waitForMetricsSearchResponse(page);
+      await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
+
+      const row = page
+        .locator('tr')
+        .filter({ hasText: fixtures.prefix })
+        .first();
+      await expect(row).toBeVisible();
+
+      await row.locator('label[slot="selection"]').click();
+
+      await expect(page.locator('.metric-list-selection-count')).toHaveText(
+        '1'
+      );
+      await expect(page).toHaveURL(/\/metrics/);
+    });
 });

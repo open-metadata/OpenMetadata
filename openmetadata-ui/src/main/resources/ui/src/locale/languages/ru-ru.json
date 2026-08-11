@@ -307,6 +307,8 @@
     "browse-estate": "Просмотр активов",
     "browse-glossary": "Открыть глоссарий",
     "bulk-edit": "Массовое редактирование",
+    "bulk-edit-all": "Массовое редактирование всех",
+    "bulk-edit-count": "Массовое редактирование ({{count}} выбрано)",
     "bulk-import-entity": "Массовый импорт {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

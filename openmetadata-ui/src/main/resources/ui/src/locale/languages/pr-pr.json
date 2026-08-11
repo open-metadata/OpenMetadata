@@ -307,6 +307,8 @@
     "browse-estate": "مرور مجموعه داده",
     "browse-glossary": "مرور واژه‌نامه",
     "bulk-edit": "ویرایش دسته‌ای",
+    "bulk-edit-all": "ویرایش دسته‌ای همه",
+    "bulk-edit-count": "ویرایش دسته‌ای ({{count}} انتخاب‌شده)",
     "bulk-import-entity": "درون‌ریزی انبوه {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",
