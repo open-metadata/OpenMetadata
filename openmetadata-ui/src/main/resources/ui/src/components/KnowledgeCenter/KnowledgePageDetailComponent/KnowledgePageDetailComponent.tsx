@@ -116,7 +116,7 @@ const stripPendingUploadNodes = (html: string): string => {
   doc
     .querySelectorAll('div[data-type="file-attachment"][data-uploading="true"]')
     .forEach((node) => {
-      if (!node.getAttribute('data-url')) {
+      if (!node.dataset.url) {
         node.remove();
       }
     });
