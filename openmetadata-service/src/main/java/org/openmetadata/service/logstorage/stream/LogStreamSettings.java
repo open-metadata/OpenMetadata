@@ -16,6 +16,15 @@ package org.openmetadata.service.logstorage.stream;
  * Bounds every live log stream. Each value caps a resource that would otherwise grow with the size
  * of a run's log, the number of viewers, or the lifetime of a browser tab left open.
  *
+ * <p>Two units are in play. {@code maxPendingBytesPerClient} is charged in encoded UTF-8 bytes,
+ * because it bounds what has been handed to the container on its way to a socket. The chunk-level
+ * counters — {@code maxBytesPerTick}, {@code maxStreamBytes} and {@code maxReplayBytes} — are
+ * charged in characters, which is exact for the ASCII that log output overwhelmingly is and is the
+ * closer proxy for {@code maxReplayBytes}, whose subject is heap held in UTF-16 strings rather than
+ * bytes on the wire. For non-ASCII content those three admit up to three times their nominal value
+ * before tripping; they are safety ceilings, so erring long is acceptable, and counting bytes on
+ * every access would mean re-scanning each chunk on a hot path.
+ *
  * @param pollSeconds delay between two reads of one run. The same delay serves every viewer of that
  *     run, so viewer count never multiplies backend load.
  * @param linesPerRead lines pulled per storage read. Caps the page held in heap at any moment.

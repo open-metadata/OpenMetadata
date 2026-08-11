@@ -100,6 +100,38 @@ public final class LogStreamSubscriber {
 
   private static long size(OutboundSseEvent event) {
     final Object data = event.getData();
-    return data instanceof String text ? text.length() : 0L;
+    return data instanceof String text ? utf8Length(text) : 0L;
+  }
+
+  /**
+   * What the event will weigh once encoded, counted rather than measured: the frame goes to the
+   * socket as UTF-8, so charging the ceiling by {@code String.length()} would under-count every
+   * non-ASCII log line and let a stalled client pin more heap than configured. Counting beats
+   * {@code getBytes(UTF_8).length} here because that allocates a second copy of every frame purely
+   * to learn its size.
+   */
+  private static long utf8Length(String text) {
+    long bytes = 0;
+    for (int index = 0; index < text.length(); index++) {
+      final char character = text.charAt(index);
+      if (character < 0x80) {
+        bytes += 1;
+      } else if (character < 0x800) {
+        bytes += 2;
+      } else if (isSurrogatePairAt(text, index)) {
+        // One code point across two chars encodes to four bytes; skip the low half.
+        bytes += 4;
+        index++;
+      } else {
+        bytes += 3;
+      }
+    }
+    return bytes;
+  }
+
+  private static boolean isSurrogatePairAt(String text, int index) {
+    return Character.isHighSurrogate(text.charAt(index))
+        && index + 1 < text.length()
+        && Character.isLowSurrogate(text.charAt(index + 1));
   }
 }

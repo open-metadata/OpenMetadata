@@ -77,6 +77,11 @@ A stream that ends **without** a `complete` event was cut short — the client s
 socket and crossed its backlog ceiling, the server went away, or the network dropped. Treat a closed
 body with no `complete` as "reconnect with `?after=<last cursor>`".
 
+**Back off between reconnects.** The causes above are often persistent: a viewer that cannot keep up
+crosses its backlog ceiling again on the next attempt, and each reconnect re-fetches the replay
+backlog. Reconnecting immediately in a loop turns one struggling client into a load generator. Use a
+capped exponential delay, and give up after a few consecutive failures rather than retrying forever.
+
 **Status codes**
 
 | Code | When |
