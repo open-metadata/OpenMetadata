@@ -50,7 +50,7 @@ import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import './test-suite-details-page.less';
-import { useTestSuiteDetailsPage } from './useTestSuiteDetailsPage';
+import { useTestSuiteDetailsPage } from './hooks/useTestSuiteDetailsPage';
 
 const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
