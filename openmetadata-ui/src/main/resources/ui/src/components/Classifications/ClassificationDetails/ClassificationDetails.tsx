@@ -207,7 +207,6 @@ const ClassificationDetails = forwardRef(
       editDescriptionPermission,
       createPermission,
       deletePermission,
-      editDisplayNamePermission,
       editOwnerPermission,
       editDomainPermission,
     } = useMemo(() => {
@@ -226,9 +225,6 @@ const ClassificationDetails = forwardRef(
             classificationPermissions.EditAll),
         deletePermission:
           classificationPermissions.Delete && !isSystemClassification,
-        editDisplayNamePermission:
-          classificationPermissions.EditAll ||
-          classificationPermissions.EditDisplayName,
         editOwnerPermission:
           isEditable &&
           (classificationPermissions.EditAll ||
@@ -261,17 +257,14 @@ const ClassificationDetails = forwardRef(
       [isTier, isSystemClassification, editClassificationPermission]
     );
 
+    // The edit drawer edits every classification field, so it needs full
+    // EditAll access.
     const showEditOption = useMemo(
       () =>
         !isVersionView &&
         !isClassificationDisabled &&
-        (editDisplayNamePermission || editClassificationPermission),
-      [
-        isVersionView,
-        isClassificationDisabled,
-        editDisplayNamePermission,
         editClassificationPermission,
-      ]
+      [isVersionView, isClassificationDisabled, editClassificationPermission]
     );
 
     const showManageButton = useMemo(
