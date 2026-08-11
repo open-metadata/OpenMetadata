@@ -112,12 +112,27 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       return;
     }
 
-    setIsUploading(true);
-    const contextFile = await uploadSingleFile(entry);
-    setIsUploading(false);
+    // Mark the file as 'retrying' synchronously before any async work.
+    // This immediately flips failed=false in the JSX (hiding the "Try Again"
+    // button and showing "Uploading..." instead) without waiting for any
+    // async state update or isUploading guard — which were the root cause of
+    // the button staying visible after a successful retry.
+    setFiles((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, status: 'retrying' } : f))
+    );
 
-    if (contextFile) {
+    try {
+      const contextFile = await uploadDriveFile(entry.file, folderFqn);
+      setFiles((prev) => prev.filter((f) => f.id !== id));
+      showSuccessToast(t('message.documents-uploaded-successfully'));
       onUploaded?.([contextFile]);
+    } catch (err) {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === id ? { ...f, progress: 0, status: 'error' } : f
+        )
+      );
+      showErrorToast(err as AxiosError, t('message.upload-failed'));
     }
   };
 
@@ -127,6 +142,13 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     if (pending.length === 0) {
       return;
     }
+
+    // Capture any files already in error state (e.g. duplicate-name failures from
+    // a previous attempt). These are not included in `pending` so the batch size
+    // comparison alone can't detect them — we must check before the uploads start.
+    const hasPreExistingErrors = files.some(
+      (f) => f.status === 'error' && !f.sizeExceeded
+    );
 
     cancelledRef.current = false;
     setIsUploading(true);
@@ -145,9 +167,27 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       setIsUploading(false);
 
       if (batchFiles.length > 0) {
+        // Mark each successfully uploaded file as 'uploaded' so the row
+        // shows "Complete" and is excluded from any future Attach click.
+        const succeededIds = new Set(
+          pending.filter((_, i) => Boolean(results[i])).map((e) => e.id)
+        );
+        setFiles((prev) =>
+          prev.map((f) =>
+            succeededIds.has(f.id)
+              ? { ...f, progress: 100, status: 'uploaded' }
+              : f
+          )
+        );
+
         onUploaded?.(batchFiles);
-        showSuccessToast(t('message.documents-uploaded-successfully'));
-        handleClose();
+        const allBatchSucceeded = batchFiles.length === pending.length;
+        if (allBatchSucceeded && !hasPreExistingErrors) {
+          showSuccessToast(t('message.documents-uploaded-successfully'));
+          handleClose();
+        } else {
+          showSuccessToast(t('message.some-documents-uploaded-successfully'));
+        }
       }
     }
   };
@@ -184,7 +224,11 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                       failedLabel={t('label.failed')}
                       key={id}
                       name={file.name}
-                      progress={status === 'done' ? 100 : progress}
+                      progress={
+                        status === 'done' || status === 'uploaded'
+                          ? 100
+                          : progress
+                      }
                       size={file.size}
                       tryAgainLabel={t('label.try-again')}
                       type={getFileExt(file.name)}

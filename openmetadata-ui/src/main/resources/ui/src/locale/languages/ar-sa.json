@@ -4166,6 +4166,7 @@
     "soft-delete-common-message": "إيقاف هذا {{entity}}. يمكنك استعادته لاحقًا.",
     "soft-delete-message-for-entity": "سيؤدي الحذف الناعم (Soft deleting) إلى إلغاء تنشيط {{entity}}. سيؤدي هذا إلى تعطيل أي عمليات اكتشاف أو قراءة أو كتابة على {{entity}}.",
     "soft-delete-message-for-n-entities": "سيؤدي الحذف الناعم إلى إلغاء تنشيط {{count}} {{entity}}. سيؤدي هذا إلى تعطيل أي عمليات اكتشاف أو قراءة أو كتابة عليها.",
+    "some-documents-uploaded-successfully": "تم تحميل بعض المستندات بنجاح. يرجى إعادة المحاولة للملفات التي فشلت.",
     "something-went-wrong": "حدث خطأ ما",
     "source-aligned-domain-type-description": "المجالات التي تجمع وتنظم البيانات من مصادر متعددة وموائمة للمصدر لتوفير بيانات مجمعة ومنتجات بيانات، مثل Customer 360، وجلسات العملاء، وما إلى ذلك، لتستهلكها المجالات الأخرى.",
     "special-character-not-allowed": "لا يُسمح بالأحرف الخاصة.",
