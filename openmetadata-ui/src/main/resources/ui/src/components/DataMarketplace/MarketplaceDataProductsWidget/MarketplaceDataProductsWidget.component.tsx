@@ -258,7 +258,7 @@ const MarketplaceDataProductsWidget = ({
         )}
       </div>
       {isEmpty(dataProducts) ? (
-        <div className="tw:relative tw:flex tw:min-h-40 tw:items-center tw:justify-center">
+        <div className="tw:relative tw:flex tw:min-h-60 tw:items-center tw:justify-center">
           <CreatePlaceholder
             actions={
               !isEditView && permissions.dataProduct?.Create

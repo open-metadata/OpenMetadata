@@ -241,14 +241,16 @@ const MarketplaceDomainsWidget = ({
         )}
       </div>
       {isEmpty(domains) ? (
-        <div className="tw:relative tw:flex tw:min-h-40 tw:items-center tw:justify-center">
+        <div className="tw:relative tw:flex tw:min-h-60 tw:items-center tw:justify-center">
           <CreatePlaceholder
             actions={
               !isEditView && permissions.domain?.Create
                 ? [
                     {
                       key: 'add',
-                      label: t('label.new-entity', { entity: t('label.domain') }),
+                      label: t('label.new-entity', {
+                        entity: t('label.domain'),
+                      }),
                       color: 'primary',
                       iconLeading: Plus,
                       onPress: openDrawer,
