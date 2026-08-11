@@ -848,7 +848,7 @@ const MetricListPage = () => {
                     <div className="metric-list-selection-actions">
                       {permission.EditAll && (
                         <Button
-                          className="metric-list-selection-action"
+                          className="metric-list-selection-action tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
                           color="link-color"
                           data-testid="bulk-edit-metric"
                           iconLeading={Edit03}
