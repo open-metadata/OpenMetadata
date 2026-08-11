@@ -279,6 +279,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     def _run(self) -> TestCaseResult:
         column_diff: ColumnDiffResult = self.get_column_diff()
         threshold = self.get_test_case_param_value(self.test_case.parameterValues, "threshold", int, default=0)
+        # get_test_case_param_value is typed on the caster it is handed, so its return widens to type[int] | None
+        threshold = cast("int", threshold or 0)
         if column_diff:
             # If there are column differences, we set extra_columns to the common columns for the diff
             # Exclude incomparable columns (different data types) from the comparison
@@ -317,13 +319,14 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 )
                 count = self._compute_row_count(self.runner, None)  # type: ignore
                 test_case_result.passedRows = stats["unchanged"]
-                test_case_result.passedRowsPercentage = test_case_result.passedRows / count * 100
-                test_case_result.failedRowsPercentage = test_case_result.failedRows / count * 100
+                if count:
+                    test_case_result.passedRowsPercentage = (test_case_result.passedRows or 0) / count * 100
+                    test_case_result.failedRowsPercentage = (test_case_result.failedRows or 0) / count * 100
                 return test_case_result
             return self.get_row_diff_test_case_result(
                 threshold,
                 self.calculate_diffs_with_limit(table_diff_iter, threshold),
-                column_diff,
+                column_diff=column_diff,
             )
 
     def get_incomparable_columns(self) -> List[str]:  # noqa: UP006
