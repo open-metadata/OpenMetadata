@@ -15,18 +15,33 @@ Integration tests for the NullMissingCount metric against real engines.
 The metric backs the `columnValuesMissingCount` data quality test. Comparing a
 non-string column against '' fails on PostgreSQL and returns the wrong count on
 MySQL, so both engines are exercised here.
+
+Container types need a real engine to be tested at all: a JSON comparison only
+fails once PostgreSQL looks for a `json = text` operator, and an array comparison
+never fails — SQLAlchemy binds '' as an empty array, so the wrong count comes back
+silently. Neither shows up when the metric is merely compiled.
 """
 
 import datetime
 
 import pytest
-from sqlalchemy import Boolean, Column, Date, Integer, String, create_engine, select
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    Date,
+    Integer,
+    String,
+    create_engine,
+    select,
+)
 from sqlalchemy.orm import DeclarativeBase
 from testcontainers.mysql import MySqlContainer
 from testcontainers.postgres import PostgresContainer
 
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.types.custom_array import CustomArray
 
 
 class Base(DeclarativeBase):
@@ -40,18 +55,44 @@ class MissingCountTestTable(Base):
     date_col = Column(Date)
     bool_col = Column(Boolean)
     str_col = Column(String(64))
+    # none_as_null so a Python None lands as SQL NULL rather than the JSON literal
+    # null, which IS NULL would not match
+    json_col = Column(JSON(none_as_null=True))
+
+
+class ArrayBase(DeclarativeBase):
+    """Separate metadata: arrays are PostgreSQL-only, MySQL has no array type"""
+
+
+class ArrayMissingCountTestTable(ArrayBase):
+    __tablename__ = "array_missing_count_test"
+    row_id = Column(Integer, primary_key=True)
+    # CustomArray, not ARRAY: this is what the ORM converter builds for DataType.ARRAY
+    str_array_col = Column(CustomArray(String(64)))
+    int_array_col = Column(CustomArray(Integer))
 
 
 # 3 NULLs per column, plus the values MySQL would coerce '' into: 2 zeros in
 # int_col and 2 false in bool_col. Only the NULLs are missing for those columns;
-# str_col also counts its 2 empty strings.
+# str_col also counts its 2 empty strings. json_col holds an empty object and an
+# empty array, which are present values rather than missing ones.
 ROWS = [
-    (1, 0, datetime.date(2024, 1, 1), False, ""),
-    (2, 0, datetime.date(2024, 1, 2), False, ""),
-    (3, 7, datetime.date(2024, 1, 3), True, "a value"),
-    (4, None, None, None, None),
-    (5, None, None, None, None),
-    (6, None, None, None, None),
+    (1, 0, datetime.date(2024, 1, 1), False, "", {"key": "value"}),
+    (2, 0, datetime.date(2024, 1, 2), False, "", {}),
+    (3, 7, datetime.date(2024, 1, 3), True, "a value", []),
+    (4, None, None, None, None, None),
+    (5, None, None, None, None, None),
+    (6, None, None, None, None, None),
+]
+
+# Empty arrays are present values. They are the ones a '' comparison silently
+# counts, because SQLAlchemy binds the '' as an empty array.
+ARRAY_ROWS = [
+    (1, ["a value"], [7]),
+    (2, [], []),
+    (3, None, None),
+    (4, None, None),
+    (5, None, None),
 ]
 
 EXPECTED_NULL_COUNT = 3
@@ -69,12 +110,28 @@ def _seed(engine):
                 date_col=date_col,
                 bool_col=bool_col,
                 str_col=str_col,
+                json_col=json_col,
             )
-            for row_id, int_col, date_col, bool_col, str_col in ROWS
+            for row_id, int_col, date_col, bool_col, str_col, json_col in ROWS
         ]
     )
     session.commit()
     return session
+
+
+def _seed_arrays(engine, session):
+    ArrayBase.metadata.create_all(bind=engine)
+    session.add_all(
+        [
+            ArrayMissingCountTestTable(
+                row_id=row_id,
+                str_array_col=str_array_col,
+                int_array_col=int_array_col,
+            )
+            for row_id, str_array_col, int_array_col in ARRAY_ROWS
+        ]
+    )
+    session.commit()
 
 
 @pytest.fixture(scope="module")
@@ -82,6 +139,7 @@ def postgres_session():
     with PostgresContainer("postgres:15") as container:
         engine = create_engine(container.get_connection_url())
         session = _seed(engine)
+        _seed_arrays(engine, session)
         yield session
         session.close()
         engine.dispose()
@@ -106,9 +164,17 @@ def session(request):
     session.rollback()
 
 
-def run_null_missing_count(session, column) -> int:
+@pytest.fixture
+def array_session(postgres_session):
+    """Postgres-only session, rolled back for the same reason as `session`"""
+    yield postgres_session
+    postgres_session.rollback()
+
+
+def run_null_missing_count(session, column, table=None) -> int:
     metric_fn = Metrics.nullMissingCount(column).fn()
-    return int(session.execute(select(metric_fn).select_from(MissingCountTestTable.__table__)).scalar())
+    table = table if table is not None else MissingCountTestTable.__table__
+    return int(session.execute(select(metric_fn).select_from(table)).scalar())
 
 
 def test_integer_column_counts_nulls_only(session):
@@ -127,3 +193,23 @@ def test_boolean_column_counts_nulls_only(session):
 
 def test_string_column_counts_nulls_and_empty_strings(session):
     assert run_null_missing_count(session, MissingCountTestTable.str_col) == EXPECTED_NULL_AND_EMPTY_COUNT
+
+
+def test_json_column_counts_nulls_only(session):
+    """An empty object or array is a present value, and Postgres has no json = text"""
+    assert run_null_missing_count(session, MissingCountTestTable.json_col) == EXPECTED_NULL_COUNT
+
+
+@pytest.mark.parametrize("column_name", ["str_array_col", "int_array_col"])
+def test_array_column_counts_nulls_only(array_session, column_name):
+    """Empty arrays are not missing: '' binds as an empty array and would match them"""
+    column = getattr(ArrayMissingCountTestTable, column_name)
+
+    assert (
+        run_null_missing_count(
+            array_session,
+            column,
+            table=ArrayMissingCountTestTable.__table__,
+        )
+        == EXPECTED_NULL_COUNT
+    )

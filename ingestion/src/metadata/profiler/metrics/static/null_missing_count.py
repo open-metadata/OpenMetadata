@@ -16,7 +16,7 @@ Null Count Metric definition
 
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, Interval, case, column
+from sqlalchemy import ARRAY, JSON, Boolean, Interval, case, column
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.types import TypeEngine
 
@@ -25,6 +25,7 @@ from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.orm.registry import is_date_time, is_quantifiable
+from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.profiler.orm.types.custom_ip import CustomIP
 from metadata.profiler.orm.types.custom_time import CustomTime
 from metadata.profiler.orm.types.uuid import UUIDString
@@ -45,7 +46,25 @@ logger = profiler_logger()
 # CustomTime is listed here rather than in registry.is_date_time because that
 # helper also drives min/max/mean/stddev and columnValuesToBeBetween, which we are
 # not changing here. TODO(#21482): close that registry gap separately.
-NON_EMPTY_STRING_TYPES = (Boolean, UUIDString, CustomIP, CustomTime, Interval, SqlEnum)
+#
+# JSON and ARRAY are containers rather than scalars, and both are declared
+# supported by columnValuesMissingCount. Postgres has no `json = text` operator and
+# rejects '' as malformed input for jsonb. Arrays fail worse than an error:
+# SQLAlchemy's ARRAY bind processor iterates the '' and binds an empty sequence, so
+# `col = ''` is sent as `col = ARRAY[]` and quietly counts empty arrays as missing.
+# CustomArray has to be named explicitly — it is a TypeDecorator, so
+# isinstance(CustomArray(...), ARRAY) is False.
+NON_EMPTY_STRING_TYPES = (
+    Boolean,
+    UUIDString,
+    CustomIP,
+    CustomTime,
+    Interval,
+    SqlEnum,
+    JSON,
+    ARRAY,
+    CustomArray,
+)
 
 
 def can_hold_empty_string(col_type: TypeEngine) -> bool:
