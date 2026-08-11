@@ -20,6 +20,8 @@ assets:
 
 basePath: ${BASE_PATH:-/}
 
+timeFormat: ${TIME_FORMAT:-12h}
+
 server:
   applicationContextPath: ${BASE_PATH:-/}
   rootPath: /api/*
