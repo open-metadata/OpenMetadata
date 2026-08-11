@@ -2081,7 +2081,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             handleTableSelectionChange(keys as Set<string>);
           }
         }}>
-        <Table.Header columns={tableColumns}>
+        <Table.Header className="tw:bg-transparent" columns={tableColumns}>
           {(column) => (
             <Table.Head
               id={column.id}

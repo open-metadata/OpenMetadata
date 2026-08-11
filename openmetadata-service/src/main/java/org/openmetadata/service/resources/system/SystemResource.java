@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
@@ -130,7 +131,10 @@ public class SystemResource {
   private static final Set<String> USER_READABLE_SETTINGS =
       Set.of(
           LINEAGE_SETTINGS.value().toLowerCase(Locale.ROOT),
-          GLOSSARY_TERM_RELATION_SETTINGS.value().toLowerCase(Locale.ROOT));
+          GLOSSARY_TERM_RELATION_SETTINGS.value().toLowerCase(Locale.ROOT),
+          // appConfiguration is read by every user at boot (fallback-chain resolution),
+          // not just admins; PATCH remains admin-only.
+          APP_CONFIGURATION.value().toLowerCase(Locale.ROOT));
   private static final ExecutorService SEARCH_FITNESS_EXECUTOR =
       Executors.newFixedThreadPool(
           2,
