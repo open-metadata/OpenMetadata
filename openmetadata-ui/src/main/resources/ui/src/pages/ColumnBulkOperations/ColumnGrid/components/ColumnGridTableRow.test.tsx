@@ -15,6 +15,15 @@ import React from 'react';
 import { ColumnGridRowData } from '../ColumnGrid.interface';
 import { ColumnGridTableRow } from './ColumnGridTableRow';
 
+const ROW_TEST_ID = 'column-row-test_col';
+const CELL_TEXT = {
+  columnName: 'name',
+  path: 'path',
+  description: 'desc',
+  tags: 'tags',
+  glossaryTerms: 'glossary',
+};
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Table: {
     Row: ({
@@ -45,7 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('../../../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <span data-testid="loader">loader</span>)
+  jest.fn().mockImplementation(() => <span data-testid="loader" />)
 );
 
 const mockEntity = {
@@ -65,19 +74,19 @@ const mockTableColumns = [
 
 const cellSlots = [
   <ColumnGridTableRow.Cell columnId="columnName" key="columnName">
-    <span>name</span>
+    <span>{CELL_TEXT.columnName}</span>
   </ColumnGridTableRow.Cell>,
   <ColumnGridTableRow.Cell columnId="path" key="path">
-    <span>path</span>
+    <span>{CELL_TEXT.path}</span>
   </ColumnGridTableRow.Cell>,
   <ColumnGridTableRow.Cell columnId="description" key="description">
-    <span>desc</span>
+    <span>{CELL_TEXT.description}</span>
   </ColumnGridTableRow.Cell>,
   <ColumnGridTableRow.Cell columnId="tags" key="tags">
-    <span>tags</span>
+    <span>{CELL_TEXT.tags}</span>
   </ColumnGridTableRow.Cell>,
   <ColumnGridTableRow.Cell columnId="glossaryTerms" key="glossaryTerms">
-    <span>glossary</span>
+    <span>{CELL_TEXT.glossaryTerms}</span>
   </ColumnGridTableRow.Cell>,
 ];
 
@@ -92,13 +101,13 @@ describe('ColumnGridTableRow', () => {
       </ColumnGridTableRow>
     );
 
-    expect(screen.getByTestId('column-row-test_col')).toBeInTheDocument();
+    expect(screen.getByTestId(ROW_TEST_ID)).toBeInTheDocument();
     expect(screen.getByTestId('column-name-cell')).toBeInTheDocument();
     expect(screen.getByTestId('column-description-cell')).toBeInTheDocument();
-    expect(screen.getByText('name')).toBeInTheDocument();
-    expect(screen.getByText('desc')).toBeInTheDocument();
-    expect(screen.getByText('tags')).toBeInTheDocument();
-    expect(screen.getByText('glossary')).toBeInTheDocument();
+    expect(screen.getByText(CELL_TEXT.columnName)).toBeInTheDocument();
+    expect(screen.getByText(CELL_TEXT.description)).toBeInTheDocument();
+    expect(screen.getByText(CELL_TEXT.tags)).toBeInTheDocument();
+    expect(screen.getByText(CELL_TEXT.glossaryTerms)).toBeInTheDocument();
     // dataType is rendered from the entity directly, not via a cell slot.
     expect(screen.getByText('VARCHAR')).toBeInTheDocument();
   });
@@ -111,7 +120,7 @@ describe('ColumnGridTableRow', () => {
         isSelected={false}
         tableColumns={[{ id: 'columnName' }]}>
         <ColumnGridTableRow.Cell columnId="columnName">
-          <span>name</span>
+          <span>{CELL_TEXT.columnName}</span>
         </ColumnGridTableRow.Cell>
       </ColumnGridTableRow>
     );
@@ -129,7 +138,7 @@ describe('ColumnGridTableRow', () => {
       </ColumnGridTableRow>
     );
 
-    expect(screen.getByTestId('column-row-test_col')).toHaveAttribute(
+    expect(screen.getByTestId(ROW_TEST_ID)).toHaveAttribute(
       'data-row-type',
       'parent'
     );
@@ -144,7 +153,7 @@ describe('ColumnGridTableRow', () => {
       </ColumnGridTableRow>
     );
 
-    expect(screen.getByTestId('column-row-test_col')).toHaveAttribute(
+    expect(screen.getByTestId(ROW_TEST_ID)).toHaveAttribute(
       'data-row-type',
       'child'
     );

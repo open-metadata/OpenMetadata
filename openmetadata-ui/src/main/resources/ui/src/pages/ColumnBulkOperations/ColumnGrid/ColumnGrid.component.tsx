@@ -98,7 +98,7 @@ import { stringToDOMElement } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
-import { ColumnGridTableRow } from './components/ColumnGridTableRow';
+import ColumnGridRow from './components/ColumnGridRow';
 import {
   RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
   SCROLL_TO_ROW_MAX_RETRIES,
@@ -2133,31 +2133,21 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               columnGridListing.expandedStructRows.has(entity.id);
 
             return (
-              <ColumnGridTableRow
+              <ColumnGridRow
                 columnWidthPercent={COLUMN_WIDTH_PERCENT}
                 entity={entity}
                 isPendingRefetch={pendingRefetchRowIds.has(entity.id)}
                 isRecentlyUpdated={recentlyUpdatedRowIds.has(entity.id)}
                 isSelected={columnGridListing.isSelected(entity.id)}
                 key={entity.id}
+                renderColumnNameCell={renderColumnNameCellFinal}
+                renderDescriptionCell={renderDescriptionCellAdapter}
+                renderGlossaryTermsCell={renderGlossaryTermsCellAdapter}
+                renderPathCell={renderPathCellAdapter}
+                renderTagsCell={renderTagsCellAdapter}
                 showParentChildColors={isChildRow || isParentExpanded}
-                tableColumns={tableColumns}>
-                <ColumnGridTableRow.Cell columnId="columnName">
-                  {renderColumnNameCellFinal(entity)}
-                </ColumnGridTableRow.Cell>
-                <ColumnGridTableRow.Cell columnId="path">
-                  {renderPathCellAdapter(entity)}
-                </ColumnGridTableRow.Cell>
-                <ColumnGridTableRow.Cell columnId="description">
-                  {renderDescriptionCellAdapter(entity)}
-                </ColumnGridTableRow.Cell>
-                <ColumnGridTableRow.Cell columnId="tags">
-                  {renderTagsCellAdapter(entity)}
-                </ColumnGridTableRow.Cell>
-                <ColumnGridTableRow.Cell columnId="glossaryTerms">
-                  {renderGlossaryTermsCellAdapter(entity)}
-                </ColumnGridTableRow.Cell>
-              </ColumnGridTableRow>
+                tableColumns={tableColumns}
+              />
             );
           }}
         </Table.Body>

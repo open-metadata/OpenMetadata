@@ -53,6 +53,7 @@ const CHILD_ROW_INDENT_PX = 24;
 const BASE_CELL_PADDING_PX = 24;
 const PARENT_ROW_BG_CLASS = 'tw:bg-gray-100';
 const CHILD_ROW_BG_CLASS = 'tw:bg-gray-50';
+const RECENTLY_UPDATED_BG_CLASS = 'tw:bg-utility-warning-50';
 
 const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
   columnWidthPercent = {},
@@ -88,10 +89,10 @@ const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
         rowType: type,
         rowClassName: classNames(
           'tw:transition-colors',
-          'tw:bg-utility-warning-50',
-          isSelected && 'tw:bg-utility-warning-50'
+          RECENTLY_UPDATED_BG_CLASS,
+          isSelected && RECENTLY_UPDATED_BG_CLASS
         ),
-        cellClassName: classNames('tw:bg-utility-warning-50'),
+        cellClassName: classNames(RECENTLY_UPDATED_BG_CLASS),
       };
     }
 
@@ -117,13 +118,7 @@ const ColumnGridTableRowBase: React.FC<ColumnGridTableRowProps> = ({
       ),
       cellClassName: classNames(bgClass),
     };
-  }, [
-    isRecentlyUpdated,
-    showParentChildColors,
-    entity.parentId,
-    entity.isStructChild,
-    isSelected,
-  ]);
+  }, [isRecentlyUpdated, showParentChildColors, isChildRow, isSelected]);
 
   const renderCellContent = (columnId: string) => {
     // dataType is static row data; every other cell's content is supplied by
