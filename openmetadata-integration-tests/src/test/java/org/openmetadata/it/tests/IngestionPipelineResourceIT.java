@@ -232,6 +232,23 @@ public class IngestionPipelineResourceIT
     return SdkClients.adminClient().ingestionPipelines().getVersionList(id);
   }
 
+  @Test
+  void delete_forceWithoutHardDelete_nonAdminReturnsForbidden(TestNamespace ns) {
+    IngestionPipeline pipeline = createEntity(createMinimalRequest(ns));
+    Map<String, String> params = Map.of("hardDelete", "false", "force", "true");
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.testUserClient()
+                    .ingestionPipelines()
+                    .delete(pipeline.getId().toString(), params));
+
+    assertEquals(403, exception.getStatusCode());
+    assertNotNull(getEntity(pipeline.getId().toString()));
+  }
+
   @Override
   protected IngestionPipeline getVersion(UUID id, Double version) {
     return SdkClients.adminClient().ingestionPipelines().getVersion(id.toString(), version);

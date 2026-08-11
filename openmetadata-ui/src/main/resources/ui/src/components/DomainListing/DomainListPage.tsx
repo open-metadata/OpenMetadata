@@ -18,6 +18,7 @@ import {
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
+import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -96,7 +97,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const showHeaderSearch = isAiMode && !renderPageHeader;
+  const showHeaderSearch = isAiMode;
 
   const [searchInputValue, setSearchInputValue] = useState(
     domainListing.urlState.searchQuery ?? ''
@@ -128,6 +129,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     },
   };
 
+  const headerSearch = showHeaderSearch ? (
+    <Input className="tw:w-72" {...searchInputProps} />
+  ) : undefined;
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
@@ -137,9 +142,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DOMAIN,
     variant: isAiMode ? 'search' : undefined,
-    search: showHeaderSearch ? (
-      <Input className="tw:w-72" {...searchInputProps} />
-    ) : undefined,
+    search: headerSearch,
     breadcrumb: headerBreadcrumb,
   });
 
@@ -188,7 +191,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const content = useMemo(() => {
     if (isTreeView) {
       return (
-        <div className="tw:px-6 tw:pb-6">
+        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:pb-6">
           <DomainTreeView
             filters={domainListing.urlState.filters}
             openAddDomainDrawer={openDrawer}
@@ -233,6 +236,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           <EntityListingTable
             ariaLabel={t('label.domain')}
             columns={domainColumns}
+            containerClassName="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
             entities={domainListing.entities}
             loading={domainListing.loading}
             renderCell={renderDomainCell}
@@ -253,7 +257,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     return (
       <>
         <EntityCardView
-          className="tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={domainListing.entities}
           loading={domainListing.loading}
           renderCard={renderDomainCard}
@@ -290,8 +294,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   return (
     <Box
-      direction="col"
-      style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
+      className={classNames('tw:min-h-0 tw:flex-1', {
+        'tw:h-[var(--om-page-height)]': isTreeView && !isAiMode,
+      })}
+      direction="col">
       {!renderPageHeader && !isAiMode && (
         <HeaderBreadcrumb items={breadcrumbItems} />
       )}
@@ -301,10 +307,15 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             createPermission: permissions.domain?.Create || false,
             count: domainListing.totalEntities,
             breadcrumb: headerBreadcrumb,
+            search: headerSearch,
           })
         : pageHeader}
 
-      <Card style={{ marginBottom: 20 }} variant="elevated">
+      <Card
+        className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
+          'tw:mb-5': !isAiMode,
+        })}
+        variant="elevated">
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
@@ -338,6 +349,7 @@ const DomainListPageWithLayout: FC<DomainListPageProps> = (props) => {
 
   return (
     <PageLayoutV1
+      fullHeight={isAiMode}
       pageTitle={props.pageTitle}
       variant={isAiMode ? 'compact' : 'default'}>
       <DomainListPage {...props} />
