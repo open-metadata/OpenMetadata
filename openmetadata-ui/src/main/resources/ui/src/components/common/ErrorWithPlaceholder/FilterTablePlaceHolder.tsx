@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 import { FilterTablePlaceHolderProps } from './placeholder.interface';
 
@@ -19,11 +19,10 @@ const FilterTablePlaceHolder = ({
   placeholderText,
 }: FilterTablePlaceHolderProps) => {
   return (
-    <ErrorPlaceHolder
+    <ErrorPlaceHolder.Filter
       className="mt-0-important p-y-lg border-none"
       placeholderText={placeholderText}
       size={SIZE.MEDIUM}
-      type={ERROR_PLACEHOLDER_TYPE.FILTER}
     />
   );
 };

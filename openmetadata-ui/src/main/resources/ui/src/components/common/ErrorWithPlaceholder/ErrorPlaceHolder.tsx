@@ -11,127 +11,26 @@
  *  limitations under the License.
  */
 
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import CoreCreateErrorPlaceHolder from '../CoreCreate/CoreCreateErrorPlaceHolder';
 import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
 import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
 import CustomNoDataPlaceHolder from './CustomNoDataPlaceHolder';
 import FilterErrorPlaceHolder from './FilterErrorPlaceHolder';
 import NoDataPlaceholder from './NoDataPlaceholder';
+import { NoDataPlaceholderProps } from './placeholder.interface';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
-import { ErrorPlaceholderProps } from './placeholder.interface';
-
-const ErrorPlaceHolderBase = ({
-  doc,
-  onClick,
-  type,
-  children,
-  heading,
-  className,
-  size = SIZE.LARGE,
-  button,
-  permission,
-  buttonId,
-  icon,
-  placeholderText,
-  permissionValue,
-  buttonTitle,
-  contentMaxWidthClass,
-}: ErrorPlaceholderProps) => {
-  const getErrorPlaceHolder = () => {
-    switch (type) {
-      case ERROR_PLACEHOLDER_TYPE.CREATE:
-        return (
-          <CreateErrorPlaceHolder
-            buttonId={buttonId}
-            className={className}
-            doc={doc}
-            heading={heading}
-            permission={permission}
-            permissionValue={permissionValue}
-            placeholderText={placeholderText}
-            size={size}
-            onClick={onClick}
-          />
-        );
-
-      case ERROR_PLACEHOLDER_TYPE.CORE_CREATE:
-        return (
-          <CoreCreateErrorPlaceHolder
-            buttonId={buttonId}
-            buttonTitle={buttonTitle}
-            className={className}
-            contentMaxWidthClass={contentMaxWidthClass}
-            heading={heading}
-            icon={icon}
-            permission={permission}
-            onClick={onClick}>
-            {children}
-          </CoreCreateErrorPlaceHolder>
-        );
-
-      case ERROR_PLACEHOLDER_TYPE.ASSIGN:
-        return (
-          <AssignErrorPlaceHolder
-            button={button}
-            className={className}
-            heading={heading}
-            permission={permission}
-            permissionValue={permissionValue}
-            size={size}>
-            {children}
-          </AssignErrorPlaceHolder>
-        );
-
-      case ERROR_PLACEHOLDER_TYPE.FILTER:
-        return (
-          <FilterErrorPlaceHolder
-            className={className}
-            doc={doc}
-            placeholderText={placeholderText}
-            size={size}
-          />
-        );
-
-      case ERROR_PLACEHOLDER_TYPE.PERMISSION:
-        return (
-          <PermissionErrorPlaceholder
-            className={className}
-            permissionValue={permissionValue}
-            size={size}
-          />
-        );
-
-      case ERROR_PLACEHOLDER_TYPE.CUSTOM:
-        return (
-          <CustomNoDataPlaceHolder
-            className={className}
-            icon={icon}
-            size={size}>
-            {children}
-          </CustomNoDataPlaceHolder>
-        );
-
-      default:
-        return (
-          <NoDataPlaceholder
-            className={className}
-            placeholderText={placeholderText}
-            size={size}>
-            {children}
-          </NoDataPlaceholder>
-        );
-    }
-  };
-
-  return getErrorPlaceHolder();
-};
 
 /**
- * Type-safe named variants — prefer these over the `type={ERROR_PLACEHOLDER_TYPE.*}`
- * switch: each variant exposes only its own props (e.g. `<ErrorPlaceHolder.Permission
- * permissionValue={...} />`). The `type=` prop stays supported for existing call sites.
+ * Compound component. Each variant is a narrow-typed sub-component that accepts
+ * only the props it actually consumes — pick one explicitly, e.g.
+ * `<ErrorPlaceHolder.Permission permissionValue={…} />` or
+ * `<ErrorPlaceHolder.Create heading={…} onClick={…} />`. The bare
+ * `<ErrorPlaceHolder>` renders the no-data placeholder (the historical default).
  */
+const ErrorPlaceHolderBase = (props: NoDataPlaceholderProps) => (
+  <NoDataPlaceholder {...props} />
+);
+
 const ErrorPlaceHolder = ErrorPlaceHolderBase as typeof ErrorPlaceHolderBase & {
   Create: typeof CreateErrorPlaceHolder;
   CoreCreate: typeof CoreCreateErrorPlaceHolder;

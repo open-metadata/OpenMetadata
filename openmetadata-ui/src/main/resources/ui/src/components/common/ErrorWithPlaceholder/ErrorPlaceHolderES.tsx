@@ -28,7 +28,6 @@ import {
 } from '../../../constants/docs.constants';
 import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
-  ERROR_PLACEHOLDER_TYPE,
   SIZE,
 } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -96,11 +95,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
     if (isQuery) {
       return (
         <div className="text-center" data-testid="no-search-results">
-          <ErrorPlaceHolder
-            className="border-none"
-            size={size}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+          <ErrorPlaceHolder.Filter className="border-none" size={size} />
         </div>
       );
     }
@@ -108,7 +103,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
     if (['glossaries', 'tags'].includes(tab)) {
       return (
         <div className="text-center" data-testid="no-search-results">
-          <ErrorPlaceHolder
+          <ErrorPlaceHolder.Create
             permission
             className="border-none"
             doc={tab === 'tags' ? TAGS_DOCS : GLOSSARIES_DOCS}
@@ -116,7 +111,6 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
               tab === 'tags' ? t('label.tag-plural') : t('label.glossary')
             }
             size={size}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
             onClick={() =>
               navigate(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
             }
@@ -127,10 +121,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
 
     return (
       <div className="text-center" data-testid="no-search-results">
-        <ErrorPlaceHolder
-          className="border-none"
-          size={size}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <ErrorPlaceHolder.Custom className="border-none" size={size}>
           <Typography.Paragraph style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.no-data-available-entity"
@@ -165,7 +156,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
               }}
             />
           </Typography.Paragraph>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.Custom>
       </div>
     );
   }, [isQuery, tab, activeDomain]);
