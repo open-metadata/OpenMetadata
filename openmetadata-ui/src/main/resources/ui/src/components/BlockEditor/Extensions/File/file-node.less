@@ -56,19 +56,6 @@
     gap: @padding-sm;
   }
 
-  .file-content-wrapper {
-    display: flex;
-    align-items: center;
-    gap: @padding-sm;
-    flex: 1;
-    position: relative;
-  }
-
-  .file-icon {
-    color: @grey-4;
-    font-size: var(--om-font-size-display-xs);
-    transition: all var(--om-duration-300);
-  }
 
   .file-details {
     display: flex;
@@ -101,10 +88,6 @@
   .file-name {
     font-weight: @font-medium;
     color: @text-color;
-    font-size: @font-size-base;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     transition: all var(--om-duration-300);
 
     &:hover {
@@ -142,47 +125,6 @@
 
   .file-size {
     color: @grey-4;
-  }
-
-  .file-percentage {
-    color: @grey-4;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: @padding-xss;
-    transition: all var(--om-duration-300);
-    border-radius: @border-rad-base;
-    width: 28px;
-    height: 28px;
-
-    &:hover {
-      color: @primary-color;
-      background: @primary-1;
-    }
-
-    .anticon {
-      font-size: @font-size-base + 2;
-    }
-  }
-
-  .delete-icon {
-    color: @grey-4;
-    font-size: @font-size-base + 2;
-    cursor: pointer;
-    padding: @padding-xss;
-    transition: all var(--om-duration-300);
-    border-radius: @border-rad-base;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-      color: @error-color;
-      background: @error-bg-color;
-    }
   }
 
   // Styles for video and audio players
@@ -244,7 +186,6 @@
   }
 
   &.file-type-audio {
-    max-width: 600px;
     margin: @margin-md auto;
 
     .media-content {

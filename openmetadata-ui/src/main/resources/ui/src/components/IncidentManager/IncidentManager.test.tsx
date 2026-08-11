@@ -355,8 +355,10 @@ jest.mock('../../pages/TasksPage/shared/Assignees', () => {
 jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
-    .mockImplementation(({ 'data-testid': testId }) => (
-      <div data-testid={testId}>AsyncSelect.component</div>
+    .mockImplementation(({ className, 'data-testid': testId }) => (
+      <div className={className} data-testid={testId}>
+        AsyncSelect.component
+      </div>
     )),
 }));
 jest.mock('react-router-dom', () => ({
@@ -536,6 +538,24 @@ describe('IncidentManagerPage', () => {
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
+  });
+
+  it('should align and wrap incident filters at constrained widths', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(await screen.findByTestId('incident-filter-bar')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-end',
+      'tw:gap-y-4'
+    );
+    expect(screen.getByTestId('incident-filter-controls')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-end',
+      'tw:gap-y-4'
+    );
+    expect(screen.getByTestId('test-case-select')).toHaveClass('w-min-15');
   });
 
   it('should call list incident API on page load', async () => {
