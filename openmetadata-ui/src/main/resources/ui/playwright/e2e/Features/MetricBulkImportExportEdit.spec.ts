@@ -1722,7 +1722,7 @@ test.describe(
         .filter({ has: page.getByTestId('metric-name') })
         .first();
       await expect(row).toBeVisible();
-      
+
       await row.locator('.metric-status-pill').first().click();
 
       await expect(page).toHaveURL(/\/metric\//);
