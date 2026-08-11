@@ -13,8 +13,14 @@
 
 import { SearchSettingsClassBase } from './SearchSettingsClassBase';
 
-class CollateSearchSettingsClass extends SearchSettingsClassBase {
+class HybridSearchSettingsClass extends SearchSettingsClassBase {
   public showHybridSearchWeights(): boolean {
+    return true;
+  }
+}
+
+class CollateSearchSettingsClass extends SearchSettingsClassBase {
+  public isNLQSupported(): boolean {
     return true;
   }
 }
@@ -26,7 +32,13 @@ describe('SearchSettingsClassBase', () => {
     expect(searchSettings.isNLQSupported()).toBe(false);
   });
 
-  it('supports NLQ through the existing Collate hybrid-search override', () => {
+  it('does not infer NLQ support from hybrid-search weights', () => {
+    const searchSettings = new HybridSearchSettingsClass();
+
+    expect(searchSettings.isNLQSupported()).toBe(false);
+  });
+
+  it('supports NLQ through the dedicated Collate override', () => {
     const searchSettings = new CollateSearchSettingsClass();
 
     expect(searchSettings.isNLQSupported()).toBe(true);

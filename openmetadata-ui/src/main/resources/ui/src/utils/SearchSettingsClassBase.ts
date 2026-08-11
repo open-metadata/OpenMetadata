@@ -13,7 +13,7 @@
 
 class SearchSettingsClassBase {
   public isNLQSupported(): boolean {
-    return this.showHybridSearchWeights();
+    return false;
   }
 
   public showHybridSearchWeights(): boolean {
