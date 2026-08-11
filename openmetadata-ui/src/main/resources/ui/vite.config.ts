@@ -107,7 +107,7 @@ export default defineConfig(async ({ mode }) => {
   const devServerTarget =
     env.VITE_DEV_SERVER_TARGET ||
     env.DEV_SERVER_TARGET ||
-    'http://localhost:8585/';
+    'https://release-2-0.getcollate.io/';
   const isPlaywrightBundle = env.PW_E2E_BUNDLE === 'true';
   const isPlaywrightBuild = env.PW_E2E_BUILD === 'true' || isPlaywrightBundle;
 

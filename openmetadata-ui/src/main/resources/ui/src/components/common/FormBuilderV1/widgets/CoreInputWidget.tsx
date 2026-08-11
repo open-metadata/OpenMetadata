@@ -71,10 +71,8 @@ const CoreInputWidget = ({
 
   return (
     <div>
-      {}
       <Input
         autoFocus={autofocus}
-        className={options.compactInput ? 'tw:w-[86%]' : undefined}
         hint={hint}
         hintClassName="tw:text-xs"
         id={id}

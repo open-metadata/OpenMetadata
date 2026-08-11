@@ -222,8 +222,6 @@ const IngestionWorkflowForm = forwardRef<
         classificationLanguage: {
           'ui:enumNames': classificationLanguageEnumNames,
         },
-        confidence: { 'ui:options': { compactInput: true } },
-        sampleDataCount: { 'ui:options': { compactInput: true } },
       };
     }
 
