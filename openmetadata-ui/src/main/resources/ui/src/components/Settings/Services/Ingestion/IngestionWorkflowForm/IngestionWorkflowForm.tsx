@@ -17,29 +17,29 @@ import { Button, Space } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined, omit, omitBy } from 'lodash';
 import {
-  forwardRef,
-  lazy,
-  Suspense,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
+    forwardRef,
+    lazy,
+    Suspense,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
-  INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
-  INGESTION_WORKFLOW_UI_SCHEMA,
+    EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
+    INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
+    INGESTION_WORKFLOW_UI_SCHEMA
 } from '../../../../../constants/Services.constant';
 import {
-  DbtConfigType,
-  PipelineType,
+    DbtConfigType,
+    PipelineType
 } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
-  IngestionWorkflowData,
-  IngestionWorkflowFormHandle,
-  IngestionWorkflowFormProps,
+    IngestionWorkflowData,
+    IngestionWorkflowFormHandle,
+    IngestionWorkflowFormProps
 } from '../../../../../interface/service.interface';
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
@@ -157,7 +157,7 @@ const IngestionWorkflowForm = forwardRef<
     hideFooter = false,
     serviceCategory,
     workflowData,
-    operationType,
+    operationType: _operationType,
     onCancel,
     onFocus,
     onSubmit,
