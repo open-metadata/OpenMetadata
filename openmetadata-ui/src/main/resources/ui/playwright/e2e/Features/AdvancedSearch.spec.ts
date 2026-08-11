@@ -315,40 +315,6 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
       ],
     };
 
-    // Wait for ES to index schemas and charts before tests run. The
-    // OMSelectWidget aggregate autocomplete queries ES; if the entity is
-    // not yet indexed the aggregate endpoint returns empty buckets and the
-    // value-picker option never appears, failing the test.
-    for (const schemaName of [
-      table1.schemaResponseData.name,
-      table2.schemaResponseData.name,
-    ]) {
-      await expect(async () => {
-        const res = await apiContext.get(
-          `api/v1/search/aggregate?index=databaseSchema&field=displayName.keyword&value=.*${encodeURIComponent(schemaName)}.*&q=&deleted=false`
-        );
-        const data = await res.json();
-        const buckets: Array<{ key: string }> =
-          data?.aggregations?.['sterms#displayName.keyword']?.buckets ?? [];
-        expect(buckets.some((b) => b.key === schemaName)).toBe(true);
-      }).toPass({ timeout: 60_000, intervals: [2_000] });
-    }
-
-    for (const chartDisplayName of [
-      EntityDataClass.dashboard1.chartsResponseData.displayName,
-      EntityDataClass.dashboard2.chartsResponseData.displayName,
-    ]) {
-      await expect(async () => {
-        const res = await apiContext.get(
-          `api/v1/search/aggregate?index=chart&field=displayName.keyword&value=.*${encodeURIComponent(chartDisplayName)}.*&q=&deleted=false`
-        );
-        const data = await res.json();
-        const buckets: Array<{ key: string }> =
-          data?.aggregations?.['sterms#displayName.keyword']?.buckets ?? [];
-        expect(buckets.some((b) => b.key === chartDisplayName)).toBe(true);
-      }).toPass({ timeout: 60_000, intervals: [2_000] });
-    }
-
     await afterAction();
   });
 
