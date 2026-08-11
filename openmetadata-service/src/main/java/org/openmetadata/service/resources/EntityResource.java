@@ -730,6 +730,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                     jobId, securityContext, deleteResponse.entity());
               } catch (Exception e) {
+                // Log before notifying. The websocket notification is the ONLY report this path
+                // had, so a failed async delete was invisible to anyone not holding a live socket
+                // — no stack trace, no error line, nothing. A large recursive delete that dies
+                // here then looks exactly like one still grinding.
+                LOG.error(
+                    "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
+                    entityType,
+                    id,
+                    jobId,
+                    recursive,
+                    hardDelete,
+                    e);
                 WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
                     jobId,
                     securityContext,
