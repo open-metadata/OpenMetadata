@@ -4166,7 +4166,7 @@
     "soft-delete-common-message": "این {{entity}} را غیرفعال کنید. می‌توانید بعداً آن را بازیابی کنید.",
     "soft-delete-message-for-entity": "حذف نرم، {{entity}} را غیرفعال می‌کند. این اقدام هرگونه عملیات کشف، خواندن یا نوشتن روی {{entity}} را غیرفعال خواهد کرد.",
     "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
-    "some-documents-uploaded-successfully": "Alguns documentos foram carregados com sucesso. Por favor, tente novamente os que falharam.",
+    "some-documents-uploaded-successfully": "برخی از اسناد با موفقیت بارگذاری شدند. لطفاً موارد ناموفق را دوباره امتحان کنید.",
     "something-went-wrong": "یک خطا رخ داده است.",
     "source-aligned-domain-type-description": "دامنه‌هایی که نزدیک به خدمات آنلاین و پایگاه‌های داده تراکنشی هستند که شامل رویدادها و داده‌های تراکنشی می‌شوند.",
     "special-character-not-allowed": "کاراکترهای خاص مجاز نیستند.",

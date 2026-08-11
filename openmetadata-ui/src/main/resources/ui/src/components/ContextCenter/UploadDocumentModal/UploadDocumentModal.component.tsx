@@ -235,7 +235,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                       uploadingLabel={t('label.uploading')}
                       onDelete={() => handleRemove(id)}
                       onRetry={
-                        status === 'error' && !sizeExceeded
+                        status === 'error' && !sizeExceeded && !isUploading
                           ? () => handleRetry(id)
                           : undefined
                       }

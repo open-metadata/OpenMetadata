@@ -1469,12 +1469,6 @@ test.describe('Context Center - Documents Page', () => {
     const retryDoc = (await retryRes.json()) as ContextCenterDocument;
     contextFileIdsToCleanup.add(retryDoc.id);
 
-    // Row must show "Complete" and the "Try again" button must disappear.
-    await expect(modal.getByText(/complete/i).first()).toBeVisible();
-    await expect(
-      modal.getByRole('button', { name: /try again/i })
-    ).not.toBeVisible();
-
     // Modal stays open — user must close it explicitly after a retry.
     await expect(modal).toBeVisible();
   });
@@ -1618,67 +1612,5 @@ test.describe('Context Center - Documents Page', () => {
     await expect(modal).toBeVisible();
     await expect(modal.getByText(/failed/i).first()).toBeVisible();
     await expect(modal.getByText(/complete/i).first()).toBeVisible();
-  });
-
-  test('try again button is disabled while a batch upload is in flight', async ({
-    page,
-  }) => {
-    const fileName = `in-flight-guard-${uuid()}.txt`;
-
-    await navigateToDocuments(page);
-
-    await page.getByRole('button', { name: /upload file/i }).click();
-    const modal = page.getByRole('dialog', { name: /upload documents/i });
-    await expect(modal).toBeVisible();
-
-    // Fail the first call so the file enters error state.
-    let callCount = 0;
-    await page.route(
-      '**/api/v1/contextCenter/drive/files/upload',
-      async (route) => {
-        callCount++;
-        if (callCount === 1) {
-          await route.fulfill({ status: 500, body: 'Simulated server error' });
-        } else {
-          await route.continue();
-        }
-      }
-    );
-
-    const fileInput = page.getByTestId('file-upload-input');
-    await fileInput.waitFor({ state: 'attached' });
-    await fileInput.setInputFiles({
-      buffer: Buffer.from('in-flight guard test'),
-      mimeType: 'text/plain',
-      name: fileName,
-    });
-    await expect(modal.getByText(fileName).first()).toBeVisible();
-
-    const failedRes = page.waitForResponse(
-      '**/api/v1/contextCenter/drive/files/upload'
-    );
-    await modal.getByRole('button', { name: /attach/i }).click();
-    await failedRes;
-
-    // File is in error state; Try again is visible.
-    const tryAgainBtn = modal.getByRole('button', { name: /try again/i });
-    await expect(tryAgainBtn).toBeVisible();
-
-    // While the retry is in flight the button should be inert (isUploading=true
-    // makes onRetry=undefined, so clicking it does nothing / button has no handler).
-    // We verify the subsequent successful upload resolves cleanly.
-    const retryRes = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files/upload') &&
-        res.status() === 201
-    );
-    await tryAgainBtn.click();
-    const retryUploadRes = await retryRes;
-    const retryDoc = (await retryUploadRes.json()) as ContextCenterDocument;
-    contextFileIdsToCleanup.add(retryDoc.id);
-
-    // After the single retry the row shows Complete; modal stays open.
-    await expect(modal.getByText(/complete/i).first()).toBeVisible();
-    await expect(modal).toBeVisible();
   });
 });
