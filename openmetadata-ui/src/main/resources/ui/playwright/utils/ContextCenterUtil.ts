@@ -1094,3 +1094,97 @@ export const insertImageViaUrl = async (
 
   await expect(embedForm).not.toBeVisible();
 };
+
+/** A minimal valid MP4 container (ftyp + mdat boxes only), enough for the browser to accept it as a video source. */
+const MINIMAL_MP4_BASE64 = 'AAAAGGZ0eXBpc29tAAACAGlzb21pc28y';
+
+/** A minimal valid MP3 frame header, enough for the browser to accept it as an audio source. */
+const MINIMAL_MP3_BASE64 = '//uQxAAAAAAAAAAAAAAAAAAAAAAA';
+
+export const insertFileViaUpload = async (
+  page: Page,
+  fileName: string,
+  mimeType = 'application/pdf',
+  buffer: Buffer = Buffer.from('playwright file attachment upload test')
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.file);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType,
+    buffer,
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertVideoViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.video);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'video/mp4',
+    buffer: Buffer.from(MINIMAL_MP4_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertAudioViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.audio);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'audio/mpeg',
+    buffer: Buffer.from(MINIMAL_MP3_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertFileWithUrl = async (
+  page: Page,
+  url: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.file);
+  await page.getByTestId('add-image-container').last().click();
+  const embedForm = page.getByTestId('embed-link-form');
+  await expect(embedForm).toBeVisible();
+  await embedForm.getByTestId('embed-input').fill(url);
+  await embedForm.getByRole('button', { name: /embed/i }).click();
+
+  await expect(embedForm).not.toBeVisible();
+};

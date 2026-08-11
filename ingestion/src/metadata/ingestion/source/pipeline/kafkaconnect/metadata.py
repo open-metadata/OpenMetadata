@@ -56,6 +56,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.lineage.topic_lineage import get_topic_field_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
 from metadata.ingestion.ometa.utils import model_str
@@ -743,66 +744,8 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return []
 
-    def _get_topic_field_fqn(self, topic_entity: Topic, field_name: str) -> Optional[str]:  # noqa: C901, UP045
-        """
-        Get the fully qualified name for a field in a Topic's schema.
-        Handles nested structures where fields may be children of a parent RECORD.
-        For Debezium CDC topics, searches for fields inside after/before envelope children.
-        """
-        if not topic_entity.messageSchema or not topic_entity.messageSchema.schemaFields:
-            logger.debug(f"Topic {model_str(topic_entity.name)} has no message schema")
-            return None
-
-        # Search for the field in the schema (including nested fields)
-        for field in topic_entity.messageSchema.schemaFields:
-            field_name_str = model_str(field.name)
-
-            # Check if it's a direct field
-            if field_name_str == field_name:
-                return field.fullyQualifiedName.root if field.fullyQualifiedName else None
-
-            # Check if it's a child field (nested - one level deep)
-            if field.children:
-                # For Debezium CDC, prioritize 'after' over 'before' when searching for grandchildren
-                after_child = None
-                before_child = None
-
-                for child in field.children:
-                    child_name = model_str(child.name)
-                    if child_name == "after":
-                        after_child = child
-                    elif child_name == "before":
-                        before_child = child
-                    # Check direct child match
-                    if child_name == field_name:
-                        return child.fullyQualifiedName.root if child.fullyQualifiedName else None
-
-                # Search grandchildren - prefer 'after' over 'before' for CDC topics
-                for cdc_child in [after_child, before_child]:
-                    if cdc_child and cdc_child.children:
-                        for grandchild in cdc_child.children:
-                            if model_str(grandchild.name) == field_name:
-                                return grandchild.fullyQualifiedName.root if grandchild.fullyQualifiedName else None
-
-                # Search other grandchildren (non-CDC fields)
-                for child in field.children:
-                    if child not in [after_child, before_child] and child.children:
-                        for grandchild in child.children:
-                            if model_str(grandchild.name) == field_name:
-                                return grandchild.fullyQualifiedName.root if grandchild.fullyQualifiedName else None
-
-        # For Debezium CDC topics, columns might only exist in schemaText (not as field objects)
-        # Manually construct FQN: topicFQN.Envelope.columnName
-        for field in topic_entity.messageSchema.schemaFields:
-            field_name_str = model_str(field.name)
-            # Check if this is a CDC envelope field
-            if "Envelope" in field_name_str and field.fullyQualifiedName:
-                # Construct FQN manually for CDC column
-                envelope_fqn = field.fullyQualifiedName.root
-                return f"{envelope_fqn}.{field_name}"
-
-        logger.debug(f"Field {field_name} not found in topic {model_str(topic_entity.name)} schema")
-        return None
+    def _get_topic_field_fqn(self, topic_entity: Topic, field_name: str) -> Optional[str]:  # noqa: UP045
+        return get_topic_field_fqn(topic_entity, field_name)
 
     def build_column_lineage(
         self,
