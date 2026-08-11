@@ -134,9 +134,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     } catch (err) {
       setFiles((prev) =>
         prev.map((f) =>
-          f.id === id
-            ? { ...f, progress: 0, status: UploadStatus.Error }
-            : f
+          f.id === id ? { ...f, progress: 0, status: UploadStatus.Error } : f
         )
       );
       showErrorToast(err as AxiosError, t('message.upload-failed'));
