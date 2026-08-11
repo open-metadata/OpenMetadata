@@ -93,7 +93,11 @@ RUN set -eu; \
     test -n "$lib"; \
     ln -sf "$lib" "$(dirname "$lib")/libaio.so.1"
 
-RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
+# `||` inside a single [ ] is invalid test syntax: it made this check always
+# fall through to the x86_64 branch, so arm64 builds installed the amd64 Oracle
+# client. Evaluate uname once and combine with a shell-level ||.
+RUN arch="$(uname -m)"; \
+    if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; \
  then \
  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
