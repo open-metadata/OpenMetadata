@@ -16,6 +16,7 @@ import traceback
 from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -97,7 +98,14 @@ class SaphanaLineageSource(Source):
         and send it to the sink
         """
         with self.engine.connect() as conn:
-            result = conn.execution_options(stream_results=True, max_row_buffer=100).execute(text(SAPHANA_LINEAGE))
+            try:
+                result = conn.execution_options(stream_results=True, max_row_buffer=100).execute(text(SAPHANA_LINEAGE))
+            except DBAPIError as exc:
+                # SAP HANA Cloud never has _SYS_REPO (classic repository, deprecated since 2018,
+                # never carried into Cloud) - only on-prem/HXE instances do. Skip just this part
+                # instead of crashing the whole lineage run when this table/schema doesn't exist.
+                logger.warning(f"Could not query _SYS_REPO for calc/analytic/attribute view lineage: {exc}")
+                result = []
             for row in result:
                 try:
                     lineage_model = SapHanaLineageModel.validate(row._asdict())
