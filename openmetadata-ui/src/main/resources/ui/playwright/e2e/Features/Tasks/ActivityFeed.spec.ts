@@ -14,9 +14,11 @@
 import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
+import { insertActivityEventForTest } from '../../../utils/activityAPI';
 import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
+  uuid,
 } from '../../../utils/common';
 import { waitForPageLoaded } from '../../../utils/polling';
 
@@ -280,16 +282,12 @@ test.describe('Activity Feed - Filters', () => {
       await tasksFilter.click();
       await waitForPageLoaded(page);
 
-      // All items should be task cards
       const taskCards = feedWidget.locator('[data-testid="task-feed-card"]');
-      const messageContainers = feedWidget.locator(
-        '[data-testid="message-container"]:not([data-testid="task-feed-card"])'
-      );
-
       const taskCount = await taskCards.count();
-      const messageCount = await messageContainers.count();
 
-      // When tasks filter is active, should show mostly tasks
+      // TODO: this whole test still verifies nothing — the guard above and the
+      // >= 0 below both hold when the widget is empty. It needs a seeded,
+      // owner-scoped fixture, tracked with the wider conditional-escape cleanup.
       expect(taskCount).toBeGreaterThanOrEqual(0);
     }
   });
@@ -382,17 +380,22 @@ test.describe('Activity Feed - Entity Page', () => {
         );
       }
 
-      // Create tasks
-      for (let i = 0; i < 2; i++) {
-        await apiContext.post('/api/v1/tasks', {
+      // Create tasks. DescriptionUpdate/TagUpdate are the taskType enum values —
+      // the earlier DescriptionRequest/TagRequest are not, so both posts were
+      // rejected and this describe ran against zero tasks. Assert the response
+      // so a rejected fixture fails here instead of silently emptying the tab.
+      for (const type of ['DescriptionUpdate', 'TagUpdate']) {
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            name: `Test Task - ${Date.now()}-${i}`,
+            name: `Test Task - ${type}-${uuid()}`,
             about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-            type: i % 2 === 0 ? 'DescriptionRequest' : 'TagRequest',
+            type,
             category: 'MetadataUpdate',
             assignees: [adminUser.responseData.name],
           },
         });
+
+        expect(taskResponse.ok()).toBe(true);
       }
     } finally {
       await afterAction();
@@ -425,26 +428,6 @@ test.describe('Activity Feed - Entity Page', () => {
     await expect(activityFeedTab).toBeVisible();
   });
 
-  test('activity feed tab should show task count badge', async ({ page }) => {
-    await table.visitEntityPage(page);
-
-    const activityFeedTab = page.getByRole('tab', {
-      name: /activity feeds & tasks/i,
-    });
-    const countBadge = activityFeedTab.getByTestId('count');
-
-    await expect(countBadge).toBeVisible();
-    await expect(countBadge).toHaveText(/^\d+$/, { timeout: 30_000 });
-
-    // The badge is feedCount.totalCount = conversations + activity + tasks.
-    // This fixture seeds 2 tasks plus the entityCreated change-event, so a
-    // total below 3 means a category was dropped from the sum. The previous
-    // `>= 0` assertion held even when activity was left out entirely.
-    const count = Number((await countBadge.innerText()).trim());
-
-    expect(count).toBeGreaterThanOrEqual(3);
-  });
-
   test('clicking activity feed tab should show feed and tasks', async ({
     page,
   }) => {
@@ -458,42 +441,6 @@ test.describe('Activity Feed - Entity Page', () => {
       .locator('[data-testid="global-setting-left-panel"]')
       .or(page.getByRole('button', { name: /all|tasks/i }));
     await expect(feedContainer.first()).toBeVisible({ timeout: 10000 });
-  });
-
-  test('should toggle between All and Tasks in entity activity feed', async ({
-    page,
-  }) => {
-    await table.visitEntityPage(page);
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    // Tasks: exactly the two seeded tasks, and the left-panel badge agrees.
-    await page.getByRole('menuitem', { name: /task/i }).click();
-    await waitForPageLoaded(page);
-
-    await expect(page.getByTestId('left-panel-task-count')).toHaveText('2', {
-      timeout: 30_000,
-    });
-    await expect(page.locator('[data-testid="task-feed-card"]')).toHaveCount(2);
-
-    // All: change-events are listed here, and the badge must equal what is
-    // rendered. The previous `>= 0` assertion held even when the All tab
-    // showed nothing at all.
-    await page.getByRole('menuitem', { name: /all/i }).click();
-    await waitForPageLoaded(page);
-
-    const feedItems = page.locator(
-      '#feedData [data-testid="message-container"]'
-    );
-
-    await expect(feedItems.first()).toBeVisible({ timeout: 30_000 });
-
-    const renderedCount = await feedItems.count();
-    const allBadge = (
-      await page.getByTestId('left-panel-all-count').innerText()
-    ).trim();
-
-    expect(Number(allBadge)).toBe(renderedCount);
   });
 
   test('entity task filters should request open, closed, and mentions views', async ({
@@ -786,5 +733,139 @@ test.describe('Activity Feed - Following', () => {
       const feedItems = feedWidget.locator('[data-testid="message-container"]');
       expect(feedItems).toBeDefined();
     }
+  });
+});
+
+// Counts are asserted exactly, so this describe owns its entity and never
+// mutates it. The sibling 'Activity Feed - Entity Page' describe adds a third
+// task in one of its tests, and chromium runs fullyParallel, so sharing that
+// fixture would make an exact count order-dependent.
+test.describe('Activity Feed - Entity Page counts', () => {
+  const adminUser = new UserClass();
+  const table = new TableClass();
+  const seededActivitySummary = `Entity count seeded event ${uuid()}`;
+  const SEEDED_TASK_COUNT = 2;
+
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+
+    try {
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+      await table.create(apiContext);
+
+      await insertActivityEventForTest(
+        apiContext,
+        table,
+        seededActivitySummary
+      );
+
+      for (const type of ['DescriptionUpdate', 'TagUpdate']) {
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            name: `Count Task - ${type}-${uuid()}`,
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+            type,
+            category: 'MetadataUpdate',
+            assignees: [adminUser.responseData.name],
+          },
+        });
+
+        expect(taskResponse.ok()).toBe(true);
+      }
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+
+    try {
+      await table.delete(apiContext);
+      await adminUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await adminUser.login(page);
+  });
+
+  test('entity tab badge totals conversations, activity and tasks', async ({
+    page,
+  }) => {
+    await table.visitEntityPage(page);
+
+    const countBadge = page
+      .getByRole('tab', { name: /activity feeds & tasks/i })
+      .getByTestId('count');
+
+    await expect(countBadge).toBeVisible();
+
+    // feedCount.totalCount = conversations (0) + activity (>= 1 seeded) +
+    // tasks (2). Anything below 3 means a category was dropped from the sum;
+    // the previous `>= 0` assertion held even with activity left out entirely.
+    // Poll instead of reading once — the counts are fetched after first paint,
+    // so a single read races the request and sees the initial 0.
+    await expect
+      .poll(async () => Number((await countBadge.innerText()).trim()), {
+        timeout: 30_000,
+      })
+      .toBeGreaterThanOrEqual(SEEDED_TASK_COUNT + 1);
+  });
+
+  test('All and Tasks panels each show their own seeded items', async ({
+    page,
+  }) => {
+    await table.visitEntityPage(page);
+    await page.getByTestId('activity_feed').click();
+    await waitForPageLoaded(page);
+
+    const leftPanel = page.getByTestId('global-setting-left-panel');
+
+    await leftPanel.getByText('Tasks').click();
+    await waitForPageLoaded(page);
+
+    await expect(
+      page.getByTestId('left-panel-task-count').getByTestId('filter-count')
+    ).toHaveText(String(SEEDED_TASK_COUNT), { timeout: 30_000 });
+    await expect(page.locator('[data-testid="task-feed-card"]')).toHaveCount(
+      SEEDED_TASK_COUNT
+    );
+
+    // All lists the change-events, and its badge must equal what is rendered.
+    await leftPanel.getByText('All', { exact: true }).click();
+    await waitForPageLoaded(page);
+
+    const feedItems = page.locator(
+      '#feedData [data-testid="message-container"]'
+    );
+
+    await expect(
+      feedItems.filter({ hasText: seededActivitySummary }).first()
+    ).toBeVisible({ timeout: 30_000 });
+
+    // Poll the difference rather than reading both once: the badge comes from
+    // the count request and the list from the activity request, so a single
+    // read can catch them mid-flight. A non-zero delta is the real defect —
+    // the badge counting something the list does not show.
+    const allBadge = page
+      .getByTestId('left-panel-all-count')
+      .getByTestId('filter-count');
+
+    await expect
+      .poll(
+        async () =>
+          Number((await allBadge.innerText()).trim()) -
+          (await feedItems.count()),
+        { timeout: 30_000 }
+      )
+      .toBe(0);
   });
 });

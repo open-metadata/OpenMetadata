@@ -14,7 +14,9 @@
 import { expect, test as base } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
+import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForPageLoaded } from '../../utils/polling';
 
@@ -22,6 +24,7 @@ const test = base;
 
 const adminUser = new UserClass();
 const testTable = new TableClass();
+const seededActivitySummary = `Activity stream seeded event ${uuid()}`;
 
 test.describe('Activity Stream on Entity Pages', () => {
   test.beforeAll('setup: create entities and users', async ({ browser }) => {
@@ -33,6 +36,14 @@ test.describe('Activity Stream on Entity Pages', () => {
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
       await testTable.create(apiContext);
+      // Seed a change-event explicitly rather than leaning on the implicit
+      // entityCreated one: its wording is not part of any contract and it is
+      // written asynchronously, so asserting on it is both vague and racy.
+      await insertActivityEventForTest(
+        apiContext,
+        testTable,
+        seededActivitySummary
+      );
     } finally {
       await afterAction();
     }
@@ -73,12 +84,10 @@ test.describe('Activity Stream on Entity Pages', () => {
 
     await expect(page.getByTestId('global-setting-left-panel')).toBeVisible();
 
-    // Creating the table emits an entityCreated change-event, so the All tab
-    // of a freshly seeded entity always has at least that one activity.
     await expect(
       page
         .locator('[data-testid="message-container"]')
-        .filter({ hasText: /created/i })
+        .filter({ hasText: seededActivitySummary })
         .first()
     ).toBeVisible({ timeout: 30_000 });
   });
