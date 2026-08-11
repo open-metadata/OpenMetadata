@@ -1082,6 +1082,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                             "[{\"op\": \"add\", \"path\": \"/status\", \"value\": \"InProgress\"}]")
                       }))
           JsonPatch patch) {
+    // Null-body guard: a `null` body would NPE inside JsonUtils.applyPatch. Matches the same
+    // clean-400 handling POST /tasks got in M11.
+    if (patch == null) {
+      throw BadRequestException.of("PATCH body must be a non-empty JSON-Patch document.");
+    }
     // H4 / H5 / H6: apply the patch to an in-memory copy, then run diff-based checks against
     // the original before persisting. Compared to the previous JsonPatch op-walking approach,
     // this reads fields off typed getters (no path-string / JsonValue casting) and closes the
@@ -1089,7 +1094,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // restricted-field edits past a path-based check. The check is scoped to the PATCH endpoint
     // — TaskRepository.update() (used by the workflow's CreateTask node) intentionally
     // bypasses this.
-    Task original = repository.get(uriInfo, id, repository.getFields("*"));
+    //
+    // Field fetch scoped to only what validateTaskPatch diffs. availableTransitions / status /
+    // approvedBy* / approvedAt / aboutFqnHash / resolution / payload sit on the base task row
+    // and hydrate for free; `about` is the one relationship-hydrated getter we need.
+    Task original = repository.get(uriInfo, id, repository.getFields("about"));
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
     return patchInternal(uriInfo, securityContext, id, patch);
