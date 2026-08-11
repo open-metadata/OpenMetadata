@@ -318,6 +318,13 @@ public class SessionService implements Managed {
     int maxAttempts = 5;
     for (int attempt = 0; attempt < maxAttempts && current != null; attempt++) {
       long now = now();
+      if (current.getStatus() == SessionStatus.PENDING && !current.isExpired(now)) {
+        // A login is in flight on this session: the cookie is written at /login but the
+        // session only becomes ACTIVE at /callback. A concurrent refresh (another tab's
+        // expiry timer) must not clear the cookie, or it breaks the pending login at the
+        // IdP round-trip and loops the user. Report "no active session" and leave it be.
+        return Optional.empty();
+      }
       if (current.isExpired(now)
           || current.getStatus() == SessionStatus.REVOKED
           || current.getStatus() == SessionStatus.EXPIRED

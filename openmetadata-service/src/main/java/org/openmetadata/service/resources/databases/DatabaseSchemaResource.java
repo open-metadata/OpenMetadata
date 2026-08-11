@@ -138,6 +138,11 @@ public class DatabaseSchemaResource
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
+              description = "Filter schemas by database service name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
+      @Parameter(
               description = "Filter schemas by database name",
               schema = @Schema(type = "string", example = "customerDatabase"))
           @QueryParam("database")
@@ -185,6 +190,9 @@ public class DatabaseSchemaResource
           @DefaultValue("include")
           RegexMode regexMode) {
     ListFilter filter = new ListFilter(include).addQueryParam("database", databaseParam);
+    if (serviceParam != null) {
+      filter.addQueryParam("service", serviceParam);
+    }
     if (regexFilterByFqn) {
       filter.addQueryParam("regexFilterByFqn", true);
     }

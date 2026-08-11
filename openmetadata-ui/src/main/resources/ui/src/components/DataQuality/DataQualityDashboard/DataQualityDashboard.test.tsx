@@ -444,7 +444,9 @@ describe('DataQualityDashboard', () => {
         expect.objectContaining({
           redirectPath: {
             pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-            search: 'testCaseStatus=Success',
+            search: expect.stringContaining(
+              'testCaseStatus=Success&lastRunRange'
+            ),
           },
         })
       );
@@ -454,7 +456,9 @@ describe('DataQualityDashboard', () => {
         expect.objectContaining({
           redirectPath: {
             pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-            search: 'testCaseStatus=Failed',
+            search: expect.stringContaining(
+              'testCaseStatus=Failed&lastRunRange'
+            ),
           },
         })
       );

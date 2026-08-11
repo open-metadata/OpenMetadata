@@ -30,11 +30,13 @@ import {
   addAssigneeFromPopoverWidget,
   assignIncident,
   triggerTestSuitePipelineAndWaitForSuccess,
+  verifyIncidentStatus,
   visitProfilerTab,
 } from '../../utils/incidentManager';
 import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
+import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -618,6 +620,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await testCaseResponse;
       await waitForIncidentTask(actorPage, testCaseFqn);
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await reassignIncidentTask(actorPage, assignee1);
@@ -724,6 +727,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await actorPage.goto(testCasePageUrl);
 
       await testCaseResponse;
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await addAssigneeFromPopoverWidget({
@@ -879,13 +883,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     /**
      * Step: Verify open vs closed
-     * @description Verifies incident counts for Open and Closed after rerun and re-acknowledgement.
+     * @description Verifies incident counts for Open and Closed after the rerun.
      */
     await test.step('Verify open and closed task', async () => {
-      await acknowledgeTask({
+      // table1 has an owner by now, so the rerun's incident is auto-assigned on
+      // creation. Ack is not reachable from the Assigned stage.
+      await verifyIncidentStatus({
         page,
-        testCase: testCaseName,
+        status: 'Assigned',
         table: table1,
+        testCase: testCaseName,
       });
       await page.reload();
 

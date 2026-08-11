@@ -223,7 +223,7 @@ def get_metastore_connection(connection: Any) -> Engine:
 def _(connection: PostgresConnection):
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
-    from metadata.ingestion.source.database.hive.metastore_dialects.postgres import (  # nopycln: import  # noqa: PLC0415
+    from metadata.ingestion.source.database.hive.metastore_dialects.postgres import (  # nopycln: import
         HivePostgresMetaStoreDialect,  # noqa: F401
     )
 
@@ -249,7 +249,7 @@ def _(connection: PostgresConnection):
 def _(connection: MysqlConnection):
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
-    from metadata.ingestion.source.database.hive.metastore_dialects.mysql import (  # nopycln: import  # noqa: PLC0415
+    from metadata.ingestion.source.database.hive.metastore_dialects.mysql import (  # nopycln: import
         HiveMysqlMetaStoreDialect,  # noqa: F401
     )
 

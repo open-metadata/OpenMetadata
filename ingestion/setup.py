@@ -249,7 +249,9 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {
-        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
+        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict).
+        # Its SA-1.x call sites are adapted at runtime by
+        # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
     },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],
@@ -311,11 +313,15 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "hive": {
         *COMMONS["hive"],
-        "thrift>=0.13,<1",
+        # CVE-2026-66053 (improper certificate validation) + CVE-2026-41608 / CVE-2026-48586
+        # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
+        # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
+        # has to move for this floor to be satisfiable.
+        "thrift>=0.24.0,<1",
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
         "thrift-sasl~=0.4",
-        "impyla~=0.18.0",
+        "impyla~=0.24.0",
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
@@ -324,8 +330,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "impala": {
         "presto-types-parser>=0.0.2",
-        "impyla[kerberos]~=0.18.0",
-        "thrift>=0.13,<1",
+        # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
+        # thrift below the fixed 0.24.0.
+        "impyla[kerberos]~=0.24.0",
+        "thrift>=0.24.0,<1",
         "pure-sasl",
         "thrift-sasl~=0.4",
     },
@@ -376,6 +384,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
+    "prefect": {},  # uses requests
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
@@ -402,6 +411,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
+    "sftp": {"paramiko>=3.5,<6"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
@@ -427,7 +437,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.25.6",
+    "datamodel-code-generator==0.64.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
@@ -438,6 +448,7 @@ dev = {
     "nox",
     "pre-commit",
     "basedpyright==1.39.3",
+    "import-linter~=2.13",
     # For publishing
     "twine",
     "build",
@@ -450,6 +461,7 @@ test_unit = {
     "pytest-cov",
     "pytest-order",
     "pytest-rerunfailures",
+    "pytest-timeout~=2.4",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
@@ -477,6 +489,7 @@ test = {
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",
+    "pytest-timeout~=2.4",
     "dirty-equals",
     # install dbt dependency
     "collate-dbt-artifacts-parser",
@@ -521,6 +534,7 @@ test = {
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
+    *plugins["sftp"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
     "python-liquid",
