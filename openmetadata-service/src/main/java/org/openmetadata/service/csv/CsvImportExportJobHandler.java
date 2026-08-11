@@ -36,7 +36,6 @@ import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
-import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -260,12 +259,8 @@ public class CsvImportExportJobHandler implements JobHandler {
     if (!versioningRepo.supportsBulkImportVersioning()) {
       return;
     }
-    EntityInterface versionedEntity =
-        DomainAccessFilter.resolveAccessibleVersioningTarget(
-            versioningRepo, args.getTargetFqn(), updatedBy);
-    if (versionedEntity != null) {
-      versioningRepo.createChangeEventForBulkOperation(versionedEntity, result, updatedBy);
-    }
+    BulkImportVersioning.recordVersion(
+        versioningRepo, null, args.getTargetFqn(), updatedBy, result);
   }
 
   private void handleCancellation(

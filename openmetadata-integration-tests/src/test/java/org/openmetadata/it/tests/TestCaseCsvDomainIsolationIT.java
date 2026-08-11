@@ -203,6 +203,76 @@ public class TestCaseCsvDomainIsolationIT {
     }
   }
 
+  /**
+   * The row detail must read the same whether the target is absent or merely outside the importing
+   * user's domains. The user picks the entityFQN, so a detail that told the two apart would turn the
+   * import response into a cross-domain existence oracle for arbitrary FQNs — the same oracle the
+   * testSuite column already closes.
+   *
+   * <p>Both responses are normalised on the target FQN and the row name before comparison, so this
+   * pins the indistinguishability, not any one message string.
+   */
+  @Test
+  void test_importCsv_absentAndForeignTargetsAreIndistinguishable(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String shortId = ns.uniqueShortId();
+      Domain ownDomain = createDomain(admin, "d1_" + shortId, cleanup);
+      Domain foreignDomain = createDomain(admin, "d2_" + shortId, cleanup);
+      DatabaseSchema schema = createSchema(ns, shortId, cleanup);
+      Table ownTable = createTable(admin, "t1_" + shortId, schema, ownDomain, cleanup);
+      Table foreignTable = createTable(admin, "t2_" + shortId, schema, foreignDomain, cleanup);
+
+      String seedName = "seed_" + shortId;
+      createTestCase(admin, seedName, ownTable);
+      // Suite column cleared so the target gate is the only thing that can reject either row.
+      String templateCsv =
+          admin
+              .testCases()
+              .exportCsv(ownTable.getFullyQualifiedName())
+              .replace(basicSuiteFqn(ownTable), "");
+
+      String absentFqn = ownTable.getFullyQualifiedName() + "_absent";
+      String absentName = "absent_" + shortId;
+      String foreignName = "foreign_" + shortId;
+      String absentCsv =
+          templateCsv
+              .replace(seedName, absentName)
+              .replace(ownTable.getFullyQualifiedName(), absentFqn);
+      String foreignCsv =
+          templateCsv
+              .replace(seedName, foreignName)
+              .replace(ownTable.getFullyQualifiedName(), foreignTable.getFullyQualifiedName());
+
+      OpenMetadataClient restricted =
+          createRestrictedUserClient(admin, shortId, ownDomain, cleanup);
+      CsvImportResult absentResult =
+          importAs(restricted, ownTable.getFullyQualifiedName(), absentCsv);
+      CsvImportResult foreignResult =
+          importAs(restricted, ownTable.getFullyQualifiedName(), foreignCsv);
+
+      // Without these the comparison below could pass on two empty or two successful responses.
+      assertTrue(
+          absentResult.getNumberOfRowsFailed() >= 1,
+          "The absent-target row must be rejected: " + absentResult.getImportResultsCsv());
+      assertTrue(
+          foreignResult.getNumberOfRowsFailed() >= 1,
+          "The foreign-target row must be rejected: " + foreignResult.getImportResultsCsv());
+
+      assertEquals(
+          normalizeImportResults(foreignResult, foreignTable.getFullyQualifiedName(), foreignName),
+          normalizeImportResults(absentResult, absentFqn, absentName),
+          "An absent target and a foreign-domain target must produce the same row detail, "
+              + "otherwise the import response is a cross-domain existence oracle. Absent: "
+              + absentResult.getImportResultsCsv()
+              + " Foreign: "
+              + foreignResult.getImportResultsCsv());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
   @Test
   void test_importCsvAsync_domainRestrictedUserCannotVersionForeignDomainTable(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -349,6 +419,15 @@ public class TestCaseCsvDomainIsolationIT {
 
   private String basicSuiteFqn(Table table) {
     return table.getFullyQualifiedName() + ".testSuite";
+  }
+
+  /** Strips the parts of an import response that legitimately differ between two targets. */
+  private String normalizeImportResults(
+      CsvImportResult result, String targetFqn, String testCaseName) {
+    return result
+        .getImportResultsCsv()
+        .replace(targetFqn, "<target>")
+        .replace(testCaseName, "<row>");
   }
 
   private CsvImportResult importAs(OpenMetadataClient client, String tableFqn, String csv) {

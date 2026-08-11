@@ -1993,7 +1993,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       throws IOException {
     List<TestCase> testCases = getTestCasesForExport(name, recursive);
     List<TestCase> visibleTestCases =
-        DomainAccessFilter.retainAccessible(testCases, DomainAccessFilter.resolveSubject(user));
+        DomainAccessFilter.retainAccessible(testCases, SubjectContext.getSubjectContext(user));
     return new TestCaseCsv(user, null).exportCsv(visibleTestCases, callback);
   }
 
@@ -2056,7 +2056,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       // Nothing is written yet, so refusing loudly is the useful behaviour, and the bit it reveals
       // is already available from GET /v1/dataQuality/testSuites/name/{fqn}.
       targetBundleSuite = Entity.getEntityByName(TEST_SUITE, name, FIELD_DOMAINS, Include.ALL);
-      SubjectContext subjectContext = DomainAccessFilter.resolveSubject(user);
+      SubjectContext subjectContext = SubjectContext.getSubjectContext(user);
       if (!DomainAccessFilter.isAccessible(subjectContext, targetBundleSuite.getDomains())) {
         throw new AuthorizationException(
             String.format(OUT_OF_DOMAIN_MESSAGE, targetBundleSuite.getFullyQualifiedName()));
@@ -2122,7 +2122,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
       super(TEST_CASE, HEADERS, user);
       this.targetBundleSuite = targetBundleSuite;
-      this.subjectContext = DomainAccessFilter.resolveSubject(user);
+      this.subjectContext = SubjectContext.getSubjectContext(user);
     }
 
     @Override
@@ -2148,12 +2148,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           String useDynamicAssertionStr = nullOrEmpty(csvRecord.get(8)) ? null : csvRecord.get(8);
           String inspectionQuery = nullOrEmpty(csvRecord.get(9)) ? null : csvRecord.get(9);
 
-          // Convert entityFQN to EntityLink
-          String entityLink = convertFQNToEntityLink(entityFQN);
-
           // Rows may target any entity, not just the one the endpoint was authorized against, so
           // the domain policy has to be enforced per row before anything is created or updated.
-          if (rejectIfTargetOutOfDomain(printer, csvRecord, entityFQN, entityLink)) {
+          String entityLink = resolveAccessibleTargetLink(printer, csvRecord, entityFQN);
+          if (entityLink == null) {
             continue;
           }
 
@@ -2308,29 +2306,55 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     /**
-     * Rejects a row whose test case would land on an entity outside the importing user's domains,
-     * returning true when the row was rejected. The row is reported as a failure rather than
-     * aborting the whole import: rows are applied one by one and are not rolled back, so aborting
-     * would misreport the rows already written.
+     * Resolves the entity link for the row's target, or reports the row as failed and returns null.
+     * The row is reported as a failure rather than aborting the whole import: rows are applied one
+     * by one and are not rolled back, so aborting would misreport the rows already written.
+     *
+     * <p>For a domain-restricted subject, a target that cannot be resolved at all and one that
+     * resolves outside their domains take the identical branch, so the row detail is the same for
+     * both and the response cannot be used as a cross-domain existence oracle — the rule {@link
+     * #resolveAccessibleTestSuite} applies to the CSV-supplied suite. Resolution has to happen
+     * inside this gate rather than before it: {@link #convertFQNToEntityLink} looks the FQN up to
+     * decide whether it names a table or a column, so leaving it outside would report "no such
+     * table" for an absent target before the gate ever ran. Subjects the filter does not apply to
+     * keep the underlying resolution error, which is what tells them their CSV is wrong.
+     */
+    private String resolveAccessibleTargetLink(
+        CSVPrinter printer, CSVRecord csvRecord, String entityFQN) throws IOException {
+      String entityLink;
+      if (DomainAccessFilter.shouldApply(subjectContext)) {
+        entityLink = resolveInDomainTargetLink(entityFQN);
+        if (entityLink == null) {
+          importFailure(printer, String.format(OUT_OF_DOMAIN_MESSAGE, entityFQN), csvRecord);
+          importResult.withStatus(ApiStatus.FAILURE);
+        }
+      } else {
+        entityLink = convertFQNToEntityLink(entityFQN);
+      }
+      return entityLink;
+    }
+
+    /**
+     * Returns the entity link of a target the subject may write to, or null when the CSV-supplied
+     * FQN names nothing, cannot be resolved to a table or column, or sits outside their domains.
      *
      * <p>The lookup is per row rather than batched because the row's target is only known once the
      * row is parsed; it reads through the 30-second entity cache, so a CSV repeating a table costs
      * one query, not one per row.
      */
-    private boolean rejectIfTargetOutOfDomain(
-        CSVPrinter printer, CSVRecord csvRecord, String entityFQN, String entityLink)
-        throws IOException {
-      boolean outOfDomain = false;
-      if (DomainAccessFilter.shouldApply(subjectContext)) {
+    private String resolveInDomainTargetLink(String entityFQN) {
+      String entityLink = null;
+      try {
+        String candidate = convertFQNToEntityLink(entityFQN);
         EntityInterface target =
-            Entity.getEntity(EntityLink.parse(entityLink), FIELD_DOMAINS, Include.NON_DELETED);
-        outOfDomain = !subjectContext.hasDomains(target.getDomains());
+            Entity.getEntity(EntityLink.parse(candidate), FIELD_DOMAINS, Include.NON_DELETED);
+        if (subjectContext.hasDomains(target.getDomains())) {
+          entityLink = candidate;
+        }
+      } catch (EntityNotFoundException | IllegalArgumentException e) {
+        LOG.debug("Target '{}' named in the imported CSV is unavailable", entityFQN);
       }
-      if (outOfDomain) {
-        importFailure(printer, String.format(OUT_OF_DOMAIN_MESSAGE, entityFQN), csvRecord);
-        importResult.withStatus(ApiStatus.FAILURE);
-      }
-      return outOfDomain;
+      return entityLink;
     }
 
     /**
