@@ -65,6 +65,18 @@ _METRIC_TYPE_BY_PREFIX = {
 }
 
 
+def _unquote_name_part(part: str) -> str:
+    """Strip Snowflake quoting and nothing else.
+
+    Every derivation of a metric name starts here, because the two call sites
+    disagree on quoting: the metadata stage passes the topology context value,
+    which may be quoted, while the lineage workflow passes the raw
+    INFORMATION_SCHEMA value, which never is. Normalizing before anything else
+    keeps both paths on the same name for the same metric.
+    """
+    return fqn.unquote_name(part or "").replace('"', "")
+
+
 def _sanitize_name_part(part: str) -> str:
     """Reduce one identifier to a single FQN-safe segment.
 
@@ -72,15 +84,20 @@ def _sanitize_name_part(part: str) -> str:
     structural meaning in an OpenMetadata name: ``.`` (FQN separator), ``"``
     (FQN quoting) and ``::`` (forbidden by the ``entityName`` pattern).
     """
-    cleaned = fqn.unquote_name(part or "").replace('"', "")
+    cleaned = _unquote_name_part(part)
     for reserved in (".", ":"):
         cleaned = cleaned.replace(reserved, "_")
     return cleaned
 
 
 def _path_digest(parts: Tuple[str, ...]) -> str:  # noqa: UP006
-    """Short digest of the *unsanitized* path, joined on a character no Snowflake
-    identifier can contain so the encoding itself is unambiguous."""
+    """Short digest of the path *before* the lossy `.`/`:` rewrite, joined on a
+    character no Snowflake identifier can contain so the encoding is unambiguous.
+
+    Hashing the pre-rewrite form is what restores uniqueness; hashing anything
+    earlier than that (the quoted original) would make the name depend on which
+    call site derived it.
+    """
     return hashlib.sha256("\x00".join(part or "" for part in parts).encode("utf-8")).hexdigest()[:_NAME_DIGEST_LENGTH]
 
 
@@ -103,10 +120,9 @@ def build_metric_name(service: str, database: str, schema: str, view: str, metri
     which the lineage workflow relies on to re-derive the name through this same
     function.
     """
-    raw = (service, database, schema, view, metric)
-    digest = _path_digest(raw)
-    suffix = f"{METRIC_NAME_SEPARATOR}{digest}"
-    path = METRIC_NAME_SEPARATOR.join(_sanitize_name_part(part) for part in raw)
+    unquoted = tuple(_unquote_name_part(part) for part in (service, database, schema, view, metric))
+    suffix = f"{METRIC_NAME_SEPARATOR}{_path_digest(unquoted)}"
+    path = METRIC_NAME_SEPARATOR.join(_sanitize_name_part(part) for part in unquoted)
     # Truncating the readable path never costs uniqueness -- that lives in the digest.
     return f"{path[: MAX_METRIC_NAME_LENGTH - len(suffix)]}{suffix}"
 

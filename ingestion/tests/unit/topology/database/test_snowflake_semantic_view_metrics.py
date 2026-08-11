@@ -90,6 +90,17 @@ def test_build_metric_name_is_unambiguous_across_part_boundaries():
     assert left != right
 
 
+def test_build_metric_name_ignores_identifier_quoting():
+    """The two call sites disagree on quoting: the metadata stage passes the
+    topology context value, which may be quoted, while the lineage workflow passes
+    the raw INFORMATION_SCHEMA value, which never is. If the derived name differed
+    the lineage pass would miss the metric it just ingested and create an orphan."""
+    from_metadata = build_metric_name("svc", "DB", '"My.Schema"', '"My.View"', "total_revenue")
+    from_lineage = build_metric_name("svc", "DB", "My.Schema", "My.View", "total_revenue")
+
+    assert from_metadata == from_lineage
+
+
 def test_build_metric_name_respects_the_entity_name_limit():
     long_name = build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "m" * 80)
 
