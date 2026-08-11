@@ -1715,11 +1715,13 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
+      const searchResponse = waitForMetricsSearchResponse(page);
       await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
 
       const row = page
         .locator('tr')
-        .filter({ has: page.getByTestId('metric-name') })
+        .filter({ hasText: fixtures.prefix })
         .first();
       await expect(row).toBeVisible();
 
@@ -1733,11 +1735,13 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
+      const searchResponse = waitForMetricsSearchResponse(page);
       await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
 
       const row = page
         .locator('tr')
-        .filter({ has: page.getByTestId('metric-name') })
+        .filter({ hasText: fixtures.prefix })
         .first();
       await expect(row).toBeVisible();
 
