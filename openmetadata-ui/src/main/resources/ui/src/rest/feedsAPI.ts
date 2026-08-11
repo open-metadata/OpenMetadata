@@ -187,7 +187,6 @@ export interface ListActivityParams {
   entityId?: string;
   actorId?: string;
   domains?: string;
-  domain?: string;
   days?: number;
   limit?: number;
 }
@@ -245,7 +244,6 @@ export const getUserActivity = async (
 export const getMyActivityFeed = async (params?: {
   days?: number;
   limit?: number;
-  domain?: string;
 }) => {
   const response = await APIClient.get<{
     data: ActivityEvent[];
@@ -258,7 +256,6 @@ export const getMyActivityFeed = async (params?: {
 export const getFollowingActivityFeed = async (params?: {
   days?: number;
   limit?: number;
-  domain?: string;
 }) => {
   const response = await APIClient.get<{
     data: ActivityEvent[];

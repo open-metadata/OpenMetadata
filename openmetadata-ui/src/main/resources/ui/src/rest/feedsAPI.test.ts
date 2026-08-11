@@ -39,11 +39,13 @@ describe('feedsAPI activity endpoints', () => {
 
   // Each home Activity Feed widget filter maps to a distinct endpoint. Asserting
   // the exact paths here is what stops a filter silently reusing another's feed.
+  // Domain scoping is not passed by any caller — the withDomainFilter
+  // interceptor appends it to every GET.
   it('should request the unscoped activity feed for the All filter', async () => {
-    const result = await getActivityEvents({ limit: 10, domain: 'finance' });
+    const result = await getActivityEvents({ limit: 10 });
 
     expect(mockedGet).toHaveBeenCalledWith('/activity', {
-      params: { limit: 10, domain: 'finance' },
+      params: { limit: 10 },
     });
     expect(result).toEqual(mockActivityResponse.data);
   });
@@ -61,11 +63,10 @@ describe('feedsAPI activity endpoints', () => {
     const result = await getFollowingActivityFeed({
       days: 7,
       limit: 10,
-      domain: 'finance',
     });
 
     expect(mockedGet).toHaveBeenCalledWith('/activity/following', {
-      params: { days: 7, limit: 10, domain: 'finance' },
+      params: { days: 7, limit: 10 },
     });
     expect(result).toEqual(mockActivityResponse.data);
   });
