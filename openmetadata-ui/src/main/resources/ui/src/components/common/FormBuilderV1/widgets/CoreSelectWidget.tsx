@@ -14,7 +14,7 @@
 import { Select } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Key, useMemo } from 'react';
-import { getWidgetLabel } from './coreWidgetUtils';
+import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 
 const CoreSelectWidget = ({
   id,
@@ -52,18 +52,12 @@ const CoreSelectWidget = ({
     [options.enumOptions]
   );
 
-  const description =
-    (options.help as string | undefined) ?? schema.description;
-  const showAsTooltip = Boolean(options.showDescriptionAsTooltip);
-  const hint = rawErrors?.[0] ?? (showAsTooltip ? undefined : description);
-  const tooltip = showAsTooltip ? description : undefined;
-
   return (
     <Select
       className="core-select-widget"
       data-testid={id ? `select-widget-${id}` : undefined}
       fontSize="sm"
-      hint={hint}
+      hint={getWidgetHint({ rawErrors, schema, options })}
       isDisabled={disabled || readonly}
       isInvalid={!!rawErrors?.length}
       isRequired={required}
@@ -73,7 +67,6 @@ const CoreSelectWidget = ({
       popoverClassName="core-select-widget-popover"
       selectedKey={value === undefined || value === null ? null : String(value)}
       size="sm"
-      tooltip={tooltip}
       onBlur={() => onBlur(id, value)}
       onFocus={() => onFocus(id, value)}
       onSelectionChange={(key: Key | null) => {

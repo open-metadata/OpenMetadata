@@ -11,13 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Input,
-  Tooltip,
-  TooltipTrigger,
-} from '@openmetadata/ui-core-components';
+import { Input } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { HelpCircle } from '@untitledui/icons';
 import { getWidgetLabel } from './coreWidgetUtils';
 
 const parseNumericValue = (
@@ -59,9 +54,7 @@ const CoreInputWidget = ({
   const handleChange = (nextValue: string) => {
     if (schema.type === 'number' || schema.type === 'integer') {
       onChange(
-        parseNumericValue(nextValue, schema.type) ??
-          options.emptyValue ??
-          undefined
+        parseNumericValue(nextValue, schema.type) ?? options.emptyValue ?? undefined
       );
 
       return;
@@ -70,44 +63,22 @@ const CoreInputWidget = ({
     onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
-  const description =
-    (options.help as string | undefined) ?? schema.description;
-  const showAsTooltip = Boolean(options.showDescriptionAsTooltip);
-  const widgetLabel = getWidgetLabel({ hideLabel, label });
-  const showTooltipRow = showAsTooltip && Boolean(widgetLabel);
-  const hint = rawErrors?.[0] ?? (showTooltipRow ? undefined : description);
-  const tooltip = showTooltipRow
-    ? (description as string | undefined)
-    : undefined;
+  const description = (options.help as string | undefined) ?? schema.description;
+  const hint = rawErrors?.[0] ?? description;
 
   return (
     <div>
-      {showTooltipRow ? (
-        <div className="tw:mb-1.5 tw:flex tw:cursor-default tw:items-center tw:gap-1.5">
-          <span
-            aria-hidden
-            className="tw:text-sm tw:font-medium tw:text-secondary">
-            {widgetLabel}
-          </span>
-          {required && <span className="tw:text-error-primary">*</span>}
-          <Tooltip placement="top" title={tooltip}>
-            <TooltipTrigger className="tw:flex tw:cursor-pointer tw:items-center tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover">
-              <HelpCircle className="tw:size-4" />
-            </TooltipTrigger>
-          </Tooltip>
-        </div>
-      ) : null}
+      {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
       <Input
-        aria-label={showTooltipRow ? widgetLabel : undefined}
         autoFocus={autofocus}
-        className={showTooltipRow ? 'tw:w-[86%]' : undefined}
+        className={options.compactInput ? 'tw:w-[86%]' : undefined}
         hint={hint}
         hintClassName="tw:text-xs"
         id={id}
         isDisabled={disabled || readonly}
         isInvalid={!!rawErrors?.length}
         isRequired={required}
-        label={showTooltipRow ? undefined : widgetLabel}
+        label={getWidgetLabel({ hideLabel, label })}
         placeholder={placeholder}
         type={inputType}
         value={value ?? ''}
