@@ -13,6 +13,11 @@ SET json = JSON_SET(JSON_REMOVE(json, '$.appConfiguration'), '$.allowConfigurati
 WHERE extension LIKE 'app.version.%'
   AND json->>'$.name' = 'McpApplication';
 
+UPDATE event_subscription_entity
+SET json = JSON_SET(json, '$.pollInterval', 1)
+WHERE name = 'WorkflowEventConsumer'
+  AND CAST(JSON_EXTRACT(json, '$.pollInterval') AS UNSIGNED) > 1;
+
 -- Restore faster Flowable job-acquisition on 1.13.
 -- The 1.10.5 migration set asyncJobAcquisitionInterval/timerJobAcquisitionInterval to 60000 to
 -- reduce perceived idle polling, but 60s pickup starves the workflow engine under load: the
