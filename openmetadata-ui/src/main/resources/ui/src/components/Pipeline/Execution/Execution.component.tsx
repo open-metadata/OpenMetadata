@@ -51,10 +51,10 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const [searchValue, setSearchValue] = useState<string>('');
   const [executions, setExecutions] = useState<Array<PipelineStatus>>();
   const [datesSelected, setDatesSelected] = useState<boolean>(false);
-  const [startTime, setStartTime] = useState(
+  const [startTime, setStartTime] = useState(() =>
     getEpochMillisForPastDays(EXECUTION_FILTER_RANGE.last365days.days)
   );
-  const [endTime, setEndTime] = useState(getCurrentMillis());
+  const [endTime, setEndTime] = useState(() => getCurrentMillis());
   const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(true);

@@ -2448,6 +2448,19 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity);
 
     @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN test_case tc ON er.toId = tc.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (tc.deleted = false OR tc.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedTestCasesBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>) ORDER BY toId LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -14778,6 +14791,50 @@ public interface CollectionDAO {
     List<String> listByOwnersAndDomains(
         @Bind("userId") String userId,
         @BindList("teamIds") List<String> teamIds,
+        @Bind("domainJson") String domainJson,
+        @BindList("domainIds") List<String> domainIds,
+        @Bind("after") long after,
+        @Bind("limit") int limit);
+
+    // Relationship.FOLLOWS ordinal = 11. Only users follow entities, so unlike ownership there is
+    // no team leg to this query.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityId IN ("
+                + "SELECT toId FROM entity_relationship WHERE relation = 11 "
+                + "AND fromEntity = 'user' AND fromId = :userId) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityid IN ("
+                + "SELECT toid FROM entity_relationship WHERE relation = 11 "
+                + "AND fromentity = 'user' AND fromid = :userId) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByFollowers(
+        @Bind("userId") String userId, @Bind("after") long after, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityId IN ("
+                + "SELECT toId FROM entity_relationship WHERE relation = 11 "
+                + "AND fromEntity = 'user' AND fromId = :userId) "
+                + "AND JSON_OVERLAPS(domains, :domainJson) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM activity_stream WHERE entityid IN ("
+                + "SELECT toid FROM entity_relationship WHERE relation = 11 "
+                + "AND fromentity = 'user' AND fromid = :userId) "
+                + "AND EXISTS ("
+                + "SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
+                + "WHERE domain_id IN (<domainIds>)) "
+                + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByFollowersAndDomains(
+        @Bind("userId") String userId,
         @Bind("domainJson") String domainJson,
         @BindList("domainIds") List<String> domainIds,
         @Bind("after") long after,

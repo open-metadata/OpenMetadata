@@ -225,7 +225,9 @@ const ContextCenterMemoriesPage: FC = () => {
       const [totalVisible, pinnedVisible, createdByMeVisible] =
         await Promise.all([
           getVisibleMemoryCount(),
-          getVisibleMemoryCount({ pinned: true }),
+          // TODO: Unhide when pin feature releases in post-2.0
+          // getVisibleMemoryCount({ pinned: true }),
+          Promise.resolve(0),
           authorFilter
             ? getVisibleMemoryCount({ author: authorFilter })
             : Promise.resolve(0),
@@ -488,6 +490,11 @@ const ContextCenterMemoriesPage: FC = () => {
     [memoryCounts, t]
   );
 
+  const allAssetsLabel = t('label.all-entity', {
+    entity: t('label.asset-plural'),
+  });
+  const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
+
   const headerActions = (
     <Button
       color="primary"
@@ -676,10 +683,7 @@ const ContextCenterMemoriesPage: FC = () => {
                               : 'tw:text-secondary'
                           }
                           weight="medium">
-                          {selectedAsset?.label ??
-                            t('label.all-entity', {
-                              entity: t('label.asset-plural'),
-                            })}
+                          {selectedAsset?.label ?? allAssetsLabel}
                         </Typography>
                       </div>
                       <ChevronDown
@@ -730,8 +734,7 @@ const ContextCenterMemoriesPage: FC = () => {
                             : 'tw:text-secondary'
                         }
                         weight="medium">
-                        {selectedAuthor?.label ??
-                          t('label.all-entity', { entity: t('label.author') })}
+                        {selectedAuthor?.label ?? allAuthorsLabel}
                       </Typography>
                     </div>
                     <ChevronDown
@@ -779,12 +782,8 @@ const ContextCenterMemoriesPage: FC = () => {
                       <Dropdown.Item
                         id="all-authors"
                         key="all-authors"
-                        textValue={t('label.all-entity', {
-                          entity: t('label.author'),
-                        })}>
-                        <span>
-                          {t('label.all-entity', { entity: t('label.author') })}
-                        </span>
+                        textValue={allAuthorsLabel}>
+                        <span>{allAuthorsLabel}</span>
                       </Dropdown.Item>
                       {isAuthorOptionsLoading && (
                         <Dropdown.Item
