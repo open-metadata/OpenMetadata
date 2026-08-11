@@ -54,7 +54,9 @@ const CoreInputWidget = ({
   const handleChange = (nextValue: string) => {
     if (schema.type === 'number' || schema.type === 'integer') {
       onChange(
-        parseNumericValue(nextValue, schema.type) ?? options.emptyValue ?? undefined
+        parseNumericValue(nextValue, schema.type) ??
+          options.emptyValue ??
+          undefined
       );
 
       return;
@@ -63,12 +65,13 @@ const CoreInputWidget = ({
     onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
-  const description = (options.help as string | undefined) ?? schema.description;
+  const description =
+    (options.help as string | undefined) ?? schema.description;
   const hint = rawErrors?.[0] ?? description;
 
   return (
     <div>
-      {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+      {}
       <Input
         autoFocus={autofocus}
         className={options.compactInput ? 'tw:w-[86%]' : undefined}
