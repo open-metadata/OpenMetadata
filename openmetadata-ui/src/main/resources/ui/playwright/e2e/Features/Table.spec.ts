@@ -23,6 +23,7 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
+  escapeESReservedCharacters,
   getFirstRowColumnLink,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
@@ -103,13 +104,22 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByText('Name', { exact: true }).click();
     await page.locator('[data-testid="searchbar-component"] input').click();
 
-    const testSearchResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*q=%2Atemp-test-case%2A*`
-    );
+    const searchTerm = 'temp-test-case';
+    const testSearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) &&
+        (responseUrl.searchParams.get('q') ?? '') ===
+          `*${escapeESReservedCharacters(searchTerm)}*`
+      );
+    });
 
     await page
       .locator('[data-testid="searchbar-component"] input')
-      .fill('temp-test-case');
+      .fill(searchTerm);
 
     await testSearchResponse;
     await page
@@ -160,11 +170,18 @@ test.describe('Table pagination sorting search scenarios ', () => {
     // Combine it with a search term that matches nothing to deterministically
     // land on the empty-state placeholder.
     const noMatchSearch = `no-match-${uuid()}`;
-    const emptySearchResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-        response.url().includes(noMatchSearch)
-    );
+    const emptySearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) &&
+        (responseUrl.searchParams.get('q') ?? '').includes(
+          escapeESReservedCharacters(noMatchSearch)
+        )
+      );
+    });
     await page.locator('[data-testid="searchbar-component"] input').click();
     await page
       .locator('[data-testid="searchbar-component"] input')

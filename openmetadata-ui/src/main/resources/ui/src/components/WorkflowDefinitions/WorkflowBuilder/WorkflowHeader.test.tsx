@@ -275,4 +275,21 @@ describe('WorkflowHeader — System badge', () => {
       screen.queryByTestId('edit-workflow-title-button')
     ).not.toBeInTheDocument();
   });
+
+  it('renders the AI-mode header with the breadcrumb when isAiMode is true', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        isAiMode
+        breadcrumb={<div data-testid="ai-breadcrumb">crumb</div>}
+      />
+    );
+
+    expect(screen.getByTestId('ai-breadcrumb')).toBeInTheDocument();
+    expect(screen.getByTestId('workflow-title')).toHaveTextContent(
+      'Glossary Approval Workflow'
+    );
+  });
 });
