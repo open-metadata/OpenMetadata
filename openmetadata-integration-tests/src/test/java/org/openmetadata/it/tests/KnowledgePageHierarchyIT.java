@@ -56,7 +56,10 @@ public class KnowledgePageHierarchyIT {
   private static final String KC_PATH = "v1/contextCenter/pages";
   private static final String KC_HIERARCHY_PATH = KC_PATH + "/hierarchy";
   private static final String PARENT_FIELD = "parent";
+  private static final String RELATED_ENTITIES_FIELD = "relatedEntities";
   private static final String ORGANIZATION_NAME = "Organization";
+  // A search-index-only pseudo-type: it has no entity repository, so resolving it throws.
+  private static final String NO_REPOSITORY_TYPE = "tableColumn";
 
   private Page createPage(RestClient rest, CreatePage request) throws HttpResponseException {
     return rest.create(KC_PATH, request, Page.class);
@@ -81,6 +84,15 @@ public class KnowledgePageHierarchyIT {
 
   private ResultList<Page> listPagesWithParent(RestClient rest) {
     String path = KC_PATH + "?fields=" + PARENT_FIELD + "&limit=1000000";
+    try (Response response = rest.rawGet(path)) {
+      assertEquals(200, response.getStatus(), "List call failed: " + response.getStatus());
+      String body = response.readEntity(String.class);
+      return JsonUtils.readValue(body, new TypeReference<ResultList<Page>>() {});
+    }
+  }
+
+  private ResultList<Page> listPagesWithRelatedEntities(RestClient rest) {
+    String path = KC_PATH + "?fields=" + RELATED_ENTITIES_FIELD + "&limit=1000000";
     try (Response response = rest.rawGet(path)) {
       assertEquals(200, response.getStatus(), "List call failed: " + response.getStatus());
       String body = response.readEntity(String.class);
@@ -127,6 +139,34 @@ public class KnowledgePageHierarchyIT {
         parent.getId(),
         listedChild.getParent().getId(),
         "Child page parent must point at the parent page id");
+  }
+
+  @Test
+  void testListToleratesRelatedEntityWithoutRepository(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    EntityReference resolvableRef = getOrganizationRef();
+    EntityReference noRepositoryRef =
+        new EntityReference().withId(UUID.randomUUID()).withType(NO_REPOSITORY_TYPE);
+    Page page =
+        createPage(
+            rest,
+            buildCreateRequest(ns.prefix("pseudoRelated"), null)
+                .withRelatedEntities(List.of(resolvableRef, noRepositoryRef)));
+
+    ResultList<Page> listed = listPagesWithRelatedEntities(rest);
+    Page listedPage = findById(listed, page.getId());
+
+    assertNotNull(listedPage, "Page must be present in the list response");
+    assertTrue(
+        listedPage.getRelatedEntities().stream()
+            .noneMatch(ref -> NO_REPOSITORY_TYPE.equals(ref.getType())),
+        "Related entity whose type has no repository must be skipped, "
+            + "not turn the whole list into a 404");
+    assertTrue(
+        listedPage.getRelatedEntities().stream()
+            .anyMatch(ref -> resolvableRef.getId().equals(ref.getId())),
+        "Resolvable related entities must still be returned alongside the skipped one");
   }
 
   @Test
