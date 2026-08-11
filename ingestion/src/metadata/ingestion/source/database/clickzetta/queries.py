@@ -17,6 +17,13 @@ from enum import Enum
 _IDENTIFIER_PART = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 DEFAULT_QUERY_HISTORY_RESULT_LIMIT = 1000
 NATIVE_CLICKZETTA_QUERY_HISTORY_TABLE = "sys.information_schema.job_history"
+WORKSPACE_CLICKZETTA_QUERY_HISTORY_TABLE = "information_schema.job_history"
+NATIVE_CLICKZETTA_QUERY_HISTORY_TABLES = frozenset(
+    {
+        NATIVE_CLICKZETTA_QUERY_HISTORY_TABLE,
+        WORKSPACE_CLICKZETTA_QUERY_HISTORY_TABLE,
+    }
+)
 MAX_QUERY_HISTORY_FILTER_CONDITION_LENGTH = 4096
 _QUERY_HISTORY_FILTER_COLUMN = r"(?:database_name|schema_name|query_type|user_name)"
 _QUERY_HISTORY_FILTER_OPERATOR = r"(?:NOT\s+LIKE|LIKE|!=|<>|=)"
@@ -84,7 +91,7 @@ def _quote_sql_literal(value: str) -> str:
 
 
 def _is_native_query_history_table(query_history_table: str) -> bool:
-    return query_history_table.casefold() == NATIVE_CLICKZETTA_QUERY_HISTORY_TABLE
+    return query_history_table.casefold() in NATIVE_CLICKZETTA_QUERY_HISTORY_TABLES
 
 
 def validate_query_history_filter_condition(filter_condition: object | None) -> str:
@@ -129,9 +136,9 @@ def build_clickzetta_query_history_sql(
 
     ClickZetta deployments can expose query history through different system
     tables or views. Canonical views expose the selected columns directly;
-    ClickZetta's native ``sys.information_schema.job_history`` source is
-    projected into the same shape here. Both paths remain bounded by time and
-    result limit.
+    ClickZetta's native workspace-local ``information_schema.job_history`` and
+    cross-workspace ``sys.information_schema.job_history`` sources are projected
+    into the same shape here. All paths remain bounded by time and result limit.
     """
     table = validate_query_history_table(query_history_table)
     limit = _validate_result_limit(result_limit)
