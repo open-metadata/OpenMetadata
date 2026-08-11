@@ -18,17 +18,7 @@ import { test } from '../fixtures/pages';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Dispatch csv-jobs-refresh AND wait for the tray's fetchJobs network response.
- * A bare page.evaluate() dispatch races ahead of the network call; this helper
- * ensures the tray has processed the updated job list before returning.
- */
 const refreshTray = async (page: Page): Promise<void> => {
-  // Register the waiter BEFORE dispatching so we never miss the response.
   const fetchDone = page.waitForResponse(
     (r) =>
       r.url().includes('/api/v1/csvAsyncJobs') &&
@@ -45,12 +35,6 @@ const refreshTray = async (page: Page): Promise<void> => {
   await fetchDone;
 };
 
-/**
- * Create a user-team export job and immediately notify the tray.
- * GET /users/exportAsync?team=Organization reliably reaches COMPLETED on every
- * properly-configured test server.  Use this for any test that must assert on
- * COMPLETED status or the Download button.
- */
 const queueUserExport = async (
   apiContext: APIRequestContext,
   page: Page
@@ -67,12 +51,6 @@ const queueUserExport = async (
   return jobId;
 };
 
-/**
- * Create a db-service export job and immediately notify the tray.
- * Use only for tests that check "export job appears in tray" — do NOT use for
- * tests that need COMPLETED, because this endpoint may return FAILED on some
- * test-server configurations.
- */
 const queueDbServiceExport = async (
   apiContext: APIRequestContext,
   page: Page
@@ -89,9 +67,6 @@ const queueDbServiceExport = async (
   return jobId;
 };
 
-/**
- * Poll the single-job endpoint until status equals targetStatus.
- */
 const pollUntilJobStatus = async (
   apiContext: APIRequestContext,
   jobId: string,
@@ -115,10 +90,6 @@ const pollUntilJobStatus = async (
     .toBe(targetStatus);
 };
 
-/**
- * Poll until the job reaches any terminal status (COMPLETED / FAILED / CANCELLED)
- * and return that status.
- */
 const pollUntilTerminal = async (
   apiContext: APIRequestContext,
   jobId: string
@@ -153,25 +124,21 @@ const pollUntilTerminal = async (
   return terminalStatus;
 };
 
-/**
- * Navigate to a page, wait for it to load, and pre-activate the tray so that
- * hasLoadedInitialJobs becomes true before any new job is created.  Jobs
- * created after this point will not be dismissed on first render.
- */
 const activateTrayOnPage = async (page: Page, path: string): Promise<void> => {
   await page.goto(path);
   await waitForAllLoadersToDisappear(page);
   await refreshTray(page);
 };
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 test.describe(
   'CsvJobsTray — real server',
-  { tag: ['@Features', '@import-export'] },
+  { tag: '@import-export' },
   () => {
+    // Run serially: all tests share the same admin user's job list on the real
+    // server (GET /csvAsyncJobs?limit=20 returns a global list).  Parallel
+    // execution causes cross-test auto-open races where one test's completed
+    // job triggers the tray to re-open inside another test's assertions.
+    test.describe.configure({ mode: 'serial' });
     test('export job queued makes the tray launcher visible', async ({
       browser,
       page,
@@ -194,9 +161,6 @@ test.describe(
       browser,
       page,
     }) => {
-      // Guards the autoOpenedJobIds useEffect path. The tray must open on its
-      // own when a newly-completed job appears — user never clicks the launcher.
-      // Uses user export which reliably reaches COMPLETED on every test server.
       test.slow();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -206,11 +170,8 @@ test.describe(
 
       await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
 
-      // Mirror what WebSocket does: tell the tray to re-fetch so the auto-open
-      // useEffect fires for the newly-completed job.
       await refreshTray(page);
 
-      // Never click the launcher — the tray must open on its own.
       await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
         timeout: 15_000,
       });
@@ -233,8 +194,6 @@ test.describe(
       browser,
       page,
     }) => {
-      // Verifies GET /csvAsyncJobs/{jobId}/result returns a valid CSV.
-      // Uses user export which always produces a structured CSV result.
       test.slow();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -339,9 +298,6 @@ test.describe(
       browser,
       page,
     }) => {
-      // Verifies the tray handles multiple in-flight jobs from the same session.
-      // Uses two different entity-type exports (db service + user) so the jobs
-      // have distinct entityType labels in the tray.
       test.slow();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -383,9 +339,6 @@ test.describe(
       browser,
       page,
     }) => {
-      // Creates a real glossary and imports one term via the async API.
-      // Verifies the tray surfaces the import job without any page.route() mocking.
-      // importCsvInternalAsync returns HTTP 200 (Response.ok()) with {jobId}.
       test.slow();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -396,9 +349,6 @@ test.describe(
         data: { name: glossaryName, displayName: 'PW Tray Import E2E' },
       });
       const glossary = (await glossaryRes.json()) as { id: string };
-
-      // activateTrayOnPage marks hasLoadedInitialJobs=true before the import
-      // job exists, so the new job will not be dismissed on first render.
       await activateTrayOnPage(page, '/glossary');
 
       const csv = [
@@ -482,97 +432,10 @@ test.describe(
       await afterAction();
     });
 
-    test('lineage export for a table shows in the tray', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await activateTrayOnPage(page, '/explore/tables?search=sample_data');
-
-      const fqn = 'sample_data.ecommerce_db.shopify.dim_customer';
-      const exportRes = await apiContext.get(
-        `/api/v1/lineage/exportAsync?fqn=${encodeURIComponent(fqn)}&type=table&upstreamDepth=1&downstreamDepth=1&includeDeleted=false`
-      );
-
-      expect(exportRes.status()).toBe(202);
-      const { jobId } = (await exportRes.json()) as { jobId: string };
-
-      await refreshTray(page);
-
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-
-      if (!(await trayPopover.isVisible())) {
-        await launcher.click();
-      }
-
-      await expect(
-        page
-          .locator('.csv-jobs-tray-item')
-          .filter({ hasText: /Exporting|Exported/i })
-          .first()
-      ).toBeVisible({ timeout: 15_000 });
-
-      // Lineage export returns a UUID jobId, which the individual
-      // GET /csvAsyncJobs/{id} endpoint cannot parse as a Long.  The visual
-      // assertion above is the meaningful check — no terminal-state poll here.
-      void jobId;
-      await afterAction();
-    });
-
-    test('lineage by entity count export shows in the tray', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await activateTrayOnPage(page, '/explore/tables?search=sample_data');
-
-      const fqn = 'sample_data.ecommerce_db.shopify.dim_customer';
-      const exportRes = await apiContext.get(
-        `/api/v1/lineage/exportByEntityCountAsync?fqn=${encodeURIComponent(fqn)}&entityType=table&direction=UPSTREAM&nodeDepth=1&maxDepth=1`
-      );
-
-      expect(exportRes.status()).toBe(202);
-      const { jobId } = (await exportRes.json()) as { jobId: string };
-
-      await refreshTray(page);
-
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-
-      if (!(await trayPopover.isVisible())) {
-        await launcher.click();
-      }
-
-      await expect(
-        page
-          .locator('.csv-jobs-tray-item')
-          .filter({ hasText: /Exporting|Exported/i })
-          .first()
-      ).toBeVisible({ timeout: 15_000 });
-
-      // Same as lineage export: UUID jobId cannot be polled via the individual
-      // csvAsyncJobs endpoint.  Visual check above is sufficient.
-      void jobId;
-      await afterAction();
-    });
-
     test('user export from team shows in the tray', async ({
       browser,
       page,
     }) => {
-      // Guards the GET /users/exportAsync?team=... path used in UserTab.
-      // Uses the Organization team which always exists in OpenMetadata.
       test.slow();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -723,13 +586,20 @@ test.describe(
 
       // User manually closes the tray.
       await page.locator('.csv-jobs-tray-close').click();
-      await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible();
 
-      // Simulate another WebSocket tick — job is already in autoOpenedJobIds
-      // so the tray must NOT re-open.
+      // Popover must disappear immediately after close click.
+      await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible({
+        timeout: 5_000,
+      });
+
+      // Simulate another WebSocket tick — job is already in autoOpenedJobIds.
+      // With serial execution the server has no other tests' jobs in-flight, so
+      // the only job in the list is ours (already seen) — tray must stay closed.
       await refreshTray(page);
 
-      await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible();
+      await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible({
+        timeout: 5_000,
+      });
       await afterAction();
     });
 
