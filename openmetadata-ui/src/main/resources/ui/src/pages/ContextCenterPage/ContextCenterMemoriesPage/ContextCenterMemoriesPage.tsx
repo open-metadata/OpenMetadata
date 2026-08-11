@@ -73,8 +73,10 @@ import {
   unpinContextMemory,
 } from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
+import { queryClient } from '../../../queryClient';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
+import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -381,6 +383,9 @@ const ContextCenterMemoriesPage: FC = () => {
     setIsDeletingMemory(true);
     try {
       await deleteContextMemory(memoryToDelete.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );

@@ -48,12 +48,14 @@ import {
   KnowledgePage,
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import { searchGlossaryTerms } from '../../../rest/glossaryAPI';
 import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
@@ -350,6 +352,9 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         { fields: getKnowledgePageFields() }
       );
 
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('message.entity-saved-successfully', {
           entity: t('label.quick-link'),

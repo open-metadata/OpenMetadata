@@ -86,6 +86,7 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/entity/context/contextMemory';
+import { queryClient } from '../../../queryClient';
 import {
   createContextMemory,
   deleteContextMemory,
@@ -93,6 +94,7 @@ import {
 } from '../../../rest/contextMemoryAPI';
 import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getErrorText } from '../../../utils/StringUtils';
@@ -486,6 +488,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           ...(relatedEntities.length > 0 ? { relatedEntities } : {}),
           shareConfig: { visibility },
         });
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+        });
 
         showSuccessToast(
           t('server.create-entity-success', { entity: t('label.memory') })
@@ -508,6 +513,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setModalError('');
     try {
       await deleteContextMemory(memoryToEdit.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: t('label.memory') })
       );

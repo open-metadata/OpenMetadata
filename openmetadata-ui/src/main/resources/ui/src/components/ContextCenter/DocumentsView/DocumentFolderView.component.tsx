@@ -40,7 +40,9 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { Folder } from '../../../generated/entity/data/folder';
+import { queryClient } from '../../../queryClient';
 import { deleteFolder, listContextFiles } from '../../../rest/assetAPI';
+import { CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
@@ -271,6 +273,9 @@ const DocumentFolderView = (
     try {
       setIsDeletingFolder(true);
       await deleteFolder(folderToDelete.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+      });
       onFoldersChanged();
       if (selectedFolderId === folderToDelete.id) {
         onSelectFolder(undefined);

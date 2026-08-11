@@ -65,8 +65,10 @@ import {
   ContentChangeState,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
@@ -174,6 +176,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     setIsDeleting(true);
     try {
       await deleteKnowledgePage(knowledgePage.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+      });
       removeDraft(knowledgePage.id);
       updateKnowledgeCenterRecentViewed(
         recentlyViewed.filter((page) => page.id !== knowledgePage.id)

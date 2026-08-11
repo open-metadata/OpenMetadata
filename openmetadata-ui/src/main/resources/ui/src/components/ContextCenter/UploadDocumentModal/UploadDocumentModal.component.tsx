@@ -139,11 +139,14 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       Boolean(file)
     );
 
+    if (batchFiles.length > 0) {
+      onUploaded?.(batchFiles);
+    }
+
     if (!cancelledRef.current) {
       setIsUploading(false);
 
       if (batchFiles.length > 0) {
-        onUploaded?.(batchFiles);
         showSuccessToast(t('message.documents-uploaded-successfully'));
         handleClose();
       }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -66,6 +67,7 @@ import {
   PageType,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import {
   deleteKnowledgePage,
   getListKnowledgePages,
@@ -74,6 +76,7 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
@@ -104,6 +107,11 @@ interface KnowledgePagesHierarchyProps {
   onQuickLinkClick?: (fqn: string) => void;
 }
 const SCROLL_BOTTOM_THRESHOLD = 1;
+
+// Deduped via React Query — multiple mount/create-hash/delete/forceRefresh
+// triggers all collapse into a single in-flight request instead of firing
+// one GET /contextCenter/pages?limit=0 per trigger.
+const KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY = ['knowledge-pages-total-count'];
 
 const KnowledgePagesHierarchy = forwardRef<
   KnowledgePagesHierarchyRef,
@@ -140,8 +148,11 @@ const KnowledgePagesHierarchy = forwardRef<
     const [deletePage, setDeletePage] = useState<PageHierarchy>();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isExpandingAll, setIsExpandingAll] = useState(false);
-    const [knowledgePagesTotalCount, setKnowledgePagesTotalCount] =
-      useState<number>(0);
+    const { data: knowledgePagesTotalCount = 0 } = useQuery({
+      queryKey: KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY,
+      queryFn: () =>
+        getListKnowledgePages({ limit: 0 }).then((res) => res.paging.total),
+    });
 
     const [movedPage, setMovedPage] = useState<MovedEntity>();
     const [isMovingPage, setIsMovingPage] = useState<boolean>(false);
@@ -267,17 +278,6 @@ const KnowledgePagesHierarchy = forwardRef<
       }
     }, [knowledgePageHierarchy]);
 
-    const fetchKnowledgePagesTotalCount = useCallback(async () => {
-      try {
-        const { paging } = await getListKnowledgePages({
-          limit: 0,
-        });
-        setKnowledgePagesTotalCount(paging.total);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }, []);
-
     const fetchKnowledgePageHierarchy = async (
       setLoading = true,
       isPaginationLoading = false,
@@ -339,7 +339,6 @@ const KnowledgePagesHierarchy = forwardRef<
           }
           if (isCreateHash) {
             consumedCreateHashFqnRef.current = fqn;
-            fetchKnowledgePagesTotalCount();
           }
         } else {
           const fqnParts = fqn ? Fqn.split(fqn) : [];
@@ -449,10 +448,10 @@ const KnowledgePagesHierarchy = forwardRef<
 
         onPageDelete?.(deletedPages);
 
-        await Promise.all([
-          getResourceLimit('knowledgeCenter', true, true),
-          fetchKnowledgePagesTotalCount(),
-        ]);
+        await getResourceLimit('knowledgeCenter', true, true);
+        queryClient.invalidateQueries({
+          queryKey: KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY,
+        });
 
         updateKnowledgeCenterRecentViewed(
           recentlyViewed.filter(
@@ -474,13 +473,7 @@ const KnowledgePagesHierarchy = forwardRef<
           navigate(homeRoute ?? contextCenterClassBase.getArticlesListPath());
         }
       },
-      [
-        knowledgePageHierarchy,
-        onPageDelete,
-        activeKey,
-        activePage,
-        fetchKnowledgePagesTotalCount,
-      ]
+      [knowledgePageHierarchy, onPageDelete, activeKey, activePage]
     );
 
     const handleMovePage = async (movedPageData: MovedEntity) => {
@@ -775,7 +768,9 @@ const KnowledgePagesHierarchy = forwardRef<
           forceRefresh
         );
         if (forceRefresh) {
-          await fetchKnowledgePagesTotalCount();
+          queryClient.invalidateQueries({
+            queryKey: KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY,
+          });
         }
       },
     }));
@@ -789,10 +784,6 @@ const KnowledgePagesHierarchy = forwardRef<
         lastFetchedFqnRef.current = fqn;
       }
     }, [hash, fqn]);
-
-    useEffect(() => {
-      fetchKnowledgePagesTotalCount();
-    }, [fetchKnowledgePagesTotalCount]);
 
     const autoExpandedForKeyRef = useRef<string | undefined>(undefined);
 
@@ -986,6 +977,9 @@ const KnowledgePagesHierarchy = forwardRef<
                 } else {
                   await deleteKnowledgePage(deletePage.id);
                 }
+                queryClient.invalidateQueries({
+                  queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+                });
                 removeDraft(deletePage.id);
                 await handleAfterDeletePage(deletePage);
                 setDeletePage(undefined);
