@@ -18,8 +18,10 @@ import pytest
 from metadata.generated.schema.entity.services.connections.messaging.saslMechanismType import (
     SaslMechanismType,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
-    KafkaBrokerConfig,
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    Kafka as KafkaBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     SecurityProtocol,
 )
 from metadata.generated.schema.security.sasl.saslClientConfig import SaslClientConfig

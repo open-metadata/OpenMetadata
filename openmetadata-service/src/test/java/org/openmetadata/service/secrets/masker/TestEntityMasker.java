@@ -32,6 +32,7 @@ import org.openmetadata.schema.services.connections.messaging.SaslMechanismType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 
 abstract class TestEntityMasker {
@@ -181,16 +182,14 @@ abstract class TestEntityMasker {
             .withSaslMechanism(SaslMechanismType.PLAIN)
             .withSaslUsername("user")
             .withSaslPassword(PASSWORD);
-    OpenLineageConnection.KafkaBrokerConfig brokerConfig =
-        new OpenLineageConnection.KafkaBrokerConfig()
+    KafkaBrokerConfig brokerConfig =
+        new KafkaBrokerConfig()
             .withBrokersUrl("broker:9092")
             .withTopicName("openlineage")
             .withConsumerGroupName("om")
-            .withSecurityProtocol(
-                OpenLineageConnection.KafkaBrokerConfig.SecurityProtocol.SASL_SSL)
+            .withSecurityProtocol(KafkaBrokerConfig.SecurityProtocol.SASL_SSL)
             .withSaslConfig(saslConfig);
-    OpenLineageConnection connection =
-        new OpenLineageConnection().withBrokerConfig(brokerConfig);
+    OpenLineageConnection connection = new OpenLineageConnection().withBrokerConfig(brokerConfig);
 
     OpenLineageConnection masked =
         (OpenLineageConnection)
@@ -199,9 +198,7 @@ abstract class TestEntityMasker {
     assertNotNull(masked);
     assertEquals(
         getMaskedPassword(),
-        ((OpenLineageConnection.KafkaBrokerConfig) masked.getBrokerConfig())
-            .getSaslConfig()
-            .getSaslPassword());
+        ((KafkaBrokerConfig) masked.getBrokerConfig()).getSaslConfig().getSaslPassword());
     OpenLineageConnection unmasked =
         (OpenLineageConnection)
             EntityMaskerFactory.createEntityMasker()
@@ -209,9 +206,7 @@ abstract class TestEntityMasker {
                     masked, connection, "OpenLineage", ServiceType.PIPELINE);
     assertEquals(
         PASSWORD,
-        ((OpenLineageConnection.KafkaBrokerConfig) unmasked.getBrokerConfig())
-            .getSaslConfig()
-            .getSaslPassword());
+        ((KafkaBrokerConfig) unmasked.getBrokerConfig()).getSaslConfig().getSaslPassword());
   }
 
   @Test
