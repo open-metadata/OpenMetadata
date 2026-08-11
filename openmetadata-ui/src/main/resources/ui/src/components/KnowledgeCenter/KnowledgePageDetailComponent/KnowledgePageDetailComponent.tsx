@@ -80,6 +80,7 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import {
   fetchEntityActivityCountInto,
@@ -106,23 +107,6 @@ interface KnowledgePageDetailComponentProps {
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
 }
-
-const stripPendingUploadNodes = (html: string): string => {
-  if (!html.includes('data-uploading="true"')) {
-    return html;
-  }
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  doc
-    .querySelectorAll('div[data-type="file-attachment"][data-uploading="true"]')
-    .forEach((node) => {
-      if (!node.dataset.url) {
-        node.remove();
-      }
-    });
-
-  return doc.body.innerHTML;
-};
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
