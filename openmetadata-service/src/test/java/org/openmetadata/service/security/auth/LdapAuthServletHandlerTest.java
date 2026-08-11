@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.core.Response;
 import java.io.BufferedReader;
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -34,6 +35,8 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -169,5 +172,56 @@ class LdapAuthServletHandlerTest {
     verify(tokenRepository).deleteToken("rotated-refresh-token");
     verify(sessionService).revokeSession(request, response);
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+  }
+
+  @Test
+  void handleRefresh_expiredRefreshTokenIsUnauthorizedNotServerError() {
+    // LDAP refresh tokens live 24h while the session lives 7 days, so a tab idle overnight lands
+    // here. Reported as 500 the browser reads it as transient and keeps retrying with a dead
+    // session; only 401 tells it to re-authenticate.
+    UserSession leasedSession =
+        UserSession.builder().id("session-id").status(SessionStatus.REFRESHING).build();
+    UUID refreshTokenId = UUID.randomUUID();
+
+    when(sessionService.acquireRefreshLease(request, response))
+        .thenReturn(Optional.of(leasedSession));
+    when(sessionService.decryptOmRefreshToken(leasedSession)).thenReturn("current-refresh-token");
+    when(authenticator.getNewAccessToken(any()))
+        .thenThrow(
+            new CustomExceptionMessage(
+                Response.Status.BAD_REQUEST,
+                CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED,
+                "Expired token. Please login again : " + refreshTokenId));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getTokenRepository).thenReturn(tokenRepository);
+
+      handler.handleRefresh(request, response);
+    }
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(sessionService).releaseRefreshLease(leasedSession);
+  }
+
+  @Test
+  void handleRefresh_serverFailureStaysAServerError() {
+    // The counterpart: a signing/DB failure says nothing about the caller's credentials, so it
+    // must not sign out a session that is still valid.
+    UserSession leasedSession =
+        UserSession.builder().id("session-id").status(SessionStatus.REFRESHING).build();
+
+    when(sessionService.acquireRefreshLease(request, response))
+        .thenReturn(Optional.of(leasedSession));
+    when(sessionService.decryptOmRefreshToken(leasedSession)).thenReturn("current-refresh-token");
+    when(authenticator.getNewAccessToken(any()))
+        .thenThrow(new IllegalStateException("Failed to sign JWT"));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getTokenRepository).thenReturn(tokenRepository);
+
+      handler.handleRefresh(request, response);
+    }
+
+    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
   }
 }

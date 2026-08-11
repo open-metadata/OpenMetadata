@@ -662,7 +662,15 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
     } catch (Exception e) {
       sessionService.releaseRefreshLease(leasedSession);
-      getErrorMessage(httpServletResponse, new TechnicalException(e));
+      LOG.error("[Auth Refresh] Failed to refresh the session", e);
+      try {
+        org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
+            httpServletResponse,
+            RefreshFailureClassifier.statusFor(e),
+            RefreshFailureClassifier.messageFor(e));
+      } catch (IOException ioException) {
+        LOG.error("[Auth Refresh] Failed to write refresh failure response", ioException);
+      }
     }
   }
 

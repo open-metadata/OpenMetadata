@@ -27,6 +27,7 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthServeletHandler;
+import org.openmetadata.service.security.RefreshFailureClassifier;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
@@ -178,7 +179,8 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       sessionService.releaseRefreshLease(leasedSession);
       LOG.error("Error handling refresh", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      sendError(
+          resp, RefreshFailureClassifier.statusFor(e), RefreshFailureClassifier.messageFor(e));
     }
   }
 

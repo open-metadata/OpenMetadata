@@ -47,6 +47,7 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.AuthServeletHandlerRegistry;
+import org.openmetadata.service.security.RefreshFailureClassifier;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
@@ -444,7 +445,8 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       sessionService.releaseRefreshLease(leasedSession);
       LOG.error("Error handling SAML refresh", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      sendError(
+          resp, RefreshFailureClassifier.statusFor(e), RefreshFailureClassifier.messageFor(e));
     }
   }
 
