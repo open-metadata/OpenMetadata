@@ -1997,9 +1997,19 @@ class TestConnectorTopicsFromRuntime:
 
         assert [t.name for t in topics] == ["prod.ern.moneywallet.walletEntity_v1"]
 
+    @staticmethod
+    def _http_error(status):
+        """A requests-style error carrying a status code, as raise_for_status() produces."""
+        return Exception(f"HTTP {status}")
+
+    @staticmethod
+    def _with_status(exc, status):
+        exc.response = SimpleNamespace(status_code=status)
+        return exc
+
     def test_falls_back_to_config_when_endpoint_unavailable(self):
         client = self._client()
-        client.client.list_connector_topics.side_effect = Exception("404 Not Found")
+        client.client.list_connector_topics.side_effect = self._with_status(self._http_error(404), 404)
         client.get_connector_config = MagicMock(return_value={"topics": "orders,payments"})
 
         topics = client.get_connector_topics("jdbc-sink")
@@ -2009,7 +2019,7 @@ class TestConnectorTopicsFromRuntime:
     def test_unsupported_endpoint_is_probed_only_once(self):
         """A cluster without /topics must not be re-asked for every connector."""
         client = self._client()
-        client.client.list_connector_topics.side_effect = Exception("404 Not Found")
+        client.client.list_connector_topics.side_effect = self._with_status(self._http_error(404), 404)
         client.get_connector_config = MagicMock(return_value={"topics": "orders"})
 
         for name in ("conn-a", "conn-b", "conn-c"):
@@ -2017,3 +2027,29 @@ class TestConnectorTopicsFromRuntime:
 
         assert client.client.list_connector_topics.call_count == 1
         assert client._topics_endpoint_supported is False
+
+    def test_transient_failure_does_not_disable_the_endpoint(self):
+        """
+        A timeout or 5xx on whichever connector happens to be processed first must not
+        latch the endpoint off. The config fallback yields nothing for a connector that
+        routes by row value, so treating a blip as "unsupported" would silently drop
+        lineage for every outbox connector behind it.
+        """
+        client = self._client()
+        client.get_connector_config = MagicMock(return_value=None)
+        client.client.list_connector_topics.side_effect = [
+            Exception("Read timed out"),  # no .response at all
+            self._with_status(self._http_error(503), 503),
+            {"outbox-cashout-prod-v2": {"topics": ["prod.ern.cashout.delayedCashouts"]}},
+        ]
+
+        assert client.get_connector_topics("conn-a") is None
+        assert client._topics_endpoint_supported is None, "timeout must not latch the probe off"
+        assert client.get_connector_topics("conn-b") is None
+        assert client._topics_endpoint_supported is None, "5xx must not latch the probe off"
+
+        topics = client.get_connector_topics("outbox-cashout-prod-v2")
+
+        assert [t.name for t in topics] == ["prod.ern.cashout.delayedCashouts"]
+        assert client.client.list_connector_topics.call_count == 3
+        assert client._topics_endpoint_supported is True

@@ -118,6 +118,12 @@ JAVA_NUMBERED_BACKREF_PATTERN = re.compile(r"\$(\d+)")
 JAVA_NAMED_GROUP_PATTERN = re.compile(r"\(\?<(?![=!])(\w+)>")
 
 
+# Statuses that mean the route itself is absent, as opposed to a request that failed.
+# Confluent Cloud answers 404 "route_not_found" for /connectors/{name}/topics; a proxy
+# in front of Connect may answer 405 or 501 instead.
+UNSUPPORTED_ROUTE_STATUS_CODES = frozenset({404, 405, 501})
+
+
 def _to_python_replacement(replacement: str) -> str:
     """Convert Java RegexRouter backreferences ($1, ${1}, ${name}) to Python \\g<...>."""
     replacement = JAVA_NAMED_BACKREF_PATTERN.sub(r"\\g<\1>", replacement)
@@ -399,9 +405,15 @@ class KafkaConnectClient:
         computed at runtime — a Debezium outbox EventRouter routing by a row value has
         no static topic name anywhere in its config.
 
-        Not every deployment implements the endpoint, so a failure is downgraded to a
-        one-time probe: after the first rejection we stop asking for the rest of the run
-        rather than issuing a doomed request per connector.
+        Not every deployment implements the endpoint, so the first response that says the
+        route does not exist stops us asking for the rest of the run rather than issuing a
+        doomed request per connector.
+
+        Only a status that actually denotes a missing route latches that off. A timeout or
+        5xx is transient and must not disable the endpoint for the whole run: the config
+        fallback yields nothing for a connector that routes by row value, so treating one
+        blip on whichever connector happens to be processed first as "unsupported" would
+        silently drop lineage for every outbox connector behind it.
         """
         if self._topics_endpoint_supported is False:
             return None
@@ -411,12 +423,19 @@ class KafkaConnectClient:
             if result:
                 return [KafkaConnectTopics(name=topic) for topic in result.get("topics") or []]
         except Exception as exc:
-            if self._topics_endpoint_supported is None:
-                self._topics_endpoint_supported = False
-                logger.info(
-                    f"Connect /connectors/{{name}}/topics is unavailable on this cluster ({exc}); "
-                    "falling back to topic names declared in connector configs. Connectors that route "
-                    "by row value (e.g. a Debezium outbox EventRouter) cannot be resolved this way."
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            if status_code in UNSUPPORTED_ROUTE_STATUS_CODES:
+                if self._topics_endpoint_supported is None:
+                    self._topics_endpoint_supported = False
+                    logger.info(
+                        f"Connect /connectors/{{name}}/topics is unavailable on this cluster ({exc}); "
+                        "falling back to topic names declared in connector configs. Connectors that route "
+                        "by row value (e.g. a Debezium outbox EventRouter) cannot be resolved this way."
+                    )
+            else:
+                logger.warning(
+                    f"Transient failure listing topics for connector '{connector}' ({exc}); "
+                    "will retry the endpoint for the next connector."
                 )
             logger.debug(traceback.format_exc())
         return None
