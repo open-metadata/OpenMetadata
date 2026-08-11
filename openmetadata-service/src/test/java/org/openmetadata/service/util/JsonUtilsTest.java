@@ -36,6 +36,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
@@ -117,6 +118,93 @@ class JsonUtilsTest {
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
+  }
+
+  @Test
+  void applyPatchRejectsRenamedFieldWithSuggestion() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    // "status" was renamed to "entityStatus" in #22904. Clients (and LLMs trained before the
+    // rename) still send the old name; the failure must read as a client error, not a 500.
+    JsonPatch patch = Json.createPatchBuilder().add("/status", "Approved").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid field 'status'"));
+    assertTrue(ex.getMessage().contains("GlossaryTerm"));
+    assertTrue(ex.getMessage().contains("Did you mean 'entityStatus'"));
+    assertTrue(ex.getMessage().contains("Valid fields are:"));
+  }
+
+  @Test
+  void applyPatchSuggestsPluralFormOfSingularField() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/reviewer", "alice").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Did you mean 'reviewers'"));
+  }
+
+  @Test
+  void applyPatchRejectsUnknownFieldWithoutSuggestionWhenNothingMatches() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/zzzNoSuchField", "x").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid field 'zzzNoSuchField'"));
+    assertFalse(ex.getMessage().contains("Did you mean"));
+    assertTrue(ex.getMessage().contains("entityStatus"));
+  }
+
+  @Test
+  void applyPatchRejectsInvalidEnumValueAndListsAllowedValues() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    // The field name is right but the value is not one this enum accepts. That is still the
+    // caller's mistake, so it must not read as an internal fault either.
+    JsonPatch patch = Json.createPatchBuilder().add("/entityStatus", "Bogus").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'entityStatus'"));
+    assertTrue(ex.getMessage().contains("GlossaryTerm"));
+    assertTrue(ex.getMessage().contains("Allowed values are:"));
+    assertTrue(ex.getMessage().contains("Approved"));
+  }
+
+  @Test
+  void applyPatchRejectsWronglyTypedValue() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/synonyms", "not-an-array").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'synonyms'"));
   }
 
   @Test

@@ -100,6 +100,10 @@ export interface ActivityFeedProviderContextType {
     days?: number;
     limit?: number;
   }) => Promise<void>;
+  fetchFollowingActivity: (params?: {
+    days?: number;
+    limit?: number;
+  }) => Promise<void>;
   fetchEntityActivity: (
     entityType: string,
     fqn: string,
