@@ -3776,6 +3776,8 @@
     "no-input-output-ports-configured": "아직 입출력 포트가 구성되지 않았습니다",
     "no-input-ports-added": "아직 입력 포트가 추가되지 않았습니다",
     "no-installed-applications-found": "현재 설치된 애플리케이션이 없습니다. '앱 추가' 버튼을 클릭하여 설치하세요.",
+    "no-intake-form-yet": "아직 인테이크 양식이 없습니다",
+    "no-intake-form-yet-description": "데이터 제품, 도메인 및 용어집 용어에 대해 거버넌스 정책에서 요구하는 필드를 적용하려면 인테이크 양식을 생성하세요.",
     "no-knowledge-graph-data": "사용 가능한 지식 그래프 데이터가 없습니다. RDF 지식 그래프 인덱싱 애플리케이션이 설치되고 올바르게 구성되었는지 확인하세요.",
     "no-kpi": "영향을 모니터링하고 더 스마트한 의사 결정을 내리기 위해 핵심 성과 지표를 정의하세요.",
     "no-kpi-available-add-new-one": "사용 가능한 KPI가 없습니다. KPI 추가 버튼을 클릭하여 추가하세요.",
