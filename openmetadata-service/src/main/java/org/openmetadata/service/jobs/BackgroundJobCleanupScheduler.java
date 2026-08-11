@@ -29,13 +29,24 @@ import org.openmetadata.service.csv.CsvAsyncJobManager;
  * Pruning terminal rows therefore applies to every job type, while export-payload retention is
  * delegated to {@link CsvAsyncJobManager} because only export jobs carry a payload.
  *
- * <p>This used to run once at startup, which was wrong in a multi-server deployment — a pod coming
- * up during a rolling deploy would fail every job its peers were actively running. On a timer, and
- * with the reaper scoped to jobs nobody has heartbeated, every server can safely run it.
+ * <p>Reaping used to happen once at startup and failed every RUNNING job unconditionally, so in a
+ * multi-server deployment a pod coming up during a rolling deploy killed the jobs its peers were
+ * actively running. It is now scoped to jobs nobody has heartbeated, which makes it safe for every
+ * server to run repeatedly — including shortly after boot, where it recovers whatever the previous
+ * process left behind.
  */
 @Slf4j
 public class BackgroundJobCleanupScheduler implements Managed {
   private static final long INTERVAL_MINUTES = 5L;
+
+  /**
+   * Short rather than a full interval so a restart recovers jobs orphaned by the previous run
+   * promptly, instead of leaving them RUNNING for another five minutes. Not zero, to keep a few
+   * database statements out of the first seconds of startup. Reaping at boot is safe now that the
+   * reaper is scoped to a staleness window — it cannot touch a job a live peer is heartbeating.
+   */
+  private static final long INITIAL_DELAY_SECONDS = 30L;
+
   private static final Duration JOB_ROW_RETENTION = Duration.ofDays(7);
   private static final int PRUNE_BATCH_SIZE = 500;
   private static final int PRUNE_MAX_ITERATIONS = 100;
@@ -59,7 +70,10 @@ public class BackgroundJobCleanupScheduler implements Managed {
               return thread;
             });
     scheduler.scheduleWithFixedDelay(
-        this::runCleanupSafely, INTERVAL_MINUTES, INTERVAL_MINUTES, TimeUnit.MINUTES);
+        this::runCleanupSafely,
+        INITIAL_DELAY_SECONDS,
+        TimeUnit.MINUTES.toSeconds(INTERVAL_MINUTES),
+        TimeUnit.SECONDS);
   }
 
   @Override

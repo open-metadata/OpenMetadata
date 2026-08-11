@@ -293,13 +293,57 @@ describe('CsvJobsTray', () => {
     expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
     expect(screen.getByText('label.background-job-plural')).toBeInTheDocument();
 
-    // Once nothing is active the timer must stop rather than poll forever.
+    // Once nothing is active the loop must stop rather than poll forever.
     const callsAfterCompletion = mockGetCsvAsyncJobs.mock.calls.length;
     await act(async () => {
       jest.advanceTimersByTime(20000);
     });
 
     expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(callsAfterCompletion);
+  });
+
+  // The poll is self-scheduling rather than a fixed interval, so a response
+  // slower than the interval cannot stack up concurrent requests.
+  it('does not start another poll while one is still in flight', async () => {
+    jest.useFakeTimers();
+
+    let resolveSlowFetch: (jobs: CsvAsyncJob[]) => void = () => undefined;
+    mockGetCsvAsyncJobs
+      .mockResolvedValueOnce([
+        createJob({
+          jobId: 'slow-job',
+          progress: 20,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ])
+      .mockImplementationOnce(
+        () =>
+          new Promise<CsvAsyncJob[]>((resolve) => {
+            resolveSlowFetch = resolve;
+          })
+      );
+
+    await act(async () => {
+      render(<CsvJobsTray />);
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
+
+    // Three further intervals elapse while the second poll is unresolved.
+    await act(async () => {
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveSlowFetch([createJob({ jobId: 'slow-job', status: 'COMPLETED' })]);
+    });
   });
 
   it('marks a job undownloadable when its result is gone', async () => {

@@ -295,6 +295,45 @@ public class CsvAsyncJobResourceIT {
   }
 
   /**
+   * Audit exports are typed AUDIT_EXPORT so they stay out of the CSV jobs tray, which means every
+   * lookup on their path has to include that type. Creating one used to read the row back through
+   * the CSV-only query and NPE on a null job, so this covers the whole round trip: create, poll,
+   * download.
+   */
+  @Test
+  void test_auditExportRunsAsBackgroundJob() throws Exception {
+    long endTs = System.currentTimeMillis();
+    long startTs = endTs - Duration.ofDays(1).toMillis();
+
+    String jobId =
+        startJob(
+            "GET",
+            "/v1/audit/logs/export?startTs=" + startTs + "&endTs=" + endTs + "&limit=10",
+            null,
+            adminToken());
+
+    assertTrue(
+        jobId.chars().allMatch(Character::isDigit),
+        "Audit export must return a background job id: " + jobId);
+
+    Awaitility.await()
+        .atMost(JOB_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                request("GET", "/v1/audit/logs/export/" + jobId + "/result", null, adminToken())
+                        .statusCode()
+                    == 200);
+
+    HttpResponse<String> result =
+        request("GET", "/v1/audit/logs/export/" + jobId + "/result", null, adminToken());
+    assertEquals(200, result.statusCode());
+    assertTrue(
+        result.body().trim().startsWith("["),
+        "Audit export downloads as a JSON array: " + firstLine(result.body()));
+  }
+
+  /**
    * Lineage exports used to run on a local executor under a random UUID job id, so the result was
    * only ever pushed over the websocket of the server that ran it and was resolvable through no
    * API. They are background jobs now: a numeric id, a pollable status, and a download.

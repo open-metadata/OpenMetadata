@@ -277,10 +277,27 @@ export const CsvJobsTray = () => {
       return;
     }
 
-    const intervalId = setInterval(fetchJobs, ACTIVE_JOBS_POLL_INTERVAL_MS);
+    // Self-scheduling rather than setInterval: the next poll is queued only once
+    // the previous one settles, so a slow response cannot stack up concurrent
+    // requests racing to set the same state.
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const scheduleNextPoll = () => {
+      timeoutId = setTimeout(async () => {
+        await fetchJobs();
+
+        if (!cancelled) {
+          scheduleNextPoll();
+        }
+      }, ACTIVE_JOBS_POLL_INTERVAL_MS);
+    };
+
+    scheduleNextPoll();
 
     return () => {
-      clearInterval(intervalId);
+      cancelled = true;
+      clearTimeout(timeoutId);
     };
   }, [hasActiveJobs, fetchJobs]);
 

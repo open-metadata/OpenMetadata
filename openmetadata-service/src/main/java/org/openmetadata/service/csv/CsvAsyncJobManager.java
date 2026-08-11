@@ -173,7 +173,11 @@ public final class CsvAsyncJobManager {
             0,
             EXPORT_QUEUED_MESSAGE);
     addLog(jobId, CsvAsyncJobLog.Level.INFO, EXPORT_QUEUED_MESSAGE);
-    return getJob(String.valueOf(jobId));
+    // Read back through the lookup matching the type just inserted. getJob filters
+    // to CSV_IMPORT/CSV_EXPORT, so reading an audit export through it returns null.
+    return jobType == BackgroundJob.JobType.AUDIT_EXPORT
+        ? getAuditExportJob(String.valueOf(jobId))
+        : getJob(String.valueOf(jobId));
   }
 
   public CsvAsyncJob getJob(String jobId) {
@@ -358,11 +362,10 @@ public final class CsvAsyncJobManager {
   }
 
   /**
-   * One pass of job housekeeping. Safe to run concurrently from every server: each statement is
-   * either idempotent or scoped to rows no live worker owns.
-   */
-  /**
-   * Retention for CSV and audit export jobs only. Table-wide row pruning lives in {@link
+   * One pass of retention for CSV and audit export jobs. Safe to run concurrently from every
+   * server: each statement is either idempotent or scoped to rows no live worker owns.
+   *
+   * <p>Table-wide row pruning lives in {@link
    * org.openmetadata.service.jobs.BackgroundJobCleanupScheduler}, since {@code background_jobs} is
    * shared with other job types.
    */
