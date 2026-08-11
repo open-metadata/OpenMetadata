@@ -101,11 +101,18 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     [agents, runsFor]
   );
 
-  const { rawText, isLoading: isLogsLoading } = useAgentLogs(
+  const {
+    rawText,
+    isLoading: isLogsLoading,
+    streamHealth,
+    streamTruncated,
+    streamError,
+  } = useAgentLogs(
     logsFor?.fqn ?? '',
     logsFor?.pipelineType ?? PipelineType.Metadata,
     Boolean(logsFor),
-    isLogsAgentActive
+    isLogsAgentActive,
+    liveLogsAgent?.currentRunId
   );
 
   const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
@@ -275,6 +282,9 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           mode={isLogsAgentActive ? 'stream' : 'static'}
           runId={getEntityName(logsFor)}
           status={getLogViewerStatusFromAgentStatus(logsFor.status)}
+          streamError={streamError}
+          streamHealth={streamHealth}
+          streamTruncated={streamTruncated}
           title={`${logsFor.name} · ${t('label.log-plural')}`}
           totalLines={rawText.split('\n').length}
           onClose={() => setLogsFor(null)}
