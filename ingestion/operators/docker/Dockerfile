@@ -182,3 +182,23 @@ RUN [ $(uname -m) = "x86_64" ] \
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+
+# Drop build-only packages that leaked into the runtime image. libmariadb-dev
+# and libmariadb-dev-compat are only needed to compile mysqlclient (done above);
+# libunbound8 arrived as a transitive build dependency and nothing here resolves
+# DNS through it. Together they carry 10 CVEs the runtime does not need.
+# libmariadb3 and mariadb-common MUST stay -- mysqlclient links against them at
+# runtime. apt-get needs root, so switch back briefly -- USER openmetadata above
+# has no sudo access -- then restore the non-root user for the runtime image.
+#
+# Purging libmariadb-dev force-removes default-libmysqlclient-dev as a reverse
+# dependency, which orphans libmariadb3/mariadb-common in apt's eyes even
+# though mysqlclient's compiled extension links against them at runtime.
+# apt-mark manual pins them before autoremove runs so the cleanup doesn't take
+# them out too -- verified end-to-end by the `import MySQLdb` gate check.
+USER root
+RUN apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8 \
+  && apt-mark manual libmariadb3 mariadb-common \
+  && apt-get -qq autoremove -y --purge \
+  && rm -rf /var/lib/apt/lists/*
+USER openmetadata

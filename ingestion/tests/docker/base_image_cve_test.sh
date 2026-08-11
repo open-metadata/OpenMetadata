@@ -25,6 +25,7 @@ FAILURES=0
 # bookworm, so --ignore-unfixed hides them and the test would pass vacuously.
 TRIVY="docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest"
 SCAN_OUT="$(mktemp)"
+UNFILTERED_SCAN_OUT=""
 
 # Only these three are assertable by CVE ID: Trivy has no advisory for
 # CVE-2026-66032 / CVE-2026-66034 and reports zero hits for them even on the
@@ -34,6 +35,9 @@ TARGET_CVES="CVE-2023-45853 CVE-2026-34980 CVE-2026-45186"
 
 fail() { echo "FAIL: $1"; FAILURES=$((FAILURES + 1)); }
 pass() { echo "PASS: $1"; }
+
+cleanup() { rm -f "$SCAN_OUT" "$UNFILTERED_SCAN_OUT"; }
+trap cleanup EXIT
 
 in_image() { docker run --rm --entrypoint bash "$IMAGE" -c "$1" 2>/dev/null; }
 
@@ -51,12 +55,26 @@ fi
 echo "== scanning ${IMAGE} =="
 $TRIVY image --severity HIGH,CRITICAL "$IMAGE" > "$SCAN_OUT" 2>&1 || true
 if ! grep -q "Total:" "$SCAN_OUT" && ! grep -qE '^\| ' "$SCAN_OUT"; then
-  fail "trivy produced no parseable report for ${IMAGE}"
+  echo "FAIL: trivy produced no parseable report for ${IMAGE}"
+  exit 1
+fi
+
+# Severity-filtered output is not reliable for the CVE-ID assertions: if a
+# target CVE reappears at a severity Trivy/NVD disagree on it drops out of the
+# HIGH,CRITICAL filter and the loop below would wrongly report it "absent"
+# (CVE-2023-45853 is exactly this case -- Debian rates it unimportant, Trivy
+# rates it CRITICAL only via NVD). Run a second, unfiltered scan solely for
+# those assertions; keep the filtered scan above for everything else.
+UNFILTERED_SCAN_OUT="$(mktemp)"
+$TRIVY image "$IMAGE" > "$UNFILTERED_SCAN_OUT" 2>&1 || true
+if ! grep -q "Total:" "$UNFILTERED_SCAN_OUT" && ! grep -qE '^\| ' "$UNFILTERED_SCAN_OUT"; then
+  echo "FAIL: trivy produced no parseable unfiltered report for ${IMAGE}"
+  exit 1
 fi
 
 echo "== CVE assertions =="
 for c in $TARGET_CVES; do
-  n="$(grep -c "$c" "$SCAN_OUT")"
+  n="$(grep -c "$c" "$UNFILTERED_SCAN_OUT")"
   if [ "$n" -eq 0 ]; then pass "${c} absent"; else fail "${c} still present (${n} hit(s))"; fi
 done
 
@@ -121,7 +139,6 @@ r="$(in_image 'git --version >/dev/null 2>&1 && echo ok || echo broken')"
 r="$(in_image 'metadata --help >/dev/null 2>&1 && echo ok || echo broken')"
 [ "$r" = "ok" ] && pass "metadata cli" || fail "metadata cli (${r:-no output})"
 
-rm -f "$SCAN_OUT"
 echo "---"
 if [ "$FAILURES" -ne 0 ]; then
   echo "${FAILURES} check(s) failed for ${IMAGE}"
