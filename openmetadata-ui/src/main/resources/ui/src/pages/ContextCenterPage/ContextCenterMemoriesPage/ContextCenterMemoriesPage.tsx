@@ -63,6 +63,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { queryClient } from '../../../queryClient';
 import {
   ContextMemoryListParams,
   deleteContextMemory,
@@ -73,7 +74,6 @@ import {
   unpinContextMemory,
 } from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
-import { queryClient } from '../../../queryClient';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';

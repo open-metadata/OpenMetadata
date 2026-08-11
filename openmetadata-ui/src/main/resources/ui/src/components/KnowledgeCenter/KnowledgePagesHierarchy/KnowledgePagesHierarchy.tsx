@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
-import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -23,6 +22,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -75,8 +75,8 @@ import {
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
