@@ -1138,6 +1138,9 @@ describe('ServiceDocPanel Component', () => {
   });
 
   describe('Connector Docs URL', () => {
+    const getDocsLink = (container: HTMLElement) =>
+      container.querySelector('.focused-service-docs-link');
+
     it('should link to the connector own docs page', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
@@ -1158,9 +1161,10 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
-        expect(
-          container.querySelector('.focused-service-docs-link')
-        ).toHaveAttribute('href', `${CONNECTORS_DOCS}/database/oracle`);
+        expect(getDocsLink(container)).toHaveAttribute(
+          'href',
+          `${CONNECTORS_DOCS}/database/oracle`
+        );
       });
     });
 
@@ -1178,9 +1182,10 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
-        expect(
-          container.querySelector('.focused-service-docs-link')
-        ).toHaveAttribute('href', CONNECTORS_DOCS);
+        expect(getDocsLink(container)).toHaveAttribute(
+          'href',
+          CONNECTORS_DOCS
+        );
       });
     });
 
@@ -1203,9 +1208,10 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
-        expect(
-          container.querySelector('.focused-service-docs-link')
-        ).toHaveAttribute('href', `${CONNECTORS_DOCS}/database/sap-hana`);
+        expect(getDocsLink(container)).toHaveAttribute(
+          'href',
+          `${CONNECTORS_DOCS}/database/sap-hana`
+        );
       });
     });
 
@@ -1227,9 +1233,7 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
-        expect(
-          container.querySelector('.focused-service-docs-link')
-        ).toHaveAttribute(
+        expect(getDocsLink(container)).toHaveAttribute(
           'href',
           `${CONNECTORS_DOCS}/ingestion/workflows/usage`
         );
