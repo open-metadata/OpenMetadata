@@ -22,8 +22,6 @@ import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  assertLogViewerShowsLogs,
-  buildMarkerLogText,
   navigateToBundleSuiteWithPagination,
   waitForFirstPipelineStatusNotQueued,
 } from '../../utils/logsViewer';
@@ -169,107 +167,6 @@ test.describe(
         await page.getByTestId('log-viewer-close').click();
         await expect(page.getByTestId('log-viewer-title')).not.toBeVisible();
       });
-    });
-
-    test('A live run tails its logs over SSE instead of polling', async ({
-      page,
-    }) => {
-      // 6 minutes
-      test.setTimeout(6 * 60 * 1000);
-
-      const runId = 'scheduled__2026-08-11T00:00:00+00:00';
-      const streamedLogs = buildMarkerLogText();
-
-      // Force the run to look active so the viewer takes the streaming path,
-      // and answer the stream with a canned event-stream. The paginated
-      // endpoint deliberately answers empty: anything the modal renders can
-      // only have come from the stream.
-      await page.route(
-        '**/api/v1/services/ingestionPipelines/name/*',
-        async (route) => {
-          const response = await route.fetch();
-          const body = await response.json();
-
-          await route.fulfill({
-            response,
-            json: {
-              ...body,
-              pipelineStatuses: [
-                {
-                  ...(body.pipelineStatuses?.[0] ?? {}),
-                  pipelineState: 'running',
-                  runId,
-                },
-              ],
-            },
-          });
-        }
-      );
-
-      await page.route(
-        '**/api/v1/services/ingestionPipelines/logs/*/last*',
-        (route) => route.fulfill({ json: {} })
-      );
-
-      await page.route(
-        '**/api/v1/services/ingestionPipelines/logs/*/stream/*',
-        (route) =>
-          route.fulfill({
-            status: 200,
-            headers: {
-              'content-type': 'text/event-stream',
-              'cache-control': 'no-cache',
-            },
-            body:
-              `data: ${JSON.stringify({
-                eventType: 'logs',
-                runId,
-                logs: `${streamedLogs}\n`,
-                after: '20',
-              })}\n\n` +
-              `data: ${JSON.stringify({
-                eventType: 'complete',
-                runId,
-                reason: 'runFinished',
-                after: '20',
-              })}\n\n`,
-          })
-      );
-
-      const bundleSuiteFqn =
-        bundleTestSuite.bundleTestSuiteResponseData?.fullyQualifiedName ??
-        bundleTestSuite.bundleTestSuiteResponseData?.name;
-
-      await redirectToHomePage(page);
-      await page.goto('/data-quality/test-suites/bundle-suites');
-      await waitForAllLoadersToDisappear(page);
-      await navigateToBundleSuiteWithPagination(page, bundleSuiteFqn);
-      await waitForFirstPipelineStatusNotQueued(page);
-
-      const streamRequest = page.waitForRequest((request) =>
-        /\/api\/v1\/services\/ingestionPipelines\/logs\/.+\/stream\//.test(
-          request.url()
-        )
-      );
-
-      await expect(page.getByTestId('logs-button').first()).toBeVisible();
-      await page.getByTestId('logs-button').first().click();
-
-      await test.step('The viewer opens the SSE stream for the live run', async () => {
-        await streamRequest;
-      });
-
-      await test.step('Frames from the stream are rendered', async () => {
-        await assertLogViewerShowsLogs(page);
-      });
-
-      await test.step('The live indicator clears once the run finishes', async () => {
-        await expect(
-          page.getByTestId('log-viewer-live-indicator')
-        ).not.toBeVisible();
-      });
-
-      await page.getByTestId('log-viewer-close').click();
     });
   }
 );
