@@ -31,6 +31,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   QueuedFile,
   UploadDocumentModalProps,
+  UploadStatus,
 } from './UploadDocumentModal.interface';
 
 const getFileExt = (name: string) =>
@@ -51,7 +52,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const cancelledRef = useRef(false);
 
   const hasPendingFiles = files.some(
-    (f) => f.status === 'done' && !f.sizeExceeded
+    (f) => f.status === UploadStatus.Done && !f.sizeExceeded
   );
 
   const handleClose = () => {
@@ -66,7 +67,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       file,
       id: uuidv4(),
       progress: 100,
-      status: 'done',
+      status: UploadStatus.Done,
     }));
 
     setFiles((prev) => [...prev, ...newEntries]);
@@ -78,7 +79,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       id: uuidv4(),
       progress: 0,
       sizeExceeded: true,
-      status: 'error',
+      status: UploadStatus.Error,
     }));
 
     setFiles((prev) => [...prev, ...newEntries]);
@@ -96,7 +97,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     } catch (err) {
       setFiles((prev) =>
         prev.map((f) =>
-          f.id === entry.id ? { ...f, progress: 0, status: 'error' } : f
+          f.id === entry.id
+            ? { ...f, progress: 0, status: UploadStatus.Error }
+            : f
         )
       );
       showErrorToast(err as AxiosError, t('message.upload-failed'));
@@ -118,7 +121,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     // async state update or isUploading guard — which were the root cause of
     // the button staying visible after a successful retry.
     setFiles((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, status: 'retrying' } : f))
+      prev.map((f) =>
+        f.id === id ? { ...f, status: UploadStatus.Retrying } : f
+      )
     );
 
     try {
@@ -129,7 +134,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     } catch (err) {
       setFiles((prev) =>
         prev.map((f) =>
-          f.id === id ? { ...f, progress: 0, status: 'error' } : f
+          f.id === id
+            ? { ...f, progress: 0, status: UploadStatus.Error }
+            : f
         )
       );
       showErrorToast(err as AxiosError, t('message.upload-failed'));
@@ -137,7 +144,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   };
 
   const handleAttach = async () => {
-    const pending = files.filter((f) => f.status === 'done' && !f.sizeExceeded);
+    const pending = files.filter(
+      (f) => f.status === UploadStatus.Done && !f.sizeExceeded
+    );
 
     if (pending.length === 0) {
       return;
@@ -147,7 +156,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     // a previous attempt). These are not included in `pending` so the batch size
     // comparison alone can't detect them — we must check before the uploads start.
     const hasPreExistingErrors = files.some(
-      (f) => f.status === 'error' && !f.sizeExceeded
+      (f) => f.status === UploadStatus.Error && !f.sizeExceeded
     );
 
     cancelledRef.current = false;
@@ -175,7 +184,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
         setFiles((prev) =>
           prev.map((f) =>
             succeededIds.has(f.id)
-              ? { ...f, progress: 100, status: 'uploaded' }
+              ? { ...f, progress: 100, status: UploadStatus.Uploaded }
               : f
           )
         );
@@ -220,12 +229,13 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                     <FileUpload.ListItemProgressBar
                       completeLabel={t('label.complete')}
                       deleteLabel={t('label.delete')}
-                      failed={status === 'error'}
+                      failed={status === UploadStatus.Error}
                       failedLabel={t('label.failed')}
                       key={id}
                       name={file.name}
                       progress={
-                        status === 'done' || status === 'uploaded'
+                        status === UploadStatus.Done ||
+                        status === UploadStatus.Uploaded
                           ? 100
                           : progress
                       }
@@ -235,7 +245,9 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                       uploadingLabel={t('label.uploading')}
                       onDelete={() => handleRemove(id)}
                       onRetry={
-                        status === 'error' && !sizeExceeded && !isUploading
+                        status === UploadStatus.Error &&
+                        !sizeExceeded &&
+                        !isUploading
                           ? () => handleRetry(id)
                           : undefined
                       }
