@@ -1731,7 +1731,9 @@ test.describe(
 
       await row.locator('label[slot="selection"]').click();
 
-      await expect(page.locator('.metric-list-selection-count')).toHaveText('1');
+      await expect(page.locator('.metric-list-selection-count')).toHaveText(
+        '1'
+      );
       await expect(page).toHaveURL(/\/metrics/);
     });
   }

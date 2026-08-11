@@ -405,12 +405,9 @@ const MetricListPage = () => {
       // React Aria fires this on row click/Enter (not on the selection checkbox,
       // which only toggles selection). Navigate to the activated metric.
       const metric = metrics.find((item) => item.id === key);
-      if (metric) {
+      if (metric?.fullyQualifiedName) {
         navigate(
-          getEntityDetailsPath(
-            EntityType.METRIC,
-            metric.fullyQualifiedName ?? ''
-          )
+          getEntityDetailsPath(EntityType.METRIC, metric.fullyQualifiedName)
         );
       }
     },
