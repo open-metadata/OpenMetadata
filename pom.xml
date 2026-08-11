@@ -212,6 +212,17 @@
         <artifactId>okhttp</artifactId>
         <version>4.12.0</version>
       </dependency>
+      <!-- Held alongside okhttp above. client-java 25.x declares logging-interceptor 5.1.0,
+           which drags in okhttp-jvm 5.1.0 — okhttp 5 moved the okhttp3.* classes into that
+           artifact, so it would sit on the classpath duplicating the pinned okhttp 4.12.0 jar
+           (split package, resolved by classpath order). client-java 25.0.1 references the exact
+           same 118 okhttp/okio members as 24.0.0, so 4.12.0 satisfies it. Drop this pin only as
+           part of a real okhttp 5 migration. -->
+      <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>logging-interceptor</artifactId>
+        <version>4.12.0</version>
+      </dependency>
       <dependency>
         <groupId>io.projectreactor.netty</groupId>
         <artifactId>reactor-netty-http</artifactId>
