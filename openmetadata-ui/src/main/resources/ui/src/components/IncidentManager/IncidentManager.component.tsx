@@ -76,20 +76,24 @@ const IncidentManager = ({
 
   return (
     <div className="tw:border tw:border-border-secondary tw:rounded-[10px] tw:bg-primary">
-      <div className="new-form-style tw:flex tw:justify-between tw:items-center tw:p-4 tw:gap-5.5 tw:w-full">
+      <div
+        className="new-form-style tw:flex tw:w-full tw:flex-wrap tw:items-end tw:justify-between tw:gap-x-5.5 tw:gap-y-4 tw:p-4"
+        data-testid="incident-filter-bar">
         <AsyncSelect
           allowClear
           showArrow
           showSearch
           api={searchTestCases}
-          className="w-min-20"
+          className="w-min-15"
           data-testid="test-case-select"
           placeholder={t('label.test-case')}
           suffixIcon={undefined}
           value={filters.testCaseFQN}
           onChange={(value) => updateFilters({ testCaseFQN: value })}
         />
-        <div className="tw:flex tw:gap-5.5">
+        <div
+          className="tw:flex tw:flex-wrap tw:items-end tw:gap-x-5.5 tw:gap-y-4"
+          data-testid="incident-filter-controls">
           <Form.Item className="m-b-0" label={t('label.assignee')}>
             <Assignees
               allowClear
