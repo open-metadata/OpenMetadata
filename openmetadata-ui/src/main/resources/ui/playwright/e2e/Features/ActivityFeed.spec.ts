@@ -715,6 +715,9 @@ test.describe('Mention notifications in Notification Box', () => {
   });
 });
 
+const CHINESE_MENTION_THREAD_MESSAGE =
+  'Initial conversation for Chinese character encoding test';
+
 test.describe('Mentions: Chinese character encoding in activity feed', () => {
   const database = new DatabaseClass();
   const endpointName = `测试Endpoint-${uuid()}`;
@@ -742,7 +745,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       // Create a conversation thread via API so we can post replies in the tests
       const conversationResponse = await apiContext.post('/api/v1/feed', {
         data: {
-          message: 'Initial conversation for Chinese character encoding test',
+          message: CHINESE_MENTION_THREAD_MESSAGE,
           about: `<#E::databaseSchema::${schemaFqn}>`,
           type: 'Conversation',
         },
@@ -752,7 +755,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
         apiContext,
         entityLink: `<#E::databaseSchema::${schemaFqn}>`,
         threadId: conversation.id,
-        message: 'Initial conversation for Chinese character encoding test',
+        message: CHINESE_MENTION_THREAD_MESSAGE,
       });
 
       await afterAction();
@@ -792,22 +795,22 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     await feedPromise;
     await waitForAllLoadersToDisappear(page);
 
+    // The All tab interleaves change-events with conversations and auto-selects
+    // whichever is newest, and change-events carry no editor at all. Never
+    // assume the seeded thread is already open — select it explicitly, so the
+    // editor's presence is a real assertion rather than a race on seed order.
+    const seededThread = page
+      .locator(
+        '[data-testid="message-container"], [data-testid="feed-reply-card"]'
+      )
+      .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
     const commentInput = page.getByTestId('comments-input-field');
-    if (!(await commentInput.isVisible().catch(() => false))) {
-      const seededThread = page
-        .locator(
-          '[data-testid="message-container"], [data-testid="feed-reply-card"]'
-        )
-        .filter({
-          hasText: 'Initial conversation for Chinese character encoding test',
-        })
-        .first();
-
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
-      await seededThread.click();
-      await waitForAllLoadersToDisappear(page);
-    }
-
     await expect(commentInput).toBeVisible({ timeout: 10000 });
     await commentInput.click();
 

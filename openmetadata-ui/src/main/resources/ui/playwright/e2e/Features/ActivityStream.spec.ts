@@ -71,19 +71,16 @@ test.describe('Activity Stream on Entity Pages', () => {
 
     await expect(activityTabContent).toBeVisible();
 
-    // Check for activity feed content - left panel structure may vary
-    const leftPanel = activityTabContent.locator('.left-container');
+    await expect(page.getByTestId('global-setting-left-panel')).toBeVisible();
 
-    if (await leftPanel.isVisible()) {
-      // The left panel with tabs (All/Tasks) should be visible
-      const leftPanelContent = leftPanel.locator(
-        '[data-testid="global-setting-left-panel"], [data-testid="activity-feed-tabs"]'
-      );
-
-      if ((await leftPanelContent.count()) > 0) {
-        await expect(leftPanelContent.first()).toBeVisible();
-      }
-    }
+    // Creating the table emits an entityCreated change-event, so the All tab
+    // of a freshly seeded entity always has at least that one activity.
+    await expect(
+      page
+        .locator('[data-testid="message-container"]')
+        .filter({ hasText: /created/i })
+        .first()
+    ).toBeVisible({ timeout: 30_000 });
   });
 
   test('activity events are created when entity description is updated', async ({
@@ -208,11 +205,14 @@ test.describe('Activity Stream on Entity Pages', () => {
 
     await expect(activityFeedTab).toBeVisible();
 
+    // The badge is feedCount.totalCount = conversations + activity + tasks.
+    // The seeded table has no conversations or tasks but does have its own
+    // entityCreated change-event, so the only correct value here is >= 1 —
+    // asserting >= 0 passed even when activity was left out of the total.
     const countBadge = activityFeedTab.getByTestId('count');
-    const countText = await countBadge.textContent();
-    const count = parseInt(countText ?? '0', 10);
 
-    expect(count).toBeGreaterThanOrEqual(0);
+    await expect(countBadge).toBeVisible();
+    await expect(countBadge).toHaveText(/^[1-9]\d*$/, { timeout: 30_000 });
   });
 
   test('activity stream API is called when visiting entity page', async ({

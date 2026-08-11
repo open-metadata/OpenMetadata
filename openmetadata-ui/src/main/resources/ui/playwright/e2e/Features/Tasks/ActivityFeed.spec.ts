@@ -433,11 +433,16 @@ test.describe('Activity Feed - Entity Page', () => {
     });
     const countBadge = activityFeedTab.getByTestId('count');
 
-    if (await countBadge.isVisible()) {
-      const countText = await countBadge.textContent();
-      const count = parseInt(countText || '0', 10);
-      expect(count).toBeGreaterThanOrEqual(0);
-    }
+    await expect(countBadge).toBeVisible();
+    await expect(countBadge).toHaveText(/^\d+$/, { timeout: 30_000 });
+
+    // The badge is feedCount.totalCount = conversations + activity + tasks.
+    // This fixture seeds 2 tasks plus the entityCreated change-event, so a
+    // total below 3 means a category was dropped from the sum. The previous
+    // `>= 0` assertion held even when activity was left out entirely.
+    const count = Number((await countBadge.innerText()).trim());
+
+    expect(count).toBeGreaterThanOrEqual(3);
   });
 
   test('clicking activity feed tab should show feed and tasks', async ({
@@ -462,33 +467,33 @@ test.describe('Activity Feed - Entity Page', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    // Find tabs/filters
-    const allButton = page.getByRole('button', { name: /all/i });
-    const tasksButton = page.getByRole('menuitem', { name: /tasks/i });
+    // Tasks: exactly the two seeded tasks, and the left-panel badge agrees.
+    await page.getByRole('menuitem', { name: /task/i }).click();
+    await waitForPageLoaded(page);
 
-    // Click Tasks
-    if (await tasksButton.isVisible()) {
-      await tasksButton.click();
-      await waitForPageLoaded(page);
+    await expect(page.getByTestId('left-panel-task-count')).toHaveText('2', {
+      timeout: 30_000,
+    });
+    await expect(page.locator('[data-testid="task-feed-card"]')).toHaveCount(2);
 
-      // Should show task cards
-      const taskCards = page.locator('[data-testid="task-feed-card"]');
-      const taskCount = await taskCards.count();
-      expect(taskCount).toBeGreaterThanOrEqual(0);
-    }
+    // All: change-events are listed here, and the badge must equal what is
+    // rendered. The previous `>= 0` assertion held even when the All tab
+    // showed nothing at all.
+    await page.getByRole('menuitem', { name: /all/i }).click();
+    await waitForPageLoaded(page);
 
-    // Click All
-    if (await allButton.isVisible()) {
-      await allButton.click();
-      await waitForPageLoaded(page);
+    const feedItems = page.locator(
+      '#feedData [data-testid="message-container"]'
+    );
 
-      // Should show all feed items
-      const feedItems = page.locator(
-        '[data-testid="message-container"], [data-testid="task-feed-card"]'
-      );
-      const allCount = await feedItems.count();
-      expect(allCount).toBeGreaterThanOrEqual(0);
-    }
+    await expect(feedItems.first()).toBeVisible({ timeout: 30_000 });
+
+    const renderedCount = await feedItems.count();
+    const allBadge = (
+      await page.getByTestId('left-panel-all-count').innerText()
+    ).trim();
+
+    expect(Number(allBadge)).toBe(renderedCount);
   });
 
   test('entity task filters should request open, closed, and mentions views', async ({
