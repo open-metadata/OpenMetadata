@@ -179,20 +179,26 @@ describe('MarketplaceSearchBar', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('bootstraps isNLPEnabled from API when store is cold (direct marketplace navigation)', async () => {
+  it('keeps NLQ disabled in OSS when store is cold', async () => {
     useSearchStore.setState({
       isNLPEnabled: false,
       isNLPActive: false,
       isNLPInitialized: false,
     });
-    (getNLPEnabledStatus as jest.Mock).mockResolvedValue(true);
-
     renderComponent();
 
     await waitFor(() => {
-      expect(getNLPEnabledStatus).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('marketplace-nlq-toggle')).toBeInTheDocument();
+      expect(useSearchStore.getState()).toMatchObject({
+        isNLPEnabled: false,
+        isNLPActive: false,
+        isNLPInitialized: true,
+      });
     });
+
+    expect(getNLPEnabledStatus).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('marketplace-nlq-toggle')
+    ).not.toBeInTheDocument();
   });
 
   it('skips the API call when store is already initialized', () => {
