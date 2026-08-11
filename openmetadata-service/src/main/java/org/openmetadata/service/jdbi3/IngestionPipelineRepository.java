@@ -628,8 +628,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public RestUtil.PutResponse<?> addPipelineStatus(
       UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
-    // Validate the request content
-    IngestionPipeline ingestionPipeline = getByName(uriInfo, fqn, getFields("service"));
+    // Validate the request content. Load owners/domains/followers too: updateEntityIndex below
+    // rebuilds the full search document from this entity, so any field not loaded here would be
+    // wiped from the index on every run status report.
+    IngestionPipeline ingestionPipeline =
+        getByName(uriInfo, fqn, getFields("service,owners,domains,followers"));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
