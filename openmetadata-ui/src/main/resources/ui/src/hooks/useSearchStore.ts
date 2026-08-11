@@ -12,6 +12,7 @@
  */
 import { create } from 'zustand';
 import { getNLPEnabledStatus } from '../rest/searchAPI';
+import searchSettingsClassBase from '../utils/SearchSettingsClassBase';
 
 interface SearchState {
   // NLP flags
@@ -38,6 +39,17 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     if (get().isNLPInitialized) {
       return;
     }
+
+    if (!searchSettingsClassBase.isNLQSupported()) {
+      set({
+        isNLPActive: false,
+        isNLPEnabled: false,
+        isNLPInitialized: true,
+      });
+
+      return;
+    }
+
     const enabled = await getNLPEnabledStatus().catch(() => false);
     set({ isNLPEnabled: enabled, isNLPInitialized: true });
   },

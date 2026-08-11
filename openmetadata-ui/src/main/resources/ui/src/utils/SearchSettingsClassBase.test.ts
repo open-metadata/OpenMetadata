@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,24 @@
  *  limitations under the License.
  */
 
-class SearchSettingsClassBase {
-  public isNLQSupported(): boolean {
-    return this.showHybridSearchWeights();
-  }
+import { SearchSettingsClassBase } from './SearchSettingsClassBase';
 
+class CollateSearchSettingsClass extends SearchSettingsClassBase {
   public showHybridSearchWeights(): boolean {
-    return false;
+    return true;
   }
 }
 
-const searchSettingsClassBase = new SearchSettingsClassBase();
+describe('SearchSettingsClassBase', () => {
+  it('does not support NLQ in OSS', () => {
+    const searchSettings = new SearchSettingsClassBase();
 
-export default searchSettingsClassBase;
+    expect(searchSettings.isNLQSupported()).toBe(false);
+  });
 
-export { SearchSettingsClassBase };
+  it('supports NLQ through the existing Collate hybrid-search override', () => {
+    const searchSettings = new CollateSearchSettingsClass();
+
+    expect(searchSettings.isNLQSupported()).toBe(true);
+  });
+});
