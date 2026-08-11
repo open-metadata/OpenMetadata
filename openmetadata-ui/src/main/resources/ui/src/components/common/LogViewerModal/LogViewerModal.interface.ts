@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { StreamHealth } from '../../../utils/SseStreamUtils';
+
 export type LogViewerStatusTone = 'success' | 'error' | 'warning' | 'muted';
 
 export interface LogViewerStatus {
@@ -39,16 +41,21 @@ export interface LogViewerModalBaseProps {
   loadingMore?: boolean;
   // Shows a loader in place of the download button while a download is running.
   downloading?: boolean;
-  // The full log text. Callers that poll an in-progress run keep growing this.
+  // The full log text. The caller grows this as the run produces output.
   logs: string;
   // 'stream' means the underlying run is LIVE: the modal shows the live
-  // indicator and auto-follows the tail. Today liveness is produced by the
-  // caller polling and growing `logs` while the run is active, then flipping
-  // back to 'static' once the run reaches a terminal state. `fqn`/`runId` are
-  // reserved for re-enabling a self-fetching SSE stream (via `useLogStream`)
-  // once the backend endpoint is available again — see useLogStream.ts.
+  // indicator and auto-follows the tail. The caller grows `logs` while the run
+  // is active — over SSE where the deployment supports it, otherwise by polling
+  // — then flips back to 'static' once the run reaches a terminal state.
   mode?: 'static' | 'stream';
-  fqn?: string;
+  // Transport state of the SSE tail, when one is in use. 'connecting' after a
+  // drop shows a reconnecting indicator in place of the live dot.
+  streamHealth?: StreamHealth;
+  // The server could not replay the whole backlog: what is shown starts partway
+  // through the run and the rest has to come from the download.
+  streamTruncated?: boolean;
+  // A message from the server explaining why the tail stopped.
+  streamError?: string | null;
 }
 
 export type LogViewerModalProps = LogViewerModalBaseProps;
