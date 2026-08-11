@@ -248,10 +248,12 @@ export const TableProfilerProvider = ({
     // we are decoding FQN below to avoid double encoding in the API function
     setIsProfilerDataLoading(true);
     try {
-      const profiler = await getLatestTableProfileByFqn(datasetFQN);
-      const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
-        fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
-      });
+      const [profiler, customMetricResponse] = await Promise.all([
+        getLatestTableProfileByFqn(datasetFQN),
+        getTableDetailsByFQN(datasetFQN, {
+          fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
+        }),
+      ]);
 
       setTableProfiler(profiler);
       setCustomMetric(customMetricResponse);
