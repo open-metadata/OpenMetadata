@@ -63,6 +63,7 @@ import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrum
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../components/common/Table/TableV2';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -399,6 +400,23 @@ const MetricListPage = () => {
     });
   }, [navigate, searchText, selectedMetricIds, selectedMetrics, statusFilter]);
 
+  const handleRowAction = useCallback(
+    (key: Key) => {
+      // React Aria fires this on row click/Enter (not on the selection checkbox,
+      // which only toggles selection). Navigate to the activated metric.
+      const metric = metrics.find((item) => item.id === key);
+      if (metric) {
+        navigate(
+          getEntityDetailsPath(
+            EntityType.METRIC,
+            metric.fullyQualifiedName ?? ''
+          )
+        );
+      }
+    },
+    [metrics, navigate]
+  );
+
   const handleSearchTextChange = useCallback(
     (value: string | ChangeEvent<HTMLInputElement>) => {
       const text = getInputChangeValue(value);
@@ -505,11 +523,17 @@ const MetricListPage = () => {
         dataIndex: 'description',
         key: 'description',
         width: 420,
-        render: (description: string) => (
-          <p className="m-0 metric-list-description">
-            {description || emptyDash}
-          </p>
-        ),
+        render: (description: string) =>
+          description ? (
+            <RichTextEditorPreviewerV1
+              className="metric-list-description"
+              enableSeeMoreVariant={false}
+              markdown={description}
+              showReadMoreBtn={false}
+            />
+          ) : (
+            emptyDash
+          ),
       },
       glossary: {
         title: t('label.glossary-term-plural'),
@@ -818,6 +842,7 @@ const MetricListPage = () => {
                       <Button
                         className="metric-list-selection-clear"
                         color="link-gray"
+                        data-testid="clear-metric-selection"
                         iconLeading={XClose}
                         onPress={() => setSelectedMetricIds([])}>
                         {t('label.clear')}
@@ -993,12 +1018,14 @@ const MetricListPage = () => {
                       ),
                   }}
                   pagination={false}
+                  rowClassName="tw:cursor-pointer"
                   rowKey="id"
                   rowSelection={{
                     selectedRowKeys: selectedMetricIds,
                     onChange: setSelectedMetricIds,
                   }}
                   size="small"
+                  onRowAction={handleRowAction}
                 />
               </>
             )}
