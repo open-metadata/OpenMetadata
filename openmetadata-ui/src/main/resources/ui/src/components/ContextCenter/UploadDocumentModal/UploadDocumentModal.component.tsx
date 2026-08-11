@@ -19,13 +19,15 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { uploadDriveFile } from '../../../rest/assetAPI';
-import { showSuccessToast } from '../../../utils/ToastUtils';
+import { runWithConcurrencyLimit } from '../../../utils/AsyncUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   QueuedFile,
   UploadDocumentModalProps,
@@ -33,6 +35,9 @@ import {
 
 const getFileExt = (name: string) =>
   name.split('.').pop()?.toLowerCase() ?? 'empty';
+
+// Cap simultaneous uploads so a large batch does not fire one request per file at once.
+const UPLOAD_CONCURRENCY = 3;
 
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
@@ -88,12 +93,13 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   ): Promise<ContextFile | null> => {
     try {
       return await uploadDriveFile(entry.file, folderFqn);
-    } catch {
+    } catch (err) {
       setFiles((prev) =>
         prev.map((f) =>
           f.id === entry.id ? { ...f, progress: 0, status: 'error' } : f
         )
       );
+      showErrorToast(err as AxiosError, t('message.upload-failed'));
 
       return null;
     }
@@ -125,17 +131,15 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     cancelledRef.current = false;
     setIsUploading(true);
 
-    const batchFiles: ContextFile[] = [];
-    for (const entry of pending) {
-      if (cancelledRef.current) {
-        break;
-      }
-
-      const contextFile = await uploadSingleFile(entry);
-      if (contextFile) {
-        batchFiles.push(contextFile);
-      }
-    }
+    const results = await runWithConcurrencyLimit(
+      pending,
+      UPLOAD_CONCURRENCY,
+      (entry) => uploadSingleFile(entry),
+      () => cancelledRef.current
+    );
+    const batchFiles = results.filter((file): file is ContextFile =>
+      Boolean(file)
+    );
 
     if (!cancelledRef.current) {
       setIsUploading(false);
