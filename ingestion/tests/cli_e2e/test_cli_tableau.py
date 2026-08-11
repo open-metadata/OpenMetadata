@@ -21,6 +21,7 @@ import pytest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
+from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.api.status import Status
 
 from .base.test_cli import PATH_TO_RESOURCES  # noqa: TID252
@@ -502,18 +503,16 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
 
         for datamodel in datamodels:
             if hasattr(datamodel, "columns") and datamodel.columns:
-                print(  # noqa: T201
-                    f"[verify] datamodel={datamodel.name.root!r} columns="
-                    f"{[(c.name.root, c.displayName, str(c.dataType)) for c in datamodel.columns]}"
-                )
                 for column in datamodel.columns:
                     if hasattr(column, "dataType") and column.dataType:
-                        # Check if field type matches expected
-                        field_type = str(column.dataType)
-                        self.assertIn(
-                            "DataType.RECORD",
-                            field_type,
-                            f"Field '{column.name.root}' should have tableau-related type",
+                        # A field mirroring a single same-named upstream column takes that
+                        # column's real type (#30928); calculated/renamed/grouped fields keep
+                        # the RECORD wrapper. Either outcome is a resolved type - only an
+                        # unresolved UNKNOWN means the connector failed to type the field.
+                        self.assertNotEqual(
+                            column.dataType,
+                            DataType.UNKNOWN,
+                            f"Field '{column.name.root}' should have a resolved type",
                         )
 
     @pytest.mark.order(11)

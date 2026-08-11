@@ -70,14 +70,29 @@ class CliDBTBase(TestCase):
             test_case_entity_list = self.openmetadata.list_entities(
                 entity=TestDefinition,
                 params={"testPlatform": TestPlatform.dbt.value},
+                fields=["*"],
+                # default limit=100 would silently truncate if this ever grows past it.
             )
+            for e in test_case_entity_list.entities:
+                print(  # noqa: T201
+                    f"[verify] TestDefinition name={model_str(e.name)!r} entityType={e.entityType} "
+                    f"displayName={e.displayName!r} description={e.description!r} "
+                    f"testPlatforms={e.testPlatforms} parameterDefinition={e.parameterDefinition}"
+                )
+            # server-reported total vs. what this page actually returned - if these
+            # ever diverge, the list above is incomplete and limit needs raising.
             print(  # noqa: T201
-                f"[verify] TestDefinition names: {[model_str(e.name) for e in test_case_entity_list.entities]}"
+                f"[verify] TestDefinition page count={len(test_case_entity_list.entities)} "
+                f"server total={test_case_entity_list.total}"
             )
-            # TestDefinition is now shared per dbt test *type*, not per test case
-            # (#28927, 2026-06-16) - 26 was the pre-#28927 one-per-test-case count.
-            # 5 is the measured count of distinct dbt test types after that change.
-            self.assertEqual(len(test_case_entity_list.entities), 5)
+            # ponytail: deliberately wrong on purpose. TestDefinition is now shared per
+            # dbt test *type* (#28927, 2026-06-16), so 26 (the old one-per-test-case
+            # count) can't be right anymore - but the real number is unconfirmed (doc
+            # says 4, a prior commit claimed 5, neither has a surviving log to check).
+            # Asserting the known-stale 26 guarantees this fails, which forces pytest to
+            # print the [verify] dump above into the CI log. Replace with the real
+            # count once a dispatch shows it.
+            self.assertEqual(len(test_case_entity_list.entities), 26)
 
         # 5. test dbt lineage
         @pytest.mark.order(5)

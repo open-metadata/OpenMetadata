@@ -44,7 +44,6 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
-    DbtCommonEnum,
     REQUIRED_CONSTRAINT_KEYS,
     REQUIRED_NODE_KEYS,
     REQUIRED_RESULTS_KEYS,
@@ -52,9 +51,6 @@ from metadata.ingestion.source.database.dbt.constants import (
 from metadata.ingestion.source.database.dbt.dbt_config import (
     DBTConfigException,
     get_dbt_details,
-)
-from metadata.ingestion.source.database.dbt.dbt_utils import (
-    get_dbt_test_definition_name,
 )
 from metadata.ingestion.source.database.dbt.models import (
     DbtFiles,
@@ -364,10 +360,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the DBT tests
         """
-        logger.info(
-            "[verify] dbt test -> genre mapping: "
-            f"{ {key: get_dbt_test_definition_name(test[DbtCommonEnum.MANIFEST_NODE.value]) for key, test in self.context.get().dbt_tests.items()} }"
-        )
         for _, dbt_test in self.context.get().dbt_tests.items():  # noqa: PERF102
             yield dbt_test
 

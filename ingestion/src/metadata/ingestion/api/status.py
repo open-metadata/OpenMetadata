@@ -108,10 +108,13 @@ class Status(BaseModel):
         parts = []
         for key, value in self.__dict__.items():
             if isinstance(value, list) and len(value) > MAX_STATUS_DISPLAY_ITEMS:
-                header = f"{len(value)} total items — showing first {MAX_STATUS_DISPLAY_ITEMS}"
                 shown = [literal_safe(v) for v in value[:MAX_STATUS_DISPLAY_ITEMS]]
-                formatted = pprint.pformat([header, *shown], width=150)
+                formatted = pprint.pformat(shown, width=150)
                 parts.append(f"'{key}': {formatted}")
+                # Total count as a sibling key, not a list element: Status.model_validate()
+                # ignores unknown fields, so this round-trips without corrupting the typed
+                # list (filtered/failures aren't List[Any]) or inflating len(value).
+                parts.append(f"'{key}_total_items': {len(value)}")
             elif isinstance(value, list):
                 formatted = pprint.pformat([literal_safe(v) for v in value], width=150)
                 parts.append(f"'{key}': {formatted}")
