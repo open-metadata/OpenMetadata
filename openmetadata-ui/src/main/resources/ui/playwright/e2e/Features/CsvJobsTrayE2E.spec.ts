@@ -130,556 +130,551 @@ const activateTrayOnPage = async (page: Page, path: string): Promise<void> => {
   await refreshTray(page);
 };
 
-test.describe(
-  'CsvJobsTray — real server',
-  { tag: '@import-export' },
-  () => {
-    // Run serially: all tests share the same admin user's job list on the real
-    // server (GET /csvAsyncJobs?limit=20 returns a global list).  Parallel
-    // execution causes cross-test auto-open races where one test's completed
-    // job triggers the tray to re-open inside another test's assertions.
-    test.describe.configure({ mode: 'serial' });
-    test('export job queued makes the tray launcher visible', async ({
-      browser,
-      page,
-    }) => {
-      // Verifies that queuing an export job makes the tray launcher (or
-      // auto-opened popover) appear without any page.route() mocking.
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
+  // Run serially: all tests share the same admin user's job list on the real
+  // server (GET /csvAsyncJobs?limit=20 returns a global list).  Parallel
+  // execution causes cross-test auto-open races where one test's completed
+  // job triggers the tray to re-open inside another test's assertions.
+  test.describe.configure({ mode: 'serial' });
+  test('export job queued makes the tray launcher visible', async ({
+    browser,
+    page,
+  }) => {
+    // Verifies that queuing an export job makes the tray launcher (or
+    // auto-opened popover) appear without any page.route() mocking.
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      await queueUserExport(apiContext, page);
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    await queueUserExport(apiContext, page);
 
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
 
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-      await afterAction();
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+    await afterAction();
+  });
+
+  test('tray auto-opens without launcher click when export job completes', async ({
+    browser,
+    page,
+  }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+
+    await refreshTray(page);
+
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page
+        .locator('.csv-jobs-tray-item')
+        .filter({ hasText: /Exported/i })
+        .first()
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('.csv-jobs-tray-action')
+        .filter({ hasText: 'Download' })
+        .first()
+    ).toBeVisible();
+    await afterAction();
+  });
+
+  test('result endpoint returns HTTP 200 with valid CSV — not a silent timeout', async ({
+    browser,
+    page,
+  }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+
+    const resultRes = await apiContext.get(
+      `/api/v1/csvAsyncJobs/${jobId}/result`
+    );
+
+    expect(resultRes.status()).toBe(200);
+    expect(resultRes.headers()['content-type']).toContain('text/csv');
+
+    const csv = await resultRes.text();
+    const nonEmptyLines = csv
+      .split('\n')
+      .filter((line) => line.trim().length > 0);
+
+    // Must have at least a header row.
+    expect(nonEmptyLines.length).toBeGreaterThanOrEqual(1);
+
+    // User export includes a "name" column in its header.
+    expect(nonEmptyLines[0].toLowerCase()).toContain('name');
+
+    await afterAction();
+  });
+
+  test('clicking Download from the tray triggers a file download with correct name', async ({
+    browser,
+    page,
+  }) => {
+    // Verifies the Download button in the tray's completed-job row fires the
+    // result endpoint and triggers a browser download event.
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+    await refreshTray(page);
+
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 15_000,
     });
 
-    test('tray auto-opens without launcher click when export job completes', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
+    const downloadBtn = page.getByRole('button', { name: 'Download' }).first();
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    await expect(downloadBtn).toBeVisible();
 
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      const jobId = await queueUserExport(apiContext, page);
+    // Register both listeners BEFORE clicking so we don't race.
+    const resultResPromise = page.waitForResponse((r) =>
+      r.url().includes(`/api/v1/csvAsyncJobs/${jobId}/result`)
+    );
+    const downloadEventPromise = page.waitForEvent('download');
 
-      await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+    await downloadBtn.click();
 
-      await refreshTray(page);
+    const [resultRes, download] = await Promise.all([
+      resultResPromise,
+      downloadEventPromise,
+    ]);
 
-      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
-        timeout: 15_000,
-      });
-      await expect(
-        page
-          .locator('.csv-jobs-tray-item')
-          .filter({ hasText: /Exported/i })
-          .first()
-      ).toBeVisible();
-      await expect(
-        page
-          .locator('.csv-jobs-tray-action')
-          .filter({ hasText: 'Download' })
-          .first()
-      ).toBeVisible();
-      await afterAction();
+    expect(resultRes.status()).toBe(200);
+    expect(download.suggestedFilename()).toContain(jobId);
+    expect(download.suggestedFilename()).toContain('.csv');
+    await afterAction();
+  });
+
+  test('clear completed removes finished export jobs and hides the tray', async ({
+    browser,
+    page,
+  }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+    await refreshTray(page);
+
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 15_000,
     });
 
-    test('result endpoint returns HTTP 200 with valid CSV — not a silent timeout', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
+    await page.locator('.csv-jobs-tray-clear').click();
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    // Tray and launcher must both disappear once no jobs remain.
+    await expect(page.locator('.csv-jobs-tray')).not.toBeVisible();
+    await afterAction();
+  });
 
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      const jobId = await queueUserExport(apiContext, page);
+  test('two concurrent export jobs both appear in the tray', async ({
+    browser,
+    page,
+  }) => {
+    test.slow();
 
-      await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      const resultRes = await apiContext.get(
-        `/api/v1/csvAsyncJobs/${jobId}/result`
-      );
+    await activateTrayOnPage(page, '/settings/services/databases');
 
-      expect(resultRes.status()).toBe(200);
-      expect(resultRes.headers()['content-type']).toContain('text/csv');
+    // Fire both jobs before refreshing so the tray sees them together.
+    const exportRes1 = await apiContext.get(
+      '/api/v1/services/databaseServices/name/sample_data/exportAsync'
+    );
 
-      const csv = await resultRes.text();
-      const nonEmptyLines = csv
-        .split('\n')
-        .filter((line) => line.trim().length > 0);
+    expect(exportRes1.status()).toBe(202);
+    const { jobId: jobId1 } = (await exportRes1.json()) as { jobId: string };
 
-      // Must have at least a header row.
-      expect(nonEmptyLines.length).toBeGreaterThanOrEqual(1);
+    const exportRes2 = await apiContext.get(
+      '/api/v1/users/exportAsync?team=Organization'
+    );
 
-      // User export includes a "name" column in its header.
-      expect(nonEmptyLines[0].toLowerCase()).toContain('name');
+    expect(exportRes2.status()).toBe(202);
+    const { jobId: jobId2 } = (await exportRes2.json()) as { jobId: string };
 
-      await afterAction();
+    expect(jobId1).not.toBe(jobId2);
+
+    // Single refresh after both jobs are created so the tray sees them both.
+    await refreshTray(page);
+
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    // Wait for both to finish — terminal state is enough, COMPLETED not required.
+    await pollUntilTerminal(apiContext, jobId1);
+    await pollUntilTerminal(apiContext, jobId2);
+    await afterAction();
+  });
+
+  test('real async import job shows in the tray as an import operation', async ({
+    browser,
+    page,
+  }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    const glossaryName = `pw-tray-import-e2e-${Date.now()}`;
+
+    const glossaryRes = await apiContext.post('/api/v1/glossaries', {
+      data: { name: glossaryName, displayName: 'PW Tray Import E2E' },
+    });
+    const glossary = (await glossaryRes.json()) as { id: string };
+    await activateTrayOnPage(page, '/glossary');
+
+    const csv = [
+      'parent,name,displayName,description',
+      ',term1,Term One,A test glossary term',
+    ].join('\n');
+
+    const importRes = await apiContext.put(
+      `/api/v1/glossaries/name/${encodeURIComponent(
+        glossaryName
+      )}/importAsync?dryRun=false`,
+      { data: csv, headers: { 'Content-Type': 'text/plain' } }
+    );
+
+    expect(importRes.status()).toBe(200);
+    const { jobId } = (await importRes.json()) as { jobId: string };
+
+    await refreshTray(page);
+
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    if (!(await trayPopover.isVisible())) {
+      await launcher.click();
+    }
+
+    // "Importing Glossary Terms" (active) or "Imported Glossary Terms" (done)
+    await expect(
+      page
+        .locator('.csv-jobs-tray-item')
+        .filter({ hasText: /Importing|Imported/i })
+        .first()
+    ).toBeVisible({ timeout: 15_000 });
+
+    // Wait for terminal state — whether the server succeeds or fails, both
+    // COMPLETED and FAILED imports render a dismiss button (not Download).
+    await pollUntilTerminal(apiContext, jobId);
+    await refreshTray(page);
+
+    await expect(page.locator('.csv-jobs-tray-dismiss').first()).toBeVisible({
+      timeout: 10_000,
     });
 
-    test('clicking Download from the tray triggers a file download with correct name', async ({
-      browser,
-      page,
-    }) => {
-      // Verifies the Download button in the tray's completed-job row fires the
-      // result endpoint and triggers a browser download event.
-      test.slow();
+    await apiContext.delete(
+      `/api/v1/glossaries/${glossary.id}?hardDelete=true&recursive=true`
+    );
+    await afterAction();
+  });
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+  test('database service export shows in the tray', async ({
+    browser,
+    page,
+  }) => {
+    // Guards the GET /services/databaseServices/.../exportAsync path.
+    // Uses sample_data which is always present in the test environment.
+    test.slow();
 
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      const jobId = await queueUserExport(apiContext, page);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
-      await refreshTray(page);
+    await activateTrayOnPage(page, '/settings/services/databases');
+    const jobId = await queueDbServiceExport(apiContext, page);
 
-      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
-        timeout: 15_000,
-      });
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
 
-      const downloadBtn = page
-        .getByRole('button', { name: 'Download' })
-        .first();
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
 
-      await expect(downloadBtn).toBeVisible();
+    if (!(await trayPopover.isVisible())) {
+      await launcher.click();
+    }
 
-      // Register both listeners BEFORE clicking so we don't race.
-      const resultResPromise = page.waitForResponse(
-        (r) => r.url().includes(`/api/v1/csvAsyncJobs/${jobId}/result`)
-      );
-      const downloadEventPromise = page.waitForEvent('download');
+    await expect(
+      page
+        .locator('.csv-jobs-tray-item')
+        .filter({ hasText: /Exporting|Exported/i })
+        .first()
+    ).toBeVisible({ timeout: 15_000 });
 
-      await downloadBtn.click();
+    // Wait for any terminal state — COMPLETED or FAILED is fine for this test.
+    await pollUntilTerminal(apiContext, jobId);
+    await afterAction();
+  });
 
-      const [resultRes, download] = await Promise.all([
-        resultResPromise,
-        downloadEventPromise,
-      ]);
+  test('user export from team shows in the tray', async ({ browser, page }) => {
+    test.slow();
 
-      expect(resultRes.status()).toBe(200);
-      expect(download.suggestedFilename()).toContain(jobId);
-      expect(download.suggestedFilename()).toContain('.csv');
-      await afterAction();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    if (!(await trayPopover.isVisible())) {
+      await launcher.click();
+    }
+
+    await expect(
+      page
+        .locator('.csv-jobs-tray-item')
+        .filter({ hasText: /Exporting|Exported/i })
+        .first()
+    ).toBeVisible({ timeout: 15_000 });
+
+    await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+    await afterAction();
+  });
+
+  test('test case export for a table shows in the tray', async ({
+    browser,
+    page,
+  }) => {
+    // Guards the GET /dataQuality/testCases/name/{fqn}/exportAsync path.
+    // Even with no test cases the job reaches terminal state with a CSV.
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/explore/tables?search=sample_data');
+
+    const fqn = 'sample_data.ecommerce_db.shopify.dim_customer';
+    const exportRes = await apiContext.get(
+      `/api/v1/dataQuality/testCases/name/${encodeURIComponent(
+        fqn
+      )}/exportAsync`
+    );
+
+    expect(exportRes.status()).toBe(202);
+    const { jobId } = (await exportRes.json()) as { jobId: string };
+
+    await refreshTray(page);
+
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    if (!(await trayPopover.isVisible())) {
+      await launcher.click();
+    }
+
+    await expect(
+      page
+        .locator('.csv-jobs-tray-item')
+        .filter({ hasText: /Exporting|Exported/i })
+        .first()
+    ).toBeVisible({ timeout: 15_000 });
+
+    await pollUntilTerminal(apiContext, jobId);
+    await afterAction();
+  });
+
+  test('FAILED async import job shows error state in the tray', async ({
+    browser,
+    page,
+  }) => {
+    // Sends a CSV with wrong column headers so the job fails during
+    // server-side processing.  Verifies error styling + dismiss button.
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    const glossaryName = `pw-tray-import-fail-e2e-${Date.now()}`;
+
+    const glossaryRes = await apiContext.post('/api/v1/glossaries', {
+      data: { name: glossaryName, displayName: 'PW Tray Import Fail E2E' },
+    });
+    const glossary = (await glossaryRes.json()) as { id: string };
+
+    await activateTrayOnPage(page, '/glossary');
+
+    // Missing 'name' column causes async processing to fail.
+    const badCsv = ['wrong_col_a,wrong_col_b', 'value1,value2'].join('\n');
+
+    const importRes = await apiContext.put(
+      `/api/v1/glossaries/name/${encodeURIComponent(
+        glossaryName
+      )}/importAsync?dryRun=false`,
+      { data: badCsv, headers: { 'Content-Type': 'text/plain' } }
+    );
+
+    expect(importRes.status()).toBe(200);
+    const { jobId } = (await importRes.json()) as { jobId: string };
+
+    const finalStatus = await pollUntilTerminal(apiContext, jobId);
+
+    expect(finalStatus).toBe('FAILED');
+
+    await refreshTray(page);
+
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    if (!(await trayPopover.isVisible())) {
+      await launcher.click();
+    }
+
+    // FAILED job: error styling + dismiss button (not Download).
+    await expect(page.locator('.csv-jobs-tray-item-error').first()).toBeVisible(
+      { timeout: 10_000 }
+    );
+    await expect(page.locator('.csv-jobs-tray-dismiss').first()).toBeVisible();
+
+    await apiContext.delete(
+      `/api/v1/glossaries/${glossary.id}?hardDelete=true&recursive=true`
+    );
+    await afterAction();
+  });
+
+  test('auto-open fires only once — closing and re-fetching does not re-open', async ({
+    browser,
+    page,
+  }) => {
+    // Guards the autoOpenedJobIds ref that prevents the same terminal job
+    // from re-opening the tray on every WebSocket tick or poll cycle.
+    // Uses user export which reliably reaches COMPLETED.
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+    await refreshTray(page);
+
+    // Tray auto-opens once for the newly-completed job.
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 15_000,
     });
 
-    test('clear completed removes finished export jobs and hides the tray', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
+    // User manually closes the tray.
+    await page.locator('.csv-jobs-tray-close').click();
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      const jobId = await queueUserExport(apiContext, page);
-
-      await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
-      await refreshTray(page);
-
-      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
-        timeout: 15_000,
-      });
-
-      await page.locator('.csv-jobs-tray-clear').click();
-
-      // Tray and launcher must both disappear once no jobs remain.
-      await expect(page.locator('.csv-jobs-tray')).not.toBeVisible();
-      await afterAction();
+    // Popover must disappear immediately after close click.
+    await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible({
+      timeout: 5_000,
     });
 
-    test('two concurrent export jobs both appear in the tray', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
+    // Simulate another WebSocket tick — job is already in autoOpenedJobIds.
+    // With serial execution the server has no other tests' jobs in-flight, so
+    // the only job in the list is ours (already seen) — tray must stay closed.
+    await refreshTray(page);
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible({
+      timeout: 5_000,
+    });
+    await afterAction();
+  });
 
-      await activateTrayOnPage(page, '/settings/services/databases');
+  test('tray launcher survives navigation to a different page', async ({
+    browser,
+    page,
+  }) => {
+    // Verifies the tray is mounted at the app-shell level and is NOT
+    // unmounted during client-side route transitions.  A regression that
+    // moves CsvJobsTrayContainer inside a route component would cause the
+    // active-job indicator to vanish mid-export on every navigation.
+    test.slow();
 
-      // Fire both jobs before refreshing so the tray sees them together.
-      const exportRes1 = await apiContext.get(
-        '/api/v1/services/databaseServices/name/sample_data/exportAsync'
-      );
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      expect(exportRes1.status()).toBe(202);
-      const { jobId: jobId1 } = (await exportRes1.json()) as { jobId: string };
+    // Activate on page A.
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    await queueUserExport(apiContext, page);
 
-      const exportRes2 = await apiContext.get(
-        '/api/v1/users/exportAsync?team=Organization'
-      );
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
 
-      expect(exportRes2.status()).toBe(202);
-      const { jobId: jobId2 } = (await exportRes2.json()) as { jobId: string };
+    // Job is visible on page A (QUEUED / RUNNING).
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
 
-      expect(jobId1).not.toBe(jobId2);
+    // Navigate to a completely different section while the job is still active.
+    await page.goto('/settings/services/databases');
+    await waitForAllLoadersToDisappear(page);
 
-      // Single refresh after both jobs are created so the tray sees them both.
-      await refreshTray(page);
+    // Refresh so the tray picks up the current job state on page B.
+    await refreshTray(page);
 
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
+    // The tray must still be present after the route change.
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+    await afterAction();
+  });
 
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+  test('Download button stays clickable and re-triggers a download after first use', async ({
+    browser,
+    page,
+  }) => {
+    // Guards the downloadedJobIds state: after the first download the row's
+    // icon changes to a checkmark, but the Download button must remain
+    // visible so users can save the file again.
+    test.slow();
 
-      // Wait for both to finish — terminal state is enough, COMPLETED not required.
-      await pollUntilTerminal(apiContext, jobId1);
-      await pollUntilTerminal(apiContext, jobId2);
-      await afterAction();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
+    await refreshTray(page);
+
+    await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
+      timeout: 15_000,
     });
 
-    test('real async import job shows in the tray as an import operation', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
+    const downloadBtn = page.getByRole('button', { name: 'Download' }).first();
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    await expect(downloadBtn).toBeVisible();
 
-      const glossaryName = `pw-tray-import-e2e-${Date.now()}`;
+    // First download.
+    const dl1 = page.waitForEvent('download');
 
-      const glossaryRes = await apiContext.post('/api/v1/glossaries', {
-        data: { name: glossaryName, displayName: 'PW Tray Import E2E' },
-      });
-      const glossary = (await glossaryRes.json()) as { id: string };
-      await activateTrayOnPage(page, '/glossary');
+    await downloadBtn.click();
+    await dl1;
 
-      const csv = [
-        'parent,name,displayName,description',
-        ',term1,Term One,A test glossary term',
-      ].join('\n');
+    // Button must still be visible after first download.
+    await expect(downloadBtn).toBeVisible();
 
-      const importRes = await apiContext.put(
-        `/api/v1/glossaries/name/${encodeURIComponent(glossaryName)}/importAsync?dryRun=false`,
-        { data: csv, headers: { 'Content-Type': 'text/plain' } }
-      );
+    // Second click must also trigger a download (button is never disabled).
+    const dl2 = page.waitForEvent('download');
 
-      expect(importRes.status()).toBe(200);
-      const { jobId } = (await importRes.json()) as { jobId: string };
+    await downloadBtn.click();
+    await dl2;
 
-      await refreshTray(page);
-
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-
-      if (!(await trayPopover.isVisible())) {
-        await launcher.click();
-      }
-
-      // "Importing Glossary Terms" (active) or "Imported Glossary Terms" (done)
-      await expect(
-        page
-          .locator('.csv-jobs-tray-item')
-          .filter({ hasText: /Importing|Imported/i })
-          .first()
-      ).toBeVisible({ timeout: 15_000 });
-
-      // Wait for terminal state — whether the server succeeds or fails, both
-      // COMPLETED and FAILED imports render a dismiss button (not Download).
-      await pollUntilTerminal(apiContext, jobId);
-      await refreshTray(page);
-
-      await expect(page.locator('.csv-jobs-tray-dismiss').first()).toBeVisible({
-        timeout: 10_000,
-      });
-
-      await apiContext.delete(
-        `/api/v1/glossaries/${glossary.id}?hardDelete=true&recursive=true`
-      );
-      await afterAction();
-    });
-
-    test('database service export shows in the tray', async ({
-      browser,
-      page,
-    }) => {
-      // Guards the GET /services/databaseServices/.../exportAsync path.
-      // Uses sample_data which is always present in the test environment.
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await activateTrayOnPage(page, '/settings/services/databases');
-      const jobId = await queueDbServiceExport(apiContext, page);
-
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-
-      if (!(await trayPopover.isVisible())) {
-        await launcher.click();
-      }
-
-      await expect(
-        page
-          .locator('.csv-jobs-tray-item')
-          .filter({ hasText: /Exporting|Exported/i })
-          .first()
-      ).toBeVisible({ timeout: 15_000 });
-
-      // Wait for any terminal state — COMPLETED or FAILED is fine for this test.
-      await pollUntilTerminal(apiContext, jobId);
-      await afterAction();
-    });
-
-    test('user export from team shows in the tray', async ({
-      browser,
-      page,
-    }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      const jobId = await queueUserExport(apiContext, page);
-
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-
-      if (!(await trayPopover.isVisible())) {
-        await launcher.click();
-      }
-
-      await expect(
-        page
-          .locator('.csv-jobs-tray-item')
-          .filter({ hasText: /Exporting|Exported/i })
-          .first()
-      ).toBeVisible({ timeout: 15_000 });
-
-      await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
-      await afterAction();
-    });
-
-    test('test case export for a table shows in the tray', async ({
-      browser,
-      page,
-    }) => {
-      // Guards the GET /dataQuality/testCases/name/{fqn}/exportAsync path.
-      // Even with no test cases the job reaches terminal state with a CSV.
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await activateTrayOnPage(page, '/explore/tables?search=sample_data');
-
-      const fqn = 'sample_data.ecommerce_db.shopify.dim_customer';
-      const exportRes = await apiContext.get(
-        `/api/v1/dataQuality/testCases/name/${encodeURIComponent(fqn)}/exportAsync`
-      );
-
-      expect(exportRes.status()).toBe(202);
-      const { jobId } = (await exportRes.json()) as { jobId: string };
-
-      await refreshTray(page);
-
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-
-      if (!(await trayPopover.isVisible())) {
-        await launcher.click();
-      }
-
-      await expect(
-        page
-          .locator('.csv-jobs-tray-item')
-          .filter({ hasText: /Exporting|Exported/i })
-          .first()
-      ).toBeVisible({ timeout: 15_000 });
-
-      await pollUntilTerminal(apiContext, jobId);
-      await afterAction();
-    });
-
-    test('FAILED async import job shows error state in the tray', async ({
-      browser,
-      page,
-    }) => {
-      // Sends a CSV with wrong column headers so the job fails during
-      // server-side processing.  Verifies error styling + dismiss button.
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      const glossaryName = `pw-tray-import-fail-e2e-${Date.now()}`;
-
-      const glossaryRes = await apiContext.post('/api/v1/glossaries', {
-        data: { name: glossaryName, displayName: 'PW Tray Import Fail E2E' },
-      });
-      const glossary = (await glossaryRes.json()) as { id: string };
-
-      await activateTrayOnPage(page, '/glossary');
-
-      // Missing 'name' column causes async processing to fail.
-      const badCsv = ['wrong_col_a,wrong_col_b', 'value1,value2'].join('\n');
-
-      const importRes = await apiContext.put(
-        `/api/v1/glossaries/name/${encodeURIComponent(glossaryName)}/importAsync?dryRun=false`,
-        { data: badCsv, headers: { 'Content-Type': 'text/plain' } }
-      );
-
-      expect(importRes.status()).toBe(200);
-      const { jobId } = (await importRes.json()) as { jobId: string };
-
-      const finalStatus = await pollUntilTerminal(apiContext, jobId);
-
-      expect(finalStatus).toBe('FAILED');
-
-      await refreshTray(page);
-
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-
-      if (!(await trayPopover.isVisible())) {
-        await launcher.click();
-      }
-
-      // FAILED job: error styling + dismiss button (not Download).
-      await expect(
-        page.locator('.csv-jobs-tray-item-error').first()
-      ).toBeVisible({ timeout: 10_000 });
-      await expect(page.locator('.csv-jobs-tray-dismiss').first()).toBeVisible();
-
-      await apiContext.delete(
-        `/api/v1/glossaries/${glossary.id}?hardDelete=true&recursive=true`
-      );
-      await afterAction();
-    });
-
-    test('auto-open fires only once — closing and re-fetching does not re-open', async ({
-      browser,
-      page,
-    }) => {
-      // Guards the autoOpenedJobIds ref that prevents the same terminal job
-      // from re-opening the tray on every WebSocket tick or poll cycle.
-      // Uses user export which reliably reaches COMPLETED.
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      const jobId = await queueUserExport(apiContext, page);
-
-      await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
-      await refreshTray(page);
-
-      // Tray auto-opens once for the newly-completed job.
-      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
-        timeout: 15_000,
-      });
-
-      // User manually closes the tray.
-      await page.locator('.csv-jobs-tray-close').click();
-
-      // Popover must disappear immediately after close click.
-      await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible({
-        timeout: 5_000,
-      });
-
-      // Simulate another WebSocket tick — job is already in autoOpenedJobIds.
-      // With serial execution the server has no other tests' jobs in-flight, so
-      // the only job in the list is ours (already seen) — tray must stay closed.
-      await refreshTray(page);
-
-      await expect(page.locator('.csv-jobs-tray-popover')).not.toBeVisible({
-        timeout: 5_000,
-      });
-      await afterAction();
-    });
-
-    test('tray launcher survives navigation to a different page', async ({
-      browser,
-      page,
-    }) => {
-      // Verifies the tray is mounted at the app-shell level and is NOT
-      // unmounted during client-side route transitions.  A regression that
-      // moves CsvJobsTrayContainer inside a route component would cause the
-      // active-job indicator to vanish mid-export on every navigation.
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      // Activate on page A.
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      await queueUserExport(apiContext, page);
-
-      const launcher = page.locator('.csv-jobs-tray-launcher');
-      const trayPopover = page.locator('.csv-jobs-tray-popover');
-
-      // Job is visible on page A (QUEUED / RUNNING).
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-
-      // Navigate to a completely different section while the job is still active.
-      await page.goto('/settings/services/databases');
-      await waitForAllLoadersToDisappear(page);
-
-      // Refresh so the tray picks up the current job state on page B.
-      await refreshTray(page);
-
-      // The tray must still be present after the route change.
-      await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
-      await afterAction();
-    });
-
-    test('Download button stays clickable and re-triggers a download after first use', async ({
-      browser,
-      page,
-    }) => {
-      // Guards the downloadedJobIds state: after the first download the row's
-      // icon changes to a checkmark, but the Download button must remain
-      // visible so users can save the file again.
-      test.slow();
-
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await activateTrayOnPage(page, '/settings/teams/Organization');
-      const jobId = await queueUserExport(apiContext, page);
-
-      await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
-      await refreshTray(page);
-
-      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
-        timeout: 15_000,
-      });
-
-      const downloadBtn = page
-        .getByRole('button', { name: 'Download' })
-        .first();
-
-      await expect(downloadBtn).toBeVisible();
-
-      // First download.
-      const dl1 = page.waitForEvent('download');
-
-      await downloadBtn.click();
-      await dl1;
-
-      // Button must still be visible after first download.
-      await expect(downloadBtn).toBeVisible();
-
-      // Second click must also trigger a download (button is never disabled).
-      const dl2 = page.waitForEvent('download');
-
-      await downloadBtn.click();
-      await dl2;
-
-      await afterAction();
-    });
-  }
-);
+    await afterAction();
+  });
+});
