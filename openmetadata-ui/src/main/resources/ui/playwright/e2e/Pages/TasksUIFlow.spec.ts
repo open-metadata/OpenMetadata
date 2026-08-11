@@ -121,24 +121,26 @@ const createTagTaskViaUI = async (
   await waitForPageLoaded(page);
 };
 
-const resolveTaskWithApproval = async (page: Page) => {
-  // Click on the first task card to open it
+// isVisible() resolves immediately instead of retrying, so called right after
+// task creation navigates it returned false before the card had painted. The
+// click was then skipped and the resolve step ran against whatever panel was
+// open — the source of this spec's intermittent failures. Wait for the card.
+const openFirstTaskCard = async (page: Page) => {
   const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-  if (await taskCard.isVisible()) {
-    await taskCard.click();
-    await waitForPageLoaded(page);
-  }
+
+  await expect(taskCard).toBeVisible({ timeout: 30_000 });
+  await taskCard.click();
+  await waitForPageLoaded(page);
+};
+
+const resolveTaskWithApproval = async (page: Page) => {
+  await openFirstTaskCard(page);
 
   await approveTaskFromDetails(page);
 };
 
 const resolveTaskWithRejection = async (page: Page, comment: string) => {
-  // Click on the first task card to open it
-  const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-  if (await taskCard.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await taskCard.click();
-    await waitForPageLoaded(page);
-  }
+  await openFirstTaskCard(page);
 
   await closeTaskFromDetails(page);
 };
@@ -462,14 +464,15 @@ test.describe('Task Activity Feed Integration', () => {
       await waitForPageLoaded(page);
 
       const closedTab = page.getByRole('tab', { name: /Closed/i });
-      if (await closedTab.isVisible()) {
-        await closedTab.click();
 
-        const closedTaskCard = page
-          .locator('[data-testid="task-feed-card"]')
-          .first();
-        await expect(closedTaskCard).toBeVisible();
-      }
+      await expect(closedTab).toBeVisible({ timeout: 30_000 });
+      await closedTab.click();
+
+      const closedTaskCard = page
+        .locator('[data-testid="task-feed-card"]')
+        .first();
+
+      await expect(closedTaskCard).toBeVisible({ timeout: 30_000 });
     });
   });
 
