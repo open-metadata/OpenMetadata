@@ -37,6 +37,17 @@ pass() { echo "PASS: $1"; }
 
 in_image() { docker run --rm --entrypoint bash "$IMAGE" -c "$1" 2>/dev/null; }
 
+# Precondition. in_image discards stderr, so a docker run that never executes
+# (missing tag, daemon down, socket permissions) is indistinguishable from a
+# command that legitimately produced no output. That ambiguity would make the
+# "vulnerable libssh2-1 not installed" branch below report a false PASS while
+# never having inspected the image at all. Prove the image is runnable once, up
+# front, so every later empty-output interpretation can be trusted.
+if [ "$(in_image 'echo alive')" != "alive" ]; then
+  echo "FAIL: cannot run ${IMAGE} — docker run produced no output (missing tag, or daemon/socket unavailable)"
+  exit 1
+fi
+
 echo "== scanning ${IMAGE} =="
 $TRIVY image --severity HIGH,CRITICAL "$IMAGE" > "$SCAN_OUT" 2>&1 || true
 if ! grep -q "Total:" "$SCAN_OUT" && ! grep -qE '^\| ' "$SCAN_OUT"; then
