@@ -157,7 +157,6 @@ const IngestionWorkflowForm = forwardRef<
     hideFooter = false,
     serviceCategory,
     workflowData,
-    operationType: _operationType,
     onCancel,
     onFocus,
     onSubmit,
