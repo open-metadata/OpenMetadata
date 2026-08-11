@@ -71,7 +71,9 @@
     "Mssql",
     "Oracle",
     "Trino",
-    "SapHana"
+    "SapHana",
+    "Databricks",
+    "UnityCatalog"
   ],
   "validatorClass": "TableDiffValidator"
 }
