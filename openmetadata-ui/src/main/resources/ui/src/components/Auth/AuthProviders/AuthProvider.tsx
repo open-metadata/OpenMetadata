@@ -65,6 +65,7 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   clearAppMode,
+  readAppModeSession,
   resolveEffectiveAppMode,
   resolveInitialAppMode,
   setAppDefaultMode,
@@ -160,6 +161,17 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
 
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
+
+  // If this tab already has a session tuple (a manual toggle earlier in
+  // this tab, or a reload of one) leave it alone. `useResolvedAppMode`
+  // is the authoritative source and treats the tuple as the highest-
+  // priority signal once persona information is available — writing
+  // here would clobber a valid in-tab choice with the boot-time best-
+  // effort resolve (which cannot yet see persona) and break "toggle to
+  // AI, then reload" for users who did not tick "remember".
+  if (readAppModeSession()?.mode) {
+    return;
+  }
 
   const userPref =
     derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
