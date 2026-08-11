@@ -7,7 +7,7 @@ This page is the support contract for the ClickZetta connector in this branch. A
 | Capability | Status | Why |
 | --- | --- | --- |
 | Metadata extraction | Supported | The connector reads workspace/schema/table/column catalog structure. The existing seller-center probe completed successfully for one table. |
-| Usage extraction | Code-supported; live permission gate pending | Native history mapping is implemented. The ingestion identity still needs read access to `sys.information_schema.job_history`. |
+| Usage extraction | Code-supported; workspace-local live read passed | Native history mapping supports both `information_schema.job_history` and `sys.information_schema.job_history`. The workspace-local source passed a bounded live read; the cross-workspace source requires additional shared-system-schema permission. |
 | Query lineage | Code-supported; live permission gate pending | It uses the same bounded native history source and canonical OpenMetadata query parser. |
 | Profiling | Registered with explicit sampling/full-scan guards | ClickZetta ORM type conversion, core aggregate SQL compilation, metadata-only table metrics, and an explicit full-scan opt-in are implemented. Row-count metrics require `allowFullTableScan=true`; column metrics do not scan data. |
 | Sampling | Registered with bounded ROWS-only guard | The connector requires a positive row `LIMIT` (maximum 1,000), rejects unbounded custom SQL, and disables percentage/random sampling. Sample storage remains subject to the normal OpenMetadata PII policy. |

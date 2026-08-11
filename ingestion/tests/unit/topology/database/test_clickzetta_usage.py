@@ -121,9 +121,18 @@ def test_canonical_query_history_sql_scopes_service_database_and_schema():
     assert "schema_name = 'seller_center'" in sql
 
 
-def test_native_job_history_sql_maps_columns_and_scopes_seller_center():
+@pytest.mark.parametrize(
+    "query_history_table",
+    [
+        "information_schema.job_history",
+        "sys.information_schema.job_history",
+    ],
+)
+def test_native_job_history_sql_maps_columns_and_scopes_seller_center(
+    query_history_table: str,
+):
     sql = build_clickzetta_query_history_sql(
-        query_history_table="sys.information_schema.job_history",
+        query_history_table=query_history_table,
         start_time=datetime(2026, 8, 5, tzinfo=timezone.utc),
         end_time=datetime(2026, 8, 6, tzinfo=timezone.utc),
         database_name="quick_start",
@@ -132,7 +141,7 @@ def test_native_job_history_sql_maps_columns_and_scopes_seller_center():
         result_limit=1,
     )
 
-    assert "FROM sys.information_schema.job_history" in sql
+    assert f"FROM {query_history_table}" in sql
     assert "job_text AS query_text" in sql
     assert "job_type AS query_type" in sql
     assert "job_creator AS user_name" in sql
