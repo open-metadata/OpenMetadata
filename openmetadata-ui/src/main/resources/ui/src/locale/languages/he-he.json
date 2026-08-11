@@ -4175,6 +4175,7 @@
     "soft-delete-common-message": "כבה את {{entity}}. תוכל לשחזר אותו מאוחר יותר.",
     "soft-delete-message-for-entity": "מחיקה רכה תשבית את {{entity}}. הפעולה תשבית כל קריאה או כתיבת הפעולות על {{entity}}.",
     "soft-delete-message-for-n-entities": "מחיקה רכה תשבית את {{count}} {{entity}} אלה. פעולה זו תשבית כל פעולות גילוי, קריאה או כתיבה עליהם.",
+    "some-documents-uploaded-successfully": "חלק מהמסמכים הועלו בהצלחה. אנא נסה שוב את אלה שנכשלו.",
     "something-went-wrong": "משהו השתבש",
     "source-aligned-domain-type-description": "תחומים הקרובים יותר לשירותים מקוונים ולמסדי נתונים עסקיים הכוללים ארועים ונתוני עסקאות.",
     "special-character-not-allowed": "אסור להשתמש בתווים מיוחדים.",
