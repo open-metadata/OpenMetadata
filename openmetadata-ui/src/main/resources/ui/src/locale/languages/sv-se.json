@@ -4177,6 +4177,7 @@
     "soft-delete-common-message": "Inaktivera denna {{entity}}. Du kan återställa den senare.",
     "soft-delete-message-for-entity": "Mjuk borttagning inaktiverar {{entity}}. Detta inaktiverar all upptäckt, läs- eller skrivoperationer på {{entity}}.",
     "soft-delete-message-for-n-entities": "Mjuk radering inaktiverar dessa {{count}} {{entity}}. Det inaktiverar all sökning, läs- och skrivoperationer på dem.",
+    "some-documents-uploaded-successfully": "Vissa dokument laddades upp framgångsrikt. Försök igen med de som misslyckades.",
     "something-went-wrong": "Något gick fel",
     "source-aligned-domain-type-description": "Domäner närmare onlinetjänster och transaktionsdatabaser som inkluderar händelser och transaktionsdata.",
     "special-character-not-allowed": "Specialtecken är inte tillåtna.",

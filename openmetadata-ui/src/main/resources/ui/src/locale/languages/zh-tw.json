@@ -4177,6 +4177,7 @@
     "soft-delete-common-message": "關閉此{{entity}}。您可以稍後還原。",
     "soft-delete-message-for-entity": "軟刪除將停用 {{entity}}。這將停用對 {{entity}} 的任何探索、讀取或寫入操作。",
     "soft-delete-message-for-n-entities": "軟刪除將停用這 {{count}} 個{{entity}}。這將停用對其的任何探索、讀取或寫入操作。",
+    "some-documents-uploaded-successfully": "部分文件上傳成功。請重試失敗的項目。",
     "something-went-wrong": "發生錯誤",
     "source-aligned-domain-type-description": "更接近線上服務和交易資料庫的領域，包括事件和交易資料。",
     "special-character-not-allowed": "不允許使用特殊字元。",

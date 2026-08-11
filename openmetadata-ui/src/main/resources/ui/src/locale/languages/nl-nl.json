@@ -4177,6 +4177,7 @@
     "soft-delete-common-message": "Schakel deze {{entity}} uit. U kunt deze later herstellen.",
     "soft-delete-message-for-entity": "Zacht verwijderen zal de {{entity}} deactiveren. Hierdoor worden alle ontdekkings-, lees- of schrijfoperaties op {{entity}} uitgeschakeld.",
     "soft-delete-message-for-n-entities": "Zacht verwijderen deactiveert deze {{count}} {{entity}}. Dit schakelt alle ontdekkings-, lees- of schrijfbewerkingen op hen uit.",
+    "some-documents-uploaded-successfully": "Sommige documenten zijn succesvol geüpload. Probeer de mislukte bestanden opnieuw.",
     "something-went-wrong": "Er is iets misgegaan",
     "source-aligned-domain-type-description": "Domeinen dichter bij online services en transactionele databases die evenementen en transactionele data bevatten.",
     "special-character-not-allowed": "Speciale tekens zijn niet toegestaan.",

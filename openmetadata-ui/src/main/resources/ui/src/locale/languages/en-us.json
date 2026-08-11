@@ -4177,6 +4177,7 @@
     "soft-delete-common-message": "Turn off this {{entity}}. You can restore it later.",
     "soft-delete-message-for-entity": "Soft deleting will deactivate the {{entity}}. This will disable any discovery, read or write operations on {{entity}}.",
     "soft-delete-message-for-n-entities": "Soft deleting will deactivate these {{count}} {{entity}}. This will disable any discovery, read or write operations on them.",
+    "some-documents-uploaded-successfully": "Some documents uploaded successfully. Please retry the failed ones.",
     "something-went-wrong": "Something went wrong",
     "source-aligned-domain-type-description": "Domains closer to online services and transactional databases that include events, and transactional data.",
     "special-character-not-allowed": "Special characters are not allowed.",

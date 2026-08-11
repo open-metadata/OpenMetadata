@@ -4177,6 +4177,7 @@
     "soft-delete-common-message": "이 {{entity}}을(를) 비활성화합니다. 나중에 복원할 수 있습니다.",
     "soft-delete-message-for-entity": "소프트 삭제는 {{entity}}를 비활성화합니다. 이는 {{entity}}에 대한 모든 검색, 읽기 또는 쓰기 작업을 비활성화합니다.",
     "soft-delete-message-for-n-entities": "소프트 삭제하면 {{count}}개의 {{entity}}이(가) 비활성화됩니다. 이렇게 하면 해당 항목에 대한 검색, 읽기 또는 쓰기 작업이 비활성화됩니다.",
+    "some-documents-uploaded-successfully": "일부 문서가 성공적으로 업로드되었습니다. 실패한 항목을 다시 시도해 주세요.",
     "something-went-wrong": "문제가 발생했습니다",
     "source-aligned-domain-type-description": "이벤트 및 트랜잭션 데이터를 포함하는 온라인 서비스 및 트랜잭션 데이터베이스에 가까운 도메인입니다.",
     "special-character-not-allowed": "특수 문자는 허용되지 않습니다.",

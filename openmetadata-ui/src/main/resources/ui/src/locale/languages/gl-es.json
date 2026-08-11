@@ -4177,6 +4177,7 @@
     "soft-delete-common-message": "Desactivar este {{entity}}. Podes restauralo máis tarde.",
     "soft-delete-message-for-entity": "A eliminación suave desactivará {{entity}}. Isto desactivará calquera operación de descubrimento, lectura ou escritura en {{entity}}.",
     "soft-delete-message-for-n-entities": "A eliminación suave desactivará estes {{count}} {{entity}}. Isto desactivará calquera operación de descubrimento, lectura ou escritura sobre eles.",
+    "some-documents-uploaded-successfully": "Algúns documentos subiron correctamente. Por favor, volva tentar cos que fallaron.",
     "something-went-wrong": "Algo saíu mal",
     "source-aligned-domain-type-description": "Dominios máis próximos a servizos en liña e bases de datos transaccionais que inclúen eventos e datos transaccionais.",
     "special-character-not-allowed": "Non se permiten caracteres especiais.",
