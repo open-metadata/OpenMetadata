@@ -307,6 +307,8 @@
     "browse-estate": "Datenbestand durchsuchen",
     "browse-glossary": "Glossar durchsuchen",
     "bulk-edit": "Massenbearbeitung",
+    "bulk-edit-all": "Alle massenbearbeiten",
+    "bulk-edit-count": "Massenbearbeitung ({{count}} ausgewählt)",
     "bulk-import-entity": "Massenimport von {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

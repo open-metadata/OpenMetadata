@@ -307,6 +307,8 @@
     "browse-estate": "瀏覽資料資產",
     "browse-glossary": "瀏覽詞彙表",
     "bulk-edit": "批次編輯",
+    "bulk-edit-all": "批次編輯全部",
+    "bulk-edit-count": "批次編輯（已選擇 {{count}} 項）",
     "bulk-import-entity": "大量匯入{{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

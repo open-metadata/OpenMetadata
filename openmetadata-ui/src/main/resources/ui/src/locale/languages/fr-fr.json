@@ -307,6 +307,8 @@
     "browse-estate": "Parcourir le patrimoine",
     "browse-glossary": "Parcourir le glossaire",
     "bulk-edit": "Modification en masse",
+    "bulk-edit-all": "Tout modifier en masse",
+    "bulk-edit-count": "Modification en masse ({{count}} sélectionné(s))",
     "bulk-import-entity": "Importation en masse de {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

@@ -307,6 +307,8 @@
     "browse-estate": "डेटा संपदा ब्राउझ करा",
     "browse-glossary": "शब्दकोश ब्राउझ करा",
     "bulk-edit": "सामूहिक संपादन",
+    "bulk-edit-all": "सर्व सामूहिक संपादन",
+    "bulk-edit-count": "सामूहिक संपादन ({{count}} निवडले)",
     "bulk-import-entity": "{{entity}} मोठ्या प्रमाणात आयात",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

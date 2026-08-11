@@ -307,6 +307,8 @@
     "browse-estate": "Browse estate",
     "browse-glossary": "Bläddra i ordlistan",
     "bulk-edit": "Massredigera",
+    "bulk-edit-all": "Massredigera alla",
+    "bulk-edit-count": "Massredigera ({{count}} markerade)",
     "bulk-import-entity": "Massimportera {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

@@ -307,6 +307,8 @@
     "browse-estate": "Browse estate",
     "browse-glossary": "Browse Glossary",
     "bulk-edit": "Bulk Edit",
+    "bulk-edit-all": "Bulk Edit All",
+    "bulk-edit-count": "Bulk Edit ({{count}} selected)",
     "bulk-import-entity": "Bulk Import {{entity}}",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",

@@ -853,7 +853,9 @@ const MetricListPage = () => {
                           data-testid="bulk-edit-metric"
                           iconLeading={Edit03}
                           onPress={handleBulkEdit}>
-                          {t('label.edit')}
+                          {t('label.bulk-edit-count', {
+                            count: selectedMetricIds.length,
+                          })}
                         </Button>
                       )}
                       {permission.Delete && (
@@ -883,8 +885,8 @@ const MetricListPage = () => {
                     <div className="metric-list-toolbar-actions">
                       <Dropdown.Root>
                         <Button
-                          className="metric-list-toolbar-link metric-list-status-trigger"
-                          color="link-gray"
+                          className="metric-list-toolbar-link"
+                          color="link-color"
                           iconTrailing={ChevronDown}>
                           {statusFilter
                             ? getMetricStatus(statusFilter).label
@@ -912,12 +914,12 @@ const MetricListPage = () => {
                       </Dropdown.Root>
                       {permission.EditAll && (
                         <Button
-                          className="metric-list-toolbar-link"
+                          className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
                           color="link-color"
                           data-testid="bulk-edit-metric"
                           iconLeading={Edit03}
                           onPress={handleBulkEdit}>
-                          {t('label.edit')}
+                          {t('label.bulk-edit-all')}
                         </Button>
                       )}
                       <span
@@ -926,7 +928,7 @@ const MetricListPage = () => {
                       />
                       <Dropdown.Root>
                         <Button
-                          className="metric-list-toolbar-link"
+                          className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
                           color="link-color"
                           iconLeading={Settings01}>
                           {t('label.customize')}

@@ -307,6 +307,8 @@
     "browse-estate": "에스테이트 탐색",
     "browse-glossary": "용어집 찾아보기",
     "bulk-edit": "일괄 편집",
+    "bulk-edit-all": "전체 일괄 편집",
+    "bulk-edit-count": "일괄 편집 ({{count}}개 선택됨)",
     "bulk-import-entity": "{{entity}} 일괄 가져오기",
     "bullet-point": "• {{text}}",
     "bulleted-list": "Bulleted list",
