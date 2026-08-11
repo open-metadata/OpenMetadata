@@ -30,7 +30,10 @@ import {
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
+import {
+  ES_UPDATE_DELAY,
+  INITIAL_PAGING_VALUE,
+} from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -71,13 +74,12 @@ import {
 } from '../../../utils/PermissionsUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS } from '../TestSuiteDetailsPage.constants';
 import { UseTestSuiteDetailsPageResult } from '../TestSuiteDetailsPage.interface';
 import {
   isTestCaseListSynchronized,
   isUnfilteredTestCaseRequest,
   shouldResetTestCaseLoading,
-  TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS,
-  TEST_CASE_LIST_REFRESH_RETRY_DELAY_MS,
 } from '../TestSuiteDetailsPage.utils';
 
 /**
@@ -370,7 +372,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
           if (attempt < TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS - 1) {
             await new Promise((resolve) =>
-              setTimeout(resolve, TEST_CASE_LIST_REFRESH_RETRY_DELAY_MS)
+              setTimeout(resolve, ES_UPDATE_DELAY)
             );
           }
         }

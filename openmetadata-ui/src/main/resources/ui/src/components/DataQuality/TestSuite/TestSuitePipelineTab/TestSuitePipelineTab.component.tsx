@@ -64,6 +64,7 @@ import {
 } from '../../../../utils/IngestionListTableUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../../../utils/RouterUtils';
+import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
 import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
@@ -92,14 +93,6 @@ interface PipelineTableRow extends IngestionPipeline {
   runStatus?: StepSummary;
   pipelinePermissions?: OperationPermission;
 }
-
-const LOADING_SKELETON_IDS = [
-  'pipeline-loading-row-1',
-  'pipeline-loading-row-2',
-  'pipeline-loading-row-3',
-  'pipeline-loading-row-4',
-  'pipeline-loading-row-5',
-];
 
 const TestSuitePipelineTab = ({
   testSuite,
@@ -483,7 +476,7 @@ const TestSuitePipelineTab = ({
                   <div
                     className="tw:p-4"
                     data-testid="pipeline-table-loading-skeletons">
-                    {LOADING_SKELETON_IDS.map((skeletonId) => (
+                    {getSkeletonMockData(5).map((skeletonId) => (
                       <Skeleton
                         className="tw:mb-2"
                         height={40}

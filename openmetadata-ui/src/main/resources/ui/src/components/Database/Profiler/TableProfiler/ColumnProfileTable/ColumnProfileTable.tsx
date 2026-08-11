@@ -45,6 +45,7 @@ import {
   formatNumberWithComma,
 } from '../../../../../utils/NumberUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
+import { getSkeletonMockData } from '../../../../../utils/Skeleton.utils';
 import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -64,14 +65,6 @@ interface FlatRow {
   depth: number;
   hasChildren: boolean;
 }
-
-const LOADING_SKELETON_IDS = [
-  'column-profile-loading-row-1',
-  'column-profile-loading-row-2',
-  'column-profile-loading-row-3',
-  'column-profile-loading-row-4',
-  'column-profile-loading-row-5',
-];
 
 const ColumnProfileTable = () => {
   const location = useCustomLocation();
@@ -505,7 +498,7 @@ const ColumnProfileTable = () => {
                     <div
                       className="tw:p-4"
                       data-testid="column-profile-table-loading-skeletons">
-                      {LOADING_SKELETON_IDS.map((skeletonId) => (
+                      {getSkeletonMockData(5).map((skeletonId) => (
                         <Skeleton
                           className="tw:mb-2"
                           height={40}

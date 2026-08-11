@@ -12,13 +12,7 @@
  */
 
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
-
-const NON_FILTERING_TEST_CASE_PARAMS = new Set<
-  keyof ListTestCaseParamsBySearch
->(['testSuiteId', 'offset', 'sortField', 'sortType']);
-
-export const TEST_CASE_LIST_REFRESH_RETRY_DELAY_MS = 500;
-export const TEST_CASE_LIST_REFRESH_MAX_ATTEMPTS = 5;
+import { NON_FILTERING_TEST_CASE_PARAMS } from './TestSuiteDetailsPage.constants';
 
 export const isUnfilteredTestCaseRequest = (
   param?: ListTestCaseParamsBySearch
