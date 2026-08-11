@@ -25,7 +25,29 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreview</p>);
 });
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
+  const __eph = (() => {
+    return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
+  })() as unknown as { default?: unknown };
+  const __ephC = (__eph && __eph.default) || __eph;
+  const __ephT: Record<string, string> = {
+    Create: 'CREATE',
+    CoreCreate: 'CORE_CREATE',
+    Assign: 'ASSIGN',
+    Filter: 'FILTER',
+    Permission: 'PERMISSION',
+    Custom: 'CUSTOM',
+    NoData: 'NO_DATA',
+  };
+  if (typeof __ephC === 'function') {
+    const __ephFn = __ephC as ((p: Record<string, unknown>) => unknown) &
+      Record<string, unknown>;
+    Object.keys(__ephT).forEach((v) => {
+      __ephFn[v] = (props: Record<string, unknown>) =>
+        __ephFn({ ...props, type: __ephT[v] });
+    });
+  }
+
+  return __eph;
 });
 
 const mockUpdateEntityType = jest.fn();
