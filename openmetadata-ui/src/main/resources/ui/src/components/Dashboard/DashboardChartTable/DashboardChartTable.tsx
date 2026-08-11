@@ -27,7 +27,6 @@ import {
 } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import type { TagLabel } from '../../../generated/entity/data/chart';
 import { TagSource } from '../../../generated/entity/data/chart';
@@ -455,10 +454,7 @@ export const DashboardChartTable = ({
         }
         locale={{
           emptyText: (
-            <ErrorPlaceHolder
-              className="border-none mt-0-important"
-              type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-            />
+            <ErrorPlaceHolder.NoData className="border-none mt-0-important" />
           ),
         }}
         pagination={false}

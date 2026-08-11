@@ -35,7 +35,6 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import {
@@ -636,18 +635,17 @@ const StoredProcedurePage = () => {
 
   if (!viewBasicPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.stored-procedure'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
 
   if (storedProcedureError || !storedProcedure) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder.NoData />;
   }
 
   return (

@@ -30,7 +30,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -164,7 +163,7 @@ const ImportTeamsPage = () => {
   // it will fetch permission 1st, if its not allowed will show no permission placeholder
   if (!permission?.Create || !permission?.EditAll) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.create-entity', {
           entity: t('label.import-entity', {
@@ -174,24 +173,23 @@ const ImportTeamsPage = () => {
                 : t('label.team-plural'),
           }),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
 
   if (isUndefined(team)) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder.NoData />;
   }
 
   if (team.teamType === TeamType.Group && type === ImportType.TEAMS) {
     return (
-      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder.Custom>
         <div className="m-t-sm text-center text-sm font-normal">
           <Typography.Paragraph className="w-80">
             {t('message.group-type-team-not-allowed-to-have-sub-team')}
           </Typography.Paragraph>
         </div>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.Custom>
     );
   }
 

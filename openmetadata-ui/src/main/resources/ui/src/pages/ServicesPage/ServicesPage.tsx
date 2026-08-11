@@ -30,7 +30,6 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -181,12 +180,11 @@ const ServicesPage = () => {
   ) : (
     <Row>
       <Col span={24}>
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="border-none h-min-80"
           permissionValue={t('label.view-entity', {
             entity: startCase(serviceName),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </Col>
     </Row>

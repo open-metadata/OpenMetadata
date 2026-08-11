@@ -25,7 +25,7 @@ import type { AgentsStatusWidgetProps } from '../components/ServiceInsights/Agen
 import type { PlatformInsightsWidgetProps } from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import type { TotalAssetsWidgetProps } from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget.interface';
 import type { MetadataAgentsWidgetProps } from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
+import { SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import type { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
@@ -176,11 +176,10 @@ export const getServiceInsightsWidgetPlaceholder = ({
   }
 
   return (
-    <ErrorPlaceHolder
+    <ErrorPlaceHolder.Custom
       className={placeholderClassName}
       icon={<Icon className={iconClassName} height={height} width={width} />}
-      size={SIZE.MEDIUM}
-      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      size={SIZE.MEDIUM}>
       <Typography.Paragraph className="w-max-350">
         <Transi18next
           i18nKey={localizationKey}
@@ -195,7 +194,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
           }
         />
       </Typography.Paragraph>
-    </ErrorPlaceHolder>
+    </ErrorPlaceHolder.Custom>
   );
 };
 

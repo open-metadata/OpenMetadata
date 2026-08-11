@@ -51,7 +51,6 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
@@ -887,13 +886,11 @@ export const ActivityFeedTab = ({
           ? getRightPanelContent()
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
-                <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                <ErrorPlaceHolderNew.Custom icon={<NoConversationsIcon />}>
                   <Typography.Paragraph className="placeholder-text">
                     {getRightPanelPlaceholder}
                   </Typography.Paragraph>
-                </ErrorPlaceHolderNew>
+                </ErrorPlaceHolderNew.Custom>
               </div>
             )}
       </div>

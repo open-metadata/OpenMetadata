@@ -17,7 +17,7 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/ic-arrow-down.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { getAgentStatusSummary } from '../../../utils/AgentsStatusWidgetPureUtils';
 import {
   getAgentRunningStatusMessage,
@@ -100,10 +100,7 @@ function AgentsStatusWidget({
         key="1">
         {!isLoading && isEmpty(agentsInfo) && (
           <div className="flex-center p-y-md">
-            <ErrorPlaceHolder
-              size={SIZE.SMALL}
-              type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-            />
+            <ErrorPlaceHolder.NoData size={SIZE.SMALL} />
           </div>
         )}
 

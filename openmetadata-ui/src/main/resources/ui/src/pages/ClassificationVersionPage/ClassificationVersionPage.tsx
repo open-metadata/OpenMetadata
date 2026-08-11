@@ -26,7 +26,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Classification } from '../../generated/entity/classification/classification';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -154,12 +153,11 @@ function ClassificationVersionPage() {
 
     if (!viewVersionPermission) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="border-none"
           permissionValue={t('label.view-entity', {
             entity: t('label.classification-plural'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       );
     }

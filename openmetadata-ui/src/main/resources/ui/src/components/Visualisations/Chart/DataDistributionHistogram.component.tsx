@@ -65,7 +65,7 @@ const DataDistributionHistogram = ({
   ) {
     return (
       <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full">
-        <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
+        <ErrorPlaceHolder.NoData placeholderText={noDataPlaceholderText} />
       </div>
     );
   }

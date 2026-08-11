@@ -29,7 +29,7 @@ import {
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
+import { SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
@@ -280,11 +280,9 @@ const DataProductsWidget = ({
       <div className="data-products-widget-container">
         <div className="widget-content flex-1">
           {error ? (
-            <ErrorPlaceHolder
-              className="data-products-widget-error border-none"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <ErrorPlaceHolder.Custom className="data-products-widget-error border-none">
               {error}
-            </ErrorPlaceHolder>
+            </ErrorPlaceHolder.Custom>
           ) : isEmpty(dataProducts) ? (
             <div data-testid="data-products-empty-state">{emptyState}</div>
           ) : (

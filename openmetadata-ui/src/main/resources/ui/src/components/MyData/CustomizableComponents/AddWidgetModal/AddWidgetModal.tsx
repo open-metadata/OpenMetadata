@@ -21,7 +21,6 @@ import {
   LIGHT_GREEN_COLOR,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
@@ -125,12 +124,11 @@ function AddWidgetModal({
 
     if (isEmpty(widgetsList)) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Custom
           className="h-min-480"
-          data-testid="no-widgets-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          data-testid="no-widgets-placeholder">
           {t('message.no-widgets-to-add')}
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.Custom>
       );
     }
 

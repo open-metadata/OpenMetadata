@@ -32,7 +32,6 @@ import {
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -224,12 +223,11 @@ const KPIList = () => {
       viewKPIPermission ? (
         <EmptyGraphPlaceholder />
       ) : (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="border-none"
           permissionValue={t('label.view-entity', {
             entity: t('label.kpi-uppercase'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       ),
     [viewKPIPermission]

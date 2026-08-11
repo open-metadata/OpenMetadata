@@ -27,7 +27,6 @@ import { ContainerWidget } from '../components/Container/ContainerWidget/Contain
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
@@ -163,12 +162,11 @@ export const getContainerDetailPageTabs = ({
             ),
             key: EntityTabs.SAMPLE_DATA,
             children: !viewSampleDataPermission ? (
-              <ErrorPlaceHolder
+              <ErrorPlaceHolder.Permission
                 className="border-none"
                 permissionValue={t('label.view-entity', {
                   entity: t('label.sample-data'),
                 })}
-                type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
               />
             ) : (
               <SampleDataTableComponent

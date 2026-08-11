@@ -46,7 +46,6 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -655,20 +654,19 @@ const DatabaseDetails: FunctionComponent = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 
   if (!hasViewBasicPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.database'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
@@ -680,9 +678,9 @@ const DatabaseDetails: FunctionComponent = () => {
   return (
     <PageLayoutV1 pageTitle={getEntityName(database)}>
       {isEmpty(database) ? (
-        <ErrorPlaceHolder className="m-0">
+        <ErrorPlaceHolder.NoData className="m-0">
           {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.NoData>
       ) : (
         <Row gutter={[0, 12]}>
           <Col span={24}>

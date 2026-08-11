@@ -74,7 +74,6 @@ import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
@@ -653,11 +652,11 @@ const MetricListPage = () => {
 
   if (listingError && !searchResponse) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         <p className="text-center m-auto">
           {getErrorText(listingError as AxiosError, listingErrorMessage)}
         </p>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 
@@ -1003,7 +1002,7 @@ const MetricListPage = () => {
                       isMetricsFetching || isSearchPending ? (
                         <Loader />
                       ) : (
-                        <ErrorPlaceHolder
+                        <ErrorPlaceHolder.Create
                           className="p-y-md border-none"
                           doc={METRICS_DOCS}
                           heading={t('label.metric')}
@@ -1011,7 +1010,6 @@ const MetricListPage = () => {
                           permissionValue={t('label.create-entity', {
                             entity: t('label.metric'),
                           })}
-                          type={ERROR_PLACEHOLDER_TYPE.CREATE}
                           onClick={() => navigate(ROUTES.ADD_METRIC)}
                         />
                       ),

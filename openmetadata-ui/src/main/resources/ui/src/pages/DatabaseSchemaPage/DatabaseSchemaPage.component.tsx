@@ -49,7 +49,6 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -778,23 +777,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         {getEntityMissingError(
           EntityType.DATABASE_SCHEMA,
           decodedDatabaseSchemaFQN
         )}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 
   if (!viewDatabaseSchemaPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.database-schema'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
@@ -802,12 +800,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   return (
     <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
       {isEmpty(databaseSchema) && !databaseSchemaLoading ? (
-        <ErrorPlaceHolder className="m-0">
+        <ErrorPlaceHolder.NoData className="m-0">
           {getEntityMissingError(
             EntityType.DATABASE_SCHEMA,
             decodedDatabaseSchemaFQN
           )}
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.NoData>
       ) : (
         <Row gutter={[0, 12]}>
           <Col span={24}>

@@ -26,7 +26,6 @@ import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -204,16 +203,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
     if (!domainListing.loading && isEmpty(domainListing.entities)) {
       if (isSearchOrFilterActive()) {
-        return (
-          <ErrorPlaceHolder
-            className="border-none"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        );
+        return <ErrorPlaceHolder.Filter className="border-none" />;
       }
 
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.CoreCreate
           buttonId="domain-add-button"
           buttonTitle={t('label.add-entity', {
             entity: t('label.domain'),
@@ -224,7 +218,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.domain?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={openDrawer}
         />
       );

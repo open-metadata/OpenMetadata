@@ -42,7 +42,6 @@ import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/Asy
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   EntityAction,
   EntityType,
@@ -497,12 +496,11 @@ const GlossaryPage = () => {
   if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
     return (
       <div className="d-flex justify-center items-center">
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="mt-0-important border-none"
           permissionValue={t('label.view-entity', {
             entity: t('label.glossary'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </div>
     );
@@ -557,9 +555,9 @@ const GlossaryPage = () => {
     glossaryElement = <Loader />;
   } else if (isTermNotFound) {
     glossaryElement = (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         {getEntityMissingError(t('label.glossary-term'), glossaryFqn)}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   } else {
     glossaryElement = (

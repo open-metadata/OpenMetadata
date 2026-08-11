@@ -294,7 +294,7 @@ const DataModelTable = ({
       }
       loading={isLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        emptyText: <ErrorPlaceHolder.NoData className="m-y-md" />,
       }}
       pagination={false}
       rowKey="id"

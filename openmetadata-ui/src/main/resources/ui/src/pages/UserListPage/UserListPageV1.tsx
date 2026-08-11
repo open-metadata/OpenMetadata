@@ -39,7 +39,6 @@ import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
@@ -377,14 +376,13 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Create
         className="border-none m-y-md"
         heading={t('label.user')}
         permission={isAdminUser}
         permissionValue={t('label.create-entity', {
           entity: t('label.user'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={handleAddNewUser}
       />
     ),

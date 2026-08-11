@@ -30,7 +30,6 @@ import type {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import type { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import type { Chart } from '../../generated/entity/data/chart';
@@ -581,14 +580,13 @@ const EntityVersionPage: FunctionComponent = () => {
 
     if (!viewVersionPermission) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="border-none"
           permissionValue={t('label.view-entity', {
             entity: `${getEntityName(currentVersionData)} ${t(
               'label.version'
             )}`,
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       );
     }

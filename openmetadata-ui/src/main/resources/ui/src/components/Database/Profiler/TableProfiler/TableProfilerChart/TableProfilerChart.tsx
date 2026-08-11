@@ -23,7 +23,6 @@ import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../../../constants/profiler.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
@@ -186,11 +185,10 @@ const TableProfilerChart = ({
 
   if (permissions && !permissions?.ViewDataProfile) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         permissionValue={t('label.view-entity', {
           entity: t('label.data-observability'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

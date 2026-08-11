@@ -374,7 +374,7 @@ const PoliciesDetailPage = () => {
     return (
       <Card>
         {isEmpty(policy.rules) ? (
-          <ErrorPlaceHolder className="border-none" />
+          <ErrorPlaceHolder.NoData className="border-none" />
         ) : (
           <>
             <div className="flex justify-end m-b-md">
@@ -532,7 +532,7 @@ const PoliciesDetailPage = () => {
 
         <>
           {isEmpty(policy) ? (
-            <ErrorPlaceHolder className="border-none h-min-80">
+            <ErrorPlaceHolder.NoData className="border-none h-min-80">
               <div className="text-center">
                 <p className="m-y-sm">
                   {t('message.no-entity-found-for-name', {
@@ -547,7 +547,7 @@ const PoliciesDetailPage = () => {
                   {t('label.go-back')}
                 </Button>
               </div>
-            </ErrorPlaceHolder>
+            </ErrorPlaceHolder.NoData>
           ) : (
             <div className="policies-detail" data-testid="policy-details">
               <Row className="flex justify-between">

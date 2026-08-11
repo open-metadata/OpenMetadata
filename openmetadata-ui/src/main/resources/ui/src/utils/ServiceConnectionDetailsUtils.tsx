@@ -204,7 +204,9 @@ export const getKeyValues = ({
       });
     });
   } catch {
-    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
+    return (
+      <ErrorPlaceHolder.NoData className="border-default border-radius-sm" />
+    );
   }
 };
 

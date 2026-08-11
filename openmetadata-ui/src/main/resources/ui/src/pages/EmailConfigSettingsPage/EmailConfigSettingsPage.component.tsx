@@ -29,7 +29,6 @@ import TestEmail from '../../components/Settings/Email/TestEmail/TestEmail.compo
 import { ROUTES } from '../../constants/constants';
 import { NOT_INCLUDE_EMAIL_CONFIG_VALUE } from '../../constants/EmailConfig.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
@@ -124,13 +123,12 @@ function EmailConfigSettingsPage() {
   const configValuesContainer = useMemo(() => {
     if (isUndefined(emailConfigValues) && !loading) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Create
           className="mt-24"
           heading={t('label.email-configuration-lowercase')}
           permissionValue={t('label.create-entity', {
             entity: t('label.email-configuration'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
         />
       );
     }

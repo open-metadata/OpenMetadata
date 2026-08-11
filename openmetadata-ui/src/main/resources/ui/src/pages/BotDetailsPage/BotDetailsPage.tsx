@@ -24,7 +24,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
@@ -152,7 +151,7 @@ const BotDetailsPage = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         <Typography.Paragraph className="text-base" data-testid="error-message">
           {t('message.no-entity-available-with-name', {
             entity: t('label.bot-plural'),
@@ -161,18 +160,17 @@ const BotDetailsPage = () => {
             {botsName}
           </span>{' '}
         </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 
   if (!isAdminUser) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.bot-detail'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

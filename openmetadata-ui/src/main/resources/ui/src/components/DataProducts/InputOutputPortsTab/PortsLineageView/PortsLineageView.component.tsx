@@ -32,7 +32,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
+import { SIZE } from '../../../../enums/common.enum';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
@@ -216,7 +216,7 @@ const PortsLineageView = ({
   if (!hasAnyPorts) {
     return (
       <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-gray-50 tw:rounded-lg tw:border tw:border-gray-200">
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Custom
           className="m-t-0"
           icon={
             <AddPlaceHolderIcon
@@ -224,14 +224,13 @@ const PortsLineageView = ({
               data-testid="no-ports-placeholder"
             />
           }
-          size={SIZE.SMALL}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          size={SIZE.SMALL}>
           <Typography as="p" className="text-center">
             {assetCount === 0
               ? t('message.no-assets-for-ports-lineage')
               : t('message.no-ports-to-display-lineage')}
           </Typography>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.Custom>
       </div>
     );
   }

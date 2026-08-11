@@ -26,7 +26,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
 import { ENTITY_PATH, PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
@@ -116,7 +115,7 @@ const DataProductsTab = forwardRef(
 
     if (isEmpty(dataProducts.data) && !loading) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.CoreCreate
           buttonId="data-product-add-button"
           buttonTitle={t('label.add-entity', {
             entity: t('label.data-product'),
@@ -126,7 +125,6 @@ const DataProductsTab = forwardRef(
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={onAddDataProduct}
         />
       );

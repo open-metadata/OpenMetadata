@@ -35,7 +35,6 @@ import {
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
@@ -306,7 +305,7 @@ const Services = ({ serviceName }: ServicesProps) => {
   const noDataPlaceholder = useMemo(() => {
     if (addServicePermission && isEmpty(searchTerm) && !serviceQueryFilter) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Create
           className="p-lg border-none"
           doc={CONNECTORS_DOCS}
           heading={t(servicesDisplayName[serviceName].key, {
@@ -318,18 +317,12 @@ const Services = ({ serviceName }: ServicesProps) => {
               entity: t(servicesDisplayName[serviceName].entity),
             }),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddServiceClick}
         />
       );
     }
 
-    return (
-      <ErrorPlaceHolder
-        className="mt-24 border-none"
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
-    );
+    return <ErrorPlaceHolder.NoData className="mt-24 border-none" />;
   }, [
     addServicePermission,
     servicesDisplayName,

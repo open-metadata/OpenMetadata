@@ -189,7 +189,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
-            <ErrorPlaceHolder
+            <ErrorPlaceHolder.NoData
               className="mt-0-important"
               placeholderText={noDataPlaceholderText}
             />

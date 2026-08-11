@@ -34,7 +34,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Database } from '../../generated/entity/data/database';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -277,12 +276,11 @@ function DatabaseVersionPage() {
 
     if (!viewVersionPermission) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="border-none"
           permissionValue={t('label.view-entity', {
             entity: t('label.database-version'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       );
     }

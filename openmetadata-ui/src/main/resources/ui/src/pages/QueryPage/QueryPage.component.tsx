@@ -29,7 +29,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Query } from '../../generated/entity/data/query';
 import { useFqn } from '../../hooks/useFqn';
@@ -186,18 +185,17 @@ const QueryPage = () => {
   }
   if (!isViewAllowed) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.query'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
 
   if (isUndefined(query)) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder.NoData />;
   }
 
   return (

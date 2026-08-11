@@ -37,7 +37,6 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
@@ -334,14 +333,13 @@ const PoliciesListPage = () => {
             loading={isLoading}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
+                <ErrorPlaceHolder.Create
                   className="border-none"
                   heading={t('label.policy')}
                   permission={addPolicyPermission}
                   permissionValue={t('label.create-entity', {
                     entity: t('label.policy'),
                   })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={handleAddPolicy}
                 />
               ),

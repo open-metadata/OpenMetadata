@@ -33,7 +33,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { ReactFlowProvider } from 'reactflow';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
@@ -331,7 +331,7 @@ export const InputOutputPortsTab = forwardRef<
                     className="tw:flex tw:flex-col tw:pb-2"
                     style={{ height: 'calc(100vh - 460px)' }}>
                     {inputPortsCount === 0 ? (
-                      <ErrorPlaceHolder
+                      <ErrorPlaceHolder.Custom
                         className="m-t-0"
                         icon={
                           <AddPlaceHolderIcon
@@ -339,8 +339,7 @@ export const InputOutputPortsTab = forwardRef<
                             data-testid="no-input-ports-placeholder"
                           />
                         }
-                        size={SIZE.SMALL}
-                        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                        size={SIZE.SMALL}>
                         <Typography as="p" className="tw:text-center">
                           {t('message.no-input-ports-added')}
                         </Typography>
@@ -358,7 +357,7 @@ export const InputOutputPortsTab = forwardRef<
                             })}
                           </Button>
                         )}
-                      </ErrorPlaceHolder>
+                      </ErrorPlaceHolder.Custom>
                     ) : (
                       <PortsListView
                         dataProductFqn={dataProductFqn}
@@ -421,7 +420,7 @@ export const InputOutputPortsTab = forwardRef<
                     className="tw:flex tw:flex-col tw:pb-2"
                     style={{ height: 'calc(100vh - 460px)' }}>
                     {outputPortsCount === 0 ? (
-                      <ErrorPlaceHolder
+                      <ErrorPlaceHolder.Custom
                         className="m-t-0"
                         icon={
                           <AddPlaceHolderIcon
@@ -429,8 +428,7 @@ export const InputOutputPortsTab = forwardRef<
                             data-testid="no-output-ports-placeholder"
                           />
                         }
-                        size={SIZE.SMALL}
-                        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                        size={SIZE.SMALL}>
                         <Typography as="p" className="tw:text-center">
                           {assetCount === 0
                             ? t('message.no-assets-for-output-ports')
@@ -450,7 +448,7 @@ export const InputOutputPortsTab = forwardRef<
                             })}
                           </Button>
                         )}
-                      </ErrorPlaceHolder>
+                      </ErrorPlaceHolder.Custom>
                     ) : (
                       <PortsListView
                         dataProductFqn={dataProductFqn}

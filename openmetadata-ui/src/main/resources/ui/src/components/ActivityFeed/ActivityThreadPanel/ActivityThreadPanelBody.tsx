@@ -20,7 +20,6 @@ import { FC, Fragment, lazy, RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
@@ -43,8 +42,10 @@ const TaskTabNew = withSuspenseFallback(
   )
 );
 
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
+const CustomNoDataPlaceHolder = withSuspenseFallback(
+  lazy(
+    () => import('../../common/ErrorWithPlaceholder/CustomNoDataPlaceHolder')
+  )
 );
 
 const FeedPanelHeader = withSuspenseFallback(
@@ -375,15 +376,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                   </Space>
                 )}
                 {isTaskType && !loading && (
-                  <ErrorPlaceHolder
-                    className="mt-24"
-                    type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                  <CustomNoDataPlaceHolder className="mt-24">
                     <Typography.Paragraph>
                       {isTaskClosed
                         ? t('message.no-closed-task')
                         : t('message.no-open-task')}
                     </Typography.Paragraph>
-                  </ErrorPlaceHolder>
+                  </CustomNoDataPlaceHolder>
                 )}
               </>
             ) : null}

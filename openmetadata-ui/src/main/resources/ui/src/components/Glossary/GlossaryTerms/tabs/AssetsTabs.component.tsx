@@ -695,7 +695,7 @@ const AssetsTabs = forwardRef(
     const assetErrorPlaceHolder = useMemo(() => {
       if (isObject(noDataPlaceholder) || searchValue) {
         return (
-          <ErrorPlaceHolderNew
+          <ErrorPlaceHolderNew.NoData
             className="p-lg "
             icon={
               <AddPlaceHolderIcon
@@ -718,7 +718,7 @@ const AssetsTabs = forwardRef(
                 </Typography.Paragraph>
               </div>
             )}
-          </ErrorPlaceHolderNew>
+          </ErrorPlaceHolderNew.NoData>
         );
       } else {
         return (

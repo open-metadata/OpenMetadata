@@ -28,7 +28,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
   EntityAction,
   EntityType,
@@ -324,7 +323,7 @@ export const UserTab = ({
 
   if (isEmpty(users) && !searchText && !isLoading) {
     return isGroupType ? (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Assign
         button={
           <Space>
             <UserSelectableList
@@ -363,10 +362,9 @@ export const UserTab = ({
         permissionValue={t('label.edit-entity', {
           entity: t('label.user'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
       />
     ) : (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.NoData
         placeholderText={t('message.no-user-part-of-team', {
           team: getEntityName(currentTeam),
         })}

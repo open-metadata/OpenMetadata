@@ -42,7 +42,6 @@ import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSui
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useClipboard } from '../../hooks/useClipBoard';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
@@ -211,12 +210,11 @@ const TestSuiteDetailsPage = () => {
 
   if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.test-suite'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

@@ -326,7 +326,9 @@ function WorksheetColumnsTable() {
   );
 
   if (isEmpty(schema)) {
-    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
+    return (
+      <ErrorPlaceHolder.NoData className="border-default border-radius-sm" />
+    );
   }
 
   return (

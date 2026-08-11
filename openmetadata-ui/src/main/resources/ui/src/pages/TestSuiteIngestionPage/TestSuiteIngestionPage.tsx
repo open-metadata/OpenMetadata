@@ -118,7 +118,7 @@ const TestSuiteIngestionPage = () => {
   }
 
   if (isUndefined(testSuite)) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder.NoData />;
   }
 
   return (

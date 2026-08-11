@@ -49,7 +49,6 @@ import {
   DataContractMode,
   DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
@@ -557,15 +556,14 @@ const ContractDetail: React.FC<{
   if (!contract) {
     if (!hasEditPermission) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.CoreCreate
           icon={
             <EmptyContractIcon className="empty-contract-icon" height={140} />
-          }
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
+          }>
           <Typography as="p" className="m-t-md w-80 tw:text-secondary">
             {t('message.no-contract-description')}
           </Typography>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.CoreCreate>
       );
     }
 
@@ -581,11 +579,10 @@ const ContractDetail: React.FC<{
           onClose={handleImportModalClose}
           onSuccess={handleImportSuccess}
         />
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.CoreCreate
           icon={
             <EmptyContractIcon className="empty-contract-icon" height={140} />
-          }
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
+          }>
           <div className="tw:my-4">
             <Typography as="p" className="w-80 tw:text-gray-500 tw:text-center">
               {t('message.create-contract-description')}
@@ -646,7 +643,7 @@ const ContractDetail: React.FC<{
               </Dropdown.Menu>
             </Dropdown.Popover>
           </Dropdown.Root>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.CoreCreate>
       </>
     );
   }

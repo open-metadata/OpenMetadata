@@ -287,7 +287,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           {t('label.hyper-parameter-plural')}{' '}
         </Typography.Title>
         {isEmpty(mlModelDetail.mlHyperParameters) ? (
-          <ErrorPlaceHolder size={SIZE.MEDIUM} />
+          <ErrorPlaceHolder.NoData size={SIZE.MEDIUM} />
         ) : (
           <Table
             columns={getMlHyperParametersColumn}
@@ -317,7 +317,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             size="small"
           />
         ) : (
-          <ErrorPlaceHolder size={SIZE.MEDIUM} />
+          <ErrorPlaceHolder.NoData size={SIZE.MEDIUM} />
         )}
       </>
     );

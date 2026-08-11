@@ -36,7 +36,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
@@ -648,18 +647,17 @@ function SearchIndexDetailsPage() {
 
   if (!viewPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.search-index'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
 
   if (searchIndexError || !searchIndexDetails) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return <ErrorPlaceHolder.NoData className="m-0" />;
   }
 
   return (

@@ -253,7 +253,7 @@ export function useAlertDetailsPage({
         label: t('label.configuration'),
         key: AlertDetailTabs.CONFIGURATION,
         children: isUndefined(alertDetails) ? (
-          <ErrorPlaceHolder className="m-0" />
+          <ErrorPlaceHolder.NoData className="m-0" />
         ) : (
           <AlertConfigDetails
             alertDetails={alertDetails}

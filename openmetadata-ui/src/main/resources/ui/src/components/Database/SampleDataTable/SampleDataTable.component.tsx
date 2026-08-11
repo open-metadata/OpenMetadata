@@ -268,7 +268,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder className="error-placeholder">
+      <ErrorPlaceHolder.NoData className="error-placeholder">
         <Typography.Paragraph>
           <Transi18next
             i18nKey="message.view-sample-data-entity"
@@ -286,7 +286,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
             }}
           />
         </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 

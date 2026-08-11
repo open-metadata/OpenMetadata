@@ -350,7 +350,7 @@ const EditIngestionPage = () => {
     return <Loader />;
   }
   if (errorMsg) {
-    return <ErrorPlaceHolder>{errorMsg}</ErrorPlaceHolder>;
+    return <ErrorPlaceHolder.NoData>{errorMsg}</ErrorPlaceHolder.NoData>;
   }
 
   return (

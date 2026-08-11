@@ -16,7 +16,6 @@ import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { TEST_DEFINITION_FILTERS } from '../../../constants/TestDefinition.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
@@ -89,7 +88,7 @@ const TestDefinitionList = () => {
   });
 
   if (!viewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return <ErrorPlaceHolder.Permission />;
   }
 
   return (

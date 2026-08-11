@@ -20,7 +20,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -327,7 +326,7 @@ const DataProductsPage = () => {
 
   if (!dataProduct) {
     return (
-      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder.Custom>
         <div className="text-center">
           <p>
             {t('message.no-entity-found-for-name', {
@@ -343,7 +342,7 @@ const DataProductsPage = () => {
             {t('label.go-back')}
           </Button>
         </div>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.Custom>
     );
   }
 

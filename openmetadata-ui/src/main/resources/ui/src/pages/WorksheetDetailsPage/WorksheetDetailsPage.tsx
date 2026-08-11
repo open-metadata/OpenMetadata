@@ -31,7 +31,6 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Worksheet } from '../../generated/entity/data/worksheet';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -328,19 +327,18 @@ const WorksheetDetailsPage = () => {
   }
   if (isError) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         {getEntityMissingError('worksheet', decodedWorksheetFQN)}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
   if (!worksheetPermissions.ViewAll && !worksheetPermissions.ViewBasic) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.worksheet'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

@@ -27,7 +27,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Paging } from '../../generated/type/paging';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
@@ -209,12 +208,11 @@ const KnowledgeCenterFilterPage = () => {
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.context-center'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

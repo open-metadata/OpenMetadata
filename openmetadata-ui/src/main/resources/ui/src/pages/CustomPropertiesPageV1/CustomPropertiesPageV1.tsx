@@ -266,7 +266,7 @@ const CustomEntityDetailV1 = () => {
   ]);
 
   if (isError) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder.NoData />;
   }
 
   return (

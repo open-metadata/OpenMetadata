@@ -15,7 +15,7 @@ import { Typography } from 'antd';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
+import { SIZE } from '../../enums/common.enum';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
@@ -23,11 +23,10 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
   const { t } = useTranslation();
 
   return (
-    <ErrorPlaceHolder
+    <ErrorPlaceHolder.Custom
       className="border-none"
       icon={icon}
-      size={SIZE.MEDIUM}
-      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      size={SIZE.MEDIUM}>
       <Typography.Paragraph style={{ marginBottom: '0' }}>
         {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.data-insight'),
@@ -49,6 +48,6 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
           }}
         />
       </Typography.Paragraph>
-    </ErrorPlaceHolder>
+    </ErrorPlaceHolder.Custom>
   );
 };

@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -240,13 +240,12 @@ const DomainDetailPage = () => {
 
   if (!canViewDomain) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="mt-0-important"
         permissionValue={t('label.view-entity', {
           entity: t('label.domain'),
         })}
         size={SIZE.LARGE}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
@@ -257,14 +256,14 @@ const DomainDetailPage = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         {getEntityMissingError('domain', domainFqn)}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 
   if (!activeDomain) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder.NoData />;
   }
 
   return (

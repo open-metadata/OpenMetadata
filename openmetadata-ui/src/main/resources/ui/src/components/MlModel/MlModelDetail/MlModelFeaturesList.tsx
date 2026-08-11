@@ -324,7 +324,7 @@ const MlModelFeaturesList = () => {
     );
   } else {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.NoData
         placeholderText={t('message.no-features-data-available')}
       />
     );

@@ -68,7 +68,6 @@ import {
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
   STATIC_VISIBLE_COLUMNS,
 } from '../../../constants/Glossary.contant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
@@ -1828,10 +1827,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 loading={isTableLoading}
                 locale={{
                   emptyText: (
-                    <ErrorPlaceHolder
+                    <ErrorPlaceHolder.NoData
                       className="p-md"
                       placeholderText={glossaryPlaceholderText}
-                      type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
                     />
                   ),
                 }}

@@ -28,7 +28,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { ChangeDescription, Type } from '../../../generated/entity/type';
@@ -207,12 +206,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   if (!hasPermission) {
     return (
       <div className="items-center d-block align-items-center text-center">
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="border-none p-lg"
           permissionValue={t('label.view-entity', {
             entity: t('label.custom-property-plural'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </div>
     );

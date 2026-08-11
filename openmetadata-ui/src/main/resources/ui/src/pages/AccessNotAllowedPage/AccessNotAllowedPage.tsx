@@ -14,13 +14,13 @@ import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../assets/svg/no-access-placeholder.svg';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
+import { SIZE } from '../../enums/common.enum';
 
 const AccessNotAllowedPage = () => {
   const { t } = useTranslation();
 
   return (
-    <ErrorPlaceHolder
+    <ErrorPlaceHolder.Custom
       icon={
         <NoAccessPlaceHolderIcon
           data-testid="no-data-image"
@@ -28,12 +28,11 @@ const AccessNotAllowedPage = () => {
           width={SIZE.LARGE}
         />
       }
-      size={SIZE.LARGE}
-      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      size={SIZE.LARGE}>
       <Typography.Paragraph className="w-80" style={{ marginBottom: '0' }}>
         {t('message.error-self-signup-disabled')}
       </Typography.Paragraph>
-    </ErrorPlaceHolder>
+    </ErrorPlaceHolder.Custom>
   );
 };
 

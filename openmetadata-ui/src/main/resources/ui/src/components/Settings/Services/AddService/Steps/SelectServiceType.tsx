@@ -33,7 +33,6 @@ import {
   SERVICE_CATEGORY_OPTIONS,
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
@@ -134,13 +133,11 @@ const SelectServiceType = ({
 
         {isEmpty(filteredConnectors) && (
           <div className="flex-center">
-            <ErrorPlaceHolder
-              className="border-none"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <ErrorPlaceHolder.Custom className="border-none">
               <Typography>
                 {t('message.no-connectors-available-for-service')}
               </Typography>
-            </ErrorPlaceHolder>
+            </ErrorPlaceHolder.Custom>
           </div>
         )}
 

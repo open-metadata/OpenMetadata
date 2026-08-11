@@ -64,7 +64,7 @@ function WorkflowsTable() {
       data-testid="container-list-table"
       dataSource={spreadsheetDetails.worksheets}
       locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+        emptyText: <ErrorPlaceHolder.NoData className="p-y-md" />,
       }}
       pagination={false}
       rowKey="id"

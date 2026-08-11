@@ -28,7 +28,7 @@ import {
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
+import { SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import {
@@ -286,11 +286,9 @@ const DomainsWidget = ({
       <div className="domains-widget-container">
         <div className="widget-content flex-1">
           {error ? (
-            <ErrorPlaceHolder
-              className="domains-widget-error border-none"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <ErrorPlaceHolder.Custom className="domains-widget-error border-none">
               {error}
-            </ErrorPlaceHolder>
+            </ErrorPlaceHolder.Custom>
           ) : isEmpty(domains) ? (
             emptyState
           ) : (

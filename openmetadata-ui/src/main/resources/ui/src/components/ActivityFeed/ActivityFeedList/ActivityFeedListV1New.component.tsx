@@ -15,7 +15,6 @@ import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtilsPure';
@@ -176,15 +175,14 @@ const ActivityFeedListV1New = ({
         className="p-x-md no-data-placeholder-container h-full"
         data-testid="no-data-placeholder-container"
         id="feedData">
-        <ErrorPlaceHolderNew
-          icon={<FeedEmptyIcon height={140} width={140} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <ErrorPlaceHolderNew.Custom
+          icon={<FeedEmptyIcon height={140} width={140} />}>
           <Typography.Paragraph
             className="placeholder-text"
             style={{ marginBottom: '0' }}>
             {emptyPlaceholderText}
           </Typography.Paragraph>
-        </ErrorPlaceHolderNew>
+        </ErrorPlaceHolderNew.Custom>
       </div>
     );
   }

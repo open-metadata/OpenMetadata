@@ -15,7 +15,6 @@ import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
 import ErrorPlaceHolderNew from '../ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../Loader/Loader';
@@ -73,14 +72,13 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     </div>
   ) : (
     <div className="lineage-items-list empty-state">
-      <ErrorPlaceHolderNew
+      <ErrorPlaceHolderNew.Custom
         className="text-grey-14"
-        icon={<AddPlaceHolderIcon height={100} width={100} />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        icon={<AddPlaceHolderIcon height={100} width={100} />}>
         <Typography.Paragraph className="text-center p-x-md m-t-sm no-data-placeholder">
           {t('message.no-schema-message')}
         </Typography.Paragraph>
-      </ErrorPlaceHolderNew>
+      </ErrorPlaceHolderNew.Custom>
     </div>
   );
 };

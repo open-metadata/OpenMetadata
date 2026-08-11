@@ -31,7 +31,6 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
@@ -350,19 +349,18 @@ const MetricDetailsPage = () => {
   }
   if (isError) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         {getEntityMissingError(EntityType.METRIC, metricFqn)}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
   if (!metricPermissions.ViewAll && !metricPermissions.ViewBasic) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.metric'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

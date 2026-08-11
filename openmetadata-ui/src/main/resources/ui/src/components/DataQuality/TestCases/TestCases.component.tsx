@@ -23,7 +23,6 @@ import {
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../utils/formPureUtils';
@@ -90,12 +89,11 @@ export const TestCases = () => {
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.test-case'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

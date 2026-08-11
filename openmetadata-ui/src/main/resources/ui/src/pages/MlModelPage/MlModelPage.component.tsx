@@ -27,7 +27,6 @@ import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -407,20 +406,19 @@ const MlModelPage = () => {
 
   if (mlModelError) {
     return (
-      <ErrorPlaceHolder className="mt-0-important">
+      <ErrorPlaceHolder.NoData className="mt-0-important">
         {getEntityMissingError('mlModel', mlModelFqn)}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 
   if (!mlModelPermissions.ViewAll && !mlModelPermissions.ViewBasic) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.ml-model'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

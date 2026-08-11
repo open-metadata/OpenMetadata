@@ -21,7 +21,7 @@ import { CUSTOM_PROPERTIES_ICON_MAP } from '../../../constants/CustomProperty.co
 import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
-import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
+import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnSorter } from '../../../utils/EntitySortUtils';
@@ -264,7 +264,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         loading={isLoading}
         locale={{
           emptyText: (
-            <ErrorPlaceHolder
+            <ErrorPlaceHolder.Create
               className="mt-xs border-none"
               doc={ADD_CUSTOM_PROPERTIES_DOCS}
               heading={t('label.property')}
@@ -272,7 +272,6 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
               permissionValue={t('label.create-entity', {
                 entity: t('label.custom-property'),
               })}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
             />
           ),
         }}

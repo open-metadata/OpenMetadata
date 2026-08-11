@@ -11,16 +11,10 @@
  *  limitations under the License.
  */
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 
 const ForbiddenPage = () => {
-  return (
-    <ErrorPlaceHolder
-      className="border-none"
-      type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-    />
-  );
+  return <ErrorPlaceHolder.Permission className="border-none" />;
 };
 
 export default withPageLayout(ForbiddenPage);

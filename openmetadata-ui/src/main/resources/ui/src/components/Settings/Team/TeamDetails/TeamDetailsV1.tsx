@@ -257,27 +257,30 @@ const TeamDetailsV1 = ({
       button,
       children,
       type = ERROR_PLACEHOLDER_TYPE.CREATE,
-    }: PlaceholderProps) => (
-      <ErrorPlaceHolder
-        button={button}
-        className="mt-0-important border-none p-lg"
-        doc={doc}
-        heading={heading}
-        permission={permission}
-        permissionValue={
-          type === ERROR_PLACEHOLDER_TYPE.CREATE
-            ? t('label.create-entity', {
-                entity: heading,
-              })
-            : t('label.edit-entity', {
-                entity: heading,
-              })
-        }
-        type={type}
-        onClick={onClick}>
-        {children}
-      </ErrorPlaceHolder>
-    ),
+    }: PlaceholderProps) =>
+      type === ERROR_PLACEHOLDER_TYPE.CREATE ? (
+        <ErrorPlaceHolder.Create
+          className="mt-0-important border-none p-lg"
+          doc={doc}
+          heading={heading}
+          permission={permission}
+          permissionValue={t('label.create-entity', {
+            entity: heading,
+          })}
+          onClick={onClick}
+        />
+      ) : (
+        <ErrorPlaceHolder.Assign
+          button={button}
+          className="mt-0-important border-none p-lg"
+          heading={heading}
+          permission={permission}
+          permissionValue={t('label.edit-entity', {
+            entity: heading,
+          })}>
+          {children}
+        </ErrorPlaceHolder.Assign>
+      ),
     []
   );
 
@@ -661,10 +664,9 @@ const TeamDetailsV1 = ({
       !isTeamBasicDataLoading;
 
     return showEmptyTeamPlaceholder ? (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Custom
         className="border-none"
-        icon={<AddPlaceHolderIcon className="h-32 w-32" />}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        icon={<AddPlaceHolderIcon className="h-32 w-32" />}>
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.team'),
@@ -692,7 +694,7 @@ const TeamDetailsV1 = ({
             {t('label.add')}
           </Button>
         </Tooltip>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.Custom>
     ) : (
       <TeamHierarchy
         createTeamPermission={entityPermissions.Create}

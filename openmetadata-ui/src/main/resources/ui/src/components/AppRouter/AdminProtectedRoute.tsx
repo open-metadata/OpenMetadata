@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
 
 type AdminProtectedRouteProps = {
@@ -36,10 +35,9 @@ const AdminProtectedRoute = ({
     return <>{children}</>;
   } else if (!hasPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view')}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

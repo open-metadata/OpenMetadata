@@ -247,9 +247,9 @@ function EditConnectionFormPage() {
 
   if (isError && !isLoading) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         {getEntityMissingError(serviceCategory, serviceFQN)}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 

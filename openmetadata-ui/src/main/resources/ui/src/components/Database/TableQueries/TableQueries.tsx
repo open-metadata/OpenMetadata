@@ -42,7 +42,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
@@ -510,7 +510,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Create
         buttonId="add-query-btn"
         doc={USAGE_DOCS}
         heading={t('label.query-lowercase-plural')}
@@ -518,7 +518,6 @@ const TableQueries: FC<TableQueriesProp> = ({
         permissionValue={t('label.create-entity', {
           entity: t('label.query'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={handleAddQueryClick}
       />
     );
@@ -527,11 +526,11 @@ const TableQueries: FC<TableQueriesProp> = ({
   if (isTableDeleted) {
     return (
       <div data-testid="no-queries">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <ErrorPlaceHolder.Custom>
           {t('message.field-data-is-not-available-for-deleted-entities', {
             field: t('label.query-plural'),
           })}
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.Custom>
       </div>
     );
   }
@@ -541,13 +540,13 @@ const TableQueries: FC<TableQueriesProp> = ({
       className="flex-center font-medium mt-24 p-b-md"
       data-testid="no-queries"
       span={24}>
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         <Typography.Paragraph>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.query-lowercase-plural'),
           })}
         </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     </Col>
   ) : (
     tableQueries.map((query) => (

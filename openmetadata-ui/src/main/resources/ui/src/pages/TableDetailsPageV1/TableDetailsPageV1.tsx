@@ -41,7 +41,6 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -999,12 +998,11 @@ const TableDetailsPageV1: React.FC = () => {
 
   if (!(isTourOpen || isTourPage) && !viewBasicPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.table-details'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
@@ -1020,7 +1018,7 @@ const TableDetailsPageV1: React.FC = () => {
   // that {@code tableError} surfaced. Show the missing-entity placeholder instead of
   // looping on the loader (the original page used a separate gate for this).
   if (!tableDetails) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return <ErrorPlaceHolder.NoData className="m-0" />;
   }
 
   return (

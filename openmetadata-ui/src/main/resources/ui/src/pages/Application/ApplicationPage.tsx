@@ -28,7 +28,6 @@ import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
@@ -116,18 +115,16 @@ const ApplicationPage = () => {
     if (showDisabled) {
       return (
         <Col className="mt-24 text-center" span={24}>
-          <ErrorPlaceHolder heading={t('label.application-plural')} />
+          <ErrorPlaceHolder.NoData />
         </Col>
       );
     }
 
     return (
       <Col className="mt-24 text-center" span={24}>
-        <ErrorPlaceHolder
-          heading={t('label.application-plural')}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <ErrorPlaceHolder.Custom>
           <div>{t('message.no-installed-applications-found')}</div>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.Custom>
       </Col>
     );
   }, [showDisabled]);

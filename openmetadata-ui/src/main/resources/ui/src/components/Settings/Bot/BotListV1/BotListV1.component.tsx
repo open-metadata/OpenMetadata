@@ -25,7 +25,6 @@ import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Bot, ProviderType } from '../../../../generated/entity/bot';
@@ -444,7 +443,7 @@ const BotListV1 = ({
         </Space>
       </Col>
       <Col className="w-full">
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Create
           className="mt-24"
           doc={BOTS_DOCS}
           heading={t('label.bot')}
@@ -452,7 +451,6 @@ const BotListV1 = ({
           permissionValue={t('label.create-entity', {
             entity: t('label.bot'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddBotClick}
         />
       </Col>

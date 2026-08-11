@@ -27,7 +27,7 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -170,7 +170,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
 
   if (!isLoading && isEmpty(quickLinksByTag) && !refreshTagsCategory) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Create
         buttonId="add-quick-link"
         className="border-none"
         heading={t('label.quick-link-plural')}
@@ -179,7 +179,6 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
           entity: t('label.quick-link'),
         })}
         size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
         onClick={onAdd}
       />
     );

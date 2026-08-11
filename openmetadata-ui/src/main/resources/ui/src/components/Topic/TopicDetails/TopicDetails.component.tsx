@@ -19,7 +19,6 @@ import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import type { Tag } from '../../../generated/entity/classification/tag';
 import type { Topic } from '../../../generated/entity/data/topic';
@@ -98,8 +97,10 @@ const CustomPropertyTable = withSuspenseFallback(
   )
 ) as CustomPropertyTableComponent;
 
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
+const PermissionErrorPlaceholder = withSuspenseFallback(
+  lazy(
+    () => import('../../common/ErrorWithPlaceholder/PermissionErrorPlaceholder')
+  )
 );
 
 const GenericProvider = withSuspenseFallback(
@@ -415,12 +416,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       ),
       sampleDataTab: !viewSampleDataPermission ? (
         <div className="border-default border-radius-sm p-y-lg">
-          <ErrorPlaceHolder
+          <PermissionErrorPlaceholder
             className="border-none"
             permissionValue={t('label.view-entity', {
               entity: t('label.sample-data'),
             })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </div>
       ) : (

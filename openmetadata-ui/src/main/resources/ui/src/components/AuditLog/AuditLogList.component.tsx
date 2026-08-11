@@ -548,7 +548,7 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
           </Typography.Text>
         </div>
         <div className="audit-log-list empty">
-          <ErrorPlaceHolder />
+          <ErrorPlaceHolder.NoData />
         </div>
       </div>
     );

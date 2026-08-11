@@ -27,7 +27,6 @@ import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
@@ -110,7 +109,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const errorPlaceHolder = useMemo(
     () => (
       <div className="h-full text-center w-full p-x-box">
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Create
           buttonId="add-persona-button"
           className="border-none"
           heading={t('label.persona')}
@@ -118,7 +117,6 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
           permissionValue={t('label.create-entity', {
             entity: t('label.persona'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddNewPersona}
         />
       </div>
