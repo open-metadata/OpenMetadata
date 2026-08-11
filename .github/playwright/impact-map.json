@@ -209,6 +209,30 @@
     },
     {
       "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IngestionPipelineRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/logstorage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/sse/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/ServiceAgents/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/LogViewerModal/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useEntityLogs.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useIngestionLogSource.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useLogsModal.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/usePaginatedLiveLog.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/usePollingEffect.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/AgentsProgressPureUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/SseStreamUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/logsPolling.ts"
+      ],
+      "projects": ["chromium", "Ingestion"],
+      "specs": [
+        "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
+        "playwright/e2e/Pages/LogsViewer.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
