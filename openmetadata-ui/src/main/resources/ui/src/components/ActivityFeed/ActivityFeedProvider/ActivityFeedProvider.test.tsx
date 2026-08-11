@@ -19,6 +19,20 @@ import {
 } from '@testing-library/react';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { ReactionType } from '../../../generated/type/reaction';
+import {
+  DummyActivityCommentComponent,
+  DummyActivityFeedComponent,
+  DummyActivityFilterSwitchComponent,
+  DummyActivityReactionComponent,
+  DummyChildrenComponent,
+  DummyChildrenDeletePostComponent,
+  DummyChildrenEntityComponent,
+  DummyChildrenMentionsComponent,
+  DummyChildrenTaskCloseComponent,
+  DummyEntityActivityFeedComponent,
+  DummyFollowingActivityComponent,
+  DummySetActiveActivityComponent,
+} from '../../../mocks/ActivityFeedProvider.mock';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import {
   addActivityReaction,
@@ -36,20 +50,6 @@ import {
 import { listMyVisibleTasks, listTasks } from '../../../rest/tasksAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from './ActivityFeedProvider';
-import {
-  DummyActivityCommentComponent,
-  DummyActivityFeedComponent,
-  DummyActivityFilterSwitchComponent,
-  DummyActivityReactionComponent,
-  DummyChildrenComponent,
-  DummyChildrenDeletePostComponent,
-  DummyChildrenEntityComponent,
-  DummyChildrenMentionsComponent,
-  DummyChildrenTaskCloseComponent,
-  DummyEntityActivityFeedComponent,
-  DummyFollowingActivityComponent,
-  DummySetActiveActivityComponent,
-} from './DummyTestComponent';
 
 const mockUseApplicationStore = jest.fn(() => ({
   currentUser: mockUserData,
@@ -114,6 +114,11 @@ jest.mock('../../../rest/tasksAPI', () => ({
   addTaskComment: jest.fn(),
   getTaskById: jest.fn(),
   tasksToThreads: jest.fn().mockReturnValue([]),
+  TaskStatusGroup: {
+    Open: 'open',
+    Active: 'active',
+    Closed: 'closed',
+  },
   TaskEntityStatus: {
     Open: 'Open',
     Completed: 'Completed',
@@ -446,7 +451,10 @@ describe('ActivityFeedProvider', () => {
       ).toHaveTextContent('Updated tags');
     });
 
-    it('should pass the active domain to the following activity request', async () => {
+    // Domain scoping belongs to the withDomainFilter interceptor, which appends
+    // `domain` to every GET (see hoc/withDomainFilter.test.tsx). These two guard
+    // against anyone reinstating the duplicate resolution in the provider.
+    it('should not hand-roll the domain on the following activity request', async () => {
       mockUseDomainStore.mockImplementation((selector) =>
         selector({ activeDomain: 'finance' })
       );
@@ -463,12 +471,15 @@ describe('ActivityFeedProvider', () => {
         expect(getFollowingActivityFeed).toHaveBeenCalledWith({
           days: 7,
           limit: 20,
-          domain: 'finance',
         });
       });
+
+      expect(getFollowingActivityFeed).not.toHaveBeenCalledWith(
+        expect.objectContaining({ domain: expect.anything() })
+      );
     });
 
-    it('should pass the active domain to the all activity request', async () => {
+    it('should not hand-roll the domain on the all activity request', async () => {
       mockUseDomainStore.mockImplementation((selector) =>
         selector({ activeDomain: 'finance' })
       );
@@ -484,11 +495,12 @@ describe('ActivityFeedProvider', () => {
       fireEvent.click(screen.getByTestId('fetch-all'));
 
       await waitFor(() => {
-        expect(getActivityEvents).toHaveBeenCalledWith({
-          limit: 20,
-          domain: 'finance',
-        });
+        expect(getActivityEvents).toHaveBeenCalledWith({ limit: 20 });
       });
+
+      expect(getActivityEvents).not.toHaveBeenCalledWith(
+        expect.objectContaining({ domain: expect.anything() })
+      );
     });
 
     it('should show an error toast when an activity request fails', async () => {

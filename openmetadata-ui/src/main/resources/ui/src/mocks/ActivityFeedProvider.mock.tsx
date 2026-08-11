@@ -10,15 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+/**
+ * Consumers of ActivityFeedProvider used only by ActivityFeedProvider.test.tsx.
+ * They live here rather than under src/components so nothing in the component
+ * tree looks like an application component when it is a test fixture.
+ *
+ * Each effect lists the provider method it calls: the provider memoises all of
+ * them with useCallback, so the dependency is stable and the effect still runs
+ * once per mount.
+ */
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
-import { FeedFilter } from '../../../enums/mydata.enum';
-import { ReactionOperation } from '../../../enums/reactions.enum';
-import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { ThreadType } from '../../../generated/entity/feed/thread';
-import { ReactionType } from '../../../generated/type/reaction';
-import { useActivityFeedProvider } from './ActivityFeedProvider';
+import { useActivityFeedProvider } from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { EntityType } from '../enums/entity.enum';
+import { FeedFilter } from '../enums/mydata.enum';
+import { ReactionOperation } from '../enums/reactions.enum';
+import { ActivityEvent } from '../generated/entity/activity/activityEvent';
+import { ThreadType } from '../generated/entity/feed/thread';
+import { ReactionType } from '../generated/type/reaction';
+import { TaskStatusGroup } from '../rest/tasksAPI';
+
+const LOADING_LABEL = 'label.loading';
+const CHILDREN_LABEL = 'label.children';
 
 export const DummyChildrenComponent = () => {
   const { t } = useTranslation();
@@ -38,12 +52,12 @@ export const DummyChildrenComponent = () => {
       undefined,
       EntityType.USER,
       'admin',
-      'open'
+      TaskStatusGroup.Open
     );
-  }, []);
+  }, [getTaskData]);
 
   if (loading) {
-    return <p data-testid="loading">{t('label.loading')}</p>;
+    return <p data-testid="loading">{t(LOADING_LABEL)}</p>;
   }
 
   return (
@@ -68,11 +82,11 @@ export const DummyChildrenTaskCloseComponent = () => {
       'after-234',
       EntityType.USER,
       'admin',
-      'closed'
+      TaskStatusGroup.Closed
     );
-  }, []);
+  }, [getTaskData]);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(CHILDREN_LABEL)}</p>;
 };
 
 export const DummyChildrenEntityComponent = () => {
@@ -86,11 +100,11 @@ export const DummyChildrenEntityComponent = () => {
       ThreadType.Conversation,
       EntityType.TABLE,
       'admin',
-      'open'
+      TaskStatusGroup.Open
     );
-  }, []);
+  }, [getFeedData]);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(CHILDREN_LABEL)}</p>;
 };
 
 export const DummyChildrenMentionsComponent = () => {
@@ -105,9 +119,9 @@ export const DummyChildrenMentionsComponent = () => {
       EntityType.USER,
       'admin'
     );
-  }, []);
+  }, [getFeedData]);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(CHILDREN_LABEL)}</p>;
 };
 
 export const DummyChildrenDeletePostComponent = () => {
@@ -132,10 +146,10 @@ export const DummyActivityFeedComponent = () => {
 
   useEffect(() => {
     fetchMyActivityFeed({ days: 7, limit: 20 });
-  }, []);
+  }, [fetchMyActivityFeed]);
 
   if (isActivityLoading) {
-    return <p data-testid="activity-loading">{t('label.loading')}</p>;
+    return <p data-testid="activity-loading">{t(LOADING_LABEL)}</p>;
   }
 
   return (
@@ -155,10 +169,10 @@ export const DummyEntityActivityFeedComponent = () => {
       days: 7,
       limit: 20,
     });
-  }, []);
+  }, [fetchEntityActivity]);
 
   if (isActivityLoading) {
-    return <p data-testid="entity-activity-loading">{t('label.loading')}</p>;
+    return <p data-testid="entity-activity-loading">{t(LOADING_LABEL)}</p>;
   }
 
   return (
@@ -175,10 +189,10 @@ export const DummyFollowingActivityComponent = () => {
 
   useEffect(() => {
     fetchFollowingActivity({ days: 7, limit: 20 });
-  }, []);
+  }, [fetchFollowingActivity]);
 
   if (isActivityLoading) {
-    return <p data-testid="following-activity-loading">{t('label.loading')}</p>;
+    return <p data-testid="following-activity-loading">{t(LOADING_LABEL)}</p>;
   }
 
   return (

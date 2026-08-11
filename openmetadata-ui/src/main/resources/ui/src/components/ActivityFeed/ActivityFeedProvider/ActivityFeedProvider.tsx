@@ -768,20 +768,20 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   );
 
   // Activity Events fetch methods.
-  // Every activity fetcher shares this runner so the sequence guard, the active
-  // domain resolution and the loading flag stay identical across all of them —
-  // a request that has been superseded must not commit its result, toast, or
-  // clear a loading flag that now belongs to a newer request.
+  // Every activity fetcher shares this runner so the sequence guard and the
+  // loading flag stay identical across all of them — a request that has been
+  // superseded must not commit its result, toast, or clear a loading flag that
+  // now belongs to a newer request.
+  //
+  // Domain scoping is deliberately absent: the `withDomainFilter` interceptor
+  // registered in AuthProvider appends `domain` to every GET, so resolving it
+  // here would duplicate that.
   const runActivityRequest = useCallback(
-    async (
-      request: (domain?: string) => Promise<{ data: ActivityEvent[] }>
-    ) => {
+    async (request: () => Promise<{ data: ActivityEvent[] }>) => {
       const seq = ++activityRequestSeq.current;
       setIsActivityLoading(true);
       try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await request(domain);
+        const { data } = await request();
         if (seq !== activityRequestSeq.current) {
           return;
         }
@@ -796,32 +796,26 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
       }
     },
-    [activeDomain]
+    []
   );
 
   const fetchActivityEventsHandler = useCallback(
     async (params?: ListActivityParams) => {
-      await runActivityRequest((domain) =>
-        getActivityEvents({ ...params, domain })
-      );
+      await runActivityRequest(() => getActivityEvents({ ...params }));
     },
     [runActivityRequest]
   );
 
   const fetchMyActivityFeedHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      await runActivityRequest((domain) =>
-        getMyActivityFeed({ ...params, domain })
-      );
+      await runActivityRequest(() => getMyActivityFeed({ ...params }));
     },
     [runActivityRequest]
   );
 
   const fetchFollowingActivityHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      await runActivityRequest((domain) =>
-        getFollowingActivityFeed({ ...params, domain })
-      );
+      await runActivityRequest(() => getFollowingActivityFeed({ ...params }));
     },
     [runActivityRequest]
   );
