@@ -4362,26 +4362,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
     }
-    // Use batch deletion only for hard deletes with large numbers of children
-    // For soft deletes, we must maintain the correct order for restoration to work properly
-    if (hardDelete && children.size() > 100) {
-      LOG.info("Using batch deletion for {} children entities", children.size());
-      batchDeleteChildren(children, hardDelete, updatedBy);
-    } else {
-      // For soft deletes or small numbers, use original sequential deletion
-      // This ensures proper parent-child relationships are maintained for restoration
-      for (EntityRelationshipRecord entityRelationshipRecord : children) {
-        LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId());
-        Entity.deleteEntity(
-            updatedBy,
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId(),
-            true,
-            hardDelete);
+    // Both soft-delete and hard-delete dispatch to the per-type bulk path. One batched DB write
+    // plus one batched change-event insert per type, regardless of descendant count. For hard
+    // delete, bulkHardDeleteSubtree replaces the legacy batchDeleteChildren / Entity.deleteEntity
+    // loop that opened an independent JDBI transaction per descendant.
+    //
+    // Both bulk methods, and the two EntityRepositoryRestoreTest cases asserting this dispatch,
+    // were already on this branch — only the wiring here was missing, so those tests have been
+    // failing and every recursive delete stayed on the per-entity path. At service scale that is
+    // one cascade versus 100k of them: a 100k-table hard delete ran >20 minutes without
+    // finishing here, while the same delete on 2.0 completes in ~14 minutes.
+    //
+    // Time-series children are intentionally skipped — see dispatchToContainedChildren for the
+    // rationale (millions-of-rows lock risk, orphans cleaned offline by DataRetention).
+    Map<String, List<UUID>> idsByType =
+        children.stream()
+            .collect(
+                Collectors.groupingBy(
+                    EntityRelationshipRecord::getType,
+                    Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
+    for (var entry : idsByType.entrySet()) {
+      String childType = entry.getKey();
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        if (hardDelete) {
+          repo.bulkHardDeleteSubtree(entry.getValue(), updatedBy);
+        } else {
+          repo.bulkSoftDeleteSubtree(entry.getValue(), updatedBy);
+        }
       }
     }
   }
@@ -4431,9 +4439,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Process a batch of entities for hard deletion. Entered only via
-   * {@link #batchDeleteChildren}, which only fires for {@code hardDelete=true} and
-   * {@code children.size() > 100}; the soft-delete and small-batch paths stay on the
-   * sequential {@link Entity#deleteEntity} flow.
+   * {@link #batchDeleteChildren}, which {@link #deleteChildren} no longer calls — the recursive
+   * hard delete now dispatches per child type to {@link #bulkHardDeleteSubtree}. Both this method
+   * and {@code batchDeleteChildren} remain because they are {@code protected} and a subclass may
+   * still route through them; nothing in this class does.
    *
    * <p>Each child is removed via {@link #cleanup}, which deletes the entity row, all
    * {@code (id, *)} and {@code (*, id)} entity_relationship rows, extensions, tag usage,
