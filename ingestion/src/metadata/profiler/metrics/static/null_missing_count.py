@@ -32,6 +32,7 @@ from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
     import pandas as pd
+    from sqlalchemy.sql.elements import ColumnElement
 
     from metadata.profiler.processor.runner import PandasRunner
 
@@ -94,10 +95,14 @@ class NullMissingCount(StaticMetric):
         """
         Returns the SQLAlchemy function for calculating the metric.
         """
-        conditions = [(column(self.col.name, self.col.type).is_(None), 1)]
+        if self.col is None:
+            return None
+
+        col = column(self.col.name, self.col.type)
+        conditions: list[tuple[ColumnElement[bool], int]] = [(col.is_(None), 1)]
 
         if can_hold_empty_string(self.col.type):
-            conditions.append((column(self.col.name, self.col.type).__eq__(""), 1))
+            conditions.append((col.__eq__(""), 1))
 
         return SumFn(case(*conditions, else_=0))
 
