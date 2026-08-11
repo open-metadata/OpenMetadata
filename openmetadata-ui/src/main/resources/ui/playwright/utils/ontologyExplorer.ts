@@ -407,6 +407,53 @@ export async function addRelationTypeWithCardinality(
   );
 }
 
+// Batch variant: adds ALL supplied relation types in a single read-modify-write.
+// Use this instead of multiple sequential addRelationTypeWithCardinality calls so
+// that parallel workers only have ONE conflict window to race on rather than N.
+// The retry loop re-reads fresh each time, so a concurrent writer that removes
+// one of our types will cause the verification to fail and the loop to re-add it.
+export async function addRelationTypesWithCardinality(
+  apiContext: APIRequestContext,
+  relationTypes: Array<{
+    name: string;
+    displayName: string;
+    cardinality: string;
+    sourceMax?: number | null;
+    targetMax?: number | null;
+  }>
+): Promise<void> {
+  const names = relationTypes.map((rt) => rt.name);
+
+  for (let attempt = 0; attempt < MAX_RELATION_SETTINGS_ATTEMPTS; attempt++) {
+    const existing = await getRelationTypes(apiContext);
+    const existingNames = new Set(existing.map((rt) => rt.name));
+    const toAdd = relationTypes.filter((rt) => !existingNames.has(rt.name));
+
+    if (toAdd.length === 0) {
+      return;
+    }
+
+    const res = await putRelationTypes(apiContext, [
+      ...existing,
+      ...toAdd.map(buildRelationTypeEntry),
+    ]);
+
+    if (res.ok()) {
+      const updated = await getRelationTypes(apiContext);
+      const updatedNames = new Set(updated.map((rt) => rt.name));
+      if (names.every((n) => updatedNames.has(n))) {
+        return;
+      }
+    }
+
+    await backoffBeforeRetry(attempt);
+  }
+
+  throw new Error(
+    `addRelationTypesWithCardinality: failed to confirm all types after ${MAX_RELATION_SETTINGS_ATTEMPTS} attempts`
+  );
+}
+
 export async function waitForMoreNodesThan(
   page: Page,
   count: number
