@@ -107,6 +107,20 @@ interface KnowledgePageDetailComponentProps {
   onToggleRightPanel?: () => void;
 }
 
+const stripPendingUploadNodes = (html: string): string => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  doc
+    .querySelectorAll('div[data-type="file-attachment"][data-uploading="true"]')
+    .forEach((node) => {
+      if (!node.getAttribute('data-url')) {
+        node.remove();
+      }
+    });
+
+  return doc.body.innerHTML;
+};
+
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
   isRightPanelOpen = true,
@@ -479,14 +493,18 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   const handleContentOnChange = useCallback(
     (content: string) => {
-      const isChanged = !isEqual(knowledgePage?.description ?? '', content);
+      const persistableContent = stripPendingUploadNodes(content);
+      const isChanged = !isEqual(
+        knowledgePage?.description ?? '',
+        persistableContent
+      );
       if (isChanged) {
         setContentChangeState(ContentChangeState.UN_SAVED);
         if (knowledgePage?.id) {
           saveDraftContent(
             knowledgePage.id,
             knowledgePage.fullyQualifiedName,
-            content,
+            persistableContent,
             knowledgePage.version
           );
         }
@@ -496,7 +514,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       ) {
         setContentChangeState(ContentChangeState.SAVED);
       }
-      handleContentSave(content);
+      handleContentSave(persistableContent);
     },
     [knowledgePage, handleContentSave, saveDraftContent]
   );

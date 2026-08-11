@@ -26,6 +26,7 @@ import {
   insertImageViaUrl,
   installDownloadCapture,
   navigateToArticle,
+  navigateToArticles,
   navigateToDocuments,
   responseMatchesRequestPath,
   selectDocumentByName,
@@ -256,6 +257,44 @@ test.describe('Context Center - Article Attachments', () => {
 
       expect([200, 302, 303]).toContain(downloadResponse.status());
       await expectCapturedDownload(page, uploadedFileName);
+    });
+  });
+
+  test('uploaded media persists after navigating away before autosave', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const article = await createArticleViaApi(apiContext);
+    await afterAction();
+    articleFqnsToCleanup.add(article.fullyQualifiedName);
+
+    const uploadedFileName = `persist-media-${uuid()}.png`;
+
+    await test.step('navigate to article and upload image', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.keyboard.press(SHORTCUTS.enter);
+      await insertImageViaUpload(page, uploadedFileName);
+
+      await expect(
+        page.getByTestId('uploaded-image-node').first()
+      ).toBeVisible();
+      await page.waitForTimeout(500);
+    });
+
+    await test.step('navigate away immediately without waiting for autosave', async () => {
+      await navigateToArticles(page);
+    });
+
+    await test.step('return to article and verify image is still present', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+      await getEditor(page, true);
+
+      await expect(
+        page.getByTestId('uploaded-image-node').first()
+      ).toBeVisible();
     });
   });
 });
