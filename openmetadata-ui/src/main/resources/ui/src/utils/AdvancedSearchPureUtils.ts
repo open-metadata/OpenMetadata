@@ -209,12 +209,35 @@ export const getServiceOptions = (
 
 const extractSourceValue = (
   src: Record<string, unknown>,
-  path: string
+  path: string,
+  bucketKey: string
 ): string | undefined => {
+  const parts = path.split('.');
   let val: unknown = src;
-  for (const part of path.split('.')) {
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
     if (Array.isArray(val)) {
-      val = (val[0] as Record<string, unknown> | undefined)?.[part];
+      // When we hit an array mid-traversal, find the element whose resolved
+      // leaf value case-insensitively equals the bucket key, falling back to [0].
+      const remainingPath = parts.slice(i).join('.');
+      const match = (val as unknown[]).find((item) => {
+        const leaf = extractSourceValue(
+          item as Record<string, unknown>,
+          remainingPath,
+          bucketKey
+        );
+
+        return leaf?.toLowerCase() === bucketKey.toLowerCase();
+      });
+      const chosen = match ?? (val as unknown[])[0];
+      if (chosen === undefined) return undefined;
+
+      return extractSourceValue(
+        chosen as Record<string, unknown>,
+        remainingPath,
+        bucketKey
+      );
     } else if (val && typeof val === 'object' && part in (val as object)) {
       val = (val as Record<string, unknown>)[part];
     } else {
@@ -254,7 +277,7 @@ export const getOptionsFromAggregationBucket = (
           | undefined;
         const src = topHitsData?.hits?.hits?.[0]?._source;
         const extracted = src
-          ? extractSourceValue(src, sourceFields)
+          ? extractSourceValue(src, sourceFields, option.key)
           : undefined;
         if (extracted) {
           label = extracted;
