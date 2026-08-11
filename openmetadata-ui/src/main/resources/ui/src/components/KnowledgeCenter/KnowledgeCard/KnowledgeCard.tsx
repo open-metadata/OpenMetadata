@@ -22,6 +22,7 @@ import { AxiosError } from 'axios';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { OwnerType } from '../../../enums/user.enum';
 
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -274,7 +275,12 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
               className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
               displayName={getEntityName(owners?.[0])}
               profileWidth={20}
-              userName={getEntityName(owners?.[0])}
+              type={
+                owners?.[0]?.type === 'team'
+                  ? OwnerType.TEAM
+                  : OwnerType.USER
+              }
+              userName={owners?.[0].name || owners?.[0].displayName}
             />
           ) : (
             <Typography

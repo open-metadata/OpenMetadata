@@ -225,7 +225,9 @@ const ContextCenterMemoriesPage: FC = () => {
       const [totalVisible, pinnedVisible, createdByMeVisible] =
         await Promise.all([
           getVisibleMemoryCount(),
-          getVisibleMemoryCount({ pinned: true }),
+          // TODO: Unhide when pin feature releases in post-2.0
+          // getVisibleMemoryCount({ pinned: true }),
+          Promise.resolve(0),
           authorFilter
             ? getVisibleMemoryCount({ author: authorFilter })
             : Promise.resolve(0),
