@@ -65,6 +65,24 @@ describe('getSidebarActiveKeys', () => {
     ).toEqual(['/metrics']);
   });
 
+  it('should alias the singular observability alert deep path back to Alerts', () => {
+    expect(
+      getSidebarActiveKeys(
+        '/observability/alert/OpenMetadata_alert_uuOIJhshj/configuration',
+        SIDEBAR_NESTED_KEYS
+      )
+    ).toEqual(['/observability/alerts']);
+  });
+
+  it('should keep the plural observability alerts list/add pages active', () => {
+    expect(
+      getSidebarActiveKeys('/observability/alerts', SIDEBAR_NESTED_KEYS)
+    ).toEqual(['/observability/alerts']);
+    expect(
+      getSidebarActiveKeys('/observability/alerts/add', SIDEBAR_NESTED_KEYS)
+    ).toEqual(['/observability/alerts']);
+  });
+
   it('should return a registered deep path as-is', () => {
     expect(
       getSidebarActiveKeys('/context-center/dashboard', SIDEBAR_NESTED_KEYS)

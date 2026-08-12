@@ -70,6 +70,9 @@ export const SIDEBAR_ENTITY_PATH_ALIASES: Record<string, string> = {
   // Glossary-term pages (e.g. version history) use the hyphenated `/glossary-term`
   // route prefix rather than the ENTITY_PATH form, so map it back to Glossary.
   '/glossary-term': ROUTES.GLOSSARY,
+  // Observability alert detail pages use the singular `/observability/alert/:fqn`
+  // deep path, while the sidebar entry is the plural `/observability/alerts`.
+  '/observability/alert': ROUTES.OBSERVABILITY_ALERTS,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
