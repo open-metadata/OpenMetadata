@@ -102,6 +102,43 @@ def test_build_metric_name_distinguishes_logical_tables():
     assert orders != returns
 
 
+def test_metric_children_are_qualified_by_logical_table():
+    """A Metric's dimensions/measures are FQN'd as `<metric>.dimension.<name>`, so two
+    same-named semantic objects from different logical tables produced two children
+    with an identical FQN. Snowflake permits that pair, so the logical table has to be
+    part of the child's name -- these models carry no displayName to fall back on."""
+    orders_status = ("ORDERS", "STATUS", "VARCHAR", "orders.o_orderstatus", None, None)
+    returns_status = ("RETURNS", "STATUS", "VARCHAR", "returns.r_status", None, None)
+    orders_amount = ("ORDERS", "AMOUNT", "NUMBER", "orders.o_totalprice", None, None)
+    returns_amount = ("RETURNS", "AMOUNT", "NUMBER", "returns.r_refundamount", None, None)
+
+    request = build_metric_request(
+        "svc",
+        "DB",
+        "SALES",
+        "COLLISION_CHECK",
+        metric_row=("ORDERS", "TOTAL", "NUMBER", "SUM(orders.amount)", None, None),
+        dimension_rows=[orders_status, returns_status],
+        fact_rows=[orders_amount, returns_amount],
+        view_ref=None,
+    )
+
+    assert [d.name for d in request.dimensions] == ["ORDERS-STATUS", "RETURNS-STATUS"]
+    assert [m.name for m in request.measures] == ["ORDERS-AMOUNT", "RETURNS-AMOUNT"]
+
+
+def test_metric_child_names_stay_a_single_fqn_segment():
+    """The child FQN appends the name to the metric's, so a dot in either the logical
+    table or the object name would add spurious segments."""
+    row = ('"my.table"', '"my.dim"', "VARCHAR", "t.c", None, None)
+
+    request = build_metric_request(
+        "svc", "DB", "S", "V", metric_row=ORDER_COUNT, dimension_rows=[row], fact_rows=[], view_ref=None
+    )
+
+    assert "." not in request.dimensions[0].name
+
+
 def test_build_metric_name_ignores_identifier_quoting():
     """The two call sites disagree on quoting: the metadata stage passes the
     topology context value, which may be quoted, while the lineage workflow passes
@@ -153,9 +190,9 @@ def test_build_metric_request_maps_all_fields():
     assert request.metricType == MetricType.SUM
     assert request.metricExpression.language == Language.SQL
     assert request.metricExpression.code == "SUM(orders.line_amount)"
-    assert [d.name for d in request.dimensions] == ["region"]
+    assert [d.name for d in request.dimensions] == ["customers-region"]
     assert request.dimensions[0].expression == "customers.c_region"
-    assert [m.name for m in request.measures] == ["line_amount"]
+    assert [m.name for m in request.measures] == ["orders-line_amount"]
     assert request.measures[0].expression == "orders.o_totalprice"
     assert request.assets.root[0].id.root == view_ref.id.root
 
@@ -235,8 +272,8 @@ def test_yield_table_metrics_yields_one_per_metric():
     assert names == {"total_revenue", "order_count"}
     revenue = next(r for r in requests if r.displayName == "total_revenue")
     assert str(revenue.assets.root[0].id.root) == "12345678-1234-1234-1234-123456789012"
-    assert [d.name for d in revenue.dimensions] == ["region"]
-    assert [m.name for m in revenue.measures] == ["line_amount"]
+    assert [d.name for d in revenue.dimensions] == ["customers-region"]
+    assert [m.name for m in revenue.measures] == ["orders-line_amount"]
 
 
 def test_yield_table_metrics_flushes_the_sink_before_resolving_the_view():
@@ -382,7 +419,7 @@ def test_dimensions_carry_the_detail_stripped_from_columns():
 
     dimension = request.dimensions[0]
 
-    assert dimension.name == "REGION"
+    assert dimension.name == "customers-REGION"
     assert dimension.description == "Customer region Synonyms: geo, area."
     assert dimension.expression == "customers.c_region"
 
@@ -412,10 +449,10 @@ def test_dimension_type_is_classified_from_the_data_type():
     by_name = {d.name: d.type for d in request.dimensions}
 
     assert by_name == {
-        "ORDER_DATE": Type.TIME,
-        "SHIPPED_AT": Type.TIME,
-        "REGION": Type.CATEGORICAL,
-        "UNTYPED": None,
+        "orders-ORDER_DATE": Type.TIME,
+        "orders-SHIPPED_AT": Type.TIME,
+        "customers-REGION": Type.CATEGORICAL,
+        "orders-UNTYPED": None,
     }
 
 
@@ -430,7 +467,7 @@ def test_measure_aggregation_is_inferred_only_when_aggregated():
 
     by_name = {m.name: m.aggregation for m in request.measures}
 
-    assert by_name == {"REVENUE": "SUM", "LINE_AMOUNT": None}
+    assert by_name == {"orders-REVENUE": "SUM", "orders-LINE_AMOUNT": None}
 
 
 def test_semantic_description_is_none_when_the_row_is_bare():

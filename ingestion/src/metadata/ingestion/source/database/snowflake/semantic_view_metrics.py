@@ -162,9 +162,25 @@ def _dimension_type(data_type: Optional[str]) -> Optional[Type]:  # noqa: UP045
     return result
 
 
+def _child_name(row) -> str:
+    """``<logical table>-<name>`` for a Metric's dimension/measure children.
+
+    The logical table is part of a semantic object's identity — Snowflake declares
+    each as ``<table_alias>.<name>`` and permits the same name on two tables — and the
+    server FQNs these children as ``<metric name>.dimension.<name>``. Without the
+    qualifier a colliding pair produced two children sharing one FQN; unlike the
+    Metric itself these models carry no ``displayName``, so the qualifier has to live
+    in the name. Sanitized because that FQN would otherwise gain segments from a
+    dotted identifier.
+    """
+    return METRIC_NAME_SEPARATOR.join(
+        _sanitize_name_part(part) for part in (row[SEMANTIC_TABLE_IDX], row[SEMANTIC_NAME_IDX])
+    )
+
+
 def _dimension(row) -> MetricDimension:
     return MetricDimension(  # pyright: ignore[reportCallIssue]
-        name=row[SEMANTIC_NAME_IDX],
+        name=_child_name(row),
         type=_dimension_type(row[SEMANTIC_DATA_TYPE_IDX]),
         description=_semantic_description(row),
         expression=row[SEMANTIC_EXPRESSION_IDX] or None,
@@ -177,7 +193,7 @@ def _measure(row) -> MetricMeasure:
     if infer_metric_type(expression) != MetricType.OTHER:
         aggregation = expression.strip().split("(")[0].strip().upper()
     return MetricMeasure(  # pyright: ignore[reportCallIssue]
-        name=row[SEMANTIC_NAME_IDX],
+        name=_child_name(row),
         aggregation=aggregation,
         description=_semantic_description(row),
         expression=expression or None,
