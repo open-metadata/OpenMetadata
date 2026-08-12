@@ -566,6 +566,8 @@ class SecurityUtilTest {
     SecurityUtil.writeFailureResponse(response, new IllegalStateException("boom"));
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    // The exception text is an internal detail: callers log it, the client gets a generic message.
+    assertFalse(outputStream.content().contains("boom"));
   }
 
   @Test

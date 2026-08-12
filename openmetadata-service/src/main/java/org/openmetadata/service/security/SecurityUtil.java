@@ -420,17 +420,23 @@ public final class SecurityUtil {
    * deserves. These paths have no JAX-RS exception mapper, so a bare {@code 500 + e.getMessage()}
    * catch-all reports a rejected credential and a transient Redis outage as server bugs — and leaks
    * the driver's message while doing it. A rejected credential is the caller's 4xx; a session store
-   * that is unreachable is a retryable 503; only the rest is a 500.
+   * that is unreachable is a retryable 503; only the rest is a 500, and that one carries a generic
+   * message because an unclassified exception's text is an internal detail. Callers log the failure
+   * before delegating here, so nothing is lost.
    */
   public static void writeFailureResponse(HttpServletResponse response, Throwable failure) {
+    // Default generic: an unclassified failure is a server fault whose message is an internal
+    // detail. It stays in the log, not on the wire.
     int status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
-    String message = failure.getMessage();
+    String message = "Authentication service error";
     if (failure instanceof WebApplicationException webApplicationException) {
       status = webApplicationException.getResponse().getStatus();
+      message = failure.getMessage();
     } else if (failure instanceof AuthenticationException authenticationException) {
       // Not a WebApplicationException, but carries its own Response. Thrown by the basic and LDAP
-      // authenticators for a rejected credential.
+      // authenticators for a rejected credential, with a message meant for the caller.
       status = authenticationException.getResponse().getStatus();
+      message = failure.getMessage();
     } else if (isSessionStoreUnavailable(failure)) {
       LOG.error("Session store unavailable while handling an auth request", failure);
       status = HttpServletResponse.SC_SERVICE_UNAVAILABLE;

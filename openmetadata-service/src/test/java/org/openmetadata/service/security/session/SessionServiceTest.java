@@ -915,6 +915,29 @@ class SessionServiceTest {
   }
 
   @Test
+  void revokeSessionsForUser_stopsAndCountsNothingWhenSessionsCannotBeRevoked() {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("stuck-user")
+            .withEmail("stuck-user@example.com");
+    UserSession stuck = activeSession(validSessionId('z'), user, 1L, 1L);
+    // Every compare-and-set loses, so the session stays ACTIVE and is read back each pass.
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
+        .thenReturn(List.of(stuck));
+    when(repository.findById(stuck.getId())).thenReturn(Optional.of(stuck));
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(false);
+
+    assertEquals(0, sessionService.revokeSessionsForUser(user.getId().toString()));
+
+    // Two passes: the first attempts the revoke, the second sees the same batch and gives up
+    // instead of burning every remaining iteration on a row that will not move.
+    verify(repository, times(2))
+        .findByUserIdAndStatus(eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt());
+  }
+
+  @Test
   void revokeSessionsForUser_isANoOpWithoutAUserId() {
     assertEquals(0, sessionService.revokeSessionsForUser(null));
     verify(repository, never()).findByUserIdAndStatus(any(), any(SessionStatus.class), anyInt());

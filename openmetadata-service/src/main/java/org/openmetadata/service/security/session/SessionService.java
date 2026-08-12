@@ -624,26 +624,40 @@ public class SessionService implements Managed {
    */
   public int revokeSessionsForUser(String userId) {
     int revoked = 0;
-    if (nullOrEmpty(userId)) {
-      return revoked;
-    }
-    for (int attempt = 0; attempt < SESSION_LIMIT_MAX_ITERATIONS; attempt++) {
-      List<UserSession> sessions =
-          repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, CLEANUP_BATCH_SIZE);
-      if (sessions.isEmpty()) {
-        return revoked;
+    if (!nullOrEmpty(userId)) {
+      java.util.Set<String> previousBatchIds = java.util.Collections.emptySet();
+      for (int attempt = 0; attempt < SESSION_LIMIT_MAX_ITERATIONS; attempt++) {
+        List<UserSession> sessions =
+            repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, CLEANUP_BATCH_SIZE);
+        if (sessions.isEmpty()) {
+          break;
+        }
+        java.util.Set<String> currentBatchIds =
+            sessions.stream().map(UserSession::getId).collect(java.util.stream.Collectors.toSet());
+        // A revoke that loses every compare-and-set leaves the session ACTIVE, so the next pass
+        // reads it back. Without this the loop burns all its passes on the same stuck rows and
+        // reports them as revoked once per pass.
+        if (currentBatchIds.equals(previousBatchIds)) {
+          LOG.warn(
+              "Unable to revoke {} session(s) for user {}; leaving them to session cleanup",
+              currentBatchIds.size(),
+              userId);
+          break;
+        }
+        for (UserSession session : sessions) {
+          if (revokeSession(session.getId()).filter(SessionService::isTerminal).isPresent()) {
+            revoked++;
+          }
+        }
+        previousBatchIds = currentBatchIds;
       }
-      for (UserSession session : sessions) {
-        revokeSession(session.getId());
-        cache.invalidate(session.getId());
-        revoked++;
-      }
     }
-    LOG.warn(
-        "Stopped revoking sessions for user {} after {} passes",
-        userId,
-        SESSION_LIMIT_MAX_ITERATIONS);
     return revoked;
+  }
+
+  private static boolean isTerminal(UserSession session) {
+    return session.getStatus() == SessionStatus.REVOKED
+        || session.getStatus() == SessionStatus.EXPIRED;
   }
 
   private int sessionLookupLimit(int maxActiveSessionsPerUser) {
