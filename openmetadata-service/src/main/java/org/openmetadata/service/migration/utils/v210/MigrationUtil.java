@@ -16,17 +16,78 @@ package org.openmetadata.service.migration.utils.v210;
 import java.sql.ResultSet;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-/** Migration utility for 2.1.0 archival of legacy thread storage after task cutover. */
+/** Migration utility for 2.1.0 data migrations. */
 @Slf4j
 public class MigrationUtil {
+  private static final String OLD_CONTEXT_CENTER_CLASSIFICATION_NAME = "KnowledgeCenter";
+  private static final String NEW_CONTEXT_CENTER_CLASSIFICATION_NAME = "ContextCenter";
+
   private final Handle handle;
   private final ConnectionType connectionType;
 
   public MigrationUtil(Handle handle, ConnectionType connectionType) {
     this.handle = handle;
     this.connectionType = connectionType;
+  }
+
+  /**
+   * Renames the system classification seeded as "KnowledgeCenter" (2.0.0-rc1) to "ContextCenter"
+   * to match the renamed product surface. Fresh installs already get "ContextCenter" from the
+   * updated seed file, so this is a no-op unless the old classification row still exists.
+   */
+  public void renameKnowledgeCenterClassification() {
+    CollectionDAO daoCollection = Entity.getCollectionDAO();
+    Classification classification = findOldContextCenterClassification(daoCollection);
+    if (classification == null) {
+      LOG.info(
+          "No '{}' classification found, skipping context center classification rename",
+          OLD_CONTEXT_CENTER_CLASSIFICATION_NAME);
+      return;
+    }
+
+    renameClassificationRow(daoCollection, classification);
+    daoCollection
+        .tagDAO()
+        .updateFqn(OLD_CONTEXT_CENTER_CLASSIFICATION_NAME, NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+    daoCollection
+        .tagUsageDAO()
+        .updateTagPrefix(
+            TagSource.CLASSIFICATION.ordinal(),
+            OLD_CONTEXT_CENTER_CLASSIFICATION_NAME,
+            NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+
+    LOG.info(
+        "Renamed classification '{}' to '{}'",
+        OLD_CONTEXT_CENTER_CLASSIFICATION_NAME,
+        NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+  }
+
+  private Classification findOldContextCenterClassification(CollectionDAO daoCollection) {
+    Classification classification;
+    try {
+      classification =
+          daoCollection
+              .classificationDAO()
+              .findEntityByName(OLD_CONTEXT_CENTER_CLASSIFICATION_NAME, Include.ALL);
+    } catch (EntityNotFoundException e) {
+      classification = null;
+    }
+    return classification;
+  }
+
+  private void renameClassificationRow(CollectionDAO daoCollection, Classification classification) {
+    classification
+        .withName(NEW_CONTEXT_CENTER_CLASSIFICATION_NAME)
+        .withFullyQualifiedName(NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+    daoCollection.classificationDAO().update(classification);
   }
 
   public void archiveLegacyThreadStorage() {

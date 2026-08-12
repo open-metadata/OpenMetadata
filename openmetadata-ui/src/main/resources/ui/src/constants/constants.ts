@@ -22,7 +22,7 @@ import {
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
 
-export const KNOWLEDGE_CENTER_CLASSIFICATION = 'KnowledgeCenter';
+export const KNOWLEDGE_CENTER_CLASSIFICATION = 'ContextCenter';
 export const CREATE_PAGE_HASH = 'create';
 export const SHORT_DELAY = 3000;
 export const LONG_DELAY = 10000;

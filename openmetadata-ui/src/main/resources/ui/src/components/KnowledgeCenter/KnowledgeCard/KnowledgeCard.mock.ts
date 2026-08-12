@@ -20,7 +20,7 @@ import {
 
 export const KNOWLEDGE_PAGE_TAGS = [
   {
-    tagFQN: 'KnowledgeCenter.HowToGuide',
+    tagFQN: 'ContextCenter.HowToGuide',
     name: 'HowToGuide',
     description: 'How To Guide Quick Link or Article Tag.',
     style: {
@@ -217,7 +217,7 @@ export const QUICK_LINK_MOCK_DATA = {
   },
   tags: [
     {
-      tagFQN: 'KnowledgeCenter.HowToGuide',
+      tagFQN: 'ContextCenter.HowToGuide',
       name: 'HowToGuide',
       description: 'How To Guide Quick Link or Article Tag.',
       style: {

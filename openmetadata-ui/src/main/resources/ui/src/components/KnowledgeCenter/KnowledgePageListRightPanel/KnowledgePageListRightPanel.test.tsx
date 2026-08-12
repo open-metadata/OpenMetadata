@@ -130,7 +130,7 @@ describe('KnowledgePageListRightPanel', () => {
 
     expect(
       screen.getByTestId(
-        `tag-category-KnowledgeCenter.application-customization-${QUICK_LINK_MOCK_DATA.displayName}`
+        `tag-category-ContextCenter.application-customization-${QUICK_LINK_MOCK_DATA.displayName}`
       )
     ).toBeInTheDocument();
   });

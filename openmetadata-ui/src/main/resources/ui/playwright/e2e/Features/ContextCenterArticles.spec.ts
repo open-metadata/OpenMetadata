@@ -402,7 +402,7 @@ test.describe('Context Center Articles', () => {
       url: RELATED_QUICK_LINK_URL,
       updatedUrl: UPDATED_QUICK_LINK_URL,
       tag: 'QuickLink',
-      tagFqn: 'KnowledgeCenter.QuickLink',
+      tagFqn: 'ContextCenter.QuickLink',
     };
 
     await navigateToArticles(page);
@@ -564,7 +564,7 @@ test.describe('Context Center Articles', () => {
     });
     await updateTags(page, {
       tag: 'Article',
-      tagFqn: 'KnowledgeCenter.Article',
+      tagFqn: 'ContextCenter.Article',
     });
     await page
       .getByTestId('tags-container')
@@ -572,7 +572,7 @@ test.describe('Context Center Articles', () => {
       .waitFor({ state: 'visible' });
     await updateTags(page, {
       tag: 'HowToGuide',
-      tagFqn: 'KnowledgeCenter.HowToGuide',
+      tagFqn: 'ContextCenter.HowToGuide',
     });
 
     const followBtn = page.getByTestId('follow-btn');
@@ -601,10 +601,10 @@ test.describe('Context Center Articles', () => {
     await expect(page.getByTestId(`recent-viewed-${title}`)).toBeVisible();
     await expect(page.getByTestId(`bookmarked-${title}`)).toBeVisible();
     await expect(
-      page.getByTestId(`tag-category-KnowledgeCenter.Article-${title}`)
+      page.getByTestId(`tag-category-ContextCenter.Article-${title}`)
     ).toBeVisible();
     await expect(
-      page.getByTestId(`tag-category-KnowledgeCenter.HowToGuide-${title}`)
+      page.getByTestId(`tag-category-ContextCenter.HowToGuide-${title}`)
     ).toBeVisible();
 
     await verifyArticleSearch(page, title);
@@ -941,7 +941,7 @@ test.describe('Context Center Articles', () => {
     await updateBody(page, 'Updated article body text');
     await updateTags(page, {
       tag: 'Article',
-      tagFqn: 'KnowledgeCenter.Article',
+      tagFqn: 'ContextCenter.Article',
     });
     await addMultiOwner({
       page,
