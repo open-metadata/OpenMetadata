@@ -19,7 +19,7 @@ import {
 import { AlertTriangle, CheckCircle, XCircle, Zap } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cx from 'classnames';
-import { isEmpty, toNumber } from 'lodash';
+import { isEmpty, isEqual, toNumber } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
@@ -46,6 +46,7 @@ import {
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
+import { ConfigData } from '../../../interface/service.interface';
 import {
   addWorkflow,
   deleteWorkflowById,
@@ -167,6 +168,9 @@ const TestConnection: FC<TestConnectionProps> = ({
    * Current workflow reference
    */
   const currentWorkflowRef = useRef(currentWorkflow);
+
+  // Form data as of the last test run, used to detect edits made after a test completed
+  const lastTestedDataRef = useRef<ConfigData | undefined>();
 
   // Timers live in a ref so a new run - or an unmount - can cancel the previous
   // run's callbacks before they write state over a newer result.
@@ -423,7 +427,9 @@ const TestConnection: FC<TestConnectionProps> = ({
     clearTimers();
     const runId = ++runIdRef.current;
 
-    const updatedFormData = formatFormDataForSubmit(getData());
+    const rawFormData = getData();
+    lastTestedDataRef.current = rawFormData;
+    const updatedFormData = formatFormDataForSubmit(rawFormData);
 
     const { ingestionRunner, ...rest } = updatedFormData as ConfigObject & {
       ingestionRunner?: string;
@@ -703,6 +709,16 @@ const TestConnection: FC<TestConnectionProps> = ({
   useEffect(() => {
     currentWorkflowRef.current = currentWorkflow; // update ref with latest value of currentWorkflow state variable
   }, [currentWorkflow]);
+
+  // discard a stale test result once the form data has changed since the last test run
+  useEffect(() => {
+    if (!testStatus || isTestingConnection) {
+      return;
+    }
+    if (!isEqual(getData(), lastTestedDataRef.current)) {
+      handleResetState();
+    }
+  });
 
   useEffect(() => {
     return () => {
