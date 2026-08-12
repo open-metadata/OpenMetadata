@@ -642,7 +642,7 @@ class GoogleDriveSource(DriveServiceSource):
         Stale-entity deletion removes anything absent from this set, so an FQN that does not
         match the stored one deletes a file that was just ingested.
         """
-        service_name = self.context.get().drive_service
+        service_name = self.context.get().drive_service  # pyright: ignore[reportAttributeAccessIssue]
         if file_request.directory:
             # `directory` holds the parent's full FQN, which already starts with the service
             # name. fqn.build prepends the service itself, so pass only the path components
