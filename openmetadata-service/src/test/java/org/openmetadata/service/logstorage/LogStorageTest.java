@@ -19,14 +19,20 @@ import static org.mockito.Mockito.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.service.Entity;
 
 @ExtendWith(MockitoExtension.class)
 public class LogStorageTest {
@@ -34,6 +40,7 @@ public class LogStorageTest {
   @Mock private PipelineServiceClientInterface mockPipelineServiceClient;
 
   private DefaultLogStorage defaultLogStorage;
+  private MockedStatic<Entity> entityMock;
   private final String testPipelineFQN = "service.database.pipeline";
   private final UUID testRunId = UUID.randomUUID();
 
@@ -43,6 +50,75 @@ public class LogStorageTest {
     Map<String, Object> config = new HashMap<>();
     config.put("pipelineServiceClient", mockPipelineServiceClient);
     defaultLogStorage.initialize(config);
+    // The storage loads the real pipeline so the runner can locate its run by service.
+    entityMock = mockStatic(Entity.class);
+    entityMock
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.INGESTION_PIPELINE),
+                    eq(testPipelineFQN),
+                    anyString(),
+                    any(Include.class)))
+        .thenReturn(new IngestionPipeline().withFullyQualifiedName(testPipelineFQN));
+  }
+
+  @AfterEach
+  void tearDown() {
+    entityMock.close();
+  }
+
+  @Test
+  void getLogsPassesThePipelineServiceToTheRunner() {
+    // Regression: the storage used to synthesize a name-only pipeline. Argo builds its workflow
+    // label selector from service.name and threw a NullPointerException, which the catch below
+    // turned into "no logs", so log fetches silently returned empty on every Argo deployment.
+    IngestionPipeline withService =
+        new IngestionPipeline()
+            .withFullyQualifiedName(testPipelineFQN)
+            .withService(
+                new EntityReference().withName("service").withType(Entity.DATABASE_SERVICE));
+    entityMock
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.INGESTION_PIPELINE),
+                    eq(testPipelineFQN),
+                    anyString(),
+                    any(Include.class)))
+        .thenReturn(withService);
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(Map.of("ingestion_task", "content", "total", "1"));
+
+    defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    ArgumentCaptor<IngestionPipeline> sent = ArgumentCaptor.forClass(IngestionPipeline.class);
+    verify(mockPipelineServiceClient).getLastIngestionLogs(sent.capture(), isNull());
+    assertNotNull(sent.getValue().getService(), "runner cannot locate the run without the service");
+    assertEquals("service", sent.getValue().getService().getName());
+  }
+
+  @Test
+  void getLogsReadsContentKeyedByTaskName() {
+    // Runners key log content by task name (TYPE_TO_TASK), e.g. "lineage_task"; only "total" and
+    // "after" are fixed. Reading a literal "logs" key returned empty for every real response.
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(Map.of("lineage_task", "InvalidPrivateKeyException: bad PEM", "total", "1"));
+
+    Map<String, Object> result = defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    assertEquals("InvalidPrivateKeyException: bad PEM", result.get("logs"));
+    assertEquals("1", result.get("total"));
+  }
+
+  @Test
+  void getLogsReturnsEmptyStringWhenTheRunnerSendsOnlyPagingKeys() {
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(Map.of("total", "0"));
+
+    Map<String, Object> result = defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    assertEquals("", result.get("logs"));
   }
 
   @Test

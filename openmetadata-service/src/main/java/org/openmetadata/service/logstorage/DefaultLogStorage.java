@@ -19,8 +19,9 @@ import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.service.Entity;
 
 /**
  * Default implementation of LogStorageInterface that delegates to the existing
@@ -28,6 +29,8 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
  */
 @Slf4j
 public class DefaultLogStorage implements LogStorageInterface {
+
+  private static final Set<String> PAGING_KEYS = Set.of("total", "after");
 
   private PipelineServiceClientInterface pipelineServiceClient;
 
@@ -65,12 +68,11 @@ public class DefaultLogStorage implements LogStorageInterface {
       // doesn't support fetching logs by specific runId - it always returns the latest logs
       // The runId parameter is ignored here for backward compatibility
 
-      // Create a minimal IngestionPipeline object with just the FQN
-      IngestionPipeline pipeline = new IngestionPipeline();
-      pipeline.setFullyQualifiedName(pipelineFQN);
-      pipeline.setName(extractPipelineName(pipelineFQN));
-      // Set a default pipeline type to avoid NPE in AirflowRESTClient
-      pipeline.setPipelineType(PipelineType.METADATA);
+      // Load the real pipeline with its service. A synthesized stub carries only the name, which
+      // is enough for Airflow but not for runners that locate a run by service (Argo builds its
+      // workflow label selector from service.name and fails without it).
+      IngestionPipeline pipeline =
+          Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
 
       // Delegate to pipeline service client (Airflow/Argo)
       Map<String, String> clientLogs =
@@ -78,7 +80,7 @@ public class DefaultLogStorage implements LogStorageInterface {
 
       // Convert the response to match our interface
       Map<String, Object> result = new HashMap<>();
-      result.put("logs", clientLogs.getOrDefault("logs", ""));
+      result.put("logs", extractLogContent(clientLogs));
       result.put("after", clientLogs.get("after"));
       result.put("total", clientLogs.getOrDefault("total", "0"));
 
@@ -100,13 +102,30 @@ public class DefaultLogStorage implements LogStorageInterface {
     }
   }
 
+  /**
+   * Pulls the log text out of a pipeline service client response. Runners key the content by task
+   * name (see {@code PipelineServiceClientInterface.TYPE_TO_TASK}), e.g. {@code lineage_task}, so
+   * the only fixed keys are the paging ones. Take the remaining entry rather than guessing the task
+   * name, which depends on the pipeline type.
+   */
+  private static String extractLogContent(Map<String, String> clientLogs) {
+    if (clientLogs == null) {
+      return "";
+    }
+    return clientLogs.entrySet().stream()
+        .filter(e -> !PAGING_KEYS.contains(e.getKey()) && e.getValue() != null)
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse("");
+  }
+
   @Override
   public UUID getLatestRunId(String pipelineFQN) {
     // Try to get the latest run ID from pipeline status
     try {
-      IngestionPipeline pipeline = new IngestionPipeline();
-      pipeline.setFullyQualifiedName(pipelineFQN);
-      pipeline.setName(extractPipelineName(pipelineFQN));
+      // Same reason as getLogs above: the runner needs the pipeline's service to find its runs.
+      IngestionPipeline pipeline =
+          Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
 
       List<PipelineStatus> statuses = pipelineServiceClient.getQueuedPipelineStatus(pipeline);
       if (!statuses.isEmpty()) {
@@ -174,11 +193,5 @@ public class DefaultLogStorage implements LogStorageInterface {
   @Override
   public void close() {
     // Nothing to close for default implementation
-  }
-
-  private String extractPipelineName(String pipelineFQN) {
-    // Extract pipeline name from FQN (last part after the last dot)
-    int lastDotIndex = pipelineFQN.lastIndexOf('.');
-    return lastDotIndex >= 0 ? pipelineFQN.substring(lastDotIndex + 1) : pipelineFQN;
   }
 }
