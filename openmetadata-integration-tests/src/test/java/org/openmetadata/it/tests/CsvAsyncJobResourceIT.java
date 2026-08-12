@@ -334,14 +334,12 @@ public class CsvAsyncJobResourceIT {
         jobId.chars().allMatch(Character::isDigit),
         "Audit export must return a background job id: " + jobId);
 
+    // Polled through the status endpoint, which is what the UI falls back to: the
+    // completion event only reaches sockets held by the server that ran the job.
     Awaitility.await()
         .atMost(JOB_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () ->
-                request("GET", "/v1/audit/logs/export/" + jobId + "/result", null, adminToken())
-                        .statusCode()
-                    == 200);
+        .until(() -> "COMPLETED".equals(auditExportStatus(jobId)));
 
     HttpResponse<String> result =
         request("GET", "/v1/audit/logs/export/" + jobId + "/result", null, adminToken());
@@ -349,6 +347,13 @@ public class CsvAsyncJobResourceIT {
     assertTrue(
         result.body().trim().startsWith("["),
         "Audit export downloads as a JSON array: " + firstLine(result.body()));
+  }
+
+  private String auditExportStatus(String jobId) throws Exception {
+    HttpResponse<String> response =
+        request("GET", "/v1/audit/logs/export/" + jobId, null, adminToken());
+    assertEquals(200, response.statusCode(), "Audit job status failed: " + response.body());
+    return MAPPER.readTree(response.body()).path("status").asText();
   }
 
   /**

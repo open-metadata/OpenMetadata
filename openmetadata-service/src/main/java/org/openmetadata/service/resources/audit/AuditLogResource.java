@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -263,6 +264,34 @@ public class AuditLogResource {
     CSVExportResponse response =
         new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  @GET
+  @Path("/export/{jobId}")
+  @Operation(
+      operationId = "getAuditExportJob",
+      summary = "Get the status of an audit log export job",
+      description =
+          "Reports progress and terminal state for an export. Clients poll this when the "
+              + "completion event does not arrive on the websocket, which happens whenever the job "
+              + "ran on a different server than the one holding the client's socket.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Export job status"),
+        @ApiResponse(responseCode = "403", description = "Export belongs to another user"),
+        @ApiResponse(responseCode = "404", description = "Export job not found")
+      })
+  @Produces(MediaType.APPLICATION_JSON)
+  public CsvAsyncJob getAuditExportJob(
+      @Context SecurityContext securityContext, @PathParam("jobId") String jobId) {
+    OperationContext operationContext =
+        new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
+    authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
+    CsvAsyncJob job = CsvAsyncJobManager.getInstance().getAuditExportJob(jobId);
+    if (job == null) {
+      throw new NotFoundException("Audit export job not found: " + jobId);
+    }
+    validateOwnership(securityContext, job);
+    return job;
   }
 
   @GET

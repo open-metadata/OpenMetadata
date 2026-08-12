@@ -12,6 +12,7 @@
  */
 
 import {
+  AuditLogExportJob,
   AuditLogExportParams,
   AuditLogExportResponse,
   AuditLogListParams,
@@ -37,6 +38,21 @@ export const exportAuditLogs = async (
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+/**
+ * Reports an export job's progress and terminal state. Polled as the fallback for
+ * the completion websocket event, which only reaches sockets held by the server
+ * that ran the job — on a multi-server deployment that is rarely the client's.
+ */
+export const getAuditLogExportJob = async (
+  jobId: string
+): Promise<AuditLogExportJob> => {
+  const response = await APIClient.get<AuditLogExportJob>(
+    `${BASE_URL}/export/${jobId}`
   );
 
   return response.data;

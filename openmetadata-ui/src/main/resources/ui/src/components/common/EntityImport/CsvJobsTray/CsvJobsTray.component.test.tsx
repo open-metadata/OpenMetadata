@@ -110,10 +110,6 @@ describe('CsvJobsTray', () => {
   });
 
   afterEach(() => {
-    // Restored here rather than at the end of the one test that fakes them, so a
-    // failure mid-test cannot leak fake timers into the tests that follow.
-    jest.clearAllTimers();
-    jest.useRealTimers();
     jest.clearAllMocks();
   });
 
@@ -265,8 +261,6 @@ describe('CsvJobsTray', () => {
   // ran the job, so on a multi-server deployment it is often delivered to a peer.
   // Polling is what actually keeps the tray truthful.
   it('polls for job updates while a job is active, without a websocket event', async () => {
-    jest.useFakeTimers();
-
     mockGetCsvAsyncJobs
       .mockResolvedValueOnce([
         createJob({
@@ -305,8 +299,6 @@ describe('CsvJobsTray', () => {
   // The poll is self-scheduling rather than a fixed interval, so a response
   // slower than the interval cannot stack up concurrent requests.
   it('does not start another poll while one is still in flight', async () => {
-    jest.useFakeTimers();
-
     let resolveSlowFetch: (jobs: CsvAsyncJob[]) => void = () => undefined;
     mockGetCsvAsyncJobs
       .mockResolvedValueOnce([
