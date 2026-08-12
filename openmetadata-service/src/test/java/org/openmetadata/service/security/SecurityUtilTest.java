@@ -20,6 +20,7 @@ import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -34,6 +35,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -555,6 +557,26 @@ class SecurityUtilTest {
         response, new AuthenticationException("You have entered an invalid username or password."));
 
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+  }
+
+  @Test
+  void testWriteFailureResponseKeepsStatusOfCustomExceptionMessage() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    // What a login for a soft-deleted user actually reaches this method as: CustomExceptionMessage
+    // extends the SDK's WebServiceException, which is a plain RuntimeException — so without an
+    // explicit branch its 4xx was reported as a 500.
+    SecurityUtil.writeFailureResponse(
+        response,
+        new CustomExceptionMessage(
+            Response.Status.BAD_REQUEST,
+            "INVALID_USER_OR_PASSWORD",
+            "You have entered an invalid username or password."));
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    assertTrue(outputStream.content().contains("invalid username or password"));
   }
 
   @Test

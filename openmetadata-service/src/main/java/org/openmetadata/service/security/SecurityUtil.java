@@ -50,6 +50,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -429,30 +430,49 @@ public final class SecurityUtil {
     // detail. It stays in the log, not on the wire.
     int status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
     String message = "Authentication service error";
-    if (failure instanceof WebApplicationException webApplicationException) {
-      status = webApplicationException.getResponse().getStatus();
-      message = failure.getMessage();
-    } else if (failure instanceof AuthenticationException authenticationException) {
-      // Not a WebApplicationException, but carries its own Response. Thrown by the basic and LDAP
-      // authenticators for a rejected credential, with a message meant for the caller.
-      status = authenticationException.getResponse().getStatus();
-      message = failure.getMessage();
+    // EntityNotFoundException is checked first on purpose: it extends the SDK's WebServiceException
+    // with NOT_FOUND, and answering 404 on a login endpoint tells an unauthenticated caller which
+    // accounts exist. A user that no longer resolves is a rejected credential, not a lookup miss.
+    if (failure instanceof EntityNotFoundException) {
+      status = HttpServletResponse.SC_UNAUTHORIZED;
+      message = "Invalid credentials";
     } else if (isSessionStoreUnavailable(failure)) {
       LOG.error("Session store unavailable while handling an auth request", failure);
       status = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
       message = "The session store is temporarily unavailable. Please retry.";
       response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(STORE_RETRY_AFTER_SECONDS));
-    } else if (failure instanceof EntityNotFoundException) {
-      // A login for a user that no longer resolves (deleted, or off-boarded mid-session) is a
-      // rejected credential, not a server fault.
-      status = HttpServletResponse.SC_UNAUTHORIZED;
-      message = "Invalid credentials";
+    } else if (carriesResponseStatus(failure)) {
+      status = responseStatusOf(failure);
+      message = failure.getMessage();
     }
     try {
       writeErrorResponse(response, status, message);
     } catch (IOException e) {
       LOG.error("Error writing error response", e);
     }
+  }
+
+  /**
+   * Three unrelated hierarchies carry an intended HTTP status and none of them share a supertype:
+   * JAX-RS {@link WebApplicationException}, {@link AuthenticationException}, and the SDK's {@link
+   * WebServiceException} (the parent of {@code CustomExceptionMessage}, which is what the basic and
+   * LDAP authenticators throw for a rejected credential). Missing any one of them reports a 4xx as a
+   * 500.
+   */
+  private static boolean carriesResponseStatus(Throwable failure) {
+    return failure instanceof WebApplicationException
+        || failure instanceof AuthenticationException
+        || failure instanceof WebServiceException;
+  }
+
+  private static int responseStatusOf(Throwable failure) {
+    if (failure instanceof WebApplicationException webApplicationException) {
+      return webApplicationException.getResponse().getStatus();
+    }
+    if (failure instanceof AuthenticationException authenticationException) {
+      return authenticationException.getResponse().getStatus();
+    }
+    return ((WebServiceException) failure).getResponse().getStatus();
   }
 
   private static boolean isSessionStoreUnavailable(Throwable failure) {
