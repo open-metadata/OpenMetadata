@@ -473,7 +473,7 @@ class SftpSource(DriveServiceSource):
         mismatch here is not cosmetic: stale-entity deletion treats anything missing from this
         set as deleted at the source, so a wrong FQN removes a file that was just ingested.
         """
-        service_name = self.context.get().drive_service
+        service_name = self.context.get().drive_service  # pyright: ignore[reportAttributeAccessIssue]
         if directory_path:
             file_fqn = fqn.build(
                 self.metadata,
