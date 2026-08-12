@@ -22,13 +22,13 @@ import { Link } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
   SETTING_ITEM,
-  SIDEBAR_ENTITY_PATH_ALIASES,
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useSidebarItems } from '../../../hooks/useSidebarItems';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
+import { getSidebarActiveKeys } from '../../../utils/LeftSidebarUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
@@ -51,18 +51,14 @@ const LeftSidebar = () => {
 
   const sideBarItems = useSidebarItems();
 
-  const selectedKeys = useMemo(() => {
-    const pathArray = location.pathname.split('/');
-    const deepPath = [...pathArray].splice(0, 3).join('/');
-
-    if (leftSidebarClassBase.getSidebarNestedKeys()[deepPath]) {
-      return [deepPath];
-    }
-
-    const shallowPath = pathArray.splice(0, 2).join('/');
-
-    return [SIDEBAR_ENTITY_PATH_ALIASES[shallowPath] ?? shallowPath];
-  }, [location.pathname]);
+  const selectedKeys = useMemo(
+    () =>
+      getSidebarActiveKeys(
+        location.pathname,
+        leftSidebarClassBase.getSidebarNestedKeys()
+      ),
+    [location.pathname]
+  );
 
   const handleLogoutClick = useCallback(() => {
     setIsConfirmLogoutModalOpen(true);
