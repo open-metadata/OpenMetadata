@@ -14,21 +14,31 @@
 package org.openmetadata.service.migration.utils.v210;
 
 import java.sql.ResultSet;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Migration utility for 2.1.0 data migrations. */
 @Slf4j
 public class MigrationUtil {
   private static final String OLD_CONTEXT_CENTER_CLASSIFICATION_NAME = "KnowledgeCenter";
   private static final String NEW_CONTEXT_CENTER_CLASSIFICATION_NAME = "ContextCenter";
+  private static final String NEW_CONTEXT_CENTER_CLASSIFICATION_DESCRIPTION =
+      "Category describing the context center articles or quickLinks. E.g., How-To-Guide, Quick-Link etc.";
+  private static final Map<String, String> NEW_CONTEXT_CENTER_TAG_DESCRIPTIONS =
+      Map.of(
+          "Article", "Context Center Article.",
+          "QuickLink", "Context Center Quick Link.",
+          "HowToGuide", "How To Guide Quick Link or Article Tag.");
 
   private final Handle handle;
   private final ConnectionType connectionType;
@@ -63,6 +73,7 @@ public class MigrationUtil {
             TagSource.CLASSIFICATION.ordinal(),
             OLD_CONTEXT_CENTER_CLASSIFICATION_NAME,
             NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+    updateContextCenterTagDescriptions(daoCollection);
 
     LOG.info(
         "Renamed classification '{}' to '{}'",
@@ -86,8 +97,26 @@ public class MigrationUtil {
   private void renameClassificationRow(CollectionDAO daoCollection, Classification classification) {
     classification
         .withName(NEW_CONTEXT_CENTER_CLASSIFICATION_NAME)
-        .withFullyQualifiedName(NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+        .withFullyQualifiedName(NEW_CONTEXT_CENTER_CLASSIFICATION_NAME)
+        .withDescription(NEW_CONTEXT_CENTER_CLASSIFICATION_DESCRIPTION);
     daoCollection.classificationDAO().update(classification);
+  }
+
+  private void updateContextCenterTagDescriptions(CollectionDAO daoCollection) {
+    NEW_CONTEXT_CENTER_TAG_DESCRIPTIONS.forEach(
+        (tagName, description) -> updateTagDescription(daoCollection, tagName, description));
+  }
+
+  private void updateTagDescription(
+      CollectionDAO daoCollection, String tagName, String description) {
+    String tagFqn = FullyQualifiedName.build(NEW_CONTEXT_CENTER_CLASSIFICATION_NAME, tagName);
+    try {
+      Tag tag = daoCollection.tagDAO().findEntityByName(tagFqn, Include.ALL);
+      tag.withDescription(description);
+      daoCollection.tagDAO().update(tag);
+    } catch (EntityNotFoundException e) {
+      LOG.info("Tag '{}' not found, skipping description update", tagFqn);
+    }
   }
 
   public void archiveLegacyThreadStorage() {
