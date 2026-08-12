@@ -50,6 +50,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -1950,10 +1951,11 @@ public class MigrationUtil {
       int redeployedWorkflows = redeployUserApprovalWorkflows();
       MigrationStats stats = migrateLegacyThreadTasks();
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+      int adoptedIncidents = adoptOrphanIncidentChains();
       int backfilledOpenTasks = backfillOpenTasksToWorkflowInstances();
 
       LOG.info(
-          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, backfilledOpenTasks={}",
+          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, adoptedIncidents={}, backfilledOpenTasks={}",
           seededDefaults,
           redeployedWorkflows,
           stats.migrated,
@@ -1961,6 +1963,7 @@ public class MigrationUtil {
           stats.skipped,
           stats.failed,
           rewrittenRecognizerFeedbackTasks,
+          adoptedIncidents,
           backfilledOpenTasks);
     }
 
@@ -2237,6 +2240,120 @@ public class MigrationUtil {
       }
 
       return stats;
+    }
+
+    /**
+     * Create a Task for every ongoing incident chain that never had a legacy thread to migrate.
+     * The task reuses the chain's stateId as its id, so the stateId-to-task identity the
+     * task-first model assumes holds for these chains too. Workflow start and status replay are
+     * left to {@link #backfillOpenTasksToWorkflowInstances()}, which runs after this.
+     */
+    private int adoptOrphanIncidentChains() {
+      int adopted = 0;
+      try {
+        for (OrphanIncidentCandidate candidate : listLatestIncidentPerTestCase()) {
+          TestCaseResolutionStatus latest = candidate.latest();
+          UUID stateId = latest.getStateId();
+          if (stateId == null
+              || latest.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
+              || incidentChainHasTask(stateId)) {
+            continue;
+          }
+          Task task = buildTaskFromIncidentChain(latest, candidate.testCaseId());
+          if (task == null) {
+            continue;
+          }
+          try {
+            taskRepository.create(null, task);
+            adopted++;
+            LOG.info("[v200] Adopted orphan incident chain {} as a task", stateId);
+          } catch (Exception e) {
+            LOG.warn("[v200] Could not adopt incident chain {}: {}", stateId, e.getMessage());
+          }
+        }
+      } catch (Exception e) {
+        LOG.error("[v200] Failed to adopt orphan incident chains", e);
+      }
+      return adopted;
+    }
+
+    /**
+     * Latest record of each test case's most recent incident chain, paired with the owning test
+     * case id. Stored records drop {@code testCaseReference}, so the test case is recovered by
+     * joining the indexed entityFQNHash.
+     */
+    private List<OrphanIncidentCandidate> listLatestIncidentPerTestCase() {
+      return handle
+          .createQuery(
+              "SELECT ts.json AS record, tc.id AS testCaseId "
+                  + "FROM test_case_resolution_status_time_series ts "
+                  + "INNER JOIN (SELECT entityFQNHash AS fqnHash, MAX(timestamp) AS maxTs "
+                  + "FROM test_case_resolution_status_time_series "
+                  + "WHERE entityFQNHash IS NOT NULL GROUP BY entityFQNHash) latest "
+                  + "ON ts.entityFQNHash = latest.fqnHash AND ts.timestamp = latest.maxTs "
+                  + "INNER JOIN test_case tc ON tc.fqnHash = ts.entityFQNHash")
+          .map(
+              (rs, ctx) -> {
+                try {
+                  return new OrphanIncidentCandidate(
+                      JsonUtils.readValue(rs.getString("record"), TestCaseResolutionStatus.class),
+                      UUID.fromString(rs.getString("testCaseId")));
+                } catch (Exception e) {
+                  LOG.warn("[v200] Skipping unreadable incident record: {}", e.getMessage());
+                  return null;
+                }
+              })
+          .list()
+          .stream()
+          .filter(java.util.Objects::nonNull)
+          .toList();
+    }
+
+    private record OrphanIncidentCandidate(TestCaseResolutionStatus latest, UUID testCaseId) {}
+
+    /** True when the chain already drives a task, either as its id or through a migrated thread. */
+    private boolean incidentChainHasTask(UUID stateId) {
+      try {
+        if (taskRepository.find(stateId, Include.ALL) != null) {
+          return true;
+        }
+      } catch (Exception e) {
+        // find() throws when absent; fall through to the legacy payload lookup
+      }
+      return collectionDAO.taskDAO().fetchTaskByTestCaseResolutionStatusId(stateId.toString())
+          != null;
+    }
+
+    private Task buildTaskFromIncidentChain(TestCaseResolutionStatus latest, UUID testCaseId) {
+      EntityReference aboutRef;
+      try {
+        aboutRef = Entity.getEntityReferenceById(Entity.TEST_CASE, testCaseId, Include.NON_DELETED);
+      } catch (Exception e) {
+        LOG.warn(
+            "[v200] Incident chain {} has no resolvable test case; skipping", latest.getStateId());
+        return null;
+      }
+
+      long updatedAt =
+          latest.getTimestamp() != null ? latest.getTimestamp() : System.currentTimeMillis();
+      String actorName = latest.getUpdatedBy() != null ? latest.getUpdatedBy().getName() : null;
+      EntityReference actorRef = resolveUserReference(actorName);
+      Map<String, Object> payload = new HashMap<>();
+      payload.put("testCaseResolutionStatusId", latest.getStateId().toString());
+
+      return new Task()
+          .withId(latest.getStateId())
+          .withCategory(TaskCategory.Incident)
+          .withType(TaskEntityType.TestCaseResolution)
+          .withStatus(TaskEntityStatus.Open)
+          .withPriority(TaskPriority.Medium)
+          .withDescription("Incident on " + aboutRef.getFullyQualifiedName())
+          .withAbout(aboutRef)
+          .withCreatedBy(actorRef)
+          .withCreatedAt(updatedAt)
+          .withUpdatedAt(updatedAt)
+          .withUpdatedBy(actorName)
+          .withPayload(payload);
     }
 
     private int backfillOpenTasksToWorkflowInstances() {
