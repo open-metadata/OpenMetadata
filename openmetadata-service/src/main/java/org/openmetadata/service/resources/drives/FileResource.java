@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FileRepository;
@@ -345,10 +346,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema =
-                        @Schema(
-                            implementation =
-                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+                    schema = @Schema(implementation = BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteStale(

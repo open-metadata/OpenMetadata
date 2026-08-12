@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -344,10 +345,7 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema =
-                        @Schema(
-                            implementation =
-                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+                    schema = @Schema(implementation = BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response deleteStale(
