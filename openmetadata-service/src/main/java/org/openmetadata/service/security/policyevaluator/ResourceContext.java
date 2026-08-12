@@ -4,7 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -106,25 +105,11 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   public ResourceContext(@NonNull String resource, T entity, EntityRepository<T> repository) {
-    this(resource, entity, repository, Collections.emptySet());
-  }
-
-  /**
-   * Accepts an entity the caller already loaded, together with the policy attributes it is known to
-   * carry. Anything not listed is fetched on demand, so omitting this is safe — a caller that
-   * understates what it hydrated causes an extra read, never a decision made on missing data.
-   */
-  public ResourceContext(
-      @NonNull String resource,
-      T entity,
-      EntityRepository<T> repository,
-      Collection<String> preloadedFields) {
     this.resource = resource;
     this.id = null;
     this.name = null;
     this.entity = entity;
     this.entityRepository = repository;
-    this.loadedFieldNames.addAll(preloadedFields);
   }
 
   @Override

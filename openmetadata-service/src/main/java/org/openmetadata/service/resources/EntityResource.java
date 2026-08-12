@@ -389,6 +389,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     if (coversProjection && entityClass.isInstance(resolved)) {
       result = (T) resolved;
       repository.clearFieldsInternal(result, fields);
+      // clearFieldsInternal does not reset certification, and the authorization load always
+      // requests it, so an entity resolved for the decision would carry it into a response that
+      // never asked for it. Mirror the rule a normal read applies: present only when the caller
+      // requested tags or certification.
+      if (!fields.contains(Entity.FIELD_TAGS) && !fields.contains(Entity.FIELD_CERTIFICATION)) {
+        result.setCertification(null);
+      }
       // The authorization load runs without a UriInfo, so the entity carries no self link yet.
       result = repository.withHref(uriInfo, result);
     }
@@ -1476,8 +1483,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           OperationContext operationContext = new OperationContext(entityType, operation);
           T existingEntity = existingByFqn.get(entity.getFullyQualifiedName());
           ResourceContext<T> resourceContext =
-              new ResourceContext<>(
-                  entityType, existingEntity, repository, repository.authEnrichedFields());
+              new ResourceContext<>(entityType, existingEntity, repository);
           authorizer.authorize(securityContext, operationContext, resourceContext);
         }
 

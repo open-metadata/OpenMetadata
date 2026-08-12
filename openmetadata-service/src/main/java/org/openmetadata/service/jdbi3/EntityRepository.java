@@ -11578,23 +11578,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  /**
-   * Policy attributes {@link #enrichEntitiesForAuth(List)} populates, for the entities it supports.
-   * Tags are deliberately not among them: they are unbounded in cardinality and most bulk callers
-   * run under policies that never inspect them, so they are left to be fetched only if a condition
-   * actually reads them.
-   */
-  public Set<String> authEnrichedFields() {
-    Set<String> fields = new HashSet<>();
-    if (supportsOwners) {
-      fields.add(FIELD_OWNERS);
-    }
-    if (supportsDomains) {
-      fields.add(FIELD_DOMAINS);
-    }
-    return fields;
-  }
-
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
     if (!fields.contains(FIELD_DATA_PRODUCTS) || !supportsDataProducts || nullOrEmpty(entities)) {
       return;
