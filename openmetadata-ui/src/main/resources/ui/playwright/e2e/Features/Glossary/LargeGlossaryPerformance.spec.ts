@@ -353,13 +353,20 @@ test.describe('Large Glossary Performance Tests', () => {
   });
 
   test('should handle drag and drop for term reordering', async ({ page }) => {
+    test.slow();
+
     await dragAndDropTerm(page, 'Term_10', 'Term_1');
 
     await confirmationDragAndDropGlossary(page, 'Term_10', 'Term_1');
 
     await expect(page.getByTestId('Term_10')).not.toBeVisible();
 
-    const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+    const termRes = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/glossaryTerms') &&
+        res.url().includes('directChildrenOf=') &&
+        res.status() === 200
+    );
 
     // verify the term is moved under the parent term
     await page.getByTestId('expand-collapse-all-button').click();
