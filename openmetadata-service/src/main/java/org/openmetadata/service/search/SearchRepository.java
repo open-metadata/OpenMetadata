@@ -154,6 +154,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
+import org.openmetadata.service.search.nlq.NoOpNLQService;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
@@ -4293,17 +4294,23 @@ public class SearchRepository {
 
   public void initializeNLQService(ElasticSearchConfiguration config) {
     try {
+      NLQService createdService = null;
       if (NLQServiceFactory.hasConfiguredProvider(config)) {
-        nlqService = NLQServiceFactory.createNLQService(config);
-        LOG.info(
-            "Initialized NLQ service with provider: {}",
-            config.getNaturalLanguageSearch().getProviderClass());
-      } else {
-        LOG.info("Natural language search is not enabled");
+        createdService = NLQServiceFactory.createNLQService(config);
       }
+      // A configured provider that cannot be loaded falls back to the no-op service. Keeping
+      // nlqService null in that case is what makes isNlqServiceAvailable() honest, so callers never
+      // advertise natural language search that no provider can answer.
+      nlqService = createdService instanceof NoOpNLQService ? null : createdService;
+      LOG.info("Natural language search available: {}", nlqService != null);
     } catch (Exception e) {
       LOG.error("Failed to initialize NLQ service", e);
     }
+  }
+
+  /** Whether a real NLQ provider was instantiated, as opposed to merely configured. */
+  public boolean isNlqServiceAvailable() {
+    return nlqService != null;
   }
 
   public BulkSink createBulkSink(
