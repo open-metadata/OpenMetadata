@@ -18,6 +18,7 @@ import { TestSuite } from '../../../../generated/tests/testCase';
 import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useTestSuitesData, UseTestSuitesDataProps } from './useTestSuitesData';
 
@@ -272,6 +273,22 @@ describe('useTestSuitesData', () => {
     expect(mockGetListTestSuitesBySearch).toHaveBeenCalledWith(
       expect.objectContaining({ q: '*abc*', owner: 'u1' })
     );
+  });
+
+  it('should escape query_string reserved characters in searchValue so a URL does not break the shard query', async () => {
+    const url = 'https://example.com/data-quality/test-case-results';
+    renderData(buildProps({ searchValue: url }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalled()
+    );
+
+    const { q } = mockGetListTestSuitesBySearch.mock.calls.at(-1)?.[0] ?? {};
+
+    expect(q).toBe(`*${escapeESReservedCharacters(url)}*`);
+    expect(q).toContain(String.raw`\:`);
+    expect(q).toContain(String.raw`\/`);
+    expect(q).not.toMatch(/[^\\][:/]/);
   });
 
   it('should refetch when an injected filter changes (driving effect)', async () => {

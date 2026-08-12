@@ -91,6 +91,7 @@ import fivetran from '../assets/img/service-icon-fivetran.webp';
 import flink from '../assets/img/service-icon-flink.webp';
 import nifi from '../assets/img/service-icon-nifi.webp';
 import openlineage from '../assets/img/service-icon-openlineage.svg';
+import prefect from '../assets/img/service-icon-prefect.svg';
 import spark from '../assets/img/service-icon-spark.webp';
 import spline from '../assets/img/service-icon-spline.webp';
 
@@ -223,6 +224,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   spline: spline,
   flink: flink,
   openlineage: openlineage,
+  prefect: prefect,
   domopipeline: domo,
   kafkaconnect: kafka,
   databrickspipeline: databrick,

@@ -21,7 +21,7 @@ from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -232,6 +232,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         table_name=table_name,
                         schema=table_schema,
                         sqlalchemy_uri=chart_json.sqlalchemy_uri,
+                        datasource_id=chart_json.datasource_id,
                     ),
                     column_mapping,
                 )
@@ -400,7 +401,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         dataType=col_parse["dataType"],
                         arrayDataType=self.parse_array_data_type(col_parse),
                         children=self.parse_row_data_type(col_parse),
-                        name=truncate_column_name(field.column_name or str(field.id)),
+                        name=ColumnName(truncate_column_name(field.column_name or str(field.id))),
                         displayName=field.column_name,
                         description=field.description,
                         dataLength=int(col_parse.get("dataLength", 0)),
