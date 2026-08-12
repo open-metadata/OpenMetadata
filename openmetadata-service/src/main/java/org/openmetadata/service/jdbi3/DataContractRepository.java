@@ -98,9 +98,9 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -1469,6 +1469,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveUnspecifiedODCSPassthrough();
       compareAndUpdate(
           "latestResult",
           () ->
@@ -1490,9 +1491,42 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       compareAndUpdate("schema", () -> updateSchema(original, updated));
       compareAndUpdate("qualityExpectations", () -> updateQualityExpectations(original, updated));
       compareAndUpdate("semantics", () -> updateSemantics(original, updated));
+      compareAndUpdate(
+          "odcsQualityRules",
+          () ->
+              recordChange(
+                  "odcsQualityRules",
+                  original.getOdcsQualityRules(),
+                  updated.getOdcsQualityRules()));
+      compareAndUpdate(
+          "odcsElementExtensions",
+          () ->
+              recordChange(
+                  "odcsElementExtensions",
+                  original.getOdcsElementExtensions(),
+                  updated.getOdcsElementExtensions()));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
+    }
+
+    /**
+     * The ODCS passthrough fields exist only so that an imported ODCS document can be exported back
+     * unchanged. They are not part of the OpenMetadata contract editing surface, so a PUT that never
+     * mentions them comes from a client unaware they exist rather than from a user asking to drop
+     * them — carry them forward. An explicit empty list still clears them, which is how
+     * PUT /odcs?mode=replace drops the rules a re-imported document no longer declares. PATCH is
+     * left alone so that removing a field there stays an explicit removal.
+     */
+    private void preserveUnspecifiedODCSPassthrough() {
+      if (operation.isPut()) {
+        if (updated.getOdcsQualityRules() == null) {
+          updated.setOdcsQualityRules(original.getOdcsQualityRules());
+        }
+        if (updated.getOdcsElementExtensions() == null) {
+          updated.setOdcsElementExtensions(original.getOdcsElementExtensions());
+        }
+      }
     }
 
     private void updateSchema(DataContract original, DataContract updated) {
