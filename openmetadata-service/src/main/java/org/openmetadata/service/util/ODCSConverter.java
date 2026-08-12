@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -1134,8 +1135,10 @@ public class ODCSConverter {
     replaced.setTermsOfUse(imported.getTermsOfUse());
     replaced.setExtension(imported.getExtension());
     replaced.setSemantics(imported.getSemantics());
-    replaced.setOdcsQualityRules(imported.getOdcsQualityRules());
-    replaced.setOdcsElementExtensions(imported.getOdcsElementExtensions());
+    // An empty list is how a replace says "the re-imported document declares none of these".
+    // Leaving null would read as "not specified" and be carried forward on the next write.
+    replaced.setOdcsQualityRules(listOrEmpty(imported.getOdcsQualityRules()));
+    replaced.setOdcsElementExtensions(listOrEmpty(imported.getOdcsElementExtensions()));
 
     return replaced;
   }

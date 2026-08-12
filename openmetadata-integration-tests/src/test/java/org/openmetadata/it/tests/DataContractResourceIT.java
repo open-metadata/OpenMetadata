@@ -2941,6 +2941,38 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         "PUT /odcs?mode=replace did not clear odcsElementExtensions");
   }
 
+  @Test
+  void testExplicitEmptyPassthroughOverPutClears(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract imported = importODCSWithPassthrough(ns, table);
+    assertFalse(
+        nullOrEmpty(imported.getOdcsQualityRules()),
+        "ODCS import did not persist odcsQualityRules");
+    assertFalse(
+        nullOrEmpty(imported.getOdcsElementExtensions()),
+        "ODCS import did not persist odcsElementExtensions");
+
+    // Omitting the passthrough carries it forward; sending it empty is how a client that does know
+    // about it asks for it to be dropped.
+    CreateDataContract clear =
+        new CreateDataContract()
+            .withName(imported.getName())
+            .withEntity(table.getEntityReference())
+            .withDescription(imported.getDescription())
+            .withEntityStatus(imported.getEntityStatus())
+            .withOdcsQualityRules(List.of())
+            .withOdcsElementExtensions(List.of());
+    SdkClients.adminClient().dataContracts().createOrUpdate(clear);
+
+    DataContract refetched = getEntityByName(imported.getFullyQualifiedName());
+    assertTrue(
+        nullOrEmpty(refetched.getOdcsQualityRules()),
+        "An explicitly empty odcsQualityRules did not clear the stored rules");
+    assertTrue(
+        nullOrEmpty(refetched.getOdcsElementExtensions()),
+        "An explicitly empty odcsElementExtensions did not clear the stored extensions");
+  }
+
   private DataContract importODCSWithPassthrough(TestNamespace ns, Table table) {
     ODCSDataContract odcs = new ODCSDataContract();
     odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);

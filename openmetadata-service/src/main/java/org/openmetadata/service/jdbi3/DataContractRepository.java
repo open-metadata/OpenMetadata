@@ -1437,6 +1437,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveUnspecifiedODCSPassthrough();
       compareAndUpdate(
           "latestResult",
           () ->
@@ -1475,6 +1476,25 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
+    }
+
+    /**
+     * The ODCS passthrough fields exist only so that an imported ODCS document can be exported back
+     * unchanged. They are not part of the OpenMetadata contract editing surface, so a PUT that never
+     * mentions them comes from a client unaware they exist rather than from a user asking to drop
+     * them — carry them forward. An explicit empty list still clears them, which is how
+     * PUT /odcs?mode=replace drops the rules a re-imported document no longer declares. PATCH is
+     * left alone so that removing a field there stays an explicit removal.
+     */
+    private void preserveUnspecifiedODCSPassthrough() {
+      if (operation.isPut()) {
+        if (updated.getOdcsQualityRules() == null) {
+          updated.setOdcsQualityRules(original.getOdcsQualityRules());
+        }
+        if (updated.getOdcsElementExtensions() == null) {
+          updated.setOdcsElementExtensions(original.getOdcsElementExtensions());
+        }
+      }
     }
 
     private void updateSchema(DataContract original, DataContract updated) {

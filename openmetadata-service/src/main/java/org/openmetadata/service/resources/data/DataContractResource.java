@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.data;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -555,7 +554,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Valid CreateDataContract create) {
     DataContract dataContract =
         getDataContract(create, securityContext.getUserPrincipal().getName());
-    preserveODCSPassthrough(dataContract);
     return createOrUpdate(uriInfo, securityContext, dataContract);
   }
 
@@ -581,7 +579,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       CreateDataContract create = YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
       DataContract dataContract =
           getDataContract(create, securityContext.getUserPrincipal().getName());
-      preserveODCSPassthrough(dataContract);
       return createOrUpdate(uriInfo, securityContext, dataContract);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid YAML content: " + e.getMessage(), e);
@@ -1636,25 +1633,6 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       }
     }
     return existing;
-  }
-
-  /**
-   * The ODCS passthrough fields exist only so that an imported ODCS document can be exported back
-   * unchanged. They are not part of the OpenMetadata contract editing surface, so a full-replace
-   * request that never mentions them comes from a client that does not know they exist rather than
-   * from a user asking to drop them — carry them forward, matching the merge semantics the ODCS
-   * import endpoints already use. Clearing them is done through PUT /odcs?mode=replace.
-   */
-  private void preserveODCSPassthrough(DataContract dataContract) {
-    DataContract existing = loadExistingContract(dataContract.getEntity());
-    if (existing != null) {
-      if (nullOrEmpty(dataContract.getOdcsQualityRules())) {
-        dataContract.setOdcsQualityRules(existing.getOdcsQualityRules());
-      }
-      if (nullOrEmpty(dataContract.getOdcsElementExtensions())) {
-        dataContract.setOdcsElementExtensions(existing.getOdcsElementExtensions());
-      }
-    }
   }
 
   public static class DataContractList extends ResultList<DataContract> {
