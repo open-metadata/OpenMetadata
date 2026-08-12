@@ -63,9 +63,8 @@ public class FieldPathUtils {
   /**
    * Update a field's description, recording where the new text came from.
    *
-   * <p>The change source rides the patch rather than being stamped afterwards: one versioned write
-   * that carries the provenance into the change summary and through the normal lifecycle, so the
-   * search document's {@code descriptionSource} follows. A follow-up write cannot do either.
+   * <p>The source rides the patch, so one versioned write carries the provenance into the change
+   * summary and, through the normal lifecycle, the search document's {@code descriptionSource}.
    *
    * @param changeSource provenance of the new text, or null to leave it defaulted
    */

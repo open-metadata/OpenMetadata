@@ -4406,9 +4406,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public void patchChangeSummary(
       UUID entityId, String fieldName, ChangeSource changeSource, String user) {
-    // find(), not get(): this method re-persists the whole entity, and get() runs clearFields,
-    // which nulls every field outside the requested set. Storing that back would drop the
-    // cleared-but-persisted attributes — for a Table, tableConstraints and schemaDefinition.
+    // find(), not get(): this re-persists the whole entity, and get() runs clearFields, which
+    // nulls fields outside the requested set — for a Table, tableConstraints and schemaDefinition.
     T entity = find(entityId, NON_DELETED);
     ChangeDescription cd = entity.getChangeDescription();
     if (cd == null) {
@@ -4433,11 +4432,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Direct dao.update skips invalidateCachesAfterStore, so drop every cached variant so the
     // next read picks up the new changeSummary instead of serving stale JSON.
     invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
-    // No search-index update: SearchRepository.updateEntity() nulls changeDescription before
-    // indexing, so re-indexing here cannot move the doc's descriptionSource anyway (verified
-    // against a live server). Callers that change a value carry the source on the patch instead,
-    // which reindexes correctly through the normal lifecycle. This method only runs when the
-    // value is unchanged, so the doc's text stays accurate and only its provenance lags.
+    // The search doc's descriptionSource lags until the entity is next written; the value is
+    // unchanged here, so only its provenance is stale.
   }
 
   @Transaction

@@ -1019,36 +1019,25 @@ public class TaskWorkflowHandler {
   }
 
   /**
-   * Stamp {@code SUGGESTED} on the accepted field's change summary, for agent-authored suggestions.
+   * Whether the text being applied is what the agent actually proposed.
    *
-   * <p>Applies to both accept paths. The no-op path has no FieldChange to summarize, and the
-   * value-changing path goes through {@link FieldPathUtils#updateFieldDescription}, which patches
-   * without a change source — so its summary would otherwise default to {@code Manual} and read as
-   * hand-authored. Both cases are content an agent produced and a reviewer approved, which consumers
-   * (search's descriptionSource, automations deciding whether an asset still needs work) must be
-   * able to tell apart from a human writing the text themselves.
-   *
-   * <p>A suggestion a person wrote is left alone: accepting it records a human's words, whoever
-   * clicked approve. The payload's {@code source} is client-supplied, so anything that is not
-   * recognizably an agent counts as human — the direction that keeps an asset under review rather
-   * than silently exempting it.
+   * <p>The payload here is the reviewer's resolution merged over the task's, and the merge keeps the
+   * original {@code source} — so a reviewer who rewrote the text still arrives labelled
+   * {@code Agent}. Comparing against the task's own suggestion separates the two.
    */
-  private void recordSuggestedChangeSummary(
-      EntityRepository<?> repository,
-      EntityInterface entity,
-      JsonNode payloadNode,
-      String fieldPath,
-      String user) {
-    String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
-    if (changeSummaryField != null && isAgentAuthored(payloadNode)) {
-      repository.patchChangeSummary(
-          entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
+  private boolean isAgentAuthored(Task task, JsonNode payloadNode, String appliedValue) {
+    if (!AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(payloadNode.path("source").asText(null))) {
+      return false;
     }
+    String proposed = originalSuggestedValue(task);
+    return proposed == null || proposed.equals(appliedValue);
   }
 
-  private boolean isAgentAuthored(JsonNode payloadNode) {
-    String source = payloadNode.path("source").asText(null);
-    return AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(source);
+  private String originalSuggestedValue(Task task) {
+    if (task == null || task.getPayload() == null) {
+      return null;
+    }
+    return JsonUtils.valueToTree(task.getPayload()).path("suggestedValue").asText(null);
   }
 
   private void applySuggestion(
@@ -1073,7 +1062,11 @@ public class TaskWorkflowHandler {
       if ("Description".equals(suggestionType)) {
         Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
         if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
-          recordSuggestedChangeSummary(repository, entity, payloadNode, fieldPath, user);
+          String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
+          if (changeSummaryField != null && isAgentAuthored(task, payloadNode, suggestedValue)) {
+            repository.patchChangeSummary(
+                entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
+          }
           LOG.info(
               "[TaskWorkflowHandler] Recorded no-op description suggestion change summary: fieldPath={}",
               fieldPath);
@@ -1086,7 +1079,7 @@ public class TaskWorkflowHandler {
                 user,
                 fieldPath,
                 suggestedValue,
-                isAgentAuthored(payloadNode) ? ChangeSource.SUGGESTED : null);
+                isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
         if (success) {
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
