@@ -157,6 +157,7 @@ const KnowledgePagesHierarchy = forwardRef<
           return res.paging.total;
         } catch (error) {
           showErrorToast(error as AxiosError);
+
           throw error;
         }
       },
