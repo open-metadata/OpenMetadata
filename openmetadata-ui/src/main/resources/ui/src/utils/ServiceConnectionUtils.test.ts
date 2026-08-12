@@ -1008,6 +1008,31 @@ describe('findPasswordFieldsWithoutPrefix', () => {
     ).toEqual([{ path: ['awsSecretAccessKey'], key: 'awsSecretAccessKey' }]);
   });
 
+  it('reports nothing when no oneOf branch unambiguously matches the current formData', () => {
+    const oneOfSchema = {
+      oneOf: [
+        {
+          title: 'Basic Auth',
+          properties: { password: { format: 'password' } },
+        },
+        {
+          title: 'AWS Config',
+          properties: { awsSecretAccessKey: { format: 'password' } },
+        },
+      ],
+    };
+
+    // Stale keys from a previously-selected branch don't match any branch
+    // exactly - the unselected AWS branch's password field must not be
+    // reported just because it's technically present in the schema.
+    expect(
+      findPasswordFieldsWithoutPrefix(oneOfSchema, {
+        password: 'plaintext',
+        awsSecretAccessKey: 'plaintext',
+      })
+    ).toEqual([]);
+  });
+
   it('supports a custom prefix', () => {
     expect(
       findPasswordFieldsWithoutPrefix(

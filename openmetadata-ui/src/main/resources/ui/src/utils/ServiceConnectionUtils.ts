@@ -368,11 +368,14 @@ export const findPasswordFieldsWithoutPrefix = (
           })
         : undefined;
 
+    // No unambiguously-selected branch (e.g. stale keys left over after
+    // switching auth types) - unlike the required-fields count, we can't take
+    // a union across branches here: a password field from a branch that
+    // isn't rendered would falsely block submit on a field the user can't
+    // see or edit. Report nothing rather than guess.
     return matchingBranch
       ? findPasswordFieldsWithoutPrefix(matchingBranch, formData, prefix)
-      : branches.flatMap((branch) =>
-          findPasswordFieldsWithoutPrefix(branch, formData, prefix)
-        );
+      : [];
   }
 
   const properties = (schema.properties ?? {}) as JsonObject;
