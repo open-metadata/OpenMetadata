@@ -32,6 +32,20 @@ from metadata.utils.ssl_manager import get_ssl_connection
 logger = profiler_logger()
 
 
+def apply_sample_query(chunk, sample_query: str):
+    """
+    Filter a chunk with the configured sample query.
+
+    ``DataFrame.query`` resolves ``@name`` against the *caller's* locals and globals, which puts
+    ``@__builtins__`` in reach: a sample query of
+    ``@__builtins__.__import__('os').system(...)`` executes that command on the ingestion host
+    before pandas ever tries to use the result as a row mask. Handing it empty scopes removes the
+    only bridge out of the expression sandbox — column names still resolve, because those come
+    from the frame's own resolvers rather than from these dicts.
+    """
+    return chunk.query(sample_query, global_dict={}, local_dict={})
+
+
 class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     """
     Generates a sample of the data to not
@@ -125,7 +139,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
             if cols is None:
                 cols = chunk.columns.tolist()
             if sample_query is not None:
-                chunk = chunk.query(sample_query)  # noqa: PLW2901
+                chunk = apply_sample_query(chunk, sample_query)  # noqa: PLW2901
             rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
             if len(rows) >= (self.sample_limit or 100):
                 break

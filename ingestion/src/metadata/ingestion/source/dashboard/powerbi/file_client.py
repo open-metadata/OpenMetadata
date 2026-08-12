@@ -13,12 +13,12 @@ File Client for PowerBi
 """
 
 import json
-import os
 import shutil
 import traceback
 import zipfile
 from collections import defaultdict
 from functools import singledispatch
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from metadata.clients.aws_client import AWSClient
@@ -76,6 +76,23 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:  # noqa:
     return blob_grouped_by_directory
 
 
+def _resolve_download_path(extract_dir: str, blob: str) -> Optional[str]:  # noqa: UP045
+    """
+    Resolve where `blob` should be written under `extract_dir`, or None if it escapes.
+
+    Object keys are attacker-influenced: anyone able to put an object in the configured bucket
+    controls the key, and a key such as `../../../../etc/cron.d/x.pbit` would otherwise be joined
+    straight onto `extract_dir` and written outside it. Resolving both sides and requiring
+    containment also covers absolute keys and symlinked `extract_dir`.
+    """
+    root = Path(extract_dir).resolve()
+    target = (root / blob).resolve()
+    if not target.is_relative_to(root):
+        logger.warning(f"Skipping blob with unsafe path outside the extract directory: {blob}")
+        return None
+    return str(target)
+
+
 def download_pbit_files(
     blob_grouped_by_directory: Dict,  # noqa: UP006
     config,
@@ -86,20 +103,20 @@ def download_pbit_files(
     """
     Method to download the files from sources
     """
-    for (
-        key,
-        blobs,
-    ) in blob_grouped_by_directory.items():
+    for blobs in blob_grouped_by_directory.values():
         kwargs = {}
         if bucket_name:
             kwargs = {"bucket_name": bucket_name}
         try:
             for blob in blobs:
                 if blob:
+                    local_file_path = _resolve_download_path(extract_dir, blob)
+                    if local_file_path is None:
+                        continue
                     reader = get_reader(config_source=config, client=client)
                     # create the required dir before downloading
-                    os.makedirs(f"{extract_dir}/{key}", exist_ok=True)  # noqa: PTH103
-                    reader.download(path=blob, local_file_path=f"{extract_dir}/{blob}", **kwargs)
+                    Path(local_file_path).parent.mkdir(parents=True, exist_ok=True)
+                    reader.download(path=blob, local_file_path=local_file_path, **kwargs)
         except PowerBIFileConfigException as exc:
             logger.warning(exc)
 

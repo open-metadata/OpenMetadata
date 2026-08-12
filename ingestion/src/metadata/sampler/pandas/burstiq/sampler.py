@@ -24,7 +24,7 @@ import pandas as pd
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.sampler.config import resolve_static_sampling_config
-from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.sampler.pandas.sampler import DatalakeSampler, apply_sample_query
 from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -134,7 +134,7 @@ class BurstIQSampler(DatalakeSampler):
                 cols = chunk.columns.tolist()
             available = [c for c in cols if c in chunk.columns]
             if sample_query is not None:
-                chunk = chunk.query(sample_query)  # noqa: PLW2901
+                chunk = apply_sample_query(chunk, sample_query)  # noqa: PLW2901
             rows.extend(self._fetch_rows(chunk[available])[: self.sample_limit])
             if len(rows) >= (self.sample_limit or 100):
                 break
