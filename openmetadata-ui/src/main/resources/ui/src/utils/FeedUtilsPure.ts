@@ -578,6 +578,20 @@ export const aggregateFeedCountResponse = (
     { conversationCount: 0, mentionCount: 0 }
   );
 
+/**
+ * The entity tab header has to equal the sum of its two sub-tab badges: All
+ * shows conversations + activity change-events, and Tasks shows the count for
+ * the active filter, which defaults to open. Counting every task here — closed
+ * ones included — made the header exceed the sub-tabs by the number of
+ * non-open tasks on any entity with a resolved task.
+ */
+export const getFeedTotalCount = ({
+  conversationCount,
+  activityCount,
+  openTaskCount,
+}: Pick<FeedCounts, 'conversationCount' | 'activityCount' | 'openTaskCount'>) =>
+  conversationCount + activityCount + openTaskCount;
+
 export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
@@ -621,7 +635,11 @@ export const getFeedCounts = async (
       totalTasksCount,
       openTaskCount,
       closedTaskCount,
-      totalCount: conversationCount + activityCount + totalTasksCount,
+      totalCount: getFeedTotalCount({
+        conversationCount,
+        activityCount,
+        openTaskCount,
+      }),
       mentionCount,
     });
   } catch (err) {
@@ -646,10 +664,11 @@ export const fetchEntityTaskCountsInto = async (
         openTaskCount,
         closedTaskCount,
         totalTasksCount,
-        totalCount:
-          (prev.conversationCount ?? 0) +
-          (prev.activityCount ?? 0) +
-          totalTasksCount,
+        totalCount: getFeedTotalCount({
+          conversationCount: prev.conversationCount ?? 0,
+          activityCount: prev.activityCount ?? 0,
+          openTaskCount,
+        }),
       };
     });
   } catch (err) {
@@ -676,22 +695,19 @@ export const fetchEntityActivityCountInto = async (
     ]);
     setFeedCount((prev) => {
       const activityCount = activityRes?.paging?.total ?? 0;
-      const conversationCount = (feedCountRes ?? []).reduce(
-        (sum, item) => sum + (item.conversationCount ?? 0),
-        0
-      );
-      const mentionCount = (feedCountRes ?? []).reduce(
-        (sum, item) => sum + (item.mentionCount ?? 0),
-        0
-      );
+      const { conversationCount, mentionCount } =
+        aggregateFeedCountResponse(feedCountRes);
 
       return {
         ...prev,
         activityCount,
         conversationCount,
         mentionCount,
-        totalCount:
-          conversationCount + activityCount + (prev.totalTasksCount ?? 0),
+        totalCount: getFeedTotalCount({
+          conversationCount,
+          activityCount,
+          openTaskCount: prev.openTaskCount ?? 0,
+        }),
       };
     });
   } catch (err) {

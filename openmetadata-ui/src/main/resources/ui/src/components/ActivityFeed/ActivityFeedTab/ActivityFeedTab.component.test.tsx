@@ -100,10 +100,12 @@ jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
 }));
 
 jest.mock('../../../utils/FeedUtilsPure', () => ({
-  // Real implementation — folding the /feed/count array is the behaviour the
-  // user-entity tests below exercise.
+  // Real implementations — folding the /feed/count array and summing the tab
+  // total are the behaviours the tests below exercise.
   aggregateFeedCountResponse: jest.requireActual('../../../utils/FeedUtilsPure')
     .aggregateFeedCountResponse,
+  getFeedTotalCount: jest.requireActual('../../../utils/FeedUtilsPure')
+    .getFeedTotalCount,
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
       conversationCount: mockConversationCount,

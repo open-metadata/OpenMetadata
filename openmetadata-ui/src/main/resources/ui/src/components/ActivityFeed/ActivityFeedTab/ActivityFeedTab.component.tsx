@@ -70,6 +70,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   aggregateFeedCountResponse,
   getFeedCounts,
+  getFeedTotalCount,
 } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -268,6 +269,7 @@ export const ActivityFeedTab = ({
 
       const taskCounts = await getTaskCounts(taskCountParams);
       const totalTasksCount = taskCounts.total ?? 0;
+      const openTaskCount = taskCounts.open ?? 0;
 
       if (isUserEntity) {
         // Also get feed counts for conversations and mentions
@@ -283,9 +285,13 @@ export const ActivityFeedTab = ({
             conversationCount,
             activityCount,
             totalTasksCount,
-            openTaskCount: taskCounts.open ?? 0,
+            openTaskCount,
             closedTaskCount: taskCounts.completed ?? 0,
-            totalCount: conversationCount + activityCount + totalTasksCount,
+            totalCount: getFeedTotalCount({
+              conversationCount,
+              activityCount,
+              openTaskCount,
+            }),
             mentionCount,
           },
         }));
@@ -295,14 +301,15 @@ export const ActivityFeedTab = ({
           handleFeedCount({
             ...feedData,
             totalTasksCount,
-            openTaskCount: taskCounts.open ?? 0,
+            openTaskCount,
             closedTaskCount: taskCounts.completed ?? 0,
             // getFeedCounts derives its own total from a differently-scoped
             // task query; recompute so it agrees with the counts we just set.
-            totalCount:
-              feedData.conversationCount +
-              feedData.activityCount +
-              totalTasksCount,
+            totalCount: getFeedTotalCount({
+              conversationCount: feedData.conversationCount,
+              activityCount: feedData.activityCount,
+              openTaskCount,
+            }),
           });
         });
       }

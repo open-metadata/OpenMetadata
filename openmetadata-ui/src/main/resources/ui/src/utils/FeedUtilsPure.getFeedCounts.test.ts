@@ -13,7 +13,11 @@
 import { FeedCounts } from '../interface/feed.interface';
 import { getEntityActivityByFqn, getFeedCount } from '../rest/feedsAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
-import { aggregateFeedCountResponse, getFeedCounts } from './FeedUtilsPure';
+import {
+  aggregateFeedCountResponse,
+  getFeedCounts,
+  getFeedTotalCount,
+} from './FeedUtilsPure';
 
 jest.mock('../rest/feedsAPI', () => ({
   getFeedCount: jest.fn(),
@@ -133,5 +137,57 @@ describe('getFeedCounts', () => {
     expect(received.mentionCount).toBe(1);
     expect(received.activityCount).toBe(4);
     expect(received.totalCount).toBe(14);
+  });
+
+  it('counts only OPEN tasks in totalCount, so the tab header matches its sub-tabs', async () => {
+    // The entity tab header renders totalCount, while the left panel shows
+    // All (conversations + activity) and Tasks (the open count, its default
+    // filter). Counting closed tasks in the header made it exceed the sum of
+    // the two badges by the number of resolved tasks.
+    (getFeedCount as jest.Mock).mockResolvedValue([
+      { conversationCount: 1, mentionCount: 0 },
+    ]);
+    (getEntityActivityByFqn as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 2 },
+    });
+    (getTaskCounts as jest.Mock).mockResolvedValue({
+      total: 5,
+      open: 2,
+      completed: 3,
+    });
+
+    const received = await new Promise<FeedCounts>((resolve) => {
+      getFeedCounts('table', 'db.schema.closed', resolve);
+    });
+
+    // 1 conversation + 2 activity + 2 OPEN tasks = 5, not 8.
+    expect(received.totalCount).toBe(5);
+    // totalTasksCount keeps its own meaning — every task, open or not.
+    expect(received.totalTasksCount).toBe(5);
+    expect(received.openTaskCount).toBe(2);
+    expect(received.closedTaskCount).toBe(3);
+  });
+});
+
+describe('getFeedTotalCount', () => {
+  it('sums conversations, activity and open tasks only', () => {
+    expect(
+      getFeedTotalCount({
+        conversationCount: 1,
+        activityCount: 2,
+        openTaskCount: 2,
+      })
+    ).toBe(5);
+  });
+
+  it('is unaffected by closed tasks', () => {
+    expect(
+      getFeedTotalCount({
+        conversationCount: 0,
+        activityCount: 0,
+        openTaskCount: 0,
+      })
+    ).toBe(0);
   });
 });
