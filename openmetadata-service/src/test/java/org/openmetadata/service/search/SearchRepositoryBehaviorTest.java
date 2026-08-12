@@ -2853,6 +2853,9 @@ class SearchRepositoryBehaviorTest {
     config.setNaturalLanguageSearch(enabledConfig);
     try (var nlqServiceFactoryMock = mockStatic(NLQServiceFactory.class)) {
       nlqServiceFactoryMock
+          .when(() -> NLQServiceFactory.hasConfiguredProvider(config))
+          .thenReturn(true);
+      nlqServiceFactoryMock
           .when(() -> NLQServiceFactory.createNLQService(config))
           .thenReturn(nlqService);
 

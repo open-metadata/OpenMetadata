@@ -4293,10 +4293,11 @@ public class SearchRepository {
 
   public void initializeNLQService(ElasticSearchConfiguration config) {
     try {
-      NaturalLanguageSearchConfiguration nlqConfig = config.getNaturalLanguageSearch();
-      if (nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled())) {
+      if (NLQServiceFactory.hasConfiguredProvider(config)) {
         nlqService = NLQServiceFactory.createNLQService(config);
-        LOG.info("Initialized NLQ service with provider: {}", nlqConfig.getProviderClass());
+        LOG.info(
+            "Initialized NLQ service with provider: {}",
+            config.getNaturalLanguageSearch().getProviderClass());
       } else {
         LOG.info("Natural language search is not enabled");
       }
