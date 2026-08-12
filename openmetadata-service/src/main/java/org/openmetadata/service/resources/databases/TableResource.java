@@ -534,7 +534,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleTables",

@@ -375,7 +375,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleTopics",

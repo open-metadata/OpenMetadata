@@ -420,7 +420,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleDatabases",

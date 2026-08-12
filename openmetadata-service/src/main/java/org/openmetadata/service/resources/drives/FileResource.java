@@ -328,7 +328,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleFiles",

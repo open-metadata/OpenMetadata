@@ -323,7 +323,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleMlModels",

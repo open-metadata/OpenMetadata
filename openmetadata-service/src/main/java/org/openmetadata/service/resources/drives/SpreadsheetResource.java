@@ -328,7 +328,7 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleSpreadsheets",

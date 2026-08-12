@@ -384,7 +384,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleDashboards",

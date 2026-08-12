@@ -383,7 +383,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleSearchIndexes",

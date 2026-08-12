@@ -37,7 +37,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 
 /**
- * Integration tests for the scope-level stale-deletion endpoint ({@code PUT
+ * Integration tests for the scope-level stale-deletion endpoint ({@code DELETE
  * /v1/tables/deleteStale}).
  *
  * <p>The connector finishes ingesting a scope and sends the set of FQNs it saw. The server

@@ -573,7 +573,7 @@ public class DatabaseSchemaResource
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleDatabaseSchemas",

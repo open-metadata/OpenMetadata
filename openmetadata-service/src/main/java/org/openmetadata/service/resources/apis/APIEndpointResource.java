@@ -380,7 +380,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
-  @PUT
+  @DELETE
   @Path("/deleteStale")
   @Operation(
       operationId = "bulkDeleteStaleAPIEndpoints",

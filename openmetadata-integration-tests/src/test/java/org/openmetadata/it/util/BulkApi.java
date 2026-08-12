@@ -13,8 +13,8 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 
 /**
  * Helpers for driving the bulk create/update ({@code PUT /v1/{collection}/bulk}) and scope-level
- * stale-deletion ({@code PUT /v1/{collection}/deleteStale}) endpoints over raw HTTP. The SDK fluent
- * clients do not expose these endpoints, so the integration tests call them directly.
+ * stale-deletion ({@code DELETE /v1/{collection}/deleteStale}) endpoints over raw HTTP. The SDK
+ * fluent clients do not expose these endpoints, so the integration tests call them directly.
  */
 public final class BulkApi {
   private static final ObjectMapper MAPPER =
@@ -68,7 +68,9 @@ public final class BulkApi {
             .uri(URI.create(SdkClients.getServerUrl() + "/v1/" + collection + "/deleteStale"))
             .header("Authorization", "Bearer " + token)
             .header("Content-Type", "application/json")
-            .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(request)))
+            // Builder.DELETE() takes no body; deleteStale carries the seen-FQN set in one.
+            .method(
+                "DELETE", HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(request)))
             .build();
     return HTTP.send(httpRequest, HttpResponse.BodyHandlers.ofString());
   }
