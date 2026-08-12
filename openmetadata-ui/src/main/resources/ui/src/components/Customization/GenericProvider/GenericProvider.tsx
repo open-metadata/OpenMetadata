@@ -98,14 +98,30 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   );
   selectedColumnRef.current = selectedColumn;
 
-  // State to store the displayed columns (sorted/filtered) from SchemaTable
-  const [displayedColumns, setDisplayedColumns] = useState<ColumnOrTask[]>([]);
+  // Children (SchemaTable, ModelTab, etc.) register their sorted/filtered/paginated
+  // column list here. Kept in a ref so the write does not re-render the provider on
+  // load; only mirrored into `panelColumns` state while the column detail panel is open.
+  const displayedColumnsRef = useRef<ColumnOrTask[]>([]);
+  const selectedColumnRef = useRef<ColumnOrTask | null>(null);
+  const [panelColumns, setPanelColumns] = useState<ColumnOrTask[]>([]);
+
+  const setDisplayedColumns = useCallback((cols: ColumnOrTask[]) => {
+    displayedColumnsRef.current = cols;
+    // Keep the open panel's navigation list live; when closed, skip the re-render.
+    if (selectedColumnRef.current) {
+      setPanelColumns(cols);
+    }
+  }, []);
 
   // Derive isColumnDetailOpen from selectedColumn - if a column is selected, panel is open
   const isColumnDetailOpen = useMemo(
     () => selectedColumn !== null,
     [selectedColumn]
   );
+
+  useEffect(() => {
+    selectedColumnRef.current = selectedColumn;
+  }, [selectedColumn]);
 
   const { entityRules } = useEntityRules(type);
 
@@ -123,10 +139,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     return extractColumnsFromData(data, type) as ColumnOrTask[];
   }, [data, type]);
 
-  // Use displayed columns if available (sorted), otherwise fall back to extracted columns
+  // Use the panel's snapshot of displayed columns (sorted) if available, otherwise
+  // fall back to the extracted columns.
   const columnsForPanel = useMemo(() => {
-    return displayedColumns.length > 0 ? displayedColumns : extractedColumns;
-  }, [displayedColumns, extractedColumns]);
+    return panelColumns.length > 0 ? panelColumns : extractedColumns;
+  }, [panelColumns, extractedColumns]);
 
   // Helper to clean column by removing empty children array
   const cleanColumn = useCallback((column: ColumnOrTask): ColumnOrTask => {
@@ -142,6 +159,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     if (columnFqn && extractedColumns.length > 0) {
       const col = findFieldByFQN(extractedColumns as Column[], columnFqn);
       if (col) {
+        // Seed the panel navigation list on the deep-link path too — the child's
+        // ref write is dropped here because the panel-open gate is still null.
+        setPanelColumns(
+          displayedColumnsRef.current.length > 0
+            ? displayedColumnsRef.current
+            : extractedColumns
+        );
         setSelectedColumn(cleanColumn(col));
       }
     }
@@ -238,6 +262,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         return;
       }
 
+      // Snapshot the child's current displayed list for panel prev/next navigation.
+      setPanelColumns(
+        displayedColumnsRef.current.length > 0
+          ? displayedColumnsRef.current
+          : extractedColumns
+      );
+
       // Set selected column immediately to avoid flicker
       setSelectedColumn(column);
 
@@ -257,12 +288,14 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       tab,
       navigate,
       location.pathname,
+       extractedColumns,
       // selectedColumn?.fullyQualifiedName intentionally omitted — read via selectedColumnRef
     ]
   );
 
   const closeColumnDetailPanel = useCallback(() => {
     setSelectedColumn(null);
+    setPanelColumns([]);
 
     // Update URL to remove column FQN
     if (data?.fullyQualifiedName) {

@@ -344,6 +344,19 @@ const ContextCenterDocumentsPage: FC = () => {
     // it while searchParams still holds the stale document ID (react-router v7 startTransition)
   ]);
 
+  useEffect(() => {
+    const folderId = searchParams.get('folder');
+    if (!folderId || isFoldersLoading || selectedFolderId) {
+      return;
+    }
+    setSelectedFolderId(folderId);
+    setSearchParams((prev) => {
+      prev.delete('folder');
+
+      return prev;
+    });
+  }, [isFoldersLoading, selectedFolderId, searchParams, setSearchParams]);
+
   const handleDeleteFile = useCallback((file: ContextFile) => {
     setFileToDelete(file);
   }, []);
