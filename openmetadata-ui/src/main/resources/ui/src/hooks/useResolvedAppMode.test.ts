@@ -95,7 +95,11 @@ const seedUserPref = (appMode: string | null) => {
 };
 
 const seedSessionTuple = (
-  tuple: { personaAppMode: string | null; mode: string } | null
+  tuple: {
+    personaAppMode: string | null;
+    mode: string;
+    source?: 'boot' | 'resolver' | 'manual';
+  } | null
 ) => {
   if (tuple === null) {
     globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
@@ -174,6 +178,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -190,6 +195,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: AI_APP_MODE,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -209,6 +215,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: AI_APP_MODE,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -226,6 +233,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: AI_APP_MODE,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -242,6 +250,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -275,6 +284,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -298,6 +308,36 @@ describe('useResolvedAppMode', () => {
     expect(readAppModeSession()).toEqual({
       personaAppMode: AI_APP_MODE,
       mode: DEFAULT_APP_MODE,
+    });
+  });
+
+  it('overrides a `source: "boot"` session tuple with the persona-based candidate', async () => {
+    // The classic rung-4 case: `AuthProvider.hydrateAndResolveAppMode`
+    // wrote `default` at boot because persona wasn't known
+    // synchronously; the resolver now has persona=AI and MUST
+    // override the boot-provisional tuple. Under the pre-provisional
+    // design this override was blocked by `if (validSession) return`,
+    // and Rung 4 could not be satisfied without deferring the boot
+    // write entirely (which broke fast-boot rendering).
+    seedUser({ personaId: 'persona-1', personaName: 'p' });
+    seedRegistry(true);
+    seedSessionTuple({
+      personaAppMode: null,
+      mode: DEFAULT_APP_MODE,
+      source: 'boot',
+    });
+    useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
+    getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.AI));
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: AI_APP_MODE,
+        mode: AI_APP_MODE,
+        source: 'resolver',
+      });
     });
   });
 
@@ -371,6 +411,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -432,6 +473,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -450,6 +492,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -471,6 +514,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: DEFAULT_APP_MODE,
         mode: AI_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -487,6 +531,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
   });
@@ -531,6 +576,7 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: DEFAULT_APP_MODE,
+        source: 'resolver',
       });
     });
 

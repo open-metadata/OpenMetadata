@@ -26,14 +26,30 @@ import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 /**
  * Payload persisted in `sessionStorage[APP_MODE_SESSION_KEY]`.
  * `personaAppMode` is the value the resolver saw from the persona doc
- * when this tuple was last written. `useResolvedAppMode` compares its
- * current view of the persona's `appMode` against this snapshot to
- * decide whether the persona has something new to say (invalidate the
- * session) or not (respect the tab's chosen mode).
+ * when this tuple was last written.
+ *
+ * `source` records WHO wrote the tuple:
+ *   - `'manual'` — a UI toggle (profile dropdown, switcher popover,
+ *     plugin click). The user's active choice for this tab.
+ *   - `'resolver'` — `useResolvedAppMode` after it has full context
+ *     (persona doc, registered routes). The authoritative resolve.
+ *   - `'boot'` — `AuthProvider.hydrateAndResolveAppMode`'s pre-persona
+ *     write. **Provisional** — the resolver is allowed to override
+ *     when it has better info (persona / registered routes).
+ *   - `undefined` — legacy tuples from before this field existed;
+ *     treated as `'manual'` (respect them). Backward-compatible.
+ *
+ * `useResolvedAppMode`'s "keep the current session" branch only fires
+ * when `source !== 'boot'`. Boot-provisional tuples are cleared and
+ * the resolver runs the full precedence chain with the async context
+ * it has now.
  */
+export type AppModeSessionSource = 'manual' | 'resolver' | 'boot';
+
 export interface AppModeSession {
   personaAppMode: string | null;
   mode: string;
+  source?: AppModeSessionSource;
 }
 
 /**
@@ -80,8 +96,19 @@ const readSession = (): AppModeSession | null => {
       const tuple = parsed as AppModeSession;
       const personaAppMode =
         typeof tuple.personaAppMode === 'string' ? tuple.personaAppMode : null;
+      // Preserve `source` when it's one of the known values. Legacy
+      // tuples written before this field existed omit it — treat that
+      // as "manual" via the resolver's `source !== 'boot'` check.
+      const source: AppModeSessionSource | undefined =
+        tuple.source === 'manual' ||
+        tuple.source === 'resolver' ||
+        tuple.source === 'boot'
+          ? tuple.source
+          : undefined;
 
-      return { personaAppMode, mode: tuple.mode };
+      return source
+        ? { personaAppMode, mode: tuple.mode, source }
+        : { personaAppMode, mode: tuple.mode };
     }
   } catch {
     // fall through — malformed payloads are treated as absent
@@ -259,21 +286,38 @@ export const useAppMode = (): string =>
  * resolver saw from the persona doc at the moment of write. Callers
  * that don't know the persona value (the switcher, the desktop lock)
  * omit it and the current tuple's `personaAppMode` is preserved.
+ *
+ * `source` records who is writing:
+ *   - `'manual'` (default) — a UI toggle; sticky against resolver
+ *     override.
+ *   - `'resolver'` — `useResolvedAppMode`'s authoritative write; sticky.
+ *   - `'boot'` — `AuthProvider.hydrateAndResolveAppMode`'s pre-persona
+ *     provisional write; overrideable by the async resolver once it
+ *     has persona / route registry info.
+ *
+ * All existing callers (UI switches) default to `'manual'`, so this
+ * is a backward-compatible signature change.
  */
 export const writeAppMode = (
   mode: string,
-  personaAppMode?: string | null
+  personaAppMode?: string | null,
+  options?: { source?: AppModeSessionSource }
 ): void => {
   const nextPersonaAppMode =
     personaAppMode === undefined
       ? readSession()?.personaAppMode ?? null
       : personaAppMode;
+  const source: AppModeSessionSource = options?.source ?? 'manual';
 
   useAppModeStore.getState().setMode(mode);
-  writeSession({ personaAppMode: nextPersonaAppMode, mode });
+  writeSession({ personaAppMode: nextPersonaAppMode, mode, source });
   // Cross-tab hint: sibling / newly-opened tabs read this at boot when
   // their sessionStorage is empty (see APP_MODE_HINT_STORAGE_KEY docs).
-  writeHint(mode);
+  // Do NOT write the hint for `'boot'` writes: a boot-provisional
+  // tuple shouldn't leak to sibling tabs as a "user chose this" hint.
+  if (source !== 'boot') {
+    writeHint(mode);
+  }
 };
 
 export const clearAppMode = (): void => {

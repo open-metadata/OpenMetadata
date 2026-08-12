@@ -25,6 +25,7 @@ import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
 import {
+  AppModeSession,
   clearAppModeSessionOnly,
   getAppDefaultMode,
   isAppModeHintFresh,
@@ -202,7 +203,7 @@ export const useResolvedAppMode = (): void => {
     //     plugin owning the mode is truly uninstalled. Clear ONLY
     //     this tab's session tuple (not the shared hint — sibling
     //     tabs might legitimately be using it) and fall through.
-    const validSession =
+    let validSession: AppModeSession | null =
       session && isModeRegistered(session.mode) ? session : null;
     if (session && !validSession) {
       if (!registrySettled) {
@@ -211,16 +212,21 @@ export const useResolvedAppMode = (): void => {
       clearAppModeSessionOnly();
     }
 
-    // Valid session tuple wins unconditionally — the user's manual
-    // in-tab switch is their explicit right-now choice for this tab
-    // and must survive a persona edit made after the tuple was
-    // written. Legacy behaviour also matched here when
-    // `validSession.personaAppMode === currentPersonaAppMode`; the
-    // asymmetric case (persona changed since the switch) was
-    // clobbering the user's click, which contradicted the "manual
-    // switch wins" rung.
-    if (validSession) {
+    // Non-boot sessions win unconditionally — a `'manual'` tuple came
+    // from a user's UI toggle in this tab (rung 1: manual switch
+    // wins) and a `'resolver'` tuple is our own authoritative resolve
+    // from a prior run, both immune to persona / registry updates
+    // that happen after the write. A `'boot'` tuple is provisional
+    // (see `AuthProvider.hydrateAndResolveAppMode`) — we clear it
+    // and null out the local reference so downstream code (hint
+    // adoption, candidate write) proceeds as if there had been no
+    // session at all.
+    if (validSession && validSession.source !== 'boot') {
       return;
+    }
+    if (validSession && validSession.source === 'boot') {
+      clearAppModeSessionOnly();
+      validSession = null;
     }
 
     // Cross-tab hint: when this tab has no session (fresh open, e.g. a
@@ -232,7 +238,7 @@ export const useResolvedAppMode = (): void => {
     const hint = validSession ? null : readAppModeHint();
     if (isAppModeHintFresh(hint) && hint) {
       if (isModeRegistered(hint.mode)) {
-        writeAppMode(hint.mode, currentPersonaAppMode);
+        writeAppMode(hint.mode, currentPersonaAppMode, { source: 'resolver' });
 
         return;
       }
@@ -268,7 +274,7 @@ export const useResolvedAppMode = (): void => {
       return;
     }
 
-    writeAppMode(candidate, currentPersonaAppMode);
+    writeAppMode(candidate, currentPersonaAppMode, { source: 'resolver' });
   }, [
     isAuthenticated,
     currentUser?.name,

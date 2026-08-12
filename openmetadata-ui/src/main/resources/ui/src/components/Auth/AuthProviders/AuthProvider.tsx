@@ -178,7 +178,14 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   //      tuple check is satisfied by our write and it never consults
   //      the hint, so a cmd+click from an AI tab silently boots the new
   //      tab into Classic.
-  if (readAppModeSession()?.mode) {
+  // A returning tab (a `'manual'` or `'resolver'` tuple from a prior
+  // resolve) or a fresh tab that inherits an active hint from a
+  // sibling — leave both alone. `useResolvedAppMode` treats these as
+  // sticky and returns without rewriting. A `'boot'` tuple from an
+  // earlier auth cycle is NOT sticky and should be re-resolved, so
+  // don't skip on that.
+  const existingSession = readAppModeSession();
+  if (existingSession?.mode && existingSession.source !== 'boot') {
     return;
   }
   const hint = readAppModeHint();
@@ -189,21 +196,17 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const userPref =
     derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
 
-  // Third guard: if the user has NO server-side preference (userPref is
-  // null) but DOES have a defaultPersona, defer the initial write to
-  // `useResolvedAppMode` — it fetches the persona doc asynchronously
-  // and can compute the correct candidate against the full precedence
-  // (userPref -> persona -> appDefault -> DEFAULT). Writing here with
-  // `personaMode = null` would poison the session tuple with a mode
-  // that persona is about to override, and once the tuple is written
-  // the resolver's `if (validSession) return;` guard keeps the wrong
-  // mode. When userPref IS set it wins over persona under the unified
-  // precedence, so writing here is still safe.
-  if (userPref === null && user.defaultPersona) {
-    return;
-  }
-
-  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault));
+  // Provisional boot write — persona isn't known synchronously (its
+  // docStore doc is fetched by `useResolvedAppMode`), so we compute
+  // the best guess from what IS available (userPref, appDefault) and
+  // mark it `source: 'boot'`. The async resolver is allowed to
+  // override this tuple once it has the persona-doc result and the
+  // route registry has settled. The `writeHint` call inside
+  // `writeAppMode` is skipped for `'boot'` writes so a provisional
+  // guess doesn't leak to sibling tabs as an authoritative hint.
+  writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault), null, {
+    source: 'boot',
+  });
 };
 
 let requestInterceptor: number | null = null;
