@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.DeadlockRetry;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -52,6 +53,12 @@ public class MigrationUtil {
    * Renames the system classification seeded as "KnowledgeCenter" (2.0.0-rc1) to "ContextCenter"
    * to match the renamed product surface. Fresh installs already get "ContextCenter" from the
    * updated seed file, so this is a no-op unless the old classification row still exists.
+   *
+   * <p>The rename writes go directly through {@link CollectionDAO}, bypassing {@code
+   * EntityRepository}, so no {@code ChangeEvent} is produced for the classification or its tags.
+   * Elasticsearch/OpenSearch documents (including any entities tagged {@code KnowledgeCenter.*})
+   * keep the stale name/FQN until the standard post-upgrade reindex runs, consistent with how
+   * {@code v1131.MigrationUtil#renameKnowledgeCenterClassification} handles the same rename.
    */
   public void renameKnowledgeCenterClassification() {
     CollectionDAO daoCollection = Entity.getCollectionDAO();
@@ -63,16 +70,25 @@ public class MigrationUtil {
       return;
     }
 
-    renameClassificationRow(daoCollection, classification);
-    daoCollection
-        .tagDAO()
-        .updateFqn(OLD_CONTEXT_CENTER_CLASSIFICATION_NAME, NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
-    daoCollection
-        .tagUsageDAO()
-        .updateTagPrefix(
-            TagSource.CLASSIFICATION.ordinal(),
-            OLD_CONTEXT_CENTER_CLASSIFICATION_NAME,
-            NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+    DeadlockRetry.execute(
+        () ->
+            Entity.getJdbi()
+                .inTransaction(
+                    txHandle -> {
+                      renameClassificationRow(daoCollection, classification);
+                      daoCollection
+                          .tagDAO()
+                          .updateFqn(
+                              OLD_CONTEXT_CENTER_CLASSIFICATION_NAME,
+                              NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+                      daoCollection
+                          .tagUsageDAO()
+                          .updateTagPrefix(
+                              TagSource.CLASSIFICATION.ordinal(),
+                              OLD_CONTEXT_CENTER_CLASSIFICATION_NAME,
+                              NEW_CONTEXT_CENTER_CLASSIFICATION_NAME);
+                      return null;
+                    }));
     updateContextCenterTagDescriptions(daoCollection);
 
     LOG.info(
