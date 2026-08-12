@@ -30,6 +30,7 @@ from metadata.utils.helpers import (
     find_suggestion,
     format_large_string_numbers,
     get_entity_tier_from_tags,
+    is_safe_pandas_query,
     is_safe_sql_query,
     list_to_dict,
     pretty_print_time_duration,
@@ -193,6 +194,35 @@ class TestHelpers(TestCase):
     def test_is_safe_sql_query_none_input(self):
         """Test is_safe_sql_query handles None input"""
         self.assertTrue(is_safe_sql_query(None))
+
+    def test_is_safe_pandas_query_allows_legitimate_filters(self):
+        """Legitimate DataFrame.query() filter expressions must keep working"""
+        self.assertTrue(is_safe_pandas_query(None))
+        self.assertTrue(is_safe_pandas_query("`age` > 30"))
+        self.assertTrue(is_safe_pandas_query("age > 30 and name == 'x'"))
+        self.assertTrue(is_safe_pandas_query("`age` >= 18 and `age` <= 65"))
+        self.assertTrue(is_safe_pandas_query("1.5 < price < 9.99"))
+        self.assertTrue(is_safe_pandas_query("col1 in ['a', 'b']"))
+        # a bare column that happens to contain a double underscore is fine
+        self.assertTrue(is_safe_pandas_query("first__name > 1"))
+        # string accessor methods are legitimate pandas filter syntax
+        self.assertTrue(is_safe_pandas_query("`name`.str.len() > 3"))
+        # a dunder inside a backtick-quoted identifier is a column name, not an attack
+        self.assertTrue(is_safe_pandas_query("`weird.__col` > 0"))
+
+    def test_is_safe_pandas_query_blocks_frame_variable_injection(self):
+        """`@name` references the calling Python frame -> arbitrary code execution"""
+        self.assertFalse(is_safe_pandas_query("@self.get_client()"))
+        self.assertFalse(is_safe_pandas_query("a == @self.connection.password"))
+        self.assertFalse(is_safe_pandas_query("@os.system('echo pwned') or a > 0"))
+        self.assertFalse(is_safe_pandas_query("@self.exfil.go(@self.connection.password)"))
+
+    def test_is_safe_pandas_query_blocks_dunder_attribute_traversal(self):
+        """`.__` is the first hop of the classic sandbox-escape gadget"""
+        self.assertFalse(is_safe_pandas_query("a.__class__.__init__.__globals__"))
+        self.assertFalse(is_safe_pandas_query("a.__class__.__mro__[0]"))
+        # whitespace between the dot and the dunder must not bypass the check
+        self.assertFalse(is_safe_pandas_query("a.  __class__"))
 
     def test_format_large_string_numbers(self):
         """test format_large_string_numbers"""
