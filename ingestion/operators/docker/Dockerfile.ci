@@ -137,7 +137,7 @@ RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 ARG INGESTION_DEPENDENCY="all"
 # Pre-install dialect packages that declare SQLAlchemy<2 in their metadata
 # but work fine at runtime with SQLAlchemy 2.0 (unmaintained packages).
-RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
+RUN pip install --no-deps "sqlalchemy-ibmi==0.9.3" "pydoris-custom==1.1.0"
 RUN pip install "datamodel-code-generator==0.64.0"
 RUN mkdir -p /ingestion/src/metadata/generated
 RUN python /scripts/datamodel_generation.py
@@ -157,3 +157,18 @@ COPY ingestion/operators/docker/*.py .
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+
+# Every source build is done, so the setuptools<81 pin above can be lifted. That pin is
+# build-time only: cx_Oracle and mysqlclient import pkg_resources from their setup.py and
+# 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x on disk is
+# what keeps scanners reporting CVE-2026-59890.
+# Keep this the LAST pip layer -- a later layer that compiles a package needing
+# pkg_resources would fail here, and the error would not look like a setuptools problem.
+RUN pip install --upgrade "setuptools>=83"
+
+
+# Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
+# See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
+# final pip install, or a later install restores the fixture.
+COPY --chown=openmetadata:openmetadata ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
+RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
