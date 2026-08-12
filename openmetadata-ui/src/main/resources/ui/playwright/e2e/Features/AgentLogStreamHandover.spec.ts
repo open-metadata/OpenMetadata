@@ -20,8 +20,8 @@ import {
   assertLogViewerShowsLogs,
   buildLogStreamFrames,
   buildMarkerLogText,
-  LOG_STREAM_RESPONSE_HEADERS,
   LogStreamFrame,
+  LOG_STREAM_RESPONSE_HEADERS,
 } from '../../utils/logsViewer';
 import { getAgentCard } from '../../utils/serviceIngestion';
 
