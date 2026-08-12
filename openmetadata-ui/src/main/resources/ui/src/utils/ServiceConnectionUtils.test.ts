@@ -32,6 +32,7 @@ import {
   getUISchemaWithNestedDefaultFilterFieldsHidden,
   hasMissingRequiredFlatCredential,
   loadConnectionSchema,
+  MASKED_PASSWORD_VALUE,
   SECRET_FIELD_PREFIX,
   wrapFlatCredentialsIntoAuthType,
 } from './ServiceConnectionUtils';
@@ -1014,6 +1015,14 @@ describe('findPasswordFieldsWithoutPrefix', () => {
         { password: 'vault:my-secret' },
         'vault:'
       )
+    ).toEqual([]);
+  });
+
+  it('does not report the masked-password sentinel returned for an existing service', () => {
+    expect(
+      findPasswordFieldsWithoutPrefix(flatSchema, {
+        password: MASKED_PASSWORD_VALUE,
+      })
     ).toEqual([]);
   });
 });
