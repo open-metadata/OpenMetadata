@@ -40,7 +40,7 @@ class TestStatus(TestCase):
         output = self.status.as_string()
         for item in items:
             self.assertIn(item, output)
-        self.assertNotIn("_total_items", output)
+        self.assertNotIn("total items", output)
 
     def test_as_string_large_list_is_truncated(self):
         """Lists exceeding MAX_STATUS_DISPLAY_ITEMS should be truncated."""
@@ -58,7 +58,7 @@ class TestStatus(TestCase):
         self.status.records = [f"record_{i}" for i in range(MAX_STATUS_DISPLAY_ITEMS)]
 
         output = self.status.as_string()
-        self.assertNotIn("_total_items", output)
+        self.assertNotIn("total items", output)
         self.assertIn("record_0", output)
         self.assertIn(f"record_{MAX_STATUS_DISPLAY_ITEMS - 1}", output)
 
