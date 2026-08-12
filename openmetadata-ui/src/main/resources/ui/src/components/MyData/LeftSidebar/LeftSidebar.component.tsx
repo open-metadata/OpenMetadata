@@ -15,12 +15,14 @@ import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
   SETTING_ITEM,
+  SIDEBAR_ENTITY_PATH_ALIASES,
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -53,9 +55,13 @@ const LeftSidebar = () => {
     const pathArray = location.pathname.split('/');
     const deepPath = [...pathArray].splice(0, 3).join('/');
 
-    return leftSidebarClassBase.getSidebarNestedKeys()[deepPath]
-      ? [deepPath]
-      : [pathArray.splice(0, 2).join('/')];
+    if (leftSidebarClassBase.getSidebarNestedKeys()[deepPath]) {
+      return [deepPath];
+    }
+
+    const shallowPath = pathArray.splice(0, 2).join('/');
+
+    return [SIDEBAR_ENTITY_PATH_ALIASES[shallowPath] ?? shallowPath];
   }, [location.pathname]);
 
   const handleLogoutClick = useCallback(() => {
@@ -92,9 +98,14 @@ const LeftSidebar = () => {
     }));
   }, [sideBarItems]);
 
-  const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
-    setOpenKeys([]);
-  }, []);
+  const handleMenuClick: MenuProps['onClick'] = useCallback(
+    (info: MenuInfo) => {
+      // keyPath is [childKey, ...ancestorKeys]; keep the active item's submenu
+      // open (empty for a top-level item, which collapses any open submenu).
+      setOpenKeys(info.keyPath.slice(1));
+    },
+    []
+  );
 
   return (
     <Sider
