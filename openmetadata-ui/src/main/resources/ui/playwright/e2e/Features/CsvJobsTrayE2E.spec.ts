@@ -145,12 +145,15 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     await activateTrayOnPage(page, '/settings/teams/Organization');
-    await queueUserExport(apiContext, page);
+    const jobId = await queueUserExport(apiContext, page);
 
     const launcher = page.locator('.csv-jobs-tray-launcher');
     const trayPopover = page.locator('.csv-jobs-tray-popover');
 
     await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    // Drain the job before exiting so no RUNNING job bleeds into the next test.
+    await pollUntilTerminal(apiContext, jobId);
     await afterAction();
   });
 
@@ -172,17 +175,14 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
     await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
       timeout: 15_000,
     });
+
+    // Scope to the exact job row — a text filter alone could match a stale
+    // completed row from an earlier test.
+    const jobItem = page.locator(`.csv-jobs-tray-item[data-job-id="${jobId}"]`);
+
+    await expect(jobItem).toBeVisible();
     await expect(
-      page
-        .locator('.csv-jobs-tray-item')
-        .filter({ hasText: /Exported/i })
-        .first()
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('.csv-jobs-tray-action')
-        .filter({ hasText: 'Download' })
-        .first()
+      jobItem.locator('.csv-jobs-tray-action').filter({ hasText: 'Download' })
     ).toBeVisible();
     await afterAction();
   });
@@ -241,7 +241,10 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
       timeout: 15_000,
     });
 
-    const downloadBtn = page.getByRole('button', { name: 'Download' }).first();
+    // Scope to the exact job row so other completed rows don't satisfy the button lookup.
+    const downloadBtn = page
+      .locator(`.csv-jobs-tray-item[data-job-id="${jobId}"]`)
+      .getByRole('button', { name: 'Download' });
 
     await expect(downloadBtn).toBeVisible();
 
@@ -324,6 +327,18 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
 
     await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
 
+    if (!(await trayPopover.isVisible())) {
+      await launcher.click();
+    }
+
+    // Both job rows must be present — scoped by jobId to rule out stale rows.
+    await expect(
+      page.locator(`.csv-jobs-tray-item[data-job-id="${jobId1}"]`)
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.locator(`.csv-jobs-tray-item[data-job-id="${jobId2}"]`)
+    ).toBeVisible({ timeout: 15_000 });
+
     // Wait for both to finish — terminal state is enough, COMPLETED not required.
     await pollUntilTerminal(apiContext, jobId1);
     await pollUntilTerminal(apiContext, jobId2);
@@ -372,12 +387,9 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
       await launcher.click();
     }
 
-    // "Importing Glossary Terms" (active) or "Imported Glossary Terms" (done)
+    // Scope to the exact import job — text filter alone could match a stale row.
     await expect(
-      page
-        .locator('.csv-jobs-tray-item')
-        .filter({ hasText: /Importing|Imported/i })
-        .first()
+      page.locator(`.csv-jobs-tray-item[data-job-id="${jobId}"]`)
     ).toBeVisible({ timeout: 15_000 });
 
     // Wait for terminal state — whether the server succeeds or fails, both
@@ -385,9 +397,11 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
     await pollUntilTerminal(apiContext, jobId);
     await refreshTray(page);
 
-    await expect(page.locator('.csv-jobs-tray-dismiss').first()).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(
+      page.locator(
+        `.csv-jobs-tray-item[data-job-id="${jobId}"] .csv-jobs-tray-dismiss`
+      )
+    ).toBeVisible({ timeout: 10_000 });
 
     await apiContext.delete(
       `/api/v1/glossaries/${glossary.id}?hardDelete=true&recursive=true`
@@ -418,14 +432,95 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
     }
 
     await expect(
-      page
-        .locator('.csv-jobs-tray-item')
-        .filter({ hasText: /Exporting|Exported/i })
-        .first()
+      page.locator(`.csv-jobs-tray-item[data-job-id="${jobId}"]`)
     ).toBeVisible({ timeout: 15_000 });
 
     // Wait for any terminal state — COMPLETED or FAILED is fine for this test.
     await pollUntilTerminal(apiContext, jobId);
+    await afterAction();
+  });
+
+  test('cancel button appears for an active export job', async ({
+    browser,
+    page,
+  }) => {
+    // Guards the active-state row rendering: QUEUED/RUNNING jobs must show a
+    // Cancel button instead of Download or dismiss.
+    // Note: lineage export endpoints return UUID jobIds and bypass
+    // CsvAsyncJobManager, so they do not appear in this tray — user export is
+    // used instead.
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    if (!(await trayPopover.isVisible())) {
+      await launcher.click();
+    }
+
+    // User export takes ~15 s to complete; this check runs within the first
+    // few seconds so the job is still in QUEUED / RUNNING state.
+    // Scope to the exact row — only active jobs show a Cancel action button.
+    await expect(
+      page.locator(
+        `.csv-jobs-tray-item[data-job-id="${jobId}"] .csv-jobs-tray-action`
+      )
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Drain the in-flight job before exiting to avoid bleeding into next test.
+    await pollUntilTerminal(apiContext, jobId);
+    await afterAction();
+  });
+
+  test('cancelled export job shows dismiss button instead of Download', async ({
+    browser,
+    page,
+  }) => {
+    // Guards the CANCELLED row state: a cancelled EXPORT job must show a
+    // dismiss button (XClose), NOT the Download button.
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await activateTrayOnPage(page, '/settings/teams/Organization');
+    const jobId = await queueUserExport(apiContext, page);
+
+    // Cancel the job via the API immediately — the job is likely still QUEUED
+    // or early RUNNING so this should succeed before it completes.
+    await apiContext.put(`/api/v1/csvAsyncJobs/${jobId}/cancel`);
+
+    const finalStatus = await pollUntilTerminal(apiContext, jobId);
+
+    await refreshTray(page);
+
+    const launcher = page.locator('.csv-jobs-tray-launcher');
+    const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+    await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    if (!(await trayPopover.isVisible())) {
+      await launcher.click();
+    }
+
+    const jobItem = page.locator(`.csv-jobs-tray-item[data-job-id="${jobId}"]`);
+
+    if (finalStatus === 'CANCELLED') {
+      // Cancelled jobs: dismiss (XClose), not Download.
+      await expect(jobItem.locator('.csv-jobs-tray-dismiss')).toBeVisible({
+        timeout: 10_000,
+      });
+    } else {
+      // Job completed before the cancel took effect — Download button is correct.
+      await expect(
+        jobItem.locator('.csv-jobs-tray-action').filter({ hasText: /Download/i })
+      ).toBeVisible({ timeout: 10_000 });
+    }
+
     await afterAction();
   });
 
@@ -447,10 +542,7 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
     }
 
     await expect(
-      page
-        .locator('.csv-jobs-tray-item')
-        .filter({ hasText: /Exporting|Exported/i })
-        .first()
+      page.locator(`.csv-jobs-tray-item[data-job-id="${jobId}"]`)
     ).toBeVisible({ timeout: 15_000 });
 
     await pollUntilJobStatus(apiContext, jobId, 'COMPLETED');
@@ -491,10 +583,7 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
     }
 
     await expect(
-      page
-        .locator('.csv-jobs-tray-item')
-        .filter({ hasText: /Exporting|Exported/i })
-        .first()
+      page.locator(`.csv-jobs-tray-item[data-job-id="${jobId}"]`)
     ).toBeVisible({ timeout: 15_000 });
 
     await pollUntilTerminal(apiContext, jobId);
@@ -549,10 +638,15 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
     }
 
     // FAILED job: error styling + dismiss button (not Download).
-    await expect(page.locator('.csv-jobs-tray-item-error').first()).toBeVisible(
-      { timeout: 10_000 }
-    );
-    await expect(page.locator('.csv-jobs-tray-dismiss').first()).toBeVisible();
+    // Scope both assertions to the exact job row.
+    await expect(
+      page.locator(`.csv-jobs-tray-item-error[data-job-id="${jobId}"]`)
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.locator(
+        `.csv-jobs-tray-item[data-job-id="${jobId}"] .csv-jobs-tray-dismiss`
+      )
+    ).toBeVisible();
 
     await apiContext.delete(
       `/api/v1/glossaries/${glossary.id}?hardDelete=true&recursive=true`
@@ -615,7 +709,7 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
 
     // Activate on page A.
     await activateTrayOnPage(page, '/settings/teams/Organization');
-    await queueUserExport(apiContext, page);
+    const jobId = await queueUserExport(apiContext, page);
 
     const launcher = page.locator('.csv-jobs-tray-launcher');
     const trayPopover = page.locator('.csv-jobs-tray-popover');
@@ -632,6 +726,9 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
 
     // The tray must still be present after the route change.
     await expect(launcher.or(trayPopover)).toBeVisible({ timeout: 15_000 });
+
+    // Drain before exiting to prevent a RUNNING job from bleeding into next test.
+    await pollUntilTerminal(apiContext, jobId);
     await afterAction();
   });
 
@@ -656,7 +753,10 @@ test.describe('CsvJobsTray — real server', { tag: '@import-export' }, () => {
       timeout: 15_000,
     });
 
-    const downloadBtn = page.getByRole('button', { name: 'Download' }).first();
+    // Scope to the exact job row so a stale completed row doesn't satisfy the lookup.
+    const downloadBtn = page
+      .locator(`.csv-jobs-tray-item[data-job-id="${jobId}"]`)
+      .getByRole('button', { name: 'Download' });
 
     await expect(downloadBtn).toBeVisible();
 
