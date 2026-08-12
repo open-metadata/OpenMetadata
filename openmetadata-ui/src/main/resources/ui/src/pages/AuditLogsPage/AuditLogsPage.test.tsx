@@ -829,17 +829,8 @@ describe('AuditLogsPage', () => {
         await Promise.resolve();
       });
 
-      // eslint-disable-next-line no-console
-      console.log(
-        'DIAG banner=',
-        screen.queryAllByTestId('banner').length,
-        'errToast=',
-        mockShowErrorToast.mock.calls.length,
-        'exportCalledWith=',
-        JSON.stringify(mockExportAuditLogs.mock.calls)
-      );
-
-      // No socket message is ever delivered in this test.
+      // The job is now in flight, and no socket message is ever delivered here.
+      expect(screen.getByTestId('banner')).toBeInTheDocument();
       expect(mockGetAuditLogExportResult).not.toHaveBeenCalled();
 
       await act(async () => {
