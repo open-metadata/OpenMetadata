@@ -54,6 +54,48 @@ from metadata.utils.sqlalchemy_utils import get_all_table_comments
 logger = ingestion_logger()
 ROW_DATA_TYPE = "row"
 ARRAY_DATA_TYPE = "array"
+UNNAMED_FIELD_PREFIX = "field"
+
+# Trino renders a named ROW field as `"name" type`, always quoting the name and
+# escaping an embedded quote as `""`. A leading quote is therefore what tells a
+# named field apart from an unnamed one whose type happens to contain spaces.
+_QUOTED_FIELD_NAME = re.compile(r'^"((?:[^"]|"")*)"\s+(?P<type>.+)$', re.DOTALL)
+
+# The only Trino types rendered with spaces. Without this, an unnamed field such
+# as `timestamp(3) with time zone` would split into two tokens and be misread as
+# a field named `timestamp(3)`.
+_TYPE_CONTINUATION = re.compile(
+    r"^(?:with(?:out)?\s+time\s+zone|day\s+to\s+second|year\s+to\s+month|precision)$",
+    re.IGNORECASE,
+)
+
+
+def _starts_with_type(type_str: str, type_name: str) -> bool:
+    return type_str.lower().startswith(type_name)
+
+
+def split_row_field(field_str: str, position: int) -> Tuple[str, str]:  # noqa: UP006
+    """
+    Split a single Trino ROW field into its (name, type) pair.
+
+    Trino allows the field name to be omitted entirely -- `row(bigint, varchar(1))`,
+    which is what any CTAS over a `ROW(...)` constructor produces. Unnamed fields
+    are given a positional name matching Trino's 1-based field access, so `s[1]`
+    reads as `field1`.
+
+    Named fields arrive quoted (`row("a" bigint)`); the quotes are stripped so the
+    OpenMetadata child column is `a` rather than `"a"`, preserving the original case.
+    """
+    field_str = field_str.strip()
+
+    quoted = _QUOTED_FIELD_NAME.match(field_str)
+    if quoted:
+        return quoted.group(1).replace('""', '"'), quoted.group("type").strip()
+
+    parts = list(datatype.aware_split(field_str, delimiter=" ", maxsplit=1))
+    if len(parts) == 1 or _TYPE_CONTINUATION.match(parts[1].strip()):
+        return f"{UNNAMED_FIELD_PREFIX}{position}", field_str
+    return parts[0], parts[1].strip()
 
 
 def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
@@ -74,11 +116,11 @@ def parse_array_data_type(type_str: str) -> str:
     this method will return type as -> array<struct<col1:bigint,col2:string>>
     """
     type_name, type_opts = get_type_name_and_opts(type_str)
-    final = type_name + "<"
+    final = type_name.lower() + "<"
     if type_opts:
-        if type_opts.startswith(ROW_DATA_TYPE):
+        if _starts_with_type(type_opts, ROW_DATA_TYPE):
             final += parse_row_data_type(type_opts)
-        elif type_opts.startswith(ARRAY_DATA_TYPE):
+        elif _starts_with_type(type_opts, ARRAY_DATA_TYPE):
             final += parse_array_data_type(type_opts)
         else:
             final += type_opts
@@ -93,17 +135,38 @@ def parse_row_data_type(type_str: str) -> str:
     this method will return type as -> struct<col1:bigint,col2:bigint,col3:struct<col4:string,col5:bigint>>
     """
     type_name, type_opts = get_type_name_and_opts(type_str)
-    final = type_name.replace(ROW_DATA_TYPE, "struct") + "<"
+    final = type_name.lower().replace(ROW_DATA_TYPE, "struct") + "<"
     if type_opts:
-        for data_type in datatype.aware_split(type_opts) or []:
-            attr_name, attr_type_str = datatype.aware_split(data_type.strip(), delimiter=" ", maxsplit=1)
-            if attr_type_str.startswith(ROW_DATA_TYPE):
+        for position, data_type in enumerate(datatype.aware_split(type_opts) or [], start=1):
+            attr_name, attr_type_str = split_row_field(data_type, position)
+            if _starts_with_type(attr_type_str, ROW_DATA_TYPE):
                 final += attr_name + ":" + parse_row_data_type(attr_type_str) + ","
-            elif attr_type_str.startswith(ARRAY_DATA_TYPE):
+            elif _starts_with_type(attr_type_str, ARRAY_DATA_TYPE):
                 final += attr_name + ":" + parse_array_data_type(attr_type_str) + ","
             else:
                 final += attr_name + ":" + attr_type_str + ","
     return final[:-1] + ">"
+
+
+def _parse_sqltype(type_str: str, table_name: str, column_name: str):
+    """
+    Resolve the SQLAlchemy type for a Trino column, tolerating types the driver
+    cannot parse.
+
+    ``trino.sqlalchemy.datatype.parse_sqltype`` raises on ROW types with unnamed
+    fields (it unpacks every field as `name type`), which would otherwise abort
+    reflection for the whole table and publish it with no columns at all. The
+    OpenMetadata data type is derived from ``system_data_type`` for complex
+    columns, so falling back to NULLTYPE here keeps the column and its children.
+    """
+    try:
+        return datatype.parse_sqltype(type_str)
+    except Exception as err:  # pylint: disable=broad-except
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Could not resolve a SQLAlchemy type for column [{table_name}.{column_name}] of type [{type_str}]: {err}"
+        )
+        return sqltypes.NULLTYPE
 
 
 def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> List[Dict[str, Any]]:  # noqa: RUF013, UP006
@@ -115,7 +178,7 @@ def _get_columns(self, connection: Connection, table_name: str, schema: str = No
     res = connection.execute(sql.text(query))
     columns = []
     for record in res:
-        col_type = datatype.parse_sqltype(record.Type)
+        col_type = _parse_sqltype(record.Type, table_name=table_name, column_name=record.Column)
         column = {
             "name": record.Column,
             "type": col_type,
@@ -123,12 +186,15 @@ def _get_columns(self, connection: Connection, table_name: str, schema: str = No
             "comment": record.Comment,
             "system_data_type": record.Type,
         }
-        type_str = record.Type.strip().lower()
+        # Keep the original case: Trino renders type names in lower case already,
+        # but preserves the case of quoted ROW field names, which become the
+        # OpenMetadata child column names.
+        type_str = record.Type.strip()
         type_name, type_opts = get_type_name_and_opts(type_str)
-        if type_opts and type_name == ROW_DATA_TYPE:
+        if type_opts and type_name.lower() == ROW_DATA_TYPE:
             column["system_data_type"] = parse_row_data_type(type_str)
             column["is_complex"] = True
-        elif type_opts and type_name == ARRAY_DATA_TYPE:
+        elif type_opts and type_name.lower() == ARRAY_DATA_TYPE:
             column["system_data_type"] = parse_array_data_type(type_str)
             column["is_complex"] = True
         columns.append(column)
