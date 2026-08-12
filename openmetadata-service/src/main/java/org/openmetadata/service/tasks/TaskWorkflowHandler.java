@@ -1015,6 +1015,25 @@ public class TaskWorkflowHandler {
     }
   }
 
+  /**
+   * Stamp {@code SUGGESTED} on the accepted field's change summary.
+   *
+   * <p>Applies to both accept paths. The no-op path has no FieldChange to summarize, and the
+   * value-changing path goes through {@link FieldPathUtils#updateFieldDescription}, which patches
+   * without a change source — so its summary would otherwise default to {@code Manual} and read as
+   * hand-authored. Both cases are content the suggester produced and a reviewer approved, which
+   * consumers (search's descriptionSource, automations deciding whether an asset still needs work)
+   * must be able to tell apart from a human writing the text themselves.
+   */
+  private void recordSuggestedChangeSummary(
+      EntityRepository<?> repository, EntityInterface entity, String fieldPath, String user) {
+    String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
+    if (changeSummaryField != null) {
+      repository.patchChangeSummary(
+          entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
+    }
+  }
+
   private void applySuggestion(
       Task task,
       Object payload,
@@ -1037,11 +1056,7 @@ public class TaskWorkflowHandler {
       if ("Description".equals(suggestionType)) {
         Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
         if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
-          String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
-          if (changeSummaryField != null) {
-            repository.patchChangeSummary(
-                entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
-          }
+          recordSuggestedChangeSummary(repository, entity, fieldPath, user);
           LOG.info(
               "[TaskWorkflowHandler] Recorded no-op description suggestion change summary: fieldPath={}",
               fieldPath);
@@ -1051,6 +1066,7 @@ public class TaskWorkflowHandler {
             FieldPathUtils.updateFieldDescription(
                 entity, repository, user, fieldPath, suggestedValue);
         if (success) {
+          recordSuggestedChangeSummary(repository, entity, fieldPath, user);
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
           LOG.warn(
