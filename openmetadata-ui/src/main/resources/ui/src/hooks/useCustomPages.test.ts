@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook } from '@testing-library/react-hooks';
-import React from 'react';
 import { Document } from '../generated/entity/docStore/document';
 import { PageType } from '../generated/system/ui/page';
 import { getDocumentByFQN } from '../rest/DocStoreAPI';
@@ -34,16 +32,7 @@ jest.mock('../rest/DocStoreAPI', () => ({
   getDocumentByFQN: jest.fn(),
 }));
 
-const createWrapper = (queryClient: QueryClient) => {
-  const Wrapper = ({ children }: { children: React.ReactNode }) =>
-    React.createElement(QueryClientProvider, { client: queryClient }, children);
-
-  return Wrapper;
-};
-
 describe('useCustomPages', () => {
-  let queryClient: QueryClient;
-
   const mockSelectedPersona = {
     fullyQualifiedName: 'test-persona',
   };
@@ -72,11 +61,6 @@ describe('useCustomPages', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
     mockUseApplicationStore.mockReturnValue({
       selectedPersona: mockSelectedPersona,
     });
@@ -85,9 +69,8 @@ describe('useCustomPages', () => {
   it('should fetch and return customized page and navigation when persona is selected', async () => {
     mockGetDocumentByFQN.mockResolvedValue(mockDocument);
 
-    const { result, waitForNextUpdate } = renderHook(
-      () => useCustomPages(PageType.Table),
-      { wrapper: createWrapper(queryClient) }
+    const { result, waitForNextUpdate } = renderHook(() =>
+      useCustomPages(PageType.Table)
     );
 
     expect(result.current.isLoading).toBe(true);
@@ -103,9 +86,8 @@ describe('useCustomPages', () => {
   it('should handle error when fetching document fails', async () => {
     mockGetDocumentByFQN.mockRejectedValue(new Error('API Error'));
 
-    const { result, waitForNextUpdate } = renderHook(
-      () => useCustomPages(PageType.Table),
-      { wrapper: createWrapper(queryClient) }
+    const { result, waitForNextUpdate } = renderHook(() =>
+      useCustomPages(PageType.Table)
     );
 
     expect(result.current.isLoading).toBe(true);
@@ -123,9 +105,7 @@ describe('useCustomPages', () => {
       selectedPersona: null,
     });
 
-    const { result } = renderHook(() => useCustomPages(PageType.Table), {
-      wrapper: createWrapper(queryClient),
-    });
+    const { result } = renderHook(() => useCustomPages(PageType.Table));
 
     expect(mockGetDocumentByFQN).not.toHaveBeenCalled();
     expect(result.current.customizedPage).toBeNull();
@@ -133,37 +113,25 @@ describe('useCustomPages', () => {
     expect(result.current.isLoading).toBe(false);
   });
 
-  it('should filter by pageType from cached doc without re-fetching', async () => {
-    const mockDocWithMultiplePages: Document = {
-      ...mockDocument,
-      data: {
-        pages: [
-          { pageType: PageType.Table, tabs: [] },
-          { pageType: PageType.Dashboard, tabs: [] },
-        ],
-        navigation: mockNavigation,
-      },
-    };
-    mockGetDocumentByFQN.mockResolvedValue(mockDocWithMultiplePages);
+  it('should refetch document when pageType changes', async () => {
+    mockGetDocumentByFQN.mockResolvedValue(mockDocument);
 
-    const { result, rerender, waitForNextUpdate } = renderHook(
-      ({ pageType }: { pageType: PageType }) => useCustomPages(pageType),
+    const { rerender, waitForNextUpdate } = renderHook(
+      ({ pageType }) => useCustomPages(pageType),
       {
         initialProps: { pageType: PageType.Table },
-        wrapper: createWrapper(queryClient),
       }
     );
 
     await waitForNextUpdate();
 
     expect(mockGetDocumentByFQN).toHaveBeenCalledTimes(1);
-    expect(result.current.customizedPage?.pageType).toBe(PageType.Table);
 
     rerender({ pageType: PageType.Dashboard });
 
-    // Changing pageType filters from the cached doc — no additional network request.
-    expect(mockGetDocumentByFQN).toHaveBeenCalledTimes(1);
-    expect(result.current.customizedPage?.pageType).toBe(PageType.Dashboard);
+    await waitForNextUpdate();
+
+    expect(mockGetDocumentByFQN).toHaveBeenCalledTimes(2);
   });
 
   it('should return updated results when selected persona changes', async () => {
@@ -181,7 +149,6 @@ describe('useCustomPages', () => {
         initialProps: {
           selectedPersona: { fullyQualifiedName: 'test-persona' },
         },
-        wrapper: createWrapper(queryClient),
       }
     );
 

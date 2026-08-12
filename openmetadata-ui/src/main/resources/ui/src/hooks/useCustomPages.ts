@@ -10,40 +10,48 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useState } from 'react';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { EntityType } from '../enums/entity.enum';
 import { Page, PageType } from '../generated/system/ui/page';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
-import {
-  docStoreQueryFn,
-  docStoreQueryKey,
-  personaDocFqn,
-} from '../rest/queries/docStoreQuery';
+import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { useApplicationStore } from './useApplicationStore';
 
 export const useCustomPages = (pageType: PageType | 'Navigation') => {
   const { selectedPersona } = useApplicationStore();
-  const fqn = personaDocFqn(selectedPersona);
+  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const [navigation, setNavigation] = useState<NavigationItem[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const {
-    data: doc,
-    isPending,
-    isError,
-  } = useQuery({
-    queryKey: docStoreQueryKey(fqn ?? ''),
-    queryFn: docStoreQueryFn(fqn ?? ''),
-    enabled: !!fqn,
-    retry: false,
-  });
+  const fetchDocument = useCallback(async () => {
+    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona?.fullyQualifiedName}`;
+    try {
+      const doc = await getDocumentByFQN(pageFQN);
+      setCustomizedPage(
+        doc.data?.pages?.find((p: Page | null) => p?.pageType === pageType)
+      );
+      setNavigation(doc.data?.navigation);
+    } catch (error) {
+      // Need to reset Navigation to avoid showing old navigation items
+      setNavigation([]);
+      setCustomizedPage(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedPersona?.fullyQualifiedName, pageType]);
+
+  useEffect(() => {
+    if (selectedPersona?.fullyQualifiedName) {
+      fetchDocument();
+    } else {
+      setIsLoading(false);
+    }
+  }, [selectedPersona, pageType]);
 
   return {
-    customizedPage:
-      (doc?.data?.pages?.find((p: Page | null) => p?.pageType === pageType) as
-        | Page
-        | undefined) ?? null,
-    // Reset to [] on error to clear stale navigation items, null when no persona selected.
-    navigation: isError
-      ? ([] as NavigationItem[])
-      : ((doc?.data?.navigation ?? null) as NavigationItem[] | null),
-    isLoading: !!fqn && isPending,
+    customizedPage,
+    navigation,
+    isLoading,
   };
 };
