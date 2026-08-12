@@ -586,7 +586,11 @@ class SftpSource(DriveServiceSource):
             if directory_path in self._directory_fqn_cache:
                 directory_reference = self._directory_fqn_cache[directory_path]
             if directory_path in self._directories_cache:
-                directory_path_components = self._directories_cache[directory_path].path
+                directory_info = self._directories_cache[directory_path]
+                # `path` is optional; fall back to the bare name as the create/register sites
+                # for directories do. Without it a nested file would register the root-level
+                # FQN and be deleted as stale right after being ingested.
+                directory_path_components = directory_info.path or [directory_info.name]
 
             for file_info in files_in_directory:
                 try:
