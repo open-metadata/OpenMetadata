@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import LeftSidebar from './LeftSidebar.component';
@@ -22,24 +21,20 @@ jest.mock(
   })
 );
 
-// No persona → personaDocFqn returns null → query disabled → no QueryClient needed for the fetch,
-// but useQuery still requires a provider to be mounted.
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockReturnValue({ selectedPersona: null }),
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue({
+    customizedPage: null,
+    navigation: null,
+    isLoading: false,
+  }),
 }));
 
 describe('LeftSidebar', () => {
   it('renders sidebar links correctly', () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-
     render(
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <LeftSidebar />
-        </BrowserRouter>
-      </QueryClientProvider>
+      <BrowserRouter>
+        <LeftSidebar />
+      </BrowserRouter>
     );
 
     expect(screen.getByTestId('image')).toBeInTheDocument();
