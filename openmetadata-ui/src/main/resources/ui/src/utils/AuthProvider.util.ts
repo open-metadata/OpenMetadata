@@ -64,7 +64,13 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType = 'id_token',
+  } = authClient;
 
   return {
     authority,
@@ -72,6 +78,9 @@ export const getUserManagerConfig = (
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
+    // oidc-client defaults to implicit flow. Google, Okta and Auth0 have all discontinued it, so a
+    // deployment configured for `code` must actually get code+PKCE rather than a 400 from the IdP.
+    response_type: responseType,
     userStore: oidcTokenStorage,
     stateStore: oidcTokenStorage,
   };
@@ -106,11 +115,18 @@ export const getCandidateUserManagerConfig = (
   };
 };
 
+/**
+ * Strips trailing slashes from the configured authority. Every SSO SDK builds endpoint URLs by
+ * appending to it, and an issuer with a trailing slash (Auth0's default, per the OIDC spec) yields
+ * `.../oauth2//authorize` — which Auth0 answers with 404 Not Found.
+ */
+const normalizeAuthority = (authority?: string) =>
+  authority?.replace(/\/+$/, '') ?? '';
+
 export const getAuthConfig = (
   authClient: AuthenticationConfiguration
 ): AuthenticationConfigurationWithScope => {
   const {
-    authority,
     clientId,
     callbackUrl,
     provider,
@@ -121,6 +137,7 @@ export const getAuthConfig = (
     responseType = 'id_token',
     clientType = 'public',
   } = authClient;
+  const authority = normalizeAuthority(authClient.authority);
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
@@ -129,7 +146,10 @@ export const getAuthConfig = (
         clientId,
         issuer: authority,
         redirectUri,
-        scopes: ['openid', 'profile', 'email', 'offline_access'],
+        // No offline_access: OAuth 2.1 forbids public browser clients from requesting refresh
+        // tokens, and Okta enforces it by rejecting the token request outright. Public clients renew
+        // through the token manager's silent flow instead.
+        scopes: ['openid', 'profile', 'email'],
         pkce: true,
         provider,
         clientType,

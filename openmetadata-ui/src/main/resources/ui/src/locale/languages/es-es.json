@@ -4188,6 +4188,7 @@
     "sso-configuration-test-success": "Su configuración de SSO es válida y accesible. Puede guardarla cuando esté listo.",
     "sso-new-config-save-warning": "Al guardar una nueva configuración de SSO se cerrará su sesión y se le redirigirá a la página de inicio de sesión. Pruebe primero su configuración para evitar quedar bloqueado.",
     "sso-provider-not-supported": "No se admite el proveedor SSO {{provider}}.",
+    "sso-provider-unreachable": "No se pudo contactar con el proveedor de identidad para iniciar sesión. Comprueba que sea accesible e inténtalo de nuevo.",
     "sso-test-login-description": "Inicie sesión con su proveedor de identidad usando estos ajustes sin guardar. Se ejecuta en una ventana aparte y nunca cambia su sesión actual.",
     "sso-test-login-error": "No se pudo validar el inicio de sesión debido a un error del servidor. Inténtelo de nuevo.",
     "sso-test-login-failed": "El inicio de sesión se completó, pero esta configuración rechazaría el acceso.",

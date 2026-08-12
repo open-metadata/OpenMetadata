@@ -22,9 +22,12 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import io.lettuce.core.RedisException;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.SecurityContext;
@@ -48,6 +51,7 @@ import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -55,6 +59,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
+  private static final int STORE_RETRY_AFTER_SECONDS = 5;
 
   private SecurityUtil() {}
 
@@ -408,6 +413,51 @@ public final class SecurityUtil {
     writeJsonResponse(
         response,
         JsonUtils.pojoToJson(Map.of("error", message == null ? StringUtils.EMPTY : message)));
+  }
+
+  /**
+   * Writes an unexpected failure on a servlet auth path with the status the failure actually
+   * deserves. These paths have no JAX-RS exception mapper, so a bare {@code 500 + e.getMessage()}
+   * catch-all reports a rejected credential and a transient Redis outage as server bugs — and leaks
+   * the driver's message while doing it. A rejected credential is the caller's 4xx; a session store
+   * that is unreachable is a retryable 503; only the rest is a 500.
+   */
+  public static void writeFailureResponse(HttpServletResponse response, Throwable failure) {
+    int status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+    String message = failure.getMessage();
+    if (failure instanceof WebApplicationException webApplicationException) {
+      status = webApplicationException.getResponse().getStatus();
+    } else if (failure instanceof AuthenticationException authenticationException) {
+      // Not a WebApplicationException, but carries its own Response. Thrown by the basic and LDAP
+      // authenticators for a rejected credential.
+      status = authenticationException.getResponse().getStatus();
+    } else if (isSessionStoreUnavailable(failure)) {
+      LOG.error("Session store unavailable while handling an auth request", failure);
+      status = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
+      message = "The session store is temporarily unavailable. Please retry.";
+      response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(STORE_RETRY_AFTER_SECONDS));
+    } else if (failure instanceof EntityNotFoundException) {
+      // A login for a user that no longer resolves (deleted, or off-boarded mid-session) is a
+      // rejected credential, not a server fault.
+      status = HttpServletResponse.SC_UNAUTHORIZED;
+      message = "Invalid credentials";
+    }
+    try {
+      writeErrorResponse(response, status, message);
+    } catch (IOException e) {
+      LOG.error("Error writing error response", e);
+    }
+  }
+
+  private static boolean isSessionStoreUnavailable(Throwable failure) {
+    Throwable cause = failure;
+    while (cause != null) {
+      if (cause instanceof RedisException) {
+        return true;
+      }
+      cause = cause.getCause();
+    }
+    return false;
   }
 
   public static void writeMessageResponse(HttpServletResponse response, int status, String message)

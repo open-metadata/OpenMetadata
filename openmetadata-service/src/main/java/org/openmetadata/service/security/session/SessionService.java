@@ -39,6 +39,7 @@ public class SessionService implements Managed {
   private final ScheduledExecutorService scheduler;
   private final AtomicBoolean started = new AtomicBoolean(false);
   private final AtomicBoolean lowIdleTimeoutLogged = new AtomicBoolean(false);
+  private final AtomicBoolean invalidSessionLimitLogged = new AtomicBoolean(false);
   // Notified once per local revocation with the revoked session. Listeners include
   // WebSocketManager (closes active sockets for the user) and SessionRevocationBroadcaster
   // (republishes to Redis so other pods do the same). Failures in a listener are logged and
@@ -73,6 +74,7 @@ public class SessionService implements Managed {
   public void updateConfiguration(AuthenticationConfiguration authConfig) {
     this.authConfig = authConfig;
     lowIdleTimeoutLogged.set(false);
+    invalidSessionLimitLogged.set(false);
   }
 
   /**
@@ -601,9 +603,47 @@ public class SessionService implements Managed {
 
   private int getMaxActiveSessionsPerUser() {
     Integer configuredLimit = authConfig == null ? null : authConfig.getMaxActiveSessionsPerUser();
-    return configuredLimit != null && configuredLimit >= 1
-        ? configuredLimit
-        : DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER;
+    if (configuredLimit != null && configuredLimit < 1) {
+      if (invalidSessionLimitLogged.compareAndSet(false, true)) {
+        LOG.warn(
+            "Configured maxActiveSessionsPerUser {} is below the supported minimum of 1 and does not "
+                + "mean unlimited. Falling back to the default of {} sessions per user.",
+            configuredLimit,
+            DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER);
+      }
+      return DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER;
+    }
+    return configuredLimit == null ? DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER : configuredLimit;
+  }
+
+  /**
+   * Revokes every non-terminal session for a user. Called when the user is deleted (soft or hard) or
+   * otherwise off-boarded — without it a soft-deleted user keeps API access until their token
+   * expires. Bounded: each pass reads at most {@link #CLEANUP_BATCH_SIZE} sessions and the loop is
+   * capped, so a user with a pathological session count degrades rather than spinning.
+   */
+  public int revokeSessionsForUser(String userId) {
+    int revoked = 0;
+    if (nullOrEmpty(userId)) {
+      return revoked;
+    }
+    for (int attempt = 0; attempt < SESSION_LIMIT_MAX_ITERATIONS; attempt++) {
+      List<UserSession> sessions =
+          repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, CLEANUP_BATCH_SIZE);
+      if (sessions.isEmpty()) {
+        return revoked;
+      }
+      for (UserSession session : sessions) {
+        revokeSession(session.getId());
+        cache.invalidate(session.getId());
+        revoked++;
+      }
+    }
+    LOG.warn(
+        "Stopped revoking sessions for user {} after {} passes",
+        userId,
+        SESSION_LIMIT_MAX_ITERATIONS);
+    return revoked;
   }
 
   private int sessionLookupLimit(int maxActiveSessionsPerUser) {

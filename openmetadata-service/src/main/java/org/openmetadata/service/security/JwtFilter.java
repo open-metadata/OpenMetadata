@@ -38,6 +38,7 @@ import jakarta.annotation.Priority;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -69,6 +70,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -148,10 +150,21 @@ public class JwtFilter implements ContainerRequestFilter {
       List<String> jwtPrincipalClaims,
       String principalDomain,
       boolean enforcePrincipalDomain) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, enforcePrincipalDomain, null);
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      AuthProvider providerType) {
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.providerType = providerType;
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
@@ -203,6 +216,7 @@ public class JwtFilter implements ContainerRequestFilter {
       }
 
       checkValidationsForToken(claims, tokenFromHeader, tokenKeyId, userName, impersonatedBy);
+      validateCookieMatchesToken(requestContext, claims);
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
@@ -395,6 +409,32 @@ public class JwtFilter implements ContainerRequestFilter {
     }
   }
 
+  /**
+   * The {@code OM_SESSION} cookie and the {@code sessionId} claim on the bearer token are two halves
+   * of the same session; a request that carries both must carry the same one. Identity always comes
+   * from the JWT, so a mismatch is not an escalation — but it is a request whose two credentials
+   * disagree, and accepting it silently means the cookie is decorative. Tokens with no session claim
+   * (PATs, bot tokens, public-client id_tokens) are unaffected: there is nothing to bind them to.
+   */
+  private void validateCookieMatchesToken(
+      ContainerRequestContext requestContext, Map<String, Claim> claims) {
+    Claim sessionClaim = claims.get(JWTTokenGenerator.SESSION_ID_CLAIM);
+    String tokenSessionId = sessionClaim == null ? null : sessionClaim.asString();
+    if (nullOrEmpty(tokenSessionId)) {
+      return;
+    }
+    Cookie sessionCookie = requestContext.getCookies().get(SessionCookieUtil.COOKIE_NAME);
+    String cookieSessionId = sessionCookie == null ? null : sessionCookie.getValue();
+    if (!nullOrEmpty(cookieSessionId) && !cookieSessionId.equals(tokenSessionId)) {
+      LOG.warn(
+          "Rejecting request: OM_SESSION cookie {} does not match the token session {}",
+          SessionService.truncateId(cookieSessionId),
+          SessionService.truncateId(tokenSessionId));
+      throw AuthenticationException.getInvalidTokenException(
+          "Session cookie does not match the token session.");
+    }
+  }
+
   private void validateSessionBoundToken(Map<String, Claim> claims, String userName) {
     Claim sessionClaim = claims.get(JWTTokenGenerator.SESSION_ID_CLAIM);
     String sessionId = sessionClaim == null ? null : sessionClaim.asString();
@@ -418,10 +458,34 @@ public class JwtFilter implements ContainerRequestFilter {
         || !session.getUsername().equalsIgnoreCase(userName)) {
       throw AuthenticationException.getInvalidTokenException("Invalid session.");
     }
+    validateSessionProviderIsCurrent(session);
     try {
       sessionService.recordSessionAccess(session);
     } catch (Exception e) {
       LOG.warn("Failed to record session access for session {}", session.getId(), e);
+    }
+  }
+
+  /**
+   * Sessions record the provider that authenticated them. Swapping {@code AUTHENTICATION_PROVIDER}
+   * decommissions that provider, so sessions minted under it must stop working immediately instead of
+   * living on until natural expiry — otherwise off-boarding a user by moving IdPs leaves their old
+   * token valid for up to a week. Checked per request against this pod's current config, so it holds
+   * on every pod without a session sweep.
+   */
+  private void validateSessionProviderIsCurrent(UserSession session) {
+    String sessionProvider = session.getProvider();
+    if (nullOrEmpty(sessionProvider) || providerType == null) {
+      return;
+    }
+    if (!sessionProvider.equalsIgnoreCase(providerType.value())) {
+      LOG.warn(
+          "Rejecting session {} issued by provider {} — the configured provider is now {}",
+          SessionService.truncateId(session.getId()),
+          sessionProvider,
+          providerType.value());
+      throw AuthenticationException.getInvalidTokenException(
+          "Session was issued by a provider that is no longer configured.");
     }
   }
 

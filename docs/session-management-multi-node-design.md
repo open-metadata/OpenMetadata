@@ -82,6 +82,15 @@ The key failure modes are:
 The system does not fail over live from Redis to JDBC. Mixing stores would split active sessions
 across backends and make revocation unpredictable.
 
+**Every pod in a cluster must use the same `CACHE_PROVIDER`.** Selection is per-pod and there is no
+cross-pod agreement check: a cluster running one pod on Redis and another on JDBC is split-brained —
+sessions written by a Redis pod are invisible to a JDBC pod, so a non-sticky load balancer produces
+intermittent `401`s that rotate with the upstream. Changing `CACHE_PROVIDER` is therefore **not** a
+rolling change: it must be applied to every pod in the same rollout, and existing sessions do not
+survive the switch (users re-login). Each pod logs its choice at startup —
+`SessionStore backend: Redis (keyspace=…)` or `SessionStore backend: JDBC (user_session table)` —
+so a mismatch is visible by grepping pod logs for that line.
+
 ### 5.3 Session Cache
 
 Each pod keeps a local Caffeine near-cache:
@@ -448,7 +457,18 @@ loaded at most once per validation interval.
 | WebSocket validator | throttled fresh load for each tracked socket with `sessionId` |
 
 Redis deployments should monitor Redis availability as auth-critical infrastructure. When Redis is
-configured for sessions, the service refuses to start without it.
+configured for sessions, the service refuses to start without it. While Redis is unreachable,
+requests and logins answer `503` with `Retry-After` rather than `500`: the outage is transient and
+recovery is unattended, so callers should retry rather than treat it as a server fault.
+
+### 11.1 Security configuration changes across pods
+
+Changing security configuration through `PUT`/`PATCH /v1/system/security/config` reloads the serving
+pod and publishes a `securityConfig`/`reload` message on the cache-invalidation channel; peer pods
+drop their cached settings and reload from the database. This requires `cache.provider: redis` —
+that channel is the cluster's only bus. Without it the update reaches one pod only and the server
+logs a warning saying so; on such a deployment a security-config change must be followed by
+restarting every pod.
 
 ## 12. Security Properties
 
@@ -462,6 +482,16 @@ configured for sessions, the service refuses to start without it.
 7. Secure websocket mode derives socket user identity from the JWT principal, not from query params.
 8. Websocket logs do not include initial headers or bearer tokens.
 9. Revocation targets the revoked session instead of disconnecting every socket for the user.
+10. Deleting a user — soft or hard — revokes every live session they hold, so off-boarding cuts API
+    access immediately rather than at token expiry. Personal access tokens are separate credentials
+    and are not covered by this.
+11. A request that carries both an `OM_SESSION` cookie and a session-bound JWT must carry the same
+    session in both; a mismatch is rejected. Tokens with no session claim (personal access tokens,
+    bot tokens, public-client id_tokens) are unaffected.
+12. A session is only valid while the provider that issued it is still the configured provider, so
+    swapping `AUTHENTICATION_PROVIDER` invalidates sessions minted under the old one.
+13. On deployments that mint server-side sessions, a WebSocket handshake with neither an
+    `OM_SESSION` cookie nor a session-bound token is refused.
 
 ## 13. Test Coverage
 

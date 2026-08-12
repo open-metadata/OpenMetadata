@@ -4188,6 +4188,7 @@
     "sso-configuration-test-success": "Sua configuração de SSO é válida e acessível. Você pode salvá-la quando estiver pronto.",
     "sso-new-config-save-warning": "Salvar uma nova configuração de SSO irá desconectá-lo e redirecioná-lo para a página de login. Teste sua configuração primeiro para evitar ficar bloqueado.",
     "sso-provider-not-supported": "O Provedor de SSO {{provider}} não é suportado.",
+    "sso-provider-unreachable": "Não foi possível acessar o provedor de identidade para iniciar o login. Verifique se ele está acessível e tente novamente.",
     "sso-test-login-description": "Faça login no seu provedor de identidade usando estas configurações não salvas. Isso é executado em uma janela separada e nunca altera sua sessão atual.",
     "sso-test-login-error": "Não foi possível validar o login devido a um erro do servidor. Tente novamente.",
     "sso-test-login-failed": "O login foi concluído, mas esta configuração rejeitaria o acesso.",

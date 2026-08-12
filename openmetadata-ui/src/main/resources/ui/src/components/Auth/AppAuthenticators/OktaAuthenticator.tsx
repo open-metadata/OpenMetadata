@@ -26,9 +26,9 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const { oktaAuth } = useOktaAuth();
     const { handleSuccessfulLogout } = useAuthProvider();
 
-    const login = async () => {
-      oktaAuth.signInWithRedirect();
-    };
+    // Returned, not fire-and-forget: signInWithRedirect fetches the IdP's discovery document first,
+    // and a dropped rejection there leaves the sign-in page spinning with no error.
+    const login = async () => oktaAuth.signInWithRedirect();
 
     const logout = async () => {
       try {

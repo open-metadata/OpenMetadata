@@ -31,11 +31,15 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public class SecurityConfigurationManager {
+  public static final String SECURITY_CONFIG_INVALIDATION_TYPE = "securityConfig";
+  public static final String SECURITY_CONFIG_RELOAD_OP = "reload";
 
   @FunctionalInterface
   public interface ConfigurationChangeListener {
@@ -152,7 +156,44 @@ public class SecurityConfigurationManager {
         .withAuthorizerConfiguration(state.authorizerConfiguration());
   }
 
+  /**
+   * Reloads this pod's security system from the database and tells every peer pod to do the same.
+   * Without the broadcast an admin changing SSO through the UI leaves the other pods serving their
+   * old in-memory security config indefinitely: behind a non-sticky load balancer, logins then
+   * succeed or fail depending on which pod answers — at the worst possible moment, the cutover.
+   */
   public void reloadSecuritySystem() {
+    reloadLocally();
+    broadcastReload();
+  }
+
+  /**
+   * Applies a security-config change made on another pod. Drops the cached settings first — the
+   * reload reads through {@link SettingsCache}, so a stale entry here would reload the old config and
+   * silently keep the pod out of sync.
+   */
+  public void applyRemoteSecurityConfigChange() {
+    SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+    SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+    SettingsCache.invalidateSettings(MCP_CONFIGURATION.toString());
+    LOG.info("Applying security configuration change published by a peer node");
+    reloadLocally();
+  }
+
+  private void broadcastReload() {
+    CacheInvalidationPubSub pubSub = CacheBundle.getCacheInvalidationPubSub();
+    if (pubSub == null) {
+      LOG.warn(
+          "Security configuration reloaded on this node only: no cross-node invalidation bus is "
+              + "configured (cache.provider is not redis). In a multi-node deployment every other "
+              + "node keeps serving the previous security configuration until it is restarted.");
+      return;
+    }
+    pubSub.publish(SECURITY_CONFIG_INVALIDATION_TYPE, null, null, SECURITY_CONFIG_RELOAD_OP);
+    LOG.info("Published security configuration reload to peer nodes");
+  }
+
+  private void reloadLocally() {
     try {
       previousSecurityConfig = getCurrentSecurityConfig();
       previousMcpConfig = currentMcpConfig;
@@ -258,6 +299,16 @@ public class SecurityConfigurationManager {
   public static boolean isConfidentialClient() {
     AuthenticationConfiguration authConfig = getCurrentAuthConfig();
     return authConfig != null && ClientType.CONFIDENTIAL.equals(authConfig.getClientType());
+  }
+
+  /**
+   * True when logins on this deployment go through the server and therefore mint a server-side
+   * {@code UserSession} (basic, LDAP, SAML, and confidential-client OIDC). Public-client OIDC has the
+   * SPA talk to the IdP directly, so there is no session to validate against and callers must not
+   * require one.
+   */
+  public static boolean createsServerSideSessions() {
+    return isBasicAuth() || isLdap() || isSaml() || isConfidentialClient();
   }
 
   public static boolean isNativePasswordProvider(AuthProvider provider) {

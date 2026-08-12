@@ -35,6 +35,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -153,15 +154,21 @@ public class SocketAddressFilter implements Filter {
     }
     Optional<String> sessionId = SessionCookieUtil.getSessionId(request);
     if (sessionId.isEmpty()) {
-      if (tokenPrincipal == null) {
-        return SessionValidationResult.accepted();
-      }
-      if (tokenPrincipal.sessionId() != null) {
+      if (tokenPrincipal != null && tokenPrincipal.sessionId() != null) {
         return validateSessionStillActive(
             response, tokenPrincipal.sessionId(), tokenPrincipal, socketUserId);
       }
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
-      return SessionValidationResult.rejected();
+      // No OM_SESSION cookie and no session claim on the token. Refuse when the token was validated
+      // (a pre-upgrade token that predates session binding), and refuse when the deployment mints
+      // server-side sessions at all — there the browser always holds the cookie, so a handshake
+      // without one is either such a token or hand-crafted. Public-client deployments have no
+      // session to check and keep the previous behaviour.
+      if (tokenPrincipal != null || SecurityConfigurationManager.createsServerSideSessions()) {
+        LOG.info("Rejecting WebSocket handshake: no session cookie and no session-bound token");
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
+        return SessionValidationResult.rejected();
+      }
+      return SessionValidationResult.accepted();
     }
     return validateSessionStillActive(response, sessionId.get(), tokenPrincipal, socketUserId);
   }

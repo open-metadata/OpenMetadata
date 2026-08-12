@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
@@ -223,6 +224,38 @@ class SocketAddressFilterTest {
     verify(response)
         .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match session");
     verify(chain, never()).doFilter(any(), any());
+  }
+
+  @Test
+  void insecureSocketRejectsHandshakeWithNoSessionOnSessionBasedDeployment() throws Exception {
+    SocketAddressFilter insecureFilter = insecureFilter();
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    when(request.getCookies()).thenReturn(null);
+
+    try (MockedStatic<SecurityConfigurationManager> configMock =
+        mockStatic(SecurityConfigurationManager.class)) {
+      configMock
+          .when(SecurityConfigurationManager::createsServerSideSessions)
+          .thenReturn(Boolean.TRUE);
+
+      insecureFilter.doFilter(request, response, chain);
+    }
+
+    verify(response).sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  @Test
+  void insecureSocketAllowsHandshakeWithNoSessionOnPublicClientDeployment() throws Exception {
+    SocketAddressFilter insecureFilter = insecureFilter();
+    when(request.getQueryString()).thenReturn(null);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    when(request.getCookies()).thenReturn(null);
+
+    insecureFilter.doFilter(request, response, chain);
+
+    verify(chain).doFilter(any(), eq(response));
   }
 
   private void mockRequest(String queryString, String authorizationHeader) {

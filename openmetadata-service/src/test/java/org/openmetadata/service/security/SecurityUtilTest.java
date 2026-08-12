@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.auth0.jwt.interfaces.Claim;
+import io.lettuce.core.RedisCommandTimeoutException;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
 import jakarta.servlet.http.HttpServletResponse;
@@ -33,6 +34,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -513,6 +515,57 @@ class SecurityUtilTest {
     verify(response).setContentType("application/json");
     verify(response).setCharacterEncoding("UTF-8");
     assertEquals("{\"ok\":true}", outputStream.content());
+  }
+
+  @Test
+  void testWriteFailureResponseMapsRedisOutageToRetryableUnavailable() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    SecurityUtil.writeFailureResponse(
+        response, new RedisCommandTimeoutException("Command timed out after 300 millisecond(s)"));
+
+    verify(response).setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+    verify(response).setHeader("Retry-After", "5");
+    assertFalse(outputStream.content().contains("Command timed out"));
+  }
+
+  @Test
+  void testWriteFailureResponseMapsMissingUserToUnauthorized() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    SecurityUtil.writeFailureResponse(response, new EntityNotFoundException("user not found"));
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    assertTrue(outputStream.content().contains("Invalid credentials"));
+  }
+
+  @Test
+  void testWriteFailureResponseKeepsStatusOfRejectedCredentials() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    // What BasicAuthenticator throws for a bad password: carries a 401 Response but is not a
+    // WebApplicationException, so it used to fall through to a 500.
+    SecurityUtil.writeFailureResponse(
+        response, new AuthenticationException("You have entered an invalid username or password."));
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+  }
+
+  @Test
+  void testWriteFailureResponseFallsBackToServerError() throws IOException {
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
+    when(response.getOutputStream()).thenReturn(outputStream);
+
+    SecurityUtil.writeFailureResponse(response, new IllegalStateException("boom"));
+
+    verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
   }
 
   @Test

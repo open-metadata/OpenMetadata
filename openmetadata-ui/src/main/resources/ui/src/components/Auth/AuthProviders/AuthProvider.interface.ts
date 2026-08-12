@@ -31,7 +31,9 @@ export type OidcUser = {
 };
 
 export interface AuthenticatorRef {
-  invokeLogin: () => void;
+  // Returns a promise when the provider's login starts with an async step (IdP discovery), so the
+  // caller can stop the loading state and report the failure instead of spinning forever.
+  invokeLogin: () => void | Promise<void>;
   invokeLogout: () => Promise<void>;
   renewIdToken: () =>
     | Promise<string>

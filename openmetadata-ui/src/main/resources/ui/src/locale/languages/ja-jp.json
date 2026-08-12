@@ -4188,6 +4188,7 @@
     "sso-configuration-test-success": "SSO設定は有効で到達可能です。準備ができたら保存できます。",
     "sso-new-config-save-warning": "新しいSSO設定を保存すると、サインアウトしてログインページにリダイレクトされます。ロックアウトを避けるため、先に設定をテストしてください。",
     "sso-provider-not-supported": "SSOプロバイダー{{provider}}はサポートされていません。",
+    "sso-provider-unreachable": "サインインを開始するための ID プロバイダーに接続できませんでした。接続可能かどうか確認して、もう一度お試しください。",
     "sso-test-login-description": "これらの未保存の設定でIDプロバイダーにサインインします。別のウィンドウで実行され、現在のセッションは変更されません。",
     "sso-test-login-error": "サーバーエラーのため、サインインを検証できませんでした。もう一度お試しください。",
     "sso-test-login-failed": "サインインは完了しましたが、この設定ではログインが拒否されます。",

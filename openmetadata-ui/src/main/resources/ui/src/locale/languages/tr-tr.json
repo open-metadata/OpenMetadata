@@ -4188,6 +4188,7 @@
     "sso-configuration-test-success": "SSO yapılandırmanız geçerli ve erişilebilir. Hazır olduğunuzda kaydedebilirsiniz.",
     "sso-new-config-save-warning": "Yeni bir SSO yapılandırmasını kaydetmek oturumunuzu kapatır ve sizi oturum açma sayfasına yönlendirir. Kilitlenmemek için önce yapılandırmanızı test edin.",
     "sso-provider-not-supported": "SSO Sağlayıcısı {{provider}} desteklenmiyor.",
+    "sso-provider-unreachable": "Oturum açmayı başlatmak için kimlik sağlayıcısına ulaşılamadı. Erişilebilir olduğunu doğrulayıp yeniden deneyin.",
     "sso-test-login-description": "Bu kaydedilmemiş ayarları kullanarak kimlik sağlayıcınızda oturum açın. Bu işlem ayrı bir pencerede çalışır ve mevcut oturumunuzu asla değiştirmez.",
     "sso-test-login-error": "Sunucu hatası nedeniyle oturum açma doğrulanamadı. Lütfen tekrar deneyin.",
     "sso-test-login-failed": "Oturum açma tamamlandı, ancak bu yapılandırma girişi reddederdi.",
