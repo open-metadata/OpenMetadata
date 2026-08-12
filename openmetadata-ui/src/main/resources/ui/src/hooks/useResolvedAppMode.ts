@@ -26,6 +26,7 @@ import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStor
 import { useApplicationStore } from './useApplicationStore';
 import {
   clearAppModeSessionOnly,
+  getAppDefaultMode,
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
@@ -77,7 +78,9 @@ const resolvePersonaAppMode = (
  *      re-runs leave the user's chosen mode alone.
  *   3. Persona's `appMode` if set.
  *   4. User preference (`usePersistentStorage[user].appMode`).
- *   5. `DEFAULT_APP_MODE`.
+ *   5. Tenant-wide app-mode default (`appConfiguration.defaultAppMode`,
+ *      cached via `setAppDefaultMode` — see `AuthProvider`'s bootstrap).
+ *   6. `DEFAULT_APP_MODE`.
  *
  * The install gate is applied on top of the candidate: if a non-default
  * candidate is not registered in `useAppRoutesRegistry`, the resolver
@@ -90,10 +93,13 @@ const resolvePersonaAppMode = (
  * the resolver falls through to compute a fresh candidate.
  *
  * Consumers should invoke this hook exactly once, high in the tree
- * (e.g. `AppRoot`). It has no return value — its effects are `writeAppMode`
- * / `clearAppMode` calls.
+ * (e.g. `AppRoot`). Its work is done through effects — `writeAppMode` /
+ * `clearAppMode` calls. It returns the `registrySettled` flag described
+ * below so the router can tell "the owning plugin has not registered its
+ * routes yet" apart from "no plugin owns this mode", which are otherwise
+ * indistinguishable from an empty registry.
  */
-export const useResolvedAppMode = (): void => {
+export const useResolvedAppMode = (): boolean => {
   const defaultPersonaId = useApplicationStore(
     (state) => state.currentUser?.defaultPersona?.id
   );
@@ -231,7 +237,10 @@ export const useResolvedAppMode = (): void => {
 
     const preferredMode = preferences.appMode ?? null;
     const candidate =
-      currentPersonaAppMode ?? preferredMode ?? DEFAULT_APP_MODE;
+      currentPersonaAppMode ??
+      preferredMode ??
+      getAppDefaultMode() ??
+      DEFAULT_APP_MODE;
 
     // Install gate: refuse to write a non-default mode that isn't
     // registered yet. When the route registers later, this effect
@@ -252,4 +261,6 @@ export const useResolvedAppMode = (): void => {
     registeredRoutes,
     registrySettled,
   ]);
+
+  return registrySettled;
 };

@@ -66,12 +66,14 @@ import {
   KnowledgePagesHierarchyRef,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import {
   getKnowledgePageByFqn,
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -177,6 +179,9 @@ const ContextCenterArticlesPage = () => {
           tags,
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         knowledgeCenterPageRef.current?.addKnowledgePage(response);
         knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
         showSuccessToast(
@@ -314,11 +319,11 @@ const ContextCenterArticlesPage = () => {
   );
 
   const rightSidebar = useMemo(() => {
-    if (isActivityFeedTab) {
+    if (isActivityFeedTab || version) {
       return null;
     }
 
-    if (version || isRightPanelOpen) {
+    if (isRightPanelOpen) {
       return page.rightPanel;
     }
 

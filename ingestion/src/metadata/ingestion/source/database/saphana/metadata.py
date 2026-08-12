@@ -16,6 +16,7 @@ import traceback
 from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy import text
+from sqlalchemy_hana.dialect import HANAHDBCLIDialect
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -47,6 +48,19 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+def _is_disconnect(self, e, connection, cursor):
+    # sqlalchemy-hana's own implementation calls connection.isconnected(), which crashes
+    # (AttributeError) when the profiler passes a SQLAlchemy Engine instead of a raw DBAPI
+    # connection - masking the real underlying error (e.g. HANA rejecting GROUP BY on a LOB
+    # column). Every other dialect (Postgres, MySQL, the SQLAlchemy default) is defensive
+    # about what `connection` actually is; this makes HANA's the same.
+    isconnected = getattr(connection, "isconnected", None)
+    return not isconnected() if isconnected else False
+
+
+HANAHDBCLIDialect.is_disconnect = _is_disconnect
+
+
 class SaphanaSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
@@ -68,7 +82,7 @@ class SaphanaSource(CommonDbSourceService):
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 
-        if getattr(self.service_connection.connection, "database"):  # noqa: B009
+        if getattr(self.service_connection.connection, "database", None):
             yield self.service_connection.connection.database
 
         else:

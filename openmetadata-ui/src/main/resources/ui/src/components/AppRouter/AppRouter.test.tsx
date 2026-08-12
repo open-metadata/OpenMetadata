@@ -75,15 +75,25 @@ const setAuthState = (overrides: {
   isAuthenticated?: boolean;
   isApplicationLoading?: boolean;
   isAuthenticating?: boolean;
+  applicationsLoaded?: boolean;
   currentUser?: Record<string, unknown>;
 }) => {
-  mockUseApplicationStore.mockImplementation(() => ({
+  const state = {
     currentUser: {},
     isAuthenticated: true,
     isApplicationLoading: false,
     isAuthenticating: false,
+    applicationsLoaded: true,
     ...overrides,
-  }));
+  };
+
+  // Honour the selector so individual fields (notably `applicationsLoaded`,
+  // which gates route registration) can be varied independently.
+  mockUseApplicationStore.mockImplementation((selector?: unknown) =>
+    typeof selector === 'function'
+      ? (selector as (s: typeof state) => unknown)(state)
+      : state
+  );
 };
 
 const ModeRoutesMock: ComponentType = () => (
@@ -160,6 +170,40 @@ describe('AppRouter — App Mode routing integration', () => {
       await screen.findByTestId('default-authenticated-routes')
     ).toBeInTheDocument();
     expect(screen.queryByTestId('custom-mode-routes')).not.toBeInTheDocument();
+  });
+
+  it('holds a loader instead of the default routes while a non-default mode is still registering', async () => {
+    // `applications` not loaded yet — the owning plugin registers its routes in
+    // an effect gated on that, so the registry is legitimately empty here.
+    setAuthState({ isAuthenticated: true, applicationsLoaded: false });
+    writeAppMode('ai');
+
+    renderRouter();
+
+    expect(await screen.findByTestId('full-screen-loader')).toBeInTheDocument();
+    // Rendering the default routes here would mount their `path="*"`
+    // catch-all, which navigates to /404 and destroys the requested URL.
+    expect(
+      screen.queryByTestId('default-authenticated-routes')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the mode routes once the owning plugin registers them after applications load', async () => {
+    setAuthState({ isAuthenticated: true, applicationsLoaded: false });
+    writeAppMode('ai');
+
+    renderRouter();
+
+    expect(await screen.findByTestId('full-screen-loader')).toBeInTheDocument();
+
+    act(() => {
+      useAppRoutesRegistry.getState().registerRoutes('ai', ModeRoutesMock);
+    });
+
+    expect(await screen.findByTestId('custom-mode-routes')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('default-authenticated-routes')
+    ).not.toBeInTheDocument();
   });
 
   it('swaps to the registered mode component when the AppMode changes mid-session', async () => {

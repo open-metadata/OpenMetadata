@@ -70,6 +70,10 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         # the `result` here would be `db.schema.table` or `db.schema.table.column`
         # for struct it will be `db.schema.table.column.nestedchild.nestedchild` etc
         # the logic is to add the backticks to nested children.
+        if "`" not in result:
+            # Databricks only quotes identifiers that need it, so an all-lowercase
+            # schema.table.column arrives unquoted with no struct path to repair.
+            return result
         dot_count = result.count(".")
         if dot_count > 1 and "." in result.split("`.`")[-1]:
             splitted_result = result.split("`.")[-1].split(".")

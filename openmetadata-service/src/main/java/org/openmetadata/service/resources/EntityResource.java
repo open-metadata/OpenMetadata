@@ -742,6 +742,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                     jobId, securityContext, deleteResponse.entity());
               } catch (Exception e) {
+                // Log before notifying. The WebSocket notification is the ONLY report this path
+                // had, so a failed async delete was invisible to anyone not holding a live socket
+                // — no stack trace, no error line, nothing. A 100k-table service delete that dies
+                // here looks exactly like one still grinding, which is precisely the ambiguity
+                // that made the nightly scale failures undiagnosable.
+                LOG.error(
+                    "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
+                    entityType,
+                    id,
+                    jobId,
+                    recursive,
+                    hardDelete,
+                    e);
                 WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
                     jobId,
                     securityContext,
