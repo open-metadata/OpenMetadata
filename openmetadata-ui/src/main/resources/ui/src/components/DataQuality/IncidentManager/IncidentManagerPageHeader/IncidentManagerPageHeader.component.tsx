@@ -33,7 +33,6 @@ import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import './incident-manager.less';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
-import { useTestCaseIncidentHeader } from './useTestCaseIncidentHeader';
 
 const HeaderField = ({
   label,
@@ -73,7 +72,7 @@ const HeaderFieldValue = ({
 
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
-  fetchTaskCount,
+  incidentHeaderData,
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
@@ -96,7 +95,7 @@ const IncidentManagerPageHeader = ({
     handleAssigneeUpdate,
     handleDomainUpdate,
     onIncidentStatusUpdate,
-  } = useTestCaseIncidentHeader({ fetchTaskCount, isVersionPage });
+  } = incidentHeaderData;
 
   const statusDetails = useMemo(() => {
     if (isLoading) {
@@ -170,7 +169,16 @@ const IncidentManagerPageHeader = ({
         />
       </>
     );
-  }, [testCaseStatusData, isLoading, taskLinkInfo, hasEditStatusPermission]);
+  }, [
+    handleAssigneeUpdate,
+    handleSeverityUpdate,
+    hasEditStatusPermission,
+    isLoading,
+    onIncidentStatusUpdate,
+    t,
+    taskLinkInfo,
+    testCaseStatusData,
+  ]);
 
   const testDefinitionName = getEntityName(testCaseData?.testDefinition);
   const testDefinitionDescription = testCaseData?.testDefinition?.description;

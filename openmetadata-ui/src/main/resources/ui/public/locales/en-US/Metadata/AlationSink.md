@@ -8,6 +8,8 @@ The connector will ingest data from OpenMetadata into Alation.
 The connector uses `POST` requests to write the data into Alation.
 Hence, an user credentials or an access token with `Source Admin` or `Catalog Admin` or `Server Admin` permissions will be required.
 
+You can find further information on the Alation Sink connector in the <a href="https://docs.open-metadata.org/connectors/metadata/alationsink" target="_blank">docs</a>.
+
 ## Connection Details
 
 $$section

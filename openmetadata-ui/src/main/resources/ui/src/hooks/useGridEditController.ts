@@ -300,7 +300,7 @@ export function useGridEditController({
     if (gridContainer) {
       gridContainer
         .querySelector('.rdg')
-        ?.addEventListener('scroll', highlightSelectedRange);
+        ?.addEventListener('scroll', highlightSelectedRange, { passive: true });
 
       return () => {
         gridContainer

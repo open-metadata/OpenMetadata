@@ -18,6 +18,7 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -75,6 +76,7 @@ test.describe('TestCase Version Page', () => {
       `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
     );
     await waitForAllLoadersToDisappear(page);
+    await verifyTestCaseLastRunBanner(page, 'not-run-yet');
 
     /**
      * Step: Display name change

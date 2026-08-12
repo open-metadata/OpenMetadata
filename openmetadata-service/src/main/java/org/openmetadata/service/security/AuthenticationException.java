@@ -51,7 +51,7 @@ public class AuthenticationException extends RuntimeException {
 
   public static AuthenticationException getInvalidTokenException(String reason, Exception e) {
     String msg = String.format("Not Authorized! %s due to %s", reason, e);
-    return new AuthenticationException(msg);
+    return new AuthenticationException(msg, e);
   }
 
   public static AuthenticationException getExpiredTokenException() {
