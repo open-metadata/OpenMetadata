@@ -288,12 +288,19 @@ describe('RunHistoryDrawer', () => {
       renderDrawer();
 
       const [selected, unselected] = screen.getAllByTestId('run-history-item');
+      // Asserted as "both carry the same valid width utility" rather than a literal width: a
+      // hardcoded `tw:border-2` has to be edited whenever the design changes, and the edit that
+      // narrowed it once shipped `tw:border-` — no width at all, since Tailwind has no such class.
+      const borderWidthClass = (element: HTMLElement) =>
+        element.className
+          .split(' ')
+          .find((entry) => /^tw:border(-\d+)?$/.test(entry));
 
-      expect(selected.className).toContain('tw:border-2');
+      expect(borderWidthClass(selected)).toBeDefined();
+      expect(borderWidthClass(unselected)).toBe(borderWidthClass(selected));
+
       expect(selected.className).toContain('tw:border-utility-brand-600');
       expect(selected.className).not.toContain('tw:outline-4');
-
-      expect(unselected.className).toContain('tw:border-2');
       expect(unselected.className).toContain('tw:border-secondary');
     });
   });
