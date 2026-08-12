@@ -18,7 +18,10 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
-import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -1212,6 +1215,7 @@ test.describe(
           );
           await nextButton.click();
           await fetchResponse;
+          await waitForAllLoadersToDisappear(page);
 
           // Check again after page load
           isItemVisible = await testDefLocator.isVisible();
@@ -1256,6 +1260,7 @@ test.describe(
         expect(updateResponse.status()).toBe(200);
 
         await toastNotification(page, /updated successfully/i);
+        await waitForAllLoadersToDisappear(page);
 
         // Verify we stayed on the same page (previous button state should be unchanged)
         if (prevDisabledBefore) {
@@ -1296,6 +1301,7 @@ test.describe(
 
         // Wait for the GET that happens after delete (page reset + fetch)
         await getResponse;
+        await waitForAllLoadersToDisappear(page);
 
         await toastNotification(page, /deleted successfully/i);
 

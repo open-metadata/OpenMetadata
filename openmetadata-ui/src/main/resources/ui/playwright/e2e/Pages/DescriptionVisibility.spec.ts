@@ -413,7 +413,12 @@ test.describe(
       await expect(
         userPage.getByRole('tab', { name: 'Description Tab' })
       ).toBeVisible();
+      const pathnameBeforeTabClick = new URL(userPage.url()).pathname;
       await userPage.getByRole('tab', { name: 'Description Tab' }).click();
+      await userPage.waitForURL(
+        (url) => url.pathname !== pathnameBeforeTabClick
+      );
+      await waitForAllLoadersToDisappear(userPage);
 
       const descriptionWidget = userPage
         .getByTestId(/KnowledgePanel.Description-/)

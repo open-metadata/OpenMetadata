@@ -631,12 +631,15 @@ test.describe('Context Center Articles', () => {
       .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
     await expect(viewedCard).toBeVisible();
 
+    const knowledgePageResponse = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/contextCenter/pages/name/')
+    );
     await viewedCard.getByTestId('knowledge-page-link').first().click();
     await page.waitForURL((url) =>
       url.pathname.includes('/context-center/articles/')
     );
+    await knowledgePageResponse;
     await waitForAllLoadersToDisappear(page);
-    await page.waitForTimeout(500);
 
     await navigateToArticles(page);
     const rightPanel = page.getByTestId('knowledge-center-right-panel');

@@ -508,8 +508,13 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
+        const pathnameBeforeTabActivation = new URL(userPage.url()).pathname;
         await customTab.focus();
         await userPage.keyboard.press('Enter');
+        await userPage.waitForURL(
+          (url) => url.pathname !== pathnameBeforeTabActivation
+        );
+        await waitForAllLoadersToDisappear(userPage);
 
         await expect
           .poll(async () =>
@@ -663,8 +668,13 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
+        const pathnameBeforeTabActivation = new URL(userPage.url()).pathname;
         await customTab.focus();
         await userPage.keyboard.press('Enter');
+        await userPage.waitForURL(
+          (url) => url.pathname !== pathnameBeforeTabActivation
+        );
+        await waitForAllLoadersToDisappear(userPage);
 
         await expect
           .poll(async () =>

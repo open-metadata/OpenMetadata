@@ -2882,7 +2882,9 @@ test.describe('Glossary tests', () => {
 
       // Open delete modal
       await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="delete-button"]');
+      const deleteButton = page.locator('[data-testid="delete-button"]');
+      await expect(deleteButton).toBeVisible();
+      await deleteButton.click();
 
       // Verify delete modal is visible
       await expect(page.locator('[role="dialog"]')).toBeVisible();

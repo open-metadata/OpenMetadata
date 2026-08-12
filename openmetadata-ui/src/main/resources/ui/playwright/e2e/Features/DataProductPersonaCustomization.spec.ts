@@ -219,7 +219,12 @@ test.describe('Data Product Persona customization', () => {
         userPage.getByRole('tab', { name: 'Custom Tab' })
       ).toBeVisible();
 
+      const pathnameBeforeTabClick = new URL(userPage.url()).pathname;
       await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
+      await userPage.waitForURL(
+        (url) => url.pathname !== pathnameBeforeTabClick
+      );
+      await waitForAllLoadersToDisappear(userPage);
 
       const visibleDescription = userPage
         .getByTestId(/KnowledgePanel.Description-/)

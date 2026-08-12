@@ -1129,10 +1129,18 @@ test.describe('Impact Analysis', () => {
 
     const downstreamCount = await page.locator('[data-row-key]').count();
 
+    const upstreamResponse = page.waitForResponse(
+      `/api/v1/lineage/getLineageByEntityCount?*`
+    );
     await page.getByRole('radio', { name: 'Upstream' }).click();
+    await upstreamResponse;
     await waitForAllLoadersToDisappear(page);
 
+    const downstreamResponse = page.waitForResponse(
+      `/api/v1/lineage/getLineageByEntityCount?*`
+    );
     await page.getByRole('radio', { name: 'Downstream' }).click();
+    await downstreamResponse;
     await waitForAllLoadersToDisappear(page);
 
     const finalCount = await page.locator('[data-row-key]').count();
