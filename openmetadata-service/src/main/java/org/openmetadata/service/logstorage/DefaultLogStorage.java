@@ -63,16 +63,16 @@ public class DefaultLogStorage implements LogStorageInterface {
   @Override
   public Map<String, Object> getLogs(
       String pipelineFQN, UUID runId, String afterCursor, int limit) {
+    // Load the real pipeline: Argo builds its workflow label selector from service.name, so a
+    // name-only stub finds nothing. Airflow needs only the name, which is why a stub sufficed.
+    // Outside the catch below: an unknown pipeline is the caller's error, and reporting it as
+    // "this run has no logs" would send them looking for a runner problem that does not exist.
+    IngestionPipeline pipeline =
+        Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
     try {
       // Note: The default implementation through pipeline service client (Airflow/Argo)
       // doesn't support fetching logs by specific runId - it always returns the latest logs
       // The runId parameter is ignored here for backward compatibility
-
-      // Load the real pipeline with its service. A synthesized stub carries only the name, which
-      // is enough for Airflow but not for runners that locate a run by service (Argo builds its
-      // workflow label selector from service.name and fails without it).
-      IngestionPipeline pipeline =
-          Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
 
       // Delegate to pipeline service client (Airflow/Argo)
       Map<String, String> clientLogs =
@@ -103,12 +103,11 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   /**
-   * Pulls the log text out of a pipeline service client response. Runners key the content by task
-   * name (see {@code PipelineServiceClientInterface.TYPE_TO_TASK}), e.g. {@code lineage_task}, so
-   * the only fixed keys are the paging ones. Take the remaining entry rather than guessing the task
-   * name, which depends on the pipeline type.
+   * Pulls the log text out of a client response. Runners key it by task name (see {@code
+   * PipelineServiceClientInterface.TYPE_TO_TASK}), e.g. {@code lineage_task}, so only the paging
+   * keys are fixed. Take the remaining entry instead of guessing the task name.
    */
-  private static String extractLogContent(Map<String, String> clientLogs) {
+  public static String extractLogContent(Map<String, String> clientLogs) {
     if (clientLogs == null) {
       return "";
     }
@@ -136,7 +135,7 @@ public class DefaultLogStorage implements LogStorageInterface {
         }
       }
     } catch (Exception e) {
-      LOG.warn("Failed to get latest run ID from pipeline status", e);
+      LOG.warn("Failed to get latest run ID for pipeline: {}", pipelineFQN, e);
     }
 
     // If no run ID found, generate a new one

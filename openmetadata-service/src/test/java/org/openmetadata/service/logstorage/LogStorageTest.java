@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 public class LogStorageTest {
@@ -70,9 +71,8 @@ public class LogStorageTest {
 
   @Test
   void getLogsPassesThePipelineServiceToTheRunner() {
-    // Regression: the storage used to synthesize a name-only pipeline. Argo builds its workflow
-    // label selector from service.name and threw a NullPointerException, which the catch below
-    // turned into "no logs", so log fetches silently returned empty on every Argo deployment.
+    // Regression: a name-only pipeline made Argo's label selector NPE, and the catch in getLogs
+    // turned that into "no logs", so every Argo log fetch silently returned empty.
     IngestionPipeline withService =
         new IngestionPipeline()
             .withFullyQualifiedName(testPipelineFQN)
@@ -99,9 +99,28 @@ public class LogStorageTest {
   }
 
   @Test
+  void getLogsSurfacesAnUnknownPipelineInsteadOfReportingNoLogs() {
+    // A wrong FQN is the caller's error. Swallowing it into empty logs sends the user hunting a
+    // runner outage that is not there.
+    entityMock
+        .when(
+            () ->
+                Entity.getEntityByName(
+                    eq(Entity.INGESTION_PIPELINE),
+                    eq(testPipelineFQN),
+                    anyString(),
+                    any(Include.class)))
+        .thenThrow(new EntityNotFoundException("pipeline not found"));
+
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10));
+  }
+
+  @Test
   void getLogsReadsContentKeyedByTaskName() {
-    // Runners key log content by task name (TYPE_TO_TASK), e.g. "lineage_task"; only "total" and
-    // "after" are fixed. Reading a literal "logs" key returned empty for every real response.
+    // Runners key content by task name (TYPE_TO_TASK); only "total" and "after" are fixed, so a
+    // literal "logs" key came back empty for every real response.
     when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
         .thenReturn(Map.of("lineage_task", "InvalidPrivateKeyException: bad PEM", "total", "1"));
 

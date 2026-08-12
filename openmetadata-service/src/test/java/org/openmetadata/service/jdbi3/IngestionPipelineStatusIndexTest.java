@@ -52,6 +52,8 @@ class IngestionPipelineStatusIndexTest {
       new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("data-eng");
   private static final EntityReference DOMAIN =
       new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN).withName("analytics");
+  private static final EntityReference FOLLOWER =
+      new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("watcher");
 
   @Test
   void addPipelineStatusKeepsOwnersAndDomainsOnTheIndexedPipeline() {
@@ -80,6 +82,7 @@ class IngestionPipelineStatusIndexTest {
       verify(searchRepository).updateEntityIndex(indexed.capture());
       assertEquals(List.of(OWNER), indexed.getValue().getOwners());
       assertEquals(List.of(DOMAIN), indexed.getValue().getDomains());
+      assertEquals(List.of(FOLLOWER), indexed.getValue().getFollowers());
     }
   }
 
@@ -101,6 +104,9 @@ class IngestionPipelineStatusIndexTest {
     }
     if (fields.contains(Entity.FIELD_DOMAINS)) {
       pipeline.withDomains(List.of(DOMAIN));
+    }
+    if (fields.contains(Entity.FIELD_FOLLOWERS)) {
+      pipeline.withFollowers(List.of(FOLLOWER));
     }
     return pipeline;
   }

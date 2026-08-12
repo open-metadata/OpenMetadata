@@ -76,6 +76,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.logstorage.DefaultLogStorage;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
@@ -628,9 +629,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public RestUtil.PutResponse<?> addPipelineStatus(
       UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
-    // Validate the request content. Load owners/domains/followers too: updateEntityIndex below
-    // rebuilds the full search document from this entity, so any field not loaded here would be
-    // wiped from the index on every run status report.
+    // updateEntityIndex below can rebuild the whole search document from this entity, so load
+    // every field it indexes; anything missing here gets wiped from the index on each run.
     IngestionPipeline ingestionPipeline =
         getByName(uriInfo, fqn, getFields("service,owners,domains,followers"));
     PipelineStatus storedPipelineStatus =
@@ -1120,13 +1120,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   private Map<String, Object> getLogsFromPipelineService(String pipelineFQN, String afterCursor) {
-    // Fall back to traditional pipeline service logs (Airflow/Argo)
+    // Fall back to traditional pipeline service logs (Airflow/Argo). Loads the service and reads
+    // the task-keyed content for the same reasons as DefaultLogStorage.getLogs.
     IngestionPipeline pipeline =
-        Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "", Include.ALL);
+        Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
     Map<String, String> logs = pipelineServiceClient.getLastIngestionLogs(pipeline, afterCursor);
 
     Map<String, Object> result = new HashMap<>();
-    result.put("logs", logs.getOrDefault("logs", ""));
+    result.put("logs", DefaultLogStorage.extractLogContent(logs));
     result.put("after", logs.get("after"));
     result.put("total", logs.getOrDefault("total", "0"));
     return result;
