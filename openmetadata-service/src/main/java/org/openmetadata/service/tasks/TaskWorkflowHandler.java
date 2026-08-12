@@ -79,6 +79,9 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Slf4j
 public class TaskWorkflowHandler {
 
+  /** Suggestion payload {@code source} marking a suggestion an agent produced. */
+  private static final String AGENT_SUGGESTION_SOURCE = "Agent";
+
   private static TaskWorkflowHandler instance;
 
   private TaskWorkflowHandler() {}
@@ -1016,22 +1019,36 @@ public class TaskWorkflowHandler {
   }
 
   /**
-   * Stamp {@code SUGGESTED} on the accepted field's change summary.
+   * Stamp {@code SUGGESTED} on the accepted field's change summary, for agent-authored suggestions.
    *
    * <p>Applies to both accept paths. The no-op path has no FieldChange to summarize, and the
    * value-changing path goes through {@link FieldPathUtils#updateFieldDescription}, which patches
    * without a change source — so its summary would otherwise default to {@code Manual} and read as
-   * hand-authored. Both cases are content the suggester produced and a reviewer approved, which
-   * consumers (search's descriptionSource, automations deciding whether an asset still needs work)
-   * must be able to tell apart from a human writing the text themselves.
+   * hand-authored. Both cases are content an agent produced and a reviewer approved, which consumers
+   * (search's descriptionSource, automations deciding whether an asset still needs work) must be
+   * able to tell apart from a human writing the text themselves.
+   *
+   * <p>A suggestion a person wrote is left alone: accepting it records a human's words, whoever
+   * clicked approve. The payload's {@code source} is client-supplied, so anything that is not
+   * recognizably an agent counts as human — the direction that keeps an asset under review rather
+   * than silently exempting it.
    */
   private void recordSuggestedChangeSummary(
-      EntityRepository<?> repository, EntityInterface entity, String fieldPath, String user) {
+      EntityRepository<?> repository,
+      EntityInterface entity,
+      JsonNode payloadNode,
+      String fieldPath,
+      String user) {
     String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
-    if (changeSummaryField != null) {
+    if (changeSummaryField != null && isAgentAuthored(payloadNode)) {
       repository.patchChangeSummary(
           entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
     }
+  }
+
+  private boolean isAgentAuthored(JsonNode payloadNode) {
+    String source = payloadNode.path("source").asText(null);
+    return AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(source);
   }
 
   private void applySuggestion(
@@ -1056,7 +1073,7 @@ public class TaskWorkflowHandler {
       if ("Description".equals(suggestionType)) {
         Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
         if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
-          recordSuggestedChangeSummary(repository, entity, fieldPath, user);
+          recordSuggestedChangeSummary(repository, entity, payloadNode, fieldPath, user);
           LOG.info(
               "[TaskWorkflowHandler] Recorded no-op description suggestion change summary: fieldPath={}",
               fieldPath);
@@ -1064,9 +1081,13 @@ public class TaskWorkflowHandler {
         }
         boolean success =
             FieldPathUtils.updateFieldDescription(
-                entity, repository, user, fieldPath, suggestedValue);
+                entity,
+                repository,
+                user,
+                fieldPath,
+                suggestedValue,
+                isAgentAuthored(payloadNode) ? ChangeSource.SUGGESTED : null);
         if (success) {
-          recordSuggestedChangeSummary(repository, entity, fieldPath, user);
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
           LOG.warn(

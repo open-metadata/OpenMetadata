@@ -21,6 +21,7 @@ import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 
@@ -56,6 +57,25 @@ public class FieldPathUtils {
       String user,
       String fieldPath,
       String newDescription) {
+    return updateFieldDescription(entity, repository, user, fieldPath, newDescription, null);
+  }
+
+  /**
+   * Update a field's description, recording where the new text came from.
+   *
+   * <p>The change source rides the patch rather than being stamped afterwards: one versioned write
+   * that carries the provenance into the change summary and through the normal lifecycle, so the
+   * search document's {@code descriptionSource} follows. A follow-up write cannot do either.
+   *
+   * @param changeSource provenance of the new text, or null to leave it defaulted
+   */
+  public static boolean updateFieldDescription(
+      EntityInterface entity,
+      EntityRepository<?> repository,
+      String user,
+      String fieldPath,
+      String newDescription,
+      ChangeSource changeSource) {
 
     // Take snapshot before modification
     String originalJson = JsonUtils.pojoToJson(entity);
@@ -77,7 +97,7 @@ public class FieldPathUtils {
     }
 
     // Apply patch
-    repository.patch(null, entity.getId(), user, patch, null, null);
+    repository.patch(null, entity.getId(), user, patch, changeSource, null);
     LOG.info(
         "[FieldPathUtils] Updated description at '{}' in entity '{}'", fieldPath, entity.getName());
     return true;
