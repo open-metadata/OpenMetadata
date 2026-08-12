@@ -1340,13 +1340,9 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    /**
-     * Attached dbt metadata ingestion remains disabled until the Dagster/dbt workflow is live
-     * and validated.
-     */
+    storedProcedureFilterPattern?:          FilterPattern;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
     supportsIncrementalMetadataExtraction?: boolean;
     /**
@@ -1769,6 +1765,21 @@ export interface ConfigObject {
      */
     protocol?: string;
     /**
+     * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this
+     * to information_schema.job_history for workspace-local native history or
+     * sys.information_schema.job_history for cross-workspace native history; the connector maps
+     * their native columns and scopes them to the configured workspace and schema. Custom
+     * tables or views must expose query_text, query_type, user_name, database_name,
+     * schema_name, start_time, end_time, duration, aborted, and cost columns.
+     *
+     * Table name to fetch the query history.
+     *
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?: string;
+    /**
      * ClickZetta virtual cluster used for metadata extraction.
      */
     virtualCluster?: string;
@@ -1801,14 +1812,6 @@ export interface ConfigObject {
      * Policy agent configuration for access control extraction.
      */
     policyAgentConfig?: PolicyAgentConfig;
-    /**
-     * Table name to fetch the query history.
-     *
-     * Table name to fetch the query history. When set, this overrides the default
-     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
-     * must expose columns compatible with the selected log path.
-     */
-    queryHistoryTable?: string;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
