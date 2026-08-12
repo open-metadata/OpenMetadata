@@ -16,8 +16,8 @@ import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
 import CustomNoDataPlaceHolderNew from './CustomNoDataPlaceHolderNew';
 import FilterErrorPlaceHolder from './FilterErrorPlaceHolder';
 import NoDataPlaceholderNew from './NoDataPlaceholderNew';
-import { NoDataPlaceholderProps } from './placeholder.interface';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
+import { NoDataPlaceholderProps } from './placeholder.interface';
 
 /**
  * New-design compound component. Each variant is a narrow-typed sub-component
