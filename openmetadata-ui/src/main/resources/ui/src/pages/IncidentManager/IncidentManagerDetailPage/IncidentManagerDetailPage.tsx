@@ -10,17 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Copy01, RefreshCcw01 } from '@untitledui/icons';
+import { Box } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
+import { RefreshCcw01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { ReactNode, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
@@ -29,19 +25,19 @@ import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import { PageLoader } from '../../../components/common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
 import TestCaseFormDrawer from '../../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
+import TestCaseLastRunBanner from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component';
+import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
@@ -49,14 +45,18 @@ import {
   getEntityDetailsPath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
+import { TEST_CASE_NEXT_RUN_QUERY_KEY } from './IncidentManagerDetailPage.constants';
+import {
+  fetchNextTestCaseRunTimestamp,
+  getIncidentManagerPageTitle,
+  getTestSuiteFqns,
+  shouldFetchNextRun,
+} from './IncidentManagerDetailPage.utils';
+import TestCaseHeaderTitle from './TestCaseHeaderTitle.component';
+import TestCaseTabBarExtraContent from './TestCaseTabBarExtraContent.component';
 import { useTestCaseDetailPage } from './useTestCaseDetailPage';
-
-const breakableTooltipText = (text?: ReactNode) => (
-  <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
-);
 
 const IncidentManagerDetailPage = ({
   isVersionPage = false,
@@ -96,6 +96,21 @@ const IncidentManagerDetailPage = ({
     setTestCase,
     handleRestore,
   } = useTestCaseDetailPage({ isVersionPage });
+  const incidentHeaderData = useTestCaseIncidentHeader({
+    fetchTaskCount: getEntityFeedCount,
+    isVersionPage,
+  });
+  const testSuiteFqns = useMemo(() => getTestSuiteFqns(testCase), [testCase]);
+  const { data: nextRunTimestamp } = useQuery({
+    queryKey: [TEST_CASE_NEXT_RUN_QUERY_KEY, testCaseFQN, testSuiteFqns],
+    queryFn: () => fetchNextTestCaseRunTimestamp(testSuiteFqns),
+    enabled: shouldFetchNextRun({
+      activeTab,
+      dimensionKey,
+      isVersionPage,
+      testSuiteFqns,
+    }),
+  });
 
   const tabItems: TabsProps['items'] = useMemo(
     () =>
@@ -107,9 +122,42 @@ const IncidentManagerDetailPage = ({
             {isBeta && <BetaBadge />}
           </div>
         ),
-        children: <Tab showSidePanel={isTabExpanded} />,
+        children: (
+          <>
+            {key === TestCasePageTabs.TEST_CASE_RESULTS &&
+              !isVersionPage &&
+              !dimensionKey && (
+                <div
+                  className="tw:px-4 tw:pt-4"
+                  data-testid="test-case-last-run-banner-tab-container">
+                  <TestCaseLastRunBanner
+                    incidentTask={incidentHeaderData.incidentTask}
+                    nextRunTimestamp={nextRunTimestamp}
+                    parameterValues={testCase?.parameterValues}
+                    taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                    testCaseResult={testCase?.testCaseResult}
+                    testCaseStatus={testCase?.testCaseStatus}
+                    testCaseStatusData={incidentHeaderData.testCaseStatusData}
+                  />
+                </div>
+              )}
+            <Tab showSidePanel={isTabExpanded} />
+          </>
+        ),
       })),
-    [tabs, isTabExpanded]
+    [
+      dimensionKey,
+      incidentHeaderData.incidentTask,
+      incidentHeaderData.taskLinkInfo,
+      incidentHeaderData.testCaseStatusData,
+      isTabExpanded,
+      isVersionPage,
+      nextRunTimestamp,
+      tabs,
+      testCase?.parameterValues,
+      testCase?.testCaseResult,
+      testCase?.testCaseStatus,
+    ]
   );
 
   const breadcrumb = useMemo(() => {
@@ -221,14 +269,7 @@ const IncidentManagerDetailPage = ({
 
   return (
     <PageLayoutV1
-      pageTitle={t(
-        isVersionPage
-          ? 'label.entity-version-detail-plural'
-          : 'label.entity-detail-plural',
-        {
-          entity: getEntityName(testCase) || t('label.test-case'),
-        }
-      )}>
+      pageTitle={getIncidentManagerPageTitle(t, isVersionPage, testCase)}>
       <Box
         className={classNames({
           'version-data': isVersionPage,
@@ -279,65 +320,12 @@ const IncidentManagerDetailPage = ({
                 justify="center">
                 <TestCaseIcon className="tw:size-5" />
               </Box>
-              <Box
-                align="center"
-                className="tw:min-w-0"
-                data-testid="entity-header-title"
-                gap={3}>
-                <Box className="tw:min-w-0" direction="col">
-                  {displayName && (
-                    <Typography
-                      as="h2"
-                      className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
-                      data-testid="entity-header-display-name"
-                      ellipsis={{
-                        tooltip: breakableTooltipText(
-                          stringToHTML(displayName)
-                        ),
-                      }}
-                      size="text-lg"
-                      weight="bold">
-                      {stringToHTML(displayName)}
-                    </Typography>
-                  )}
-                  <Typography
-                    as={displayName ? 'span' : 'h2'}
-                    className={classNames(
-                      'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
-                      {
-                        'tw:text-primary': !displayName,
-                        'tw:text-tertiary': displayName,
-                      }
-                    )}
-                    data-testid="entity-header-name"
-                    ellipsis={{ tooltip: breakableTooltipText(testCase?.name) }}
-                    size={displayName ? 'text-sm' : 'text-lg'}
-                    weight={displayName ? 'medium' : 'bold'}>
-                    {testCase?.name}
-                  </Typography>
-                </Box>
-                <Tooltip
-                  placement="top"
-                  title={
-                    hasCopied
-                      ? t('message.link-copy-to-clipboard')
-                      : t('label.copy-item', {
-                          item: t('label.url-uppercase'),
-                        })
-                  }>
-                  <Button
-                    aria-label={t('label.copy-item', {
-                      item: t('label.url-uppercase'),
-                    })}
-                    color="tertiary"
-                    data-testid="entity-header-copy-button"
-                    iconLeading={Copy01}
-                    size="xs"
-                    type="button"
-                    onClick={handleCopyEntityUrl}
-                  />
-                </Tooltip>
-              </Box>
+              <TestCaseHeaderTitle
+                displayName={displayName}
+                hasCopied={hasCopied}
+                testCaseName={testCase.name}
+                onCopy={handleCopyEntityUrl}
+              />
             </Box>
             <Box align="center" className="tw:shrink-0" gap={2}>
               {!isVersionPage && (
@@ -365,9 +353,8 @@ const IncidentManagerDetailPage = ({
             </Box>
           </Box>
           <IncidentManagerPageHeader
-            fetchTaskCount={getEntityFeedCount}
+            incidentHeaderData={incidentHeaderData}
             isVersionPage={isVersionPage}
-            testCaseData={testCase}
             onOwnerUpdate={handleOwnerChange}
           />
         </Box>
@@ -379,15 +366,11 @@ const IncidentManagerDetailPage = ({
             data-testid="tabs"
             items={tabItems}
             tabBarExtraContent={
-              isExpandViewSupported && (
-                <AlignRightIconButton
-                  className={isTabExpanded ? 'rotate-180' : ''}
-                  title={
-                    isTabExpanded ? t('label.collapse') : t('label.expand')
-                  }
-                  onClick={toggleTabExpanded}
-                />
-              )
+              <TestCaseTabBarExtraContent
+                isExpandViewSupported={isExpandViewSupported}
+                isTabExpanded={isTabExpanded}
+                toggleTabExpanded={toggleTabExpanded}
+              />
             }
             onChange={handleTabChange}
           />

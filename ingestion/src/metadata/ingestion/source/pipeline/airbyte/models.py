@@ -79,15 +79,39 @@ class AirbyteCloudJob(BaseModel):
 class AirbyteSourceResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
+    # Internal API (`/sources/get`) returns `sourceName` + `connectionConfiguration`;
+    # the public API (`/api/public/v1/sources/{id}`) returns `sourceType` + `configuration`.
     sourceName: Optional[str] = None  # noqa: N815, UP045
+    sourceType: Optional[str] = None  # noqa: N815, UP045
     connectionConfiguration: Optional[dict] = None  # noqa: N815, UP045
+    configuration: Optional[dict] = None  # noqa: UP045
+
+    @property
+    def resolved_type(self) -> Optional[str]:  # noqa: UP045
+        """Connector type from whichever API responded (display name or slug)."""
+        return self.sourceName or self.sourceType
+
+    @property
+    def resolved_configuration(self) -> dict:
+        """Connection config from whichever API responded."""
+        return self.connectionConfiguration or self.configuration or {}
 
 
 class AirbyteDestinationResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     destinationName: Optional[str] = None  # noqa: N815, UP045
+    destinationType: Optional[str] = None  # noqa: N815, UP045
     connectionConfiguration: Optional[dict] = None  # noqa: N815, UP045
+    configuration: Optional[dict] = None  # noqa: UP045
+
+    @property
+    def resolved_type(self) -> Optional[str]:  # noqa: UP045
+        return self.destinationName or self.destinationType
+
+    @property
+    def resolved_configuration(self) -> dict:
+        return self.connectionConfiguration or self.configuration or {}
 
 
 # --- Internal API list wrappers ---

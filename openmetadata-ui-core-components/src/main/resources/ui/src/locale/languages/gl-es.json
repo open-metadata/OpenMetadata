@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "Pechar",
+    "close-navigation-menu": "Pechar menú de navegación",
+    "copy-link": "Copiar ligazón",
+    "current-page": "Páxina actual",
+    "date-range-picker": "Selector de intervalo de datas",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "expand-navigation-menu": "Expandir menú de navegación",
+    "field-documentation": "Documentación do campo",
+    "hidden-breadcrumbs": "Migas de pan ocultas",
+    "loading": "Cargando…",
+    "next-page": "Ir á páxina seguinte",
+    "open-menu": "Abrir menú",
+    "page": "Páxina",
+    "pagination": "Paxinación",
+    "pagination-navigation": "Navegación de paxinación",
+    "previous-page": "Ir á páxina anterior",
+    "records": "Rexistros",
+    "remove-filter": "Eliminar filtro",
+    "select-dates": "Seleccionar datas",
+    "show-hidden-breadcrumbs": "Amosar migas de pan ocultas",
+    "today": "Hoxe"
+  }
+}

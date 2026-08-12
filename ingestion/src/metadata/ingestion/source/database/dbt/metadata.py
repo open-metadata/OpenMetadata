@@ -647,7 +647,13 @@ class DbtSource(DbtServiceSource):
                         try:
                             return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
                         except ValueError:
-                            return None
+                            dot = completed.rfind(".")
+                            if dot != -1:
+                                completed = completed[: dot + 7] + "Z"
+                            try:
+                                return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
+                            except ValueError:
+                                return None
                     return completed
             return None
 
@@ -1858,18 +1864,18 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
-                test_definition_name = get_dbt_test_definition_name(manifest_node)
+                entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
+                test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                 check_test_definition_exists = self.metadata.get_by_name(
                     fqn=test_definition_name,
                     entity=TestDefinition,
                 )
-                # A TestDefinition is shared by every dbt test of the same type
-                # (e.g. all "not_null" tests), so its description is only set on
-                # creation and never patched from an individual node.
+                # A TestDefinition is shared by every dbt test of the same type AND
+                # entityType (e.g. column-scoped "unique" tests share one, table-scoped
+                # "unique" tests share a different one - same type, incompatible
+                # entityLink shapes), so its description is only set on creation and
+                # never patched from an individual node.
                 if not check_test_definition_exists:
-                    entity_type = EntityType.TABLE
-                    if get_manifest_column_name(manifest_node):
-                        entity_type = EntityType.COLUMN
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
@@ -1918,11 +1924,13 @@ class DbtSource(DbtServiceSource):
                     description = get_dbt_test_description(manifest_node)
                     if test_case is None:
                         # Create the test case only if it does not exist
+                        entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
+                        test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
                                 description=description,
-                                testDefinition=FullyQualifiedEntityName(get_dbt_test_definition_name(manifest_node)),
+                                testDefinition=FullyQualifiedEntityName(test_definition_name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
@@ -1958,7 +1966,7 @@ class DbtSource(DbtServiceSource):
                 force=bool(self.source_config.dbtUpdateDescriptions),
             )
 
-    def add_dbt_test_result(self, dbt_test: dict):
+    def add_dbt_test_result(self, dbt_test: dict):  # noqa: C901
         """
         After test cases has been processed, add the tests results info
         """
@@ -1976,8 +1984,9 @@ class DbtSource(DbtServiceSource):
 
                 # Skip compiled-only entries: `dbt run` includes test nodes in
                 # run_results.json with status="success" but message=null since
-                # no test SQL was executed. Real results always have a message.
-                if not dbt_test_result.message:
+                # no test SQL was executed. Executed dbt tests can also have
+                # message=null, e.g. passing tests with status="pass".
+                if not dbt_test_result.message and dbt_test_result.status.value == DbtTestSuccessEnum.SUCCESS.value:
                     logger.debug(
                         "Skipping compiled-only test result for '%s' (message is null).",
                         manifest_node.name,
@@ -2007,7 +2016,26 @@ class DbtSource(DbtServiceSource):
 
                 # check if the timestamp is a str type and convert accordingly
                 if isinstance(dbt_timestamp, str):
-                    dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                    try:
+                        dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                    except ValueError:
+                        # dbt-fusion outputs 9-digit nanosecond timestamps like
+                        # 2026-07-22T09:27:12.979492347Z which don't match %f (6-digit).
+                        # Strip trailing digits to 6-digit precision.
+                        dot = dbt_timestamp.rfind(".")
+                        if dot != -1:
+                            dbt_timestamp = dbt_timestamp[: dot + 7] + "Z"
+                        try:
+                            dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                        except ValueError:
+                            dbt_timestamp = None
+
+                if not dbt_timestamp or not isinstance(dbt_timestamp, datetime):
+                    logger.debug(
+                        "Skipping test case result for '%s': unparseable timestamp",
+                        manifest_node.name,
+                    )
+                    return
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(

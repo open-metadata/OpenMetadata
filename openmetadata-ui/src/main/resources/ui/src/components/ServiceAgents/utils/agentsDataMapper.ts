@@ -183,12 +183,6 @@ const aggregateStepTotals = (steps: StepSummary[]): StepTotalsAggregate => {
   return { assets, errors, warnings };
 };
 
-const findFirstFailedStepName = (steps: StepSummary[]): string | undefined => {
-  const failedStep = steps.find((step) => (step.errors ?? 0) > 0);
-
-  return failedStep?.name;
-};
-
 const buildRunningAgentFields = (
   steps: StepSummary[]
 ): Pick<Agent, 'pct' | 'assets' | 'target' | 'eta'> => {
@@ -252,7 +246,6 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     Agent,
     'pct' | 'assets' | 'target' | 'eta' | 'finishedAt'
   >;
-  let failStep: string | undefined;
   let errors = 0;
   let warnings = 0;
 
@@ -268,9 +261,6 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     const totals = aggregateStepTotals(steps);
     errors = totals.errors;
     warnings = totals.warnings;
-    if (uiStatus === 'failed') {
-      failStep = findFirstFailedStepName(steps);
-    }
   }
 
   return {
@@ -285,7 +275,6 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     enabled: pipeline.enabled,
     errors,
     warnings,
-    failStep,
     schedule: pipeline.airflowConfig?.scheduleInterval,
     recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
     ...progressFields,

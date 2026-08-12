@@ -195,8 +195,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   MockTable.Cell = ({
     children,
     className,
-  }: React.PropsWithChildren<{ className?: string }>) => (
-    <td className={className}>{children}</td>
+    ...props
+  }: React.ComponentPropsWithoutRef<'td'>) => (
+    <td className={className} {...props}>
+      {children}
+    </td>
   );
 
   const MockBox = ({
@@ -559,6 +562,62 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('Should keep action dropdowns aligned when dimensions are present', async () => {
+    const dimensionalTestCase: TestCase = {
+      ...MOCK_TEST_CASE[0],
+      id: 'dimensional-test-case',
+      name: 'dimensional_test_case',
+      fullyQualifiedName: 'sample_data.dimensional_test_case',
+      dimensionColumns: ['country'],
+    };
+    const standardTestCase: TestCase = {
+      ...MOCK_TEST_CASE[1],
+      id: 'standard-test-case',
+      name: 'standard_test_case',
+      fullyQualifiedName: 'sample_data.standard_test_case',
+      dimensionColumns: undefined,
+    };
+
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          testCases={[dimensionalTestCase, standardTestCase]}
+        />
+      );
+    });
+
+    const dimensionalAction = await screen.findByTestId(
+      `action-dropdown-${dimensionalTestCase.name}`
+    );
+    const standardAction = await screen.findByTestId(
+      `action-dropdown-${standardTestCase.name}`
+    );
+
+    expect(
+      screen.getByTestId(`dimension-count-${dimensionalTestCase.name}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`dimension-count-${standardTestCase.name}`)
+    ).not.toBeInTheDocument();
+    expect(dimensionalAction.parentElement).toHaveClass(
+      'tw:w-full',
+      'tw:justify-end'
+    );
+    expect(standardAction.parentElement).toHaveClass(
+      'tw:w-full',
+      'tw:justify-end'
+    );
+    expect(dimensionalAction.closest('td')).toHaveStyle({
+      minWidth: '136px',
+      maxWidth: '136px',
+    });
+    expect(standardAction.closest('td')).toHaveStyle({
+      minWidth: '136px',
+      maxWidth: '136px',
+    });
   });
 
   it('Should show loading skeletons when isLoading is true', async () => {

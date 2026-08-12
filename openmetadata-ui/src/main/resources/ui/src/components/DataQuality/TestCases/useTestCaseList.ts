@@ -37,6 +37,7 @@ import {
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { TestCaseSearchParams } from '../DataQuality.interface';
@@ -119,7 +120,9 @@ export const useTestCaseList = ({
             TabSpecificField.INCIDENT_ID,
             TabSpecificField.INCIDENT_STATUS,
           ],
-          q: searchValue ? `*${searchValue}*` : undefined,
+          q: searchValue
+            ? `*${escapeESReservedCharacters(searchValue)}*`
+            : undefined,
           offset: (page - 1) * pageSize,
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
         });
