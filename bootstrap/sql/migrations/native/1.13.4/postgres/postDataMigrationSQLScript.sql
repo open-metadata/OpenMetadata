@@ -13,6 +13,15 @@ SET json = jsonb_set(json::jsonb - 'appConfiguration', '{allowConfiguration}', '
 WHERE extension LIKE 'app.version.%'
   AND json::jsonb ->> 'name' = 'McpApplication';
 
+-- Remove page related-entity relationships that point at a column. 'tableColumn' is a
+-- search-only pseudo-type with no repository, so resolving such a related-entity row throws
+-- "Entity repository for tableColumn not found" and 404s the Context Center list.
+-- page relatedEntities are stored as HAS (relation 10).
+DELETE FROM entity_relationship
+WHERE fromEntity = 'tableColumn'
+  AND toEntity = 'page'
+  AND relation = 10;
+
 UPDATE event_subscription_entity
 SET json = jsonb_set(json, '{pollInterval}', '1'::jsonb)
 WHERE name = 'WorkflowEventConsumer'
@@ -33,11 +42,3 @@ WHERE configtype = 'workflowSettings'
   AND json->'executorConfiguration' IS NOT NULL
   AND ((json->'executorConfiguration'->>'asyncJobAcquisitionInterval')::int > 10000
     OR (json->'executorConfiguration'->>'timerJobAcquisitionInterval')::int > 5000);
--- Remove page related-entity relationships that point at a column. 'tableColumn' is a
--- search-only pseudo-type with no repository, so resolving such a related-entity row throws
--- "Entity repository for tableColumn not found" and 404s the Context Center list.
--- page relatedEntities are stored as HAS (relation 10).
-DELETE FROM entity_relationship
-WHERE fromEntity = 'tableColumn'
-  AND toEntity = 'page'
-  AND relation = 10;
