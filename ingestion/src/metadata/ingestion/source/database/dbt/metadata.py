@@ -1864,18 +1864,18 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
-                test_definition_name = get_dbt_test_definition_name(manifest_node)
+                entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
+                test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                 check_test_definition_exists = self.metadata.get_by_name(
                     fqn=test_definition_name,
                     entity=TestDefinition,
                 )
-                # A TestDefinition is shared by every dbt test of the same type
-                # (e.g. all "not_null" tests), so its description is only set on
-                # creation and never patched from an individual node.
+                # A TestDefinition is shared by every dbt test of the same type AND
+                # entityType (e.g. column-scoped "unique" tests share one, table-scoped
+                # "unique" tests share a different one - same type, incompatible
+                # entityLink shapes), so its description is only set on creation and
+                # never patched from an individual node.
                 if not check_test_definition_exists:
-                    entity_type = EntityType.TABLE
-                    if get_manifest_column_name(manifest_node):
-                        entity_type = EntityType.COLUMN
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
@@ -1924,11 +1924,13 @@ class DbtSource(DbtServiceSource):
                     description = get_dbt_test_description(manifest_node)
                     if test_case is None:
                         # Create the test case only if it does not exist
+                        entity_type = EntityType.COLUMN if get_manifest_column_name(manifest_node) else EntityType.TABLE
+                        test_definition_name = get_dbt_test_definition_name(manifest_node, entity_type)
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
                                 description=description,
-                                testDefinition=FullyQualifiedEntityName(get_dbt_test_definition_name(manifest_node)),
+                                testDefinition=FullyQualifiedEntityName(test_definition_name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
