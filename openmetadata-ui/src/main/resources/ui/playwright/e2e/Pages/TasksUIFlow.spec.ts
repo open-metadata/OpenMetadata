@@ -203,12 +203,6 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    // Each test drives four full page loads (entity page, task form, entity
-    // page again, task panel). That lands around 27s warm but has overrun the
-    // 60s default on a cold shard, timing out on the first interaction —
-    // the cause of this spec's intermittent failures. Triple the budget.
-    test.slow();
-
     await authenticateAdminPage(page);
   });
 
@@ -322,9 +316,6 @@ test.describe('Task Workflow - Table Column Tasks', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    // Same multi-page-load shape as the first describe — see the note there.
-    test.slow();
-
     await authenticateAdminPage(page);
   });
 
@@ -455,9 +446,6 @@ test.describe('Task Activity Feed Integration', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    // Same multi-page-load shape as the first describe — see the note there.
-    test.slow();
-
     await authenticateAdminPage(page);
   });
 
@@ -490,10 +478,10 @@ test.describe('Task Activity Feed Integration', () => {
     await test.step('Resolve task and verify it moves to Closed', async () => {
       await resolveTaskWithApproval(page);
 
-      await page.reload();
-      await waitForPageLoaded(page);
-      await navigateToActivityFeedTasks(page);
-
+      // Already on the tasks panel here, so switch the filter directly.
+      // Reloading and re-entering the panel hung openEntityTasksTab's loader
+      // wait indefinitely — the panel was already settled and the second
+      // navigation never produced the state that wait expects.
       await switchToClosedTaskFilter(page);
 
       const closedTaskCard = page
