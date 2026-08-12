@@ -149,7 +149,11 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   return (
     <div className="agents-tab" data-testid="ingestion-details-container">
-      <DeploymentSummaryCard agents={agents} />
+      {/* `agents` is one page of the list; the Metadata badge count is the service's real total. */}
+      <DeploymentSummaryCard
+        agents={agents}
+        totalAgents={agentCounts?.[ServiceAgentSubTabs.METADATA]}
+      />
 
       {isCollateAIWidgetSupported && (
         <Tabs
