@@ -1157,6 +1157,7 @@ describe('TableUtils', () => {
     editCustomAttributePermission: true,
     editLineagePermission: true,
     feedCount: {
+      activityCount: 0,
       closedTaskCount: 0,
       conversationCount: 0,
       mentionCount: 0,
