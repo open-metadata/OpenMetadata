@@ -185,6 +185,8 @@ class BaseTableParameter:
             self._get_service_connection_config(db_service.connection.config) if not override_url else override_url  # noqa: SIM212
         )
         if isinstance(source_url, dict):
+            # Both sides of a same-service diff are handed the same dict
+            source_url = dict(source_url)
             source_url["driver"] = source_url["driver"].split("+")[0]
             return source_url
 

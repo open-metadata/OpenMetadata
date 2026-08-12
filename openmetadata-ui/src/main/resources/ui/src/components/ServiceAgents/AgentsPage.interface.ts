@@ -53,6 +53,10 @@ export interface Agent {
   errors: number;
   warnings: number;
   recentRuns: AgentRecentRun[];
+  // Latest run of any state, including the one in progress — `recentRuns` only
+  // keeps completed runs, so it cannot identify a run that is still going. This
+  // is what binds the log tail to a run.
+  currentRunId?: string;
   schedule?: string;
   after?: string;
   finishedAt?: string;

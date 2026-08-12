@@ -15,7 +15,7 @@ import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import { isUndefined, omit, omitBy } from 'lodash';
+import { capitalize, isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
   lazy,
@@ -41,6 +41,7 @@ import {
   IngestionWorkflowFormHandle,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
+import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
@@ -122,6 +123,14 @@ const ProfileSampleConfigField = lazy(
   () => import('./ProfileSampleConfigField')
 );
 
+const classificationLanguageEnumNames = (
+  (
+    databaseAutoClassificationJson as {
+      properties?: { classificationLanguage?: { enum?: string[] } };
+    }
+  ).properties?.classificationLanguage?.enum ?? []
+).map((v) => capitalize(v));
+
 /**
  * These two fields first render *after* mount — they live inside the collapsed "Filter patterns"
  * section, whose children are unmounted until it is expanded. Without their own boundary they
@@ -165,7 +174,6 @@ const IngestionWorkflowForm = forwardRef<
     hideFooter = false,
     serviceCategory,
     workflowData,
-    operationType,
     onCancel,
     onFocus,
     onSubmit,
@@ -224,6 +232,16 @@ const IngestionWorkflowForm = forwardRef<
       };
     }
 
+    if (pipeLineType === PipelineType.AutoClassification) {
+      commonSchema = {
+        ...commonSchema,
+        'ui:options': { compactAdvancedSection: true },
+        classificationLanguage: {
+          'ui:enumNames': classificationLanguageEnumNames,
+        },
+      };
+    }
+
     // RJSF falls back to its own submit button whenever the form has no
     // children, which would leave a stray "Submit" next to the wizard footer.
     if (hideFooter) {
@@ -234,7 +252,12 @@ const IngestionWorkflowForm = forwardRef<
     }
 
     return commonSchema;
-  }, [pipeLineType, operationType, hideFooter]);
+  }, [
+    hideFooter,
+    isElasticSearchPipeline,
+    isIncrementalExtractionSupported,
+    pipeLineType,
+  ]);
 
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
