@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.2.2-python3.12
+FROM apache/airflow:3.3.0-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -115,7 +115,7 @@ ARG RI_VERSION="1.13.4.0"
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.12.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.0/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
@@ -138,7 +138,25 @@ RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docke
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+
+
+# Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
+# See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
+# final pip install, or a later install restores the fixture.
+COPY --chown=airflow:0 ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
+RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
+
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
+
+# Every step that needs pkg_resources is done, so the setuptools<81 pin above can be lifted.
+# That pin is build-time only: cx_Oracle and mysqlclient import pkg_resources from their
+# setup.py and 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x
+# on disk is what keeps scanners reporting CVE-2026-59890.
+# This must remain the final layer in the file -- after `airflow db migrate` as well as after
+# the last pip install. Anything that compiles a package needing pkg_resources, or that runs
+# an import chain still using it, would fail once it is gone, and the error would not look
+# like a setuptools problem.
+RUN pip install --upgrade "setuptools>=83"
