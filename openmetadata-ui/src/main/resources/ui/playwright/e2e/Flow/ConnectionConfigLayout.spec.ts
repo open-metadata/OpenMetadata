@@ -258,14 +258,16 @@ test.describe('Connection config layout', () => {
     const formBody = panel.locator('> div').first();
     const panelBox = await getBox(panel);
     const formBox = await getBox(formBody);
-    const marginWidth = panelBox.x + panelBox.width - (formBox.x + formBox.width);
+    const marginWidth =
+      panelBox.x + panelBox.width - (formBox.x + formBox.width);
     const overflow = await panel.evaluate(
       (element) => element.scrollHeight - element.clientHeight
     );
 
-    expect(marginWidth, 'no blank margin to test at this width').toBeGreaterThan(
-      40
-    );
+    expect(
+      marginWidth,
+      'no blank margin to test at this width'
+    ).toBeGreaterThan(40);
     expect(
       overflow,
       'the panel is not the scroll port, so the margins cannot scroll'
