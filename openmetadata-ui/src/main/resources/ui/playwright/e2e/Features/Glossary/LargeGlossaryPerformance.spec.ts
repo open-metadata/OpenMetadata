@@ -194,7 +194,9 @@ test.describe('Large Glossary Performance Tests', () => {
     const searchInput = page.getByPlaceholder(/search.*term/i);
     await searchInput.fill('Term_5');
 
-    const searchRes = await page.waitForResponse('api/v1/glossaryTerms/search?*');
+    const searchRes = await page.waitForResponse(
+      'api/v1/glossaryTerms/search?*'
+    );
     expect(searchRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
     // Verify filtered results
@@ -363,17 +365,10 @@ test.describe('Large Glossary Performance Tests', () => {
 
     await expect(page.getByTestId('Term_10')).not.toBeVisible();
 
-    const termRes = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/glossaryTerms') &&
-        res.url().includes('directChildrenOf=')
-    );
-
-    // verify the term is moved under the parent term
+    // verify the term is moved under the parent term — no network wait here:
+    // the frontend pre-fetches Term_1's children as part of the move response,
+    // so expand-all may not fire a new request; toBeVisible() auto-retries.
     await page.getByTestId('expand-collapse-all-button').click();
-    const termResponse = await termRes;
-    expect(termResponse.status()).toBe(200);
-
     await expect(page.getByTestId('Term_10')).toBeVisible();
   });
 });
