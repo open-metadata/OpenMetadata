@@ -2278,7 +2278,7 @@ public class MigrationUtil {
       int adopted = 0;
       UUID stateId = candidate.latest().getStateId();
       Task task = buildTaskFromIncidentChain(candidate.latest(), candidate.testCaseId());
-      if (!nullOrEmpty(task)) {
+      if (task != null) {
         try {
           taskRepository.create(null, task);
           adopted = 1;
