@@ -31,8 +31,6 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import jakarta.ws.rs.core.StreamingOutput;
-import java.io.InputStream;
 import java.util.List;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
@@ -45,6 +43,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 @Tag(name = "CSV Async Jobs", description = "CSV import and export job status APIs.")
 @Produces(MediaType.APPLICATION_JSON)
 public class CsvAsyncJobResource {
+  private static final String CSV = "text/csv";
+
   private final CsvAsyncJobManager jobManager = CsvAsyncJobManager.getInstance();
 
   @GET
@@ -72,7 +72,7 @@ public class CsvAsyncJobResource {
 
   @GET
   @Path("/{jobId}/result")
-  @Produces("text/csv")
+  @Produces(CSV)
   @Operation(
       operationId = "getCsvAsyncJobResult",
       summary = "Download the CSV produced by a completed export job")
@@ -107,17 +107,13 @@ public class CsvAsyncJobResource {
     }
     final Response response;
     if (CsvExportPayload.isCompressed(result)) {
-      StreamingOutput stream =
-          output -> {
-            try (InputStream csv = CsvExportPayload.decompress(result)) {
-              csv.transferTo(output);
-            }
-          };
-      response = Response.ok(stream, "text/csv").build();
+      response =
+          Response.ok(CsvExportPayload.streamOf(() -> CsvExportPayload.decompress(result)), CSV)
+              .build();
     } else if (jobManager.isSpoolResultReference(result)) {
       response = streamLegacySpoolFile(jobId);
     } else {
-      response = Response.ok(result, "text/csv").build();
+      response = Response.ok(result, CSV).build();
     }
     return response;
   }
@@ -130,13 +126,8 @@ public class CsvAsyncJobResource {
               + " is no longer available; it was produced on another server before this release. "
               + "Run the export again.");
     }
-    StreamingOutput stream =
-        output -> {
-          try (InputStream spooled = CsvExportSpool.openForRead(jobId)) {
-            spooled.transferTo(output);
-          }
-        };
-    return Response.ok(stream, "text/csv").build();
+    return Response.ok(CsvExportPayload.streamOf(() -> CsvExportSpool.openForRead(jobId)), CSV)
+        .build();
   }
 
   @PUT

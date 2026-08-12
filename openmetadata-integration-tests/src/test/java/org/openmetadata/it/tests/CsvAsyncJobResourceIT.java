@@ -21,9 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.awaitility.Awaitility;
@@ -33,6 +30,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.CsvJobClient;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -55,7 +53,7 @@ import org.openmetadata.service.csv.CsvExportSpool;
 @ExtendWith(TestNamespaceExtension.class)
 public class CsvAsyncJobResourceIT {
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final HttpClient HTTP = HttpClient.newHttpClient();
+  private static final CsvJobClient CLIENT = CsvJobClient.onDefaultServer();
   private static final Duration JOB_TIMEOUT = Duration.ofMinutes(2);
   private static final long TOKEN_TTL_SECONDS = 3600;
 
@@ -386,31 +384,16 @@ public class CsvAsyncJobResourceIT {
   }
 
   private String startJob(String method, String path, String body, String token) throws Exception {
-    HttpResponse<String> response = request(method, path, body, token);
-    assertTrue(
-        response.statusCode() == 200 || response.statusCode() == 202,
-        "Job creation failed: " + response.statusCode() + " " + response.body());
-    JsonNode node = MAPPER.readTree(response.body());
-    String jobId = node.path("jobId").asText();
-    assertNotNull(jobId);
-    assertTrue(!jobId.isEmpty(), "Job creation must return a jobId: " + response.body());
-    return jobId;
+    return CLIENT.startJob(method, path, body);
   }
 
   private JsonNode awaitJobStatus(String jobId, String expectedStatus) {
-    Awaitility.await()
-        .atMost(JOB_TIMEOUT)
-        .pollInterval(Duration.ofSeconds(2))
-        .until(() -> expectedStatus.equals(fetchJob(jobId).path("status").asText()));
-    return fetchJob(jobId);
+    return CLIENT.awaitJobStatus(jobId, expectedStatus);
   }
 
   private JsonNode findJobInList(String jobId) throws IOException, InterruptedException {
-    HttpResponse<String> response = request("GET", "/v1/csvAsyncJobs?limit=50", null, adminToken());
-    assertEquals(200, response.statusCode(), "Job listing failed: " + response.body());
-    JsonNode jobs = MAPPER.readTree(response.body());
     JsonNode match = null;
-    for (JsonNode job : jobs) {
+    for (JsonNode job : CLIENT.listJobs()) {
       if (jobId.equals(job.path("jobId").asText())) {
         match = job;
       }
@@ -418,31 +401,9 @@ public class CsvAsyncJobResourceIT {
     return match;
   }
 
-  private JsonNode fetchJob(String jobId) {
-    try {
-      HttpResponse<String> response =
-          request("GET", "/v1/csvAsyncJobs/" + jobId, null, adminToken());
-      assertEquals(200, response.statusCode(), "Job fetch failed: " + response.body());
-      return MAPPER.readTree(response.body());
-    } catch (IOException | InterruptedException e) {
-      throw new IllegalStateException("Failed to fetch CSV job " + jobId, e);
-    }
-  }
-
   private HttpResponse<String> request(String method, String path, String body, String token)
       throws IOException, InterruptedException {
-    HttpRequest.Builder builder =
-        HttpRequest.newBuilder()
-            .uri(URI.create(SdkClients.getServerUrl() + path))
-            .header("Authorization", "Bearer " + token);
-    if ("PUT".equals(method)) {
-      builder
-          .header("Content-Type", "text/plain")
-          .PUT(HttpRequest.BodyPublishers.ofString(body == null ? "" : body));
-    } else {
-      builder.GET();
-    }
-    return HTTP.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    return CLIENT.request(method, path, body, token);
   }
 
   private String adminToken() {

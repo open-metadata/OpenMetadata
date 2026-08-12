@@ -37,6 +37,11 @@ public final class CsvAsyncJobManager {
   public static final String LINEAGE_ENTITY_TYPE = "lineage";
   public static final String AUDIT_ENTITY_TYPE = "auditLog";
   private static final String EXPORT_QUEUED_MESSAGE = "Export queued.";
+  private static final String IMPORT_QUEUED_MESSAGE = "Import queued.";
+
+  /** Exports that are not scoped to a single entity tree. */
+  private static final String ALL_TARGETS = "*";
+
   // Import payloads are carried in the job-args column and parsed in memory, so
   // unbounded CSVs would bloat the jobs table and the server heap. Oversized
   // imports are rejected up front with a 400 instead of failing mid-job.
@@ -89,58 +94,41 @@ public final class CsvAsyncJobManager {
             .setCsv(csv)
             .setVersioningEntityType(versioningEntityType);
     String message =
-        operation == CsvAsyncJob.Operation.IMPORT ? "Import queued." : EXPORT_QUEUED_MESSAGE;
-    long jobId =
-        dao.insertTrackedJobInternal(
-            getJobType(operation),
-            CSV_JOB_HANDLER_NAME,
-            JsonUtils.pojoToJson(args),
-            createdBy,
-            null,
-            0,
-            0,
-            message);
-    addLog(jobId, CsvAsyncJobLog.Level.INFO, message);
-    return getJob(String.valueOf(jobId));
+        operation == CsvAsyncJob.Operation.IMPORT ? IMPORT_QUEUED_MESSAGE : EXPORT_QUEUED_MESSAGE;
+    return insertJob(args, createdBy, jobTypeOf(operation), message);
   }
 
   public CsvAsyncJob createSearchExportJob(
       String indexName, String createdBy, CsvAsyncJobArgs.SearchExportArgs searchExport) {
-    CsvAsyncJobArgs args =
-        new CsvAsyncJobArgs()
-            .setOperation(CsvAsyncJob.Operation.EXPORT)
-            .setEntityType(indexName)
-            .setTargetFqn("*")
-            .setDryRun(false)
-            .setRecursive(false)
-            .setSearchExport(searchExport);
-    return createExportJob(args, createdBy);
+    return insertExportJob(
+        exportArgs(indexName, ALL_TARGETS).setSearchExport(searchExport),
+        createdBy,
+        BackgroundJob.JobType.CSV_EXPORT);
   }
 
   public CsvAsyncJob createLineageExportJob(
       String createdBy, CsvAsyncJobArgs.LineageExportArgs lineageExport) {
-    CsvAsyncJobArgs args =
-        new CsvAsyncJobArgs()
-            .setOperation(CsvAsyncJob.Operation.EXPORT)
-            .setEntityType(LINEAGE_ENTITY_TYPE)
-            .setTargetFqn(lineageExport.getFqn())
-            .setDryRun(false)
-            .setRecursive(false)
-            .setLineageExport(lineageExport);
-    return createExportJob(args, createdBy);
+    return insertExportJob(
+        exportArgs(LINEAGE_ENTITY_TYPE, lineageExport.getFqn()).setLineageExport(lineageExport),
+        createdBy,
+        BackgroundJob.JobType.CSV_EXPORT);
   }
 
   public CsvAsyncJob createAuditExportJob(
       String createdBy, CsvAsyncJobArgs.AuditExportArgs auditExport) {
-    CsvAsyncJobArgs args =
-        new CsvAsyncJobArgs()
-            .setOperation(CsvAsyncJob.Operation.EXPORT)
-            .setEntityType(AUDIT_ENTITY_TYPE)
-            .setTargetFqn("*")
-            .setDryRun(false)
-            .setRecursive(false)
-            .setAuditExport(auditExport);
-    return createExportJob(args, createdBy, BackgroundJob.JobType.AUDIT_EXPORT);
+    return insertExportJob(
+        exportArgs(AUDIT_ENTITY_TYPE, ALL_TARGETS).setAuditExport(auditExport),
+        createdBy,
+        BackgroundJob.JobType.AUDIT_EXPORT);
+  }
+
+  private static CsvAsyncJobArgs exportArgs(String entityType, String targetFqn) {
+    return new CsvAsyncJobArgs()
+        .setOperation(CsvAsyncJob.Operation.EXPORT)
+        .setEntityType(entityType)
+        .setTargetFqn(targetFqn)
+        .setDryRun(false)
+        .setRecursive(false);
   }
 
   /** Audit export jobs are typed separately so they stay out of the CSV jobs tray. */
@@ -156,12 +144,13 @@ public final class CsvAsyncJobManager {
     return dao.findCsvJobResultById(parseJobId(jobId));
   }
 
-  private CsvAsyncJob createExportJob(CsvAsyncJobArgs args, String createdBy) {
-    return createExportJob(args, createdBy, BackgroundJob.JobType.CSV_EXPORT);
+  private CsvAsyncJob insertExportJob(
+      CsvAsyncJobArgs args, String createdBy, BackgroundJob.JobType jobType) {
+    return insertJob(args, createdBy, jobType, EXPORT_QUEUED_MESSAGE);
   }
 
-  private CsvAsyncJob createExportJob(
-      CsvAsyncJobArgs args, String createdBy, BackgroundJob.JobType jobType) {
+  private CsvAsyncJob insertJob(
+      CsvAsyncJobArgs args, String createdBy, BackgroundJob.JobType jobType, String message) {
     long jobId =
         dao.insertTrackedJobInternal(
             jobType.name(),
@@ -171,13 +160,17 @@ public final class CsvAsyncJobManager {
             null,
             0,
             0,
-            EXPORT_QUEUED_MESSAGE);
-    addLog(jobId, CsvAsyncJobLog.Level.INFO, EXPORT_QUEUED_MESSAGE);
-    // Read back through the lookup matching the type just inserted. getJob filters
-    // to CSV_IMPORT/CSV_EXPORT, so reading an audit export through it returns null.
-    return jobType == BackgroundJob.JobType.AUDIT_EXPORT
-        ? getAuditExportJob(String.valueOf(jobId))
-        : getJob(String.valueOf(jobId));
+            message);
+    addLog(jobId, CsvAsyncJobLog.Level.INFO, message);
+    return findJobOfType(String.valueOf(jobId), jobType);
+  }
+
+  /**
+   * Each job type has its own lookup, and they do not overlap: {@link #getJob} filters to
+   * CSV_IMPORT/CSV_EXPORT, so reading an audit export through it yields null.
+   */
+  private CsvAsyncJob findJobOfType(String jobId, BackgroundJob.JobType jobType) {
+    return jobType == BackgroundJob.JobType.AUDIT_EXPORT ? getAuditExportJob(jobId) : getJob(jobId);
   }
 
   public CsvAsyncJob getJob(String jobId) {
@@ -401,10 +394,10 @@ public final class CsvAsyncJobManager {
     }
   }
 
-  private String getJobType(CsvAsyncJob.Operation operation) {
+  private BackgroundJob.JobType jobTypeOf(CsvAsyncJob.Operation operation) {
     return operation == CsvAsyncJob.Operation.IMPORT
-        ? BackgroundJob.JobType.CSV_IMPORT.name()
-        : BackgroundJob.JobType.CSV_EXPORT.name();
+        ? BackgroundJob.JobType.CSV_IMPORT
+        : BackgroundJob.JobType.CSV_EXPORT;
   }
 
   private long parseJobId(String jobId) {

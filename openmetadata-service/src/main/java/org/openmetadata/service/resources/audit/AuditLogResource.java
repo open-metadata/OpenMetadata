@@ -22,7 +22,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.StreamingOutput;
-import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -308,13 +307,7 @@ public class AuditLogResource {
       response = exportNotFound(jobId);
     } else {
       response =
-          attachment(
-              jobId,
-              output -> {
-                try (InputStream in = CsvExportPayload.decompress(result)) {
-                  in.transferTo(output);
-                }
-              });
+          attachment(jobId, CsvExportPayload.streamOf(() -> CsvExportPayload.decompress(result)));
     }
     return response;
   }
@@ -329,13 +322,7 @@ public class AuditLogResource {
     Response response;
     if (CsvExportSpool.exists(jobId)) {
       response =
-          attachment(
-              jobId,
-              output -> {
-                try (InputStream in = CsvExportSpool.openForRead(jobId)) {
-                  in.transferTo(output);
-                }
-              });
+          attachment(jobId, CsvExportPayload.streamOf(() -> CsvExportSpool.openForRead(jobId)));
     } else {
       response = exportNotFound(jobId);
     }

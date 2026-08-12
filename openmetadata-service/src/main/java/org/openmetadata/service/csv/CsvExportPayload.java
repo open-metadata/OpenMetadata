@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.csv;
 
+import jakarta.ws.rs.core.StreamingOutput;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -65,6 +66,23 @@ public final class CsvExportPayload {
 
   public static boolean isCompressed(String storedResult) {
     return storedResult != null && storedResult.startsWith(GZIP_PREFIX);
+  }
+
+  /**
+   * Copies {@code source} to the response and closes it. Download endpoints stream rather than
+   * buffer, so the payload is never held in heap a second time on the way out.
+   */
+  public static StreamingOutput streamOf(IoSupplier<InputStream> source) {
+    return output -> {
+      try (InputStream in = source.get()) {
+        in.transferTo(output);
+      }
+    };
+  }
+
+  @FunctionalInterface
+  public interface IoSupplier<T> {
+    T get() throws IOException;
   }
 
   public static InputStream decompress(String storedResult) {
