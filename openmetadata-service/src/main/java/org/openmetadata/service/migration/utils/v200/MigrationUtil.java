@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -1926,6 +1927,9 @@ public class MigrationUtil {
     private static final String MENTION_FILTER_NAME = "filterByMentionedName";
     private static final String CONVERSATION_RESOURCE = "conversation";
     private static final String TASK_RESOURCE = "task";
+    private static final String TEST_CASE_TABLE = "test_case";
+    private static final String INCIDENT_TIME_SERIES_TABLE =
+        "test_case_resolution_status_time_series";
     private static final String UPDATE_SUBSCRIPTION_MYSQL =
         "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
     private static final String UPDATE_SUBSCRIPTION_POSTGRES =
@@ -2250,29 +2254,38 @@ public class MigrationUtil {
      */
     private int adoptOrphanIncidentChains() {
       int adopted = 0;
-      try {
-        for (OrphanIncidentCandidate candidate : listLatestIncidentPerTestCase()) {
-          TestCaseResolutionStatus latest = candidate.latest();
-          UUID stateId = latest.getStateId();
-          if (stateId == null
-              || latest.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
-              || incidentChainHasTask(stateId)) {
-            continue;
+      if (tableExists(INCIDENT_TIME_SERIES_TABLE) && tableExists(TEST_CASE_TABLE)) {
+        try {
+          for (OrphanIncidentCandidate candidate : listLatestIncidentPerTestCase()) {
+            if (isAdoptableChain(candidate.latest())) {
+              adopted += adoptIncidentChain(candidate);
+            }
           }
-          Task task = buildTaskFromIncidentChain(latest, candidate.testCaseId());
-          if (task == null) {
-            continue;
-          }
-          try {
-            taskRepository.create(null, task);
-            adopted++;
-            LOG.info("[v200] Adopted orphan incident chain {} as a task", stateId);
-          } catch (Exception e) {
-            LOG.warn("[v200] Could not adopt incident chain {}: {}", stateId, e.getMessage());
-          }
+        } catch (Exception e) {
+          LOG.error("[v200] Failed to adopt orphan incident chains", e);
         }
-      } catch (Exception e) {
-        LOG.error("[v200] Failed to adopt orphan incident chains", e);
+      }
+      return adopted;
+    }
+
+    private boolean isAdoptableChain(TestCaseResolutionStatus latest) {
+      return latest.getStateId() != null
+          && latest.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved
+          && !incidentChainHasTask(latest.getStateId());
+    }
+
+    private int adoptIncidentChain(OrphanIncidentCandidate candidate) {
+      int adopted = 0;
+      UUID stateId = candidate.latest().getStateId();
+      Task task = buildTaskFromIncidentChain(candidate.latest(), candidate.testCaseId());
+      if (!nullOrEmpty(task)) {
+        try {
+          taskRepository.create(null, task);
+          adopted = 1;
+          LOG.info("[v200] Adopted orphan incident chain {} as a task", stateId);
+        } catch (Exception e) {
+          LOG.warn("[v200] Could not adopt incident chain {}: {}", stateId, e.getMessage());
+        }
       }
       return adopted;
     }
@@ -2283,30 +2296,56 @@ public class MigrationUtil {
      * joining the indexed entityFQNHash.
      */
     private List<OrphanIncidentCandidate> listLatestIncidentPerTestCase() {
-      return handle
-          .createQuery(
-              "SELECT ts.json AS record, tc.id AS testCaseId "
-                  + "FROM test_case_resolution_status_time_series ts "
-                  + "INNER JOIN (SELECT entityFQNHash AS fqnHash, MAX(timestamp) AS maxTs "
-                  + "FROM test_case_resolution_status_time_series "
-                  + "WHERE entityFQNHash IS NOT NULL GROUP BY entityFQNHash) latest "
-                  + "ON ts.entityFQNHash = latest.fqnHash AND ts.timestamp = latest.maxTs "
-                  + "INNER JOIN test_case tc ON tc.fqnHash = ts.entityFQNHash")
-          .map(
-              (rs, ctx) -> {
-                try {
-                  return new OrphanIncidentCandidate(
-                      JsonUtils.readValue(rs.getString("record"), TestCaseResolutionStatus.class),
-                      UUID.fromString(rs.getString("testCaseId")));
-                } catch (Exception e) {
-                  LOG.warn("[v200] Skipping unreadable incident record: {}", e.getMessage());
-                  return null;
-                }
-              })
-          .list()
-          .stream()
-          .filter(java.util.Objects::nonNull)
-          .toList();
+      List<OrphanIncidentCandidate> candidates =
+          handle
+              .createQuery(
+                  "SELECT ts.json AS record, tc.id AS testCaseId "
+                      + "FROM "
+                      + INCIDENT_TIME_SERIES_TABLE
+                      + " ts INNER JOIN (SELECT entityFQNHash AS fqnHash, MAX(timestamp) AS maxTs "
+                      + "FROM "
+                      + INCIDENT_TIME_SERIES_TABLE
+                      + " WHERE entityFQNHash IS NOT NULL GROUP BY entityFQNHash) latest "
+                      + "ON ts.entityFQNHash = latest.fqnHash AND ts.timestamp = latest.maxTs "
+                      + "INNER JOIN "
+                      + TEST_CASE_TABLE
+                      + " tc ON tc.fqnHash = ts.entityFQNHash")
+              .map((rs, ctx) -> readCandidate(rs.getString("record"), rs.getString("testCaseId")))
+              .list()
+              .stream()
+              .filter(Objects::nonNull)
+              .toList();
+
+      Map<UUID, OrphanIncidentCandidate> latestPerTestCase = new LinkedHashMap<>();
+      for (OrphanIncidentCandidate candidate : candidates) {
+        latestPerTestCase.merge(candidate.testCaseId(), candidate, TaskWorkflow::preferStableChain);
+      }
+      return List.copyOf(latestPerTestCase.values());
+    }
+
+    private OrphanIncidentCandidate readCandidate(String record, String testCaseId) {
+      OrphanIncidentCandidate candidate = null;
+      try {
+        TestCaseResolutionStatus latest =
+            JsonUtils.readValue(record, TestCaseResolutionStatus.class);
+        if (latest.getStateId() != null) {
+          candidate = new OrphanIncidentCandidate(latest, UUID.fromString(testCaseId));
+        }
+      } catch (Exception e) {
+        LOG.warn("[v200] Skipping unreadable incident record: {}", e.getMessage());
+      }
+      return candidate;
+    }
+
+    /**
+     * Records written in the same millisecond leave more than one chain tied for latest; pick by
+     * stateId so a re-run adopts the same one instead of a second task for the test case.
+     */
+    private static OrphanIncidentCandidate preferStableChain(
+        OrphanIncidentCandidate current, OrphanIncidentCandidate candidate) {
+      String currentId = current.latest().getStateId().toString();
+      String candidateId = candidate.latest().getStateId().toString();
+      return candidateId.compareTo(currentId) > 0 ? candidate : current;
     }
 
     private record OrphanIncidentCandidate(TestCaseResolutionStatus latest, UUID testCaseId) {}
@@ -2336,7 +2375,11 @@ public class MigrationUtil {
 
       long updatedAt =
           latest.getTimestamp() != null ? latest.getTimestamp() : System.currentTimeMillis();
-      String actorName = latest.getUpdatedBy() != null ? latest.getUpdatedBy().getName() : null;
+      // Flows into the workflow's updatedBy variable, so it must never be null.
+      String actorName =
+          latest.getUpdatedBy() != null && !nullOrEmpty(latest.getUpdatedBy().getName())
+              ? latest.getUpdatedBy().getName()
+              : ADMIN_USER_NAME;
       EntityReference actorRef = resolveUserReference(actorName);
       Map<String, Object> payload = new HashMap<>();
       payload.put("testCaseResolutionStatusId", latest.getStateId().toString());
