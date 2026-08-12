@@ -35,7 +35,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CursorType } from '../../enums/pagination.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstanceState';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -44,7 +44,10 @@ import { useTableFilters } from '../../hooks/useTableFilters';
 import { getAiAutomationsByService } from '../../rest/applicationAPI';
 import { getDashboards, getDataModels } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
-import { getPipelineServiceHostIp } from '../../rest/ingestionPipelineAPI';
+import {
+  getIngestionPipelines,
+  getPipelineServiceHostIp,
+} from '../../rest/ingestionPipelineAPI';
 import {
   addServiceFollower,
   getServiceByFQN,
@@ -234,8 +237,10 @@ jest.mock('../../rest/applicationAPI', () => ({
   ),
 }));
 jest.mock('../../rest/searchAPI', () => ({
+  // The agents search reads `hits.hits`/`hits.total`, so the stub has to carry that shape.
   searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
+      hits: { hits: [], total: { value: 0 } },
       paging: {
         total: 0,
       },
@@ -393,9 +398,29 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(() => (
-        <div data-testid="ingestion-component">Ingestion</div>
-      ))
+      .mockImplementation(
+        ({
+          handleSearchChange,
+          refreshAgentsList,
+        }: {
+          handleSearchChange: (value: string) => void;
+          refreshAgentsList: (agentListType: ServiceAgentSubTabs) => void;
+        }) => (
+          <div data-testid="ingestion-component">
+            Ingestion
+            <button
+              data-testid="trigger-agents-search"
+              onClick={() => handleSearchChange('agent')}>
+              search
+            </button>
+            <button
+              data-testid="trigger-metadata-refresh"
+              onClick={() => refreshAgentsList(ServiceAgentSubTabs.METADATA)}>
+              refresh metadata
+            </button>
+          </div>
+        )
+      )
 );
 
 // The hook owns the SSE connection; mock it so jsdom never opens a stream.
@@ -523,7 +548,10 @@ jest.mock('../../utils/ServicePureUtils', () => ({
   getResourceEntityFromServiceCategory: jest
     .fn()
     .mockReturnValue('databaseService'),
-  getServiceDisplayNameQueryFilter: jest.fn().mockReturnValue(''),
+  // Shape matters: searchPipelines spreads `query.bool.must` out of this filter.
+  getServiceDisplayNameQueryFilter: jest
+    .fn()
+    .mockReturnValue({ query: { bool: { must: [] } } }),
   getServiceRouteFromServiceType: jest.fn().mockReturnValue('database'),
   shouldTestConnection: jest.fn().mockReturnValue(true),
 }));
@@ -621,6 +649,44 @@ describe('ServiceDetailsPage', () => {
       );
     });
   };
+
+  describe('Agents refresh', () => {
+    beforeEach(() => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.AGENTS,
+      });
+    });
+
+    it('should refetch the metadata list once per refresh', async () => {
+      await renderComponent();
+
+      (getIngestionPipelines as jest.Mock).mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-metadata-refresh'));
+      });
+
+      expect(getIngestionPipelines).toHaveBeenCalledTimes(1);
+    });
+
+    it('should still issue a single request when a search is active', async () => {
+      await renderComponent();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-agents-search'));
+      });
+
+      (getIngestionPipelines as jest.Mock).mockClear();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-metadata-refresh'));
+      });
+
+      // Clearing the search re-runs the list effect; the handler must not also fetch itself.
+      expect(getIngestionPipelines).toHaveBeenCalledTimes(1);
+    });
+  });
 
   describe('Component Rendering', () => {
     it('should render loading state initially', async () => {

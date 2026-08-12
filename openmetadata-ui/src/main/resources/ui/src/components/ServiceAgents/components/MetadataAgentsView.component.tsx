@@ -54,6 +54,8 @@ interface MetadataAgentsViewProps {
   serviceDetails: ServicesType;
   serviceName: string;
   showAddAgent: boolean;
+  /** True while the agents list is being refetched, so the refresh control can show it. */
+  isRefreshing?: boolean;
   onRefresh: () => void;
 }
 
@@ -61,6 +63,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   addAgentSlot: addAgentSlotProp,
   agents,
   ingestionPipelineList,
+  isRefreshing,
   serviceCategory,
   serviceDetails,
   serviceName,
@@ -247,9 +250,11 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         descKey="message.metadata-agents-description"
         emptyPlaceholder={emptyPlaceholder}
         icon={<Code01 size={18} />}
+        isRefreshing={isRefreshing}
         titleKey="label.metadata-agent-plural"
         onAction={onAction}
         onLogs={onLogs}
+        onRefresh={onRefresh}
         onRun={onRun}
         onRunDetails={onRunDetails}
       />

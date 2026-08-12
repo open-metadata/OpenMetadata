@@ -1640,12 +1640,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
         await fetchCollateAgentsList({
           limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
         });
-      } else {
-        setSearchText('');
+      } else if (isEmpty(searchText)) {
         await getAllIngestionWorkflows(
           {},
           ingestionPagingCursor?.pageSize ?? ingestionPageSize
         );
+      } else {
+        // Clearing the search is enough: the effect keyed on `searchText` refetches the unfiltered
+        // list. Doing both — as this used to — cost two identical requests per refresh.
+        setSearchText('');
       }
     },
     [
@@ -1654,6 +1657,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       getAllIngestionWorkflows,
       ingestionPagingCursor,
       ingestionPageSize,
+      searchText,
     ]
   );
 
