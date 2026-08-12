@@ -13,6 +13,7 @@
 
 import { renderHook, waitFor } from '@testing-library/react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { LogStreamEndReason } from '../../../generated/entity/services/ingestionPipelines/logStreamEvent';
 import { getIngestionPipelineLogById } from '../../../rest/ingestionPipelineAPI';
 import {
   useLogStream,
@@ -105,6 +106,38 @@ describe('useAgentLogs', () => {
     expect(mockUseLogStream).toHaveBeenCalledWith(
       expect.objectContaining({ enabled: false })
     );
+  });
+
+  it('stops reporting the run as live once the stream says it finished', async () => {
+    // The agent's own status row still says running at this point — only the
+    // stream knows the run is over, and the viewer's live indicator is driven
+    // from here.
+    mockUseLogStream.mockReturnValue({
+      ...IDLE_STREAM,
+      logs: 'done\n',
+      streamDone: true,
+      endReason: LogStreamEndReason.RunFinished,
+    });
+
+    const { result } = renderAgentLogs(true, RUN_ID);
+
+    await waitFor(() => expect(result.current.isLive).toBe(false));
+
+    expect(result.current.isStreaming).toBe(false);
+  });
+
+  it('keeps reporting a still-running agent as live while it streams', async () => {
+    mockUseLogStream.mockReturnValue({
+      ...IDLE_STREAM,
+      logs: 'tailing\n',
+      health: 'live',
+    });
+
+    const { result } = renderAgentLogs(true, RUN_ID);
+
+    await waitFor(() => expect(result.current.isStreaming).toBe(true));
+
+    expect(result.current.isLive).toBe(true);
   });
 
   it('surfaces a stream failure and hands the live run back to polling', async () => {

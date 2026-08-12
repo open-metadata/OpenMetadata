@@ -104,6 +104,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   const {
     rawText,
     isLoading: isLogsLoading,
+    isLive: isLogsRunLive,
     streamHealth,
     streamTruncated,
     streamError,
@@ -279,7 +280,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           lastRun={logsFor.finishedAt}
           loading={isLogsLoading}
           logs={rawText}
-          mode={isLogsAgentActive ? 'stream' : 'static'}
+          mode={isLogsRunLive ? 'stream' : 'static'}
           runId={getEntityName(logsFor)}
           status={getLogViewerStatusFromAgentStatus(logsFor.status)}
           streamError={streamError}

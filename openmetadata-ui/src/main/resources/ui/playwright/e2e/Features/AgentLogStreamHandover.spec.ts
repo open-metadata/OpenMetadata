@@ -21,6 +21,7 @@ import {
   buildLogStreamFrames,
   buildMarkerLogText,
   LOG_STREAM_RESPONSE_HEADERS,
+  LogStreamFrame,
 } from '../../utils/logsViewer';
 import { getAgentCard } from '../../utils/serviceIngestion';
 
@@ -38,10 +39,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
  * server sends, and the live-tailing half is already proven against a real
  * stream in `e2e/Pages/IngestionLogStreamLive.spec.ts`.
  *
- * The stream route is served in two phases so the lifecycle is deterministic:
- * the first connection delivers log frames and closes without a terminal frame
- * (the client then reconnects from its cursor), and the second is held open
- * until the test releases it, at which point it delivers `runFinished`.
+ * Each test picks what the stream serves up front rather than changing it
+ * mid-flight. An earlier version held the second connection open and released it
+ * from the test to deliver `runFinished`; that made the assertion depend on when
+ * a reconnect landed relative to the release, and it failed in CI with the run
+ * still marked live. Serving the terminal frame in the same response as the log
+ * frames removes the timing entirely.
  */
 
 const RUN_ID = randomUUID();
@@ -54,16 +57,23 @@ let pipelineId = '';
 interface StreamMocks {
   streamRequests: string[];
   paginatedLogCalls: () => number;
-  finishRun: () => void;
 }
 
-const mockLogEndpoints = async (page: Page): Promise<StreamMocks> => {
+/**
+ * Routes every endpoint the agents tab and the log viewer touch.
+ *
+ * `terminal` decides what the stream serves. `false` keeps the run streaming
+ * forever: every connection delivers log frames and closes, so the client
+ * reconnects from its cursor. `true` delivers the log frames and the
+ * `runFinished` frame in the SAME response, so the handover happens on the
+ * first connection with no reconnect and no cross-request timing to get wrong.
+ */
+const mockLogEndpoints = async (
+  page: Page,
+  { terminal }: { terminal: boolean }
+): Promise<StreamMocks> => {
   const streamRequests: string[] = [];
   let paginatedLogCalls = 0;
-  let releaseFinalStream: () => void = () => undefined;
-  const finalStreamGate = new Promise<void>((resolve) => {
-    releaseFinalStream = resolve;
-  });
 
   // The chromium lane has no Airflow container, so the real status endpoint
   // answers non-200 and the agents tab renders the error placeholder instead of
@@ -79,7 +89,7 @@ const mockLogEndpoints = async (page: Page): Promise<StreamMocks> => {
   );
 
   // Deliberately empty: anything the viewer renders can only have come from the
-  // stream, and the call count is what proves polling did not resume.
+  // stream, and the call count is what proves whether polling ran.
   await page.route(
     '**/api/v1/services/ingestionPipelines/logs/*/last*',
     (route) => {
@@ -91,35 +101,31 @@ const mockLogEndpoints = async (page: Page): Promise<StreamMocks> => {
 
   await page.route(
     '**/api/v1/services/ingestionPipelines/logs/*/stream/*',
-    async (route) => {
+    (route) => {
       streamRequests.push(route.request().url());
 
-      if (streamRequests.length === 1) {
-        // Log frames only — no terminal frame, so the client stays in streaming
-        // mode and reconnects from the cursor when this response ends.
-        return route.fulfill({
-          status: 200,
-          headers: LOG_STREAM_RESPONSE_HEADERS,
-          body: buildLogStreamFrames({
-            eventType: 'logs',
-            runId: RUN_ID,
-            logs: `${buildMarkerLogText()}\n`,
-            after: STREAM_CURSOR,
-          }),
-        });
-      }
+      const frames: LogStreamFrame[] = [
+        {
+          eventType: 'logs',
+          runId: RUN_ID,
+          logs: `${buildMarkerLogText()}\n`,
+          after: STREAM_CURSOR,
+        },
+      ];
 
-      await finalStreamGate;
-
-      return route.fulfill({
-        status: 200,
-        headers: LOG_STREAM_RESPONSE_HEADERS,
-        body: buildLogStreamFrames({
+      if (terminal) {
+        frames.push({
           eventType: 'complete',
           runId: RUN_ID,
           reason: 'runFinished',
           after: STREAM_CURSOR,
-        }),
+        });
+      }
+
+      return route.fulfill({
+        status: 200,
+        headers: LOG_STREAM_RESPONSE_HEADERS,
+        body: buildLogStreamFrames(...frames),
       });
     }
   );
@@ -127,7 +133,6 @@ const mockLogEndpoints = async (page: Page): Promise<StreamMocks> => {
   return {
     streamRequests,
     paginatedLogCalls: () => paginatedLogCalls,
-    finishRun: () => releaseFinalStream(),
   };
 };
 
@@ -195,10 +200,11 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
     await afterAction();
   });
 
-  test('A finished run clears the live state and refetches the log exactly once', async ({
-    page,
-  }) => {
-    const mocks = await mockLogEndpoints(page);
+  const openAgentLogs = async (
+    page: Page,
+    options: { terminal: boolean }
+  ): Promise<StreamMocks> => {
+    const mocks = await mockLogEndpoints(page, options);
 
     await page.goto(
       `/service/databaseServices/${getEncodedFqn(
@@ -216,18 +222,33 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
 
     await agentCard.getByTestId('logs-button').click();
 
-    await test.step('The stream is opened for the seeded run', async () => {
-      await expect
-        .poll(() => mocks.streamRequests.length, {
-          message: 'the viewer should open an SSE stream for a live run',
-        })
-        .toBeGreaterThan(0);
+    await expect
+      .poll(() => mocks.streamRequests.length, {
+        message: 'the viewer should open an SSE stream for a live run',
+      })
+      .toBeGreaterThan(0);
 
-      expect(mocks.streamRequests[0]).toContain(encodeURIComponent(RUN_ID));
+    expect(mocks.streamRequests[0]).toContain(encodeURIComponent(RUN_ID));
+
+    return mocks;
+  };
+
+  test('A run that keeps streaming is never polled, and reconnects from its cursor', async ({
+    page,
+  }) => {
+    const mocks = await openAgentLogs(page, { terminal: false });
+
+    await test.step('Streamed frames are rendered', async () => {
+      await assertLogViewerShowsLogs(page);
     });
 
-    await test.step('Streamed frames are rendered, and the paginated endpoint is untouched', async () => {
-      await assertLogViewerShowsLogs(page);
+    await test.step('The viewer never calls the paginated endpoint', async () => {
+      // No assertion on the live dot here. Playwright cannot hold a response
+      // open, so this mock closes every connection immediately and the client
+      // spends most of its time in reconnect backoff, where the reconnecting
+      // dot legitimately replaces the live one. A genuinely open connection is
+      // asserted against a real run in e2e/Pages/IngestionLogStreamLive.spec.ts.
+      await expect(page.getByTestId('log-viewer-stream-error')).toBeHidden();
 
       expect(
         mocks.paginatedLogCalls(),
@@ -244,15 +265,36 @@ test.describe('Agent log stream handover to the paginated endpoint', () => {
         .toBeGreaterThan(1);
 
       expect(mocks.streamRequests[1]).toContain(`after=${STREAM_CURSOR}`);
+
+      expect(
+        mocks.paginatedLogCalls(),
+        'reconnecting is not a reason to fall back to polling'
+      ).toBe(0);
     });
+  });
 
-    await test.step('A runFinished frame clears the live state', async () => {
-      mocks.finishRun();
+  test('A finished run clears the live state and refetches the log exactly once', async ({
+    page,
+  }) => {
+    // The runFinished frame rides in the same response as the log frames, so the
+    // handover happens on the first connection. Nothing here depends on when a
+    // reconnect lands.
+    const mocks = await openAgentLogs(page, { terminal: true });
 
+    await test.step('The run is no longer reported as live', async () => {
       await expect(page.getByTestId('log-viewer-live-indicator')).toBeHidden();
       await expect(
         page.getByTestId('log-viewer-reconnecting-indicator')
       ).toBeHidden();
+
+      // A stream that gave up for any other reason would surface here instead,
+      // and would leave the run marked live — distinguishing the two is the
+      // whole point of this test.
+      await expect(page.getByTestId('log-viewer-stream-error')).toBeHidden();
+    });
+
+    await test.step('The streamed content survives the handover', async () => {
+      await assertLogViewerShowsLogs(page);
     });
 
     await test.step('The finished run is refetched once, not polled', async () => {

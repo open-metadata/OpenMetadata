@@ -23,6 +23,9 @@ interface UseAgentLogsResult {
   rawText: string;
   isLoading: boolean;
   hasMore: boolean;
+  // The run is still producing output. False once the stream reports the run
+  // finished, which lands before the agent's own status row catches up.
+  isLive: boolean;
   isStreaming: boolean;
   streamHealth: StreamHealth;
   streamTruncated: boolean;
@@ -61,6 +64,7 @@ export const useAgentLogs = (
     rawText: source.logs,
     isLoading: source.loading,
     hasMore: source.hasMore,
+    isLive: source.isLive,
     isStreaming: source.isStreaming,
     streamHealth: source.streamHealth,
     streamTruncated: source.streamTruncated,
