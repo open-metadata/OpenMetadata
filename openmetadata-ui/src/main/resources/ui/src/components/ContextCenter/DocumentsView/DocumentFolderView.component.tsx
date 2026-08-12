@@ -434,7 +434,7 @@ const DocumentFolderView = (
 
                           {canDelete && (
                             <ButtonUtility
-                              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
+                              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100 tw:p-0.5"
                               color="tertiary"
                               data-testid={`delete-folder-btn-${folder.id}`}
                               icon={<TrashIcon height={18} width={18} />}
