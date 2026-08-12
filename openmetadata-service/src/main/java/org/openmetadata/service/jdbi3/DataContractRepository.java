@@ -244,6 +244,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private void postCreateOrUpdate(DataContract dataContract) {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       TestSuite testSuite = getOrCreateTestSuite(dataContract);
+      // Write the reverse edge testSuite -> dataContract BEFORE any pipeline work so a
+      // pipeline-service outage cannot leave the contract without its reverse link.
+      // TestSuiteRepository.onTestSuiteExecutionComplete guards on
+      // testSuite.getDataContract() != null; without this link every future callback silently
+      // skips updateContractDQResults and the contract sits at Running indefinitely.
+      if (testSuite != null) {
+        ensureTestSuiteToDataContractRelationship(testSuite.getId(), dataContract.getId());
+      }
       // Create the ingestion pipeline only if needed
       if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
         IngestionPipeline pipeline = createIngestionPipeline(testSuite);
@@ -256,9 +264,42 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
         testSuiteRepository.createOrUpdate(null, testSuite, ADMIN_USER_NAME);
         if (!pipeline.getDeployed()) {
-          prepareAndDeployIngestionPipeline(pipeline, testSuite);
+          // Deploy is best-effort at creation time: a pipeline-service outage or misconfiguration
+          // must not block contract creation nor lose the reverse relationship written above.
+          // The user can re-deploy via /validate later.
+          try {
+            prepareAndDeployIngestionPipeline(pipeline, testSuite);
+          } catch (RuntimeException e) {
+            // Narrow to RuntimeException: deployPipeline throws
+            // IngestionPipelineDeploymentException (WebServiceException) on transport failures
+            // and NPE when the pipeline client is not wired (test harness). Both are recoverable
+            // at /validate time. Checked exceptions still propagate.
+            LOG.warn(
+                "Failed to deploy DQ pipeline for data contract {}: {}",
+                dataContract.getFullyQualifiedName(),
+                e.getMessage());
+          }
         }
       }
+    }
+  }
+
+  private void ensureTestSuiteToDataContractRelationship(UUID testSuiteId, UUID dataContractId) {
+    List<CollectionDAO.EntityRelationshipRecord> existing =
+        daoCollection
+            .relationshipDAO()
+            .findTo(testSuiteId, Entity.TEST_SUITE, Relationship.CONTAINS.ordinal());
+    boolean alreadyLinked =
+        existing.stream()
+            .anyMatch(
+                r -> Entity.DATA_CONTRACT.equals(r.getType()) && dataContractId.equals(r.getId()));
+    if (!alreadyLinked) {
+      addRelationship(
+          testSuiteId,
+          dataContractId,
+          Entity.TEST_SUITE,
+          Entity.DATA_CONTRACT,
+          Relationship.CONTAINS);
     }
   }
 

@@ -662,6 +662,7 @@ const TableV2 = <T extends object>(
                     }
                   : undefined
               }
+              onRowAction={rest.onRowAction}
               onSelectionChange={handleSelectionChange}
               onSortChange={handleSortChange}>
               <UntitledTable.Header className="tw:px-2">
@@ -715,7 +716,7 @@ const TableV2 = <T extends object>(
                             <Popover placement="bottom right">
                               <Dialog className="tw:outline-none">
                                 <div
-                                  className="tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:rounded-lg"
+                                  className="tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg"
                                   style={{ minWidth: '200px' }}>
                                   {typeof colType.filterDropdown === 'function'
                                     ? colType.filterDropdown({

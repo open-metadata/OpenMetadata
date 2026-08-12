@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -100,6 +101,50 @@ final class RankingSupport {
     } catch (ConditionTimeoutException timeout) {
       return false;
     }
+  }
+
+  /**
+   * Like {@link #awaitTrue} but reports <em>why</em> it never held: {@code null} once satisfied, or
+   * a description including the last polling error.
+   *
+   * <p>Tolerating transient errors while a document is still being indexed is correct, but
+   * discarding them made a condition that threw on every poll (a 4xx, a bad index name, a
+   * deserialization error) indistinguishable from genuine indexing lag — both surfaced only as "not
+   * indexed in time". Callers that need to tell the two apart use this variant.
+   */
+  static String awaitOrReason(Callable<Boolean> condition) {
+    AtomicReference<Exception> lastError = new AtomicReference<>();
+    String reason = null;
+    try {
+      Awaitility.await()
+          .atMost(INDEX_WAIT)
+          .pollInterval(Duration.ofMillis(500))
+          .ignoreExceptions()
+          .until(() -> evaluate(condition, lastError));
+    } catch (ConditionTimeoutException timeout) {
+      reason = describeTimeout(lastError.get());
+    }
+    return reason;
+  }
+
+  private static boolean evaluate(Callable<Boolean> condition, AtomicReference<Exception> lastError)
+      throws Exception {
+    boolean satisfied;
+    try {
+      satisfied = Boolean.TRUE.equals(condition.call());
+    } catch (Exception pollFailure) {
+      lastError.set(pollFailure);
+      throw pollFailure;
+    }
+    return satisfied;
+  }
+
+  private static String describeTimeout(Exception lastError) {
+    String reason = "not satisfied within " + INDEX_WAIT;
+    if (lastError != null) {
+      reason = reason + "; last error: " + lastError;
+    }
+    return reason;
   }
 
   /** Create a database service + database + schema and return the schema FQN entities hang off. */

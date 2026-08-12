@@ -14,10 +14,12 @@ import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   copyAndGetClipboardText,
   testCopyLinkButton,
@@ -55,11 +57,28 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    table1 = new TableClass();
-    table2 = new TableClass();
+    // Explore tree's service bucket is capped and sorted alphabetically
+    // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
+    // with a digit guarantees these services land within that bucket
+    // regardless of how many other `pw-*` services have accumulated.
+    table1 = new TableClass(undefined, undefined, {
+      name: `0-pw-database-service-${uuid()}`,
+    });
+    table2 = new TableClass(undefined, undefined, {
+      name: `0-pw-database-service-${uuid()}`,
+    });
 
     await table1.create(apiContext);
     await table2.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await table1.delete(apiContext);
+    await table2.delete(apiContext);
 
     await afterAction();
   });
@@ -347,10 +366,44 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 });
 
 test.describe('Explore page', () => {
-  const table = EntityDataClass.table1;
-  const dashboard = EntityDataClass.dashboard1;
-  const apiEndpoint = EntityDataClass.apiEndpoint1;
-  const searchIndex = EntityDataClass.searchIndex1;
+  let table: TableClass;
+  let dashboard: DashboardClass;
+  let apiEndpoint: ApiEndpointClass;
+  let searchIndex: SearchIndexClass;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    // Explore tree's service bucket is capped and sorted alphabetically
+    // (ElasticSearchAggregationManager orders by _key ASC), so a name starting
+    // with a digit guarantees these services land within that bucket
+    // regardless of how many other `pw-*` services have accumulated.
+    table = new TableClass(undefined, undefined, {
+      name: `0-pw-database-service-${uuid()}`,
+    });
+    dashboard = new DashboardClass(undefined, undefined, {
+      name: `0-pw-dashboard-service-${uuid()}`,
+    });
+    apiEndpoint = new ApiEndpointClass(`0-pw-api-endpoint-service-${uuid()}`);
+    searchIndex = new SearchIndexClass(`0-pw-search-index-service-${uuid()}`);
+
+    await table.create(apiContext);
+    await dashboard.create(apiContext);
+    await apiEndpoint.create(apiContext);
+    await searchIndex.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await table.delete(apiContext);
+    await dashboard.delete(apiContext);
+    await apiEndpoint.delete(apiContext);
+    await searchIndex.delete(apiContext);
+
+    await afterAction();
+  });
 
   test('Check the listing of tags', async ({ page }) => {
     await page

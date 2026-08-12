@@ -140,7 +140,9 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               />
             ) : (
               <p className="text-grey-muted text-center">
-                <span>{t('label.no-glossary-found')}</span>
+                <span>
+                  {t('label.no-entity', { entity: t('label.glossary') })}
+                </span>
               </p>
             )}
           </Col>

@@ -333,4 +333,18 @@ describe('EntityUtilClassBase', () => {
       expect(result).toEqual({ entityFqn: fqn, columnFqn: undefined });
     });
   });
+
+  describe('getEntityTypes', () => {
+    it('should return the list of OSS entity types', () => {
+      const types = entityUtil.getEntityTypes();
+
+      expect(types).toEqual(Object.values(EntityType));
+      expect(types).toContain(EntityType.TABLE);
+      expect(types).toContain(EntityType.GLOSSARY_TERM);
+    });
+
+    it('should not contain Collate-only types absent from the enum', () => {
+      expect(entityUtil.getEntityTypes()).not.toContain('aiAutomation');
+    });
+  });
 });

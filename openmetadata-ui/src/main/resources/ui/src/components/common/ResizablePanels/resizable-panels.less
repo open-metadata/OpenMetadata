@@ -67,12 +67,12 @@ body.reflex-row-resize {
 }
 
 .reflex-container > .reflex-splitter {
-  z-index: 10; // Keep z-index low to avoid overlap with modals/tooltips
+  z-index: var(--om-z-10); // Keep z-index low to avoid overlap with modals/tooltips
 }
 
 .horizontal > .reflex-splitter {
-  border-bottom: 1px solid #c6c6c6;
-  border-top: 1px solid #c6c6c6;
+  border-bottom: 1px solid var(--om-legacy-color-c6c6c6);
+  border-top: 1px solid var(--om-legacy-color-c6c6c6);
   cursor: row-resize;
   width: 100%;
   height: 2px;
@@ -87,8 +87,8 @@ body.reflex-row-resize {
 
 .reflex-container.horizontal > .reflex-splitter:hover,
 .reflex-container.horizontal > .reflex-splitter.active {
-  border-bottom: 1px solid #eeeeee;
-  border-top: 1px solid #eeeeee;
+  border-bottom: 1px solid var(--om-legacy-color-eeeeee);
+  border-top: 1px solid var(--om-legacy-color-eeeeee);
 }
 
 .reflex-container.vertical > .reflex-splitter {
@@ -107,31 +107,31 @@ body.reflex-row-resize {
   > .reflex-splitter.reflex-thin.active
   .reflex-container
   > .reflex-splitter.reflex-thin:hover {
-  transition: all 1.5s ease;
+  transition: all var(--om-duration-1500) ease;
   opacity: 0.5;
 }
 
 .reflex-container.horizontal > .reflex-splitter.reflex-thin {
-  border-bottom: 8px solid rgba(255, 255, 255, 0);
-  border-top: 8px solid rgba(255, 255, 255, 0);
+  border-bottom: 8px solid var(--om-legacy-color-255-255-255-0);
+  border-top: 8px solid var(--om-legacy-color-255-255-255-0);
   height: 17px !important;
   cursor: row-resize;
-  margin: -8px 0;
+  margin: calc(-1 * var(--om-space-8)) 0;
   width: 100%;
 }
 
 .reflex-container.horizontal > .reflex-splitter.reflex-thin.active,
 .reflex-container.horizontal > .reflex-splitter.reflex-thin:hover {
-  border-bottom: 8px solid #e4e4e4;
-  border-top: 8px solid #e4e4e4;
+  border-bottom: 8px solid var(--om-legacy-color-e4e4e4);
+  border-top: 8px solid var(--om-legacy-color-e4e4e4);
 }
 
 .reflex-container.vertical > .reflex-splitter.reflex-thin {
-  border-right: 8px solid rgba(255, 255, 255, 0);
-  border-left: 8px solid rgba(255, 255, 255, 0);
+  border-right: 8px solid var(--om-legacy-color-255-255-255-0);
+  border-left: 8px solid var(--om-legacy-color-255-255-255-0);
   width: 17px !important;
   cursor: col-resize;
-  margin: 0 -8px;
+  margin: 0 calc(-1 * var(--om-space-8));
   height: 100%;
 }
 
@@ -141,10 +141,10 @@ body.reflex-row-resize {
   left: 0;
   bottom: 0;
   right: 0;
-  z-index: 10;
+  z-index: var(--om-z-10);
   background-color: var(--tw-color-bg-primary);
   overflow: hidden;
-  padding-top: 24px;
+  padding-top: var(--om-space-24);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -153,10 +153,10 @@ body.reflex-row-resize {
 h2.rotated-header {
   writing-mode: vertical-lr;
   white-space: nowrap;
-  font-weight: 600;
-  font-size: 20px;
+  font-weight: var(--om-font-weight-semibold);
+  font-size: var(--om-font-size-xl);
   line-height: 26px;
-  color: #37352f;
+  color: var(--om-legacy-color-37352f);
 }
 
 .counter-clockwise {
@@ -178,8 +178,8 @@ h2.rotated-header {
 }
 
 .handle-icon {
-  background-color: #e8e8ed;
-  border-radius: 6px;
+  background-color: var(--om-legacy-color-e8e8ed);
+  border-radius: var(--om-radius-md);
 }
 
 .handle-icon-vertical {
@@ -192,10 +192,10 @@ h2.rotated-header {
   margin-right: @reflex-card-gap;
 
   .panel-grabber-vertical {
-    margin-left: -10px;
+    margin-left: calc(-1 * var(--om-space-10));
 
     .handle-icon-vertical {
-      margin-left: 0px;
+      margin-left: 0;
     }
   }
 }
@@ -204,10 +204,10 @@ h2.rotated-header {
   margin-left: @reflex-card-gap;
 
   .panel-grabber-vertical {
-    margin-left: 10px;
+    margin-left: var(--om-space-10);
 
     .handle-icon-vertical {
-      margin-left: 0px;
+      margin-left: 0;
     }
   }
 }
@@ -235,8 +235,8 @@ h2.rotated-header {
   position: absolute;
   top: 8px;
   left: -24px;
-  padding: 4px 8px;
-  z-index: 10;
+  padding: var(--om-space-4) var(--om-space-8);
+  z-index: var(--om-z-10);
   background: white !important;
 
   .collapse-icon {
@@ -250,10 +250,10 @@ h2.rotated-header {
   top: 8px;
   left: auto;
   right: -16px;
-  padding: 4px 12px;
+  padding: var(--om-space-4) var(--om-space-12);
 
   .collapse-icon {
-    margin-left: 4px;
+    margin-left: var(--om-space-4);
     width: 20px;
   }
 }
@@ -274,7 +274,7 @@ h2.rotated-header {
   flex-direction: column;
 
   & > .ant-card-head {
-    padding: 0px 16px;
+    padding: 0 var(--om-space-16);
     border-bottom: none;
   }
 
@@ -287,8 +287,8 @@ h2.rotated-header {
 .card-header-splitter {
   display: flex;
   justify-content: flex-end;
-  padding: 4px;
-  border-bottom: 1px solid #e8e8e8;
+  padding: var(--om-space-4);
+  border-bottom: 1px solid var(--om-legacy-color-e8e8e8);
 }
 
 .ant-btn.header-collapse-button,
@@ -308,5 +308,5 @@ h2.rotated-header {
 .collapse-icon {
   width: 16px;
   height: 16px;
-  transition: transform 0.3s;
+  transition: transform var(--om-duration-300);
 }
