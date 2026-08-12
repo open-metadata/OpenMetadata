@@ -131,6 +131,18 @@ public class LogStorageTest {
   }
 
   @Test
+  void getLogsIsDeterministicWhenTheRunnerSendsMoreThanOneTask() {
+    // A response carries one task today, so map order never mattered. Order by key anyway: picking
+    // an arbitrary entry would make the log text change between identical calls.
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenReturn(Map.of("lineage_task", "second", "ingestion_task", "first", "total", "2"));
+
+    Map<String, Object> result = defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10);
+
+    assertEquals("first\nsecond", result.get("logs"));
+  }
+
+  @Test
   void getLogsReturnsEmptyStringWhenTheRunnerSendsOnlyPagingKeys() {
     when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
         .thenReturn(Map.of("total", "0"));

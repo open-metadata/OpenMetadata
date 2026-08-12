@@ -16,6 +16,7 @@ package org.openmetadata.service.logstorage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -105,7 +106,8 @@ public class DefaultLogStorage implements LogStorageInterface {
   /**
    * Pulls the log text out of a client response. Runners key it by task name (see {@code
    * PipelineServiceClientInterface.TYPE_TO_TASK}), e.g. {@code lineage_task}, so only the paging
-   * keys are fixed. Take the remaining entry instead of guessing the task name.
+   * keys are fixed. Take the remaining entries instead of guessing the task name. Today a response
+   * carries exactly one task, but iterate in key order so more than one stays deterministic.
    */
   public static String extractLogContent(Map<String, String> clientLogs) {
     if (clientLogs == null) {
@@ -113,9 +115,9 @@ public class DefaultLogStorage implements LogStorageInterface {
     }
     return clientLogs.entrySet().stream()
         .filter(e -> !PAGING_KEYS.contains(e.getKey()) && e.getValue() != null)
+        .sorted(Map.Entry.comparingByKey())
         .map(Map.Entry::getValue)
-        .findFirst()
-        .orElse("");
+        .collect(Collectors.joining("\n"));
   }
 
   @Override
