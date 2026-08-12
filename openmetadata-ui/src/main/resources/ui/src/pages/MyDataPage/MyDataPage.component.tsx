@@ -87,7 +87,10 @@ const MyDataPage = () => {
   const [personaPreferences, setPersonaPreferences] = useState<
     PersonaPreferences[]
   >([]);
-  const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
+  const storageData = useMemo(
+    () => localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY),
+    []
+  );
 
   const loggedInUserName = useMemo(() => {
     return currentUser?.name ?? '';

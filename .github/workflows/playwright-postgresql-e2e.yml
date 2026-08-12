@@ -369,6 +369,26 @@ jobs:
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         run: sudo make install_antlr_cli
 
+      - name: Restore openmetadata-ui dist cache
+        # Two guards ANDed together:
+        #   - distribution-cache miss (otherwise we already have the tarball)
+        #   - not a fork PR under pull_request_target — that combination runs
+        #     base-branch privileged with untrusted checked-out code, so a
+        #     cache save would poison the default-branch cache scope (CodeQL
+        #     `actions/actions/cache-poisoning`). Same guard lives inside the
+        #     composite action for defence in depth, but CodeQL is a static
+        #     analyser and needs to see it here at the workflow level.
+        if: >-
+          steps.distribution-cache.outputs.usable != 'true' &&
+          !(github.event_name == 'pull_request_target' &&
+            github.event.pull_request.head.repo.full_name != github.repository)
+        uses: ./.github/actions/cache-ui-dist
+        with:
+          # PW_E2E_BUILD alters vite chunking; PW_E2E_BUNDLE alters it further.
+          # Keep those variants in separate cache buckets so a non-e2e build
+          # never returns an e2e-shaped dist (or vice versa).
+          variant: pw-e2e-${{ needs.cache-keys.outputs.bundle_mode == 'coarse' && 'bundle' || 'build' }}
+
       - name: Build with Maven
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         env:
@@ -551,6 +571,7 @@ jobs:
           npx playwright test --list --reporter=json \
             --project=chromium \
             --project=Basic \
+            --project="Data Insight" \
             --project=Ingestion \
             --project=ImportExport \
             --project=DataAssetRulesEnabled \
@@ -787,6 +808,24 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      # Restore Playwright's Chromium system deps (fonts + xfonts) from the
+      # GH Actions cache before install-deps runs. On cache hit the action
+      # extracts the previously-installed files (~/usr/share/fonts and
+      # /var/cache/fontconfig) directly, so the subsequent `install-deps`
+      # sees every package as already-installed and skips fetching from the
+      # Ubuntu mirror entirely. This closes the failure mode where a slow
+      # Azure mirror hit chromium-18 with a 40 kB/s download and pushed the
+      # shard past the 30-min elapsed-before-upload gate (run 30788758311).
+      # `install-deps` still runs as a safety net so a Playwright version
+      # bump that adds a new dep does not silently miss it.
+      - name: Cache Playwright system deps
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        continue-on-error: true
+        with:
+          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
+          version: playwright-chromium-deps-v1
 
       - name: Install fixture-state browser
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
@@ -1049,6 +1088,17 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
 
+      # Same rationale as the Cache Playwright system deps step in the
+      # fixture builder above — cache the Chromium system deps so every
+      # shard skips the ~30 s Ubuntu-mirror fetch (or a multi-minute crawl
+      # on a bad-mirror day, see run 30788758311).
+      - name: Cache Playwright system deps
+        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        continue-on-error: true
+        with:
+          packages: fonts-ipafont-gothic fonts-freefont-ttf fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils xfonts-cyrillic xfonts-scalable
+          version: playwright-chromium-deps-v1
+
       - name: Install Playwright Browsers
         id: install-browsers
         working-directory: openmetadata-ui/src/main/resources/ui/
@@ -1286,9 +1336,33 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
+      # The downstream playwright-summary gate treats a missing results.json
+      # as "shard did not upload a usable Playwright results artifact" and
+      # fails the required check on it — even when every test in the shard
+      # passed. A transient error from the artifact backend here (seen: 403
+      # on FinalizeArtifact) otherwise turns into a false-red merge-queue
+      # run. Retry once with a plain duplicate step rather than pulling in
+      # a third-party retry action — actions/upload-artifact is already
+      # trusted throughout this file, and `overwrite: true` makes a second
+      # attempt safe to re-run against the same artifact name.
       - name: Upload results JSON for summary
+        id: upload-results-json
         uses: actions/upload-artifact@v6
         if: always()
+        continue-on-error: true
+        with:
+          name: playwright-results-json-${{ matrix.shardId }}
+          overwrite: true
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/results.json
+            openmetadata-ui/src/main/resources/ui/playwright/output/ci-status.json
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Retry upload results JSON for summary
+        if: always() && steps.upload-results-json.outcome == 'failure'
+        uses: actions/upload-artifact@v6
+        continue-on-error: true
         with:
           name: playwright-results-json-${{ matrix.shardId }}
           overwrite: true
@@ -1711,3 +1785,113 @@ jobs:
           path: ${{ runner.temp }}/playwright-pr-comment/summary.json
           retention-days: 5
           if-no-files-found: ignore
+
+  # Auto-refresh the checked-in timing baseline from every successful
+  # full-mode merge_group run. Without this, `.github/playwright/timing-baseline.json`
+  # only gets updated by hand — and it drifts fast (see PR #30871 for the
+  # 12-day, 23%-dead-title snapshot that triggered this workflow addition).
+  #
+  # The step opens/updates a single tracked PR against `main`. A human still
+  # clicks merge — the auto-PR just eliminates the "regenerate the file"
+  # busywork.
+  #
+  # Guards:
+  #   * merge_group event only (skip on PR/schedule/dispatch — the ci-status
+  #     signal on merge_group is the safest known-good snapshot)
+  #   * full execution mode only (targeted PR plans do not exercise every
+  #     spec — a targeted refresh would lose coverage)
+  #   * playwright-summary success only (no partial data on gate failures)
+  #   * a drift cap in refresh_timing_baseline.py refuses > 40 % churn as a
+  #     safety valve against an accidentally-broken source run
+  refresh-timing-baseline:
+    name: Refresh timing baseline
+    needs: [detect-changes, playwright-summary]
+    if: |
+      always() &&
+      github.event_name == 'merge_group' &&
+      needs.detect-changes.outputs.mode == 'full' &&
+      needs.playwright-summary.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download timing history artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-timing-history-full-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/timing-history
+
+      - name: Locate merged history file
+        id: locate
+        run: |
+          history=$(find "$RUNNER_TEMP/timing-history" -name 'playwright-timing-history.json' -type f | head -1)
+          if [[ -z "$history" ]]; then
+            echo "No playwright-timing-history.json found under $RUNNER_TEMP/timing-history" >&2
+            find "$RUNNER_TEMP/timing-history" -type f >&2 || true
+            exit 1
+          fi
+          echo "history_path=$history" >> "$GITHUB_OUTPUT"
+
+      - name: Build refreshed baseline
+        run: |
+          python3 .github/scripts/refresh_timing_baseline.py \
+            --history "${{ steps.locate.outputs.history_path }}" \
+            --current .github/playwright/timing-baseline.json \
+            --output .github/playwright/timing-baseline.json \
+            --source-run-id "${{ github.run_id }}" \
+            --summary "$RUNNER_TEMP/baseline-refresh-summary.md"
+
+      - name: Skip if baseline unchanged
+        id: diff
+        run: |
+          if git diff --quiet -- .github/playwright/timing-baseline.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push refresh branch and open/update PR
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          branch="ci/auto-refresh-timing-baseline"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          # Reset the tracked branch to the latest state — a single tracked
+          # PR gets updated across successive runs rather than accumulating
+          # one PR per merge_group. Plain `--force` (not `--force-with-lease`)
+          # because Checkout only fetched `main`, so no remote-tracking ref
+          # exists for this bot-owned branch and a lease would be rejected
+          # with "stale info" on the second and every subsequent run.
+          git checkout -B "$branch"
+          git add .github/playwright/timing-baseline.json
+          git commit -m "chore(playwright): auto-refresh timing baseline from run ${RUN_ID}"
+          git push --force origin "$branch"
+
+          summary_body="$(cat "$RUNNER_TEMP/baseline-refresh-summary.md")"
+          pr_body=$(printf '## Summary\n\nAuto-refreshed from [merge_group run %s](%s).\n\n```\n%s\n```\n\nA human still clicks merge. If this drift looks unreasonable, close the PR — the next successful merge_group run will open a fresh one.\n' "$RUN_ID" "$RUN_URL" "$summary_body")
+          # `.[0].number` on an empty array yields the literal string "null",
+          # not an empty string; the `// empty` fallback turns that into a
+          # real empty string so the -n test below correctly picks the
+          # `gh pr create` branch on the very first run.
+          existing=$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty' || echo "")
+          if [[ -n "$existing" ]]; then
+            gh pr edit "$existing" --body "$pr_body"
+            echo "Updated existing PR #$existing"
+          else
+            gh pr create --base main --head "$branch" \
+              --title "chore(playwright): auto-refresh timing-baseline.json" \
+              --body "$pr_body"
+          fi

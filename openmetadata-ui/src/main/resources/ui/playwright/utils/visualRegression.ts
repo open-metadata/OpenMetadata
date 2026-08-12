@@ -46,4 +46,5 @@ export const gotoForScreenshot = async (page: Page, path: string) => {
   await page.goto(path);
   await waitForPageLoaded(page);
   await page.addStyleTag({ content: FREEZE_CSS });
+  await page.evaluate(() => window.scrollTo(0, 0));
 };

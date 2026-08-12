@@ -17,8 +17,10 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
+import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
@@ -51,6 +53,13 @@ let persona: PersonaClass;
 // Test domain and data products for comprehensive testing
 let testDomain: Domain;
 let testDataProducts: DataProduct[] = [];
+
+// The Activity Feed widget only renders its "View More" link once the feed
+// exceeds PAGE_SIZE_BASE (15), so the footer step seeds one more than that
+// rather than depending on whatever activity the database happens to hold.
+let activitySeedTable: TableClass;
+const FEED_WIDGET_PAGE_SIZE = 15;
+const SEEDED_ACTIVITY_COUNT = FEED_WIDGET_PAGE_SIZE + 1;
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -135,6 +144,17 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
     await dp.create(apiContext);
   }
 
+  activitySeedTable = new TableClass();
+  await activitySeedTable.create(apiContext);
+
+  for (let index = 0; index < SEEDED_ACTIVITY_COUNT; index++) {
+    await insertActivityEventForTest(
+      apiContext,
+      activitySeedTable,
+      `Customize widgets activity ${index}`
+    );
+  }
+
   // Delete all existing KPIs before running the test
   await deleteKpiRequest(apiContext);
 
@@ -174,6 +194,19 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+test.afterAll(
+  'Cleanup: delete the activity seed table',
+  async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    try {
+      await activitySeedTable.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  }
+);
+
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
   await removeLandingBanner(page);
@@ -212,6 +245,7 @@ test('Activity Feed Widget', async ({ page }) => {
     await verifyWidgetFooterViewMore(page, {
       widgetKey,
       link: `/users/${adminUser.responseData.name}/activity_feed/all`,
+      requireViewMore: true,
     });
 
     await redirectToHomePage(page);
@@ -333,7 +367,7 @@ test('My Data Widget', async ({ page }) => {
   });
 });
 
-test.fixme('KPI Widget', async ({ page }) => {
+test('KPI Widget', async ({ page }) => {
   test.slow(true);
 
   await test.step('Add KPI', async () => {
@@ -371,8 +405,6 @@ test.fixme('KPI Widget', async ({ page }) => {
       widgetKey,
       link: 'data-insights/kpi',
     });
-
-    await redirectToHomePage(page);
   });
 
   await test.step('Test widget loads KPI data correctly', async () => {
@@ -390,6 +422,7 @@ test.fixme('KPI Widget', async ({ page }) => {
         response.url().includes('/kpiResult')
     );
 
+    await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
 
     const widget = await waitForLandingPageWidget(page, widgetKey);
@@ -448,11 +481,16 @@ test('Total Data Assets Widget', async ({ page }) => {
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
+    // The tab-less /data-insights is not a landable route — it only renders via
+    // an in-page redirect. Assert the resolved tab plus the rendered container,
+    // so a widget pointing at the bare route (or a page stuck on its loader)
+    // fails here instead of passing a substring check.
     await verifyWidgetHeaderNavigation(
       page,
       widgetKey,
       'Total Data Assets',
-      '/data-insights'
+      '/data-insights/data-assets',
+      'data-insight-container'
     );
   });
 
@@ -700,7 +738,7 @@ test('Data Products Widget', async ({ page }) => {
       page,
       widgetKey,
       'Data Products',
-      '/explore?tab=data_product'
+      '/dataProduct'
     );
   });
 
@@ -727,7 +765,7 @@ test('Data Products Widget', async ({ page }) => {
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await verifyWidgetFooterViewMore(page, {
       widgetKey,
-      link: '/explore',
+      link: '/dataProduct',
     });
   });
 
