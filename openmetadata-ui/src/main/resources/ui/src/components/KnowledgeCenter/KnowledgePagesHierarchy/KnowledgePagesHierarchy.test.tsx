@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
   fireEvent,
@@ -17,11 +18,23 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { createRef } from 'react';
+import { createRef, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { KnowledgePagesHierarchyRef } from '../../../interface/knowledge-center.interface';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import KnowledgePagesHierarchy from './KnowledgePagesHierarchy';
+
+const TestWrapper = ({ children }: PropsWithChildren) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{children}</MemoryRouter>
+    </QueryClientProvider>
+  );
+};
 
 const PageHierarchy = [
   {
@@ -242,7 +255,7 @@ describe('KnowledgePagesHierarchy', () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
@@ -265,7 +278,7 @@ describe('KnowledgePagesHierarchy', () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-        { wrapper: MemoryRouter }
+        { wrapper: TestWrapper }
       );
     });
 
@@ -286,7 +299,7 @@ describe('KnowledgePagesHierarchy', () => {
           permissions={DEFAULT_ENTITY_PERMISSION}
         />,
         {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         }
       );
     });
@@ -304,7 +317,7 @@ describe('KnowledgePagesHierarchy', () => {
       render(
         <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
         {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         }
       );
     });
@@ -333,7 +346,7 @@ describe('KnowledgePagesHierarchy', () => {
         activeKey="Article_2p7Z8MAN"
         permissions={DEFAULT_ENTITY_PERMISSION}
       />,
-      { wrapper: MemoryRouter }
+      { wrapper: TestWrapper }
     );
 
     await act(async () => {
@@ -391,7 +404,7 @@ describe('KnowledgePagesHierarchy', () => {
           permissions={{ ...DEFAULT_ENTITY_PERMISSION, Delete: true }}
         />,
         {
-          wrapper: MemoryRouter,
+          wrapper: TestWrapper,
         }
       );
     });
@@ -454,7 +467,7 @@ describe('KnowledgePagesHierarchy', () => {
       await act(async () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-          { wrapper: MemoryRouter }
+          { wrapper: TestWrapper }
         );
       });
 
@@ -541,7 +554,7 @@ describe('KnowledgePagesHierarchy', () => {
       await act(async () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-          { wrapper: MemoryRouter }
+          { wrapper: TestWrapper }
         );
       });
 
@@ -622,7 +635,7 @@ describe('KnowledgePagesHierarchy', () => {
             permissions={DEFAULT_ENTITY_PERMISSION}
             ref={ref}
           />,
-          { wrapper: MemoryRouter }
+          { wrapper: TestWrapper }
         );
       });
 
@@ -721,7 +734,7 @@ describe('KnowledgePagesHierarchy', () => {
       await act(async () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
-          { wrapper: MemoryRouter }
+          { wrapper: TestWrapper }
         );
       });
 
@@ -791,7 +804,7 @@ describe('KnowledgePagesHierarchy', () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
           {
-            wrapper: MemoryRouter,
+            wrapper: TestWrapper,
           }
         );
       });
@@ -817,7 +830,7 @@ describe('KnowledgePagesHierarchy', () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
           {
-            wrapper: MemoryRouter,
+            wrapper: TestWrapper,
           }
         );
       });
@@ -843,7 +856,7 @@ describe('KnowledgePagesHierarchy', () => {
         render(
           <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
           {
-            wrapper: MemoryRouter,
+            wrapper: TestWrapper,
           }
         );
       });
