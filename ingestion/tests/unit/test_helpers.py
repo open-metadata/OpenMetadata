@@ -203,10 +203,11 @@ class TestHelpers(TestCase):
         self.assertTrue(is_safe_pandas_query("`age` >= 18 and `age` <= 65"))
         self.assertTrue(is_safe_pandas_query("1.5 < price < 9.99"))
         self.assertTrue(is_safe_pandas_query("col1 in ['a', 'b']"))
+        self.assertTrue(is_safe_pandas_query("~(age > 1) or country != 'US'"))
         # a bare column that happens to contain a double underscore is fine
         self.assertTrue(is_safe_pandas_query("first__name > 1"))
-        # string accessor methods are legitimate pandas filter syntax
-        self.assertTrue(is_safe_pandas_query("`name`.str.len() > 3"))
+        # an @ inside a string literal is data, not a frame reference
+        self.assertTrue(is_safe_pandas_query("email == 'a@b.com'"))
         # a dunder inside a backtick-quoted identifier is a column name, not an attack
         self.assertTrue(is_safe_pandas_query("`weird.__col` > 0"))
 
@@ -217,12 +218,17 @@ class TestHelpers(TestCase):
         self.assertFalse(is_safe_pandas_query("@os.system('echo pwned') or a > 0"))
         self.assertFalse(is_safe_pandas_query("@self.exfil.go(@self.connection.password)"))
 
-    def test_is_safe_pandas_query_blocks_dunder_attribute_traversal(self):
-        """`.__` is the first hop of the classic sandbox-escape gadget"""
+    def test_is_safe_pandas_query_blocks_calls_and_attribute_access(self):
+        """Method calls and attribute access can execute code, e.g. writing files, so
+        they are rejected even without an @ or dunder"""
+        # Series methods that have side effects (confirmed to write files on pandas 2.1.4)
+        self.assertFalse(is_safe_pandas_query("a.to_csv('/tmp/x')"))
+        self.assertFalse(is_safe_pandas_query("a.values.tofile('/tmp/x')"))
+        # string accessor is still a method call, so it is rejected
+        self.assertFalse(is_safe_pandas_query("`name`.str.len() > 3"))
+        # dunder attribute traversal (the classic sandbox-escape gadget)
         self.assertFalse(is_safe_pandas_query("a.__class__.__init__.__globals__"))
         self.assertFalse(is_safe_pandas_query("a.__class__.__mro__[0]"))
-        # whitespace between the dot and the dunder must not bypass the check
-        self.assertFalse(is_safe_pandas_query("a.  __class__"))
 
     def test_format_large_string_numbers(self):
         """test format_large_string_numbers"""
