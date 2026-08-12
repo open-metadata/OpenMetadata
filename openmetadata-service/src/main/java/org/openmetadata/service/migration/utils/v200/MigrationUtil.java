@@ -552,10 +552,13 @@ public class MigrationUtil {
         ObjectNode payload = JsonUtils.getObjectNode();
         payload.put("suggestionType", mappedSuggestionType);
 
-        String fieldPath =
-            "Tag".equals(mappedSuggestionType)
-                ? Entity.FIELD_TAGS
-                : extractFieldPathFromEntityLink(entityLink);
+        // Keep the field path the entityLink points at (e.g. columns.<col>.tags) so a tag
+        // suggestion lands on the suggested column, not the parent entity; fall back to
+        // entity-level tags only when the link carries no tags field.
+        String fieldPath = extractFieldPathFromEntityLink(entityLink);
+        if ("Tag".equals(mappedSuggestionType) && !fieldPath.endsWith(Entity.FIELD_TAGS)) {
+          fieldPath = Entity.FIELD_TAGS;
+        }
         payload.put("fieldPath", fieldPath);
 
         if ("Tag".equals(mappedSuggestionType)) {
