@@ -343,6 +343,25 @@ public class McpToolsValidationIT extends McpTestBase {
     assertThat(response.get("data").isArray()).isTrue();
   }
 
+  /**
+   * The MCP door reaches the same DAO as the REST door, so it must canonicalize {@code entityType}
+   * the same way — see issue #29542. An LLM caller naturally writes {@code "Column"}, which matched
+   * nothing on PostgreSQL before the fix.
+   */
+  @Test
+  @Order(22)
+  void testGetTestDefinitionsForMixedCaseEntityType() throws Exception {
+    Map<String, Object> toolCall = McpTestUtils.createGetTestDefinitionsToolCall("Column");
+    JsonNode result = executeToolCall(toolCall);
+
+    JsonNode response = OBJECT_MAPPER.readTree(result.get("content").get(0).get("text").asText());
+    JsonNode definitions = response.get("data");
+    assertThat(definitions).isNotEmpty();
+    for (JsonNode definition : definitions) {
+      assertThat(definition.get("entityType").asText()).isEqualTo("COLUMN");
+    }
+  }
+
   @Test
   @Order(12)
   void testCreateTestCase() throws Exception {

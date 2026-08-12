@@ -83,6 +83,7 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
+import org.openmetadata.service.util.FreshReadScope;
 
 @Slf4j
 public class WorkflowHandler {
@@ -292,8 +293,9 @@ public class WorkflowHandler {
     // Add Expression Manager
     processEngineConfiguration.setExpressionManager(new DefaultExpressionManager(expressionMap));
 
-    // Add Global Failure Listener
-    processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
+    // Add Global Failure Listener + per-job ThreadLocal cleanup for the async executor pool
+    processEngineConfiguration.setEventListeners(
+        List.of(new WorkflowFailureListener(), new WorkflowThreadCleanupListener()));
 
     boolean engineBuilt = false;
     try {
@@ -707,9 +709,17 @@ public class WorkflowHandler {
     }
   }
 
+  /**
+   * Signals are delivered synchronously, so the whole workflow — filters, attribute gates, status
+   * transitions — runs inline on the caller's thread. Those gates decide whether an entity gets an
+   * approval task at all, so they read fresh rather than trusting an in-process cache that a write on
+   * another node may not have invalidated.
+   */
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
-    runtimeService.signalEventReceived(signal, variables);
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      runtimeService.signalEventReceived(signal, variables);
+    }
   }
 
   private void unlockJobsOnStartup() {
@@ -921,6 +931,15 @@ public class WorkflowHandler {
   }
 
   private boolean resolveTaskInternal(
+      UUID customTaskId, Map<String, Object> variables, boolean legacyThreadTask) {
+    // Completing a user task continues the workflow inline, re-running the attribute gates that
+    // decide the entity's next status — same freshness requirement as triggerWithSignal.
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      return resolveTaskWithFreshReads(customTaskId, variables, legacyThreadTask);
+    }
+  }
+
+  private boolean resolveTaskWithFreshReads(
       UUID customTaskId, Map<String, Object> variables, boolean legacyThreadTask) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);

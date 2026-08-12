@@ -10,15 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+/**
+ * Consumers of ActivityFeedProvider used only by ActivityFeedProvider.test.tsx.
+ * They live here rather than under src/components so nothing in the component
+ * tree looks like an application component when it is a test fixture.
+ *
+ * Each effect lists the provider method it calls: the provider memoises all of
+ * them with useCallback, so the dependency is stable and the effect still runs
+ * once per mount.
+ */
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
-import { FeedFilter } from '../../../enums/mydata.enum';
-import { ReactionOperation } from '../../../enums/reactions.enum';
-import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { ThreadType } from '../../../generated/entity/feed/thread';
-import { ReactionType } from '../../../generated/type/reaction';
-import { useActivityFeedProvider } from './ActivityFeedProvider';
+import { useActivityFeedProvider } from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { EntityType } from '../enums/entity.enum';
+import { FeedFilter } from '../enums/mydata.enum';
+import { ReactionOperation } from '../enums/reactions.enum';
+import { ActivityEvent } from '../generated/entity/activity/activityEvent';
+import { ThreadType } from '../generated/entity/feed/thread';
+import { ReactionType } from '../generated/type/reaction';
+import { TaskStatusGroup } from '../rest/tasksAPI';
+
+const LOADING_LABEL = 'label.loading';
+const CHILDREN_LABEL = 'label.children';
 
 export const DummyChildrenComponent = () => {
   const { t } = useTranslation();
@@ -38,12 +52,12 @@ export const DummyChildrenComponent = () => {
       undefined,
       EntityType.USER,
       'admin',
-      'open'
+      TaskStatusGroup.Open
     );
-  }, []);
+  }, [getTaskData]);
 
   if (loading) {
-    return <p data-testid="loading">{t('label.loading')}</p>;
+    return <p data-testid="loading">{t(LOADING_LABEL)}</p>;
   }
 
   return (
@@ -68,11 +82,11 @@ export const DummyChildrenTaskCloseComponent = () => {
       'after-234',
       EntityType.USER,
       'admin',
-      'closed'
+      TaskStatusGroup.Closed
     );
-  }, []);
+  }, [getTaskData]);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(CHILDREN_LABEL)}</p>;
 };
 
 export const DummyChildrenEntityComponent = () => {
@@ -86,11 +100,11 @@ export const DummyChildrenEntityComponent = () => {
       ThreadType.Conversation,
       EntityType.TABLE,
       'admin',
-      'open'
+      TaskStatusGroup.Open
     );
-  }, []);
+  }, [getFeedData]);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(CHILDREN_LABEL)}</p>;
 };
 
 export const DummyChildrenMentionsComponent = () => {
@@ -105,9 +119,9 @@ export const DummyChildrenMentionsComponent = () => {
       EntityType.USER,
       'admin'
     );
-  }, []);
+  }, [getFeedData]);
 
-  return <p>{t('label.children')}</p>;
+  return <p>{t(CHILDREN_LABEL)}</p>;
 };
 
 export const DummyChildrenDeletePostComponent = () => {
@@ -132,10 +146,10 @@ export const DummyActivityFeedComponent = () => {
 
   useEffect(() => {
     fetchMyActivityFeed({ days: 7, limit: 20 });
-  }, []);
+  }, [fetchMyActivityFeed]);
 
   if (isActivityLoading) {
-    return <p data-testid="activity-loading">{t('label.loading')}</p>;
+    return <p data-testid="activity-loading">{t(LOADING_LABEL)}</p>;
   }
 
   return (
@@ -155,15 +169,79 @@ export const DummyEntityActivityFeedComponent = () => {
       days: 7,
       limit: 20,
     });
-  }, []);
+  }, [fetchEntityActivity]);
 
   if (isActivityLoading) {
-    return <p data-testid="entity-activity-loading">{t('label.loading')}</p>;
+    return <p data-testid="entity-activity-loading">{t(LOADING_LABEL)}</p>;
   }
 
   return (
     <div data-testid="entity-activity-feed">
       <span data-testid="entity-activity-count">{activityEvents.length}</span>
+    </div>
+  );
+};
+
+export const DummyFollowingActivityComponent = () => {
+  const { t } = useTranslation();
+  const { fetchFollowingActivity, activityEvents, isActivityLoading } =
+    useActivityFeedProvider();
+
+  useEffect(() => {
+    fetchFollowingActivity({ days: 7, limit: 20 });
+  }, [fetchFollowingActivity]);
+
+  if (isActivityLoading) {
+    return <p data-testid="following-activity-loading">{t(LOADING_LABEL)}</p>;
+  }
+
+  return (
+    <div data-testid="following-activity-feed">
+      <span data-testid="following-activity-count">
+        {activityEvents.length}
+      </span>
+      {activityEvents.map((activity) => (
+        <span data-testid="following-activity-summary" key={activity.id}>
+          {activity.summary}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * Drives the widget's filter switch from a test: the three activity fetchers
+ * share one sequence counter, so this is how a superseded response is exercised.
+ */
+export const DummyActivityFilterSwitchComponent = () => {
+  const { t } = useTranslation();
+  const {
+    fetchActivityEvents,
+    fetchMyActivityFeed,
+    fetchFollowingActivity,
+    activityEvents,
+  } = useActivityFeedProvider();
+
+  return (
+    <div>
+      <button
+        data-testid="fetch-all"
+        onClick={() => fetchActivityEvents({ limit: 20 })}>
+        {t('label.all')}
+      </button>
+      <button
+        data-testid="fetch-owner"
+        onClick={() => fetchMyActivityFeed({ limit: 20 })}>
+        {t('label.my-data')}
+      </button>
+      <button
+        data-testid="fetch-following"
+        onClick={() => fetchFollowingActivity({ limit: 20 })}>
+        {t('label.following')}
+      </button>
+      <span data-testid="activity-summaries">
+        {activityEvents.map((activity) => activity.summary).join(',')}
+      </span>
     </div>
   );
 };
@@ -200,24 +278,41 @@ export const DummyActivityReactionComponent = () => {
   );
 };
 
-export const DummyActivityCommentComponent = ({
-  activity,
-}: {
-  activity: ActivityEvent;
-}) => {
+export const DummyActivityReactionSyncComponent = () => {
   const { t } = useTranslation();
-  const { postActivityComment, activityThread } = useActivityFeedProvider();
+  const {
+    activityEvents,
+    selectedActivity,
+    setActiveActivity,
+    updateActivityReaction,
+    fetchMyActivityFeed,
+  } = useActivityFeedProvider();
 
-  const handlePostComment = () => {
-    postActivityComment('Test comment', activity);
-  };
+  useEffect(() => {
+    fetchMyActivityFeed({ days: 7, limit: 20 });
+  }, [fetchMyActivityFeed]);
 
   return (
     <div>
-      <button data-testid="post-comment" onClick={handlePostComment}>
-        {t('label.post-comment')}
+      <button
+        data-testid="select-activity"
+        onClick={() => setActiveActivity(activityEvents[0])}>
+        {t('label.set-active')}
       </button>
-      <span data-testid="thread-id">{activityThread?.id ?? 'no-thread'}</span>
+      <button
+        data-testid="react"
+        onClick={() =>
+          updateActivityReaction(
+            'activity-123',
+            ReactionType.ThumbsUp,
+            ReactionOperation.ADD
+          )
+        }>
+        {t('label.add-reaction')}
+      </button>
+      <span data-testid="selected-activity-reactions">
+        {selectedActivity?.reactions?.length ?? -1}
+      </span>
     </div>
   );
 };
@@ -228,8 +323,7 @@ export const DummySetActiveActivityComponent = ({
   activity?: ActivityEvent;
 }) => {
   const { t } = useTranslation();
-  const { setActiveActivity, selectedActivity, activityThread } =
-    useActivityFeedProvider();
+  const { setActiveActivity, selectedActivity } = useActivityFeedProvider();
 
   const handleSetActive = () => {
     setActiveActivity(activity);
@@ -242,9 +336,6 @@ export const DummySetActiveActivityComponent = ({
       </button>
       <span data-testid="selected-activity-id">
         {selectedActivity?.id ?? 'none'}
-      </span>
-      <span data-testid="activity-thread-id">
-        {activityThread?.id ?? 'no-thread'}
       </span>
     </div>
   );
