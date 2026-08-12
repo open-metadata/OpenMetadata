@@ -188,6 +188,21 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
 
   const userPref =
     derivePreferencesFromList(prefsRes.preferences).appMode ?? null;
+
+  // Third guard: if the user has NO server-side preference (userPref is
+  // null) but DOES have a defaultPersona, defer the initial write to
+  // `useResolvedAppMode` — it fetches the persona doc asynchronously
+  // and can compute the correct candidate against the full precedence
+  // (userPref -> persona -> appDefault -> DEFAULT). Writing here with
+  // `personaMode = null` would poison the session tuple with a mode
+  // that persona is about to override, and once the tuple is written
+  // the resolver's `if (validSession) return;` guard keeps the wrong
+  // mode. When userPref IS set it wins over persona under the unified
+  // precedence, so writing here is still safe.
+  if (userPref === null && user.defaultPersona) {
+    return;
+  }
+
   writeAppMode(resolveEffectiveAppMode(userPref, null, appDefault));
 };
 
