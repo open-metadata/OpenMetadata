@@ -30,20 +30,37 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
 )
+from metadata.generated.schema.metadataIngestion.messagingServiceAutoClassificationPipeline import (
+    MessagingServiceAutoClassificationPipeline,
+)
 from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
     StorageServiceAutoClassificationPipeline,
 )
-from metadata.sampler.config import get_config_for_table
+from metadata.sampler.config import (
+    get_config_for_table,
+    get_exclude_columns,
+    get_include_columns,
+    get_profile_sample_config,
+    get_sample_data_count_config,
+    get_sample_query,
+)
 from metadata.sampler.config_utils import build_database_service_conn_config
 from metadata.sampler.models import SampleConfig
+from metadata.sampler.partition import get_partition_details
+from metadata.sampler.sampler_config import (
+    DatabaseSamplerConfig,
+    MessagingSamplerConfig,
+    StorageSamplerConfig,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -124,20 +141,36 @@ class TableAdapter(EntityAdapter[Table]):
         profiler_config: Any,
         source_config: Any,
     ) -> dict | None:
-        from metadata.utils.profiler_utils import get_context_entities  # noqa: PLC0415
+        from metadata.utils.profiler_utils import get_context_entities
 
         schema_entity, database_entity, _ = get_context_entities(entity=entity, metadata=metadata)
         if database_entity is None:
             return None
+        table_config = get_config_for_table(entity, profiler_config)
         return {
             "service_connection_config": build_database_service_conn_config(config, database_entity),
             "ometa_client": metadata,
             "entity": entity,
-            "schema_entity": schema_entity,
-            "database_entity": database_entity,
-            "table_config": get_config_for_table(entity, profiler_config),
-            "default_sample_config": SampleConfig(),
-            "default_sample_data_count": source_config.sampleDataCount,
+            "config": DatabaseSamplerConfig(
+                sample_config=get_profile_sample_config(
+                    entity=entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=table_config,
+                    default_sample_config=SampleConfig(),
+                ),
+                sample_data_count=get_sample_data_count_config(
+                    entity=entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=table_config,
+                    default_sample_data_count=source_config.sampleDataCount,
+                ),
+                include_columns=get_include_columns(entity, entity_config=table_config) or [],
+                exclude_columns=get_exclude_columns(entity, entity_config=table_config) or [],
+                partition_details=get_partition_details(entity=entity, entity_config=table_config),
+                sample_query=get_sample_query(entity=entity, entity_config=table_config),
+            ),
         }
 
 
@@ -168,11 +201,44 @@ class ContainerAdapter(EntityAdapter[Container]):
             "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
             "ometa_client": metadata,
             "entity": entity,
-            "schema_entity": None,
-            "database_entity": None,
-            "table_config": None,
-            "default_sample_config": SampleConfig(),
-            "default_sample_data_count": source_config.sampleDataCount,
+            "config": StorageSamplerConfig(
+                sample_data_count=source_config.sampleDataCount,
+            ),
+        }
+
+
+@register_adapter(entity=Topic, pipeline=MessagingServiceAutoClassificationPipeline)
+class TopicAdapter(EntityAdapter[Topic]):
+    pipeline_config_class = MessagingServiceAutoClassificationPipeline
+    service_type = ServiceType.Messaging
+    patch_fields: ClassVar[list[str]] = ["tags", "messageSchema"]
+
+    def get_columns(self, entity: Topic) -> list[Column] | None:
+        if entity.messageSchema and hasattr(entity.messageSchema, "schemaFields"):
+            return cast("list[Column]", entity.messageSchema.schemaFields)
+        return None
+
+    def set_columns(self, entity: Topic, columns: list[Column]) -> None:
+        if entity.messageSchema:
+            entity.messageSchema.schemaFields = cast("Any", columns)
+
+    def build_sampler_kwargs(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        entity: Topic,
+        profiler_config: Any,
+        source_config: Any,
+    ) -> dict | None:
+        if config.source.serviceConnection is None or config.source.serviceConnection.root is None:
+            return None
+        return {
+            "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
+            "ometa_client": metadata,
+            "entity": entity,
+            "config": MessagingSamplerConfig(
+                sample_data_count=source_config.sampleDataCount,
+            ),
         }
 
 

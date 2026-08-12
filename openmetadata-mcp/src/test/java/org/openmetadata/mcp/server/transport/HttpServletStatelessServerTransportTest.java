@@ -124,4 +124,19 @@ class HttpServletStatelessServerTransportTest {
   void responseFlush_writerOnly() {
     verifyNoInteractions(response);
   }
+
+  @Test
+  void shouldEmitSse_acceptsBoth_prefersJson() {
+    assertThat(HttpServletStatelessServerTransport.shouldEmitSse(true, true)).isFalse();
+  }
+
+  @Test
+  void shouldEmitSse_acceptsJsonOnly_emitsJson() {
+    assertThat(HttpServletStatelessServerTransport.shouldEmitSse(true, false)).isFalse();
+  }
+
+  @Test
+  void shouldEmitSse_acceptsSseOnly_emitsSse() {
+    assertThat(HttpServletStatelessServerTransport.shouldEmitSse(false, true)).isTrue();
+  }
 }

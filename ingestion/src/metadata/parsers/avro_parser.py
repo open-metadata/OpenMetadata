@@ -17,6 +17,7 @@ import traceback
 from typing import List, Optional, Tuple, Type, Union  # noqa: UP035
 
 import avro.schema as avroschema
+from avro.errors import AvroException
 from avro.schema import ArraySchema, RecordSchema, Schema, UnionSchema
 from pydantic import BaseModel
 
@@ -244,9 +245,14 @@ def parse_avro_schema(schema: str, cls: Type[BaseModel] = FieldModel) -> Optiona
             )
         ]
         return models  # noqa: RET504, TRY300
+    except AvroException as exc:
+        # Avro formats the offending payload into its exception messages, so neither the
+        # message nor the traceback that quotes it can be logged without leaking the file
+        # content this parser was handed. See issue #24798.
+        logger.warning("Unable to parse the avro schema: %s", type(exc).__name__)
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
-        logger.warning(f"Unable to parse the avro schema: {exc}")
+        logger.warning("Unable to parse the avro schema: %s", type(exc).__name__)
     return None
 
 
@@ -283,7 +289,9 @@ def get_avro_fields(
                 field_models.append(parse_record_fields(field, cls=cls, already_parsed=already_parsed))
             else:
                 field_models.append(parse_single_field(field, cls=cls))
+        except AvroException as exc:
+            logger.warning("Unable to parse the avro schema into models: %s", type(exc).__name__)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to parse the avro schema into models: {exc}")
+            logger.warning("Unable to parse the avro schema into models: %s", type(exc).__name__)
     return field_models

@@ -46,7 +46,8 @@
           "title": "Private Key",
           "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
           "type": "string",
-          "format": "password"
+          "format": "password",
+          "uiFieldType": "fileOrInput"
         },
         "privateKeyPassphrase": {
           "title": "Private Key Passphrase",

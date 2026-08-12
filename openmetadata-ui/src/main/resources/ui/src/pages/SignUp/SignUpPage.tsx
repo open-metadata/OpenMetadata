@@ -50,7 +50,7 @@ const SignUp = () => {
   } = useApplicationStore();
 
   const [loading, setLoading] = useState<boolean>(false);
-  const OMDLogo = useMemo(() => brandClassBase.getMonogram().svg, []);
+  const OMDLogo = brandClassBase.getMonogram().svg;
 
   const handleCreateNewUser: FormProps['onFinish'] = async (data) => {
     setLoading(true);
@@ -119,7 +119,7 @@ const SignUp = () => {
           <OMDLogo
             data-testid="om-logo"
             height={50}
-            name={t('label.open-metadata-logo')}
+            name={t('label.brand-name-logo')}
             width={50}
           />
           <Typography.Title
@@ -130,7 +130,7 @@ const SignUp = () => {
               i18nKey="label.join-entity"
               renderElement={<span className="text-primary" />}
               values={{
-                entity: t('label.open-metadata'),
+                entity: t('label.brand-name'),
               }}
             />
           </Typography.Title>

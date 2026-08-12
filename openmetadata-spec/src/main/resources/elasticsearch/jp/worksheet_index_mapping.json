@@ -234,6 +234,10 @@
           },
           "ordinalPosition": {
             "type": "integer"
+          },
+          "children": {
+            "type": "object",
+            "enabled": false
           }
         }
       },
@@ -262,7 +266,8 @@
                 "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "displayName": {
             "type": "keyword",
@@ -537,7 +542,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -753,6 +759,26 @@
             }
           },
           "sqlQueryKey": {
+            "type": "keyword"
+          },
+          "createdAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "updatedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          },
+          "createdBy": {
+            "type": "keyword"
+          },
+          "updatedBy": {
+            "type": "keyword"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "docUniqueId": {
             "type": "keyword"
           }
         }

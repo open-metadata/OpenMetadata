@@ -14,6 +14,7 @@ from metadata.sdk.entities import (
     Charts,
     Classifications,
     Containers,
+    ContextFiles,
     DashboardDataModels,
     Dashboards,
     DashboardServices,
@@ -23,13 +24,16 @@ from metadata.sdk.entities import (
     DataContracts,
     DataProducts,
     Domains,
+    Folders,
     Glossaries,
     GlossaryTerms,
     Metrics,
     MLModels,
+    Pages,
     Pipelines,
     Queries,
     SearchIndexes,
+    Settings,
     StorageServices,
     StoredProcedures,
     Tables,
@@ -162,6 +166,7 @@ api_endpoints = APIEndpoints  # pylint: disable=invalid-name
 charts = Charts  # pylint: disable=invalid-name
 classifications = Classifications  # pylint: disable=invalid-name
 containers = Containers  # pylint: disable=invalid-name
+context_files = ContextFiles  # pylint: disable=invalid-name
 dashboard_data_models = DashboardDataModels  # pylint: disable=invalid-name
 dashboard_services = DashboardServices  # pylint: disable=invalid-name
 dashboards = Dashboards  # pylint: disable=invalid-name
@@ -171,13 +176,16 @@ databases = Databases  # pylint: disable=invalid-name
 database_schemas = DatabaseSchemas  # pylint: disable=invalid-name
 database_services = DatabaseServices  # pylint: disable=invalid-name
 domains = Domains  # pylint: disable=invalid-name
+folders = Folders  # pylint: disable=invalid-name
 glossaries = Glossaries  # pylint: disable=invalid-name
 glossary_terms = GlossaryTerms  # pylint: disable=invalid-name
 metrics = Metrics  # pylint: disable=invalid-name
 mlmodels = MLModels  # pylint: disable=invalid-name
+pages = Pages  # pylint: disable=invalid-name
 pipelines = Pipelines  # pylint: disable=invalid-name
 queries = Queries  # pylint: disable=invalid-name
 search_indexes = SearchIndexes  # pylint: disable=invalid-name
+settings = Settings  # pylint: disable=invalid-name
 storage_services = StorageServices  # pylint: disable=invalid-name
 stored_procedures = StoredProcedures  # pylint: disable=invalid-name
 tables = Tables  # pylint: disable=invalid-name
@@ -207,6 +215,8 @@ __all__ = [
     "classifications",
     "Containers",
     "containers",
+    "ContextFiles",
+    "context_files",
     "DashboardDataModels",
     "dashboard_data_models",
     "DashboardServices",
@@ -225,6 +235,8 @@ __all__ = [
     "database_services",
     "Domains",
     "domains",
+    "Folders",
+    "folders",
     "Glossaries",
     "glossaries",
     "GlossaryTerms",
@@ -233,12 +245,16 @@ __all__ = [
     "metrics",
     "MLModels",
     "mlmodels",
+    "Pages",
+    "pages",
     "Pipelines",
     "pipelines",
     "Queries",
     "queries",
     "SearchIndexes",
     "search_indexes",
+    "Settings",
+    "settings",
     "StorageServices",
     "storage_services",
     "StoredProcedures",

@@ -39,7 +39,7 @@ jest.mock('../../rest/KpiAPI', () => ({
   postKPI: jest.fn().mockImplementation(() => Promise.resolve(KPI_DATA)),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   isUrlFriendlyName: jest.fn().mockReturnValue(true),
 }));
 
@@ -56,8 +56,8 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   ))
 );
 
-jest.mock('../../utils/DataInsightUtils', () => ({
-  ...jest.requireActual('../../utils/DataInsightUtils'),
+jest.mock('../../utils/DataInsightPureUtils', () => ({
+  ...jest.requireActual('../../utils/DataInsightPureUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
   getDisabledDates: jest.fn().mockReturnValue(true),
 }));

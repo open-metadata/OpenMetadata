@@ -14,6 +14,12 @@ import { TFunctionKeys } from 'i18next';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 
+export enum PersonaCustomizePageFqn {
+  Navigation = 'navigation',
+  AppMode = 'app-mode',
+  Homepage = 'homepage',
+}
+
 export const TAB_LABEL_MAP = {
   [EntityTabs.OVERVIEW]: 'label.overview',
   [EntityTabs.GLOSSARY_TERMS]: 'label.glossary-term-plural',
@@ -64,6 +70,8 @@ export const TAB_LABEL_MAP = {
   [EntityTabs.FILES]: 'label.file-plural',
   [EntityTabs.SPREADSHEETS]: 'label.spreadsheet-plural',
   [EntityTabs.INPUT_OUTPUT_PORTS]: 'label.input-output-port-plural',
+  [EntityTabs.RELATIONS_GRAPH]: 'label.relations-graph',
+  [EntityTabs.DATA_OBSERVABILITY]: 'label.data-observability',
 } as Record<EntityTabs, TFunctionKeys>;
 
 export type CustomizeEntityType =

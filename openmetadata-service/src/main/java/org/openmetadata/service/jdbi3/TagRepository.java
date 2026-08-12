@@ -297,7 +297,63 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntity(Tag tag, boolean update) {
+    // setInheritedFields() sets disabled=true on the in-memory Tag whenever the parent
+    // Classification is disabled. That inherited value must never be persisted: once it is
+    // stored, re-enabling the Classification can no longer clear it and the Tag stays disabled
+    // forever.
+    //
+    // Leave the Tag holding its own flag afterwards rather than restoring the effective value.
+    // The entity is cached after this returns, so restoring would write the inherited true into
+    // the cache while the row holds false - the read then reports a Tag that is disabled with an
+    // enabled Classification, which is the very state this guard exists to prevent. It only
+    // shows up with a distributed cache, because an L1-only entry is invalidated on write and
+    // reloaded from the row. Restoring is also unnecessary: inheritance is re-applied on the way
+    // out, so the write response still reports the effective value.
+    tag.setDisabled(getOwnDisabled(tag, update, tag.getDisabled()));
     store(tag, update);
+  }
+
+  /**
+   * Returns the Tag's own {@code disabled} setting, with any value inherited from a disabled parent
+   * Classification removed. While the parent Classification is disabled the Tag always reads as
+   * disabled, so a user cannot express "disable this Tag individually" during that window - the
+   * stored value is therefore authoritative.
+   */
+  private Boolean getOwnDisabled(Tag tag, boolean update, Boolean effectiveDisabled) {
+    Boolean ownDisabled = effectiveDisabled;
+    if (Boolean.TRUE.equals(effectiveDisabled) && isParentClassificationDisabled(tag)) {
+      ownDisabled = update ? getStoredDisabled(tag.getId()) : Boolean.FALSE;
+    }
+    return ownDisabled;
+  }
+
+  private Boolean getStoredDisabled(UUID tagId) {
+    Boolean storedDisabled = Boolean.FALSE;
+    try {
+      storedDisabled = dao.findEntityById(tagId, ALL).getDisabled();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Tag {} not found while reading its stored disabled flag", tagId, e);
+    }
+    return storedDisabled;
+  }
+
+  private boolean isParentClassificationDisabled(Tag tag) {
+    boolean isDisabled = false;
+    EntityReference classificationRef = tag.getClassification();
+    if (classificationRef != null && classificationRef.getId() != null) {
+      try {
+        Classification classification =
+            Entity.getEntity(CLASSIFICATION, classificationRef.getId(), "", ALL, false);
+        isDisabled = Boolean.TRUE.equals(classification.getDisabled());
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Classification {} not found while checking the disabled flag of tag {}",
+            classificationRef.getId(),
+            tag.getId(),
+            e);
+      }
+    }
+    return isDisabled;
   }
 
   @Override
@@ -307,7 +363,19 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntities(List<Tag> entities) {
+    // Today every caller of this bulk path is create-only and applies setInheritedFields() after
+    // the store, so no inherited value can be present here. Strip it anyway: a future bulk update
+    // path would otherwise silently persist it and strand the Tags, which is the exact failure
+    // storeEntity() guards against. Tags are almost never created disabled, so the guard costs
+    // nothing on the common path.
+    entities.forEach(this::clearInheritedDisabled);
     storeMany(entities);
+  }
+
+  private void clearInheritedDisabled(Tag tag) {
+    if (Boolean.TRUE.equals(tag.getDisabled()) && isParentClassificationDisabled(tag)) {
+      tag.setDisabled(Boolean.FALSE);
+    }
   }
 
   @Override
@@ -353,7 +421,7 @@ public class TagRepository extends EntityRepository<Tag> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun || nullOrEmpty(request.getAssets())) {
+    if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -376,7 +444,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          addTagToColumn(ref, tagLabel, success, failures, result);
+          addTagToColumn(ref, tagLabel, dryRun, success, failures, result);
         } catch (Exception ex) {
           failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
           result.withFailedRequest(failures);
@@ -405,8 +473,9 @@ public class TagRepository extends EntityRepository<Tag> {
         result.withFailedRequest(failures);
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
-      // Validate and Store Tags
-      if (nullOrEmpty(result.getFailedRequest())) {
+      // Validate and Store Tags — skip the write side-effects on dryRun so the preview
+      // surfaces the same validation outcome a real call would without mutating state.
+      if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
         List<TagLabel> tempList = new ArrayList<>(asset.getTags());
         tempList.add(tagLabel);
         // Apply Tags to Entities
@@ -438,6 +507,7 @@ public class TagRepository extends EntityRepository<Tag> {
   private void addTagToColumn(
       EntityReference columnRef,
       TagLabel tagLabel,
+      boolean dryRun,
       List<BulkResponse> success,
       List<BulkResponse> failures,
       BulkOperationResult result) {
@@ -470,7 +540,7 @@ public class TagRepository extends EntityRepository<Tag> {
         new ArrayList<>(Collections.singleton(tagLabel)),
         false);
 
-    if (nullOrEmpty(result.getFailedRequest())) {
+    if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
@@ -503,11 +573,20 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
       UUID classificationTagId, BulkAssetsRequestInterface request) {
+    AddTagToAssetsRequest assetsRequest = (AddTagToAssetsRequest) request;
+    boolean dryRun = Boolean.TRUE.equals(assetsRequest.getDryRun());
+
     Tag tag = this.get(null, classificationTagId, getFields("id"));
 
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
@@ -519,7 +598,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          removeTagFromColumn(ref, tag, success, result);
+          removeTagFromColumn(ref, tag, dryRun, success, result);
         } catch (Exception ex) {
           LOG.error("Error removing tag from column: {}", ref.getFullyQualifiedName(), ex);
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
@@ -531,15 +610,21 @@ public class TagRepository extends EntityRepository<Tag> {
       EntityInterface asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagsByTagAndTargetEntity(
-              tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      // Skip the destructive tag_usage delete + ES update on dryRun so the preview
+      // surfaces the same lookup errors a real call would without mutating state.
+      if (!dryRun) {
+        daoCollection
+            .tagUsageDAO()
+            .deleteTagsByTagAndTargetEntity(
+                tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      // Update ES
-      searchRepository.updateEntity(ref);
+      if (!dryRun) {
+        // Update ES
+        searchRepository.updateEntity(ref);
+      }
     }
 
     return result.withSuccessRequest(success);
@@ -549,7 +634,11 @@ public class TagRepository extends EntityRepository<Tag> {
    * Remove a tag from a column through its parent table.
    */
   private void removeTagFromColumn(
-      EntityReference columnRef, Tag tag, List<BulkResponse> success, BulkOperationResult result) {
+      EntityReference columnRef,
+      Tag tag,
+      boolean dryRun,
+      List<BulkResponse> success,
+      BulkOperationResult result) {
     String columnFqn = columnRef.getFullyQualifiedName();
     if (columnFqn == null) {
       throw new IllegalArgumentException("Column FQN is required");
@@ -558,19 +647,23 @@ public class TagRepository extends EntityRepository<Tag> {
     // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
     String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
 
-    // Get the table
+    // Get the table — also validates that the column's parent table exists
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     Table table = tableRepository.getByName(null, tableFqn, tableRepository.getFields("columns"));
 
-    // Remove the tag from the column
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
+    if (!dryRun) {
+      // Remove the tag from the column
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
+    }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-    // Update the parent table's search index
-    searchRepository.updateEntity(table.getEntityReference());
+    if (!dryRun) {
+      // Update the parent table's search index
+      searchRepository.updateEntity(table.getEntityReference());
+    }
   }
 
   @Override
@@ -584,9 +677,13 @@ public class TagRepository extends EntityRepository<Tag> {
     super.entityRelationshipReindex(original, updated);
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      searchRepository
-          .getSearchClient()
-          .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
+      EntityReference originalRef = original.getEntityReference();
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", originalRef),
+          "reindexAcrossIndices",
+          originalRef.getId() != null ? originalRef.getId().toString() : null,
+          originalRef.getFullyQualifiedName(),
+          TAG);
     }
   }
 
@@ -888,6 +985,11 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
+    @Override
     public void updateReviewers() {
       super.updateReviewers();
       if (original.getReviewers() != null
@@ -900,6 +1002,7 @@ public class TagRepository extends EntityRepository<Tag> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveRecognizerConfigOnPut();
       compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
@@ -924,6 +1027,17 @@ public class TagRepository extends EntityRepository<Tag> {
                   original.getAutoClassificationPriority(),
                   updated.getAutoClassificationPriority()));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
+    }
+
+    // CreateTag defaults recognizers to empty and autoClassificationEnabled to false, so a PUT
+    // that never mentions them is indistinguishable from one clearing them. Clear via PATCH.
+    private void preserveRecognizerConfigOnPut() {
+      if (operation != Operation.PUT || !nullOrEmpty(updated.getRecognizers())) {
+        return;
+      }
+      updated.setRecognizers(original.getRecognizers());
+      updated.setAutoClassificationEnabled(original.getAutoClassificationEnabled());
+      updated.setAutoClassificationPriority(original.getAutoClassificationPriority());
     }
 
     /**

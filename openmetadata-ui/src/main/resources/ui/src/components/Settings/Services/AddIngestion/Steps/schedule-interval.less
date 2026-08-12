@@ -17,19 +17,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: var(--om-space-16);
   height: 100%;
   .schedular-card {
-    border-radius: 6px;
+    border-radius: var(--om-radius-md);
     cursor: pointer;
     height: 100%;
     flex: 0.5;
     .ant-card-body {
-      padding: 24px;
+      padding: var(--om-space-24);
       height: 100%;
 
       .ant-radio {
-        margin-right: 12px;
+        margin-right: var(--om-space-12);
       }
     }
   }
@@ -40,7 +40,7 @@
 
 .schedule-interval {
   .ant-form-item {
-    margin: 0px;
+    margin: 0;
   }
 }
 .ant-radio-button-wrapper.week-selector-buttons,
@@ -51,7 +51,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
+  border-radius: var(--om-radius-2xl);
   border-width: 1px;
 }
 .ant-radio-button-wrapper.week-selector-buttons:not(:first-child)::before {

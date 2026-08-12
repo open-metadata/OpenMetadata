@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 
-import type { ReactNode } from 'react';
-import type { Key } from 'react-aria-components';
-import type { UseControllerReturn } from 'react-hook-form';
 import { Autocomplete } from '@/components/base/autocomplete/autocomplete';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
-import { NativeSelect } from '@/components/base/select/select-native';
 import { Select } from '@/components/base/select/select';
+import { NativeSelect } from '@/components/base/select/select-native';
 import { Slider } from '@/components/base/slider/slider';
 import { TextArea } from '@/components/base/textarea/textarea';
 import { Toggle } from '@/components/base/toggle/toggle';
-import {
-  type FieldProp,
-  type FieldPropsMap,
-  type FormSelectItem,
-  FieldTypes,
-} from './form-field.types';
+import type { ReactNode } from 'react';
+import type { Key } from 'react-aria-components';
+import type { UseControllerReturn } from 'react-hook-form';
 import { ColorPickerField } from './fields/color-picker-field';
 import {
   CoverImageUploadField,
   type CoverImageUploadValue,
 } from './fields/cover-image-upload-field';
 import { IconPickerField } from './fields/icon-picker-field';
+import {
+  FieldTypes,
+  type FieldProp,
+  type FieldPropsMap,
+  type FormSelectItem,
+} from './form-field.types';
 
 const AUTOCOMPLETE_FIELD_TYPES = new Set<FieldTypes>([
   FieldTypes.AUTOCOMPLETE,
@@ -49,10 +49,20 @@ const AUTOCOMPLETE_FIELD_TYPES = new Set<FieldTypes>([
   FieldTypes.DOMAIN_SELECT,
 ]);
 
+const MULTIPLE_SELECTION_FIELD_TYPES = new Set<FieldTypes>([
+  FieldTypes.MULTI_SELECT,
+  FieldTypes.USER_MULTI_SELECT,
+]);
+
 const isMultipleSelection = (
+  type: FieldTypes,
   value: string | string[],
   props: FieldPropsMap
 ) => {
+  if (MULTIPLE_SELECTION_FIELD_TYPES.has(type)) {
+    return true;
+  }
+
   if (typeof props.multiple === 'boolean') {
     return props.multiple;
   }
@@ -119,11 +129,14 @@ export const renderFieldElement = (
   const selectItems = getItems(props);
 
   if (AUTOCOMPLETE_FIELD_TYPES.has(type)) {
-    const multiple = isMultipleSelection(field.value, props);
+    const multiple = isMultipleSelection(type, field.value, props);
     const selectedAutocompleteItems = getSelectedItems(field.value);
 
     const handleInsert = (key: Key) => {
-      const selectedItem = selectItems.find((item) => item.id === String(key));
+      const keyStr = String(key);
+      const selectedItem =
+        selectItems.find((item) => item.id === keyStr) ??
+        (rest.allowsCreation ? { id: keyStr, label: keyStr } : undefined);
 
       if (!selectedItem) {
         return;
@@ -192,6 +205,7 @@ export const renderFieldElement = (
             field.onChange(value);
             onChange?.(value);
           }}
+          onFocus={onFocus}
         />
       );
 
@@ -215,6 +229,7 @@ export const renderFieldElement = (
             field.onChange(value);
             onChange?.(value);
           }}
+          onFocus={onFocus}
         />
       );
 
@@ -237,6 +252,7 @@ export const renderFieldElement = (
             field.onChange(value);
             onChange?.(value);
           }}
+          onFocus={onFocus}
         />
       );
 
@@ -260,6 +276,7 @@ export const renderFieldElement = (
             field.onChange(value);
             onChange?.(value);
           }}
+          onFocus={onFocus}
         />
       );
 
@@ -284,6 +301,7 @@ export const renderFieldElement = (
             field.onChange(value);
             onChange?.(value);
           }}
+          onFocus={onFocus}
         />
       );
 
@@ -294,6 +312,7 @@ export const renderFieldElement = (
           id={id}
           isSelected={field.value ?? false}
           name={field.name}
+          onFocus={onFocus}
           {...rest}
           onBlur={() => {
             field.onBlur();
@@ -314,6 +333,7 @@ export const renderFieldElement = (
           isInvalid={isInvalid}
           isSelected={field.value ?? false}
           name={field.name}
+          onFocus={onFocus}
           {...rest}
           onBlur={() => {
             field.onBlur();
@@ -404,6 +424,7 @@ export const renderFieldElement = (
           placeholder={placeholder}
           selectedKey={selectedItem?.id ?? null}
           {...rest}
+          onFocus={onFocus}
           onSelectionChange={(key) => {
             const nextItem = selectItems.find(
               (item) => item.id === String(key)

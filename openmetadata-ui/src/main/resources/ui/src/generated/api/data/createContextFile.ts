@@ -161,6 +161,7 @@ export interface EntityReference {
  */
 export enum ProcessingStatus {
     Analyzing = "Analyzing",
+    ExtractingContext = "ExtractingContext",
     Failed = "Failed",
     Processed = "Processed",
     Unsupported = "Unsupported",

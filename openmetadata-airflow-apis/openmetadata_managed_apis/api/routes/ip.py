@@ -16,7 +16,8 @@ import traceback
 from typing import Callable, Optional  # noqa: UP035
 
 import requests
-from flask import Blueprint, escape
+from flask import Blueprint
+from markupsafe import escape
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import NewConnectionError
 
@@ -53,18 +54,18 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.security import permissions  # noqa: PLC0415
+    from airflow.security import permissions
 
-    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher  # noqa: PLC0415
-    from openmetadata_managed_apis.utils.security_compat import (  # noqa: PLC0415
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+    from openmetadata_managed_apis.utils.security_compat import (
         requires_access_decorator,
     )
 
     # CSRF protection import - different between Airflow 2.x and 3.x
     if not is_airflow_3_or_higher():
-        from airflow.www.app import csrf  # noqa: PLC0415
+        from airflow.www.app import csrf
     else:
-        from airflow.providers.fab.www.app import csrf  # noqa: PLC0415
+        from airflow.providers.fab.www.app import csrf
 
     @blueprint.route("/ip", methods=["GET"])
     @csrf.exempt

@@ -53,7 +53,7 @@
     },
     "database": {
       "title": "Database Name",
-      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "description": "Initial database to connect to. Metadata reading is restricted to this database unless Ingest All Databases is enabled, in which case this database is used as the entry point to discover and scan all databases.",
       "type": "string"
     },
     "ingestAllDatabases": {

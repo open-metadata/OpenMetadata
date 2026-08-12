@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
@@ -58,8 +59,11 @@ jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(() => <div>ServiceDocPanel</div>)
 );
 
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getServiceType: jest.fn(),
+  getServiceRouteFromServiceType: jest
+    .fn()
+    .mockReturnValue('/services/databases'),
 }));
 
 jest.mock(
@@ -69,7 +73,17 @@ jest.mock(
 
 jest.mock(
   '../../components/Settings/Services/AddIngestion/AddIngestion.component',
-  () => jest.fn().mockImplementation(() => <div>AddIngestion</div>)
+  () =>
+    jest.fn().mockImplementation(({ onStepReadyChange }) => (
+      <div>
+        AddIngestion
+        <button
+          data-testid="mock-step-ready"
+          onClick={() => onStepReadyChange?.(true)}>
+          ready
+        </button>
+      </div>
+    ))
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
@@ -92,7 +106,7 @@ jest.mock('../../utils/IngestionUtils', () => ({
   getSettingsPathFromPipelineType: jest.fn().mockImplementation(() => ''),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
 
@@ -143,5 +157,27 @@ describe('Test AddIngestionPage component', () => {
     expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(screen.getByText('AddIngestion')).toBeInTheDocument();
     expect(screen.getByText('ServiceDocPanel')).toBeInTheDocument();
+  });
+
+  it('should keep the next button disabled until the active step reports ready', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={['/addIngestion/databaseServices/testIngestionType']}>
+        <Routes>
+          <Route
+            element={<AddIngestionPage {...mockProps} />}
+            path="/addIngestion/:serviceCategory/:ingestionType"
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(screen.getByTestId('next-button')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('mock-step-ready'));
+
+    expect(screen.getByTestId('next-button')).toBeEnabled();
   });
 });

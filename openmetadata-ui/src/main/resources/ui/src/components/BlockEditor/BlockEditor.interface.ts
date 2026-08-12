@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor } from '@tiptap/react';
-import { SuggestionKeyDownProps } from '@tiptap/suggestion';
+import type { Editor } from '@tiptap/react';
+import type { SuggestionKeyDownProps } from '@tiptap/suggestion';
 import { EntityType } from '../../enums/entity.enum';
 
 export type MenuType = 'bubble' | 'bar';

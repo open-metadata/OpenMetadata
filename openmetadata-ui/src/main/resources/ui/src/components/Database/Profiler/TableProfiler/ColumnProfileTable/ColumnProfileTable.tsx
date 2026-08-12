@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from '@openmetadata/ui-core-components';
+import { Skeleton, Table, Typography } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -38,14 +38,15 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getTableFQNFromColumnFQN } from '../../../../../utils/FqnUtils';
 import {
   calculatePercentage,
   formatNumberWithComma,
-  getTableFQNFromColumnFQN,
-} from '../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+} from '../../../../../utils/NumberUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
-import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import { getSkeletonMockData } from '../../../../../utils/Skeleton.utils';
+import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
@@ -460,10 +461,11 @@ const ColumnProfileTable = () => {
       </div>
 
       {isEmpty(activeColumnFqn) ? (
-        <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:ring-1 tw:ring-secondary tw:overflow-hidden">
+        <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:outline-1 tw:outline-secondary tw:overflow-hidden">
           <div className="p-x-md p-y-md">
             <Searchbar
               removeMargin
+              containerClassName="tw:ml-auto tw:w-1/2"
               placeholder={t('message.find-in-table')}
               searchValue={searchText}
               typingInterval={500}
@@ -483,6 +485,7 @@ const ColumnProfileTable = () => {
                   <Table.Head
                     allowsSorting={col.allowsSorting}
                     id={col.id}
+                    isRowHeader={col.id === 'name'}
                     key={col.id}
                     label={col.name}
                   />
@@ -491,7 +494,20 @@ const ColumnProfileTable = () => {
               <Table.Body
                 items={isColumnsLoading || isLoading ? [] : flatRows}
                 renderEmptyState={() =>
-                  isColumnsLoading || isLoading ? null : (
+                  isColumnsLoading || isLoading ? (
+                    <div
+                      className="tw:p-4"
+                      data-testid="column-profile-table-loading-skeletons">
+                      {getSkeletonMockData(5).map((skeletonId) => (
+                        <Skeleton
+                          className="tw:mb-2"
+                          height={40}
+                          key={skeletonId}
+                          width="100%"
+                        />
+                      ))}
+                    </div>
+                  ) : (
                     <FilterTablePlaceHolder />
                   )
                 }>

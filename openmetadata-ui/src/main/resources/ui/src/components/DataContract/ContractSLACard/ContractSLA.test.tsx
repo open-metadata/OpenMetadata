@@ -23,6 +23,7 @@ import { mockTableData } from '../../../mocks/TableVersion.mock';
 import ContractSLA from './ContractSLA.component';
 
 jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../utils/i18next/LocalUtil'),
   Transi18next: ({
     i18nKey,
     values,
@@ -45,7 +46,8 @@ jest.mock('../../../assets/svg/ic-check-circle-2.svg', () => ({
   ReactComponent: () => <svg data-testid="check-icon" />,
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockTableData,
   })),

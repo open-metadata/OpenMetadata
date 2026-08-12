@@ -25,7 +25,7 @@ import {
   fetchTestCaseSummary,
   fetchTotalEntityCount,
 } from '../../rest/dataQualityDashboardAPI';
-import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityUtils';
+import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityPureUtils';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -38,7 +38,23 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
   {} as DataQualityContextInterface
 );
 
-const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
+const DataQualityProvider = ({
+  children,
+  createActions,
+  isActive = true,
+}: {
+  children: React.ReactNode;
+  createActions?: DataQualityContextInterface['createActions'];
+  /**
+   * Whether this page currently owns the URL. Filters here are derived from the
+   * query string, which is global — so a host that keeps the page mounted while
+   * routing elsewhere (AI mode caches visited routes) must pass `false`, or the
+   * backgrounded page re-derives its filters from whatever route now owns the
+   * query string and refetches with another page's params. Defaults to `true`
+   * for hosts that unmount the page on navigation.
+   */
+  isActive?: boolean;
+}) => {
   const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
     useRequiredParams<{
       tab: DataQualityPageTabs;
@@ -59,6 +75,7 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     const {
       currentPage: _currentPage,
       pageSize: _pageSize,
+      searchValue: _searchValue,
       ...filters
     } = params;
 
@@ -83,8 +100,9 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       testCaseSummary,
       isTestCaseSummaryLoading,
       activeTab,
+      createActions,
     };
-  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab]);
+  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 
   const fetchTestSummary = async (params?: DataQualityPageParams) => {
     const filters = {
@@ -96,6 +114,9 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
         'testCaseStatus',
         'testCaseType',
       ]),
+      dataProductFqns: params?.dataProductFqn
+        ? [params.dataProductFqn]
+        : undefined,
       ownerFqn: params?.owner ? JSON.parse(params.owner)?.name : undefined,
       tier: params?.tier ? [params.tier] : undefined,
       entityFQN: params?.tableFqn,
@@ -105,17 +126,17 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
     setIsTestCaseSummaryLoading(true);
     try {
-      const { data } = await fetchTestCaseSummary(filters);
-      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
-        filters,
-        true
-      );
-      const { data: totalDQCoverage } = await fetchEntityCoveredWithDQ(
-        filters,
-        false
-      );
-
-      const { data: entityCount } = await fetchTotalEntityCount(filters);
+      const [
+        { data },
+        { data: unhealthyData },
+        { data: totalDQCoverage },
+        { data: entityCount },
+      ] = await Promise.all([
+        fetchTestCaseSummary(filters),
+        fetchEntityCoveredWithDQ(filters, true),
+        fetchEntityCoveredWithDQ(filters, false),
+        fetchTotalEntityCount(filters),
+      ]);
 
       const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
       const total = parseInt(totalDQCoverage[0].originEntityFQN);
@@ -141,12 +162,19 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    // Backgrounded: hold the last loaded summary rather than refetching against
+    // a query string that now belongs to another route. Re-running on
+    // re-activation is intentional — it revalidates against the real filters.
+    if (!isActive) {
+      return;
+    }
+
     if (getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic)) {
       fetchTestSummary(filterParams);
     } else {
       setIsTestCaseSummaryLoading(false);
     }
-  }, [filterKey]);
+  }, [filterKey, isActive]);
 
   return (
     <DataQualityContext.Provider value={dataQualityContextValue}>

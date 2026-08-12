@@ -22,6 +22,7 @@ import {
   Domain,
   DomainType,
 } from '../../../../generated/entity/domains/domain';
+import { queryClient } from '../../../../queryClient';
 import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import DomainsWidget from './DomainsWidget';
@@ -121,6 +122,7 @@ const mockApplySortToData = applySortToData as jest.MockedFunction<
 describe('DomainsWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient.clear();
 
     // Default mock implementations
     mockGetSortField.mockReturnValue('updatedAt');
@@ -407,6 +409,25 @@ describe('DomainsWidget', () => {
 
     // Should display 0 for domains with no assets
     expect(screen.getByText('0')).toBeInTheDocument();
+  });
+
+  it('serves domain asset counts from cache on remount within staleTime', async () => {
+    const { unmount } = renderDomainsWidget();
+
+    await waitFor(() => {
+      expect(screen.getByText('Clients')).toBeInTheDocument();
+    });
+
+    expect(mockGetAllDomainsWithAssetsCount).toHaveBeenCalledTimes(1);
+
+    unmount();
+    renderDomainsWidget();
+
+    await waitFor(() => {
+      expect(screen.getByText('Clients')).toBeInTheDocument();
+    });
+
+    expect(mockGetAllDomainsWithAssetsCount).toHaveBeenCalledTimes(1);
   });
 
   it('calls sort utility functions correctly', async () => {

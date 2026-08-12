@@ -12,8 +12,13 @@
  */
 
 import test, { expect } from '@playwright/test';
+import {
+  IngestionPipeline,
+  PipelineState,
+  PipelineStatus,
+} from '../../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
-import { POSTGRES, REDSHIFT } from '../../constant/service';
+import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
@@ -26,14 +31,12 @@ import PostgresIngestionClass from '../../support/entity/ingestion/PostgresInges
 import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/RedshiftWithDBTIngestionClass';
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
-import {
-  createNewPage,
-  getApiContext,
-  INVALID_NAMES,
-  redirectToHomePage,
-} from '../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { makeRetryRequest } from '../../utils/serviceIngestion';
+import {
+  getAgentCard,
+  waitForIngestionWorkflowForm,
+} from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const table = new TableClass();
@@ -69,11 +72,6 @@ test.use({
 Object.entries(services).forEach(([key, ServiceClass]) => {
   const service = new ServiceClass();
 
-  test.describe.configure({
-    // 11 minutes max for ingestion tests
-    timeout: 11 * 60 * 1000,
-  });
-
   test.describe.serial(key, PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
@@ -94,6 +92,7 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
      * @description Creates the service and triggers ingestion
      */
     test(`Create & Ingest ${key} service`, async ({ page }) => {
+      test.slow();
       await service.createService(page);
     });
 
@@ -104,6 +103,7 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
     test(`Update description and verify description after re-run`, async ({
       page,
     }) => {
+      test.slow();
       await service.updateService(page);
     });
 
@@ -115,54 +115,52 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
       await service.updateScheduleOptions(page);
     });
 
-    // TODO: Need to fix MYSQL service specific test - #28125
     if (
-      [POSTGRES.serviceType, REDSHIFT.serviceType].includes(service.serviceType)
+      [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
+        service.serviceType
+      )
     ) {
       /**
        * Tests database-specific ingestion behaviors
        * @description Runs additional checks for Postgres, Redshift, and MySQL services
        */
-      test(`Service specific tests`, async ({ page }) => {
-        await service.runAdditionalTests(page, test);
-      });
+      test(
+        service.serviceType === MYSQL
+          ? 'Profiler ingestion workflow'
+          : `Service specific tests`,
+        async ({ page }) => {
+          test.slow();
+          await service.runAdditionalTests(page, test);
+        }
+      );
     }
   });
 });
 
 test.describe('Service form', () => {
   /**
-   * Tests validation for invalid service names
-   * @description Ensures required and character constraints surface errors on the name field
+   * Tests service-name gating on the Configure & Connect step.
+   * @description The merged step's advance button stays disabled until a valid
+   * service name is entered. Character-constraint validation is no longer done
+   * client-side in this form (the field enforces required + uniqueness only),
+   * so this test asserts the enable/disable gating rather than inline
+   * character-error messages.
    */
-  test('name field should throw error for invalid name', async ({ page }) => {
+  test('name field gates the Configure & Connect step', async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.DATABASES);
     await page.click('[data-testid="add-service-button"]');
+
+    // Selecting a connector auto-advances to the merged Configure & Connect step
+    // (service name + connection share one step now).
     await page.click('[data-testid="Mysql"]');
-    await page.click('[data-testid="next-button"]');
-
     await page.getByTestId('service-name').waitFor();
-    await page.click('[data-testid="next-button"]');
 
-    await expect(page.locator('#name_help')).toBeVisible();
-    await expect(page.locator('#name_help')).toHaveText('Name is required');
+    // The step's advance button stays disabled until a valid service name is set.
+    await expect(page.getByTestId('next-button')).toBeDisabled();
 
-    await page.fill(
-      '[data-testid="service-name"]',
-      INVALID_NAMES.WITH_SPECIAL_CHARS
-    );
-
-    await expect(page.locator('#name_help')).toBeVisible();
-    await expect(page.locator('#name_help')).toHaveText(
-      'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.'
-    );
-
-    await page.fill('[data-testid="service-name"]', 'test-service');
-
-    await page.click('[data-testid="next-button"]');
-
-    await expect(page.getByTestId('step-icon-3')).toHaveClass(/active/);
+    await page.fill('[data-testid="service-name"]', 'test-service-valid');
+    await expect(page.getByTestId('next-button')).toBeEnabled();
   });
 });
 
@@ -213,173 +211,178 @@ test.describe.serial(
   'Agent Run History - Last 5 Runs Visible',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   () => {
-    test.beforeEach('Navigate to database services', async ({ page }) => {
+    test.beforeEach('Redirect to home page', async ({ page }) => {
       await redirectToHomePage(page);
-      await settingClick(
-        page,
-        mysqlService.category as unknown as SettingOptionsType
-      );
     });
 
-    test('Create MySQL service and ingest metadata', async ({ page }) => {
-      test.slow();
-      await mysqlService.createService(page);
+    test.beforeAll(
+      'Create MySQL service and metadata pipeline via API',
+      async ({ browser }) => {
+        const { afterAction, apiContext } = await createNewPage(browser);
 
-      const { apiContext } = await getApiContext(page);
-
-      const serviceResponse = await apiContext
-        .get(
-          `/api/v1/services/databaseServices/name/${encodeURIComponent(
-            mysqlService.getServiceName()
-          )}`
-        )
-        .then((res) => res.json());
-
-      const createPipelineResponse = await apiContext.post(
-        '/api/v1/services/ingestionPipelines',
-        {
-          data: {
-            airflowConfig: {},
-            loggerLevel: 'INFO',
-            name: `${mysqlService.getServiceName()}-metadata`,
-            pipelineType: 'metadata',
-            service: {
-              id: serviceResponse.id,
-              type: 'databaseService',
-            },
-            sourceConfig: {
-              config: {
-                type: 'DatabaseMetadata',
+        const serviceResponse = await apiContext.post(
+          '/api/v1/services/databaseServices',
+          {
+            data: {
+              name: mysqlService.getServiceName(),
+              serviceType: 'Mysql',
+              connection: {
+                config: {
+                  type: 'Mysql',
+                  scheme: 'mysql+pymysql',
+                  username: 'username',
+                  authType: { password: 'password' },
+                  hostPort: 'mysql:3306',
+                },
               },
             },
-          },
-        }
-      );
+          }
+        );
 
-      expect(createPipelineResponse.status()).toBe(201);
-      const createdPipeline = await createPipelineResponse.json();
+        expect(serviceResponse.status()).toBe(201);
+        const service = await serviceResponse.json();
+        mysqlService.serviceResponseData = service;
 
-      await apiContext.post(
-        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
-      );
+        const createPipelineResponse = await apiContext.post(
+          '/api/v1/services/ingestionPipelines',
+          {
+            data: {
+              airflowConfig: {},
+              loggerLevel: 'INFO',
+              name: `${mysqlService.getServiceName()}-metadata`,
+              pipelineType: 'metadata',
+              service: {
+                id: service.id,
+                type: 'databaseService',
+              },
+              sourceConfig: {
+                config: {
+                  type: 'DatabaseMetadata',
+                },
+              },
+            },
+          }
+        );
 
-      metadataPipeline = {
-        id: createdPipeline.id,
-        name: createdPipeline.name,
-        fullyQualifiedName: createdPipeline.fullyQualifiedName,
-      };
+        expect(createPipelineResponse.status()).toBe(201);
+        const createdPipeline = await createPipelineResponse.json();
+
+        metadataPipeline = {
+          id: createdPipeline.id,
+          name: createdPipeline.name,
+          fullyQualifiedName: createdPipeline.fullyQualifiedName,
+        };
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Delete service via API', async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
+      await mysqlService.deleteServiceByAPI(apiContext);
+      await afterAction();
     });
 
     /**
-     * Tests that all 5 run statuses are visible in the UI after running
-     * the metadata agent 5 times.
+     * Tests that all 5 run statuses are visible in the UI without running the
+     * agent for real — the run-history data is mocked so the test stays fast and
+     * deterministic (no ingestion runtime dependency).
      * @description Validates the fix for #25800 — agent status shows true last 5 runs
      */
     test('Run metadata agent 5 times and verify all run statuses are visible', async ({
       page,
     }) => {
-      test.slow();
+      expect(metadataPipeline).toBeDefined();
 
-      const { apiContext } = await getApiContext(page);
+      const baseTs = Date.now();
 
-      const pipeline = metadataPipeline;
+      const buildMockStatuses = (): PipelineStatus[] =>
+        Array.from({ length: TOTAL_RUNS }, (_, index) => ({
+          runId: `pw-run-${index}`,
+          pipelineState: PipelineState.Success,
+          timestamp: baseTs - index * 60_000,
+          startDate: baseTs - index * 60_000 - 30_000,
+          endDate: baseTs - index * 60_000,
+          status: [{ name: 'Source', records: 10, errors: 0, warnings: 0 }],
+        }));
 
-      expect(pipeline).toBeDefined();
+      // Feeds the recent-run dots and the status pill on the agent card
+      // (buildRecentRuns reads pipeline.pipelineStatuses from the list response).
+      await page.route(
+        '**/api/v1/services/ingestionPipelines?*',
+        async (route) => {
+          const response = await route.fetch();
+          const body = await response.json();
 
-      type PipelineRun = { pipelineState?: string };
+          await route.fulfill({
+            response,
+            json: {
+              ...body,
+              data: (body.data ?? []).map((pipeline: IngestionPipeline) =>
+                pipeline.name === metadataPipeline.name
+                  ? { ...pipeline, pipelineStatuses: buildMockStatuses() }
+                  : pipeline
+              ),
+            },
+          });
+        }
+      );
 
-      const listUrl = `/api/v1/services/ingestionPipelines/${encodeURIComponent(
-        pipeline.fullyQualifiedName
-      )}/pipelineStatus?limit=10`;
+      // Feeds the run-history drawer (getRunHistoryForPipeline).
+      await page.route(
+        '**/api/v1/services/ingestionPipelines/*/pipelineStatus*',
+        (route) =>
+          route.fulfill({
+            json: {
+              data: buildMockStatuses(),
+              paging: { total: TOTAL_RUNS },
+            },
+          })
+      );
 
-      for (let i = 0; i < TOTAL_RUNS; i++) {
-        await test.step(`Trigger run ${i + 1}`, async () => {
-          await expect
-            .poll(
-              async () => {
-                const res = await apiContext.post(
-                  `/api/v1/services/ingestionPipelines/trigger/${encodeURIComponent(
-                    pipeline.id
-                  )}`
-                );
+      await visitServiceDetailsPage(
+        page,
+        {
+          type: mysqlService.category,
+          name: mysqlService.getServiceName(),
+        },
+        false,
+        false
+      );
+      await page.getByTestId('data-assets-header').waitFor();
+      await page.getByTestId('agents').click();
 
-                return res.status();
-              },
-              {
-                message: `Wait for pipeline trigger to succeed for run ${
-                  i + 1
-                }`,
-                timeout: 60_000,
-                intervals: [5_000, 10_000],
-              }
-            )
-            .toBe(200);
-        });
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
       }
 
-      await test.step('Wait for all runs to reach terminal state', async () => {
-        const terminalStates = /^(success|failed|partialSuccess)$/;
+      await page
+        .getByLabel('agents')
+        .getByTestId('loader')
+        .waitFor({ state: 'detached' });
 
-        await expect
-          .poll(
-            async () => {
-              try {
-                const runs: PipelineRun[] =
-                  (await makeRetryRequest({ url: listUrl, page })).data ?? [];
+      const agentCard = getAgentCard(page, metadataPipeline.name);
 
-                return runs.filter((r) =>
-                  terminalStates.test(r.pipelineState ?? '')
-                ).length;
-              } catch {
-                return 0;
-              }
-            },
-            {
-              message: `Wait for ${TOTAL_RUNS} pipeline runs to complete`,
-              timeout: 600_000,
-              intervals: [30_000, 15_000, 5_000],
-            }
-          )
-          .toBeGreaterThanOrEqual(TOTAL_RUNS);
-      });
+      await expect(agentCard).toBeVisible();
 
-      await test.step('Verify all 5 run statuses are visible in the UI', async () => {
-        await visitServiceDetailsPage(
-          page,
-          {
-            type: mysqlService.category,
-            name: mysqlService.getServiceName(),
-          },
-          false,
-          false
-        );
-        await page.getByTestId('data-assets-header').waitFor();
-        await page.getByTestId('agents').click();
+      const runDots = agentCard.getByTestId('agent-run-dot');
 
-        const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
-        if (await metadataTab.isVisible()) {
-          await metadataTab.click();
-        }
+      await expect(runDots).toHaveCount(TOTAL_RUNS);
 
-        await page
-          .getByLabel('agents')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+      await expect(agentCard.getByTestId('pipeline-status')).toContainText(
+        /(Success|Failed)/i
+      );
 
-        const pipelineRow = page.locator(`[data-row-key*="${pipeline.name}"]`);
+      // Latest run dot opens the run history drawer with the full run list
+      await runDots.first().click();
 
-        await expect(pipelineRow).toBeVisible();
+      await expect(page.getByTestId('run-history-drawer')).toBeVisible();
+      await expect(page.getByTestId('run-history-item').first()).toBeVisible();
 
-        const runStatusBadges = pipelineRow.getByTestId('pipeline-status');
-
-        await expect(runStatusBadges).toHaveCount(TOTAL_RUNS);
-
-        const latestBadge = runStatusBadges.last();
-
-        await expect(latestBadge).toContainText(
-          /(Success|Failed|PartialSuccess)/i
-        );
-      });
+      expect(
+        await page.getByTestId('run-history-item').count()
+      ).toBeGreaterThanOrEqual(TOTAL_RUNS);
     });
   }
 );
@@ -398,62 +401,80 @@ test.describe.serial(
   'Action buttons visible despite slow pipelineStatus API',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
   () => {
-    test.beforeEach('Navigate to database services', async ({ page }) => {
+    test.beforeEach('Redirect to home page', async ({ page }) => {
       await redirectToHomePage(page);
-      await settingClick(
-        page,
-        slowPipelineService.category as unknown as SettingOptionsType
-      );
     });
 
-    test('Setup: create MySQL service and ingestion pipeline', async ({
-      page,
-    }) => {
-      await slowPipelineService.createService(page);
+    test.beforeAll(
+      'Create MySQL service and metadata pipeline via API',
+      async ({ browser }) => {
+        const { afterAction, apiContext } = await createNewPage(browser);
 
-      const { apiContext } = await getApiContext(page);
-
-      const serviceResponse = await apiContext
-        .get(
-          `/api/v1/services/databaseServices/name/${encodeURIComponent(
-            slowPipelineService.getServiceName()
-          )}`
-        )
-        .then((res) => res.json());
-
-      const createPipelineResponse = await apiContext.post(
-        '/api/v1/services/ingestionPipelines',
-        {
-          data: {
-            airflowConfig: {},
-            loggerLevel: 'INFO',
-            name: `${slowPipelineService.getServiceName()}-metadata`,
-            pipelineType: 'metadata',
-            service: {
-              id: serviceResponse.id,
-              type: 'databaseService',
-            },
-            sourceConfig: {
-              config: {
-                type: 'DatabaseMetadata',
+        const serviceResponse = await apiContext.post(
+          '/api/v1/services/databaseServices',
+          {
+            data: {
+              name: slowPipelineService.getServiceName(),
+              serviceType: 'Mysql',
+              connection: {
+                config: {
+                  type: 'Mysql',
+                  scheme: 'mysql+pymysql',
+                  username: 'username',
+                  authType: { password: 'password' },
+                  hostPort: 'mysql:3306',
+                },
               },
             },
-          },
-        }
-      );
+          }
+        );
 
-      expect(createPipelineResponse.status()).toBe(201);
-      const createdPipeline = await createPipelineResponse.json();
+        expect(serviceResponse.status()).toBe(201);
+        const service = await serviceResponse.json();
+        slowPipelineService.serviceResponseData = service;
 
-      await apiContext.post(
-        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
-      );
+        const createPipelineResponse = await apiContext.post(
+          '/api/v1/services/ingestionPipelines',
+          {
+            data: {
+              airflowConfig: {},
+              loggerLevel: 'INFO',
+              name: `${slowPipelineService.getServiceName()}-metadata`,
+              pipelineType: 'metadata',
+              service: {
+                id: service.id,
+                type: 'databaseService',
+              },
+              sourceConfig: {
+                config: {
+                  type: 'DatabaseMetadata',
+                },
+              },
+            },
+          }
+        );
 
-      slowTestPipeline = {
-        id: createdPipeline.id,
-        name: createdPipeline.name,
-        fullyQualifiedName: createdPipeline.fullyQualifiedName,
-      };
+        expect(createPipelineResponse.status()).toBe(201);
+        const createdPipeline = await createPipelineResponse.json();
+
+        await apiContext.post(
+          `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+        );
+
+        slowTestPipeline = {
+          id: createdPipeline.id,
+          name: createdPipeline.name,
+          fullyQualifiedName: createdPipeline.fullyQualifiedName,
+        };
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Delete service via API', async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
+      await slowPipelineService.deleteServiceByAPI(apiContext);
+      await afterAction();
     });
 
     /**
@@ -498,27 +519,22 @@ test.describe.serial(
         await metadataTab.click();
       }
 
-      const pipelineRow = page.locator(
-        `[data-row-key*="${slowTestPipeline.name}"]`
-      );
+      const agentCard = getAgentCard(page, slowTestPipeline.name);
 
-      await expect(pipelineRow).toBeVisible();
-
-      // skeleton while the slow pipelineStatus API is still in-flight —
-      // confirming the UI reflects the pending state in both columns
-      await expect(pipelineRow.locator('.ant-skeleton-input')).toHaveCount(2);
+      await expect(agentCard).toBeVisible();
 
       // Action buttons must be visible immediately — before the slow pipelineStatus
       // API resolves — verifying permissions don't wait on run history
-      await expect(pipelineRow.getByTestId('pause-button')).toBeVisible();
+      await expect(agentCard.getByTestId('logs-button')).toBeVisible();
 
-      await expect(pipelineRow.getByTestId('logs-button')).toBeVisible();
+      await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
 
-      await expect(pipelineRow.getByTestId('more-actions')).toBeVisible();
+      await expect(agentCard.getByTestId('more-actions')).toBeVisible();
 
-      // Open the more-actions dropdown and verify the run button is present
-      await pipelineRow.getByTestId('more-actions').click();
-      await expect(page.getByTestId('run-button')).toBeVisible();
+      // Open the more-actions dropdown and verify the pipeline actions are present
+      await agentCard.getByTestId('more-actions').click();
+      await expect(page.getByTestId('edit-button')).toBeVisible();
+      await page.keyboard.press('Escape');
 
       // Trigger a pipeline run via the run button.
       // Also register a waiter for the pipelineStatus refresh that follows the trigger
@@ -529,19 +545,135 @@ test.describe.serial(
           res.url().includes('/services/ingestionPipelines/trigger/') &&
           res.request().method() === 'POST'
       );
-      const statusRefreshResponse = page.waitForResponse(
-        (res) =>
-          res.url().includes('/pipelineStatus') &&
-          res.request().method() === 'GET'
-      );
-      await page.getByTestId('run-button').click();
+      await agentCard.getByTestId('run-agent-button').click();
       await triggerResponse;
-      await statusRefreshResponse;
 
-      // Verify the run was triggered by checking the pipeline row shows a running state
-      await expect(
-        pipelineRow.getByTestId('pipeline-status').first()
-      ).toBeVisible();
+      // Verify the run was triggered by checking the card shows a status pill
+      await expect(agentCard.getByTestId('pipeline-status')).toBeVisible();
+    });
+  }
+);
+
+const wizardService = new MysqlIngestionClass({
+  shouldTestConnection: false,
+  shouldAddIngestion: false,
+});
+
+test.describe.serial(
+  'Edit agent wizard step navigation',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    test.beforeEach('Redirect to home page', async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    test.beforeAll(
+      'Create MySQL service and metadata pipeline via API',
+      async ({ browser }) => {
+        const { afterAction, apiContext } = await createNewPage(browser);
+
+        const serviceResponse = await apiContext.post(
+          '/api/v1/services/databaseServices',
+          {
+            data: {
+              name: wizardService.getServiceName(),
+              serviceType: 'Mysql',
+              connection: {
+                config: {
+                  type: 'Mysql',
+                  scheme: 'mysql+pymysql',
+                  username: 'username',
+                  authType: { password: 'password' },
+                  hostPort: 'mysql:3306',
+                },
+              },
+            },
+          }
+        );
+
+        expect(serviceResponse.status()).toBe(201);
+        const service = await serviceResponse.json();
+        wizardService.serviceResponseData = service;
+
+        const createPipelineResponse = await apiContext.post(
+          '/api/v1/services/ingestionPipelines',
+          {
+            data: {
+              airflowConfig: {},
+              loggerLevel: 'INFO',
+              name: `${wizardService.getServiceName()}-metadata`,
+              pipelineType: 'metadata',
+              service: {
+                id: service.id,
+                type: 'databaseService',
+              },
+              sourceConfig: {
+                config: {
+                  type: 'DatabaseMetadata',
+                },
+              },
+            },
+          }
+        );
+
+        expect(createPipelineResponse.status()).toBe(201);
+        const createdPipeline = await createPipelineResponse.json();
+
+        await apiContext.post(
+          `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+        );
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Delete service via API', async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
+      await wizardService.deleteServiceByAPI(apiContext);
+      await afterAction();
+    });
+
+    /**
+     * Regression guard for the nightly `Update schedule options` failures: the
+     * Configure Ingestion form loads its RJSF templates lazily while the wizard
+     * footer renders immediately, so advancing used to be a silent no-op that
+     * stranded the wizard on step 1 with no error.
+     */
+    test('Next advances to the schedule step right after opening the edit wizard', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await visitServiceDetailsPage(
+        page,
+        {
+          type: wizardService.category,
+          name: wizardService.getServiceName(),
+        },
+        false,
+        false
+      );
+
+      await page.getByTestId('data-assets-header').waitFor();
+      await page.getByTestId('agents').click();
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+
+      await page
+        .getByLabel('agents')
+        .getByTestId('loader')
+        .waitFor({ state: 'detached' });
+
+      await page.getByTestId('more-actions').first().click();
+      await page.getByTestId('edit-button').click();
+
+      await waitForIngestionWorkflowForm(page);
+      await page.getByTestId('next-button').click();
+
+      await expect(page.getByTestId('schedular-schedule')).toBeVisible();
     });
   }
 );

@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/aiGovernanceBulkTriageRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIGovernanceBulkTriageRequest",
+  "description": "Request to bulk-triage shadow AI detections.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.AIGovernanceBulkTriageRequest",
+  "definitions": {
+    "aiGovernanceBulkTriageItem": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernanceBulkTriageItem",
+      "description": "AI asset to triage.",
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "description": "Type of AI asset to triage."
+        },
+        "id": {
+          "type": "string",
+          "description": "Identifier of the AI asset to triage."
+        }
+      },
+      "required": ["entityType", "id"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "action": {
+      "type": "string",
+      "description": "Triage action. Dismiss rejects the asset; other values register it for review."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason supplied when dismissing or registering the detections."
+    },
+    "items": {
+      "type": "array",
+      "description": "AI assets to triage.",
+      "items": {
+        "$ref": "#/definitions/aiGovernanceBulkTriageItem"
+      },
+      "default": []
+    }
+  },
+  "additionalProperties": false
+}

@@ -4,8 +4,17 @@ source:
   serviceConnection:
     config:
       type: DatabricksPipeline
-      token: <databricks token>
       hostPort: localhost:443
+      authType:
+        # Personal Access Token authentication
+        token: <databricks token>
+        # Or use Databricks OAuth (Service Principal) authentication:
+        # clientId: <service principal application id>
+        # clientSecret: <oauth secret>
+        # Or use Azure AD authentication:
+        # azureClientId: <azure client id>
+        # azureClientSecret: <azure client secret>
+        # azureTenantId: <azure tenant id>
       connectionArguments:
         http_path: <http path of databricks cluster>
   sourceConfig:

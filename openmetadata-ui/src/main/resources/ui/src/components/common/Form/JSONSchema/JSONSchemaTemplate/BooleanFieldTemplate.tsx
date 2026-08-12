@@ -10,25 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Toggle } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Form, Switch } from 'antd';
 import { startCase } from 'lodash';
 
 const BooleanFieldTemplate = (props: FieldProps) => {
+  const title = props.schema.title ?? startCase(props.name);
+
   return (
-    <Form.Item className="m-t-md" colon={false}>
-      <div className="flex items-center gap-2">
-        <Switch
-          checked={props.formData}
-          id={props.idSchema.$id}
-          onChange={(value) => props.onChange(value)}
-          onClick={() => props.formContext?.handleFocus?.(props.idSchema.$id)}
-        />
-        <label className="cursor-pointer" htmlFor={props.idSchema.$id}>
-          {props.schema.title ?? startCase(props.name)}
+    <div className="design-boolean-field tw:flex tw:items-start tw:gap-3 tw:rounded-xl tw:py-1">
+      <Toggle
+        className="tw:mt-0.5 tw:flex-shrink-0"
+        id={props.idSchema.$id}
+        isSelected={props.formData ?? false}
+        size="sm"
+        onChange={(value) => {
+          props.onChange(value);
+          props.formContext?.handleFocus?.(props.idSchema.$id);
+        }}
+      />
+      <div className="tw:min-w-0 tw:flex-1">
+        <label
+          className="tw:block tw:cursor-pointer tw:font-medium tw:leading-5 tw:text-primary"
+          htmlFor={props.idSchema.$id}>
+          {title}
         </label>
+        {props.schema.description && (
+          <div className="tw:mt-1 tw:text-xs tw:text-tertiary">
+            {props.schema.description}
+          </div>
+        )}
       </div>
-    </Form.Item>
+    </div>
   );
 };
 

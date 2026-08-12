@@ -23,7 +23,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/mlmodels';

@@ -11,8 +11,23 @@
  *  limitations under the License.
  */
 
+const DEFAULT_DOCS_BASE_URL = 'https://docs.open-metadata.org/latest/';
+
+const normalizeDocsBaseURL = (url?: string) => {
+  const trimmedURL = url?.trim();
+
+  if (!trimmedURL) {
+    return DEFAULT_DOCS_BASE_URL;
+  }
+
+  return `${trimmedURL.replace(/\/+$/, '')}/`;
+};
+
+const getBuildTimeDocsBaseURL = () =>
+  normalizeDocsBaseURL(process.env.VITE_OPENMETADATA_DOCS_BASE_URL);
+
 class DocumentationLinksClassBase {
-  docsBaseURL = 'https://docs.open-metadata.org/';
+  docsBaseURL = getBuildTimeDocsBaseURL();
 
   protected updateDocsBaseURL(url: string) {
     this.docsBaseURL = url;
@@ -64,7 +79,7 @@ class DocumentationLinksClassBase {
       COLLATE_AI_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#generated-data-with-collate-ai-collate-only`,
       MOST_USED_ASSETS_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-used-assets`,
       MOST_EXPENSIVE_QUERIES_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-expensive-queries`,
-      METRICS_DOCS: `${this.docsBaseURL}latest/how-to-guides/data-governance/metrics`,
+      METRICS_DOCS: `${this.docsBaseURL}how-to-guides/data-governance/metrics`,
     };
   }
 }
@@ -72,4 +87,4 @@ class DocumentationLinksClassBase {
 const documentationLinksClassBase = new DocumentationLinksClassBase();
 
 export default documentationLinksClassBase;
-export { DocumentationLinksClassBase };
+export { DEFAULT_DOCS_BASE_URL, DocumentationLinksClassBase };

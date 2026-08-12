@@ -13,11 +13,8 @@
 import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
-import {
-  DatabaseFields,
-  ExtraDatabaseDropdownOptions,
-  getQueryFilterForDatabase,
-} from './Database.util';
+import { DatabaseFields, getQueryFilterForDatabase } from './Database.util';
+import { ExtraDatabaseDropdownOptions } from './DatabaseDropdownOptions';
 
 jest.mock(
   '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',

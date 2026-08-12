@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
+import { Dropdown } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,9 +23,9 @@ import { PipelineType } from '../../../../generated/entity/services/ingestionPip
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {
   getIngestionTypes,
-  getMenuItems,
   getSupportedPipelineTypes,
-} from '../../../../utils/IngestionUtils';
+} from '../../../../utils/IngestionConfigUtils';
+import { getMenuItems } from '../../../../utils/IngestionUtils';
 import { getAddIngestionPath } from '../../../../utils/RouterUtils';
 import { AddIngestionButtonProps } from './AddIngestionButton.interface';
 
@@ -33,6 +35,7 @@ function AddIngestionButton({
   serviceCategory,
   serviceName,
   ingestionList,
+  extraMenuItems,
 }: Readonly<AddIngestionButtonProps>) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -64,7 +67,7 @@ function AddIngestionButton({
     [pipelineType, supportedPipelineTypes, ingestionList]
   );
 
-  if (isEmpty(types)) {
+  if (isEmpty(types) && isEmpty(extraMenuItems)) {
     return null;
   }
 
@@ -72,18 +75,25 @@ function AddIngestionButton({
     <LimitWrapper resource="ingestionPipeline">
       <Dropdown
         menu={{
-          items: getMenuItems(types, isDataInSightIngestionExists),
+          items: [
+            ...getMenuItems(types, isDataInSightIngestionExists),
+            ...(extraMenuItems ?? []),
+          ],
           onClick: (item) => {
-            handleAddIngestionClick(item.key as PipelineType);
+            if ((types as string[]).includes(item.key)) {
+              handleAddIngestionClick(item.key as PipelineType);
+            }
           },
         }}
         placement="bottomRight"
         trigger={['click']}>
         <Button
-          className="flex-center gap-2 border-radius-xs p-md font-medium"
-          data-testid="add-new-ingestion-button">
+          className="tw:font-semibold"
+          color="secondary"
+          data-testid="add-new-ingestion-button"
+          iconLeading={<Plus height={14} width={14} />}
+          iconTrailing={<DropdownIcon height={12} width={12} />}>
           {t('label.add-agent')}
-          <DropdownIcon height={14} width={14} />
         </Button>
       </Dropdown>
     </LimitWrapper>

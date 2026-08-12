@@ -16,15 +16,18 @@ for the profiler
 from typing import Callable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
     PartitionProfilerConfig,
     TableData,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
 
@@ -38,7 +41,12 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def __init__(self, *args, **kwargs):
         """Init the pandas sampler"""
         super().__init__(*args, **kwargs)
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
+        db_config = kwargs.get("config") or DatabaseSamplerConfig()
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.partition_details = cast(PartitionProfilerConfig, db_config.partition_details)  # noqa: TC006
+        self.sample_query: str | None = db_config.sample_query
+        self.include_columns: list[ColumnProfilerConfig] = db_config.include_columns or []
+        self.exclude_columns: list[str] = db_config.exclude_columns or []
         self._table = None
         self.client = self.get_client()
 
@@ -68,6 +76,23 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
 
     def get_client(self):
         return self.connection
+
+    @property
+    def columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+        """Return columns filtered by include/exclude lists."""
+        if self._columns:
+            return self._columns
+
+        included = {col.columnName for col in self.include_columns if col.columnName}
+        excluded = set(self.exclude_columns)
+        all_columns: List[SQALikeColumn] = [col for col in self.get_columns() if col is not None]  # noqa: UP006
+
+        if included:
+            self._columns = [col for col in all_columns if col.name in included]
+        else:
+            self._columns = [col for col in all_columns if col.name not in excluded]
+
+        return self._columns
 
     def _partitioned_table(self):
         """Get partitioned table"""

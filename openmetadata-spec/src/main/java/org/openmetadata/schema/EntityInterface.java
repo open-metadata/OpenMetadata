@@ -134,6 +134,15 @@ public interface EntityInterface {
     return null;
   }
 
+  /**
+   * Source hash (fingerprint) of the entity as computed by the ingestion connector. Only entities
+   * whose JSON schema declares {@code sourceHash} override this; all others inherit {@code null}.
+   * Used by the bulk update path to skip entities whose source content is unchanged.
+   */
+  default String getSourceHash() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);

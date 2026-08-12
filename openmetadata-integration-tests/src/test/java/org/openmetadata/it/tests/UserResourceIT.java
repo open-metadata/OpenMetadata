@@ -43,10 +43,13 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.fluent.Personas;
 import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for User entity operations.
@@ -2153,6 +2156,50 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 .generateToken(regularUser.getId(), JWTTokenExpiry.Seven),
         "Admin should not be able to generate token for regular user");
   }
+
+  // ===================================================================
+  // ONLINE USERS ENDPOINT
+  // ===================================================================
+
+  @Test
+  void test_listOnlineUsers_allTimeWindow_includesUserWithNoActivity(TestNamespace ns) {
+    String name = ns.prefix("onlineAllTime");
+    CreateUser createRequest =
+        new CreateUser()
+            .withName(name)
+            .withEmail(toValidEmail(name))
+            .withDescription("User with no login activity for online-users test");
+    User user = createEntity(createRequest);
+    UUID userId = user.getId();
+
+    ResultList<User> withWindow = listOnlineUsers(5, 1_000_000);
+    assertNotNull(withWindow.getData(), "withWindow response must contain a data list");
+    assertFalse(
+        withWindow.getData().stream().anyMatch(u -> userId.equals(u.getId())),
+        "User with null lastLoginTime/lastActivityTime must not appear in a finite-window response");
+
+    ResultList<User> allTime = listOnlineUsers(0, 1_000_000);
+    assertNotNull(allTime.getData(), "allTime response must contain a data list");
+    assertTrue(
+        allTime.getData().stream().anyMatch(u -> userId.equals(u.getId())),
+        "timeWindow=0 must return all non-bot users, including those with no recorded activity");
+    assertTrue(
+        allTime.getData().stream().noneMatch(u -> Boolean.TRUE.equals(u.getIsBot())),
+        "Online users response must exclude bots");
+  }
+
+  private ResultList<User> listOnlineUsers(int timeWindow, int limit) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("timeWindow", String.valueOf(timeWindow))
+            .queryParam("limit", String.valueOf(limit))
+            .build();
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.GET, "/v1/users/online", null, UserResultList.class, options);
+  }
+
+  private static class UserResultList extends ResultList<User> {}
 
   // ===================================================================
   // VERSION HISTORY SUPPORT

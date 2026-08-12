@@ -218,6 +218,26 @@ describe('Test Pagination Component', () => {
     );
   });
 
+  it('should render cursor page indicator when total is unavailable', () => {
+    const paging = {
+      before: '',
+      after: 'testString',
+      total: 0,
+    };
+
+    const { getByTestId } = render(
+      <NextPrevious
+        currentPage={1}
+        pageSize={PAGE_SIZE}
+        paging={paging}
+        pagingHandler={mockCallback}
+      />
+    );
+    const pageIndicator = getByTestId('page-indicator');
+
+    expect(pageIndicator).toHaveTextContent('label.page 1 label.of 2');
+  });
+
   it('On clicking Previous and Next button respective pages should be rendered', async () => {
     const paging = {
       before: 'test',

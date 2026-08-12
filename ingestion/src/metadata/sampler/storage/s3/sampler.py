@@ -75,7 +75,7 @@ class S3Sampler(StorageSampler):
     def _get_sample_file_path(self) -> Optional[str]:  # noqa: UP045
         """Get a sample file path from the container"""
         bucket_name = self._get_bucket_name()
-        prefix = self.entity.prefix
+        prefix = self.entity.prefix  # pyright: ignore[reportAttributeAccessIssue]
 
         if not prefix:
             logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")

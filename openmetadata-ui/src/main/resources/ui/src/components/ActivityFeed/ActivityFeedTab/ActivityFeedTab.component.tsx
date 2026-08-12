@@ -23,6 +23,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
+  lazy,
   RefObject,
   useCallback,
   useEffect,
@@ -63,14 +64,19 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import { getTaskCounts, Task, TaskStatusGroup } from '../../../rest/tasksAPI';
-import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
+import { getEntityUserLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityUserLink } from '../../../utils/EntityUtils';
+import {
+  aggregateFeedCountResponse,
+  getFeedCounts,
+  getFeedTotalCount,
+} from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
-import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
 import TaskListV1 from '../ActivityFeedList/TaskListV1.component';
@@ -82,11 +88,13 @@ import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
-
-const componentsVisibility = {
-  showThreadIcon: false,
-  showRepliesContainer: true,
-};
+const TaskTabNew = withSuspenseFallback(
+  lazy(() =>
+    import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
+      default: m.TaskTabNew,
+    }))
+  )
+);
 
 export const ActivityFeedTab = ({
   owners = [],
@@ -244,7 +252,7 @@ export const ActivityFeedTab = ({
     [setCountData]
   );
 
-  const fetchFeedsCount = async () => {
+  const fetchFeedsCount = useCallback(async () => {
     setCountData((prev) => ({ ...prev, loading: true }));
     try {
       const domain =
@@ -260,20 +268,31 @@ export const ActivityFeedTab = ({
         : { aboutEntity: fqn, view: 'entity' as const, domain };
 
       const taskCounts = await getTaskCounts(taskCountParams);
+      const totalTasksCount = taskCounts.total ?? 0;
+      const openTaskCount = taskCounts.open ?? 0;
 
       if (isUserEntity) {
         // Also get feed counts for conversations and mentions
         const res = await getFeedCount(getEntityUserLink(fqn));
+        const { conversationCount, mentionCount } =
+          aggregateFeedCountResponse(res);
+        // The user profile has no entity-scoped activity stream, so the "All"
+        // badge that would consume this is gated behind `!isUserEntity` below.
+        const activityCount = 0;
         setCountData((prev) => ({
           ...prev,
           data: {
-            conversationCount: res[0].conversationCount ?? 0,
-            totalTasksCount: taskCounts.total,
-            openTaskCount: taskCounts.open ?? 0,
+            conversationCount,
+            activityCount,
+            totalTasksCount,
+            openTaskCount,
             closedTaskCount: taskCounts.completed ?? 0,
-            totalCount:
-              (res[0].conversationCount ?? 0) + (taskCounts.total ?? 0),
-            mentionCount: res[0].mentionCount ?? 0,
+            totalCount: getFeedTotalCount({
+              conversationCount,
+              activityCount,
+              openTaskCount,
+            }),
+            mentionCount,
           },
         }));
       } else {
@@ -281,9 +300,16 @@ export const ActivityFeedTab = ({
         await getFeedCounts(entityType, fqn, domain, (feedData) => {
           handleFeedCount({
             ...feedData,
-            totalTasksCount: taskCounts.total,
-            openTaskCount: taskCounts.open ?? 0,
+            totalTasksCount,
+            openTaskCount,
             closedTaskCount: taskCounts.completed ?? 0,
+            // getFeedCounts derives its own total from a differently-scoped
+            // task query; recompute so it agrees with the counts we just set.
+            totalCount: getFeedTotalCount({
+              conversationCount: feedData.conversationCount,
+              activityCount: feedData.activityCount,
+              openTaskCount,
+            }),
           });
         });
       }
@@ -291,7 +317,19 @@ export const ActivityFeedTab = ({
       showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
     }
     setCountData((prev) => ({ ...prev, loading: false }));
-  };
+    // Depend on primitive currentUser fields, not the object identity, so an
+    // unstable store reference cannot retrigger this effect every render.
+  }, [
+    activeDomain,
+    fqn,
+    entityType,
+    isUserEntity,
+    currentUser?.name,
+    currentUser?.fullyQualifiedName,
+    currentUser?.id,
+    handleFeedCount,
+    t,
+  ]);
 
   const { feedFilter, feedThreadType } = useMemo(() => {
     const currentFilter =
@@ -368,6 +406,10 @@ export const ActivityFeedTab = ({
   ]);
 
   useEffect(() => {
+    // Activity events only render on the ALL tab; skip the fetch on Tasks/Mentions.
+    if (isTaskActiveTab || isMentionTabSelected) {
+      return;
+    }
     if (fqn && entityType && !isUserEntity) {
       fetchEntityActivity(entityType, fqn, { days: 30, limit: 50 });
     } else if (isUserEntity && userId) {
@@ -378,6 +420,8 @@ export const ActivityFeedTab = ({
     entityType,
     isUserEntity,
     userId,
+    isTaskActiveTab,
+    isMentionTabSelected,
     fetchEntityActivity,
     fetchUserActivity,
   ]);
@@ -413,23 +457,7 @@ export const ActivityFeedTab = ({
     } else {
       fetchFeedsCount();
     }
-  }, [feedCount, activeDomain]);
-
-  useEffect(() => {
-    if (activityEvents && activityEvents.length > 0) {
-      setCountData((prev) => {
-        const activityCount = activityEvents.length;
-        const newData = {
-          ...prev.data,
-          conversationCount: activityCount,
-          totalCount: activityCount + (prev.data.totalTasksCount ?? 0),
-        };
-        onUpdateFeedCount?.(newData);
-
-        return { ...prev, data: newData };
-      });
-    }
-  }, [activityEvents, onUpdateFeedCount]);
+  }, [feedCount, fetchFeedsCount]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
@@ -438,9 +466,18 @@ export const ActivityFeedTab = ({
       }
       if (selectedThread?.id !== feed?.id) {
         setActiveThread(feed);
+        // Clear any previously-selected activity so the right panel
+        // shows the clicked conversation, not a stale activity.
+        setActiveActivity(undefined);
       }
     },
-    [setActiveThread, isTaskActiveTab, isMentionTabSelected, selectedThread]
+    [
+      setActiveThread,
+      setActiveActivity,
+      isTaskActiveTab,
+      isMentionTabSelected,
+      selectedThread,
+    ]
   );
 
   const handleTaskClick = useCallback(
@@ -469,7 +506,7 @@ export const ActivityFeedTab = ({
     if (fqn && isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
-  }, [entityPaging, loading, isInView, fqn]);
+  }, [entityPaging, loading, isInView, fqn, handleFeedFetchFromFeedList]);
 
   const loader = useMemo(
     () => (loading ? <Loader className="aspect-square" /> : null),
@@ -646,10 +683,6 @@ export const ActivityFeedTab = ({
             isOpenInDrawer
             showActivityFeedEditor
             showThread
-            componentsVisibility={{
-              showThreadIcon: true,
-              showRepliesContainer: true,
-            }}
             feed={selectedThread}
             handlePanelResize={handlePanelResize}
             hidePopover={false}
@@ -662,17 +695,12 @@ export const ActivityFeedTab = ({
     }
 
     if (selectedActivity) {
+      // Activities are read-only change events — no comment editor / replies.
       return (
         <div id="activity-panel">
           <FeedPanelBodyV1New
             isOpenInDrawer
-            showActivityFeedEditor
-            showThread
             activity={selectedActivity}
-            componentsVisibility={{
-              showThreadIcon: true,
-              showRepliesContainer: true,
-            }}
             handlePanelResize={handlePanelResize}
             hidePopover={false}
             isFullWidth={isFullWidth}
@@ -729,10 +757,11 @@ export const ActivityFeedTab = ({
                     <span>{t('label.all')}</span>
                   </Space>
 
-                  <span>
+                  <span data-testid="left-panel-all-count">
                     {!isUserEntity &&
                       getCountBadge(
-                        activityEvents?.length ?? 0,
+                        (countData?.data?.conversationCount ?? 0) +
+                          (countData?.data?.activityCount ?? 0),
                         '',
                         activeTab === ActivityFeedTabs.ALL
                       )}
@@ -832,15 +861,15 @@ export const ActivityFeedTab = ({
         ) : (
           <ActivityFeedListV1New
             hidePopover
-            activeFeedId={selectedThread?.id}
+            activeFeedId={selectedThread?.id ?? selectedActivity?.id}
             activityList={activityEvents}
-            componentsVisibility={componentsVisibility}
             emptyPlaceholderText={placeholderText}
             feedList={entityThread}
             handlePanelResize={handlePanelResize}
             isForFeedTab={false}
             isFullWidth={isFullWidth}
             isLoading={(isFirstLoad && loading) || (isActivityLoading ?? false)}
+            selectedActivity={selectedActivity}
             selectedThread={selectedThread}
             showThread={false}
             onActivityClick={handleActivityClick}

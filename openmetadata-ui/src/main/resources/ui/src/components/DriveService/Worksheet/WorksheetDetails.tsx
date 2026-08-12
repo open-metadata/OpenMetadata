@@ -36,27 +36,29 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import worksheetClassBase from '../../../utils/WorksheetClassBase';
@@ -71,7 +73,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { WorksheetDetailsProps } from './WorksheetDetails.interface';
-
 const EntityLineageTab = lazy(() =>
   import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
     default: module.EntityLineageTab,
@@ -253,6 +254,20 @@ function WorksheetDetails({
       handleFeedCount
     );
 
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = worksheetDetails.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [worksheetDetails.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = worksheetDetails.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.WORKSHEET, fqn, setFeedCount);
+    }
+  }, [worksheetDetails.fullyQualifiedName]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -306,7 +321,8 @@ function WorksheetDetails({
 
   useEffect(() => {
     if (worksheetDetails.fullyQualifiedName) {
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
   }, [worksheetPermissions, worksheetDetails.fullyQualifiedName]);
 

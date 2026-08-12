@@ -1,0 +1,58 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/sapBw4HanaPipelineConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapBw4HanaPipelineConnection",
+  "description": "SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.SapBw4HanaPipelineConnection",
+  "definitions": {
+    "sapBw4HanaPipelineType": {
+      "description": "SAP BW/4HANA pipeline service type.",
+      "type": "string",
+      "enum": ["SapBw4HanaPipeline"],
+      "default": "SapBw4HanaPipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sapBw4HanaPipelineType",
+      "default": "SapBw4HanaPipeline"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.",
+      "type": "string"
+    },
+    "username": {
+      "title": "Username",
+      "description": "HANA database username with access to BW metadata tables.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password for the HANA database user.",
+      "type": "string",
+      "format": "password"
+    },
+    "abapSchema": {
+      "title": "ABAP Schema",
+      "description": "Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.",
+      "type": "string",
+      "default": "SAPHANADB"
+    },
+    "pipelineFilterPattern": {
+      "title": "Default Pipeline Filter Pattern",
+      "description": "Regex to only include/exclude Process Chains that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username", "password"]
+}

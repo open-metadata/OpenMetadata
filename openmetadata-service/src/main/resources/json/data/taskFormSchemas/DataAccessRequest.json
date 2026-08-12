@@ -7,7 +7,7 @@
   "workflowDefinitionRef": "DataAccessRequestTaskWorkflow",
   "formSchema": {
     "type": "object",
-    "required": ["accessType", "reason"],
+    "required": ["accessType", "reason", "expirationDate"],
     "properties": {
       "accessType": {
         "type": "string",
@@ -17,7 +17,7 @@
       },
       "columns": {
         "type": "array",
-        "title": "Select Columns",
+        "title": "Selected Columns",
         "items": {
           "type": "string"
         },
@@ -29,9 +29,9 @@
         "enum": ["Read", "Write", "Admin"],
         "default": "Read"
       },
-      "duration": {
-        "type": "string",
-        "title": "Duration"
+      "expirationDate": {
+        "type": "number",
+        "title": "Expiration Date"
       },
       "reason": {
         "type": "string",
@@ -52,7 +52,7 @@
       "accessType",
       "columns",
       "requestedAccess",
-      "duration",
+      "expirationDate",
       "reason",
       "ticketId"
     ],
@@ -65,8 +65,8 @@
     "requestedAccess": {
       "ui:widget": "select"
     },
-    "duration": {
-      "ui:widget": "durationSelector"
+    "expirationDate": {
+      "ui:widget": "dateTimePicker"
     },
     "reason": {
       "ui:widget": "textarea"

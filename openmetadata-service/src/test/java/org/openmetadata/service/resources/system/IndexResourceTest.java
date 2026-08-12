@@ -164,4 +164,34 @@ class IndexResourceTest {
     assertNotNull(html1);
     assertFalse(html1.isEmpty(), "HTML should not be empty");
   }
+
+  @Test
+  void testEtagIsStableAcrossCalls() {
+    // The ETag describes the stable shell — it must not change across two calls for the same
+    // basePath unless something has actually re-initialized the template.
+    String etagA = IndexResource.getIndexEtag("/");
+    String etagB = IndexResource.getIndexEtag("/");
+    assertEquals(etagA, etagB);
+  }
+
+  @Test
+  void testEtagFormatIsStrongQuoted() {
+    // Strong ETag per RFC 7232: bare double-quoted token, no W/ prefix.
+    String etag = IndexResource.getIndexEtag("/");
+    assertNotNull(etag);
+    assertTrue(etag.startsWith("\""), "ETag should be quoted");
+    assertTrue(etag.endsWith("\""), "ETag should be quoted");
+    assertFalse(etag.startsWith("W/"), "ETag should be a strong (non-weak) validator");
+  }
+
+  @Test
+  void testEtagDiffersAcrossBasePaths() {
+    // The body bakes the basePath into multiple positions (window.BASE_PATH, favicon hrefs,
+    // etc.), so the ETag for two different basePaths must differ.
+    String etagRoot = IndexResource.getIndexEtag("/");
+    String etagCustom = IndexResource.getIndexEtag("/openmetadata/");
+    assertFalse(
+        etagRoot.equals(etagCustom),
+        "ETag for two different basePaths must differ — they produce different bodies");
+  }
 }

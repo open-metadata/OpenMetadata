@@ -247,6 +247,13 @@ class ReindexingUtilTest {
         Arguments.of(
             Entity.AI_GOVERNANCE_POLICY,
             org.openmetadata.schema.entity.ai.AIGovernancePolicy.class),
+        Arguments.of(
+            Entity.AI_GOVERNANCE_FRAMEWORK,
+            org.openmetadata.schema.entity.ai.AIGovernanceFramework.class),
+        Arguments.of(
+            Entity.AI_FRAMEWORK_CONTROL,
+            org.openmetadata.schema.entity.ai.AIFrameworkControl.class),
+        Arguments.of(Entity.AUDIT_REPORT, org.openmetadata.schema.entity.ai.AuditReport.class),
         Arguments.of(Entity.LLM_MODEL, org.openmetadata.schema.entity.ai.LLMModel.class),
         Arguments.of(
             Entity.PROMPT_TEMPLATE, org.openmetadata.schema.entity.ai.PromptTemplate.class),

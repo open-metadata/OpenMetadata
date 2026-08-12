@@ -19,6 +19,10 @@ from typing import Optional, cast
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.core import DataTestsRunner
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    ProfilerConfiguration,
+    SampleDataIngestionConfig,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -33,16 +37,27 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.models import (
-    SampleConfig,
+from metadata.sampler.config import (
+    get_exclude_columns,
+    get_include_columns,
+    get_profile_sample_config,
+    get_sample_data_count_config,
+    get_sample_query,
 )
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.partition import get_partition_details
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.bigquery_utils import copy_service_config
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.utils.logger import test_suite_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
     import_sampler_class,
     import_test_suite_class,
 )
+
+logger = test_suite_logger()
 
 
 class BaseTestSuiteRunner:
@@ -115,17 +130,34 @@ class BaseTestSuiteRunner:
             source_type=self._interface_type,
             source_config_type=self.service_conn_config.type.value,
         )
-        # This is shared between the sampler and DQ interfaces
+        default_sample_config = SampleConfig(
+            profileSampleConfig=self.source_config.profileSampleConfig
+            if self.source_config.profileSampleConfig
+            else None,
+        )
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
             entity=self.entity,
-            schema_entity=schema_entity,
-            database_entity=database_entity,
-            default_sample_config=SampleConfig(
-                profileSampleConfig=self.source_config.profileSampleConfig
-                if self.source_config.profileSampleConfig
-                else None,
+            config=DatabaseSamplerConfig(
+                sample_config=get_profile_sample_config(
+                    entity=self.entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=None,
+                    default_sample_config=default_sample_config,
+                ),
+                sample_data_count=get_sample_data_count_config(
+                    entity=self.entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=None,
+                    default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
+                ),
+                partition_details=get_partition_details(self.entity),
+                sample_query=get_sample_query(entity=self.entity, entity_config=None),
+                include_columns=get_include_columns(self.entity, entity_config=None) or [],
+                exclude_columns=get_exclude_columns(self.entity, entity_config=None) or [],
             ),
         )
 
@@ -135,8 +167,21 @@ class BaseTestSuiteRunner:
             sampler=sampler_interface,
             table_entity=self.entity,
             validator_builder=self.validator_builder_class,
+            sample_data_config=self._get_sample_data_config(),
         )
         return self.interface
+
+    def _get_sample_data_config(self) -> SampleDataIngestionConfig | None:
+        """Fetch the global sample data ingestion config from the profiler settings."""
+        sample_data_config = None
+        try:
+            settings = self.ometa_client.get_profiler_config_settings()
+            if settings and settings.config_value:
+                profiler_config = cast("ProfilerConfiguration", settings.config_value)
+                sample_data_config = profiler_config.sampleDataConfig
+        except Exception as exc:
+            logger.debug(f"Could not fetch global profiler config: {exc}")
+        return sample_data_config
 
     def get_data_quality_runner(self) -> DataTestsRunner:
         """Get a data quality runner

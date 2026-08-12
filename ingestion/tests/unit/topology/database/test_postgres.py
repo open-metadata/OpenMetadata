@@ -485,7 +485,7 @@ class PostgresUnitTest(TestCase):
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 self.assertEqual(call_args[1]["entity_type"], DatabaseSchema)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
+                self.assertEqual(call_args[1]["recursive"], True)
                 self.assertEqual(call_args[1]["params"], {"database": "test_service.test_db"})
 
                 # Verify the entity_source_state contains both processed and filtered schemas
@@ -553,7 +553,7 @@ class PostgresUnitTest(TestCase):
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 self.assertEqual(call_args[1]["entity_type"], Database)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
+                self.assertEqual(call_args[1]["recursive"], True)
                 self.assertEqual(call_args[1]["params"], {"service": "test_service"})
 
                 # Verify the entity_source_state contains both processed and filtered databases
@@ -848,6 +848,51 @@ class PostgresUnitTest(TestCase):
                 }
                 self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
+    def test_get_stored_procedures_skips_unparseable_row(self):
+        """
+        An unparseable row must be skipped and reported, not abort the whole schema
+        """
+        self.postgres_source.source_config.includeStoredProcedures = True
+        self.postgres_source.source_config.storedProcedureFilterPattern = None
+        self.postgres_source.status = MagicMock()
+
+        mock_engine = MagicMock()
+        self.postgres_source.engine = mock_engine
+
+        # definition is NULL: pg_proc.prosrc is nullable, the model requires a str
+        bad_row = MagicMock()
+        bad_row._mapping = {
+            "procedure_name": "null_prosrc_func",
+            "schema_name": "test_schema",
+            "definition": None,
+            "procedure_type": "Function",
+        }
+        bad_row._asdict.return_value = dict(bad_row._mapping)
+        good_row = MagicMock()
+        good_row._mapping = {
+            "procedure_name": "healthy_proc",
+            "schema_name": "test_schema",
+            "definition": "def1",
+            "procedure_type": "StoredProcedure",
+        }
+        good_row._asdict.return_value = dict(good_row._mapping)
+
+        mock_result = MagicMock()
+        mock_result.all.return_value = [bad_row, good_row]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.postgres_source._get_stored_procedures_internal("query"))
+
+        self.assertEqual([result.name for result in results], ["healthy_proc"])
+        self.postgres_source.status.failed.assert_called_once()
+        # the failure must name the offending procedure, not "UNKNOWN"
+        reported_error = self.postgres_source.status.failed.call_args.kwargs["error"]
+        self.assertEqual(reported_error.name, "null_prosrc_func")
+
 
 class TestPostgresCommonMappings(TestCase):
     """Verify extended type entries in the shared PostgreSQL ischema_names map."""
@@ -874,3 +919,31 @@ class TestPostgresCommonMappings(TestCase):
 
         tid_type = pg_ischema_names["tid"]
         self.assertIs(tid_type, SqlAlchemyString)
+
+    def test_citext_maps_to_string(self):
+        """'citext' must map to a String type so it is not reflected as CITEXT/UNKNOWN."""
+        from sqlalchemy import String as SqlAlchemyString
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+
+        self.assertIs(pg_ischema_names["citext"], SqlAlchemyString)
+
+    def test_citext_resolves_to_string_datatype(self):
+        """A citext column must resolve to a known OM dataType, not UNKNOWN (#19467)."""
+        from sqlalchemy.dialects.postgresql.base import (
+            ischema_names as pg_ischema_names,
+        )
+
+        import metadata.ingestion.source.database.common_pg_mappings  # noqa: F401
+        from metadata.ingestion.source.database.column_type_parser import (
+            ColumnTypeParser,
+        )
+
+        citext_type = pg_ischema_names["citext"]
+        # Resolve an instantiated type, matching how the dialect passes column
+        # types into the parser during reflection.
+        data_type = ColumnTypeParser.get_column_type(citext_type())
+        self.assertEqual(data_type, "STRING")

@@ -12,14 +12,18 @@ from pytest import fixture
 import metadata  # noqa: F401
 
 # Prevent unit tests from connecting to the OpenMetadata server.
-# There are two code paths that trigger HTTP calls to localhost:8585:
+# Three code paths trigger HTTP calls to localhost:8585:
 #   1. OpenMetadata.__init__() → validate_versions() → GET /system/version
-#   2. create_ometa_client() → health_check() → GET /system/version
-# Unit tests don't need either — they test transformation logic.
+#   2. Workflow.__init__() → metadata.log_server_version() → GET /system/version
+#   3. create_ometa_client() → health_check() → GET /system/version
+# Unit tests don't need any — they test transformation logic.
 # TODO: Once topology/workflow/profiler tests are migrated from TestCase to pytest,
 #       replace these with a session-scoped fixture.
 _mock_validate = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.validate_versions")
 _mock_validate.start()
+
+_mock_log_server_version = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.log_server_version")
+_mock_log_server_version.start()
 
 _mock_health = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.health_check")
 _mock_health.start()

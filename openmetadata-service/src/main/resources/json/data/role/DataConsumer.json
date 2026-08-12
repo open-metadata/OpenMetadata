@@ -8,6 +8,10 @@
     {
       "type" : "policy",
       "name" : "DataConsumerPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "TaskAuthorPolicy"
     }
   ]
 }

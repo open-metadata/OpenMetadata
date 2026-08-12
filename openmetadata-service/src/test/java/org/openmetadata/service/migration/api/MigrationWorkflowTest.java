@@ -219,6 +219,67 @@ class MigrationWorkflowTest {
   }
 
   @Test
+  void loadMigrationsReprocessesPreviousMinorLatestWhenNewSqlAddedAfterCurrentRelease()
+      throws Exception {
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    createMigrationDir(nativeRoot, "1.12.9", "SELECT 12;");
+    createMigrationDir(nativeRoot, "1.13.0", "SELECT 13;");
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of("1.12.9", "1.13.0"));
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString()))
+        .thenAnswer(
+            invocation -> {
+              String checksum = invocation.getArgument(0);
+              if (checksum.equals(hash("SELECT 13"))) {
+                return "SELECT 13";
+              }
+              return null;
+            });
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+
+    workflow.loadMigrations();
+
+    assertEquals(List.of("1.12.9"), getMigrationVersions(workflow));
+  }
+
+  @Test
+  void loadMigrationsReprocessesPreviousMinorRunsPendingPatchAndCurrentVersion() throws Exception {
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    createMigrationDir(nativeRoot, "1.12.9", "SELECT 129;");
+    createMigrationDir(nativeRoot, "1.12.10", "SELECT 1210;");
+    createMigrationDir(nativeRoot, "1.13.0", "SELECT 130;");
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of("1.12.9", "1.13.0"));
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn(null);
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+
+    workflow.loadMigrations();
+
+    assertEquals(List.of("1.12.9", "1.12.10", "1.13.0"), getMigrationVersions(workflow));
+  }
+
+  @Test
+  void loadMigrationsSkipsPreviousMinorReprocessingWhenAllSqlAlreadyRan() throws Exception {
+    Path nativeRoot = Files.createDirectories(tempDir.resolve("native"));
+    createMigrationDir(nativeRoot, "1.12.9", "SELECT 12;");
+    createMigrationDir(nativeRoot, "1.13.0", "SELECT 13;");
+    when(migrationDAO.getMigrationVersions()).thenReturn(List.of("1.12.9", "1.13.0"));
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn("already ran");
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, nativeRoot.toString(), ConnectionType.POSTGRES, null, null, config, false);
+
+    workflow.loadMigrations();
+
+    assertEquals(List.of(), getMigrationVersions(workflow));
+  }
+
+  @Test
   void loadMigrationsFallsBackToNoOpWhenNoExtensionProviderHandlesVersion() throws Exception {
     // Regression: a Collate version directory without a registered Java provider must resolve to
     // MigrationProcessImpl (no-op data migration), NOT to OM's same-numeric-version migration
@@ -400,13 +461,225 @@ class MigrationWorkflowTest {
         .thenReturn(Map.of("CREATE INDEX", new QueryStatus(QueryStatus.Status.SUCCESS, "ok")));
 
     setMigrations(workflow, List.of(process));
-    setCurrentMaxVersion(workflow, Optional.of("1.0.0"));
+    setCurrentMaxVersion(workflow, Optional.of("1.1.0"));
 
     try (var ignored = mockConstruction(MigrationWorkflowContext.class, this::mockContext)) {
       workflow.runMigrationWorkflows(false);
     }
 
     verify(process).runDataMigration();
+  }
+
+  @Test
+  void runMigrationWorkflowsSkipsDataMigrationForPreviousReleaseTrainReprocessing()
+      throws Exception {
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            tempDir.resolve("native").toString(),
+            ConnectionType.POSTGRES,
+            null,
+            null,
+            config,
+            false);
+    MigrationProcess process = mock(MigrationProcess.class);
+    when(process.getVersion()).thenReturn("1.12.9");
+    when(process.getDatabaseConnectionType()).thenReturn("postgres");
+    when(process.getMigrationsPath()).thenReturn("/tmp/1.12.9");
+    when(process.isReprocessing()).thenReturn(true);
+    when(process.runSchemaChanges(false))
+        .thenReturn(Map.of("ALTER TABLE", new QueryStatus(QueryStatus.Status.SUCCESS, "ok")));
+    when(process.runPostDDLScripts(false))
+        .thenReturn(Map.of("CREATE INDEX", new QueryStatus(QueryStatus.Status.SUCCESS, "ok")));
+
+    setMigrations(workflow, List.of(process));
+    setCurrentMaxVersion(workflow, Optional.of("1.13.0"));
+
+    try (var ignored = mockConstruction(MigrationWorkflowContext.class, this::mockContext)) {
+      workflow.runMigrationWorkflows(false);
+    }
+
+    verify(process, never()).runDataMigration();
+    verify(process).runPostDDLScripts(false);
+    verify(migrationDAO)
+        .upsertServerMigration(eq("1.12.9"), eq("/tmp/1.12.9"), anyString(), anyString());
+  }
+
+  @Test
+  void getMigrationsToApplyReprocessesCurrentAndPreviousReleaseTrainLatestVersions()
+      throws Exception {
+    List<String> executedMigrations = List.of("1.12.9", "1.13.0");
+    List<MigrationFile> availableMigrations =
+        List.of(createMigrationFile("1.12.9", false), createMigrationFile("1.13.0", false));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(executedMigrations, availableMigrations);
+
+    assertEquals(List.of("1.12.9", "1.13.0"), result.stream().map(m -> m.version).toList());
+    assertTrue(result.stream().allMatch(MigrationFile::isReprocessing));
+  }
+
+  @Test
+  void getMigrationsToApplyReprocessesPreviousTrainMaxExecutedWhenLatestPatchIsPending()
+      throws Exception {
+    List<String> executedMigrations = List.of("1.12.9", "1.13.0");
+    List<MigrationFile> availableMigrations =
+        List.of(
+            createMigrationFile("1.12.9", false),
+            createMigrationFile("1.12.10", false),
+            createMigrationFile("1.13.0", false));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(executedMigrations, availableMigrations);
+
+    assertEquals(
+        List.of("1.12.9", "1.12.10", "1.13.0"), result.stream().map(m -> m.version).toList());
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.12.9"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertFalse(
+        result.stream()
+            .filter(m -> m.version.equals("1.12.10"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.13.0"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+  }
+
+  @Test
+  void getMigrationsToApplyReprocessesPartiallyCompletedPreviousPatchAndCurrentVersion()
+      throws Exception {
+    List<String> executedMigrations = List.of("1.12.9", "1.12.10", "1.13.0");
+    List<MigrationFile> availableMigrations =
+        List.of(
+            createMigrationFile("1.12.9", false),
+            createMigrationFile("1.12.10", false),
+            createMigrationFile("1.13.0", false));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(executedMigrations, availableMigrations);
+
+    assertEquals(List.of("1.12.10", "1.13.0"), result.stream().map(m -> m.version).toList());
+    assertTrue(result.stream().allMatch(MigrationFile::isReprocessing));
+  }
+
+  @Test
+  void getMigrationsToApplyDoesNotReprocessOlderThanPreviousReleaseTrain() throws Exception {
+    List<String> executedMigrations = List.of("1.11.10", "1.12.9", "1.13.0");
+    List<MigrationFile> availableMigrations =
+        List.of(
+            createMigrationFile("1.11.10", false),
+            createMigrationFile("1.12.9", false),
+            createMigrationFile("1.13.0", false));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(executedMigrations, availableMigrations);
+
+    assertEquals(List.of("1.12.9", "1.13.0"), result.stream().map(m -> m.version).toList());
+    assertFalse(result.stream().anyMatch(m -> m.version.equals("1.11.10")));
+    assertTrue(result.stream().allMatch(MigrationFile::isReprocessing));
+  }
+
+  @Test
+  void getMigrationsToApplyReprocessesPreviousReleaseTrainAcrossMajorBoundary() throws Exception {
+    List<String> executedMigrations = List.of("1.13.5", "2.0.0");
+    List<MigrationFile> availableMigrations =
+        List.of(createMigrationFile("1.13.5", false), createMigrationFile("2.0.0", false));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(executedMigrations, availableMigrations);
+
+    assertEquals(List.of("1.13.5", "2.0.0"), result.stream().map(m -> m.version).toList());
+    assertTrue(result.stream().allMatch(MigrationFile::isReprocessing));
+  }
+
+  @Test
+  void getMigrationsToApplyReprocessesCurrentAndPreviousExtensionReleaseTrainVersions()
+      throws Exception {
+    List<String> executedMigrations = List.of("1.12.9-collate", "1.13.0-collate");
+    List<MigrationFile> availableMigrations =
+        List.of(
+            createMigrationFile("1.12.9-collate", true),
+            createMigrationFile("1.13.0-collate", true));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(executedMigrations, availableMigrations);
+
+    assertEquals(
+        List.of("1.12.9-collate", "1.13.0-collate"), result.stream().map(m -> m.version).toList());
+    assertTrue(result.stream().allMatch(MigrationFile::isReprocessing));
+  }
+
+  @Test
+  void getMigrationsToApplyReprocessesPreviousExtensionTrainAndRunsPendingExtensionPatch()
+      throws Exception {
+    List<String> executedMigrations = List.of("1.12.9-collate", "1.13.0-collate");
+    List<MigrationFile> availableMigrations =
+        List.of(
+            createMigrationFile("1.12.9-collate", true),
+            createMigrationFile("1.12.10-collate", true),
+            createMigrationFile("1.13.0-collate", true));
+
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi, tempDir.toString(), ConnectionType.MYSQL, null, null, config, false);
+
+    List<MigrationFile> result =
+        workflow.getMigrationsToApply(executedMigrations, availableMigrations);
+
+    assertEquals(
+        List.of("1.12.9-collate", "1.12.10-collate", "1.13.0-collate"),
+        result.stream().map(m -> m.version).toList());
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.12.9-collate"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertFalse(
+        result.stream()
+            .filter(m -> m.version.equals("1.12.10-collate"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.13.0-collate"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
   }
 
   @Test
@@ -429,7 +702,13 @@ class MigrationWorkflowTest {
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
     List<String> versions = result.stream().map(m -> m.version).toList();
-    assertEquals(List.of("1.11.11", "1.11.12", "1.12.1", "1.12.2"), versions);
+    assertEquals(List.of("1.11.10", "1.11.11", "1.11.12", "1.12.1", "1.12.2"), versions);
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.11.10"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
     assertFalse(
         result.stream()
             .filter(m -> m.version.equals("1.11.11"))
@@ -480,8 +759,9 @@ class MigrationWorkflowTest {
     List<String> extensionVersions =
         result.stream().filter(m -> m.isExtension).map(m -> m.version).toList();
 
-    assertEquals(List.of("1.11.11", "1.12.1", "1.12.2"), nativeVersions);
+    assertEquals(List.of("1.11.10", "1.11.11", "1.12.1", "1.12.2"), nativeVersions);
     assertEquals(List.of("1.12.1-collate"), extensionVersions);
+    assertTrue(result.stream().anyMatch(m -> m.version.equals("1.11.10") && m.isReprocessing()));
     assertTrue(result.stream().anyMatch(m -> m.version.equals("1.12.1") && m.isReprocessing()));
     assertTrue(
         result.stream().anyMatch(m -> m.version.equals("1.12.1-collate") && !m.isReprocessing()));
@@ -511,8 +791,9 @@ class MigrationWorkflowTest {
     List<String> extensionVersions =
         result.stream().filter(m -> m.isExtension).map(m -> m.version).toList();
 
-    assertEquals(List.of("1.12.1", "1.12.2"), nativeVersions);
+    assertEquals(List.of("1.11.10", "1.12.1", "1.12.2"), nativeVersions);
     assertEquals(List.of("1.12.1-collate"), extensionVersions);
+    assertTrue(result.stream().anyMatch(m -> m.version.equals("1.11.10") && m.isReprocessing()));
     assertTrue(result.stream().anyMatch(m -> m.version.equals("1.12.1") && m.isReprocessing()));
     assertTrue(
         result.stream().anyMatch(m -> m.version.equals("1.12.1-collate") && m.isReprocessing()));
@@ -649,7 +930,14 @@ class MigrationWorkflowTest {
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
     List<String> versions = result.stream().map(m -> m.version).toList();
-    assertEquals(List.of("1.10.6", "1.11.1", "1.11.1-collate", "1.12.1", "1.12.2"), versions);
+    assertEquals(
+        List.of("1.10.6", "1.11.0", "1.11.1", "1.11.1-collate", "1.12.1", "1.12.2"), versions);
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.11.0"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
     assertTrue(
         result.stream()
             .filter(m -> m.version.equals("1.12.1"))
@@ -680,10 +968,16 @@ class MigrationWorkflowTest {
         workflow.getMigrationsToApply(executedMigrations, availableMigrations);
 
     List<String> versions = result.stream().map(m -> m.version).toList();
-    assertEquals(List.of("1.5.15", "1.10.5"), versions);
+    assertEquals(List.of("1.5.15", "1.9.1", "1.10.5"), versions);
     assertFalse(
         result.stream()
             .filter(m -> m.version.equals("1.5.15"))
+            .findFirst()
+            .orElseThrow()
+            .isReprocessing());
+    assertTrue(
+        result.stream()
+            .filter(m -> m.version.equals("1.9.1"))
             .findFirst()
             .orElseThrow()
             .isReprocessing());

@@ -13,7 +13,6 @@
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
 import { ColumnProfile } from '../../../generated/entity/data/table';
-import '../../../test/unit/mocks/mui.mock';
 import '../../../test/unit/mocks/recharts.mock';
 import CardinalityDistributionChart, {
   CardinalityDistributionChartProps,

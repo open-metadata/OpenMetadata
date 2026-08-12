@@ -22,11 +22,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -58,12 +62,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -85,7 +91,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.exception.JsonParsingException;
-import org.openmetadata.schema.type.TagLabel;
 
 @Slf4j
 public final class JsonUtils {
@@ -101,6 +106,8 @@ public final class JsonUtils {
   private static final SchemaRegistry schemaFactory =
       SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_7);
   private static final String FAILED_TO_PROCESS_JSON = "Failed to process JSON ";
+  // Below this length a containment match is noise ("id" would match "validationId").
+  private static final int MIN_FIELD_SUGGESTION_LENGTH = 3;
   private static final List<String> READ_ONLY_PATCH_ROOT_FIELDS =
       List.of(
           "/changeDescription",
@@ -129,10 +136,12 @@ public final class JsonUtils {
     // Java 21 optimized introspection/accessors for faster convertValue/read/write paths.
     OBJECT_MAPPER.registerModule(new BlackbirdModule());
 
-    // Accept TagLabel.appliedAt with or without fractional seconds. Python clients
-    // serialize datetimes with microsecond=0 as "…ssZ" (no fractional), which the
-    // strict global SimpleDateFormat("…SSSSSS'Z'") rejects.
-    OBJECT_MAPPER.addMixIn(TagLabel.class, TagLabelDateMixin.class);
+    // Accept any Date field with or without fractional seconds. Python clients serialize
+    // datetimes with microsecond=0 as "…ssZ" (no fractional), which the strict global
+    // SimpleDateFormat("…SSSSSS'Z'") rejects. Registering the lenient deserializer for all
+    // java.util.Date fields keeps deserialization tolerant while serialization stays on the
+    // microsecond format above.
+    OBJECT_MAPPER.registerModule(lenientDateModule());
 
     // Lenient ObjectMapper to ignore unknown properties
     OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
@@ -335,6 +344,8 @@ public final class JsonUtils {
         continue;
       }
 
+      validateJsonPointer(path, "path");
+
       // Skip operations on read-only auto-generated fields
       if (isReadOnlyPatchPath(path)) {
         continue;
@@ -343,6 +354,9 @@ public final class JsonUtils {
       // For copy/move operations, also check the 'from' field if present
       if (jsonObject.containsKey("from")) {
         String from = jsonObject.getString("from", null);
+        if (from != null) {
+          validateJsonPointer(from, "from");
+        }
         if (isReadOnlyPatchPath(from)) {
           continue;
         }
@@ -364,6 +378,15 @@ public final class JsonUtils {
       currentJson = singlePatch.apply(currentJson);
     }
     return currentJson;
+  }
+
+  private static void validateJsonPointer(String pointer, String fieldName) {
+    if (!pointer.isEmpty() && pointer.charAt(0) != '/') {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid JSON Patch '%s' value '%s' - non-empty JSON Pointer must begin with '/' (RFC 6901)",
+              fieldName, pointer));
+    }
   }
 
   private static boolean isReadOnlyPatchPath(String path) {
@@ -418,14 +441,135 @@ public final class JsonUtils {
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
     JsonValue value = applyPatch(original, patch);
     // Convert Jakarta JSON JsonValue to Jackson JsonNode
+    T result;
     try {
       String jsonString = value.toString();
       JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
-      return OBJECT_MAPPER.convertValue(jsonNode, clz);
+      result = OBJECT_MAPPER.convertValue(jsonNode, clz);
+    } catch (IllegalArgumentException e) {
+      throw toPatchFailure(e, clz);
     } catch (Exception e) {
       throw new RuntimeException(
           "Failed to convert JsonValue to " + clz.getSimpleName() + ": " + e.getMessage(), e);
     }
+    return result;
+  }
+
+  /**
+   * Translates a Jackson conversion failure into the right exception type. A patch naming a field
+   * the entity does not have is a client error - a renamed, misspelled or hallucinated field - so it
+   * must surface as {@link IllegalArgumentException} (mapped to HTTP 400) rather than as an
+   * unhandled server fault. {@code ObjectMapper.convertValue} wraps every mapping failure in an
+   * {@code IllegalArgumentException}, so the real cause has to be unwrapped to tell the two apart.
+   */
+  private static RuntimeException toPatchFailure(IllegalArgumentException cause, Class<?> clz) {
+    RuntimeException result;
+    if (cause.getCause() instanceof UnrecognizedPropertyException unknownField) {
+      result = new IllegalArgumentException(unknownFieldMessage(unknownField, clz));
+    } else if (cause.getCause() instanceof JsonMappingException invalidValue) {
+      result = new IllegalArgumentException(invalidValueMessage(invalidValue, clz));
+    } else {
+      result =
+          new RuntimeException(
+              "Failed to convert JsonValue to " + clz.getSimpleName() + ": " + cause.getMessage(),
+              cause);
+    }
+    return result;
+  }
+
+  private static String unknownFieldMessage(UnrecognizedPropertyException e, Class<?> clz) {
+    // getKnownPropertyIds() is documented to return null when the property set is unavailable;
+    // an NPE here would turn this client error back into the 500 this path exists to prevent.
+    Collection<Object> knownIds = e.getKnownPropertyIds();
+    List<String> knownFields =
+        knownIds == null ? List.of() : knownIds.stream().map(String::valueOf).sorted().toList();
+    String rejectedField = e.getPropertyName();
+    String suggested = closestKnownField(rejectedField, knownFields);
+    String hint = suggested == null ? "" : String.format(" Did you mean '%s'?", suggested);
+    return String.format(
+        "Invalid field '%s' for %s.%s Valid fields are: %s",
+        rejectedField, clz.getSimpleName(), hint, String.join(", ", knownFields));
+  }
+
+  /**
+   * Message for a patch that names a real field but supplies a value the field cannot hold - a stale
+   * enum constant or the wrong JSON type. Enumerating the accepted constants matters more than the
+   * raw Jackson text here, because the caller that just guessed a field name will guess the value
+   * next.
+   */
+  private static String invalidValueMessage(JsonMappingException e, Class<?> clz) {
+    String field = mappingFieldPath(e);
+    List<String> allowed = allowedValuesFor(e);
+    String detail =
+        allowed.isEmpty()
+            ? String.format(": %s", rootReason(e))
+            : String.format(". Allowed values are: %s", String.join(", ", allowed));
+    return String.format(
+        "Invalid value for field '%s' on %s%s", field, clz.getSimpleName(), detail);
+  }
+
+  /** Dotted path of the field Jackson choked on, e.g. {@code owners.id}. */
+  private static String mappingFieldPath(JsonMappingException e) {
+    String path =
+        e.getPath().stream()
+            .map(JsonMappingException.Reference::getFieldName)
+            .filter(Objects::nonNull)
+            .collect(Collectors.joining("."));
+    return path.isEmpty() ? "<unknown>" : path;
+  }
+
+  /**
+   * Wire-format constants a rejected enum field accepts. Generated enums render their JSON value
+   * from {@code toString()}, not from the constant name, so the strings here match what a caller
+   * must actually send. Empty for any target that is not an enum.
+   */
+  private static List<String> allowedValuesFor(JsonMappingException e) {
+    Class<?> target = rejectedTargetType(e);
+    Object[] constants = target == null ? null : target.getEnumConstants();
+    return constants == null
+        ? List.of()
+        : Arrays.stream(constants).map(Object::toString).sorted().toList();
+  }
+
+  /**
+   * The type Jackson failed to build. The two exception families expose it differently: a rejected
+   * enum constant arrives as {@link ValueInstantiationException}, which carries the type on {@code
+   * getType()} and leaves {@code getTargetType()} null, while a plain shape mismatch fills in {@code
+   * getTargetType()}.
+   */
+  private static Class<?> rejectedTargetType(JsonMappingException e) {
+    Class<?> result = null;
+    if (e instanceof ValueInstantiationException instantiation) {
+      result = instantiation.getType() == null ? null : instantiation.getType().getRawClass();
+    } else if (e instanceof MismatchedInputException mismatch) {
+      result = mismatch.getTargetType();
+    }
+    return result;
+  }
+
+  /** Jackson's own reason, minus the "at [Source: UNKNOWN...]" location noise it appends. */
+  private static String rootReason(JsonMappingException e) {
+    String message = e.getOriginalMessage();
+    return message == null ? e.toString() : message;
+  }
+
+  /**
+   * Suggests a replacement for a rejected field name. Matches on containment rather than edit
+   * distance because the failures seen in practice come from schema renames that wrapped or
+   * pluralized the old name (status to entityStatus, owner to owners, domain to domains), which edit
+   * distance scores poorly. The shortest match wins so 'tag' prefers 'tags' over 'tagLabels'.
+   */
+  private static String closestKnownField(String rejectedField, List<String> knownFields) {
+    String result = null;
+    if (rejectedField != null && rejectedField.length() >= MIN_FIELD_SUGGESTION_LENGTH) {
+      String needle = rejectedField.toLowerCase(Locale.ROOT);
+      result =
+          knownFields.stream()
+              .filter(known -> known.toLowerCase(Locale.ROOT).contains(needle))
+              .min(Comparator.comparingInt(String::length))
+              .orElse(null);
+    }
+    return result;
   }
 
   public static JsonPatch getJsonPatch(String v1, String v2) {
@@ -504,7 +648,11 @@ public final class JsonUtils {
   }
 
   public static Schema getJsonSchema(String schema) {
-    return schemaFactory.getSchema(schema);
+    // SchemaRegistry compiles schemas against shared dialect/metaschema caches that are not safe
+    // under concurrent compilation; serialize compilation to avoid transient failures.
+    synchronized (schemaFactory) {
+      return schemaFactory.getSchema(schema);
+    }
   }
 
   public static JsonNode valueToTree(Object object) {
@@ -901,17 +1049,28 @@ public final class JsonUtils {
   }
 
   /**
-   * Tolerant Date deserializer for {@code TagLabel.appliedAt}. The global ObjectMapper uses
-   * {@code SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")}, which strictly requires a
-   * 6-digit fractional. Python's {@code datetime.isoformat()} drops the fractional entirely
-   * when {@code microsecond == 0}, producing {@code "2026-04-24T10:27:06Z"} that the global
-   * format rejects.
+   * Jackson module that deserializes every {@link Date} field leniently, accepting ISO-8601 with
+   * or without fractional seconds as well as epoch milliseconds. Register it on any ObjectMapper
+   * that parses OpenMetadata request bodies so the strict {@link #DATE_TIME_FORMAT} (used for
+   * serialization) does not reject inputs lacking microseconds.
+   */
+  public static SimpleModule lenientDateModule() {
+    SimpleModule module = new SimpleModule("OpenMetadataLenientDateModule");
+    module.addDeserializer(Date.class, new LenientIsoDateDeserializer());
+    return module;
+  }
+
+  /**
+   * Tolerant Date deserializer. The global ObjectMapper serializes with {@code
+   * SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")}, which strictly requires a 6-digit
+   * fractional. Python's {@code datetime.isoformat()} drops the fractional entirely when {@code
+   * microsecond == 0}, producing {@code "2026-04-24T10:27:06Z"} that the strict format rejects.
    *
    * <p>This deserializer delegates everything to Jackson's normal path ({@link
    * DeserializationContext#parseDate}, which uses the same global format) so all forms that
-   * worked before — JSON numbers, numeric strings, the SDF "…SSSSSSZ" form — keep working.
-   * The only addition is: if the value is the bare-second form, pad the fractional with
-   * {@code .000000} so the global format accepts it.
+   * worked before — JSON numbers, numeric strings, the SDF "…SSSSSSZ" form — keep working. The
+   * only addition is: if the value is the bare-second form, pad the fractional with {@code
+   * .000000} so the global format accepts it.
    */
   public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
     @Override
@@ -980,10 +1139,5 @@ public final class JsonUtils {
       }
       return value.substring(0, 19) + ".000000Z";
     }
-  }
-
-  abstract static class TagLabelDateMixin {
-    @JsonDeserialize(using = LenientIsoDateDeserializer.class)
-    Date appliedAt;
   }
 }

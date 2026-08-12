@@ -42,7 +42,9 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -118,8 +120,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_newTerm,New Term,Test description,,synonym:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_newTerm,New Term,Test description,,synonym:%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -142,8 +144,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_legacyTerm,Legacy Term,Test description,,%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_legacyTerm,Legacy Term,Test description,,%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -176,8 +178,8 @@ public class GlossaryCsvRelationTypesIT {
     String termName = ns.prefix("") + "_mixedTerm";
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s,Mixed Term,Test description,,synonym:%s;%s;broader:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Mixed Term,Test description,,synonym:%s;%s;broader:%s,,,,,Draft,,,,",
             termName,
             term1.getFullyQualifiedName(),
             term2.getFullyQualifiedName(),
@@ -206,8 +208,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_invalidRelTerm,Invalid Rel Term,Test description,,invalidtype:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_invalidRelTerm,Invalid Rel Term,Test description,,invalidtype:%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, true);
@@ -354,8 +356,8 @@ public class GlossaryCsvRelationTypesIT {
     String newTermName = ns.prefix("") + "_importedTerm";
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s,Imported Term,Imported via CSV,,broader:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Imported Term,Imported via CSV,,broader:%s,,,,,Draft,,,,",
             newTermName, existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -416,8 +418,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_colonTerm,Colon Term,Test description,,notarelation:%s.subterm,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_colonTerm,Colon Term,Test description,,notarelation:%s.subterm,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, true);
@@ -432,7 +434,8 @@ public class GlossaryCsvRelationTypesIT {
    * that mutates these settings must use the same key on a {@link ResourceLock} so JUnit serialises
    * across classes; a class-local synchronized block would only guard intra-class concurrency.
    */
-  private static final String SETTINGS_RESOURCE_KEY = "glossaryTermRelationSettings";
+  private static final String SETTINGS_RESOURCE_KEY =
+      SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS;
 
   @Test
   void testImportPreservesMixedRelationsViaApi(TestNamespace ns) throws Exception {
@@ -444,8 +447,8 @@ public class GlossaryCsvRelationTypesIT {
     String newTermName = ns.prefix("") + "_mixed";
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s,Mixed,Mixed term,,synonym:%s;%s;narrower:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Mixed,Mixed term,,synonym:%s;%s;narrower:%s,,,,,Draft,,,,",
             newTermName,
             t1.getFullyQualifiedName(),
             t2.getFullyQualifiedName(),
@@ -576,8 +579,8 @@ public class GlossaryCsvRelationTypesIT {
       String newName = ns.prefix("") + "_imported";
       String csvImport =
           String.format(
-              "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                  + ",%s,Imported,via custom type,,%s:%s,,,,,Draft,,,",
+              "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                  + ",%s,Imported,via custom type,,%s:%s,,,,,Draft,,,,",
               newName, customType, effect.getFullyQualifiedName());
       String result = importGlossaryCsv(glossary.getName(), csvImport, false);
       assertNotNull(result);
@@ -595,6 +598,7 @@ public class GlossaryCsvRelationTypesIT {
           imported.getRelatedTerms().get(0).getRelationType(),
           "Custom relation type should be preserved through CSV import");
     } finally {
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
       cleanupCustomTypes(customType, inverseType);
     }
   }
@@ -652,31 +656,26 @@ public class GlossaryCsvRelationTypesIT {
     putRelationSettings(payload);
   }
 
-  private void cleanupCustomTypes(String... customTypes) {
-    try {
-      JsonNode current = getRelationSettings();
-      ArrayNode types = (ArrayNode) current.get("config_value").get("relationTypes");
-      ArrayNode filtered = OBJECT_MAPPER.createArrayNode();
-      for (JsonNode type : types) {
-        String name = type.get("name").asText();
-        boolean drop = false;
-        for (String custom : customTypes) {
-          if (custom.equals(name)) {
-            drop = true;
-            break;
-          }
-        }
-        if (!drop) {
-          filtered.add(type);
+  private void cleanupCustomTypes(String... customTypes) throws Exception {
+    JsonNode current = getRelationSettings();
+    ArrayNode types = (ArrayNode) current.get("config_value").get("relationTypes");
+    ArrayNode filtered = OBJECT_MAPPER.createArrayNode();
+    for (JsonNode type : types) {
+      String name = type.get("name").asText();
+      boolean drop = false;
+      for (String custom : customTypes) {
+        if (custom.equals(name)) {
+          drop = true;
+          break;
         }
       }
-      ObjectNode payload = OBJECT_MAPPER.createObjectNode();
-      payload.set("relationTypes", filtered);
-      putRelationSettings(payload);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to cleanup custom relation types {}: {}", List.of(customTypes), e.getMessage());
+      if (!drop) {
+        filtered.add(type);
+      }
     }
+    ObjectNode payload = OBJECT_MAPPER.createObjectNode();
+    payload.set("relationTypes", filtered);
+    putRelationSettings(payload);
   }
 
   private JsonNode getRelationSettings() throws Exception {

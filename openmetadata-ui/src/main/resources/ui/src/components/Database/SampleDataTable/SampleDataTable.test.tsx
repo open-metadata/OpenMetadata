@@ -49,8 +49,8 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
     );
 });
 
-jest.mock('../../Modals/EntityDeleteModal/EntityDeleteModal', () => {
-  return jest.fn().mockReturnValue(<p>EntityDeleteModal</p>);
+jest.mock('../../common/DeleteModal/DeleteModal', () => {
+  return jest.fn().mockReturnValue(<p>DeleteModal</p>);
 });
 
 describe('Test SampleDataTable Component', () => {
@@ -111,7 +111,7 @@ describe('Test SampleDataTable Component', () => {
 
     fireEvent.click(deleteButton);
 
-    const deleteModal = screen.getByText('EntityDeleteModal');
+    const deleteModal = screen.getByText('DeleteModal');
 
     expect(deleteModal).toBeInTheDocument();
   });

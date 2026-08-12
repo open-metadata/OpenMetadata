@@ -15,7 +15,7 @@ Module to define overriden dialect methods
 
 from enum import Enum
 
-from sqlalchemy import and_, join, sql
+from sqlalchemy import and_, join, select, sql, text
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes as sa_types
 
@@ -157,13 +157,15 @@ def install_clidriver(clidriver_version: str) -> None:
     Install the CLI Driver for DB2
     """
     # pylint: disable=import-outside-toplevel
-    import os  # noqa: PLC0415
-    import platform  # noqa: PLC0415
-    import subprocess  # noqa: PLC0415
-    import sys  # noqa: PLC0415
-    from urllib.request import URLError, urlopen  # noqa: PLC0415
-
-    import pkg_resources  # noqa: PLC0415
+    import os
+    import platform
+    import subprocess
+    import sys
+    from importlib.metadata import (
+        PackageNotFoundError,
+        distribution,
+    )
+    from urllib.request import URLError, urlopen
 
     clidriver_version = f"v{clidriver_version}"
     system = platform.system().lower()
@@ -215,10 +217,10 @@ def install_clidriver(clidriver_version: str) -> None:
     logger.info(f"Set CLIDRIVER_VERSION to {os.environ['CLIDRIVER_VERSION']}")
     # Uninstall ibm_db if it is already installed
     try:
-        pkg_resources.get_distribution("ibm_db")
+        distribution("ibm_db")
         # If we get here, ibm_db is installed, so uninstall it first
         subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "ibm_db"])
-    except pkg_resources.DistributionNotFound:
+    except PackageNotFoundError:
         # ibm_db is not installed, proceed with installation
         pass
     # Install ibm_db with specific flags
@@ -235,3 +237,66 @@ def install_clidriver(clidriver_version: str) -> None:
         ]
     )
     return None  # noqa: RET501
+
+
+_IBMI_PATCHED = False
+
+
+def _ibmi_compat_select(*args, **kwargs):
+    """Translate the SA-1.x ``select([cols], whereclause, order_by=...)`` form to
+    the modern signature. sqlalchemy-ibmi 0.9.3 uses the legacy form, removed in
+    SA 2.0. ``order_by`` must be carried over: get_foreign_keys and get_indexes
+    rely on it to group multi-column constraints in column order."""
+    if args and isinstance(args[0], (list, tuple)):
+        statement = select(*args[0])
+        for whereclause in args[1:]:
+            if whereclause is not None:
+                statement = statement.where(whereclause)
+        order_by = kwargs.pop("order_by", None)
+        if order_by is not None:
+            statement = statement.order_by(*order_by)
+        if kwargs:
+            raise TypeError(f"Unsupported legacy select() keywords: {sorted(kwargs)}")
+        return statement
+    return select(*args, **kwargs)
+
+
+def get_default_schema_name_ibmi(self, connection):
+    """SA 2.0 rejects raw strings passed to ``Connection.execute``."""
+    return self.normalize_name(connection.execute(text("VALUES CURRENT_SCHEMA")).scalar())
+
+
+def check_text_server_ibmi(self, connection):
+    """SA 2.0 rejects raw strings passed to ``Connection.execute``."""
+    return connection.execute(text("SELECT COUNT(*) FROM QSYS2.SYSTEXTSERVERS")).scalar()
+
+
+def patch_ibmi_dialect() -> bool:
+    """Adapt the sqlalchemy-ibmi dialect to SQLAlchemy 2.0 at runtime.
+
+    sqlalchemy-ibmi 0.9.3 pins sqlalchemy<2 but is installed with --no-deps, so
+    its SA-1.x call sites survive into a SA 2.0 runtime and fail on first use.
+    Reassigning the module-level ``select`` covers every legacy reflection query
+    at once, since the dialect resolves it as a global on each call.
+    """
+    global _IBMI_PATCHED  # noqa: PLW0603
+    if _IBMI_PATCHED:
+        return True
+    try:
+        import sqlalchemy_ibmi.base as ibmi_base
+    except ImportError:
+        logger.debug("sqlalchemy-ibmi not installed - ibmi scheme unavailable")
+        return False
+
+    # A partially-initialised module (interrupted import) satisfies the import
+    # above but lacks the dialect, so assigning onto it would raise instead.
+    dialect = getattr(ibmi_base, "IBMiDb2Dialect", None)
+    if dialect is None:
+        logger.debug("sqlalchemy-ibmi is not usable - ibmi scheme unavailable")
+        return False
+
+    ibmi_base.select = _ibmi_compat_select
+    dialect._get_default_schema_name = get_default_schema_name_ibmi
+    dialect._check_text_server = check_text_server_ibmi
+    _IBMI_PATCHED = True
+    return True

@@ -20,7 +20,7 @@ const systemZoneName = Settings.defaultZone;
 
 const mockPush = jest.fn();
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 

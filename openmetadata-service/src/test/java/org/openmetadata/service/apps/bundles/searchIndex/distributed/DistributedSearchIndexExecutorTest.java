@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -96,6 +97,8 @@ class DistributedSearchIndexExecutorTest {
     executor = new DistributedSearchIndexExecutor(collectionDAO);
     setField("coordinator", coordinator);
     setField("recoveryManager", recoveryManager);
+    // Unit tests exercise the force-cancel logic, not the participant-drain grace timing.
+    setField("participantDrainTimeoutMs", 0L);
   }
 
   @AfterEach
@@ -970,6 +973,61 @@ class DistributedSearchIndexExecutorTest {
   }
 
   @Test
+  void driveJobToTerminalStateWaitsForParticipantsInsteadOfForceCancelling() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    // A non-STOPPING job whose workers drained, but a participant's partition is still PROCESSING
+    // and the job has not reached a terminal state yet.
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING))
+        .thenReturn(List.of(partition(jobId, "table", PartitionStatus.PROCESSING)));
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // We wait for the participant to finish so the entity is promoted with a fully-built index; the
+    // in-flight partition must NOT be force-cancelled (that would promote a partial index). The
+    // completion check still runs so the job terminalizes once the partition actually finishes.
+    verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
+  void driveJobToTerminalStateForceCancelsProcessingPartitionsWhenStopping() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(
+                SearchIndexJob.builder().id(jobId).status(IndexJobStatus.STOPPING).build()));
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // A user-requested stop force-cancels in-flight partitions so the job can reach STOPPED.
+    verify(coordinator).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
+  void driveJobToTerminalStateDoesNotForceCancelWhenNoProcessingPartitionsRemain()
+      throws Exception {
+    UUID jobId = UUID.randomUUID();
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING)).thenReturn(List.of());
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // Nothing is still processing, so there is nothing to force-cancel; the completion check alone
+    // takes the job terminal.
+    verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
   void runWorkerLoopAggregatesPartitionResults() throws Exception {
     UUID jobId = UUID.randomUUID();
     SearchIndexJob runningJob =
@@ -1244,6 +1302,86 @@ class DistributedSearchIndexExecutorTest {
     assertFalse(worker.isAlive());
   }
 
+  @Test
+  void awaitWorkersUnwindsWhenJobTerminalEvenIfWorkersNeverFinish() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob failed =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build();
+    SearchIndexJob running =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build();
+    setField("currentJob", running);
+    setField("latchPollIntervalSeconds", 1L);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(failed));
+
+    CountDownLatch neverDrains = new CountDownLatch(1);
+
+    long start = System.nanoTime();
+    invokePrivate(
+        "awaitWorkers", new Class<?>[] {CountDownLatch.class, UUID.class}, neverDrains, jobId);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertTrue(elapsedMs < 30_000, "orchestrator must unwind, not hang, on a wedged worker");
+    assertTrue(executor.isStopped(), "terminal detection must trigger stop()");
+    verify(coordinator).requestStop(jobId);
+  }
+
+  @Test
+  void awaitWorkersKeepsWaitingWhenJobStateUnreadableThenUnwindsOnCleanPoll() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob running =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build();
+    SearchIndexJob failed =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build();
+    setField("currentJob", running);
+    setField("latchPollIntervalSeconds", 1L);
+
+    when(coordinator.getJob(jobId))
+        .thenThrow(new RuntimeException("transient db error"))
+        .thenReturn(Optional.of(failed));
+
+    CountDownLatch neverDrains = new CountDownLatch(1);
+
+    invokePrivate(
+        "awaitWorkers", new Class<?>[] {CountDownLatch.class, UUID.class}, neverDrains, jobId);
+
+    assertTrue(
+        executor.isStopped(), "a transient read error must not abort; later clean poll unwinds");
+    verify(coordinator).requestStop(jobId);
+  }
+
+  @Test
+  void isJobTerminalOrStoppingReflectsJobState() throws Exception {
+    UUID jobId = UUID.randomUUID();
+
+    when(coordinator.getJob(jobId)).thenReturn(Optional.empty());
+    assertTrue(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build()));
+    assertTrue(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(
+                SearchIndexJob.builder().id(jobId).status(IndexJobStatus.STOPPING).build()));
+    assertTrue(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    assertFalse(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId)).thenThrow(new RuntimeException("transient db error"));
+    assertFalse(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId),
+        "an unreadable job state must be treated as non-terminal so the wait continues");
+  }
+
   private SearchIndexPartition partition(UUID jobId, String entityType, PartitionStatus status) {
     return SearchIndexPartition.builder()
         .id(UUID.randomUUID())
@@ -1272,6 +1410,23 @@ class DistributedSearchIndexExecutorTest {
         entityType,
         List.of());
     return context;
+  }
+
+  @Test
+  void recordTerminalMetricCountsPromotingAsCompletedNotFailed() throws Exception {
+    ReindexingMetrics metrics = mock(ReindexingMetrics.class);
+    Timer.Sample sample = mock(Timer.Sample.class);
+    Class<?>[] sig = {ReindexingMetrics.class, Timer.Sample.class, IndexJobStatus.class};
+
+    // PROMOTING is the drained hand-off state execute() ends on (the strategy promotes and flips it
+    // terminal afterwards). It must record a COMPLETED run — pre-fix it fell through to
+    // recordJobFailed, misreporting every successful distributed reindex as a failure.
+    invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.PROMOTING);
+    verify(metrics).recordJobCompleted(sample);
+    verify(metrics, never()).recordJobFailed(sample);
+
+    invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.FAILED);
+    verify(metrics).recordJobFailed(sample);
   }
 
   private Object invokePrivate(String methodName, Class<?>[] parameterTypes, Object... args)

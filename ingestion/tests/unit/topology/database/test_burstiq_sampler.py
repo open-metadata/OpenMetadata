@@ -37,7 +37,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.models import SampleConfig
-from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
+from metadata.sampler.pandas.burstiq.sampler import (
+    _MAX_PROFILE_ROWS,
+    _PAGE_SIZE,
+    BurstIQSampler,
+)
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -78,14 +82,13 @@ def mock_client():
 @pytest.fixture
 def sampler(mock_client):
     with patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=mock_client,
     ):
         s = _ConcreteBurstIQSampler(
             service_connection_config=BURSTIQ_CONNECTION,
             ometa_client=None,
             entity=TABLE_ENTITY,
-            sample_config=SampleConfig(),
         )
     return s  # noqa: RET504
 
@@ -139,6 +142,11 @@ class TestBurstIQSamplerRawDataset:
 
         mock_client.get_chain_metrics.assert_not_called()
         assert sum(len(df) for df in dfs) == 10
+
+    def test_no_sample_caps_at_max_profile_rows(self, sampler):
+        sampler.sample_config = SampleConfig()
+
+        assert sampler._compute_total_limit("TestChain") == _MAX_PROFILE_ROWS
 
     def test_empty_chain_yields_single_empty_dataframe(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
@@ -248,6 +256,36 @@ class TestBurstIQSamplerFetchSampleData:
             result = sampler.fetch_sample_data(cols)
 
         assert len(result.rows[0][0]) == SAMPLE_DATA_MAX_CELL_LENGTH
+
+    def test_partial_rows_kept_only_fully_empty_dropped(self, sampler):
+        # BurstIQ omits fields per record, so rows have gaps. dropna(how="all")
+        # keeps partial rows; a base dropna() would drop them all and collapse
+        # the sample to almost nothing (the "4 rows" regression).
+        df = pd.DataFrame({"score": [1.0, None, None], "age": [None, 20, None]})
+        cols = [
+            SQALikeColumn(name="score", type=DataType.DOUBLE),
+            SQALikeColumn(name="age", type=DataType.INT),
+        ]
+        with self._patch_raw(sampler, df):
+            result = sampler.fetch_sample_data(cols)
+
+        assert len(result.rows) == 2
+
+    def test_missing_cells_become_none_not_nan(self, sampler):
+        # BurstIQ gaps arrive as NaN; they must serialize as null, not "nan".
+        df = pd.DataFrame({"score": [1.0, None], "age": [None, 20]})
+        cols = [
+            SQALikeColumn(name="score", type=DataType.DOUBLE),
+            SQALikeColumn(name="age", type=DataType.INT),
+        ]
+        with self._patch_raw(sampler, df):
+            result = sampler.fetch_sample_data(cols)
+
+        assert result.rows[0][1] is None
+        assert result.rows[1][0] is None
+        flat = [cell for row in result.rows for cell in row]
+        assert not any(isinstance(c, float) and math.isnan(c) for c in flat)
+        assert "nan" not in [str(c).lower() for c in flat]
 
 
 class TestBurstIQSamplerCastDataframe:

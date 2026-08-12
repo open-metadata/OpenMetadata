@@ -17,8 +17,8 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { ServiceInsightsWidgetType } from '../../../enums/ServiceInsights.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getServiceInsightsWidgetPlaceholder } from '../../../utils/ServiceInsightsTabUtils';
-import { getReadableCountString } from '../../../utils/ServiceUtils';
+import { getServiceInsightsWidgetPlaceholder } from '../../../utils/ServiceInsightsWidgets';
+import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import './total-data-assets-widget.less';
 import { TotalAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 

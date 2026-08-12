@@ -43,13 +43,11 @@ import { getDataModels } from '../../../../rest/dashboardAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   dataProductTableObject,
   descriptionTableObject,

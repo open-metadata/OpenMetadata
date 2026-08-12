@@ -15,28 +15,27 @@ import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
+import { EntityType } from '../../../../enums/entity.enum';
+import { CardStyle } from '../../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { getFeedHeaderTextFromCardStyle } from '../../../../utils/FeedUtils';
 import {
   entityDisplayName,
   getEntityFQN,
   getEntityType,
-  getFeedHeaderTextFromCardStyle,
-} from '../../../../utils/FeedUtils';
-import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-
-import { useTranslation } from 'react-i18next';
-import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
-import { EntityType } from '../../../../enums/entity.enum';
-import { CardStyle } from '../../../../generated/entity/feed/thread';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+} from '../../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './feed-card-header-v2.less';
 import { FeedCardHeaderV2Props } from './FeedCardHeaderV2.interface';

@@ -37,6 +37,10 @@
     "latestResult",
     "consumesFrom",
     "providesTo",
-    "lifecycleStage"
+    "lifecycleStage",
+    "glossaryTerms",
+    "inputPorts",
+    "outputPorts",
+    "entityStatus"
   ]
 }

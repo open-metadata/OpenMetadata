@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { findByText, render, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { screen, waitFor } from '@testing-library/react';
 import { getTopicByFqn } from '../../rest/topicsAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import TopicDetailsPageComponent from './TopicDetailsPage.component';
 
 jest.mock('../../components/Topic/TopicDetails/TopicDetails.component', () => {
@@ -48,7 +48,7 @@ jest.mock('../../hooks/useFqn', () => ({
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
-    getEntityPermission: jest.fn().mockResolvedValue({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
       Create: true,
       Delete: true,
       EditAll: true,
@@ -106,16 +106,11 @@ describe('Test TopicDetailsPage component', () => {
   });
 
   it('TopicDetailsPage component should render properly', async () => {
-    const { container } = render(<TopicDetailsPageComponent />, {
-      wrapper: MemoryRouter,
-    });
+    renderWithQueryClient(<TopicDetailsPageComponent />);
 
-    const topicDetailComponent = await findByText(
-      container,
-      /TopicDetails.component/i
+    await waitFor(() =>
+      expect(screen.getByText(/TopicDetails.component/i)).toBeInTheDocument()
     );
-
-    expect(topicDetailComponent).toBeInTheDocument();
   });
 
   it('Should extract topic FQN from field-level deep link URL', async () => {
@@ -129,15 +124,13 @@ describe('Test TopicDetailsPage component', () => {
       });
     });
 
-    render(<TopicDetailsPageComponent />, {
-      wrapper: MemoryRouter,
-    });
+    renderWithQueryClient(<TopicDetailsPageComponent />);
 
-    await waitFor(() => {
+    await waitFor(() =>
       expect(getTopicByFqn).toHaveBeenCalledWith(
         'sample_kafka.sales',
         expect.any(Object)
-      );
-    });
+      )
+    );
   });
 });

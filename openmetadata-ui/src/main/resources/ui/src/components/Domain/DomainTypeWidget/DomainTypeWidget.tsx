@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
-import classNames from 'classnames';
-
+import { Box } from '@openmetadata/ui-core-components';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import FormItemLabel from '../../common/Form/FormItemLabel';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
 
 export const DomainTypeWidget = () => {
@@ -51,40 +51,29 @@ export const DomainTypeWidget = () => {
     setEditDomainType(false);
   };
 
-  const header = (
-    <div className={classNames('d-flex items-center gap-2')}>
-      <Typography.Text
-        className="right-panel-label"
-        data-testid="domainType-heading-name">
-        <FormItemLabel
-          align={{ targetOffset: [18, 0] }}
-          helperText={domainTypeTooltipDataRender()}
-          label={t('label.domain-type')}
-          overlayClassName="domain-type-tooltip-container"
-          placement="topLeft"
-        />
-      </Typography.Text>
-
-      {!isVersionView && editAllPermission && domain.domainType && (
-        <EditIconButton
-          newLook
-          data-testid="edit-domainType-button"
-          size="small"
-          title={t('label.edit-entity', {
-            entity: t('label.domain-type'),
-          })}
-          onClick={() => setEditDomainType(true)}
-        />
-      )}
-    </div>
+  const domainTypeActionButton = domain.domainType ? (
+    <WidgetEditButton
+      data-testid="edit-domainType-button"
+      title={t('label.edit-entity', { entity: t('label.domain-type') })}
+      onClick={() => setEditDomainType(true)}
+    />
+  ) : (
+    <WidgetPlusButton
+      data-testid="add-domainType-button"
+      title={t('label.add-entity', { entity: t('label.domain-type') })}
+      onClick={() => setEditDomainType(true)}
+    />
   );
+
+  const headerExtra =
+    !isVersionView && editAllPermission ? domainTypeActionButton : null;
 
   const content = (
     <>
       {!editDomainType && (
-        <Space wrap data-testid="domain-type-label" size={6}>
+        <Box data-testid="domain-type-label" gap={2} wrap="wrap">
           {domain?.domainType}
-        </Space>
+        </Box>
       )}
 
       {editDomainType && (
@@ -98,12 +87,14 @@ export const DomainTypeWidget = () => {
   );
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
-      dataTestId="domainType">
+    <WidgetCard
+      dataTestId="domainType"
+      forceExpand={editDomainType}
+      headerExtra={headerExtra}
+      helperText={domainTypeTooltipDataRender()}
+      isExpandDisabled={!domain.domainType && !editDomainType}
+      title={t('label.domain-type')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };

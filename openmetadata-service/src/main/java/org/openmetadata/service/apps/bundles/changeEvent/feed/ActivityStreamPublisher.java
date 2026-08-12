@@ -101,9 +101,9 @@ public class ActivityStreamPublisher implements Destination<ChangeEvent> {
         return;
       }
 
-      // Create activity events from the change event
       List<ActivityEvent> events =
           activityStreamRepository.createFieldEventsFromChangeEvent(changeEvent, entity);
+      activityStreamRepository.insertBatch(events);
 
       // Broadcast via WebSocket for real-time updates
       for (ActivityEvent event : events) {

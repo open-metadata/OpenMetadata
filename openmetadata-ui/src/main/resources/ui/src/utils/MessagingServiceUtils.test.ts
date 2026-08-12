@@ -42,8 +42,8 @@ import { MessagingServiceType } from '../generated/entity/services/messagingServ
 import { getMessagingConfig } from './MessagingServiceUtils';
 
 describe('MessagingServiceUtils', () => {
-  it('Kafka uiSchema should include ui:emptyValue for schemaRegistryTopicSuffixName', () => {
-    const config = getMessagingConfig(MessagingServiceType.Kafka);
+  it('Kafka uiSchema should include ui:emptyValue for schemaRegistryTopicSuffixName', async () => {
+    const config = await getMessagingConfig(MessagingServiceType.Kafka);
 
     expect(config.uiSchema).toMatchObject({
       ...COMMON_UI_SCHEMA,
@@ -53,8 +53,8 @@ describe('MessagingServiceUtils', () => {
     });
   });
 
-  it('Redpanda uiSchema should include ui:emptyValue for schemaRegistryTopicSuffixName', () => {
-    const config = getMessagingConfig(MessagingServiceType.Redpanda);
+  it('Redpanda uiSchema should include ui:emptyValue for schemaRegistryTopicSuffixName', async () => {
+    const config = await getMessagingConfig(MessagingServiceType.Redpanda);
 
     expect(config.uiSchema).toMatchObject({
       ...COMMON_UI_SCHEMA,
@@ -64,14 +64,14 @@ describe('MessagingServiceUtils', () => {
     });
   });
 
-  it('non-broker services should not include schemaRegistryTopicSuffixName uiSchema', () => {
-    const config = getMessagingConfig(MessagingServiceType.Kinesis);
+  it('non-broker services should not include schemaRegistryTopicSuffixName uiSchema', async () => {
+    const config = await getMessagingConfig(MessagingServiceType.Kinesis);
 
     expect(config.uiSchema).not.toHaveProperty('schemaRegistryTopicSuffixName');
   });
 
-  it('getMessagingConfig should return only common UI schema for invalid types', () => {
-    const config = getMessagingConfig('' as MessagingServiceType);
+  it('getMessagingConfig should return only common UI schema for invalid types', async () => {
+    const config = await getMessagingConfig('' as MessagingServiceType);
 
     expect(config.uiSchema).toEqual({ ...COMMON_UI_SCHEMA });
   });

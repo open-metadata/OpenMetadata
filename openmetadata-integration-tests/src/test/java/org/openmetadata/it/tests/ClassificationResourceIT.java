@@ -8,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.awaitility.Awaitility;
@@ -22,6 +25,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityStatus;
@@ -31,6 +35,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Classification entity operations.
@@ -465,6 +470,50 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Test
+  void test_putPreservesAutoClassificationConfig_ingestionScenario(TestNamespace ns) {
+    // A metadata connector re-creates a source classification with a bare PUT
+    // (name + description only, no autoClassificationConfig). This must NOT wipe
+    // an existing config - the regression that disabled auto-classification for
+    // PII/PersonalData after every metadata ingestion.
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_put_preserve"));
+    createClassification.setDescription("Classification with auto-classification enabled");
+    createClassification.setAutoClassificationConfig(
+        new AutoClassificationConfig().withEnabled(true).withMinimumConfidence(0.6));
+
+    Classification classification = createEntity(createClassification);
+    assertNotNull(classification.getAutoClassificationConfig());
+    assertTrue(classification.getAutoClassificationConfig().getEnabled());
+
+    // Simulate the ingestion sink's create_or_update: PUT /v1/classifications with a
+    // CreateClassification carrying only name + description (no autoClassificationConfig).
+    CreateClassification bareUpsert =
+        new CreateClassification()
+            .withName(classification.getName())
+            .withDescription("Updated by metadata ingestion");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/classifications", bareUpsert, Classification.class);
+
+    // The config must survive the bare PUT
+    Classification afterIngestion =
+        getEntityWithFields(classification.getId().toString(), "autoClassificationConfig");
+    assertNotNull(
+        afterIngestion.getAutoClassificationConfig(),
+        "Bare PUT from ingestion must not delete autoClassificationConfig");
+    assertTrue(afterIngestion.getAutoClassificationConfig().getEnabled());
+
+    // An explicit PATCH clearing the config must still delete it
+    afterIngestion.setAutoClassificationConfig(null);
+    patchEntity(afterIngestion.getId().toString(), afterIngestion);
+    Classification afterPatch =
+        getEntityWithFields(classification.getId().toString(), "autoClassificationConfig");
+    assertNull(
+        afterPatch.getAutoClassificationConfig(),
+        "Explicit PATCH clearing the config must still delete it");
+  }
+
+  @Test
   void test_deleteAutoClassificationConfig(TestNamespace ns) {
     // Create classification with auto-classification config
     CreateClassification createClassification = new CreateClassification();
@@ -761,6 +810,114 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
                   client.tags().get(tag2.getId().toString());
               assertTrue(fetchedTag1.getFullyQualifiedName().startsWith(newName));
               assertTrue(fetchedTag2.getFullyQualifiedName().startsWith(newName));
+            });
+  }
+
+  // ===================================================================
+  // Issue #28696 (classification analogue): renaming a classification so the new
+  // name keeps the old name as a PREFIX must rewrite child tag FQNs on linked
+  // assets correctly AND must NOT corrupt a sibling classification that merely
+  // shares a textual prefix. Classification asset-tag propagation runs through
+  // the shared, now boundary-aware UPDATE_FQN_PREFIX_SCRIPT
+  // (propagateToRelatedEntities, gated on the displayName change a UI rename
+  // sends). Unlike glossary it is single-pass, so the exact rename was already
+  // fine; the sibling assertion is what the boundary fix protects.
+  // ===================================================================
+  @Test
+  void test_renameClassificationPrefixExtension_rewritesChildTagsButNotSibling(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    TableResourceIT tableResourceIT = new TableResourceIT();
+
+    // Dot-free classification name; sibling shares the prefix WITHOUT a '.' boundary.
+    String nameA = "clf_" + ns.shortPrefix();
+    Classification a =
+        createEntity(
+            new CreateClassification()
+                .withName(nameA)
+                .withDisplayName("Sensitivity")
+                .withDescription("Classification renamed via prefix extension (#28696)"));
+    Classification sibling =
+        createEntity(
+            new CreateClassification()
+                .withName(nameA + "x")
+                .withDescription("Sibling classification sharing the textual prefix"));
+
+    Tag tagA =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("sensitive")
+                    .withClassification(a.getFullyQualifiedName())
+                    .withDescription("child tag of the renamed classification"));
+    Tag tagSibling =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("foo")
+                    .withClassification(sibling.getFullyQualifiedName())
+                    .withDescription("child tag of the sibling classification"));
+    String tagAFqn = tagA.getFullyQualifiedName();
+    String siblingTagFqn = tagSibling.getFullyQualifiedName();
+
+    Table assetA = createTableWithTag(tableResourceIT, ns, "a", tagAFqn);
+    Table assetSibling = createTableWithTag(tableResourceIT, ns, "s", siblingTagFqn);
+
+    awaitTableTag(client, mapper, assetA.getId().toString(), tagAFqn);
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingTagFqn);
+
+    a.setName(nameA + " Renamed");
+    a.setDisplayName("Sensitivity Renamed");
+    Classification renamed = patchEntity(a.getId().toString(), a);
+    String newNameA = renamed.getFullyQualifiedName();
+    assertNotEquals(nameA, newNameA);
+    assertTrue(newNameA.startsWith(nameA), "rename must extend the name as a prefix: " + newNameA);
+
+    // Child tag FQN on the linked asset follows the renamed classification...
+    awaitTableTag(client, mapper, assetA.getId().toString(), newNameA + ".sensitive");
+    // ...and the prefix-sharing sibling's asset tag is left untouched.
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingTagFqn);
+  }
+
+  private Table createTableWithTag(
+      TableResourceIT tableResourceIT, TestNamespace ns, String suffix, String tagFqn) {
+    Table table =
+        tableResourceIT.createEntity(
+            tableResourceIT.createRequest(ns.shortPrefix("clf_tbl_" + suffix), ns).withTags(null));
+    table.setTags(List.of(new TagLabel().withTagFQN(tagFqn)));
+    return tableResourceIT.patchEntity(table.getId().toString(), table);
+  }
+
+  private void awaitTableTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    Awaitility.await("table search doc carries tag " + expectedTagFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> tagFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                tagFqns.add(tag.path("tagFQN").asText());
+              }
+              assertTrue(
+                  tagFqns.contains(expectedTagFqn),
+                  "Expected tagFQN '"
+                      + expectedTagFqn
+                      + "' on table search doc but found "
+                      + tagFqns);
             });
   }
 }

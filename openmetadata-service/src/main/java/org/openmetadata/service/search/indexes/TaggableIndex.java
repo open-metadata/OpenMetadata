@@ -26,11 +26,18 @@ public interface TaggableIndex extends SearchIndex {
 
   /**
    * Applies tag-related fields to the search index document. Called automatically by {@link
-   * SearchIndex#buildSearchIndexDoc()}.
+   * SearchIndex#buildSearchIndexDoc()} and shared by both the live-indexing path
+   * ({@link org.openmetadata.service.search.SearchRepository#updateEntityIndex}) and the
+   * SearchIndexApp reindex path ({@code BulkSink.addEntity}) — both converge on this method.
    *
-   * <p>Sets: tags, tier, classificationTags, glossaryTags from entity-level tags. Child tags
-   * (columns, schema fields) are merged later via {@link #mergeChildTags(Map, Set)} from within
-   * {@code buildSearchIndexDocInternal}, so that child structure flattening only happens once.
+   * <p>The doc has a deliberate separation: {@code tags[]} carries only classification and
+   * glossary tags; {@code tier} is the lifted Tier TagLabel; {@code certification} (set by
+   * {@code populateCommonFields}) is the structured {@code AssetCertification} object. Consumers
+   * filter through dedicated fields — UI queries should use {@code tier.tagFQN},
+   * {@code certification.tagLabel.tagFQN}, {@code classificationTags}, {@code glossaryTags} —
+   * rather than treating {@code tags[]} as an all-encompassing bag. Child tags (columns, schema
+   * fields) are merged later via {@link #mergeChildTags(Map, Set)} from within
+   * {@code buildSearchIndexDocInternal}, so child structure flattening only happens once.
    */
   default void applyTagFields(Map<String, Object> doc) {
     Object entity = getEntity();

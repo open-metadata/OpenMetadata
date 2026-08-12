@@ -22,8 +22,6 @@ const mockSelectServiceTypeProps: SelectServiceTypeProps = {
   serviceCategoryHandler: jest.fn(),
   selectServiceType: '',
   handleServiceTypeClick: jest.fn(),
-  onCancel: jest.fn(),
-  onNext: jest.fn(),
 };
 
 jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () =>
@@ -38,12 +36,8 @@ describe('Test SelectServiceType component', () => {
 
     const serviceCategory = await findByTestId(container, 'service-category');
     const selectService = await findByTestId(container, 'select-service');
-    const previousButton = await findByTestId(container, 'previous-button');
-    const nextButton = await findByTestId(container, 'next-button');
 
     expect(serviceCategory).toBeInTheDocument();
     expect(selectService).toBeInTheDocument();
-    expect(previousButton).toBeInTheDocument();
-    expect(nextButton).toBeInTheDocument();
   });
 });

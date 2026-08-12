@@ -16,11 +16,10 @@ import { ExtraInfo } from 'Models';
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getTagValue } from '../../../utils/CommonUtils';
+import { getTagValue } from '../../../utils/TagsPureUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
-
 type Props = {
   description: string;
   extraInfo: Array<ExtraInfo>;
@@ -33,6 +32,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   tags,
 }: Props) => {
   const { t } = useTranslation();
+  const visibleExtraInfo = extraInfo.filter((info) => !isNil(info.value));
 
   return (
     <div data-testid="table-body">
@@ -48,21 +48,19 @@ const TableDataCardBody: FunctionComponent<Props> = ({
         )}
       </div>
       <div className="d-flex items-center flex-wrap text-xs text-grey-muted">
-        {extraInfo.map((info, i) =>
-          !isNil(info.value) ? (
-            <span
-              className="d-flex items-center"
-              data-testid={info.key}
-              key={info.key}>
-              <EntitySummaryDetails data={info} />
-              {i !== extraInfo.length - 1 && (
-                <span className="px-1.5 d-inline-block text-lg font-semibold">
-                  {t('label.middot-symbol')}
-                </span>
-              )}
-            </span>
-          ) : null
-        )}
+        {visibleExtraInfo.map((info, i) => (
+          <span
+            className="d-flex items-center"
+            data-testid={info.key}
+            key={info.key}>
+            <EntitySummaryDetails data={info} />
+            {i !== visibleExtraInfo.length - 1 && (
+              <span className="px-1.5 d-inline-block text-lg font-semibold">
+                {t('label.middot-symbol')}
+              </span>
+            )}
+          </span>
+        ))}
       </div>
       {!isEmpty(tags) && (
         <div className="m-t-md" data-testid="tags-container">

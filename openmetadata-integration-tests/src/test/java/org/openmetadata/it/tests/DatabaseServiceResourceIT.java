@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -36,6 +37,11 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -332,6 +338,52 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void list_databaseServiceWithPipelinesField_populatesPipelines(TestNamespace ns) {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("svc_pipe_dom"))
+                    .withDescription("Isolates list query for pipelines-field test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    CreateDatabaseService createRequest =
+        createMinimalRequest(ns)
+            .withName(ns.prefix("svc_pipe"))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = createEntity(createRequest);
+
+    CreateIngestionPipeline pipelineRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("ingestion_pipe"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true)))
+            .withAirflowConfig(new AirflowConfig());
+    IngestionPipeline pipeline =
+        SdkClients.adminClient().ingestionPipelines().create(pipelineRequest);
+
+    ListParams params = new ListParams().withDomain(domain.getFullyQualifiedName()).withLimit(1000);
+    params.setFields("pipelines");
+    ListResponse<DatabaseService> response = listEntities(params);
+
+    DatabaseService listed =
+        response.getData().stream()
+            .filter(s -> s.getId().equals(service.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listed, "Created service should be present in list response");
+    assertNotNull(
+        listed.getPipelines(), "fields=pipelines must populate pipelines on the service endpoint");
+    assertTrue(
+        listed.getPipelines().stream().anyMatch(p -> p.getId().equals(pipeline.getId())),
+        "Service should include the ingestion pipeline when fields=pipelines");
+  }
+
+  @Test
   void post_validDatabaseService_as_admin_200_ok(TestNamespace ns) {
     CreateDatabaseService request1 = createMinimalRequest(ns);
     request1.setName(ns.prefix("service_1"));
@@ -463,6 +515,50 @@ public class DatabaseServiceResourceIT
         storedService.getTestConnectionResult(), "Test connection result should be persisted");
     assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
+  }
+
+  /**
+   * Builds service → database → schema → table so the shared recursive-hard-delete regression
+   * ({@link BaseServiceIT#recursiveHardDelete_serviceSubtree_leavesNoOrphansAndSearchClean}) can
+   * verify the bulk-delete optimization for the database hierarchy (Table / DatabaseSchema /
+   * Database carry {@code descendantsCoveredByAncestorCascade=true}).
+   */
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    DatabaseService service =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("del_subtree_svc")));
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("s1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("t1"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("c1").withDataType(ColumnDataType.INT))));
+    // The column_search_index cleanup on recursive hard delete is covered by the unit test
+    // SearchRepositoryBehaviorTest and the scale IT ServiceDeleteSearchCleanupScaleIT. It is not
+    // asserted here: under the full concurrent IT suite the per-delete column delete-by-query
+    // contends on the shared column_search_index, delaying visibility of a freshly indexed column
+    // doc past the precondition timeout and flaking this otherwise-unrelated regression.
+    return new DeletableSubtree(
+        service.getId().toString(),
+        List.of(database.getId().toString(), schema.getId().toString(), table.getId().toString()),
+        List.of(new SearchDoc("table_search_index", table.getId().toString())));
   }
 
   @Test
@@ -803,11 +899,8 @@ public class DatabaseServiceResourceIT
   void test_csvImportEntityRuleValidation(TestNamespace ns)
       throws IOException, InterruptedException {
 
-    final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
-
     // Check if rule is currently enabled and store original state
-    boolean originalRuleState =
-        EntityRulesUtil.isRuleEnabled(SdkClients.adminClient(), MULTI_DOMAIN_RULE);
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(SdkClients.adminClient());
 
     try {
       // Enable the multi-domain rule for testing

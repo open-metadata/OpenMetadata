@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.NonNull;
@@ -79,8 +80,11 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -219,6 +223,9 @@ public final class Entity {
   public static final String PROMPT_TEMPLATE = "promptTemplate";
   public static final String AGENT_EXECUTION = "agentExecution";
   public static final String AI_GOVERNANCE_POLICY = "aiGovernancePolicy";
+  public static final String AI_GOVERNANCE_FRAMEWORK = "aiGovernanceFramework";
+  public static final String AI_FRAMEWORK_CONTROL = "aiFrameworkControl";
+  public static final String AUDIT_REPORT = "auditReport";
   public static final String MCP_SERVER = "mcpServer";
   public static final String MCP_EXECUTION = "mcpExecution";
   public static final String TEST_DEFINITION = "testDefinition";
@@ -265,6 +272,7 @@ public final class Entity {
   public static final String DATA_PRODUCT = "dataProduct";
   public static final String DATA_CONTRACT = "dataContract";
   public static final String DATA_CONTRACT_RESULT = "dataContractResult";
+  public static final String INTAKE_FORM = "intakeForm";
 
   //
   // Other entities
@@ -308,6 +316,7 @@ public final class Entity {
 
   public static final String DOCUMENT = "document";
   public static final String LEARNING_RESOURCE = "learningResource";
+  public static final String CONTEXT_MEMORY = "contextMemory";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
   // entity type to service entity name map
@@ -406,8 +415,17 @@ public final class Entity {
         }
       }
       registerDomainSyncHandler();
+      validateIndexMappingsAgainstCapabilities();
       initializedRepositories = true;
     }
+  }
+
+  private static void validateIndexMappingsAgainstCapabilities() {
+    if (searchRepository == null || searchRepository.getEntityIndexMap() == null) {
+      return;
+    }
+    org.openmetadata.service.search.validation.IndexMappingValidator.validate(
+        searchRepository.getEntityIndexMap());
   }
 
   private static void registerDomainSyncHandler() {
@@ -427,6 +445,7 @@ public final class Entity {
     searchRepository = null;
     entityRelationshipRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
+    EntityIndexCapabilityRegistry.clear();
   }
 
   public static <T extends EntityInterface> void registerEntity(
@@ -435,6 +454,7 @@ public final class Entity {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
+    EntityIndexCapabilityRegistry.register(EntityIndexCapability.forEntity(entity));
 
     LOG.debug("Registering entity {} {}", clazz, entity);
   }
@@ -446,6 +466,7 @@ public final class Entity {
         entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
+    EntityIndexCapabilityRegistry.register(EntityIndexCapability.forTimeSeries(entity));
 
     LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
@@ -627,6 +648,38 @@ public final class Entity {
     }
   }
 
+  /**
+   * Same as {@link #getEntity(String, UUID, String, Include)} but yields {@code null} instead of
+   * throwing when the entity is gone. Use it on best-effort paths that run after the entity may have
+   * been deleted — asynchronous alert filtering, for instance — where a missing entity is an
+   * expected outcome rather than an error.
+   */
+  public static <T> T getEntityOrNull(String entityType, UUID id, String fields, Include include) {
+    return getEntityOrNull(entityType, id, fields, RelationIncludes.fromInclude(include));
+  }
+
+  /**
+   * Same as {@link #getEntityOrNull(String, UUID, String, Include)} but with per-relation include
+   * control, so a caller can tolerate a deleted subject entity without also widening which related
+   * entities its relationship fields resolve to.
+   */
+  @SuppressWarnings("unchecked")
+  public static <T> T getEntityOrNull(
+      String entityType, UUID id, String fields, RelationIncludes relationIncludes) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    T entity;
+    try {
+      entity =
+          (T)
+              entityRepository.get(
+                  null, id, entityRepository.getFields(fields), relationIncludes, true);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("{} {} not found while reading fields '{}'", entityType, id, fields);
+      entity = null;
+    }
+    return entity;
+  }
+
   public static <T> T getEntity(EntityLink link, String fields, Include include) {
     return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
@@ -720,6 +773,56 @@ public final class Entity {
         || ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
   }
 
+  /**
+   * Whether an entity instance should be written to the search index, per its repository's {@link
+   * EntityRepository#isSearchIndexable} policy. Defaults to {@code true} for entity types with no
+   * regular entity repository (index-only / time-series sub-entities), so the live index paths
+   * never throw on an indexable but repository-less type. Returns {@code false} when the entity or
+   * its reference is missing.
+   */
+  public static boolean isSearchIndexable(EntityInterface entity) {
+    return repositoryPolicyAllows(entity, EntityRepository::isSearchIndexable);
+  }
+
+  /**
+   * Whether an entity instance should be embedded into the vector/semantic index, per its
+   * repository's {@link EntityRepository#isVectorEmbeddable} policy. An entity type may opt out when
+   * its chunk documents cannot carry the filters its privacy model requires. Defaults and
+   * null-handling match {@link #isSearchIndexable}.
+   */
+  public static boolean isVectorEmbeddable(EntityInterface entity) {
+    return repositoryPolicyAllows(entity, EntityRepository::isVectorEmbeddable);
+  }
+
+  private static boolean repositoryPolicyAllows(
+      EntityInterface entity,
+      BiPredicate<EntityRepository<? extends EntityInterface>, EntityInterface> policy) {
+    boolean allowed = false;
+    EntityReference entityReference = entity == null ? null : entity.getEntityReference();
+    String entityType = entityReference == null ? null : entityReference.getType();
+    if (entityType != null) {
+      EntityRepository<? extends EntityInterface> repository =
+          ENTITY_REPOSITORY_MAP.get(entityType);
+      allowed = repository == null || policy.test(repository, entity);
+    }
+    return allowed;
+  }
+
+  /**
+   * Returns true when {@code entityTypeOrAlias} maps to an {@link EntityTimeSeriesInterface}
+   * (append-only, no top-level {@code deleted} field). Backed by
+   * {@link EntityIndexCapabilityRegistry}; the legacy {@code ENTITY_TS_REPOSITORY_MAP} fallback
+   * keeps the helper usable in tests that register repositories directly without going through
+   * the standard capability registration path.
+   */
+  public static boolean isTimeSeriesEntity(@NonNull String entityTypeOrAlias) {
+    EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityTypeOrAlias);
+    if (capability != null) {
+      return capability.isTimeSeries();
+    }
+    return ENTITY_TS_REPOSITORY_MAP.containsKey(entityTypeOrAlias);
+  }
+
   public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>
       getEntityTimeSeriesRepository(@NonNull String entityType) {
     EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
@@ -741,6 +844,16 @@ public final class Entity {
           CatalogExceptionMessage.entityTypeNotFound(serviceType.value()));
     }
     return entityRepository;
+  }
+
+  /**
+   * Entity type names of every service entity, e.g. {@code databaseService}. This is the single
+   * source of truth for "what is a service" — callers that need to iterate all service types must
+   * use it rather than hardcoding a list, which is how entity/utils/servicesCount.json drifted to
+   * covering only 7 of the 13 service types.
+   */
+  public static List<String> getServiceEntityTypes() {
+    return List.copyOf(SERVICE_TYPE_ENTITY_MAP.values());
   }
 
   public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {

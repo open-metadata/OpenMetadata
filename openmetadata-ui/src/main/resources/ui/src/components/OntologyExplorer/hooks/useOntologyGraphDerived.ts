@@ -387,6 +387,9 @@ export function useOntologyGraphDerived({
           from: e.from,
           to: e.to,
           relationType: e.relationType,
+          ...(e.inverseRelationType
+            ? { inverseRelationType: e.inverseRelationType }
+            : {}),
           label: e.relationType,
         })),
       };

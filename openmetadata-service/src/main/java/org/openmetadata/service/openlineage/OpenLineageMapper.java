@@ -15,8 +15,10 @@ package org.openmetadata.service.openlineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,8 @@ import org.openmetadata.schema.type.LineageDetails;
 
 @Slf4j
 public class OpenLineageMapper {
+
+  private static final String OPEN_LINEAGE_USER = "openlineage";
 
   private final OpenLineageEntityResolver entityResolver;
   private final Set<String> allowedEventTypes;
@@ -97,6 +101,11 @@ public class OpenLineageMapper {
 
     String sqlQuery = extractSqlQuery(event);
 
+    // eventTime is the pipeline runtime moment the edge was actually observed; preserving it
+    // lets historical replay (e.g. Kinesis backlog) reconstruct the real timeline rather than
+    // collapsing everything to ingestion wall-clock.
+    long eventTimeMs = resolveEventTimeMillis(event);
+
     for (OpenLineageOutputDataset output : outputs) {
       EntityReference outputRef = entityResolver.resolveOrCreateTable(output, updatedBy);
       if (outputRef == null && entityResolver.isStorageDataset(output.getNamespace())) {
@@ -131,7 +140,11 @@ public class OpenLineageMapper {
                 .withDescription(buildDescription(event))
                 .withPipeline(pipelineRef)
                 .withSqlQuery(sqlQuery)
-                .withColumnsLineage(relevantColumnLineage.isEmpty() ? null : relevantColumnLineage);
+                .withColumnsLineage(relevantColumnLineage.isEmpty() ? null : relevantColumnLineage)
+                .withCreatedAt(eventTimeMs)
+                .withUpdatedAt(eventTimeMs)
+                .withCreatedBy(OPEN_LINEAGE_USER)
+                .withUpdatedBy(OPEN_LINEAGE_USER);
 
         AddLineage addLineage =
             new AddLineage()
@@ -154,6 +167,40 @@ public class OpenLineageMapper {
       return allowedEventTypes.contains("COMPLETE");
     }
     return allowedEventTypes.contains(eventType.value());
+  }
+
+  private static long resolveEventTimeMillis(OpenLineageRunEvent event) {
+    Date eventTime = event.getEventTime();
+    long resolved;
+    if (eventTime != null) {
+      resolved = eventTime.getTime();
+    } else {
+      Long nominalStart = parseNominalStartTime(event);
+      resolved = (nominalStart != null) ? nominalStart : System.currentTimeMillis();
+    }
+    return resolved;
+  }
+
+  private static Long parseNominalStartTime(OpenLineageRunEvent event) {
+    Long resolved = null;
+    OpenLineageRun run = event.getRun();
+    RunFacets facets = (run != null) ? run.getFacets() : null;
+    Map<String, Object> additional = (facets != null) ? facets.getAdditionalProperties() : null;
+    Object nominalTime = (additional != null) ? additional.get("nominalTime") : null;
+    if (nominalTime instanceof Map) {
+      Object nominalStart = ((Map<?, ?>) nominalTime).get("nominalStartTime");
+      if (nominalStart instanceof String) {
+        try {
+          resolved = Instant.parse((String) nominalStart).toEpochMilli();
+        } catch (Exception e) {
+          LOG.debug(
+              "Failed to parse nominalStartTime from OpenLineage event {}: {}",
+              run != null ? run.getRunId() : "unknown",
+              e.getMessage());
+        }
+      }
+    }
+    return resolved;
   }
 
   private Map<String, String> buildInputFqnMap(List<OpenLineageInputDataset> inputs) {

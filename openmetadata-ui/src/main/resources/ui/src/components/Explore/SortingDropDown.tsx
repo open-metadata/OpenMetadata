@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Dropdown, Space, Typography } from 'antd';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@untitledui/icons';
 import React from 'react';
-import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 
 export interface SortingField {
   name: string;
@@ -41,18 +41,25 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
   const label = fieldList.find((field) => field.value === sortField)?.name;
 
   return (
-    <Dropdown
-      className="self-end m-r-xs cursor-pointer sorting-dropdown"
-      data-testid="dropdown"
-      menu={{
-        items,
-      }}
-      trigger={['click']}>
-      <Space align="baseline" data-testid="sorting-dropdown-label" size={4}>
-        <Typography.Text>{label}</Typography.Text>
-        <DropDownIcon className="align-middle" height={16} width={16} />
-      </Space>
-    </Dropdown>
+    <Dropdown.Root data-testid="dropdown">
+      <Button
+        className="tw:p-0"
+        color="tertiary"
+        data-testid="sorting-dropdown-label"
+        iconTrailing={<ChevronDown size={14} />}>
+        {label}
+      </Button>
+
+      <Dropdown.Popover>
+        <Dropdown.Menu aria-label="Sorting Options">
+          {items.map((item) => (
+            <Dropdown.Item key={item.key} onClick={item.onClick}>
+              {item.label}
+            </Dropdown.Item>
+          ))}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
   );
 };
 

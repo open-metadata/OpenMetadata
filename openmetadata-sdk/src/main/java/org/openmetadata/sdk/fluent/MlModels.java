@@ -178,6 +178,10 @@ public final class MlModels {
     public MlModelDeleter delete() {
       return new MlModelDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<MlModel> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.mlModels(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -292,5 +296,15 @@ public final class MlModels {
     public MlModelDeleter delete() {
       return new MlModelDeleter(client, mlModel.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().mlModels().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().mlModels().getContextByName(fqn);
   }
 }

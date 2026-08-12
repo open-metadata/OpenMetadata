@@ -38,6 +38,7 @@ export interface TaskResponseData {
   status: string;
   priority?: string;
   createdBy?: { id: string; name: string };
+  createdById?: string;
   assignees?: { id: string; name: string }[];
 }
 

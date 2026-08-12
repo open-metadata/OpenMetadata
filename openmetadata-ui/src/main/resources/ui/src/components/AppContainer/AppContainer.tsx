@@ -16,7 +16,6 @@ import { isNil } from 'lodash';
 import { useCallback, useEffect } from 'react';
 import { useAnalytics } from 'use-analytics';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -94,22 +93,6 @@ const AppContainer = () => {
       analytics.page();
     }
   }, [location.pathname, analytics]);
-
-  useEffect(() => {
-    const handleClickEvent = (event: MouseEvent) => {
-      const eventValue =
-        (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
-
-      if (eventValue && !isNil(analytics)) {
-        analytics.track(eventValue);
-      }
-    };
-
-    const targetNode = document.body;
-    targetNode.addEventListener('click', handleClickEvent);
-
-    return () => targetNode.removeEventListener('click', handleClickEvent);
-  }, [analytics]);
 
   return (
     <Layout>

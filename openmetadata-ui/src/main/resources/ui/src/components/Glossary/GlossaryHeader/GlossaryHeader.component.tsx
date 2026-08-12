@@ -30,10 +30,10 @@ import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
-import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -56,11 +56,8 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import {
-  getEntityImportPath,
-  getEntityVoteStatus,
-} from '../../../utils/EntityUtils';
+import { getEntityImportPath } from '../../../utils/EntityPureUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
@@ -71,12 +68,14 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import ImportOntologyModal from '../ImportOntologyModal/ImportOntologyModal.component';
+import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 import './glossery-header.less';
 const GlossaryHeader = ({
@@ -114,8 +113,10 @@ const GlossaryHeader = ({
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
     useState(false);
+  const [isOntologyImportOpen, setIsOntologyImportOpen] = useState(false);
   const isGlossary = entityType === EntityType.GLOSSARY;
   const { permissions: globalPermissions } = usePermissionProvider();
+  const { refreshGlossaryTerms } = useGlossaryStore();
 
   const createGlossaryTermPermission = useMemo(
     () =>
@@ -138,8 +139,10 @@ const GlossaryHeader = ({
         Operation.EditAll,
         ResourceEntity.GLOSSARY_TERM,
         globalPermissions
-      ),
-    [globalPermissions]
+      ) ||
+      permissions[Operation.All] ||
+      permissions[Operation.EditAll],
+    [globalPermissions, permissions]
   );
 
   // To fetch the latest glossary data
@@ -329,6 +332,22 @@ const GlossaryHeader = ({
             onClick: (e) => {
               e.domEvent.stopPropagation();
               handleGlossaryImport();
+              setShowActions(false);
+            },
+          },
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-ontology-help')}
+                icon={ImportIcon}
+                id="import-ontology-button"
+                name={t('label.import-ontology')}
+              />
+            ),
+            key: 'import-ontology-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsOntologyImportOpen(true);
               setShowActions(false);
             },
           },
@@ -621,13 +640,14 @@ const GlossaryHeader = ({
         </div>
       </div>
       {selectedData && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(selectedData.name, '')}
-          entityName={selectedData.name}
-          entityType="Glossary"
-          visible={isDelete}
+        <DeleteModal
+          entityTitle={selectedData.name}
+          message={t('message.delete-entity-message', {
+            entity: selectedData.name,
+          })}
+          open={isDelete}
           onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
+          onDelete={handleDelete}
         />
       )}
 
@@ -664,6 +684,15 @@ const GlossaryHeader = ({
         <ChangeParentHierarchy
           selectedData={selectedData}
           onCancel={() => setOpenChangeParentHierarchyModal(false)}
+        />
+      )}
+
+      {isOntologyImportOpen && (
+        <ImportOntologyModal
+          glossaryName={selectedData.fullyQualifiedName ?? ''}
+          open={isOntologyImportOpen}
+          onCancel={() => setIsOntologyImportOpen(false)}
+          onSuccess={refreshGlossaryTerms}
         />
       )}
     </>

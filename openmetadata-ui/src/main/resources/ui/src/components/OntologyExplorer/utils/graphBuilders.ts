@@ -120,9 +120,23 @@ export function convertRdfGraphToOntologyGraph(
     }
   });
 
-  const nodes: OntologyNode[] = rdfData.nodes.map((node) => {
-    let glossaryId: string | undefined;
-    if (node.group) {
+  // Dedupe by id: the paginated RDF graph endpoint can return the same node on
+  // more than one page (and serializes a node once per relationship it appears
+  // in), so a node id may repeat. G6 throws "Node already exists" when handed a
+  // duplicate id, so keep only the first occurrence — mirrors the edge dedupe
+  // below.
+  const nodesById = new Map<string, OntologyNode>();
+  rdfData.nodes.forEach((node) => {
+    if (nodesById.has(node.id)) {
+      return;
+    }
+
+    // Prefer the explicit glossaryId from the RDF endpoint — it survives
+    // glossary rename / display-name drift better than the FQN-prefix
+    // heuristic. Fall back to looking up the glossary by `group` (display
+    // name) or the FQN's first segment for backwards-compatible payloads.
+    let glossaryId: string | undefined = node.glossaryId;
+    if (!glossaryId && node.group) {
       glossaryId = glossaryNameToId.get(node.group.toLowerCase());
     }
     if (!glossaryId && node.fullyQualifiedName) {
@@ -148,7 +162,7 @@ export function convertRdfGraphToOntologyGraph(
       }
     }
 
-    return {
+    nodesById.set(node.id, {
       id: node.id,
       label: nodeLabel,
       type: node.type || 'glossaryTerm',
@@ -156,20 +170,24 @@ export function convertRdfGraphToOntologyGraph(
       description: node.description,
       glossaryId,
       group: node.group,
-    };
+    });
   });
+  const nodes: OntologyNode[] = Array.from(nodesById.values());
 
   const edgeMap = new Map<string, OntologyEdge>();
   rdfData.edges.forEach((edge) => {
+    // Drop dangling edges: the RDF graph endpoint can reference nodes that
+    // aren't in this node set (cross-glossary relations, or endpoints not
+    // returned by pagination). G6 throws "Node not found" when an edge points
+    // at a missing node, so keep only edges whose endpoints both exist —
+    // mirrors the validEdges filter in buildGraphFromAllTerms.
+    if (!nodesById.has(edge.from) || !nodesById.has(edge.to)) {
+      return;
+    }
     const relationType = edge.relationType || 'relatedTo';
-    const nodePairKey = [edge.from, edge.to].sort().join('-');
-    const existingEdge = edgeMap.get(nodePairKey);
-    if (
-      !existingEdge ||
-      (existingEdge.relationType === 'relatedTo' &&
-        relationType !== 'relatedTo')
-    ) {
-      edgeMap.set(nodePairKey, {
+    const edgeKey = `${[edge.from, edge.to].sort().join('-')}|${relationType}`;
+    if (!edgeMap.has(edgeKey)) {
+      edgeMap.set(edgeKey, {
         from: edge.from,
         to: edge.to,
         label: edge.label || relationType,
@@ -216,29 +234,17 @@ export function buildGraphFromAllTerms(
         const relatedTermRef = relation.term;
         const relationType = relation.relationType || 'relatedTo';
         if (relatedTermRef?.id && isValidUUID(relatedTermRef.id)) {
-          const nodePairKey = [term.id, relatedTermRef.id].sort().join('-');
-          if (!edgeSet.has(nodePairKey)) {
-            edgeSet.add(nodePairKey);
+          const edgeKey = `${[term.id, relatedTermRef.id]
+            .sort()
+            .join('-')}|${relationType}`;
+          if (!edgeSet.has(edgeKey)) {
+            edgeSet.add(edgeKey);
             edges.push({
               from: term.id,
               to: relatedTermRef.id,
               label: relationType,
               relationType,
             });
-          } else if (relationType !== 'relatedTo') {
-            const existingEdgeIndex = edges.findIndex(
-              (e) =>
-                [e.from, e.to].sort().join('-') === nodePairKey &&
-                e.relationType === 'relatedTo'
-            );
-            if (existingEdgeIndex !== -1) {
-              edges[existingEdgeIndex] = {
-                from: term.id,
-                to: relatedTermRef.id,
-                label: relationType,
-                relationType,
-              };
-            }
           }
         }
       });

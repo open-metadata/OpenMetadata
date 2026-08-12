@@ -5,6 +5,20 @@
   "description": "Single MCP tool-call usage record. One row written per tool invocation to the apps_extension_time_series table with extension='limits' (reusing the existing per-app usage extension; rows are isolated by appName='McpApplication'). Used to surface MCP traffic as a product growth metric. Not billed, no enforcement.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.mcp.McpToolCallUsage",
+  "definitions": {
+    "errorCategory": {
+      "description": "Coarse bucket for failed tool invocations. Drives the 'Failed' tile subtext and the errorByCategory aggregate on the redesigned Billing > MCP page.",
+      "type": "string",
+      "enum": [
+        "AUTH",
+        "RATE_LIMIT",
+        "VALIDATION",
+        "TIMEOUT",
+        "INTERNAL",
+        "OTHER"
+      ]
+    }
+  },
   "properties": {
     "appId": {
       "description": "Unique identifier of the McpApplication.",
@@ -33,6 +47,21 @@
     "success": {
       "description": "True if the tool call returned without an error result.",
       "type": "boolean"
+    },
+    "latencyMs": {
+      "description": "Wall-clock duration of the tool call in milliseconds. Measured around DefaultToolContext.callTool(). Null when timing was not captured (e.g. legacy rows written before Phase 3).",
+      "existingJavaType": "java.lang.Long",
+      "type": "integer",
+      "format": "int64"
+    },
+    "errorCategory": {
+      "description": "Populated only when success=false. Drives the 'Failed' tile subtext and the errorByCategory aggregate on the Billing > MCP page.",
+      "$ref": "#/definitions/errorCategory"
+    },
+    "clientName": {
+      "description": "Best-effort name of the calling MCP client (Claude Desktop / Cursor / VS Code / CLI / claude-cli). Extracted from the User-Agent header by AuthEnrichedMcpContextExtractor. Empty when the client did not identify itself. Bounded to 64 chars because the source header is attacker-controlled.",
+      "type": "string",
+      "maxLength": 64
     }
   },
   "additionalProperties": false,

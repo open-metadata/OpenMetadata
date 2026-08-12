@@ -43,6 +43,8 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
+  private String defaultListService;
+
   {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
@@ -81,7 +83,11 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
   @Override
   protected Topic createEntity(CreateTopic createRequest) {
-    return SdkClients.adminClient().topics().create(createRequest);
+    Topic topic = SdkClients.adminClient().topics().create(createRequest);
+    if (defaultListService == null && topic.getService() != null) {
+      defaultListService = topic.getService().getFullyQualifiedName();
+    }
+    return topic;
   }
 
   @Override
@@ -137,6 +143,10 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
   @Override
   protected ListResponse<Topic> listEntities(ListParams params) {
+    if (!params.getFilters().containsKey("service") && defaultListService != null) {
+      params = params.copy();
+      params.setService(defaultListService);
+    }
     return SdkClients.adminClient().topics().list(params);
   }
 
@@ -245,6 +255,55 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     assertNotNull(topic.getMessageSchema());
     assertEquals(SchemaType.Avro, topic.getMessageSchema().getSchemaType());
     assertNotNull(topic.getMessageSchema().getSchemaFields());
+  }
+
+  @Test
+  void post_topicWithNulInNestedDescription_200_OK(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+    Field schemaField =
+        new Field()
+            .withName("id")
+            .withDataType(FieldDataType.STRING)
+            .withDescription("nested >\u0000< NUL");
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText("{}")
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(List.of(schemaField));
+    CreateTopic request =
+        new CreateTopic()
+            .withName(ns.prefix("topic_with_nul_description"))
+            .withService(service.getFullyQualifiedName())
+            .withPartitions(1)
+            .withMessageSchema(schema);
+
+    Topic created = createEntity(request);
+    Topic stored = getEntityWithFields(created.getId().toString(), "messageSchema");
+
+    assertEquals(
+        "nested >< NUL", stored.getMessageSchema().getSchemaFields().get(0).getDescription());
+  }
+
+  @Test
+  void post_topicWithInvalidSchemaFieldName_4xx(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaType(SchemaType.JSON)
+            .withSchemaFields(
+                List.of(new Field().withName("field>invalid").withDataType(FieldDataType.STRING)));
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_invalid_schema_field"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating topic with invalid schema field name should fail");
   }
 
   @Test

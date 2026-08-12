@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { parseInt } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
-import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
+import {
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+} from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -34,9 +37,12 @@ import '../chart-widgets.less';
 const DataAssetsCoveragePieChartWidget = ({
   className = '',
   chartFilter,
+  navigate: navigateProp,
+  redirectPath,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const routerNavigate = useNavigate();
+  const navigate = navigateProp ?? routerNavigate;
   const [isLoading, setIsLoading] = useState(true);
   const [dataAssetsCoverageStates, setDataAssetsCoverageStates] = useState<{
     covered: number;
@@ -47,16 +53,16 @@ const DataAssetsCoveragePieChartWidget = ({
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
       if (index === 0) {
-        navigate(
+        const testSuitesPath =
           observabilityRouterClassBase.getDataQualityPagePath(
             DataQualityPageTabs.TEST_SUITES
-          )
-        );
+          );
+        navigate(redirectPath ?? testSuitesPath);
       } else if (index === 1) {
         navigate(ROUTES.EXPLORE);
       }
     },
-    [navigate]
+    [navigate, redirectPath]
   );
 
   const { data, chartLabel } = useMemo(
@@ -65,12 +71,12 @@ const DataAssetsCoveragePieChartWidget = ({
         {
           name: t('label.covered'),
           value: dataAssetsCoverageStates.covered,
-          color: GREEN_3,
+          color: DQ_CHART_SUCCESS_COLOR,
         },
         {
           name: t('label.not-covered'),
           value: dataAssetsCoverageStates.notCovered,
-          color: RED_3,
+          color: DQ_CHART_FAILED_COLOR,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -84,11 +90,10 @@ const DataAssetsCoveragePieChartWidget = ({
   const fetchDataAssetsCoverage = async () => {
     setIsLoading(true);
     try {
-      const { data: coverageData } = await fetchEntityCoveredWithDQ(
-        chartFilter,
-        false
-      );
-      const { data: totalData } = await fetchTotalEntityCount(chartFilter);
+      const [{ data: coverageData }, { data: totalData }] = await Promise.all([
+        fetchEntityCoveredWithDQ(chartFilter, false),
+        fetchTotalEntityCount(chartFilter),
+      ]);
       if (coverageData.length === 0 || totalData.length === 0) {
         setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
 
@@ -118,16 +123,28 @@ const DataAssetsCoveragePieChartWidget = ({
     fetchDataAssetsCoverage();
   }, [chartFilter]);
 
+  if (isLoading) {
+    return (
+      <Card
+        className={className}
+        data-testid="data-assets-coverage-pie-chart-widget">
+        <Skeleton height={200} width="100%" />
+      </Card>
+    );
+  }
+
   return (
-    <Card className={className} loading={isLoading}>
+    <Card
+      className={className}
+      data-testid="data-assets-coverage-pie-chart-widget">
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background data-assets-coverage-icon icon-container">
             <DataAssetsCoverageIcon />
           </div>
-          <Typography.Text className="font-medium text-md">
+          <Typography as="span" className="font-semibold text-sm">
             {t('label.data-asset-plural-coverage')}
-          </Typography.Text>
+          </Typography>
         </div>
         <CustomPieChart
           showLegends

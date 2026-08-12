@@ -28,7 +28,7 @@ jest.mock('../../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../../utils/TeamUtils', () => ({
   getNonDeletedTeams: jest.fn().mockImplementation((data) => data),
 }));
 

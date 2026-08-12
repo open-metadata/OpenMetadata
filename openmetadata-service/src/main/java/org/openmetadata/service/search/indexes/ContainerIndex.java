@@ -74,7 +74,7 @@ public record ContainerIndex(Container container) implements ColumnIndex, DataAs
     fields.put(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("dataModel.columns.displayName", 2.0f);
     fields.put("dataModel.columns.description", 1.0f);
-    fields.put("dataModel.columns.children.name", 2.0f);
+    fields.put("columnNamesFuzzy", 2.0f);
     return fields;
   }
 }

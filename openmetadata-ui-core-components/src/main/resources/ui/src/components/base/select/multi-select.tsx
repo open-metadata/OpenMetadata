@@ -48,7 +48,7 @@ interface ComboBoxValueProps
   isDisabled?: boolean;
   placeholder?: string;
   shortcutClassName?: string;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   onFocus?: FocusEventHandler;
   onPointerEnter?: PointerEventHandler;
 }
@@ -80,7 +80,7 @@ interface MultiSelectProps
   popoverClassName?: string;
   shortcutClassName?: string;
   selectedItems: ListData<SelectItemType>;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemCleared?: (key: Key) => void;
   onItemInserted?: (key: Key) => void;
@@ -174,7 +174,7 @@ const InnerMultiSelect = ({
       {!isSelectionEmpty &&
         comboBoxContext?.selectedItems?.items?.map((value) => (
           <span
-            className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:ring-1 tw:ring-primary tw:ring-inset"
+            className="tw:flex tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
             key={value.id}>
             <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
 
@@ -200,7 +200,7 @@ const InnerMultiSelect = ({
           shortcut && 'tw:min-w-[30%]'
         )}>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-none tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-md tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
@@ -215,7 +215,7 @@ const InnerMultiSelect = ({
             )}>
             <span
               className={cx(
-                'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:ring-1 tw:ring-secondary tw:select-none tw:ring-inset',
+                'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:select-none',
                 isDisabled && 'tw:bg-transparent tw:text-disabled'
               )}>
               ⌘K
@@ -232,7 +232,7 @@ export const MultiSelectTagsValue = ({
   shortcut,
   placeholder,
   shortcutClassName,
-  placeholderIcon: Icon = SearchLg,
+  icon: Icon = SearchLg,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
   ...otherProps
@@ -242,9 +242,12 @@ export const MultiSelectTagsValue = ({
       {...otherProps}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
-          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
+          // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
+          // so rings thin/vanish in Safari when zoomed out). `outline-hidden` is gone — the
+          // outline IS the border and focus indicator, as in input.tsx.
+          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
-          isFocusWithin && 'tw:ring-2 tw:ring-brand',
+          isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           sizes[size].root
         )
       }>

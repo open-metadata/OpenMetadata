@@ -25,7 +25,7 @@ import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-ba
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
-import { requiredField } from '../../../../utils/CommonUtils';
+import { requiredField } from '../../../../utils/EntityDisplayPureUtils';
 import './connection-step-card.less';
 
 const { Panel } = Collapse;
@@ -134,9 +134,9 @@ const ConnectionStepCard = ({
             </div>
           )}
           {isSkipped && (
-            <Typography.Text className="skipped-status">{`${t(
-              'label.skipped'
-            )}`}</Typography.Text>
+            <Typography.Text className="skipped-status">
+              {t('label.skipped')}
+            </Typography.Text>
           )}
         </Space>
       </div>

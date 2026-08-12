@@ -16,9 +16,11 @@ from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.ssl_manager import get_ssl_connection
 
 
 class NoSQLSampler(SamplerInterface):
@@ -28,6 +30,9 @@ class NoSQLSampler(SamplerInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        db_config = kwargs.get("config") or DatabaseSamplerConfig()
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.sample_query: str | None = db_config.sample_query
         self.client = self.get_client()
 
     @property
@@ -45,7 +50,7 @@ class NoSQLSampler(SamplerInterface):
         Get random sample from user query
         """
         limit = self._get_limit()
-        return self.client.query(self.raw_dataset, self.raw_dataset.columns, self.sample_query, limit)
+        return self.client.query(self.raw_dataset, self.raw_dataset.columns, self.sample_query, limit)  # pyright: ignore[reportAttributeAccessIssue]
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """
@@ -53,7 +58,7 @@ class NoSQLSampler(SamplerInterface):
         If the engine does not support a custom query, an error will be raised.
         """
         records = self._rdn_sample_from_user_query()
-        columns = [SQALikeColumn(name=column.name.root, type=column.dataType) for column in self.raw_dataset.columns]
+        columns = [SQALikeColumn(name=column.name.root, type=column.dataType) for column in self.raw_dataset.columns]  # pyright: ignore[reportAttributeAccessIssue]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
@@ -73,7 +78,7 @@ class NoSQLSampler(SamplerInterface):
         returns sampled ometa dataframes
         """
         limit = self._get_limit()
-        records = self.client.scan(self.raw_dataset, self.raw_dataset.columns, int(limit))
+        records = self.client.scan(self.raw_dataset, self.raw_dataset.columns, int(limit))  # pyright: ignore[reportAttributeAccessIssue]
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[[self._truncate_cell(str(cell)) for cell in row] for row in rows],
@@ -117,4 +122,4 @@ class NoSQLSampler(SamplerInterface):
         return rows, columns
 
     def get_columns(self) -> List[Optional[SQALikeColumn]]:  # noqa: UP006, UP045
-        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.raw_dataset.columns]
+        return [SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.raw_dataset.columns]  # pyright: ignore[reportAttributeAccessIssue]

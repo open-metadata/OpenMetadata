@@ -128,7 +128,7 @@ class CliBase(ABC):
         output_clean = re.sub(" +", " ", output_clean)
         output_clean_ansi = re.compile(r"\x1b[^m]*m")
         output_clean = output_clean_ansi.sub("", output_clean)
-        regex = r".*OpenMetadata Status:%(log)s(.*?)%(log)sExecution.*Summary.*" % REGEX_AUX  # noqa: UP031
+        regex = r".*OpenMetadata Status:%(log)s(.*?)%(log)sWorkflow.*Summary.*" % REGEX_AUX  # noqa: UP031
         output_clean_regex = re.findall(regex, output_clean.strip())[0].strip()
         try:
             return Status.model_validate(literal_eval(output_clean_regex))

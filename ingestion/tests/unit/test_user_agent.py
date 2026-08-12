@@ -194,7 +194,7 @@ def test_rest_client_falls_back_to_default_when_user_agent_unsalvageable():
 
 
 def _capture_sse_headers(client: SSEClient) -> dict:
-    """Run client.stream() once against a mocked httpx, returning the headers it sent."""
+    """Run client.stream() once against a mocked requests.Session, returning the headers it sent."""
     client._validate_access_token = MagicMock()
 
     captured_headers: dict = {}
@@ -203,17 +203,17 @@ def _capture_sse_headers(client: SSEClient) -> dict:
     fake_response.__exit__.return_value = False
     fake_response.iter_lines.return_value = iter(["event: complete", "data: done", ""])
 
-    fake_client = MagicMock()
-    fake_client.__enter__.return_value = fake_client
-    fake_client.__exit__.return_value = False
+    fake_session = MagicMock()
+    fake_session.__enter__.return_value = fake_session
+    fake_session.__exit__.return_value = False
 
-    def _capture_stream(method, url, headers, json, params):
-        captured_headers.update(headers)
+    def _capture_request(**kwargs):
+        captured_headers.update(kwargs.get("headers") or {})
         return fake_response
 
-    fake_client.stream.side_effect = _capture_stream
+    fake_session.request.side_effect = _capture_request
 
-    with patch("metadata.ingestion.ometa.sse_client.httpx.Client", return_value=fake_client):
+    with patch("metadata.ingestion.ometa.sse_client.requests.Session", return_value=fake_session):
         list(client.stream("GET", "/v1/events"))
 
     return captured_headers

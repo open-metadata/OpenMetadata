@@ -47,6 +47,7 @@ import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.security.auth.SamlAuthServletHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
@@ -83,6 +84,14 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // is revoked. Since JWTs are stateless and cannot be individually invalidated, a shorter
   // TTL ensures that a revoked session loses access within 10 minutes. MCP clients handle
   // automatic token refresh seamlessly using the long-lived refresh token.
+  // HttpSession attribute that carries the MCP authorization-request id across handleLogin() into
+  // the registered pending-state persister so it can be linked to the returning provider callback.
+  public static final String MCP_AUTH_REQUEST_ID = "mcp.auth.request.id";
+
+  // Request attribute the persister sets once it has linked the OIDC round-trip state to the MCP
+  // pending request, so the provider can confirm the link succeeded before it reports the redirect.
+  public static final String MCP_STATE_LINKED = "mcp.state.linked";
+
   private static final long JWT_EXPIRY_SECONDS = 600L;
 
   private static final long REFRESH_TOKEN_EXPIRY_DAYS = 30L;
@@ -104,6 +113,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // Cryptographically secure random number generator for authorization codes and tokens
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+  // Sent as the "iss" parameter on authorization responses. Volatile because the transport provider
+  // sets it again whenever the configured base URL changes while the server is running.
+  private volatile String issuer;
+
   public UserSSOOAuthProvider(
       JWTTokenGenerator jwtGenerator, AuthenticatorHandler credentialAuthenticator) {
     this.jwtGenerator = jwtGenerator;
@@ -116,6 +129,16 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.revocationHandler = new RevocationHandler(tokenRepository);
 
     LOG.info("Initialized UserSSOOAuthProvider with unified auth (SSO + Basic Auth)");
+  }
+
+  @Override
+  public String getIssuer() {
+    return issuer;
+  }
+
+  @Override
+  public void setIssuer(String issuer) {
+    this.issuer = issuer;
   }
 
   public AuthenticatorHandler getCredentialAuthenticator() {
@@ -223,6 +246,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       if (provider == AuthProvider.BASIC || provider == AuthProvider.LDAP) {
         return handleBasicAuthAuthorization(client, params);
+      } else if (provider == AuthProvider.SAML) {
+        return handleSamlAuthorization(client, params);
       } else {
         return handleSSOAuthorization(client, params);
       }
@@ -233,6 +258,61 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       LOG.error("Authorization failed for client: {}", client.getClientId(), e);
       throw new AuthorizeException("authorization_failed", "Authorization request failed");
     }
+  }
+
+  /**
+   * Validates the PKCE code challenge and redirect URI (RFC 7636 / OAuth 2.0) and persists a
+   * pending auth request capturing the PKCE/state context. Shared by the SSO, SAML, and Basic
+   * authorization paths. pac4j session fields are left null — they are populated later only by the
+   * OIDC path via {@code updatePac4jSession}.
+   *
+   * @return the generated authRequestId
+   */
+  private String validateAndCreatePendingRequest(
+      OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
+    String codeChallenge = params.getCodeChallenge();
+    if (codeChallenge == null || codeChallenge.trim().isEmpty()) {
+      LOG.error(
+          "Missing PKCE code challenge in authorization request for client: {}",
+          client.getClientId());
+      throw new AuthorizeException(
+          "invalid_request", "PKCE code_challenge is required but was not provided");
+    }
+    // Validate code challenge format: base64url encoded, 43-128 characters (per RFC 7636)
+    if (!codeChallenge.matches("^[A-Za-z0-9_-]{43,128}$")) {
+      LOG.error("Invalid PKCE code challenge format for client: {}", client.getClientId());
+      throw new AuthorizeException(
+          "invalid_request",
+          "PKCE code_challenge has invalid format (must be base64url encoded, 43-128 characters)");
+    }
+
+    // Validate redirect URI against registered URIs (OAuth 2.0 security requirement)
+    URI validatedRedirectUri;
+    try {
+      validatedRedirectUri = client.validateRedirectUri(params.getRedirectUri());
+    } catch (Exception e) {
+      LOG.error(
+          "Redirect URI validation failed for client {}: {}", client.getClientId(), e.getMessage());
+      throw new AuthorizeException(
+          "invalid_request",
+          "Redirect URI '"
+              + params.getRedirectUri()
+              + "' is not registered for this client. Register this URI before using it.");
+    }
+
+    // Store PKCE params in database (survives cross-domain redirect cookie loss)
+    List<String> scopes =
+        params.getScopes() != null ? params.getScopes() : List.of("openid", "profile", "email");
+    return pendingAuthRepository.createPendingRequest(
+        client.getClientId(),
+        codeChallenge,
+        "S256",
+        validatedRedirectUri.toString(),
+        params.getState(),
+        scopes,
+        null,
+        null,
+        null);
   }
 
   private CompletableFuture<String> handleSSOAuthorization(
@@ -248,57 +328,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "Starting SSO authorization flow for client: {} with PKCE challenge",
           client.getClientId());
 
-      // Validate PKCE code challenge before storage
-      String codeChallenge = params.getCodeChallenge();
-      if (codeChallenge == null || codeChallenge.trim().isEmpty()) {
-        LOG.error(
-            "Missing PKCE code challenge in authorization request for client: {}",
-            client.getClientId());
-        throw new AuthorizeException(
-            "invalid_request", "PKCE code_challenge is required but was not provided");
-      }
-
-      // Validate code challenge format: base64url encoded, 43-128 characters (per RFC 7636)
-      if (!codeChallenge.matches("^[A-Za-z0-9_-]{43,128}$")) {
-        LOG.error(
-            "Invalid PKCE code challenge format for client: {}: {}",
-            client.getClientId(),
-            codeChallenge);
-        throw new AuthorizeException(
-            "invalid_request",
-            "PKCE code_challenge has invalid format (must be base64url encoded, 43-128 characters)");
-      }
-
-      // Validate redirect URI against registered URIs (OAuth 2.0 security requirement)
-      URI validatedRedirectUri;
-      try {
-        validatedRedirectUri = client.validateRedirectUri(params.getRedirectUri());
-      } catch (Exception e) {
-        LOG.error(
-            "Redirect URI validation failed for client {}: {}",
-            client.getClientId(),
-            e.getMessage());
-        throw new AuthorizeException(
-            "invalid_request",
-            "Redirect URI '"
-                + params.getRedirectUri()
-                + "' is not registered for this client. Register this URI before using it.");
-      }
-
-      // Store PKCE params in database (survives cross-domain redirect cookie loss)
-      List<String> scopes =
-          params.getScopes() != null ? params.getScopes() : List.of("openid", "profile", "email");
-      String authRequestId =
-          pendingAuthRepository.createPendingRequest(
-              client.getClientId(),
-              codeChallenge,
-              "S256",
-              validatedRedirectUri.toString(),
-              params.getState(),
-              scopes,
-              null,
-              null,
-              null);
+      String authRequestId = validateAndCreatePendingRequest(client, params);
 
       LOG.debug("Created pending auth request: {}", authRequestId);
 
@@ -330,63 +360,30 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           };
 
       HttpSession session = getHttpSession(currentRequest.get(), true);
-      session.setAttribute("mcp.auth.request.id", authRequestId);
+      session.setAttribute(MCP_AUTH_REQUEST_ID, authRequestId);
 
+      // For the MCP flow, handleLogin() persists the OIDC round-trip state/nonce/PKCE-verifier
+      // against this pending request (via the registered McpPendingStatePersister) before it issues
+      // the provider redirect, so the returning /callback?state=... is always resolvable
+      // (isMcpState -> findByPac4jState) and its pac4j session can be restored for the exchange.
       ssoHandler.handleLogin(wrappedRequest, currentResponse.get());
 
-      // After handleLogin(), pac4j has stored its state in the session
-      // Extract pac4j session attributes and store in database
-      // Note: pac4j stores State and CodeVerifier as objects, not strings
-      String pac4jState = null;
-      String pac4jNonce = null;
-      String pac4jCodeVerifier = null;
+      LOG.debug(
+          "handleLogin() completed for auth request {}; response committed: {}",
+          authRequestId,
+          currentResponse.get() != null && currentResponse.get().isCommitted());
 
-      java.util.Enumeration<String> attrNames = session.getAttributeNames();
-      while (attrNames.hasMoreElements()) {
-        String attrName = attrNames.nextElement();
-        Object value = session.getAttribute(attrName);
-        LOG.debug(
-            "Session attribute: {} = {} (type: {})",
-            attrName,
-            value,
-            value != null ? value.getClass().getName() : "null");
-
-        if (attrName.contains("state") || attrName.contains("State")) {
-          // State is stored as com.nimbusds.oauth2.sdk.id.State object
-          if (value instanceof com.nimbusds.oauth2.sdk.id.State stateObj) {
-            pac4jState = stateObj.getValue();
-            LOG.debug("Found pac4j state: {}", pac4jState);
-          } else if (value instanceof String) {
-            pac4jState = (String) value;
-            LOG.debug("Found pac4j state (string): {}", pac4jState);
-          }
-        } else if (attrName.contains("nonce") || attrName.contains("Nonce")) {
-          // Nonce is stored as String
-          if (value instanceof String) {
-            pac4jNonce = (String) value;
-            LOG.debug("Found pac4j nonce");
-          }
-        } else if (attrName.contains("CodeVerifier")
-            || attrName.contains("codeVerifier")
-            || attrName.contains("pkce")) {
-          // CodeVerifier is stored as com.nimbusds.oauth2.sdk.pkce.CodeVerifier object
-          if (value instanceof com.nimbusds.oauth2.sdk.pkce.CodeVerifier verifierObj) {
-            pac4jCodeVerifier = verifierObj.getValue();
-            LOG.debug("Found pac4j code verifier");
-          } else if (value instanceof String) {
-            pac4jCodeVerifier = (String) value;
-            LOG.debug("Found pac4j code verifier (string)");
-          }
-        }
-      }
-
-      if (pac4jState != null) {
-        pendingAuthRepository.updatePac4jSession(
-            authRequestId, pac4jState, pac4jNonce, pac4jCodeVerifier);
-        LOG.info("Stored pac4j session data in database for auth request: {}", authRequestId);
+      // The persister runs inside handleLogin() before the redirect and marks the request once it
+      // has linked the round-trip state to this pending request. OM stores its OIDC state in the
+      // DB-backed pending session (not the HttpSession), so there is no pac4j session state to scan
+      // here — a missing mark means the link did not happen and the returning /callback will fail.
+      if (Boolean.TRUE.equals(wrappedRequest.getAttribute(MCP_STATE_LINKED))) {
+        LOG.info("Linked OIDC round-trip state to MCP pending request {}", authRequestId);
       } else {
-        LOG.error("Could not find pac4j state in session after handleLogin()");
-        throw new AuthorizeException("server_error", "Failed to initialize SSO session state");
+        LOG.warn(
+            "MCP pending request {} was not linked to the OIDC round-trip state; "
+                + "the returning /callback will fail to resolve (auth-request id missing?).",
+            authRequestId);
       }
 
       return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");
@@ -404,46 +401,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     try {
       LOG.info("Starting Basic Auth authorization flow for client: {}", client.getClientId());
 
-      // Validate redirect URI against registered URIs
-      URI validatedRedirectUri;
-      try {
-        validatedRedirectUri = client.validateRedirectUri(params.getRedirectUri());
-      } catch (Exception e) {
-        LOG.error(
-            "Redirect URI validation failed for client {}: {}",
-            client.getClientId(),
-            e.getMessage());
-        throw new AuthorizeException(
-            "invalid_request",
-            "Redirect URI '" + params.getRedirectUri() + "' is not registered for this client.");
-      }
-
-      // Validate PKCE code challenge before storage (same validation as SSO path)
-      String codeChallenge = params.getCodeChallenge();
-      if (codeChallenge == null || codeChallenge.trim().isEmpty()) {
-        throw new AuthorizeException(
-            "invalid_request", "PKCE code_challenge is required but was not provided");
-      }
-      if (!codeChallenge.matches("^[A-Za-z0-9_-]{43,128}$")) {
-        throw new AuthorizeException(
-            "invalid_request",
-            "PKCE code_challenge has invalid format (must be base64url encoded, 43-128 characters)");
-      }
-
-      // Store PKCE params in DB (same as SSO flow — survives cross-domain redirects)
-      List<String> scopes =
-          params.getScopes() != null ? params.getScopes() : List.of("openid", "profile", "email");
-      String authRequestId =
-          pendingAuthRepository.createPendingRequest(
-              client.getClientId(),
-              codeChallenge,
-              "S256",
-              validatedRedirectUri.toString(),
-              params.getState(),
-              scopes,
-              null,
-              null,
-              null);
+      String authRequestId = validateAndCreatePendingRequest(client, params);
 
       LOG.debug("Created pending auth request for Basic Auth: {}", authRequestId);
 
@@ -456,6 +414,54 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     } catch (Exception e) {
       LOG.error("Basic Auth authorization failed for client: {}", client.getClientId(), e);
       throw new AuthorizeException("authorization_failed", "Basic Auth authorization failed");
+    }
+  }
+
+  /**
+   * Handles MCP authorization when the configured provider is SAML.
+   *
+   * <p>Unlike OIDC, SAML cannot reuse {@code AuthenticationCodeFlowHandler} (pac4j/OIDC only). The
+   * PKCE/state context is persisted in the pending-request row (exactly as the OIDC and Basic
+   * paths), keyed by {@code authRequestId}, which is carried to the IdP and back inside the SAML
+   * {@code RelayState} ("mcp:{authRequestId}") — a protocol field immune to SameSite cookie loss.
+   * The actual SAML AuthnRequest redirect is performed by the service module ({@link
+   * SamlAuthServletHandler#initiateMcpLogin}); on the ACS callback that handler invokes {@link
+   * #handleSSOCallbackWithDbState} via the registered MCP bridge.
+   */
+  private CompletableFuture<String> handleSamlAuthorization(
+      OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
+    try {
+      LOG.info("Starting SAML authorization flow for client: {}", client.getClientId());
+
+      // Validate PKCE/redirect and persist the pending request (pac4j fields null — SAML carries
+      // the authRequestId in RelayState rather than a pac4j session).
+      String authRequestId = validateAndCreatePendingRequest(client, params);
+
+      LOG.debug("Created pending auth request for SAML: {}", authRequestId);
+
+      // Initiate the SAML AuthnRequest with RelayState carrying the MCP authorization request id.
+      // Keep all OneLogin/SAML code in the service module (mirrors how OIDC calls handleLogin).
+      HttpServletRequest request = currentRequest.get();
+      HttpServletResponse response = currentResponse.get();
+      if (request == null || response == null) {
+        throw new AuthorizeException(
+            "server_error", "HTTP context not available for SAML redirect");
+      }
+      String relayState = "mcp:" + authRequestId;
+      SamlAuthServletHandler samlHandler =
+          SamlAuthServletHandler.getInstance(
+              SecurityConfigurationManager.getCurrentAuthConfig(),
+              SecurityConfigurationManager.getCurrentAuthzConfig());
+      samlHandler.initiateMcpLogin(request, response, relayState);
+
+      LOG.info("SAML redirect initiated for MCP OAuth (auth request: {})", authRequestId);
+      return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");
+
+    } catch (AuthorizeException e) {
+      throw e;
+    } catch (Exception e) {
+      LOG.error("SAML authorization failed for client: {}", client.getClientId(), e);
+      throw new AuthorizeException("authorization_failed", "SAML authorization failed");
     }
   }
 
@@ -582,7 +588,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     if (pendingRequest.mcpState() != null) {
       queryParams.put("state", pendingRequest.mcpState());
     }
-    String redirectUrl = UriUtils.constructRedirectUri(pendingRequest.redirectUri(), queryParams);
+    String redirectUrl =
+        UriUtils.constructAuthorizationResponseUri(
+            pendingRequest.redirectUri(), queryParams, issuer);
 
     // Serve an HTML success page that auto-redirects to the client callback.
     // A raw 302 redirect leaves the SSO provider's login page visible in the browser

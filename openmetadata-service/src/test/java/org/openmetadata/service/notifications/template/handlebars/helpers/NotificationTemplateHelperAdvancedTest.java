@@ -108,7 +108,7 @@ class NotificationTemplateHelperAdvancedTest {
             + "https://openmetadata.example/tags/PII|"
             + "https://openmetadata.example/service/databaseServices/service.sales/ingestions|"
             + "https://openmetadata.example/table/service.sales.orders/profiler?activeTab=Data%20Quality|"
-            + "https://openmetadata.example/table/service.sales.orders/table_queries?tableId=table-id&query=query-id&queryFrom=1",
+            + "https://openmetadata.example/query-view/service.sales.orders.top_queries/query-id",
         compact(rendered));
   }
 

@@ -261,6 +261,11 @@ public final class DataContracts {
     public DataContractDeleter delete() {
       return new DataContractDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<DataContract> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.dataContracts(), identifier);
+    }
   }
 
   // ==================== Contract Operations ====================
@@ -528,5 +533,15 @@ public final class DataContracts {
     public DataContractDeleter delete() {
       return new DataContractDeleter(client, contract.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().dataContracts().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().dataContracts().getContextByName(fqn);
   }
 }

@@ -66,7 +66,10 @@ describe('AppTour component', () => {
   it('element render and actions check', async () => {
     render(<Tour {...mockProps} />);
 
-    expect(screen.getByText('ReactTour')).toBeInTheDocument();
+    // ReactTutorial is React.lazy()'d in Tour.tsx (the bundle-size PR's lazy
+    // tour work) so the Suspense child resolves on the next microtask.
+    // findBy* awaits that settle; the rest of the assertions follow.
+    expect(await screen.findByText('ReactTour')).toBeInTheDocument();
     expect(screen.getByText('TourEndModal is close')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Request' }));

@@ -17,6 +17,7 @@ import traceback
 from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.exc import NoSuchTableError
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -31,7 +32,6 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.ingestion.source.database.json_schema_extractor import (
     infer_json_schema_from_sample,
 )
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
@@ -163,7 +163,6 @@ class SqlColumnHandlerMixin:
     def _get_columns_with_constraints(
         schema_name: str, table_name: str, inspector: Inspector
     ) -> Tuple[List, List, List]:  # noqa: UP006
-        pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         try:
             unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
         except NotImplementedError:
@@ -175,15 +174,18 @@ class SqlColumnHandlerMixin:
             foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
         except NotImplementedError:
             logger.debug(
-                "Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+                f"Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
             foreign_constraints = []
+        try:
+            pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+        except (NotImplementedError, KeyError, NoSuchTableError):
+            logger.debug(
+                f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
+            pk_constraints = {}
 
-        pk_columns = (
-            pk_constraints.get("constrained_columns")
-            if len(pk_constraints) > 0 and pk_constraints.get("constrained_columns")
-            else {}
-        )
+        pk_columns = (pk_constraints.get("constrained_columns") if pk_constraints else None) or []
 
         foreign_columns = []
         for foreign_constraint in foreign_constraints:
@@ -212,7 +214,10 @@ class SqlColumnHandlerMixin:
                     ]
                 )
 
-        pk_columns = [clean_up_starting_ending_double_quotes_in_string(pk_column) for pk_column in pk_columns]
+        pk_columns = [
+            clean_up_starting_ending_double_quotes_in_string(pk_column)
+            for pk_column in pk_columns  # pyright: ignore[reportOptionalIterable]
+        ]
 
         return pk_columns, unique_columns, foreign_columns
 
@@ -243,7 +248,6 @@ class SqlColumnHandlerMixin:
 
         return inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name)
 
-    @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self,
         schema_name: str,
@@ -543,8 +547,8 @@ class SqlColumnHandlerMixin:
         # We explicitly define columns to avoid expensive DESCRIBE/introspection
         # queries that autoload_with would trigger for every table.
         try:
-            from sqlalchemy import Column as SaColumn  # noqa: PLC0415
-            from sqlalchemy import MetaData, Table, select  # noqa: PLC0415
+            from sqlalchemy import Column as SaColumn
+            from sqlalchemy import MetaData, Table, select
 
             metadata = MetaData()
 
@@ -579,7 +583,7 @@ class SqlColumnHandlerMixin:
             )
         # Attempt 2: text() fallback (option 2) but dialect-safe
         try:
-            from sqlalchemy import text  # noqa: PLC0415
+            from sqlalchemy import text
 
             quoted_columns = ", ".join(quote(c) for c in column_names)
             query = text(f"SELECT {quoted_columns} FROM {full_table_name} LIMIT :limit")

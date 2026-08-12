@@ -30,12 +30,19 @@ export interface DataQualityContextInterface {
   isTestCaseSummaryLoading: boolean;
   testCaseSummary: TestSummary;
   activeTab: DataQualityPageTabs;
+  createActions?: {
+    onAddTestCase?: () => void;
+    onAddBundleSuite?: () => void;
+    canCreateTestCase?: boolean;
+    canCreateBundleSuite?: boolean;
+  };
 }
 
 export type DataQualityDashboardChartFilters = {
   ownerFqn?: string;
   tags?: string[];
   tier?: string[];
+  certification?: string[];
   dataProductFqns?: string[];
   startTs?: number;
   endTs?: number;

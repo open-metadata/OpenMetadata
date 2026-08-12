@@ -224,6 +224,57 @@ public abstract class SecretsManager {
   }
 
   /**
+   * Encrypts a Context Plugin connection's password fields under the path
+   * /{cluster}/contextPlugin/{name}/{field}, mirroring {@link #encryptQueryRunnerConfig}.
+   *
+   * @param connectionConfig An object whose {@code @PasswordField} string fields should be encrypted
+   * @param pluginName The context plugin name
+   * @return The config with password fields replaced by secret references
+   */
+  public Object encryptContextPluginConnection(Object connectionConfig, String pluginName) {
+    if (connectionConfig == null) {
+      return null;
+    }
+    try {
+      return encryptPasswordFields(
+          connectionConfig, buildSecretId(true, "contextPlugin", pluginName), true);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST,
+          String.format("Failed to encrypt context plugin connection for plugin [%s]", pluginName));
+    }
+  }
+
+  public Object decryptContextPluginConnection(Object connectionConfig) {
+    if (connectionConfig == null) {
+      return null;
+    }
+    try {
+      return decryptPasswordFields(connectionConfig);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST, "Failed to decrypt context plugin connection");
+    }
+  }
+
+  /**
+   * Deletes Context Plugin connection secrets. Same path as {@link
+   * #encryptContextPluginConnection(Object, String)}: /{cluster}/contextPlugin/{pluginName}/{field}.
+   */
+  public void deleteContextPluginConnectionSecrets(Object connectionConfig, String pluginName) {
+    if (connectionConfig != null) {
+      try {
+        deleteSecrets(connectionConfig, buildSecretId(true, "contextPlugin", pluginName));
+      } catch (Exception e) {
+        throw new SecretsManagerException(
+            Response.Status.BAD_REQUEST,
+            String.format(
+                "Failed to delete secrets for context plugin connection [%s]", pluginName));
+      }
+    }
+  }
+
+  /**
    * This is used to handle the JWT Token internally, in the JWTFilter, when
    * calling for the auth-mechanism in the UI, etc.
    * If using SM, we need to decrypt and GET the secret to ensure we are comparing
@@ -426,9 +477,9 @@ public abstract class SecretsManager {
       String msg =
           String.format(
               "Error trying to encrypt object with secret ID [%s] due to [%s]",
-              secretId, e.getMessage());
+              secretId, exceptionMessage(e));
       LOG.error(msg);
-      throw new SecretsManagerException(msg);
+      throw new SecretsManagerException(msg, e);
     }
   }
 
@@ -509,6 +560,12 @@ public abstract class SecretsManager {
 
   protected abstract String storeValue(
       String fieldName, String value, String secretId, boolean store);
+
+  protected static String exceptionMessage(Throwable throwable) {
+    return throwable.getMessage() != null
+        ? throwable.getMessage()
+        : throwable.getClass().getSimpleName();
+  }
 
   protected String buildSecretId(boolean addClusterPrefix, String... secretIdValues) {
     StringBuilder format = new StringBuilder();

@@ -33,6 +33,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -64,9 +65,12 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -378,6 +382,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext) {
     EntityUtil.Fields fields = getFields(FIELD_OWNERS);
     Workflow workflow = repository.get(uriInfo, id, fields);
+    authorizeWorkflowTrigger(securityContext, workflow);
     workflow.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
     /*
@@ -580,6 +585,53 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
+  }
+
+  private void authorizeWorkflowTrigger(SecurityContext securityContext, Workflow workflow) {
+    if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
+      Workflow converted =
+          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+      if (converted.getRequest() instanceof TestServiceConnectionRequest testRequest) {
+        authorizeTestConnection(securityContext, testRequest);
+      } else {
+        // Fail closed: deny the trigger if a TEST_CONNECTION request cannot be resolved to a
+        // TestServiceConnectionRequest, rather than letting it run unauthorized.
+        throw new AuthorizationException(
+            String.format(
+                "Cannot authorize TEST_CONNECTION trigger for workflow [%s]: request is not a valid TestServiceConnectionRequest",
+                workflow.getId()));
+      }
+    }
+  }
+
+  private void authorizeTestConnection(
+      SecurityContext securityContext, TestServiceConnectionRequest testRequest) {
+    String serviceName = testRequest.getServiceName();
+
+    if (serviceName != null && testRequest.getServiceType() != null) {
+      String serviceEntityType =
+          Entity.getServiceEntityRepository(testRequest.getServiceType()).getEntityType();
+      OperationContext serviceOpCtx =
+          new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL);
+      ResourceContext<?> serviceResourceCtx =
+          new ResourceContext<>(serviceEntityType, null, serviceName);
+
+      OperationContext pipelineOpCtx =
+          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.CREATE);
+      ResourceContext<?> pipelineResourceCtx = new ResourceContext<>(Entity.INGESTION_PIPELINE);
+
+      authorizer.authorizeRequests(
+          securityContext,
+          List.of(
+              new AuthRequest(serviceOpCtx, serviceResourceCtx),
+              new AuthRequest(pipelineOpCtx, pipelineResourceCtx)),
+          AuthorizationLogic.ANY);
+    } else {
+      OperationContext operationContext =
+          new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.CREATE);
+      ResourceContext<?> resourceContext = new ResourceContext<>(Entity.INGESTION_PIPELINE);
+      authorizer.authorize(securityContext, operationContext, resourceContext);
+    }
   }
 
   private Workflow unmask(Workflow workflow) {

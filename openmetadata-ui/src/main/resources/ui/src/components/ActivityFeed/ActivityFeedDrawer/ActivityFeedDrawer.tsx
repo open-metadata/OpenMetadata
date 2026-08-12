@@ -13,10 +13,10 @@
 
 import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
-import { FC, useMemo } from 'react';
+import { FC, lazy, useMemo } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
-import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ActivityPanelBody from '../ActivityFeedPanel/ActivityPanelBody';
 import ActivityPanelHeader from '../ActivityFeedPanel/ActivityPanelHeader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
@@ -24,6 +24,14 @@ import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import TaskPanelHeader from '../ActivityFeedPanel/TaskPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-drawer.less';
+
+const TaskTabNew = withSuspenseFallback(
+  lazy(() =>
+    import('../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
+      default: m.TaskTabNew,
+    }))
+  )
+);
 
 interface ActivityFeedDrawerProps {
   open?: boolean;

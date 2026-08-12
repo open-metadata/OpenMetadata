@@ -92,6 +92,7 @@ export interface PipelineService {
      * Type of pipeline service such as Airflow or Prefect...
      */
     serviceType: PipelineServiceType;
+    style?:      Style;
     /**
      * Tags for this Pipeline Service.
      */
@@ -184,7 +185,7 @@ export interface FieldChange {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -236,8 +237,10 @@ export interface PipelineConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Choose between database connection or REST API connection to fetch metadata from
      * Airflow.
@@ -254,16 +257,23 @@ export interface ConfigObject {
      *
      * Spline REST Server Host & Port.
      *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
+     *
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
      *
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
+     * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
      */
     hostPort?: string;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -272,6 +282,8 @@ export interface ConfigObject {
      * Regex to filter MuleSoft applications by name.
      *
      * Regex to only include/exclude pipelines that matches the pattern.
+     *
+     * Regex to only include/exclude Process Chains that match the pattern.
      */
     pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
@@ -283,6 +295,9 @@ export interface ConfigObject {
     type?: PipelineServiceType;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -320,9 +335,14 @@ export interface ConfigObject {
     /**
      * Fivetran API Limit For Pagination.
      */
-    limit?:     number;
+    limit?: number;
+    /**
+     * SSL Configuration for Prefect API connection.
+     */
     sslConfig?: Config;
     /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      */
@@ -345,8 +365,6 @@ export interface ConfigObject {
     timeout?: number;
     /**
      * To Connect to Dagster Cloud
-     *
-     * Generated Token to connect to Databricks.
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -383,7 +401,13 @@ export interface ConfigObject {
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
-    sourcePythonClass?:   string;
+    sourcePythonClass?: string;
+    /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
+     */
+    authType?:            Authentication;
     connectionArguments?: { [key: string]: any };
     /**
      * Connection timeout in seconds.
@@ -513,6 +537,19 @@ export interface ConfigObject {
      * The Microsoft Fabric workspace ID where the pipelines are located.
      */
     workspaceId?: string;
+    /**
+     * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
+     * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
+     */
+    abapSchema?: string;
+    /**
+     * Password for the HANA database user.
+     */
+    password?: string;
+    /**
+     * HANA database username with access to BW metadata tables.
+     */
+    username?: string;
     [property: string]: any;
 }
 
@@ -557,6 +594,71 @@ export interface PurpleAuthentication {
      * Client Secret for the application registered in Airbyte.
      */
     clientSecret?: string;
+}
+
+/**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
+ */
+export interface Authentication {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
+    /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     */
+    apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
 }
 
 /**
@@ -764,6 +866,8 @@ export enum KafkaSecurityProtocol {
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
  *
+ * SSL Configuration for Prefect API connection.
+ *
  * OpenMetadata Client configured to validate SSL certificates.
  */
 export interface Config {
@@ -895,7 +999,13 @@ export interface ConnectionClass {
      *
      * Matillion Host
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?:       string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -946,6 +1056,10 @@ export interface ConnectionClass {
      */
     classificationName?: string;
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
@@ -1226,6 +1340,8 @@ export interface AuthConfigurationType {
  * Regex to filter MuleSoft applications by name.
  *
  * Regex to only include/exclude pipelines that matches the pattern.
+ *
+ * Regex to only include/exclude Process Chains that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1375,14 +1491,17 @@ export enum Type {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database: string;
     /**
@@ -1561,6 +1680,8 @@ export enum S3Type {
  *
  * Custom pipeline service type
  *
+ * SAP BW/4HANA pipeline service type.
+ *
  * Type of pipeline service such as Airflow or Prefect...
  *
  * Type of pipeline service - Airflow or Prefect.
@@ -1584,6 +1705,8 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Prefect = "Prefect",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
@@ -1675,6 +1798,43 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -1841,43 +2001,6 @@ export enum State {
 }
 
 /**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
-}
-
-/**
  * Last test connection results for this service
  *
  * TestConnectionResult is the definition that will encapsulate result of running the test
@@ -1915,9 +2038,21 @@ export enum StatusType {
  */
 export interface TestConnectionStepResult {
     /**
+     * Classified, actionable explanation of a failure, separate from the raw errorLog.
+     */
+    diagnosis?: Diagnosis;
+    /**
+     * Wall-clock time the step took, in milliseconds.
+     */
+    durationMs?: number;
+    /**
      * In case of failed step, this field would contain the actual error faced during the step.
      */
     errorLog?: string;
+    /**
+     * The command or statement the step actually ran, when applicable.
+     */
+    executedCommand?: string;
     /**
      * Is this step mandatory to be passed?
      */
@@ -1935,4 +2070,54 @@ export interface TestConnectionStepResult {
      * Did the step pass successfully?
      */
     passed: boolean;
+    /**
+     * Human-readable summary of what the step found on success.
+     */
+    resultSummary?: string;
+    /**
+     * Why a step did not run, when status is Skipped.
+     */
+    skipReason?: SkipReason;
+    /**
+     * Lifecycle state of this step.
+     */
+    status?: Status;
+}
+
+/**
+ * Classified, actionable explanation of a failure, separate from the raw errorLog.
+ */
+export interface Diagnosis {
+    /**
+     * Link to relevant documentation.
+     */
+    docUrl?: string;
+    /**
+     * What the user can do to fix it.
+     */
+    remediation?: string;
+    /**
+     * Short statement of what went wrong.
+     */
+    title?: string;
+}
+
+/**
+ * Why a step did not run, when status is Skipped.
+ */
+export enum SkipReason {
+    ConnectionNotEstablished = "ConnectionNotEstablished",
+    NotImplemented = "NotImplemented",
+}
+
+/**
+ * Lifecycle state of this step.
+ */
+export enum Status {
+    Failed = "Failed",
+    Passed = "Passed",
+    Queued = "Queued",
+    Running = "Running",
+    Skipped = "Skipped",
+    Warning = "Warning",
 }

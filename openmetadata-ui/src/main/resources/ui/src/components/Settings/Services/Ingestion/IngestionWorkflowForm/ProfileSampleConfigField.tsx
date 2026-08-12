@@ -22,7 +22,7 @@ import {
 import { FieldProps } from '@rjsf/utils';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { Form, Switch } from 'antd';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ICSamplingConfig,
@@ -32,36 +32,44 @@ import {
   SamplingMethodType,
   Threshold,
 } from '../../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
-
-const SAMPLE_CONFIG_TYPE_OPTIONS = [
-  { id: SampleConfigType.Static, label: 'STATIC' },
-  { id: SampleConfigType.Dynamic, label: 'DYNAMIC' },
-];
-
-const PROFILE_SAMPLE_TYPE_OPTIONS = [
-  { id: ProfileSampleType.Percentage, label: 'PERCENTAGE' },
-  { id: ProfileSampleType.Rows, label: 'ROWS' },
-];
-
-const SAMPLING_METHOD_TYPE_OPTIONS = [
-  { id: SamplingMethodType.Bernoulli, label: 'BERNOULLI' },
-  { id: SamplingMethodType.System, label: 'SYSTEM' },
-];
+import { pickConfigForType } from '../../../../../utils/ProfileSampleConfigUtils';
 
 const DEFAULT_THRESHOLD: Threshold = {
   rowCountThreshold: 1,
   profileSample: 100,
 };
 
+const SAMPLING_METHOD_TYPE_OPTIONS = [
+  { id: SamplingMethodType.Bernoulli, label: 'BERNOULLI' },
+  { id: SamplingMethodType.System, label: 'SYSTEM' },
+];
+
 const ProfileSampleConfigField = (props: FieldProps<ProfileSampleConfig>) => {
   const { formData, onChange } = props;
   const { t } = useTranslation();
 
+  const SAMPLE_CONFIG_TYPE_OPTIONS = useMemo(
+    () => [
+      { id: SampleConfigType.Static, label: t('label.static') },
+      { id: SampleConfigType.Dynamic, label: t('label.dynamic') },
+    ],
+    [t]
+  );
+
+  const PROFILE_SAMPLE_TYPE_OPTIONS = useMemo(
+    () => [
+      { id: ProfileSampleType.Percentage, label: t('label.percentage') },
+      { id: ProfileSampleType.Rows, label: t('label.row-plural') },
+    ],
+    [t]
+  );
+
   const sampleConfigType =
     formData?.sampleConfigType ?? SampleConfigType.Dynamic;
-  const config: ICSamplingConfig = formData?.config ?? {
-    smartSampling: true,
-  };
+  const config: ICSamplingConfig = pickConfigForType(
+    formData?.config,
+    sampleConfigType
+  );
 
   const handleConfigTypeChange = useCallback(
     (type: string | number | null) => {

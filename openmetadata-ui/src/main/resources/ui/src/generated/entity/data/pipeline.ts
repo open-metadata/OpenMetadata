@@ -832,6 +832,8 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Prefect = "Prefect",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",

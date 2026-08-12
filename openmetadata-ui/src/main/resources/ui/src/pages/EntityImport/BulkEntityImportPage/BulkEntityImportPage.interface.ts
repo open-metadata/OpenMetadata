@@ -10,7 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityStatus } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+
+export interface MetricBulkEditListFilters {
+  searchText?: string;
+  statusFilter?: EntityStatus;
+}
+
+export type MetricBulkEditScope =
+  | {
+      mode: 'selected';
+      metricIds: string[];
+      metricNames: string[];
+      filters: MetricBulkEditListFilters;
+    }
+  | {
+      mode: 'filtered';
+      filters: MetricBulkEditListFilters;
+    };
+
+export interface BulkEntityImportLocationState {
+  metricBulkEditScope?: MetricBulkEditScope;
+  selectedMetricNames?: string[];
+}
 
 export type CSVImportAsyncResponse = {
   jobId: string;

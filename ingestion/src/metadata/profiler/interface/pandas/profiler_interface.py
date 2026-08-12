@@ -198,7 +198,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         row_dict = {}
         try:
