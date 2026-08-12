@@ -17,8 +17,10 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
+import { insertActivityEventForTest } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
@@ -51,6 +53,13 @@ let persona: PersonaClass;
 // Test domain and data products for comprehensive testing
 let testDomain: Domain;
 let testDataProducts: DataProduct[] = [];
+
+// The Activity Feed widget only renders its "View More" link once the feed
+// exceeds PAGE_SIZE_BASE (15), so the footer step seeds one more than that
+// rather than depending on whatever activity the database happens to hold.
+let activitySeedTable: TableClass;
+const FEED_WIDGET_PAGE_SIZE = 15;
+const SEEDED_ACTIVITY_COUNT = FEED_WIDGET_PAGE_SIZE + 1;
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -135,6 +144,17 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
     await dp.create(apiContext);
   }
 
+  activitySeedTable = new TableClass();
+  await activitySeedTable.create(apiContext);
+
+  for (let index = 0; index < SEEDED_ACTIVITY_COUNT; index++) {
+    await insertActivityEventForTest(
+      apiContext,
+      activitySeedTable,
+      `Customize widgets activity ${index}`
+    );
+  }
+
   // Delete all existing KPIs before running the test
   await deleteKpiRequest(apiContext);
 
@@ -174,6 +194,19 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+test.afterAll(
+  'Cleanup: delete the activity seed table',
+  async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    try {
+      await activitySeedTable.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  }
+);
+
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
   await removeLandingBanner(page);
@@ -212,6 +245,7 @@ test('Activity Feed Widget', async ({ page }) => {
     await verifyWidgetFooterViewMore(page, {
       widgetKey,
       link: `/users/${adminUser.responseData.name}/activity_feed/all`,
+      requireViewMore: true,
     });
 
     await redirectToHomePage(page);
