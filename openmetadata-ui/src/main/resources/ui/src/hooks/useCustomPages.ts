@@ -16,8 +16,8 @@ import { NavigationItem } from '../generated/system/ui/uiCustomization';
 import {
   docStoreQueryFn,
   docStoreQueryKey,
-  PERSONA_DOC_STALE_TIME,
   personaDocFqn,
+  PERSONA_DOC_STALE_TIME,
 } from '../rest/queries/docStoreQuery';
 import { useApplicationStore } from './useApplicationStore';
 
@@ -39,9 +39,9 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
 
   return {
     customizedPage:
-      (doc?.data?.pages?.find(
-        (p: Page | null) => p?.pageType === pageType
-      ) as Page | undefined) ?? null,
+      (doc?.data?.pages?.find((p: Page | null) => p?.pageType === pageType) as
+        | Page
+        | undefined) ?? null,
     // Reset to [] on error to clear stale navigation items, null when no persona selected.
     navigation: isError
       ? ([] as NavigationItem[])

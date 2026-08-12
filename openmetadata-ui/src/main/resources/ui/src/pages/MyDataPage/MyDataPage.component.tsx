@@ -40,8 +40,8 @@ import {
 import {
   docStoreQueryFn,
   docStoreQueryKey,
-  PERSONA_DOC_STALE_TIME,
   personaDocFqn,
+  PERSONA_DOC_STALE_TIME,
 } from '../../rest/queries/docStoreQuery';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
