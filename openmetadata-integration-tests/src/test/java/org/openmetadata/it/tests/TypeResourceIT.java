@@ -1001,6 +1001,56 @@ public class TypeResourceIT {
         "dashboardDataModelColumn should NOT contain tableColumn's property in getAllCustomProperties");
   }
 
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_getAllCustomPropertiesExcludesEntitySchemaFields(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String propName = ns.prefix("schemaFieldLeakProp");
+    CustomProperty property = new CustomProperty();
+    property.setName(propName);
+    property.setDescription("Property asserting the response carries custom properties only");
+    property.setPropertyType(STRING_TYPE.getEntityReference());
+
+    addCustomProperty(client, TABLE_COLUMN_ENTITY_TYPE.getId(), property);
+
+    Map<String, List<Map<String, Object>>> allCustomProperties = getAllCustomProperties(client);
+
+    List<String> returnedNames = propertyNames(allCustomProperties.get("tableColumn"));
+    assertTrue(
+        returnedNames.contains(propName),
+        "tableColumn should contain the custom property that was just added");
+
+    Type tableColumnType = getTypeByName(client, "tableColumn", "customProperties");
+    List<String> declaredNames =
+        tableColumnType.getCustomProperties() == null
+            ? List.of()
+            : tableColumnType.getCustomProperties().stream()
+                .map(CustomProperty::getName)
+                .sorted()
+                .toList();
+    assertEquals(
+        declaredNames,
+        returnedNames,
+        "getAllCustomProperties must return exactly the declared custom properties — entity schema "
+            + "fields must not leak into the response");
+
+    List<String> tableNames = propertyNames(allCustomProperties.get("table"));
+    for (String schemaField : List.of("name", "description", "columns", "owners", "serviceType")) {
+      assertFalse(
+          tableNames.contains(schemaField),
+          "table schema field '" + schemaField + "' must not be reported as a custom property");
+    }
+  }
+
+  private static List<String> propertyNames(List<Map<String, Object>> properties) {
+    return properties == null
+        ? List.of()
+        : properties.stream().map(property -> (String) property.get("name")).sorted().toList();
+  }
+
   private static Type createType(OpenMetadataClient client, CreateType createRequest)
       throws Exception {
     return client

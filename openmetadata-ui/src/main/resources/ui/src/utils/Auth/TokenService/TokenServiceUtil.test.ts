@@ -119,11 +119,100 @@ describe('TokenService', () => {
   });
 
   describe('refreshToken', () => {
-    it('should return early if token update is in progress', async () => {
+    it('should wait for a sibling tab refresh and return the new token', async () => {
+      jest.useRealTimers();
       localStorage.setItem('refreshInProgress', 'true');
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
+
       const result = await tokenService.refreshToken();
 
-      expect(result).toBeUndefined();
+      // Must resolve to the sibling's token, never `undefined` (the value that
+      // made the 401 interceptor treat an in-progress refresh as a failure).
+      expect(result).toBe('new-token');
+
+      jest.useFakeTimers();
+    });
+
+    it('should coalesce concurrent refresh calls into a single refresh', async () => {
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: true,
+        timeoutExpiry: -1,
+      });
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue('new-token');
+
+      const [first, second] = await Promise.all([
+        tokenService.refreshToken(),
+        tokenService.refreshToken(),
+      ]);
+
+      expect(mockRenewToken).toHaveBeenCalledTimes(1);
+      expect(first).toBe('new-token');
+      expect(second).toBe('new-token');
+
+      jest.useFakeTimers();
+    });
+
+    it('should treat a void-returning silent renew as success when the token is persisted', async () => {
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('renewed-token');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: true,
+        timeoutExpiry: -1,
+      });
+      tokenService.updateRenewToken(mockRenewToken);
+      // OIDC silent renew resolves void and writes the token via a side effect.
+      mockRenewToken.mockResolvedValue(undefined);
+
+      const result = await tokenService.refreshToken();
+
+      // A void return with a changed stored token is a success, not a logout.
+      expect(result).toBe('renewed-token');
+
+      jest.useFakeTimers();
+    });
+
+    it('should refresh even when the token still looks valid locally', async () => {
+      // A 401 can arrive on a token that is not yet expired locally (clock skew /
+      // server-side revocation); there is no "skip if valid" fast path to block it.
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('new-token');
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue('new-token');
+
+      const result = await tokenService.refreshToken();
+
+      expect(mockRenewToken).toHaveBeenCalledTimes(1);
+      expect(result).toBe('new-token');
+
+      jest.useFakeTimers();
+    });
+
+    it('should treat a re-issued identical token as success, not a logout', async () => {
+      // MSAL/Okta/Auth0 silent renew can return the same id_token (forceRefresh
+      // only refreshes the access token); storage is unchanged but the renewer
+      // resolving is still success — must NOT return null (which logs the user out).
+      const sameToken = 'same-token';
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock).mockResolvedValue(sameToken);
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue(sameToken);
+
+      const result = await tokenService.refreshToken();
+
+      expect(result).toBe(sameToken);
+
+      jest.useFakeTimers();
     });
 
     it('should refresh token if expired', async () => {
@@ -147,25 +236,22 @@ describe('TokenService', () => {
       jest.useFakeTimers();
     });
 
-    it('should not refresh if token is valid', async () => {
+    it('should return null and clear the flag when no renewer is configured', async () => {
+      jest.useRealTimers();
       (getOidcToken as jest.Mock).mockResolvedValue('valid-token');
-      (extractDetailsFromToken as jest.Mock).mockReturnValue({
-        isExpired: false,
-        timeoutExpiry: 1000,
-      });
 
       const result = await tokenService.refreshToken();
 
       expect(mockRenewToken).not.toHaveBeenCalled();
       expect(result).toBeNull();
       expect(localStorage.getItem('refreshInProgress')).toBeNull();
+
+      jest.useFakeTimers();
     });
 
     it('should log a warning and resolve to null on renewal failure', async () => {
+      jest.useRealTimers();
       (getOidcToken as jest.Mock).mockResolvedValue('token');
-      (extractDetailsFromToken as jest.Mock).mockReturnValue({
-        isExpired: true,
-      });
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockRejectedValue(new Error('Refresh failed'));
       const warnSpy = jest
@@ -181,6 +267,25 @@ describe('TokenService', () => {
       expect(localStorage.getItem('refreshInProgress')).toBeNull();
 
       warnSpy.mockRestore();
+      jest.useFakeTimers();
+    });
+
+    it('should succeed when a null-returning renew delivers the token via callback (public OIDC)', async () => {
+      // OidcAuthenticator.signInSilently resolves without returning the token; it
+      // lands asynchronously in storage via the silent-callback iframe. A null
+      // renew result must NOT be read as failure when a fresh token shows up.
+      jest.useRealTimers();
+      (getOidcToken as jest.Mock)
+        .mockResolvedValueOnce('old-token')
+        .mockResolvedValue('callback-token');
+      tokenService.updateRenewToken(mockRenewToken);
+      mockRenewToken.mockResolvedValue(null);
+
+      const result = await tokenService.refreshToken();
+
+      expect(result).toBe('callback-token');
+
+      jest.useFakeTimers();
     });
   });
 

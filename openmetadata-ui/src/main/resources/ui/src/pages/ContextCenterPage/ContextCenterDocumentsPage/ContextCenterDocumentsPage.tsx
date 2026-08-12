@@ -345,6 +345,19 @@ const ContextCenterDocumentsPage: FC = () => {
     setSearchParams,
   ]);
 
+  useEffect(() => {
+    const folderId = searchParams.get('folder');
+    if (!folderId || isFoldersLoading || selectedFolderId) {
+      return;
+    }
+    setSelectedFolderId(folderId);
+    setSearchParams((prev) => {
+      prev.delete('folder');
+
+      return prev;
+    });
+  }, [isFoldersLoading, selectedFolderId, searchParams, setSearchParams]);
+
   const handleDeleteFile = useCallback((file: ContextFile) => {
     setFileToDelete(file);
   }, []);

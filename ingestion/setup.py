@@ -182,7 +182,7 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.11",
+    "collate-data-diff>=0.11.15",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -411,6 +411,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
+    "sftp": {"paramiko>=3.5,<6"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
@@ -533,6 +534,7 @@ test = {
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
+    *plugins["sftp"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
     "python-liquid",
