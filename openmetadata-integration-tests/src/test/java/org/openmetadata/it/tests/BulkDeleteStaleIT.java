@@ -271,6 +271,35 @@ public class BulkDeleteStaleIT {
   }
 
   @Test
+  void test_absentBody_returns400() throws Exception {
+    // A proxy that drops the body from a DELETE. Jackson cannot map a zero-length entity, so
+    // JsonMappingExceptionMapper already answers 400 here -- this pins that it stays a client
+    // error rather than degrading into an empty seen-set or a 500.
+    HttpResponse<String> response =
+        BulkApi.deleteStaleRaw(
+            "tables", HttpRequest.BodyPublishers.noBody(), SdkClients.getAdminToken());
+
+    assertEquals(400, response.statusCode(), "a deleteStale with no body must be rejected");
+  }
+
+  @Test
+  void test_nullBody_returns400FromNotNull() throws Exception {
+    // The other shape of a dropped body: valid JSON that binds the parameter to null. Jackson
+    // maps it cleanly, so nothing rejects it before the resource -- without @NotNull on the
+    // parameter this reaches the repository and NPEs into a 500. Asserting on the constraint
+    // message keeps this test honest: a plain 400 assertion would pass on the unfixed code too.
+    HttpResponse<String> response =
+        BulkApi.deleteStaleRaw(
+            "tables", HttpRequest.BodyPublishers.ofString("null"), SdkClients.getAdminToken());
+
+    assertEquals(400, response.statusCode(), "a deleteStale with a null body must be rejected");
+    assertTrue(
+        response.body().contains("must not be null"),
+        "the 400 must come from the @NotNull on the body parameter, not a parse failure: "
+            + response.body());
+  }
+
+  @Test
   void test_nonExistentScopeFqn_returnsEmptyResult(TestNamespace ns) throws Exception {
     BulkOperationResult result =
         BulkApi.deleteStale(

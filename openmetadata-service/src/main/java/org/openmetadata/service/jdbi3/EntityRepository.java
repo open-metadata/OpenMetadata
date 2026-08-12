@@ -10634,7 +10634,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // its repository set column FQNs on the write path carries a null one, and re-ingesting
         // that row would otherwise NPE here. The update repopulates the FQN, so rows written by
         // an older version repair themselves on the next run.
-        if (!Objects.equals(stored.getFullyQualifiedName(), updated.getFullyQualifiedName())) {
+        //
+        // A null stored FQN is not a rename: this map is a from -> to for rewriting lineage edges
+        // that already exist, and a column being given an FQN for the first time has no prior edge
+        // to rewrite. Skipping it also keeps a null key out of the map handed to
+        // handleColumnLineageUpdates.
+        if (stored.getFullyQualifiedName() != null
+            && !Objects.equals(stored.getFullyQualifiedName(), updated.getFullyQualifiedName())) {
           originalUpdatedColumnFqns.putIfAbsent(
               stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
         }

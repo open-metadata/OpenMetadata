@@ -63,14 +63,24 @@ public final class BulkApi {
 
   public static HttpResponse<String> deleteStaleRaw(
       String collection, BulkDeleteStaleRequest request, String token) throws Exception {
+    return deleteStaleRaw(
+        collection, HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(request)), token);
+  }
+
+  /**
+   * Sends {@code DELETE /v1/{collection}/deleteStale} with an arbitrary body publisher. Tests use
+   * {@link HttpRequest.BodyPublishers#noBody()} here to stand in for a proxy that strips the body
+   * from a DELETE, which must be rejected rather than read as an empty seen-set.
+   */
+  public static HttpResponse<String> deleteStaleRaw(
+      String collection, HttpRequest.BodyPublisher body, String token) throws Exception {
     HttpRequest httpRequest =
         HttpRequest.newBuilder()
             .uri(URI.create(SdkClients.getServerUrl() + "/v1/" + collection + "/deleteStale"))
             .header("Authorization", "Bearer " + token)
             .header("Content-Type", "application/json")
             // Builder.DELETE() takes no body; deleteStale carries the seen-FQN set in one.
-            .method(
-                "DELETE", HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(request)))
+            .method("DELETE", body)
             .build();
     return HTTP.send(httpRequest, HttpResponse.BodyHandlers.ofString());
   }
