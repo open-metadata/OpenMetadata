@@ -677,7 +677,7 @@ trino==0.338.0
 truststore==0.10.4
 typer==0.25.1
 types-protobuf==7.34.1.20260518
-types-requests==2.33.0.20260518
+types-requests==2.33.0.20260712
 typing-inspection==0.4.2
 typing_extensions==4.16.0
 tzdata==2026.2
