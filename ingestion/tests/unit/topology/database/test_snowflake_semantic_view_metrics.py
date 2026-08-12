@@ -39,16 +39,16 @@ FACT_LINE_AMOUNT = ("orders", "line_amount", "NUMBER", "orders.o_totalprice", "L
 def test_build_metric_name_is_qualified():
     """The readable path leads the name; the trailing digest disambiguates paths
     that sanitize or join to the same string (see the collision tests below)."""
-    name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "total_revenue")
+    name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "orders", "total_revenue")
 
-    assert name.startswith("snowflake_svc-TEST_DB-SALES-sales_analysis-total_revenue-")
+    assert name.startswith("snowflake_svc-TEST_DB-SALES-sales_analysis-orders-total_revenue-")
 
 
 def test_build_metric_name_is_a_single_fqn_segment():
     """A Metric's FQN *is* its name, and the server appends dimension/measure names
     to it. Any dot would turn those into multi-segment FQNs that positional FQN
     parsers misread as service.database.schema.table.column."""
-    name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "total_revenue")
+    name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "orders", "total_revenue")
 
     assert "." not in name
 
@@ -56,15 +56,15 @@ def test_build_metric_name_is_a_single_fqn_segment():
 def test_build_metric_name_strips_separators_from_identifiers():
     """Quoted Snowflake identifiers may themselves contain dots, which would
     reintroduce FQN segments, and `::` is rejected by the entityName pattern."""
-    name = build_metric_name("svc", '"my.db"', "S", '"v.1"', "a::b")
+    name = build_metric_name("svc", '"my.db"', "S", '"v.1"', "t", "a::b")
 
-    assert name.startswith("svc-my_db-S-v_1-a__b-")
+    assert name.startswith("svc-my_db-S-v_1-t-a__b-")
     assert "." not in name
     assert "::" not in name
 
 
 def test_build_metric_name_is_unique_per_path_element():
-    base = ("svc", "DB", "SCH", "view", "metric")
+    base = ("svc", "DB", "SCH", "view", "tbl", "metric")
     variants = [build_metric_name(*(base[:index] + ("other",) + base[index + 1 :])) for index in range(len(base))]
 
     assert len(set(variants)) == len(base)
@@ -76,8 +76,8 @@ def test_build_metric_name_survives_lossy_sanitization():
     the sanitized form alone is not injective: `a.b` and `a_b` are distinct Snowflake
     objects that must not collapse onto one Metric. A Metric's FQN *is* its name, so
     a collision silently overwrites one metric with the other."""
-    dotted = build_metric_name("svc", "db", "a.b", "view", "metric")
-    underscored = build_metric_name("svc", "db", "a_b", "view", "metric")
+    dotted = build_metric_name("svc", "db", "a.b", "view", "t", "metric")
+    underscored = build_metric_name("svc", "db", "a_b", "view", "t", "metric")
 
     assert dotted != underscored
 
@@ -86,10 +86,20 @@ def test_build_metric_name_is_unambiguous_across_part_boundaries():
     """METRIC_NAME_SEPARATOR is legal inside a quoted Snowflake identifier, so
     joining on it alone is ambiguous: ("sales-prod", "reporting") and
     ("sales", "prod-reporting") would otherwise produce the same name."""
-    left = build_metric_name("svc", "db", "sales-prod", "reporting", "metric")
-    right = build_metric_name("svc", "db", "sales", "prod-reporting", "metric")
+    left = build_metric_name("svc", "db", "sales-prod", "reporting", "t", "metric")
+    right = build_metric_name("svc", "db", "sales", "prod-reporting", "t", "metric")
 
     assert left != right
+
+
+def test_build_metric_name_distinguishes_logical_tables():
+    """Snowflake scopes a semantic object's name to its logical table, so one view
+    can define `orders.total` and `returns.total`. A Metric's FQN *is* its name, so
+    leaving the table out of the identity silently overwrites one with the other."""
+    orders = build_metric_name("svc", "DB", "SALES", "SALES_ANALYSIS", "ORDERS", "TOTAL")
+    returns = build_metric_name("svc", "DB", "SALES", "SALES_ANALYSIS", "RETURNS", "TOTAL")
+
+    assert orders != returns
 
 
 def test_build_metric_name_ignores_identifier_quoting():
@@ -97,20 +107,20 @@ def test_build_metric_name_ignores_identifier_quoting():
     topology context value, which may be quoted, while the lineage workflow passes
     the raw INFORMATION_SCHEMA value, which never is. If the derived name differed
     the lineage pass would miss the metric it just ingested and create an orphan."""
-    from_metadata = build_metric_name("svc", "DB", '"My.Schema"', '"My.View"', "total_revenue")
-    from_lineage = build_metric_name("svc", "DB", "My.Schema", "My.View", "total_revenue")
+    from_metadata = build_metric_name("svc", "DB", '"My.Schema"', '"My.View"', '"My.Table"', "total_revenue")
+    from_lineage = build_metric_name("svc", "DB", "My.Schema", "My.View", "My.Table", "total_revenue")
 
     assert from_metadata == from_lineage
 
 
 def test_build_metric_name_respects_the_entity_name_limit():
-    long_name = build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "m" * 80)
+    long_name = build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "t" * 80, "m" * 80)
 
     assert len(long_name) == MAX_METRIC_NAME_LENGTH
     # deterministic: the lineage workflow re-derives the name through this function
-    assert long_name == build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "m" * 80)
+    assert long_name == build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "t" * 80, "m" * 80)
     # the digest keeps truncated names distinct
-    assert long_name != build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "x" * 80)
+    assert long_name != build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "t" * 80, "x" * 80)
 
 
 def test_infer_metric_type_by_prefix():
@@ -136,7 +146,7 @@ def test_build_metric_request_maps_all_fields():
         view_ref=view_ref,
     )
     assert request.name.root == build_metric_name(
-        "snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "total_revenue"
+        "snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "orders", "total_revenue"
     )
     assert request.displayName == "total_revenue"
     assert request.description.root == "Total revenue"
@@ -303,8 +313,12 @@ def test_lineage_resolves_the_name_the_metadata_stage_emitted():
         resolve_table_by_fqn=lambda _f: view_entity,
         resolve_metric_by_name=_resolve_metric,
     )
+    # the catalog rows carry the metric's owning logical table, which is part of its
+    # identity: TOTAL_REVENUE and ORDER_COUNT are both declared on `orders`
     requests = list(
-        extractor._build_view_metric_edges("TEST_DB", "SALES", VIEW, view_entity, ["total_revenue", "order_count"])
+        extractor._build_view_metric_edges(
+            "TEST_DB", "SALES", VIEW, view_entity, [("orders", "total_revenue"), ("orders", "order_count")]
+        )
     )
 
     edges = [r.right for r in requests if r.right is not None]

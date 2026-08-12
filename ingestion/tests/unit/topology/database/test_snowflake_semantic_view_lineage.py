@@ -30,9 +30,9 @@ ORDERS_TBL = ("DB", "PUBLIC", "ORDERS_TBL")
 TABLE_MAP = {"CUSTOMERS": CUSTOMERS_TBL, "ORDERS": ORDERS_TBL}
 
 COLUMNS = {
-    "CUSTOMER_NAME": {"logical_table": "CUSTOMERS", "expression": "customers.c_name"},
-    "LINE_AMOUNT": {"logical_table": "ORDERS", "expression": "orders.o_totalprice"},
-    "TOTAL_REVENUE": {"logical_table": "ORDERS", "expression": "SUM(orders.line_amount)"},
+    ("CUSTOMERS", "CUSTOMER_NAME"): {"logical_table": "CUSTOMERS", "expression": "customers.c_name"},
+    ("ORDERS", "LINE_AMOUNT"): {"logical_table": "ORDERS", "expression": "orders.o_totalprice"},
+    ("ORDERS", "TOTAL_REVENUE"): {"logical_table": "ORDERS", "expression": "SUM(orders.line_amount)"},
 }
 
 
@@ -56,8 +56,10 @@ def test_extract_column_refs_handles_quoted_and_qualified():
 
 
 def test_match_semantic_name_is_case_insensitive():
-    assert match_semantic_name("line_amount", COLUMNS) == "LINE_AMOUNT"
-    assert match_semantic_name("NOT_THERE", COLUMNS) is None
+    assert match_semantic_name("orders", "line_amount", COLUMNS) == ("ORDERS", "LINE_AMOUNT")
+    assert match_semantic_name("orders", "NOT_THERE", COLUMNS) is None
+    # right name, wrong logical table -- must not match
+    assert match_semantic_name("customers", "line_amount", COLUMNS) is None
 
 
 def test_lookup_base_table_is_case_insensitive():
@@ -66,25 +68,86 @@ def test_lookup_base_table_is_case_insensitive():
 
 
 def test_resolve_base_columns_direct_dimension():
-    assert resolve_base_columns("CUSTOMER_NAME", COLUMNS, TABLE_MAP) == [(CUSTOMERS_TBL, "c_name")]
+    assert resolve_base_columns(("CUSTOMERS", "CUSTOMER_NAME"), COLUMNS, TABLE_MAP) == [(CUSTOMERS_TBL, "c_name")]
 
 
 def test_resolve_base_columns_follows_metric_to_fact_to_physical():
     # TOTAL_REVENUE = SUM(orders.line_amount); line_amount is a fact -> o_totalprice
-    assert resolve_base_columns("TOTAL_REVENUE", COLUMNS, TABLE_MAP) == [(ORDERS_TBL, "o_totalprice")]
+    assert resolve_base_columns(("ORDERS", "TOTAL_REVENUE"), COLUMNS, TABLE_MAP) == [(ORDERS_TBL, "o_totalprice")]
 
 
 def test_resolve_base_columns_stops_on_cycles():
     cyclic = {
-        "A": {"logical_table": "T", "expression": "t.b"},
-        "B": {"logical_table": "T", "expression": "t.a"},
+        ("T", "A"): {"logical_table": "T", "expression": "t.b"},
+        ("T", "B"): {"logical_table": "T", "expression": "t.a"},
     }
     # A -> B -> A -> ... never reaches a physical column; must terminate, not hang
-    assert resolve_base_columns("A", cyclic, {"T": ("DB", "S", "T_TBL")}) == []
+    assert resolve_base_columns(("T", "A"), cyclic, {"T": ("DB", "S", "T_TBL")}) == []
 
 
 def test_resolve_base_columns_unknown_column():
-    assert resolve_base_columns("NOPE", COLUMNS, TABLE_MAP) == []
+    assert resolve_base_columns(("ORDERS", "NOPE"), COLUMNS, TABLE_MAP) == []
+
+
+RETURNS_TBL = ("DB", "PUBLIC", "RETURNS_TBL")
+DUP_TABLE_MAP = {"ORDERS": ORDERS_TBL, "RETURNS": RETURNS_TBL}
+# Snowflake scopes a semantic object's name to its logical table, so one view may
+# define both orders.status and returns.status (see CREATE SEMANTIC VIEW: every
+# object is declared as `<table_alias>.<name> AS <expr>`).
+DUP_COLUMNS = {
+    ("ORDERS", "STATUS"): {"logical_table": "ORDERS", "expression": "orders.o_orderstatus"},
+    ("RETURNS", "STATUS"): {"logical_table": "RETURNS", "expression": "returns.r_status"},
+}
+
+
+def test_duplicate_names_on_different_logical_tables_resolve_independently():
+    """Keying columns by bare name collapsed these two onto one entry, so the
+    survivor's expression resolved lineage for both and returns.status was
+    silently attributed to the ORDERS base table."""
+    assert resolve_base_columns(("ORDERS", "STATUS"), DUP_COLUMNS, DUP_TABLE_MAP) == [(ORDERS_TBL, "o_orderstatus")]
+    assert resolve_base_columns(("RETURNS", "STATUS"), DUP_COLUMNS, DUP_TABLE_MAP) == [(RETURNS_TBL, "r_status")]
+
+
+def test_intra_view_reference_matches_on_the_owning_logical_table():
+    """A metric over a fact must follow the fact on *its own* table. Matching the
+    bare name could otherwise jump to a same-named object on another table."""
+    columns = {
+        ("ORDERS", "AMOUNT"): {"logical_table": "ORDERS", "expression": "orders.o_totalprice"},
+        ("RETURNS", "AMOUNT"): {"logical_table": "RETURNS", "expression": "returns.r_refundamount"},
+        ("RETURNS", "TOTAL"): {"logical_table": "RETURNS", "expression": "SUM(returns.amount)"},
+    }
+
+    assert resolve_base_columns(("RETURNS", "TOTAL"), columns, DUP_TABLE_MAP) == [(RETURNS_TBL, "r_refundamount")]
+
+
+def test_fetch_columns_keeps_the_logical_table():
+    """The resolver cannot preserve TABLE_NAME if the fetch throws it away."""
+    extractor = _extractor()
+    # SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, EXPRESSION
+    rows = [
+        ("SALES", "SALES_ANALYSIS", "ORDERS", "STATUS", "orders.o_orderstatus"),
+        ("SALES", "SALES_ANALYSIS", "RETURNS", "STATUS", "returns.r_status"),
+    ]
+    with patch.object(SnowflakeSemanticViewLineage, "_run", return_value=rows):
+        columns_by_view = extractor._fetch_columns("DB")
+
+    columns = columns_by_view[("SALES", "SALES_ANALYSIS")]
+    assert set(columns) == {("ORDERS", "STATUS"), ("RETURNS", "STATUS")}
+    assert columns[("RETURNS", "STATUS")]["expression"] == "returns.r_status"
+
+
+def test_fetch_view_metrics_keeps_the_logical_table():
+    """The metric name is derived from (view, logical table, name); dropping the
+    table here would make the lineage pass look up a name nothing was written under."""
+    extractor = _extractor()
+    rows = [
+        ("SALES", "SALES_ANALYSIS", "ORDERS", "TOTAL", "SUM(orders.amount)"),
+        ("SALES", "SALES_ANALYSIS", "RETURNS", "TOTAL", "SUM(returns.amount)"),
+    ]
+    with patch.object(SnowflakeSemanticViewLineage, "_run", return_value=rows):
+        metrics_by_view = extractor._fetch_view_metrics("DB")
+
+    assert metrics_by_view[("SALES", "SALES_ANALYSIS")] == [("ORDERS", "TOTAL"), ("RETURNS", "TOTAL")]
 
 
 def _extractor():
@@ -265,7 +328,9 @@ def test_view_to_metric_edge_emitted():
     )
 
     requests = list(
-        extractor._build_view_metric_edges("TEST_DB", "SALES", "sales_analysis", view_entity, ["total_revenue"])
+        extractor._build_view_metric_edges(
+            "TEST_DB", "SALES", "sales_analysis", view_entity, [("ORDERS", "total_revenue")]
+        )
     )
     edges = [r.right for r in requests if r.right is not None]
     assert len(edges) == 1

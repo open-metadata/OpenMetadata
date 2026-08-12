@@ -40,6 +40,7 @@ from metadata.utils import fqn
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
 # TABLE_NAME (index 0) is unused: the owning logical table is already named by the
 # expression (e.g. `customers.c_region`), so repeating it in the description is noise.
+SEMANTIC_TABLE_IDX = 0
 SEMANTIC_NAME_IDX = 1
 SEMANTIC_DATA_TYPE_IDX = 2
 SEMANTIC_EXPRESSION_IDX = 3
@@ -101,7 +102,7 @@ def _path_digest(parts: Tuple[str, ...]) -> str:  # noqa: UP006
     return hashlib.sha256("\x00".join(part or "" for part in parts).encode("utf-8")).hexdigest()[:_NAME_DIGEST_LENGTH]
 
 
-def build_metric_name(service: str, database: str, schema: str, view: str, metric: str) -> str:
+def build_metric_name(service: str, database: str, schema: str, view: str, table: str, metric: str) -> str:
     """Globally-unique metric name as a single, dot-free FQN segment.
 
     A Metric's FQN *is* its name (``MetricRepository.setFullyQualifiedName``) and the
@@ -112,6 +113,11 @@ def build_metric_name(service: str, database: str, schema: str, view: str, metri
     schemas, databases and services — but join with ``METRIC_NAME_SEPARATOR`` so the
     whole thing stays one segment.
 
+    ``table`` is the *logical* table the metric is declared on. Snowflake scopes a
+    semantic object's name to its logical table — every object is declared as
+    ``<table_alias>.<name> AS <expr>`` — so one view may define both ``orders.total``
+    and ``returns.total``, and the logical table is part of the metric's identity.
+
     The readable path alone does not identify the metric: ``_sanitize_name_part`` is
     lossy (``a.b`` and ``a_b`` both yield ``a_b``) and ``METRIC_NAME_SEPARATOR`` is
     itself legal inside a quoted identifier (``("x-y", "z")`` and ``("x", "y-z")``
@@ -120,7 +126,7 @@ def build_metric_name(service: str, database: str, schema: str, view: str, metri
     which the lineage workflow relies on to re-derive the name through this same
     function.
     """
-    unquoted = tuple(_unquote_name_part(part) for part in (service, database, schema, view, metric))
+    unquoted = tuple(_unquote_name_part(part) for part in (service, database, schema, view, table, metric))
     suffix = f"{METRIC_NAME_SEPARATOR}{_path_digest(unquoted)}"
     path = METRIC_NAME_SEPARATOR.join(_sanitize_name_part(part) for part in unquoted)
     # Truncating the readable path never costs uniqueness -- that lives in the digest.
@@ -190,13 +196,14 @@ def build_metric_request(
 ) -> CreateMetricRequest:
     """Assemble a CreateMetricRequest for a single Snowflake metric row."""
     metric = metric_row[SEMANTIC_NAME_IDX]
+    table = metric_row[SEMANTIC_TABLE_IDX]
     expression = metric_row[SEMANTIC_EXPRESSION_IDX]
     dimensions = [_dimension(row) for row in dimension_rows] or None
     measures = [_measure(row) for row in fact_rows] or None
     metric_expression = MetricExpression(language=Language.SQL, code=expression) if expression else None
     assets = EntityReferenceList(root=[view_ref]) if view_ref is not None else None
     return CreateMetricRequest(  # pyright: ignore[reportCallIssue]
-        name=EntityName(build_metric_name(service, database, schema, view, metric)),
+        name=EntityName(build_metric_name(service, database, schema, view, table, metric)),
         displayName=metric,
         description=metric_row[SEMANTIC_COMMENT_IDX] or None,
         metricType=infer_metric_type(expression),

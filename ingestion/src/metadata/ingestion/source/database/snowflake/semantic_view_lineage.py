@@ -58,6 +58,9 @@ logger = ingestion_logger()
 BaseTable = tuple[str, str, str]
 # A semantic view identified within a database by (schema, view)
 ViewKey = tuple[str, str]
+# A semantic object's identity within one view: (logical_table, name). The name alone
+# is not unique -- Snowflake declares every object as ``<table_alias>.<name>``.
+SemanticKey = tuple[str, str]
 
 # A single identifier segment: a double-quoted name or a bare name.
 _IDENTIFIER = r'"[^"]*"|[A-Za-z_][\w$]*'
@@ -100,14 +103,23 @@ def extract_column_refs(expression: Optional[str]) -> List[Tuple[str, str]]:  # 
     return refs
 
 
-def match_semantic_name(name_ref: str, columns: Dict[str, dict]) -> Optional[str]:  # noqa: UP006, UP045
-    """Return the semantic object name matching ``name_ref`` (case-insensitively),
-    used to detect intra-view references (e.g. a metric defined over a fact)."""
-    lowered = name_ref.lower()
+def match_semantic_name(
+    table_ref: str,
+    name_ref: str,
+    columns: Dict[SemanticKey, dict],  # noqa: UP006
+) -> Optional[SemanticKey]:  # noqa: UP045
+    """Return the ``(logical_table, name)`` key matching a table-qualified reference
+    (case-insensitively), used to detect intra-view references (e.g. a metric defined
+    over a fact).
+
+    Matching on the name alone would jump to a same-named object on a *different*
+    logical table, which Snowflake allows: names are scoped to the logical table.
+    """
+    lowered = (table_ref.lower(), name_ref.lower())
     matched = None
-    for column_name in columns:
-        if column_name.lower() == lowered:
-            matched = column_name
+    for key in columns:
+        if (key[0].lower(), key[1].lower()) == lowered:
+            matched = key
             break
     return matched
 
@@ -124,23 +136,26 @@ def lookup_base_table(table_ref: str, table_map: Dict[str, BaseTable]) -> Option
 
 
 def resolve_base_columns(
-    column_name: str,
-    columns: Dict[str, dict],  # noqa: UP006
+    column_key: SemanticKey,
+    columns: Dict[SemanticKey, dict],  # noqa: UP006
     table_map: Dict[str, BaseTable],  # noqa: UP006
     depth: int = 0,
 ) -> List[Tuple[BaseTable, str]]:  # noqa: UP006
     """Resolve a semantic object to the physical base-table columns it derives from.
+
+    ``column_key`` is ``(logical_table, name)`` -- the name alone does not identify a
+    semantic object, since Snowflake scopes it to the logical table.
 
     Follows intra-view references (metric -> fact -> physical column) up to
     ``_MAX_RESOLUTION_DEPTH`` levels to avoid runaway recursion on cyclic
     definitions. Returns a de-duplicated list of ``(base_table, base_column)``.
     """
     results: List[Tuple[BaseTable, str]] = []  # noqa: UP006
-    info = columns.get(column_name)
+    info = columns.get(column_key)
     if info is not None and depth <= _MAX_RESOLUTION_DEPTH:
         for table_ref, column_ref in extract_column_refs(info.get("expression")):
-            matched = match_semantic_name(column_ref, columns)
-            if matched is not None and matched != column_name:
+            matched = match_semantic_name(table_ref, column_ref, columns)
+            if matched is not None and matched != column_key:
                 for item in resolve_base_columns(matched, columns, table_map, depth + 1):
                     if item not in results:
                         results.append(item)
@@ -255,26 +270,38 @@ class SnowflakeSemanticViewLineage:
             table_maps.setdefault((schema, view), {})[logical_name] = (base_catalog, base_schema, base_table)
         return table_maps
 
-    def _fetch_columns(self, database: str) -> Dict[ViewKey, Dict[str, dict]]:  # noqa: UP006
-        """{(schema, view): {column_name: {"logical_table":..., "expression":...}}}"""
-        columns_by_view: Dict[ViewKey, Dict[str, dict]] = {}  # noqa: UP006
+    def _fetch_columns(self, database: str) -> Dict[ViewKey, Dict[SemanticKey, dict]]:  # noqa: UP006
+        """{(schema, view): {(logical_table, name): {"logical_table":..., "expression":...}}}
+
+        Keyed by ``(TABLE_NAME, NAME)`` rather than ``NAME``: Snowflake scopes a
+        semantic object's name to its logical table, so one view may define both
+        ``orders.status`` and ``returns.status``. Collapsing them onto one entry
+        resolved the second through the first's expression, silently attributing its
+        column lineage to the wrong base table.
+        """
+        columns_by_view: Dict[ViewKey, Dict[SemanticKey, dict]] = {}  # noqa: UP006
         for catalog_view in SEMANTIC_COLUMN_CATALOG_VIEWS:
             query = SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB.format(database=_quote_db(database), catalog_view=catalog_view)
             for row in self._run(query):
-                schema, view, name, expression = row[0], row[1], row[3], row[4]
+                schema, view, logical_table, name, expression = row[0], row[1], row[2], row[3], row[4]
                 columns = columns_by_view.setdefault((schema, view), {})
-                columns.setdefault(name, {"expression": expression})
+                columns.setdefault((logical_table, name), {"logical_table": logical_table, "expression": expression})
         return columns_by_view
 
-    def _fetch_view_metrics(self, database: str) -> Dict[ViewKey, List[str]]:  # noqa: UP006
-        """{(schema, view): [metric_name, ...]} for the whole database."""
-        metrics_by_view: Dict[ViewKey, List[str]] = {}  # noqa: UP006
+    def _fetch_view_metrics(self, database: str) -> Dict[ViewKey, List[SemanticKey]]:  # noqa: UP006
+        """{(schema, view): [(logical_table, metric_name), ...]} for the whole database.
+
+        The logical table is part of the metric's identity and feeds
+        ``build_metric_name``; dropping it here would make this pass look up a name
+        the metadata pass never wrote.
+        """
+        metrics_by_view: Dict[ViewKey, List[SemanticKey]] = {}  # noqa: UP006
         query = SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB.format(
             database=_quote_db(database), catalog_view="semantic_metrics"
         )
         for row in self._run(query):
-            schema, view, name = row[0], row[1], row[3]
-            metrics_by_view.setdefault((schema, view), []).append(name)
+            schema, view, logical_table, name = row[0], row[1], row[2], row[3]
+            metrics_by_view.setdefault((schema, view), []).append((logical_table, name))
         return metrics_by_view
 
     def _build_view_metric_edges(
@@ -283,12 +310,12 @@ class SnowflakeSemanticViewLineage:
         schema: str,
         view: str,
         view_entity: Table,
-        metric_names: List[str],  # noqa: UP006
+        metrics: List[SemanticKey],  # noqa: UP006
     ) -> Iterable[Either[AddLineageRequest]]:
         """Yield one `semantic view -> Metric` edge per resolvable metric."""
         requests: List[Either[AddLineageRequest]] = []  # noqa: UP006
-        for metric_name in metric_names:
-            name = build_metric_name(self.service_name, database, schema, view, metric_name)
+        for logical_table, metric_name in metrics:
+            name = build_metric_name(self.service_name, database, schema, view, logical_table, metric_name)
             metric = self.resolve_metric_by_name(name)
             if metric is not None:
                 requests.append(
@@ -312,7 +339,7 @@ class SnowflakeSemanticViewLineage:
         schema: str,
         view: str,
         table_map: Dict[str, BaseTable],  # noqa: UP006
-        columns: Dict[str, dict],  # noqa: UP006
+        columns: Dict[SemanticKey, dict],  # noqa: UP006
     ) -> Iterable[Either[AddLineageRequest]]:
         view_entity = self.resolve_table_by_fqn(fqn._build(self.service_name, database, schema, view))
         requests: List[Either[AddLineageRequest]] = []  # noqa: UP006
@@ -328,13 +355,22 @@ class SnowflakeSemanticViewLineage:
 
     @staticmethod
     def _group_pairs_by_base_table(
-        columns: Dict[str, dict],  # noqa: UP006
+        columns: Dict[SemanticKey, dict],  # noqa: UP006
         table_map: Dict[str, BaseTable],  # noqa: UP006
     ) -> Dict[BaseTable, List[Tuple[str, str]]]:  # noqa: UP006
-        """Map each base table to the (base_column, view_column) pairs feeding it."""
+        """Map each base table to the (base_column, view_column) pairs feeding it.
+
+        Resolution keys on ``(logical_table, name)``, but the pair's destination is the
+        bare name: that is what the semantic view's Table entity calls the column
+        (``merge_semantic_view_column`` keys the column list by name), and
+        ``_build_column_lineage`` resolves it against that entity. Two same-named
+        objects therefore land as two upstreams of the one column OpenMetadata holds,
+        instead of one of them being attributed to the other's base table.
+        """
         pairs_by_base: Dict[BaseTable, List[Tuple[str, str]]] = {}  # noqa: UP006
-        for view_column in columns:
-            for base_table, base_column in resolve_base_columns(view_column, columns, table_map):
+        for column_key in columns:
+            view_column = column_key[1]
+            for base_table, base_column in resolve_base_columns(column_key, columns, table_map):
                 pairs_by_base.setdefault(base_table, []).append((base_column, view_column))
         return pairs_by_base
 
