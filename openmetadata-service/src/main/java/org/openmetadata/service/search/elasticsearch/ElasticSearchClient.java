@@ -671,6 +671,16 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexNames, field, values, updates);
+  }
+
+  @Override
   public void updateEntityRelationship(
       String indexName,
       Pair<String, String> fieldAndValue,
