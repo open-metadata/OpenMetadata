@@ -10,19 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useApplicationsProvider } from '../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { NavigationItem } from '../generated/system/ui/uiCustomization';
+import {
+  docStoreQueryFn,
+  docStoreQueryKey,
+  personaDocFqn,
+} from '../rest/queries/docStoreQuery';
 import { filterHiddenNavigationItems } from '../utils/CustomizaNavigation/CustomizeNavigation';
-import { useCustomPages } from './useCustomPages';
+import { useApplicationStore } from './useApplicationStore';
 
 export const useSidebarItems = () => {
-  const { navigation } = useCustomPages('Navigation');
+  const { selectedPersona } = useApplicationStore();
+  const fqn = personaDocFqn(selectedPersona);
+
+  const { data: doc } = useQuery({
+    queryKey: docStoreQueryKey(fqn ?? ''),
+    queryFn: docStoreQueryFn(fqn ?? ''),
+    enabled: !!fqn,
+    retry: false,
+  });
+
+  const navigation =
+    (doc?.data?.navigation as NavigationItem[] | undefined) ?? null;
   const { plugins = [] } = useApplicationsProvider();
 
-  const sideBarItems = useMemo(
+  return useMemo(
     () => filterHiddenNavigationItems(navigation, plugins),
     [navigation, plugins]
   );
-
-  return sideBarItems;
 };

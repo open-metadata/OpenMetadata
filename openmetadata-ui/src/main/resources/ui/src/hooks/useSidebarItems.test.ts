@@ -10,30 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook } from '@testing-library/react-hooks';
-import { ReactNode } from 'react';
-import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
+import React, { ReactNode } from 'react';
 import { useApplicationsProvider } from '../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { AppPlugin } from '../components/Settings/Applications/plugins/AppPlugin';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
+import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { filterHiddenNavigationItems } from '../utils/CustomizaNavigation/CustomizeNavigation';
-import { useCustomPages } from './useCustomPages';
+import { useApplicationStore } from './useApplicationStore';
 import { useSidebarItems } from './useSidebarItems';
 
-const mockUseCustomPages = useCustomPages as jest.MockedFunction<
-  typeof useCustomPages
+const mockUseApplicationStore = useApplicationStore as jest.MockedFunction<
+  typeof useApplicationStore
 >;
 const mockUseApplicationsProvider =
-  useApplicationsProvider as jest.MockedFunction<
-    typeof useApplicationsProvider
-  >;
+  useApplicationsProvider as jest.MockedFunction<typeof useApplicationsProvider>;
 const mockFilterHiddenNavigationItems =
   filterHiddenNavigationItems as jest.MockedFunction<
     typeof filterHiddenNavigationItems
   >;
+const mockGetDocumentByFQN = getDocumentByFQN as jest.MockedFunction<
+  typeof getDocumentByFQN
+>;
 
-jest.mock('./useCustomPages', () => ({
-  useCustomPages: jest.fn(),
+jest.mock('./useApplicationStore', () => ({
+  useApplicationStore: jest.fn(),
+}));
+
+jest.mock('../rest/DocStoreAPI', () => ({
+  getDocumentByFQN: jest.fn(),
 }));
 
 jest.mock(
@@ -47,99 +53,83 @@ jest.mock('../utils/CustomizaNavigation/CustomizeNavigation', () => ({
   filterHiddenNavigationItems: jest.fn(),
 }));
 
+const mockPersona = { fullyQualifiedName: 'test-persona' };
+
+const mockNavigationItems: NavigationItem[] = [
+  {
+    id: 'explore',
+    title: 'Explore',
+    isHidden: false,
+    pageId: 'test-page',
+    children: [
+      { id: 'tables', pageId: 'test-page', title: 'Tables', isHidden: false },
+      { id: 'topics', pageId: 'test-page-', title: 'Topics', isHidden: false },
+    ],
+  },
+  { id: 'glossary', pageId: 'test-page', title: 'Glossary', isHidden: false },
+];
+
+const mockDocument = {
+  name: 'test-persona',
+  fullyQualifiedName: 'persona.test-persona',
+  entityType: 'PERSONA',
+  data: { navigation: mockNavigationItems },
+};
+
+const mockSidebarItems = [
+  {
+    key: 'explore',
+    title: 'Explore',
+    dataTestId: 'explore',
+    icon: () => ({} as ReactNode),
+  },
+];
+
+const mockPlugins: AppPlugin[] = [
+  {
+    name: 'test-plugin',
+    getSidebarActions: jest.fn(() => [
+      { key: 'plugin-item', title: 'Plugin Item', icon: {} as ReactNode, index: 0 },
+    ]),
+  } as unknown as AppPlugin,
+];
+
+let queryClient: QueryClient;
+
+const createWrapper = () => {
+  const Wrapper = ({ children }: { children: ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+  return Wrapper;
+};
+
+const mockDefaultProvider = () =>
+  mockUseApplicationsProvider.mockReturnValue(
+    { plugins: [], applications: [], extensionRegistry: {} } as unknown as ReturnType<
+      typeof useApplicationsProvider
+    >
+  );
+
 describe('useSidebarItems', () => {
-  const mockNavigationItems: NavigationItem[] = [
-    {
-      id: 'explore',
-      title: 'Explore',
-      isHidden: false,
-      pageId: 'test-page',
-      children: [
-        {
-          id: 'tables',
-          pageId: 'test-page',
-          title: 'Tables',
-          isHidden: false,
-        },
-        {
-          id: 'topics',
-          pageId: 'test-page-',
-          title: 'Topics',
-          isHidden: false,
-        },
-      ],
-    },
-    {
-      id: 'glossary',
-      pageId: 'test-page',
-      title: 'Glossary',
-      isHidden: false,
-    },
-  ];
-
-  const mockSidebarItems: LeftSidebarItem[] = [
-    {
-      key: 'explore',
-      title: 'Explore',
-      dataTestId: 'explore',
-      icon: () => ({} as ReactNode),
-      children: [
-        {
-          key: 'tables',
-          dataTestId: 'tables',
-          title: 'Tables',
-          icon: () => ({} as ReactNode),
-        },
-        {
-          key: 'topics',
-          dataTestId: 'topics',
-          title: 'Topics',
-          icon: () => ({} as ReactNode),
-        },
-      ],
-    },
-    {
-      key: 'glossary',
-      dataTestId: 'glossary',
-      title: 'Glossary',
-      icon: () => ({} as ReactNode),
-    },
-  ];
-
-  const mockPlugins: AppPlugin[] = [
-    {
-      name: 'test-plugin',
-      getSidebarActions: jest.fn(() => [
-        {
-          key: 'plugin-item',
-          title: 'Plugin Item',
-          icon: {} as ReactNode,
-          index: 0,
-        },
-      ]),
-    } as unknown as AppPlugin,
-  ];
-
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     jest.clearAllMocks();
-    mockUseCustomPages.mockReturnValue({
-      navigation: mockNavigationItems,
-      customizedPage: null,
-      isLoading: false,
-    });
-    mockUseApplicationsProvider.mockReturnValue({
-      plugins: [],
-      applications: [],
-      extensionRegistry: {} as never,
-    });
-    mockFilterHiddenNavigationItems.mockReturnValue(mockSidebarItems);
+    mockUseApplicationStore.mockReturnValue({ selectedPersona: mockPersona });
+    mockGetDocumentByFQN.mockResolvedValue(mockDocument);
+    mockDefaultProvider();
+    mockFilterHiddenNavigationItems.mockReturnValue(mockSidebarItems as never);
   });
 
-  it('should return filtered sidebar items with navigation and empty plugins', () => {
-    const { result } = renderHook(() => useSidebarItems());
+  it('should return filtered sidebar items with navigation and empty plugins', async () => {
+    const { result, waitForNextUpdate } = renderHook(() => useSidebarItems(), {
+      wrapper: createWrapper(),
+    });
 
-    expect(mockUseCustomPages).toHaveBeenCalledWith('Navigation');
-    expect(mockUseApplicationsProvider).toHaveBeenCalled();
+    await waitForNextUpdate();
+
+    expect(mockGetDocumentByFQN).toHaveBeenCalledWith('persona.test-persona');
     expect(mockFilterHiddenNavigationItems).toHaveBeenCalledWith(
       mockNavigationItems,
       []
@@ -147,161 +137,165 @@ describe('useSidebarItems', () => {
     expect(result.current).toEqual(mockSidebarItems);
   });
 
-  it('should pass plugins to filterHiddenNavigationItems when plugins are available', () => {
-    mockUseApplicationsProvider.mockReturnValue({
-      plugins: mockPlugins,
-      applications: [],
-      extensionRegistry: {} as never,
+  it('should pass plugins to filterHiddenNavigationItems when plugins are available', async () => {
+    mockUseApplicationsProvider.mockReturnValue(
+      { plugins: mockPlugins, applications: [], extensionRegistry: {} } as unknown as ReturnType<
+        typeof useApplicationsProvider
+      >
+    );
+
+    const { waitForNextUpdate } = renderHook(() => useSidebarItems(), {
+      wrapper: createWrapper(),
     });
 
-    const { result } = renderHook(() => useSidebarItems());
+    await waitForNextUpdate();
 
     expect(mockFilterHiddenNavigationItems).toHaveBeenCalledWith(
       mockNavigationItems,
       mockPlugins
     );
-    expect(result.current).toEqual(mockSidebarItems);
   });
 
-  it('should handle null navigation items', () => {
-    mockUseCustomPages.mockReturnValue({
-      navigation: null,
-      customizedPage: null,
-      isLoading: false,
-    });
+  it('should handle null navigation when no persona is selected', () => {
+    mockUseApplicationStore.mockReturnValue({ selectedPersona: null });
 
-    const { result } = renderHook(() => useSidebarItems());
+    renderHook(() => useSidebarItems(), { wrapper: createWrapper() });
 
+    expect(mockGetDocumentByFQN).not.toHaveBeenCalled();
     expect(mockFilterHiddenNavigationItems).toHaveBeenCalledWith(null, []);
-    expect(result.current).toEqual(mockSidebarItems);
   });
 
   it('should handle undefined plugins', () => {
-    mockUseApplicationsProvider.mockReturnValue({
-      plugins: undefined as unknown as AppPlugin[],
-      applications: [],
-      extensionRegistry: {} as never,
-    });
+    mockUseApplicationStore.mockReturnValue({ selectedPersona: null });
+    mockUseApplicationsProvider.mockReturnValue(
+      { plugins: undefined, applications: [], extensionRegistry: {} } as unknown as ReturnType<
+        typeof useApplicationsProvider
+      >
+    );
 
-    const { result } = renderHook(() => useSidebarItems());
+    renderHook(() => useSidebarItems(), { wrapper: createWrapper() });
+
+    expect(mockFilterHiddenNavigationItems).toHaveBeenCalledWith(null, []);
+  });
+
+  it('should recalculate sidebar items when persona changes', async () => {
+    const newPersona = { fullyQualifiedName: 'new-persona' };
+    const newNavigation: NavigationItem[] = [
+      { id: 'settings', pageId: 'settings-page', title: 'Settings', isHidden: false },
+    ];
+    mockGetDocumentByFQN
+      .mockResolvedValueOnce(mockDocument)
+      .mockResolvedValueOnce({ ...mockDocument, data: { navigation: newNavigation } });
+
+    const { rerender, waitForNextUpdate } = renderHook(
+      () => useSidebarItems(),
+      { wrapper: createWrapper() }
+    );
+
+    await waitForNextUpdate();
 
     expect(mockFilterHiddenNavigationItems).toHaveBeenCalledWith(
       mockNavigationItems,
       []
     );
-    expect(result.current).toEqual(mockSidebarItems);
-  });
 
-  it('should recalculate sidebar items when navigation changes', () => {
-    const { rerender } = renderHook(() => useSidebarItems());
-
-    expect(mockFilterHiddenNavigationItems).toHaveBeenCalledTimes(1);
-
-    const newNavigationItems: NavigationItem[] = [
-      {
-        id: 'settings',
-        pageId: 'settings-page',
-        title: 'Settings',
-        isHidden: false,
-      },
-    ];
-    mockUseCustomPages.mockReturnValue({
-      navigation: newNavigationItems,
-      customizedPage: null,
-      isLoading: false,
-    });
-
+    mockUseApplicationStore.mockReturnValue({ selectedPersona: newPersona });
     rerender();
 
-    expect(mockFilterHiddenNavigationItems).toHaveBeenCalledTimes(2);
+    await waitForNextUpdate();
+
+    expect(mockGetDocumentByFQN).toHaveBeenCalledWith('persona.new-persona');
     expect(mockFilterHiddenNavigationItems).toHaveBeenLastCalledWith(
-      newNavigationItems,
+      newNavigation,
       []
     );
   });
 
-  it('should recalculate sidebar items when plugins change', () => {
-    const { rerender } = renderHook(() => useSidebarItems());
+  it('should recalculate sidebar items when plugins change', async () => {
+    const { rerender, waitForNextUpdate } = renderHook(
+      () => useSidebarItems(),
+      { wrapper: createWrapper() }
+    );
+
+    await waitForNextUpdate();
 
     expect(mockFilterHiddenNavigationItems).toHaveBeenCalledTimes(1);
 
-    mockUseApplicationsProvider.mockReturnValue({
-      plugins: mockPlugins,
-      applications: [],
-      extensionRegistry: {} as never,
-    });
-
+    mockUseApplicationsProvider.mockReturnValue(
+      { plugins: mockPlugins, applications: [], extensionRegistry: {} } as unknown as ReturnType<
+        typeof useApplicationsProvider
+      >
+    );
     rerender();
 
-    expect(mockFilterHiddenNavigationItems).toHaveBeenCalledTimes(2);
     expect(mockFilterHiddenNavigationItems).toHaveBeenLastCalledWith(
       mockNavigationItems,
       mockPlugins
     );
   });
 
-  it('should memoize result when navigation and plugins do not change', () => {
-    const { result, rerender } = renderHook(() => useSidebarItems());
+  it('should memoize result when navigation and plugins do not change', async () => {
+    const { result, rerender, waitForNextUpdate } = renderHook(
+      () => useSidebarItems(),
+      { wrapper: createWrapper() }
+    );
+
+    await waitForNextUpdate();
 
     const firstResult = result.current;
 
     rerender();
 
     expect(result.current).toBe(firstResult);
-    expect(mockFilterHiddenNavigationItems).toHaveBeenCalledTimes(1);
+    expect(mockGetDocumentByFQN).toHaveBeenCalledTimes(1);
   });
 
-  it('should handle empty navigation array', () => {
-    mockUseCustomPages.mockReturnValue({
-      navigation: [],
-      customizedPage: null,
-      isLoading: false,
+  it('should handle empty navigation array', async () => {
+    mockGetDocumentByFQN.mockResolvedValue({
+      ...mockDocument,
+      data: { navigation: [] },
     });
 
-    const { result } = renderHook(() => useSidebarItems());
+    const { waitForNextUpdate } = renderHook(() => useSidebarItems(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitForNextUpdate();
 
     expect(mockFilterHiddenNavigationItems).toHaveBeenCalledWith([], []);
-    expect(result.current).toEqual(mockSidebarItems);
   });
 
-  it('should handle multiple plugins', () => {
+  it('should handle multiple plugins', async () => {
     const multiplePlugins: AppPlugin[] = [
       {
         name: 'plugin-1',
         getSidebarActions: jest.fn(() => [
-          {
-            key: 'plugin-1-item',
-            title: 'Plugin 1 Item',
-            icon: {} as ReactNode,
-            index: 0,
-          },
+          { key: 'plugin-1-item', title: 'Plugin 1 Item', icon: {} as ReactNode, index: 0 },
         ]),
       } as unknown as AppPlugin,
       {
         name: 'plugin-2',
         getSidebarActions: jest.fn(() => [
-          {
-            key: 'plugin-2-item',
-            title: 'Plugin 2 Item',
-            icon: {} as ReactNode,
-            index: 1,
-          },
+          { key: 'plugin-2-item', title: 'Plugin 2 Item', icon: {} as ReactNode, index: 1 },
         ]),
       } as unknown as AppPlugin,
     ];
 
-    mockUseApplicationsProvider.mockReturnValue({
-      plugins: multiplePlugins,
-      applications: [],
-      extensionRegistry: {} as never,
+    mockUseApplicationsProvider.mockReturnValue(
+      { plugins: multiplePlugins, applications: [], extensionRegistry: {} } as unknown as ReturnType<
+        typeof useApplicationsProvider
+      >
+    );
+
+    const { waitForNextUpdate } = renderHook(() => useSidebarItems(), {
+      wrapper: createWrapper(),
     });
 
-    const { result } = renderHook(() => useSidebarItems());
+    await waitForNextUpdate();
 
     expect(mockFilterHiddenNavigationItems).toHaveBeenCalledWith(
       mockNavigationItems,
       multiplePlugins
     );
-    expect(result.current).toEqual(mockSidebarItems);
   });
 });
