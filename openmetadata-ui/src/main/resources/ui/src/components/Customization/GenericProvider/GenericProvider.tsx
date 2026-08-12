@@ -84,7 +84,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
-  const selectedColumnRef = useRef<ColumnOrTask | null>(null);
   const [layout, setLayout] = useState<WidgetConfig[]>(
     getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
   );
@@ -96,7 +95,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const [selectedColumn, setSelectedColumn] = useState<ColumnOrTask | null>(
     null
   );
-  selectedColumnRef.current = selectedColumn;
 
   // Children (SchemaTable, ModelTab, etc.) register their sorted/filtered/paginated
   // column list here. Kept in a ref so the write does not re-render the provider on
