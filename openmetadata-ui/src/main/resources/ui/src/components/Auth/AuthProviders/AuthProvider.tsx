@@ -65,6 +65,8 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   clearAppMode,
+  isAppModeHintFresh,
+  readAppModeHint,
   readAppModeSession,
   resolveEffectiveAppMode,
   resolveInitialAppMode,
@@ -162,14 +164,25 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
   const appDefault = translateWireMode(appConfig?.defaultAppMode ?? null);
   setAppDefaultMode(appDefault);
 
-  // If this tab already has a session tuple (a manual toggle earlier in
-  // this tab, or a reload of one) leave it alone. `useResolvedAppMode`
-  // is the authoritative source and treats the tuple as the highest-
-  // priority signal once persona information is available — writing
-  // here would clobber a valid in-tab choice with the boot-time best-
-  // effort resolve (which cannot yet see persona) and break "toggle to
-  // AI, then reload" for users who did not tick "remember".
+  // Skip the boot-time write when this tab already has a signal that
+  // `useResolvedAppMode` will resolve authoritatively — the resolver is
+  // the single source of truth once it has persona + registry
+  // information, and writing to the session tuple here poisons the
+  // subsequent resolve. Two signals count:
+  //
+  //   1. A session tuple this tab already owns (returning tab, or a
+  //      manual toggle earlier in this tab).
+  //   2. A fresh cross-tab `omAppModeHint` — the mechanism by which a
+  //      sibling tab's active mode carries into a newly-opened tab.
+  //      Once we write `DEFAULT_APP_MODE` here, the resolver's session-
+  //      tuple check is satisfied by our write and it never consults
+  //      the hint, so a cmd+click from an AI tab silently boots the new
+  //      tab into Classic.
   if (readAppModeSession()?.mode) {
+    return;
+  }
+  const hint = readAppModeHint();
+  if (isAppModeHintFresh(hint) && hint?.mode) {
     return;
   }
 

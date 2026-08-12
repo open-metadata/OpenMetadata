@@ -88,10 +88,28 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
   await deleteResponse;
 };
 
-export const reactOnFeed = async (page: Page, feedNumber: number) => {
-  // Ensure at least one message exists; the caller usually checks, but we guard here
-  const message = getNthFeedMessage(page, Math.max(0, feedNumber - 1));
+/**
+ * Reactions are served by two different endpoints depending on what the card is:
+ * legacy conversation threads use `/api/v1/feed/{id}`, activity events use
+ * `PUT /api/v1/activity/{id}/reaction/{type}`. Matching only the feed one made
+ * `reactOnFeed` hang for 60s against the landing-page widget, which renders
+ * activity events.
+ */
+export const waitForReactionResponse = (page: Page, reaction: string) =>
+  page.waitForResponse(
+    (response) =>
+      (response.url().includes('/api/v1/activity') ||
+        response.url().includes('/api/v1/feed')) &&
+      response.url().includes(`/reaction/${reaction}`) &&
+      response.ok()
+  );
 
+/**
+ * Cycles every reaction on a specific card. Callers that react twice (add, then
+ * toggle off) must pass the same `Locator` both times — the list re-renders
+ * between calls, so an index would not resolve to the same card.
+ */
+export const reactOnFeedCard = async (page: Page, message: Locator) => {
   await expect(message).toBeVisible();
 
   for (const reaction of FEED_REACTIONS) {
@@ -107,12 +125,19 @@ export const reactOnFeed = async (page: Page, feedNumber: number) => {
       .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
       .waitFor({ state: 'visible' });
 
-    const waitForReactionResponse = page.waitForResponse('/api/v1/feed/*');
+    const reactionResponse = waitForReactionResponse(page, reaction);
     await page
       .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
       .click();
-    await waitForReactionResponse;
+    await reactionResponse;
   }
+};
+
+export const reactOnFeed = async (page: Page, feedNumber: number) => {
+  await reactOnFeedCard(
+    page,
+    getNthFeedMessage(page, Math.max(0, feedNumber - 1))
+  );
 };
 
 export const addMentionCommentInFeed = async (

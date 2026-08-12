@@ -286,6 +286,36 @@ describe('QualityTab', () => {
     expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
   });
 
+  it('should keep the filter toolbar responsive at constrained widths', async () => {
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('quality-tab-toolbar')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-center',
+      'tw:gap-y-4'
+    );
+    expect(screen.getByTestId('quality-tab-search')).toHaveClass(
+      'tw:min-w-50',
+      'tw:max-w-75',
+      'tw:flex-1'
+    );
+
+    const filterControls = screen.getByTestId('quality-tab-filter-controls');
+    const filterSpace = filterControls.querySelector('.ant-space-align-center');
+    const filterItems = filterControls.querySelectorAll('.ant-form-item');
+
+    expect(filterControls).toHaveClass('tw:ml-auto', 'tw:shrink-0');
+    expect(filterSpace).toBeInTheDocument();
+    expect(filterSpace).toHaveClass('tw:w-full', 'tw:justify-end');
+    expect(filterItems).toHaveLength(2);
+
+    filterItems.forEach((item) => {
+      expect(item).toHaveClass('tw:m-0', 'tw:w-44');
+    });
+  });
+
   it("Pagination should be called with 'handlePageChange'", async () => {
     await act(async () => {
       render(<QualityTab />);

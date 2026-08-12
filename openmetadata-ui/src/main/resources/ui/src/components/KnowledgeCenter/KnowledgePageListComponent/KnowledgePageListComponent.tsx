@@ -61,6 +61,7 @@ import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import {
   followKnowledgePage,
   getListKnowledgePages,
@@ -70,6 +71,7 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -197,6 +199,9 @@ const KnowledgePageListComponent = forwardRef<
           ],
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         getResourceLimit('knowledgeCenter', true, true);
         navigate({
           pathname: contextCenterClassBase.getArticlePath(
@@ -240,6 +245,9 @@ const KnowledgePageListComponent = forwardRef<
           relatedEntities: formData?.relatedEntities,
         };
         const response = await postKnowledgePage(data);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+        });
         setKnowledgePages((prevPages) => [response, ...prevPages]);
         setRefreshTagsCategory(true);
       } catch (error) {
