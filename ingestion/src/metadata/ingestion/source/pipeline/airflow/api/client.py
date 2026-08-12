@@ -261,13 +261,14 @@ class AirflowApiClient:
             if not page:
                 break
             result.extend(page)
-            offset += limit
+            returned_page_size = len(page)
+            offset += returned_page_size
 
             total_entries = response.get("total_entries")
             if total_entries is not None:
                 if offset >= total_entries:
                     break
-            elif len(page) < limit:
+            elif returned_page_size < limit:
                 break
         return result
 
@@ -304,12 +305,10 @@ class AirflowApiClient:
             if isinstance(schedule, dict):
                 schedule = schedule.get("value")
 
-        try:
-            task_response = self.get_dag_tasks(dag_id)
-            tasks_data = task_response.get("tasks", [])
-        except Exception as exc:
-            logger.warning(f"Could not fetch tasks for DAG {dag_id}: {exc}")
-            tasks_data = []
+        task_response = self.get_dag_tasks(dag_id)
+        if not isinstance(task_response, dict) or not isinstance(task_response.get("tasks"), list):
+            raise TypeError(f"Invalid tasks response for DAG {dag_id}")
+        tasks_data = task_response["tasks"]
 
         tasks = [
             AirflowApiTask(

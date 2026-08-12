@@ -93,7 +93,23 @@ class AirflowApiSource(PipelineServiceSource):
                 yield self.connection.build_dag_details(dag_data)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error building DAG details for {dag_data.get('dag_id')}: {exc}")
+                dag_id = dag_data.get("dag_id")
+                logger.warning(f"Error building DAG details for {dag_id}: {exc}")
+                self.status.failed(
+                    StackTraceError(
+                        name=dag_id or "Unknown Airflow DAG",
+                        error=f"Error building DAG details for {dag_id}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                if dag_id:
+                    pipeline_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Pipeline,
+                        service_name=self.context.get().pipeline_service,
+                        pipeline_name=dag_id,
+                    )
+                    self.pipeline_source_state.add(pipeline_fqn)
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
         """Seed the ``Pipeline`` denominator from the Airflow REST DAG count.
