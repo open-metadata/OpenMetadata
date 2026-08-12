@@ -35,6 +35,7 @@ import {
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
+import { ServiceCategoryParam } from '../../../../../constants/ServiceType.constant';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
@@ -137,7 +138,8 @@ const SelectServiceType = ({
               return;
             }
             setConnectorSearchTerm('');
-            serviceCategoryHandler(key as ServiceCategory);
+            // Includes the `all` sentinel — the handler's parameter is widened to match.
+            serviceCategoryHandler(key as ServiceCategoryParam);
           }}>
           {(item) => <SelectItem id={item.id} label={item.label} />}
         </Select>

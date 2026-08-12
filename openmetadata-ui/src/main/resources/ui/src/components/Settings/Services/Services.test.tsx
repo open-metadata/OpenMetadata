@@ -193,11 +193,16 @@ jest.mock('../../../utils/TableColumn.util', () => ({
 jest.mock('../../common/ListView/ListView.component', () => ({
   ListView: jest
     .fn()
-    .mockImplementation(({ cardRenderer, tableProps, searchProps }) => (
+    .mockImplementation(
+      ({ cardRenderer, tableProps, searchProps, handleDeletedSwitchChange }) => (
       <div data-testid="mocked-list-view">
         <button
           data-testid="trigger-search"
           onClick={() => searchProps.onSearch('no-such-service')}
+        />
+        <button
+          data-testid="trigger-deleted-switch"
+          onClick={handleDeletedSwitchChange}
         />
         <div data-testid="empty-text-container">
           {tableProps.locale?.emptyText}
@@ -390,6 +395,23 @@ describe('Services', () => {
       ).toBeInTheDocument();
       expect(
         screen.queryByTestId('add-placeholder-button')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should keep the plain no-data placeholder in the deleted view', async () => {
+      await act(async () => {
+        render(<Services serviceName={ServiceCategory.DATABASE_SERVICES} />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-deleted-switch'));
+      });
+
+      // "No deleted services" says nothing about whether the category has any, so inviting the user
+      // to connect their first one would be wrong.
+      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.empty-database-services-title')
       ).not.toBeInTheDocument();
     });
 

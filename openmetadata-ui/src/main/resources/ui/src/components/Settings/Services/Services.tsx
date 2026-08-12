@@ -305,8 +305,10 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const noDataPlaceholder = useMemo(() => {
     // A search or filter that matched nothing is not a first-run state — telling the user to
-    // connect their first service there would be wrong, so it keeps the plain no-data message.
-    if (!isEmpty(searchTerm) || serviceQueryFilter) {
+    // connect their first service there would be wrong, so it keeps the plain no-data message. The
+    // deleted view is the same kind of narrowing: "no deleted services" says nothing about whether
+    // the category has any.
+    if (!isEmpty(searchTerm) || serviceQueryFilter || deleted) {
       return (
         <ErrorPlaceHolder
           className="mt-24 border-none"
@@ -356,6 +358,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     serviceName,
     searchTerm,
     serviceQueryFilter,
+    deleted,
     handleAddServiceClick,
     t,
   ]);

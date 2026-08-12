@@ -255,7 +255,8 @@ const AddServicePage = () => {
     setActiveServiceStep(2);
   };
 
-  const handleServiceCategoryChange = (category: ServiceCategory) => {
+  // Receives the `all` sentinel as well as a real category; `getAddServicePath` handles both.
+  const handleServiceCategoryChange = (category: ServiceCategoryParam) => {
     setShowErrorMessage((prev) => ({ ...prev, serviceType: false }));
     setServiceConfig((prev) => ({
       ...prev,
