@@ -27,9 +27,11 @@ import type {
   QuickLink,
 } from '../interface/knowledge-center.interface';
 import { PageType } from '../interface/knowledge-center.interface';
+import { queryClient } from '../queryClient';
 import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from './ContextCenterQueryKeys';
 import EntityLink from './EntityLink';
 import { getEntityName } from './EntityNameUtils';
 import { showErrorToast } from './ToastUtils';
@@ -120,6 +122,9 @@ export const createArticleKnowledgePage = async (
       pageType: PageType.ARTICLE,
     };
     const response = await postKnowledgePage(data);
+    queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+    });
     onResourceLimit?.();
     navigate({
       hash: CREATE_PAGE_HASH,

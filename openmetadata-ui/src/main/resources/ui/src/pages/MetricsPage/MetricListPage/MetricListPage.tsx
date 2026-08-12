@@ -63,6 +63,7 @@ import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrum
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../components/common/Table/TableV2';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -399,6 +400,20 @@ const MetricListPage = () => {
     });
   }, [navigate, searchText, selectedMetricIds, selectedMetrics, statusFilter]);
 
+  const handleRowAction = useCallback(
+    (key: Key) => {
+      // React Aria fires this on row click/Enter (not on the selection checkbox,
+      // which only toggles selection). Navigate to the activated metric.
+      const metric = metrics.find((item) => item.id === key);
+      if (metric?.fullyQualifiedName) {
+        navigate(
+          getEntityDetailsPath(EntityType.METRIC, metric.fullyQualifiedName)
+        );
+      }
+    },
+    [metrics, navigate]
+  );
+
   const handleSearchTextChange = useCallback(
     (value: string | ChangeEvent<HTMLInputElement>) => {
       const text = getInputChangeValue(value);
@@ -505,11 +520,17 @@ const MetricListPage = () => {
         dataIndex: 'description',
         key: 'description',
         width: 420,
-        render: (description: string) => (
-          <p className="m-0 metric-list-description">
-            {description || emptyDash}
-          </p>
-        ),
+        render: (description: string) =>
+          description ? (
+            <RichTextEditorPreviewerV1
+              className="metric-list-description"
+              enableSeeMoreVariant={false}
+              markdown={description}
+              showReadMoreBtn={false}
+            />
+          ) : (
+            emptyDash
+          ),
       },
       glossary: {
         title: t('label.glossary-term-plural'),
@@ -818,6 +839,7 @@ const MetricListPage = () => {
                       <Button
                         className="metric-list-selection-clear"
                         color="link-gray"
+                        data-testid="clear-metric-selection"
                         iconLeading={XClose}
                         onPress={() => setSelectedMetricIds([])}>
                         {t('label.clear')}
@@ -826,12 +848,14 @@ const MetricListPage = () => {
                     <div className="metric-list-selection-actions">
                       {permission.EditAll && (
                         <Button
-                          className="metric-list-selection-action"
+                          className="metric-list-selection-action tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
                           color="link-color"
                           data-testid="bulk-edit-metric"
                           iconLeading={Edit03}
                           onPress={handleBulkEdit}>
-                          {t('label.edit')}
+                          {t('label.bulk-edit-count', {
+                            count: selectedMetricIds.length,
+                          })}
                         </Button>
                       )}
                       {permission.Delete && (
@@ -861,8 +885,8 @@ const MetricListPage = () => {
                     <div className="metric-list-toolbar-actions">
                       <Dropdown.Root>
                         <Button
-                          className="metric-list-toolbar-link metric-list-status-trigger"
-                          color="link-gray"
+                          className="metric-list-toolbar-link"
+                          color="link-color"
                           iconTrailing={ChevronDown}>
                           {statusFilter
                             ? getMetricStatus(statusFilter).label
@@ -890,12 +914,12 @@ const MetricListPage = () => {
                       </Dropdown.Root>
                       {permission.EditAll && (
                         <Button
-                          className="metric-list-toolbar-link"
+                          className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
                           color="link-color"
                           data-testid="bulk-edit-metric"
                           iconLeading={Edit03}
                           onPress={handleBulkEdit}>
-                          {t('label.edit')}
+                          {t('label.bulk-edit-all')}
                         </Button>
                       )}
                       <span
@@ -904,7 +928,7 @@ const MetricListPage = () => {
                       />
                       <Dropdown.Root>
                         <Button
-                          className="metric-list-toolbar-link"
+                          className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
                           color="link-color"
                           iconLeading={Settings01}>
                           {t('label.customize')}
@@ -993,12 +1017,14 @@ const MetricListPage = () => {
                       ),
                   }}
                   pagination={false}
+                  rowClassName="tw:cursor-pointer"
                   rowKey="id"
                   rowSelection={{
                     selectedRowKeys: selectedMetricIds,
                     onChange: setSelectedMetricIds,
                   }}
                   size="small"
+                  onRowAction={handleRowAction}
                 />
               </>
             )}
