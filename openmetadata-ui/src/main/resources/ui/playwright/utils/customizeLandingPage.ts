@@ -507,10 +507,15 @@ export const verifyWidgetFooterViewMore = async (
     widgetKey,
     expectedLink,
     link,
+    // Callers that seed enough rows for the link to be guaranteed pass true, so
+    // a missing footer fails instead of quietly ending the check. Defaults to
+    // false because most widgets here have no seeded row count to rely on.
+    requireViewMore = false,
   }: {
     widgetKey: string;
     expectedLink?: string;
     link?: string;
+    requireViewMore?: boolean;
   }
 ) => {
   // Wait for the page to load
@@ -523,6 +528,11 @@ export const verifyWidgetFooterViewMore = async (
 
   // Check for widget footer
   const widgetFooter = widget.locator('[data-testid="widget-footer"]');
+
+  if (requireViewMore) {
+    await expect(widgetFooter).toBeVisible();
+  }
+
   const footerExists = await widgetFooter.isVisible().catch(() => false);
 
   if (!footerExists) {
@@ -532,6 +542,11 @@ export const verifyWidgetFooterViewMore = async (
 
   // Footer exists, check for view more button
   const viewMoreButton = widget.locator('.footer-view-more-button');
+
+  if (requireViewMore) {
+    await expect(viewMoreButton).toBeVisible();
+  }
+
   const buttonExists = await viewMoreButton.isVisible().catch(() => false);
 
   if (!buttonExists) {

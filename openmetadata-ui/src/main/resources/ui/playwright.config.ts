@@ -272,7 +272,7 @@ export default defineConfig({
       name: 'Data Insight',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
-      grep: /data-insight/,
+      grep: combineGrep(/@data-insight/),
       teardown: 'entity-data-teardown',
     },
     {

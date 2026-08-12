@@ -161,13 +161,24 @@ class AlertUtilTest {
   }
 
   @Test
-  void shouldTriggerAlert_announcementThread_announcementResource_returnsTrue() {
+  void shouldTriggerAlert_announcementThread_announcementResource_returnsFalse() {
     Thread thread =
         new Thread()
             .withId(UUID.randomUUID())
             .withType(ThreadType.Announcement)
             .withEntityRef(new EntityReference().withId(UUID.randomUUID()).withType("table"));
     ChangeEvent event = threadChangeEvent(thread, EventType.THREAD_CREATED);
+    FilteringRules config = filteringRules("announcement");
+    assertFalse(AlertUtil.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void shouldTriggerAlert_announcementEntityEvent_announcementResource_returnsTrue() {
+    ChangeEvent event =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_CREATED)
+            .withEntityType("announcement");
     FilteringRules config = filteringRules("announcement");
     assertTrue(AlertUtil.shouldTriggerAlert(event, config));
   }
