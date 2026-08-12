@@ -38,7 +38,7 @@ class ClickzettaSampler(SQASampler):
         if static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(sampling_method(sample))
 
-        return selectable.tablesample(sampling_method(text(f"{sample} ROWS")))
+        return selectable.tablesample(sampling_method(text(f"{int(sample)} ROWS")))
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> CTE:
         """Build a sampled CTE using ClickZetta's native ``TABLESAMPLE`` clause."""
