@@ -27,7 +27,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -43,7 +42,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVImportMessage;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -357,15 +355,8 @@ public class CsvImportExportJobHandler implements JobHandler {
     if (!versioningRepo.supportsBulkImportVersioning()) {
       return;
     }
-    versioningRepo.createChangeEventForBulkOperation(
-        versioningRepo.getByName(
-            null,
-            args.getTargetFqn(),
-            new Fields(versioningRepo.getAllowedFields(), ""),
-            Include.NON_DELETED,
-            false),
-        result,
-        updatedBy);
+    BulkImportVersioning.recordVersion(
+        versioningRepo, null, args.getTargetFqn(), updatedBy, result);
   }
 
   private void handleCancellation(
