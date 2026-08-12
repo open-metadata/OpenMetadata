@@ -31,6 +31,7 @@ import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersIte
 function ObservabilityFormFiltersItem({
   supportedFilters,
   containerEntities,
+  supportedEventTypes,
   isViewMode = false,
 }: Readonly<ObservabilityFormFiltersItemProps>) {
   const { t } = useTranslation();
@@ -111,7 +112,8 @@ function ObservabilityFormFiltersItem({
                               name,
                               selectedTrigger,
                               supportedFilters,
-                              containerEntities
+                              containerEntities,
+                              supportedEventTypes
                             )}
                         </Row>
                       </div>
