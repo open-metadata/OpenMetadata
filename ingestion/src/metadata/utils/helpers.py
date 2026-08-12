@@ -458,41 +458,25 @@ def is_safe_sql_query(sql_query: str) -> bool:
     return True
 
 
-# `@name` injects a reference to a variable from the *calling Python frame* into a
-# pandas `DataFrame.query()`/`eval()` expression, and the expression may then call
-# its methods, reaching arbitrary code execution or credential disclosure. No
-# legitimate column-filter expression uses it. `.__` is dunder attribute traversal
-# (e.g. `col.__class__.__globals__`), the first hop of the classic sandbox-escape
-# gadget, blocked here as defense-in-depth. Backtick-quoted identifiers are stripped
-# first so an unusual but legitimate column name (e.g. `` `weird.__col` ``) is not
-# misread as an attack. A bare column like `first__name` is untouched because it has
-# no leading dot.
-_PANDAS_QUERY_BACKTICK_IDENTIFIER = re.compile(r"`[^`]*`")
-_PANDAS_QUERY_FRAME_REF = re.compile(r"@")
-_PANDAS_QUERY_DUNDER_ATTR = re.compile(r"\.\s*__")
-
-
 def is_safe_pandas_query(query_expression: Optional[str]) -> bool:  # noqa: UP045
-    """Validate a pandas ``DataFrame.query()`` filter expression.
+    """Validate a pandas ``DataFrame.query()`` expression.
 
-    Unlike ``is_safe_sql_query`` (which guards SQL sent to a database engine), this
-    guards a *pandas expression* evaluated in-process. The dangerous primitive is the
-    ``@`` frame-variable reference, which turns the expression into arbitrary Python.
+    Guards the in-process pandas expression evaluator the way ``is_safe_sql_query``
+    guards SQL sent to a database engine. Rejects the two constructs that let a query
+    do more than filter columns: ``@`` (a reference to a variable in the calling Python
+    frame) and ``.__`` (dunder attribute traversal). Backtick-quoted column identifiers
+    are stripped first so a legitimate column name is not misread.
 
     Args:
-        query_expression (Optional[str]): user-supplied pandas filter expression
+        query_expression (str): pandas filter expression
     Returns:
-        bool: True if the expression is safe to pass to ``DataFrame.query()``
+        bool
     """
     if query_expression is None:
         return True
 
-    # Strip backtick-quoted identifiers first so a legitimate column name cannot be
-    # misread as an attack, then look for the two injection primitives.
-    without_identifiers = _PANDAS_QUERY_BACKTICK_IDENTIFIER.sub("", query_expression)
-    has_frame_ref = _PANDAS_QUERY_FRAME_REF.search(without_identifiers)
-    has_dunder_attr = _PANDAS_QUERY_DUNDER_ATTR.search(without_identifiers)
-    return not (has_frame_ref or has_dunder_attr)
+    without_identifiers = re.sub(r"`[^`]*`", "", query_expression)
+    return "@" not in without_identifiers and re.search(r"\.\s*__", without_identifiers) is None
 
 
 def get_database_name_for_lineage(db_service_entity: DatabaseService, default_db_name: Optional[str]) -> Optional[str]:  # noqa: UP045
