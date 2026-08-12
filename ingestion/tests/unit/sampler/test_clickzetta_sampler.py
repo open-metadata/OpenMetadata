@@ -21,6 +21,7 @@ def _clickzetta_dialect():
     ("sample_type", "sample_method", "sample", "expected"),
     [
         (ProfileSampleType.ROWS, SamplingMethodType.BERNOULLI, 5_000, "TABLESAMPLE ROW(5000 ROWS)"),
+        (ProfileSampleType.ROWS, SamplingMethodType.BERNOULLI, 5_000.0, "TABLESAMPLE ROW(5000 ROWS)"),
         (ProfileSampleType.ROWS, SamplingMethodType.SYSTEM, 25, "TABLESAMPLE system(25 ROWS)"),
         (ProfileSampleType.PERCENTAGE, SamplingMethodType.BERNOULLI, 10, "TABLESAMPLE ROW(10)"),
         (ProfileSampleType.PERCENTAGE, SamplingMethodType.SYSTEM, 10, "TABLESAMPLE system(10)"),
