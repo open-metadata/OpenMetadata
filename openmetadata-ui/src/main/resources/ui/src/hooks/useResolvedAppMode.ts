@@ -30,6 +30,7 @@ import {
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
+  resolveEffectiveAppMode,
   writeAppMode,
 } from './useAppMode';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
@@ -68,19 +69,28 @@ const resolvePersonaAppMode = (
 /**
  * Single source of truth for resolving the active app mode at boot.
  *
- * Precedence (top wins):
+ * Precedence (top wins) — this order is shared with
+ * `resolveEffectiveAppMode` (used by `AuthProvider`'s pre-session
+ * bootstrap) so the two entry points can never disagree:
+ *
  *   1. Desktop app — handled outside this hook; the desktop shell calls
  *      `writeAppMode(AI_APP_MODE)` directly and the resolver bails on the
  *      relevant state (no persona to fetch, sessionStorage tuple always
  *      present after that write).
- *   2. Current session tuple whose `personaAppMode` matches what the
- *      persona currently says → keep it. Refreshes and same-persona
- *      re-runs leave the user's chosen mode alone.
- *   3. Persona's `appMode` if set.
- *   4. User preference (`usePersistentStorage[user].appMode`).
- *   5. Tenant-wide app-mode default (`appConfiguration.defaultAppMode`,
+ *   2. Current session tuple, if valid (mode is registered). This is
+ *      the user's manual in-tab switch and it wins unconditionally —
+ *      including over a persona change that happened after the tuple
+ *      was written. Rationale: the user's *right-now* click in this
+ *      tab must not be silently undone by an admin editing the
+ *      persona doc mid-session.
+ *   3. Fresh cross-tab hint (`localStorage['omAppModeHint']`) — carries
+ *      the user's most-recent active choice into a newly-opened tab.
+ *   4. User preference (`usePersistentStorage[user].appMode`) — the
+ *      server-side "remember" toggle. A persistent user choice.
+ *   5. Persona's `appMode` if set — the admin-curated group default.
+ *   6. Tenant-wide app-mode default (`appConfiguration.defaultAppMode`,
  *      cached via `setAppDefaultMode` — see `AuthProvider`'s bootstrap).
- *   6. `DEFAULT_APP_MODE`.
+ *   7. `DEFAULT_APP_MODE`.
  *
  * The install gate is applied on top of the candidate: if a non-default
  * candidate is not registered in `useAppRoutesRegistry`, the resolver
@@ -201,7 +211,15 @@ export const useResolvedAppMode = (): void => {
       clearAppModeSessionOnly();
     }
 
-    if (validSession && validSession.personaAppMode === currentPersonaAppMode) {
+    // Valid session tuple wins unconditionally — the user's manual
+    // in-tab switch is their explicit right-now choice for this tab
+    // and must survive a persona edit made after the tuple was
+    // written. Legacy behaviour also matched here when
+    // `validSession.personaAppMode === currentPersonaAppMode`; the
+    // asymmetric case (persona changed since the switch) was
+    // clobbering the user's click, which contradicted the "manual
+    // switch wins" rung.
+    if (validSession) {
       return;
     }
 
@@ -232,12 +250,16 @@ export const useResolvedAppMode = (): void => {
       }
     }
 
-    const preferredMode = preferences.appMode ?? null;
-    const candidate =
-      currentPersonaAppMode ??
-      preferredMode ??
-      getAppDefaultMode() ??
-      DEFAULT_APP_MODE;
+    // Precedence for the "no valid session, no fresh hint" case: user
+    // pref (server "remember") > persona > tenant default > constant.
+    // Shared with `resolveEffectiveAppMode` in `useAppMode.ts` so the
+    // async resolver here and the boot-time write in `AuthProvider`
+    // encode exactly the same policy.
+    const candidate = resolveEffectiveAppMode(
+      preferences.appMode ?? null,
+      currentPersonaAppMode,
+      getAppDefaultMode()
+    );
 
     // Install gate: refuse to write a non-default mode that isn't
     // registered yet. When the route registers later, this effect

@@ -393,14 +393,28 @@ export const translateWireMode = (
   wireMode ? CONFIG_MODE_TO_RUNTIME[wireMode] ?? null : null;
 
 /**
- * Resolve the effective app mode at boot from the fallback chain, highest
- * precedence first:
+ * Canonical precedence for the "no valid session tuple, no fresh hint"
+ * case. Used by BOTH `AuthProvider.hydrateAndResolveAppMode` (boot-time
+ * pre-session write) and `useResolvedAppMode` (async resolver), so the
+ * two entry points can never encode different fallback chains.
  *
- *   1. `userPref`    — the user's own stored preference (`user_preferences`).
+ * Signals, highest precedence first:
+ *
+ *   1. `userPref`    — the user's own stored preference (`user_preferences`,
+ *                       aka the "remember" server-side toggle). A
+ *                       persistent user choice made through the switcher.
  *   2. `personaMode` — the admin-curated persona app mode, when known.
+ *                       The group-level default for this user's persona.
  *   3. `appDefault`  — the tenant-wide "first impression" default
  *                       (`appConfiguration.defaultAppMode`, translated).
  *   4. `DEFAULT_APP_MODE` — the hardcoded constant, last resort.
+ *
+ * Not included here (higher-priority signals handled by callers):
+ *   - Session tuple (`sessionStorage['omAppMode']`) — the manual in-tab
+ *     switch, wins unconditionally when valid. See
+ *     `useResolvedAppMode`'s `validSession` guard.
+ *   - Fresh cross-tab hint (`localStorage['omAppModeHint']`) — sits
+ *     between session and the chain above. See `useResolvedAppMode`.
  *
  * Pure — no side effects, no storage reads. Callers are responsible for
  * supplying each signal (see `AuthProvider`'s bootstrap wiring).
