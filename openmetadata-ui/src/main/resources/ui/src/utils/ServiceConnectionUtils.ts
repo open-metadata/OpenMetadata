@@ -301,6 +301,14 @@ const PASSPHRASE_RE = /passphrase/i;
 /** Mirrors the backend convention: {@link SecretsManager#SECRET_FIELD_PREFIX}. */
 export const SECRET_FIELD_PREFIX = 'secret:';
 
+/**
+ * Mirrors the backend convention: {@link PasswordEntityMasker#PASSWORD_MASK}.
+ * The API always returns this sentinel for stored password fields instead of
+ * the real value, so an unmodified field on an edit form must not be treated
+ * as a plaintext value missing the secret prefix.
+ */
+export const MASKED_PASSWORD_VALUE = '*********';
+
 type JsonObject = Record<string, Record<string, unknown>>;
 
 const getFlatSecretKeys = (
@@ -377,6 +385,7 @@ export const findPasswordFieldsWithoutPrefix = (
       propertySchema?.format === PASSWORD_FORMAT &&
       typeof value === 'string' &&
       value.trim() !== '' &&
+      value !== MASKED_PASSWORD_VALUE &&
       !value.startsWith(prefix)
     ) {
       acc.push({ path: [key], key });
