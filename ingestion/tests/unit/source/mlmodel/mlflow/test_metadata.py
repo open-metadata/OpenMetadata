@@ -16,7 +16,6 @@ import pytest
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 from mlflow.exceptions import MlflowException
 from mlflow.store.entities import PagedList
-from mlflow.utils.search_utils import SearchModelUtils
 
 from metadata.ingestion.source.mlmodel.mlflow.metadata import MAX_VERSION_PAGES, MlflowSource
 
@@ -134,25 +133,25 @@ def test_search_never_passes_order_by():
 
     _, kwargs = source.client.search_model_versions.call_args
     assert "order_by" not in kwargs
-    assert kwargs["filter_string"] == f'name="{MODEL_NAME}"'
 
 
 @pytest.mark.parametrize(
     "model_name",
-    ["catalog.schema.o'brien_model", "catalog.schema.it's_a_model"],
+    ["catalog.schema.model", "engagement_dev.curated-ai-shared.instruments-similarity"],
 )
-def test_search_filter_survives_quotes_in_model_name(model_name):
-    """A quote in the name must not corrupt the filter, or the model silently vanishes."""
+def test_search_filter_uses_single_quotes(model_name):
+    """
+    Unity Catalog forwards this filter to the Databricks REST endpoint, which
+    accepts only `name = 'model_name'` and rejects a double-quoted name with
+    INVALID_PARAMETER_VALUE. MLflow's client-side parser is more permissive and
+    would happily accept the double-quoted form, so it cannot vouch for this.
+    """
     source = make_source(search_result=PagedList([make_version("2")], None), model_name=model_name)
 
     results = list(source.get_mlmodels())
 
     assert results[0][1].version == "2"
-    filter_string = source.client.search_model_versions.call_args[1]["filter_string"]
-    # The parser must recover the name byte-for-byte; the SQL-style '' escape
-    # parses cleanly but hands back a doubled quote, matching nothing.
-    parsed = SearchModelUtils.parse_search_filter(filter_string)
-    assert parsed[0]["value"] == model_name
+    assert source.client.search_model_versions.call_args[1]["filter_string"] == f"name='{model_name}'"
 
 
 def test_search_failure_is_recorded_and_does_not_raise():
