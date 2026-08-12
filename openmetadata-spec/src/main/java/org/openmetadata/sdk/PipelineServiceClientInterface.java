@@ -48,16 +48,26 @@ public interface PipelineServiceClientInterface {
   String TRIGGER_ERROR = "TRIGGER_ERROR";
 
   /**
+   * Task key that metadata-style ingestion logs are returned under. Defined once because several
+   * pipeline types deliberately share it and it doubles as {@link #DEFAULT_TASK_KEY}.
+   */
+  String INGESTION_TASK_KEY = "ingestion_task";
+
+  /**
    * Task key used when a pipeline type has no dedicated entry in {@link #TYPE_TO_TASK}. Callers must
    * resolve through {@link #taskKeyOf(String)} rather than reading the map directly: a null task key
    * ends up as a null key in the JSON log response, which Jackson refuses to serialize and which
    * surfaces to the caller as an opaque 400 "Invalid request format".
+   *
+   * <p>Kept separate from {@link #INGESTION_TASK_KEY} even though the values coincide: this one is
+   * fallback policy, and retargeting it must not silently change the response shape of the pipeline
+   * types that map to {@code ingestion_task} as their real, UI-facing contract.
    */
-  String DEFAULT_TASK_KEY = "ingestion_task";
+  String DEFAULT_TASK_KEY = INGESTION_TASK_KEY;
 
   Map<String, String> TYPE_TO_TASK =
       Map.ofEntries(
-          Map.entry(PipelineType.METADATA.toString(), "ingestion_task"),
+          Map.entry(PipelineType.METADATA.toString(), INGESTION_TASK_KEY),
           Map.entry(PipelineType.PROFILER.toString(), "profiler_task"),
           Map.entry(PipelineType.AUTO_CLASSIFICATION.toString(), "auto_classification_task"),
           Map.entry(PipelineType.LINEAGE.toString(), "lineage_task"),
@@ -69,7 +79,7 @@ public interface PipelineServiceClientInterface {
           Map.entry(PipelineType.APPLICATION.toString(), "application_task"),
           // The UI reads policy agent logs from `ingestion_task`
           // (see agentsDataMapper.ts PIPELINE_TYPE_TO_LOG_TASK_FIELD).
-          Map.entry(PipelineType.POLICY_AGENT.toString(), DEFAULT_TASK_KEY));
+          Map.entry(PipelineType.POLICY_AGENT.toString(), INGESTION_TASK_KEY));
 
   /** Resolves the log task key for a pipeline type, falling back to {@link #DEFAULT_TASK_KEY}. */
   static String taskKeyOf(String pipelineType) {

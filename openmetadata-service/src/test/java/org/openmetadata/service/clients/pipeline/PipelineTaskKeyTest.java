@@ -48,6 +48,34 @@ class PipelineTaskKeyTest {
     assertNotNull(PipelineServiceClientInterface.taskKeyOf(pipelineType.toString()));
   }
 
+  /**
+   * Call sites are split between the two accessors — K8sPipelineClient passes {@code value()} while
+   * the resource layer and AirflowRESTClient pass {@code toString()}. They agree today only because
+   * the generated enum's toString() returns the JSON value; if that ever diverges, K8s log keys
+   * would silently change. Pin the equivalence rather than rely on it.
+   */
+  @ParameterizedTest
+  @EnumSource(PipelineType.class)
+  void bothAccessorFormsResolveToTheSameTaskKey(PipelineType pipelineType) {
+    String fromValue = PipelineServiceClientInterface.taskKeyOf(pipelineType.value());
+    String fromToString = PipelineServiceClientInterface.taskKeyOf(pipelineType.toString());
+
+    assertNotNull(fromValue, "PipelineType." + pipelineType.name() + " unresolved via value()");
+    assertEquals(
+        fromToString,
+        fromValue,
+        "value() and toString() disagree for PipelineType." + pipelineType.name());
+  }
+
+  /** The map is keyed by the JSON value, so value() must hit a real entry, not the fallback. */
+  @ParameterizedTest
+  @EnumSource(PipelineType.class)
+  void everyPipelineTypeHasATaskKeyByValue(PipelineType pipelineType) {
+    assertNotNull(
+        PipelineServiceClientInterface.TYPE_TO_TASK.get(pipelineType.value()),
+        "PipelineType." + pipelineType.name() + " has no TYPE_TO_TASK entry for value()");
+  }
+
   @Test
   void taskKeyOfFallsBackForUnmappedType() {
     assertEquals(
