@@ -1122,12 +1122,21 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await waitForAllLoadersToDisappear(adminPage);
     await expect(adminPage).toHaveURL(/activity_feed\/tasks/);
 
+    // Two different callers hit /activity/entity: the tab badge count via
+    // getFeedCounts with limit=0, which runs on every entity page load
+    // whatever the tab, and the list fetch with limit=50, which is the one the
+    // tab gates. Matching the endpoint alone caught the count request and
+    // failed for the wrong reason, so match only a fetch that retrieves events.
+    const isActivityListFetch = (url: string) =>
+      url.includes('/api/v1/activity/entity/') &&
+      !/[?&]limit=0(?:&|$)/.test(url);
+
     // Watch only after the switch has settled. Attaching the listener before
     // the click also caught the ALL tab's own activity fetch when that request
     // was still being issued as the switch happened.
     let activityFetchedOnTasks = false;
     adminPage.on('request', (request) => {
-      if (request.url().includes('/api/v1/activity/entity/')) {
+      if (isActivityListFetch(request.url())) {
         activityFetchedOnTasks = true;
       }
     });
