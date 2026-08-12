@@ -474,7 +474,7 @@ public class QueryVisibilityPolicyIT {
     OpenMetadataClient admin = SdkClients.adminClient();
     String p = ns.shortPrefix() + label;
 
-    Rule denyRule =
+    Rule viewRule =
         new Rule()
             .withName(p + "Rule")
             .withResources(List.of("All"))
@@ -484,7 +484,7 @@ public class QueryVisibilityPolicyIT {
 
     CreatePolicy createPolicy = new CreatePolicy();
     createPolicy.setName(p + "_pol");
-    createPolicy.setRules(List.of(denyRule));
+    createPolicy.setRules(List.of(viewRule));
     Policy policy = admin.policies().create(createPolicy);
     fixtureCleanups.push(() -> admin.policies().delete(policy.getId()));
 
