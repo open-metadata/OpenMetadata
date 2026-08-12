@@ -243,6 +243,7 @@ export default defineConfig({
         '**/OktaSessionRenewalPublic.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/SSORenewal.spec.ts',
+        '**/SSOSessionLimit.spec.ts',
       ],
       use: { ...devices['Desktop Chrome'] },
       fullyParallel: false,

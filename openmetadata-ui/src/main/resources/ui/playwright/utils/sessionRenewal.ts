@@ -70,6 +70,22 @@ export const withShortOidcTokenValidity = (
   };
 };
 
+/**
+ * Caps the number of concurrent server-side sessions a single user may hold;
+ * exceeding it revokes the least-recently-used session. Top-level on
+ * authenticationConfiguration, unlike the nested token-validity overrides above.
+ */
+export const withMaxActiveSessions = (
+  base: ProviderConfigOverride,
+  maxActiveSessions: number
+): ProviderConfigOverride => ({
+  ...base,
+  authenticationConfiguration: {
+    ...base.authenticationConfiguration,
+    maxActiveSessionsPerUser: maxActiveSessions,
+  },
+});
+
 export const decodeJwtExp = (jwt: string): number => {
   const payload = jwt.split('.')[1];
 
