@@ -877,7 +877,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Return the parent's EntityReference without loading the parent entity. Subclasses override this
-   * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}.
+   * to enable batch parent loading in {@link #setInheritedFields(List, Fields)}. A type that can
+   * have several CONTAINS parents at once (e.g. a test case, under both a test suite and a test
+   * definition) must override this (or {@link #setInheritedFields(List, Fields)}) to name the one it
+   * inherits from -- otherwise the ancestor fallback resolves an arbitrary CONTAINS parent.
    */
   protected EntityReference getParentReference(T entity) {
     return null;
@@ -1003,7 +1006,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unchecked")
   public void setInheritedFieldsUntyped(List<?> entities, Fields fields) {
-    setInheritedFields((List<T>) entities, fields);
+    // Inheritance-ancestor path: these came from find() (getEntitiesForInheritance) with an
+    // un-hydrated getParentReference(), so resolve their parent from the CONTAINS relationship and
+    // pass it in -- that is how multi-level inheritance keeps walking up.
+    List<T> ancestors = (List<T>) entities;
+    setInheritedFields(ancestors, fields, batchFetchInheritanceParents(ancestors));
   }
 
   /** Apply inherited fields from a loaded parent to the entity. Override for custom inheritance logic. */
@@ -1156,38 +1163,51 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Repos with complex inheritance (e.g. GlossaryTerm, TestCase) can still override this method directly.
    */
   protected void setInheritedFields(List<T> entities, Fields fields) {
+    // Direct list reads: parent references are already hydrated, so there are no un-hydrated
+    // ancestors to resolve. Only the ancestor path (setInheritedFieldsUntyped) passes those in.
+    setInheritedFields(entities, fields, Map.of());
+  }
+
+  private void setInheritedFields(
+      List<T> entities, Fields fields, Map<UUID, EntityReference> unhydratedParentRefs) {
     if (entities.isEmpty()) return;
     String inheritableFields = getInheritableFields();
 
-    var parentRefMap = new HashMap<UUID, EntityReference>();
+    var parentRefsById = new HashMap<UUID, EntityReference>();
     for (var entity : entities) {
       if (!requiresParentForInheritance(entity, fields)) {
         continue;
       }
-      var ref = getParentReference(entity);
-      if (ref != null && ref.getId() != null) {
-        parentRefMap.putIfAbsent(ref.getId(), ref);
+      var parentRef = getParentReference(entity);
+      if (parentRef != null && parentRef.getId() != null) {
+        parentRefsById.putIfAbsent(parentRef.getId(), parentRef);
       }
     }
+    // Parents resolved from CONTAINS for ancestors whose reference wasn't hydrated by find() (empty
+    // on the direct list path) -- lets multi-level inheritance keep walking up.
+    unhydratedParentRefs.values().forEach(ref -> parentRefsById.putIfAbsent(ref.getId(), ref));
 
-    if (parentRefMap.isEmpty()) {
+    if (parentRefsById.isEmpty()) {
       for (var entity : entities) {
         setInheritedFields(entity, fields);
       }
       return;
     }
 
-    var refsByType =
-        parentRefMap.values().stream().collect(Collectors.groupingBy(EntityReference::getType));
+    var parentRefsByType =
+        parentRefsById.values().stream().collect(Collectors.groupingBy(EntityReference::getType));
 
-    var loadedParents = new HashMap<UUID, EntityInterface>();
+    // One bulk load per parent type, served from the thread-local inheritance-parent cache when
+    // present. Parents resolved for un-hydrated ancestors are merged into parentRefsById above, so
+    // they get loaded (and their own inherited fields resolved) here just like hydrated parents.
+    var parentsById = new HashMap<UUID, EntityInterface>();
     var missingRefsByType = new HashMap<String, List<EntityReference>>();
-    for (var entry : refsByType.entrySet()) {
+    for (var entry : parentRefsByType.entrySet()) {
       var missingRefs = new ArrayList<EntityReference>();
       for (var ref : entry.getValue()) {
         var cachedParent = getCachedInheritanceParent(ref, inheritableFields);
         if (cachedParent != null) {
-          loadedParents.put(ref.getId(), cachedParent);
+          parentsById.put(ref.getId(), cachedParent);
         } else {
           missingRefs.add(ref);
         }
@@ -1201,8 +1221,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<? extends EntityInterface> parents =
           Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
       for (var parent : parents) {
-        loadedParents.put(parent.getId(), parent);
-        var parentRef = parentRefMap.get(parent.getId());
+        parentsById.put(parent.getId(), parent);
+        var parentRef = parentRefsById.get(parent.getId());
         if (parentRef != null) {
           cacheInheritanceParent(parentRef, inheritableFields, parent);
         }
@@ -1213,11 +1233,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!requiresParentForInheritance(entity, fields)) {
         continue;
       }
-      var ref = getParentReference(entity);
-      if (ref != null && loadedParents.get(ref.getId()) instanceof EntityInterface parent) {
+      var parentRef = getParentReference(entity);
+      if (parentRef == null || parentRef.getId() == null) {
+        parentRef = unhydratedParentRefs.get(entity.getId());
+      }
+      if (parentRef != null
+          && parentsById.get(parentRef.getId()) instanceof EntityInterface parent) {
         applyInheritance(entity, fields, parent);
       } else {
-        // Preserve behavior when a parent cannot be resolved via batch loading.
+        // Parent could not be resolved via batch loading (no container, or a concurrently-deleted
+        // parent): fall back to the lenient per-entity path.
         setInheritedFields(entity, fields);
       }
     }
@@ -6684,6 +6709,52 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     return containerMap;
+  }
+
+  /**
+   * Resolve each entity's inheritance parent from its live CONTAINS relationship. Used for ancestors
+   * loaded via find() whose {@link #getParentReference} is not hydrated (e.g. a schema pulled in to
+   * inherit a database service's domain). Only the parent id and type are taken from the relation
+   * row -- {@link Entity#getEntitiesForInheritance} reloads the full parent -- so no extra reference
+   * lookup is issued. If an entity has several live CONTAINS parents (a corrupt/duplicate edge) the
+   * first is used and a warning logged, matching the single-entity read path
+   * {@link #resolveParentReferenceFromToRecords}.
+   */
+  protected final Map<UUID, EntityReference> batchFetchInheritanceParents(List<T> entities) {
+    Map<UUID, EntityReference> parentByEntityId = new HashMap<>();
+    if (nullOrEmpty(entities)) {
+      return parentByEntityId;
+    }
+    List<CollectionDAO.EntityRelationshipObject> relations =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.CONTAINS.ordinal(),
+                Include.NON_DELETED);
+    Set<UUID> warnedMultipleParents = new HashSet<>();
+    for (var relation : relations) {
+      if (relation.getToId() == null
+          || nullOrEmpty(relation.getFromEntity())
+          || nullOrEmpty(relation.getFromId())) {
+        continue;
+      }
+      UUID entityId = UUID.fromString(relation.getToId());
+      EntityReference parentRef =
+          new EntityReference()
+              .withId(UUID.fromString(relation.getFromId()))
+              .withType(relation.getFromEntity());
+      // putIfAbsent keeps the first parent; warn once per entity if more than one live edge exists.
+      if (parentByEntityId.putIfAbsent(entityId, parentRef) != null
+          && warnedMultipleParents.add(entityId)) {
+        LOG.warn(
+            "{} {} has multiple live CONTAINS parents; inheriting from the first "
+                + "(possible duplicate/stale relationship rows)",
+            entityType,
+            entityId);
+      }
+    }
+    return parentByEntityId;
   }
 
   public final EntityReference getFromEntityRef(
