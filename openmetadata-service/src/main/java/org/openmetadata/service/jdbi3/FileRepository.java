@@ -101,6 +101,12 @@ public class FileRepository extends EntityRepository<File> {
       file.setFullyQualifiedName(
           FullyQualifiedName.add(service.getFullyQualifiedName(), file.getName()));
     }
+    // Columns need their FQN set on the write path too, not only when read back in setFields:
+    // the update path compares columns by FQN, and a null one NPEs on every re-ingestion.
+    // Non-tabular files (images, PDFs, ...) have no columns at all.
+    if (file.getColumns() != null) {
+      ColumnUtil.setColumnFQN(file.getFullyQualifiedName(), file.getColumns());
+    }
   }
 
   @Override
