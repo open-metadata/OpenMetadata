@@ -11576,14 +11576,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setOwners(ownersMap.getOrDefault(entity.getId(), entity.getOwners()));
       entity.setDomains(domainsMap.getOrDefault(entity.getId(), entity.getDomains()));
     }
-    // getFields() rejects a field the entity does not declare, so this must stay guarded: most
-    // entity types (team, role, policy, bot, ingestionPipeline, ...) have no tags at all.
-    if (supportsTags) {
-      fetchAndSetTags(entities, getFields(FIELD_TAGS));
-    }
   }
 
-  /** Policy attributes {@link #enrichEntitiesForAuth(List)} populates, for the entities it supports. */
+  /**
+   * Policy attributes {@link #enrichEntitiesForAuth(List)} populates, for the entities it supports.
+   * Tags are deliberately not among them: they are unbounded in cardinality and most bulk callers
+   * run under policies that never inspect them, so they are left to be fetched only if a condition
+   * actually reads them.
+   */
   public Set<String> authEnrichedFields() {
     Set<String> fields = new HashSet<>();
     if (supportsOwners) {
@@ -11591,9 +11591,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     if (supportsDomains) {
       fields.add(FIELD_DOMAINS);
-    }
-    if (supportsTags) {
-      fields.add(FIELD_TAGS);
     }
     return fields;
   }
