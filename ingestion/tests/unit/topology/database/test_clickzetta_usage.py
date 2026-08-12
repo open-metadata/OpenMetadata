@@ -36,8 +36,8 @@ except ModuleNotFoundError:
     generated_module.ClickzettaConnection = ClickzettaConnection
     sys.modules[_CLICKZETTA_CONFIG_MODULE] = generated_module
 
-from metadata.data_quality.interface.sqlalchemy.clickzetta.test_suite_interface import (  # noqa: E402
-    ClickzettaTestSuiteInterface,
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (  # noqa: E402
+    SQATestSuiteInterface,
 )
 from metadata.generated.schema.type.basic import DateTime  # noqa: E402
 from metadata.ingestion.api.steps import InvalidSourceException  # noqa: E402
@@ -57,8 +57,8 @@ from metadata.ingestion.source.database.clickzetta.service_spec import (  # noqa
 from metadata.ingestion.source.database.clickzetta.usage import (  # noqa: E402
     ClickzettaUsageSource,
 )
-from metadata.profiler.interface.sqlalchemy.clickzetta.profiler_interface import (  # noqa: E402
-    ClickzettaProfilerInterface,
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (  # noqa: E402
+    SQAProfilerInterface,
 )
 from metadata.sampler.sqlalchemy.clickzetta.sampler import ClickzettaSampler  # noqa: E402
 from metadata.utils.importer import get_class_path  # noqa: E402
@@ -357,9 +357,9 @@ def test_lineage_source_propagates_query_history_errors():
 def test_service_spec_registers_usage_and_lineage_sources():
     assert ServiceSpec.usage_source_class.endswith("ClickzettaUsageSource")
     assert ServiceSpec.lineage_source_class.endswith("ClickzettaLineageSource")
-    assert ServiceSpec.profiler_class == get_class_path(ClickzettaProfilerInterface)
+    assert ServiceSpec.profiler_class == get_class_path(SQAProfilerInterface)
     assert ServiceSpec.sampler_class == get_class_path(ClickzettaSampler)
-    assert ServiceSpec.test_suite_class == get_class_path(ClickzettaTestSuiteInterface)
+    assert ServiceSpec.test_suite_class == get_class_path(SQATestSuiteInterface)
 
 
 def test_lineage_source_is_distinct_from_usage_source():

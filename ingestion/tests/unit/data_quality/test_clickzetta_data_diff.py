@@ -1,4 +1,4 @@
-"""Offline tests for the opt-in ClickZetta data-diff adapter."""
+"""Offline tests for the ClickZetta data-diff adapter."""
 
 import pytest
 
@@ -29,7 +29,7 @@ def test_clickzetta_data_diff_schema_sql_uses_describe():
     assert sql == "DESCRIBE `seller_center`.`orders`"
 
 
-def test_clickzetta_data_diff_allows_describe_without_full_scan_opt_in():
+def test_clickzetta_data_diff_executes_describe_queries():
     class Cursor:
         def execute(self, sql):
             self.sql = sql
@@ -42,7 +42,6 @@ def test_clickzetta_data_diff_allows_describe_without_full_scan_opt_in():
             return Cursor()
 
     database = object.__new__(ClickzettaDatabase)
-    database.allow_full_table_scan = False
     database._conn = Connection()
 
     assert database._query("DESCRIBE `seller_center`.`orders`") == [("id", "BIGINT", "")]
@@ -65,7 +64,6 @@ def test_clickzetta_data_diff_describe_schema_normalizes_clickzetta_types():
             return Cursor()
 
     database = object.__new__(ClickzettaDatabase)
-    database.allow_full_table_scan = False
     database._conn = Connection()
 
     schema = database.query_table_schema(("seller_center", "orders"))
@@ -100,19 +98,94 @@ def test_clickzetta_data_diff_registration_is_explicit():
             _connect.connect.database_by_scheme["clickzetta"] = original
 
 
-def test_clickzetta_data_diff_rejects_data_queries_without_explicit_opt_in():
+def test_clickzetta_data_diff_executes_generated_data_queries_without_a_private_opt_in():
+    class Cursor:
+        def execute(self, sql):
+            self.sql = sql
+
+        def fetchall(self):
+            return [(1,)]
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
     database = object.__new__(ClickzettaDatabase)
-    database.allow_full_table_scan = False
-    database._conn = None
+    database._conn = Connection()
 
-    with pytest.raises(RuntimeError, match="allowFullTableScan"):
-        database._query("SELECT * FROM `seller_center`.`orders`")
+    assert database._query("SELECT * FROM `seller_center`.`orders`") == [(1,)]
 
 
-def test_clickzetta_data_diff_does_not_treat_metadata_text_as_a_schema_query():
+def test_clickzetta_data_diff_executes_queries_containing_metadata_text():
+    class Cursor:
+        def execute(self, sql):
+            self.sql = sql
+
+        def fetchall(self):
+            return [("sys.information_schema.columns",)]
+
+    class Connection:
+        def cursor(self):
+            return Cursor()
+
     database = object.__new__(ClickzettaDatabase)
-    database.allow_full_table_scan = False
-    database._conn = None
+    database._conn = Connection()
 
-    with pytest.raises(RuntimeError, match="allowFullTableScan"):
-        database._query("SELECT 'sys.information_schema.columns' AS marker")
+    assert database._query("SELECT 'sys.information_schema.columns' AS marker") == [("sys.information_schema.columns",)]
+
+
+@pytest.mark.parametrize(
+    "legacy_option",
+    ["allowFullTableScan", "clickzettaAllowFullTableScan"],
+)
+def test_clickzetta_data_diff_rejects_explicit_legacy_false(monkeypatch, legacy_option):
+    from clickzetta.connector.v0 import dbapi
+
+    monkeypatch.setattr(dbapi, "connect", lambda **_: object())
+
+    with pytest.raises(ValueError, match=r"remove.*false"):
+        ClickzettaDatabase(
+            host="instance.service",
+            workspace="workspace",
+            virtualcluster="vcluster",
+            **{legacy_option: "false"},
+        )
+
+
+def test_clickzetta_data_diff_rejects_conflicting_legacy_scan_options(monkeypatch):
+    from clickzetta.connector.v0 import dbapi
+
+    monkeypatch.setattr(dbapi, "connect", lambda **_: object())
+
+    with pytest.raises(ValueError, match=r"remove.*false"):
+        ClickzettaDatabase(
+            host="instance.service",
+            workspace="workspace",
+            virtualcluster="vcluster",
+            allowFullTableScan="true",
+            clickzettaAllowFullTableScan="false",
+        )
+
+
+@pytest.mark.parametrize(
+    "legacy_options",
+    [
+        {},
+        {"allowFullTableScan": "true"},
+        {"clickzettaAllowFullTableScan": True},
+    ],
+)
+def test_clickzetta_data_diff_accepts_standard_or_legacy_true_configuration(monkeypatch, legacy_options):
+    from clickzetta.connector.v0 import dbapi
+
+    connection = object()
+    monkeypatch.setattr(dbapi, "connect", lambda **_: connection)
+
+    database = ClickzettaDatabase(
+        host="instance.service",
+        workspace="workspace",
+        virtualcluster="vcluster",
+        **legacy_options,
+    )
+
+    assert database._conn is connection

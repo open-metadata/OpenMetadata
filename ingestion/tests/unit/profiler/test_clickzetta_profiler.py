@@ -1,13 +1,10 @@
-"""Offline ClickZetta profiler capability and SQL safety tests."""
+"""Offline ClickZetta profiler capability and SQL compilation tests."""
 
 from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table, select
 
-from metadata.profiler.interface.sqlalchemy.clickzetta.profiler_interface import (
-    ClickzettaProfilerInterface,
-)
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.distinct_count import DistinctCount
 from metadata.profiler.metrics.static.max import Max
@@ -17,8 +14,10 @@ from metadata.profiler.metrics.static.null_count import NullCount
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
-from metadata.profiler.orm.functions.clickzetta import ClickzettaTableMetricComputer
-from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.functions.table_metric_computer import (
+    BaseTableMetricComputer,
+    table_metric_computer_factory,
+)
 
 
 def _clickzetta_dialect():
@@ -50,86 +49,22 @@ def test_clickzetta_core_metric_sql_compiles_without_a_live_connection():
     assert "STDDEV_POP" in sql.upper()
 
 
-def test_clickzetta_table_metric_computer_rejects_full_scan_by_default():
+def test_clickzetta_uses_standard_table_metric_computer_without_a_private_full_scan_gate():
     runner = _fake_runner()
-    computer = ClickzettaTableMetricComputer(
+    runner.select_result = SimpleNamespace(rowCount=3, _asdict=lambda: {"rowCount": 3})
+    computer = table_metric_computer_factory.construct(
+        "clickzetta",
         runner=runner,
         metrics=[RowCount],
         conn_config=SimpleNamespace(connectionOptions=None),
         entity=None,
     )
 
-    with pytest.raises(ValueError, match="allowFullTableScan"):
-        computer.compute()
-    assert runner.select_calls == 0
-
-
-def test_clickzetta_table_metric_computer_returns_metadata_without_querying_data():
-    runner = _fake_runner()
-    computer = ClickzettaTableMetricComputer(
-        runner=runner,
-        metrics=[_metric("columnCount"), _metric("columnNames")],
-        conn_config=SimpleNamespace(connectionOptions=None),
-        entity=None,
-    )
-
     result = computer.compute()
 
-    assert result.columnCount == 2
-    assert result.columnNames == "id,name"
-    assert runner.select_calls == 0
-
-
-def test_clickzetta_table_metric_computer_allows_explicit_full_scan_opt_in():
-    runner = _fake_runner()
-    runner.select_result = SimpleNamespace(_asdict=lambda: {"rowCount": 3})
-    config = SimpleNamespace(connectionOptions=SimpleNamespace(root={"allowFullTableScan": "true"}))
-    computer = ClickzettaTableMetricComputer(
-        runner=runner,
-        metrics=[RowCount],
-        conn_config=config,
-        entity=None,
-    )
-
-    result = computer.compute()
-
+    assert isinstance(computer, BaseTableMetricComputer)
     assert result.rowCount == 3
     assert runner.select_calls == 1
-
-
-def test_clickzetta_full_scan_opt_in_accepts_connection_arguments():
-    runner = _fake_runner()
-    runner.select_result = SimpleNamespace(_asdict=lambda: {"rowCount": 3})
-    config = SimpleNamespace(connectionOptions=None, connectionArguments={"allowFullTableScan": "true"})
-    computer = ClickzettaTableMetricComputer(
-        runner=runner,
-        metrics=[RowCount],
-        conn_config=config,
-        entity=None,
-    )
-
-    assert computer.compute().rowCount == 3
-    assert runner.select_calls == 1
-
-
-def test_clickzetta_dialect_name_is_registered_for_profiler_dispatch():
-    assert Dialects.Clickzetta == "clickzetta"
-
-
-def test_clickzetta_profiler_accepts_only_compiled_core_metrics():
-    ClickzettaProfilerInterface.validate_metrics([RowCount, NullCount, DistinctCount, Mean, Min, Max, Sum, StdDev])
-
-    with pytest.raises(ValueError, match="not supported"):
-        ClickzettaProfilerInterface.validate_metrics(["median"])
-
-
-def _metric(name):
-    class Metric:
-        @classmethod
-        def name(cls):
-            return name
-
-    return Metric
 
 
 def _fake_runner():

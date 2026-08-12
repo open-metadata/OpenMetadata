@@ -129,7 +129,6 @@ class ClickzettaDatabase(Database):
     CONNECT_URI_KWPARAMS: ClassVar[list[str]] = ["virtualcluster"]
 
     _conn: Any
-    allow_full_table_scan: bool = attrs.field(default=False, init=False)
 
     def __init__(
         self,
@@ -146,10 +145,17 @@ class ClickzettaDatabase(Database):
     ) -> None:
         super().__init__()
         self.default_schema = schema or "public"
-        self.allow_full_table_scan = (
-            str(extra.pop("allowFullTableScan", extra.pop("clickzettaAllowFullTableScan", "false"))).strip().lower()
-            == "true"
-        )
+        # The first guarded implementation required an explicit opt-in. Keep
+        # accepting that opt-in, but do not silently turn an explicit false
+        # into permission to execute standard OpenMetadata data-diff queries.
+        legacy_scan_values = [
+            extra.pop(option) for option in ("allowFullTableScan", "clickzettaAllowFullTableScan") if option in extra
+        ]
+        if any(str(value).strip().lower() != "true" for value in legacy_scan_values):
+            raise ValueError(
+                "ClickZetta data diff now follows standard OpenMetadata behavior; "
+                "remove the legacy allowFullTableScan=false option before enabling it"
+            )
 
         host_parts = host.split(".", 1)
         instance = extra.pop("instance", None) or (host_parts[0] if len(host_parts) == 2 else None)
@@ -174,13 +180,6 @@ class ClickzettaDatabase(Database):
         )
 
     def _query(self, sql_code: str) -> list:
-        normalized_sql = sql_code.lower()
-        is_schema_query = normalized_sql.lstrip().startswith("describe ")
-        if not is_schema_query and not self.allow_full_table_scan:
-            raise RuntimeError(
-                "ClickZetta data diff is disabled for data queries unless "
-                "allowFullTableScan=true is explicitly configured"
-            )
         cursor = self._conn.cursor()
         cursor.execute(sql_code)
         if sql_code.lstrip().lower().startswith(("select", "show", "describe", "explain")):

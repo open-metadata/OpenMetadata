@@ -14,68 +14,71 @@
  * ClickZetta Database Connection Config
  */
 export interface ClickzettaConnection {
-    /**
-     * Choose the ClickZetta authentication configuration.
-     */
-    authType:             AuthConfigurationType;
-    connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
-    /**
-     * Regex to only include or exclude matching databases.
-     */
-    databaseFilterPattern?: FilterPattern;
-    /**
-     * ClickZetta workspace to ingest.
-     */
-    databaseName: string;
-    /**
-     * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
-     */
-    databaseSchema?: string;
-    /**
-     * Complete ClickZetta instance and service host, with an optional port.
-     */
-    hostPort: string;
-    /**
-     * Protocol used to connect to ClickZetta.
-     */
-    protocol?: Protocol;
-    /**
-     * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this to information_schema.job_history for workspace-local native history or sys.information_schema.job_history for cross-workspace native history; the connector maps their native columns and scopes them to the configured workspace and schema. Custom tables or views must expose query_text, query_type, user_name, database_name, schema_name, start_time, end_time, duration, aborted, and cost columns.
-     */
-    queryHistoryTable?: string;
-    /**
-     * Regex to only include or exclude matching schemas.
-     */
-    schemaFilterPattern?: FilterPattern;
-    /**
-     * SQLAlchemy driver scheme options.
-     */
-    scheme?: ClickzettaScheme;
-    /**
-     * Attached dbt metadata ingestion remains disabled until the Dagster/dbt workflow is live
-     * and validated.
-     */
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
-    supportsUsageExtraction?:      boolean;
-    /**
-     * Regex to only include or exclude matching tables.
-     */
-    tableFilterPattern?: FilterPattern;
-    /**
-     * Service Type
-     */
-    type?: ClickzettaType;
-    /**
-     * Username to connect to ClickZetta.
-     */
-    username: string;
-    /**
-     * ClickZetta virtual cluster used for metadata extraction.
-     */
-    virtualCluster: string;
+  /**
+   * Choose the ClickZetta authentication configuration.
+   */
+  authType: AuthConfigurationType;
+  connectionArguments?: { [key: string]: any };
+  connectionOptions?: { [key: string]: string };
+  /**
+   * Regex to only include or exclude matching databases.
+   */
+  databaseFilterPattern?: FilterPattern;
+  /**
+   * ClickZetta workspace to ingest.
+   */
+  databaseName: string;
+  /**
+   * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
+   */
+  databaseSchema?: string;
+  /**
+   * Complete ClickZetta instance and service host, with an optional port.
+   */
+  hostPort: string;
+  /**
+   * Protocol used to connect to ClickZetta.
+   */
+  protocol?: Protocol;
+  /**
+   * Optional ClickZetta table or view used for usage and query-lineage extraction. Set this
+   * to information_schema.job_history for workspace-local native history or
+   * sys.information_schema.job_history for cross-workspace native history; the connector maps
+   * their native columns and scopes them to the configured workspace and schema. Custom
+   * tables or views must expose query_text, query_type, user_name, database_name,
+   * schema_name, start_time, end_time, duration, aborted, and cost columns.
+   */
+  queryHistoryTable?: string;
+  /**
+   * Regex to only include or exclude matching schemas.
+   */
+  schemaFilterPattern?: FilterPattern;
+  /**
+   * SQLAlchemy driver scheme options.
+   */
+  scheme?: ClickzettaScheme;
+  supportsDataDiff?: boolean;
+  supportsDBTExtraction?: boolean;
+  supportsLineageExtraction?: boolean;
+  supportsMetadataExtraction?: boolean;
+  supportsProfiler?: boolean;
+  supportsUsageExtraction?: boolean;
+  /**
+   * Regex to only include or exclude matching tables.
+   */
+  tableFilterPattern?: FilterPattern;
+  /**
+   * Service Type
+   */
+  type?: ClickzettaType;
+  /**
+   * Username to connect to ClickZetta.
+   */
+  username: string;
+  /**
+   * ClickZetta virtual cluster used for metadata extraction.
+   */
+  virtualCluster: string;
 }
 
 /**
@@ -84,10 +87,10 @@ export interface ClickzettaConnection {
  * Common Database Connection Config
  */
 export interface AuthConfigurationType {
-    /**
-     * Password to connect to source.
-     */
-    password?: string;
+  /**
+   * Password to connect to source.
+   */
+  password?: string;
 }
 
 /**
@@ -100,29 +103,29 @@ export interface AuthConfigurationType {
  * Regex to only include or exclude matching tables.
  */
 export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
+  /**
+   * List of strings/regex patterns to match and exclude only database entities that match.
+   */
+  excludes?: string[];
+  /**
+   * List of strings/regex patterns to match and include only database entities that match.
+   */
+  includes?: string[];
 }
 
 /**
  * Protocol used to connect to ClickZetta.
  */
 export enum Protocol {
-    HTTP = "http",
-    HTTPS = "https",
+  HTTP = 'http',
+  HTTPS = 'https',
 }
 
 /**
  * SQLAlchemy driver scheme options.
  */
 export enum ClickzettaScheme {
-    Clickzetta = "clickzetta",
+  Clickzetta = 'clickzetta',
 }
 
 /**
@@ -131,5 +134,5 @@ export enum ClickzettaScheme {
  * Service type.
  */
 export enum ClickzettaType {
-    Clickzetta = "Clickzetta",
+  Clickzetta = 'Clickzetta',
 }

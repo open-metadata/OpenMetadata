@@ -24,8 +24,8 @@ except ModuleNotFoundError:
     generated_module.ClickzettaConnection = ClickzettaConnection
     sys.modules[_CLICKZETTA_CONFIG_MODULE] = generated_module
 
-from metadata.data_quality.interface.sqlalchemy.clickzetta.test_suite_interface import (  # noqa: E402
-    ClickzettaTestSuiteInterface,
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (  # noqa: E402
+    SQATestSuiteInterface,
 )
 from metadata.generated.schema.entity.services.connections.database.clickzettaConnection import (  # noqa: E402
     ClickzettaConnection,
@@ -34,31 +34,34 @@ from metadata.ingestion.source.database.clickzetta.data_diff.table_parameter imp
     ClickzettaTableParameter,
 )
 from metadata.ingestion.source.database.clickzetta.service_spec import ServiceSpec  # noqa: E402
-from metadata.profiler.interface.sqlalchemy.clickzetta.profiler_interface import (  # noqa: E402
-    ClickzettaProfilerInterface,
+from metadata.profiler.interface.sqlalchemy.profiler_interface import (  # noqa: E402
+    SQAProfilerInterface,
 )
 from metadata.sampler.sqlalchemy.clickzetta.sampler import ClickzettaSampler  # noqa: E402
 from metadata.utils.importer import get_class_path  # noqa: E402
 
 
-def test_clickzetta_registers_guarded_data_capability_adapters():
-    """All registered data capabilities use ClickZetta-specific guarded adapters."""
-    assert ServiceSpec.profiler_class == get_class_path(ClickzettaProfilerInterface)
+def test_clickzetta_registers_standard_data_capabilities_with_a_native_sampler():
+    """Use OpenMetadata defaults unless ClickZetta needs dialect-specific SQL."""
+    assert ServiceSpec.profiler_class == get_class_path(SQAProfilerInterface)
     assert ServiceSpec.sampler_class == get_class_path(ClickzettaSampler)
-    assert ServiceSpec.test_suite_class == get_class_path(ClickzettaTestSuiteInterface)
+    assert ServiceSpec.test_suite_class == get_class_path(SQATestSuiteInterface)
     assert ServiceSpec.data_diff == get_class_path(ClickzettaTableParameter)
 
 
-def test_clickzetta_dbt_flag_defaults_to_disabled():
-    """DBT artifacts use the separate DBT source until attached UI support is validated."""
+def test_clickzetta_capability_flags_use_standard_enabled_defaults():
     schema_path = (
         Path(__file__).resolve().parents[5]
         / "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/clickzettaConnection.json"
     )
     schema = json.loads(schema_path.read_text())
-    assert schema["properties"]["supportsDBTExtraction"]["default"] is False
-    assert schema["properties"]["supportsProfiler"]["default"] is True
-    assert schema["properties"]["supportsDataDiff"]["default"] is True
+    for field in ("supportsDBTExtraction", "supportsProfiler", "supportsDataDiff"):
+        assert "default" not in schema["properties"][field]
+
+    basic_schema_path = schema_path.parent.parent / "connectionBasicType.json"
+    basic_schema = json.loads(basic_schema_path.read_text())
+    for field in ("supportsDBTExtraction", "supportsProfiler", "supportsDataDiff"):
+        assert basic_schema["definitions"][field]["default"] is True
 
     if not hasattr(ClickzettaConnection, "model_validate"):
         return
@@ -73,12 +76,6 @@ def test_clickzetta_dbt_flag_defaults_to_disabled():
         }
     )
 
-    assert config.supportsDBTExtraction is False
-    # Generated models are ignored by git and can lag the schema in a local
-    # checkout until `make generate` is run. Validate the generated defaults
-    # when those fields are available, while keeping this source-schema test
-    # runnable in a clean checkout.
-    if hasattr(config, "supportsProfiler"):
-        assert config.supportsProfiler is True
-    if hasattr(config, "supportsDataDiff"):
-        assert config.supportsDataDiff is True
+    assert hasattr(config, "supportsDBTExtraction")
+    assert hasattr(config, "supportsProfiler")
+    assert hasattr(config, "supportsDataDiff")
