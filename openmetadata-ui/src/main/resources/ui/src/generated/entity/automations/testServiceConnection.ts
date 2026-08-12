@@ -1,15 +1,3 @@
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 /**
  * Test Service Connection to test user provided configuration is valid or not.
  */
@@ -238,6 +226,8 @@ export interface TestServiceConnectionConnection {
  *
  * Kinesis Connection Config
  *
+ * NATS Connection Config
+ *
  * Google Cloud Pub/Sub Connection Config
  *
  * Custom Messaging Service Connection to build a source that is not supported by
@@ -392,6 +382,8 @@ export interface Connection {
      * Hex API token for authentication. Can be personal or workspace token.
      *
      * API token to authenticate with Omni.
+     *
+     * Token for NATS token-based authentication.
      *
      * To Connect to Dagster Cloud
      *
@@ -860,6 +852,8 @@ export interface Connection {
      *
      * Password to connect to Ssrs.
      *
+     * Password for NATS basic authentication.
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -993,6 +987,8 @@ export interface Connection {
      * metadata in MicroStrategy.
      *
      * Username to connect to Ssrs.
+     *
+     * Username for NATS basic authentication.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -1863,8 +1859,36 @@ export interface Connection {
     securityProtocol?: KafkaSecurityProtocol;
     /**
      * Regex to only fetch topics that matches the pattern.
+     *
+     * Regex to only fetch subjects/streams that match the pattern.
      */
     topicFilterPattern?: FilterPattern;
+    /**
+     * Additional NATS client configuration options. See https://nats-io.github.io/nats.py/
+     */
+    additionalConfig?: { [key: string]: any };
+    /**
+     * Enable JetStream to ingest Streams and Consumers metadata. If false, only core NATS
+     * subjects are ingested.
+     */
+    jetStreamEnabled?: boolean;
+    /**
+     * NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222
+     */
+    natsServers?: string;
+    /**
+     * NKey seed for NATS NKey-based authentication.
+     */
+    nkeySeed?: string;
+    /**
+     * Name of the JetStream KV bucket where schemas are stored. Keys must match stream names.
+     * Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.
+     */
+    schemaKvBucket?: string;
+    /**
+     * TLS/SSL configuration for secure NATS connections.
+     */
+    tlsConfig?: ConsumerConfigSSLClass;
     /**
      * GCP credentials configuration for authenticating with Pub/Sub.
      */
@@ -2406,6 +2430,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to exclude or include data models (Omni topics) that matches the pattern.
  *
  * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex exclude pipelines.
  *
@@ -3291,6 +3317,8 @@ export enum KafkaSecurityProtocol {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for Prefect API connection.
  *
  * SSL Configuration for OpenMetadata Server
@@ -4048,6 +4076,8 @@ export enum ConnectionScheme {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * TLS/SSL configuration for secure NATS connections.
  *
  * SSL Configuration for Prefect API connection.
  *
@@ -4849,6 +4879,8 @@ export enum SpaceType {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * TLS/SSL configuration for secure NATS connections.
+ *
  * SSL Configuration for Prefect API connection.
  *
  * SSL Configuration for OpenMetadata Server
@@ -5115,6 +5147,7 @@ export enum AirflowConnectionType {
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
+    Nats = "Nats",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",

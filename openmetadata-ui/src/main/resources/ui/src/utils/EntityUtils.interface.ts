@@ -141,6 +141,8 @@ export enum FormattedMessagingServiceType {
   CustomMessaging = 'Custom Messaging',
   Kafka = 'Kafka',
   Kinesis = 'Kinesis',
+  Nats = 'Nats',
+  PubSub = 'PubSub',
   Redpanda = 'Redpanda',
 }
 

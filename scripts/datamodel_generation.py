@@ -165,7 +165,7 @@ for file_path in DATETIME_AWARE_FILE_PATHS:
 # `type` in openmetadata-spec/.../metadataIngestion/workflow.json, which would
 # resolve the union deterministically for the Java and TypeScript consumers too.
 UNION_MODE_FILE = f"{ingestion_path}src/metadata/generated/schema/metadataIngestion/workflow.py"
-SOURCE_CONFIG_BLOCK = re.compile(r"(class SourceConfig\(BaseModel\):.*?\n    \) )= None\n", re.DOTALL)
+SOURCE_CONFIG_BLOCK = re.compile(r"(class SourceConfig\(BaseModel\):.*?\n    \] )= None\n", re.DOTALL)
 
 with open(UNION_MODE_FILE, "r", encoding=UTF_8) as f:
     content = f.read()

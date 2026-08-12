@@ -46,6 +46,10 @@ const messagingSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/messaging/pubSubConnection.json'
     ),
+  [MessagingServiceType.Nats]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/messaging/natsConnection.json'
+    ),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

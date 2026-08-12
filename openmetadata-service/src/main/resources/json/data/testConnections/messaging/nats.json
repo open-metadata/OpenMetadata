@@ -1,0 +1,21 @@
+{
+    "name": "Nats",
+    "displayName": "NATS Test Connection",
+    "description": "This Test Connection validates the access against the NATS server and basic metadata extraction of JetStream streams as topics.",
+    "steps": [
+        {
+            "name": "GetTopics",
+            "description": "List all the JetStream streams available on the NATS server.",
+            "errorMessage": "Failed to fetch streams, please validate the NATS server URL and credentials, and ensure JetStream is enabled.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "CheckSchemaKvBucket",
+            "description": "Validate that the configured JetStream KV bucket for schemas exists and is accessible.",
+            "errorMessage": "Failed to access the Schema KV bucket. Please ensure JetStream is enabled and the bucket name is correct.",
+            "shortCircuit": false,
+            "mandatory": false
+        }
+    ]
+}
