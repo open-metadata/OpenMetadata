@@ -340,6 +340,24 @@ export const clearAppModeSessionOnly = (): void => {
 };
 
 /**
+ * Remove only the sessionStorage tuple; DO NOT touch the in-memory store
+ * or the cross-tab hint. Used by the resolver's boot-provisional override
+ * — the boot write has already set the store to a best-guess mode, and
+ * the resolver is about to overwrite the store via `writeAppMode(candidate)`
+ * once it has full context. Zustand notifies subscribers synchronously on
+ * every `set`, so calling `.reset()` between the boot write and the
+ * resolver's write forces a transient `currentMode === DEFAULT_APP_MODE`
+ * render that flips a non-default route ('/ai-automations',
+ * '/observability/*', etc.) through the Classic route tree's catch-all
+ * and redirects it to `/404` before the resolver's write lands. Leaving
+ * the store on boot's value means the only mode change subscribers see
+ * is the final resolver value, not an intermediate default.
+ */
+export const removeAppModeSession = (): void => {
+  removeSession();
+};
+
+/**
  * Read the current session tuple. Exposed for the resolver, which needs
  * to compare `personaAppMode` snapshots and decide whether the persisted
  * session is still valid.

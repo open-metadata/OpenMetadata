@@ -31,6 +31,7 @@ import {
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
+  removeAppModeSession,
   resolveEffectiveAppMode,
   writeAppMode,
 } from './useAppMode';
@@ -225,7 +226,17 @@ export const useResolvedAppMode = (): void => {
       return;
     }
     if (validSession && validSession.source === 'boot') {
-      clearAppModeSessionOnly();
+      // Remove the sessionStorage tuple but leave the store on the
+      // boot-written value: `writeAppMode(candidate, ..., 'resolver')`
+      // below overwrites the store cleanly, so the only currentMode
+      // change subscribers see is the final resolver value. A
+      // `clearAppModeSessionOnly()` here would reset the store to
+      // DEFAULT_APP_MODE first, and Zustand's synchronous subscriber
+      // notification would drive one render at DEFAULT before the
+      // resolver's write lands — enough to route a non-default URL
+      // (e.g. /ai-automations, /observability/*) through the Classic
+      // catch-all and redirect it to /404.
+      removeAppModeSession();
       validSession = null;
     }
 
