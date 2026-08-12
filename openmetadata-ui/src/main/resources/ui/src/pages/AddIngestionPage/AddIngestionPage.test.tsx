@@ -17,8 +17,8 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useFqn } from '../../hooks/useFqn';
 import AddIngestionPage from './AddIngestionPage.component';
 const mockShowErrorToast = jest.fn();

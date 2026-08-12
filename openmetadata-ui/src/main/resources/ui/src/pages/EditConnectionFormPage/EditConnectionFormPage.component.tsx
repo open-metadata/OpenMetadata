@@ -31,10 +31,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';

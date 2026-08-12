@@ -20,10 +20,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
 import FormPanelBody, {
   getFormFirstPanelProps,
 } from '../../components/common/FormPanelBody/FormPanelBody.component';
+import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
