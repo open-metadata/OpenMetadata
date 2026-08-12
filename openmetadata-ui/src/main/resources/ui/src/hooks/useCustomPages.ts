@@ -16,6 +16,7 @@ import { NavigationItem } from '../generated/system/ui/uiCustomization';
 import {
   docStoreQueryFn,
   docStoreQueryKey,
+  PERSONA_DOC_STALE_TIME,
   personaDocFqn,
 } from '../rest/queries/docStoreQuery';
 import { useApplicationStore } from './useApplicationStore';
@@ -33,6 +34,7 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     queryFn: docStoreQueryFn(fqn ?? ''),
     enabled: !!fqn,
     retry: false,
+    staleTime: PERSONA_DOC_STALE_TIME,
   });
 
   return {

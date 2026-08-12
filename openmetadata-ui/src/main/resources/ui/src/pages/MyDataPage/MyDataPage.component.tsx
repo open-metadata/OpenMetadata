@@ -40,6 +40,7 @@ import {
 import {
   docStoreQueryFn,
   docStoreQueryKey,
+  PERSONA_DOC_STALE_TIME,
   personaDocFqn,
 } from '../../rest/queries/docStoreQuery';
 import { updateUserDetail } from '../../rest/userAPI';
@@ -91,6 +92,7 @@ const MyDataPage = () => {
     queryFn: docStoreQueryFn(personaFqn ?? ''),
     enabled: !!personaFqn,
     retry: false,
+    staleTime: PERSONA_DOC_STALE_TIME,
   });
 
   const isLoading = !!personaFqn && isDocPending;

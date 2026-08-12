@@ -26,7 +26,14 @@ import { getDocumentByFQN } from '../DocStoreAPI';
  * simultaneously with the same FQN key (e.g. the sidebar navigation hook and
  * the My Data page both reading `persona.X`), only one network request fires
  * and both subscribers receive the result.
+ *
+ * {@link PERSONA_DOC_STALE_TIME} extends deduplication beyond concurrent
+ * mounts: staggered subscribers (sidebar renders a tick before page body)
+ * reuse the cached document instead of triggering a background refetch.
+ * Matches the staleTime used in useResolvedAppMode for the same endpoint.
  */
+export const PERSONA_DOC_STALE_TIME = 5 * 60 * 1000;
+
 export const docStoreQueryKey = (fqn: string) => ['docStore', fqn] as const;
 
 export const docStoreQueryFn = (fqn: string) => (): Promise<Document> =>
