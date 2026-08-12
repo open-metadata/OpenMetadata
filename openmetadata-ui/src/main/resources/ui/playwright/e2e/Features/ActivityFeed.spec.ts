@@ -1061,15 +1061,22 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
 
     const feedListCount = () =>
       adminPage.locator('#feedData [data-testid="message-container"]').count();
+
+    const seededConversation = adminPage
+      .locator('[data-testid="message-container"]')
+      .filter({ hasText: conversationMessage })
+      .first();
+
+    // Loaders disappearing does not mean the merged list has rendered. Taking
+    // the baseline before the seeded conversation is on screen recorded a 0,
+    // which then mismatched the real count after the reply.
+    await expect(seededConversation).toBeVisible({ timeout: 30_000 });
+
     const countBeforeReply = await feedListCount();
 
     // Reply to the FIRST seeded conversation.
     const replyText = `Isolated reply ${uuid()}`;
-    await adminPage
-      .locator('[data-testid="message-container"]')
-      .filter({ hasText: conversationMessage })
-      .first()
-      .click();
+    await seededConversation.click();
     await waitForAllLoadersToDisappear(adminPage);
 
     await adminPage.getByTestId('comments-input-field').click();
@@ -1104,8 +1111,13 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await adminPage.getByTestId('activity_feed').click();
     await waitForAllLoadersToDisappear(adminPage);
 
-    // The initial ALL tab load fetches activity; only track calls made AFTER
-    // we switch to Tasks.
+    await adminPage.getByRole('menuitem', { name: /task/i }).click();
+    await waitForAllLoadersToDisappear(adminPage);
+    await expect(adminPage).toHaveURL(/activity_feed\/tasks/);
+
+    // Watch only after the switch has settled. Attaching the listener before
+    // the click also caught the ALL tab's own activity fetch when that request
+    // was still being issued as the switch happened.
     let activityFetchedOnTasks = false;
     adminPage.on('request', (request) => {
       if (request.url().includes('/api/v1/activity/entity/')) {
@@ -1113,8 +1125,13 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
       }
     });
 
-    await adminPage.getByRole('menuitem', { name: /task/i }).click();
+    // Reload with Tasks active so every request below belongs to this tab.
+    await adminPage.reload();
     await waitForAllLoadersToDisappear(adminPage);
+
+    // Landing back on ALL would fetch activity legitimately and fail the
+    // assertion for the wrong reason.
+    await expect(adminPage).toHaveURL(/activity_feed\/tasks/);
 
     expect(activityFetchedOnTasks).toBe(false);
   });
