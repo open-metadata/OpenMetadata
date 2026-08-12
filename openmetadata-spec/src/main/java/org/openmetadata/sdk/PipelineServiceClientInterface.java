@@ -46,26 +46,35 @@ public interface PipelineServiceClientInterface {
 
   String DEPLOYMENT_ERROR = "DEPLOYMENT_ERROR";
   String TRIGGER_ERROR = "TRIGGER_ERROR";
+
+  /**
+   * Task key used when a pipeline type has no dedicated entry in {@link #TYPE_TO_TASK}. Callers must
+   * resolve through {@link #taskKeyOf(String)} rather than reading the map directly: a null task key
+   * ends up as a null key in the JSON log response, which Jackson refuses to serialize and which
+   * surfaces to the caller as an opaque 400 "Invalid request format".
+   */
+  String DEFAULT_TASK_KEY = "ingestion_task";
+
   Map<String, String> TYPE_TO_TASK =
-      Map.of(
-          PipelineType.METADATA.toString(),
-          "ingestion_task",
-          PipelineType.PROFILER.toString(),
-          "profiler_task",
-          PipelineType.AUTO_CLASSIFICATION.toString(),
-          "auto_classification_task",
-          PipelineType.LINEAGE.toString(),
-          "lineage_task",
-          PipelineType.DBT.toString(),
-          "dbt_task",
-          PipelineType.USAGE.toString(),
-          "usage_task",
-          PipelineType.TEST_SUITE.toString(),
-          "test_suite_task",
-          PipelineType.DATA_INSIGHT.toString(),
-          "data_insight_task",
-          PipelineType.APPLICATION.toString(),
-          "application_task");
+      Map.ofEntries(
+          Map.entry(PipelineType.METADATA.toString(), "ingestion_task"),
+          Map.entry(PipelineType.PROFILER.toString(), "profiler_task"),
+          Map.entry(PipelineType.AUTO_CLASSIFICATION.toString(), "auto_classification_task"),
+          Map.entry(PipelineType.LINEAGE.toString(), "lineage_task"),
+          Map.entry(PipelineType.DBT.toString(), "dbt_task"),
+          Map.entry(PipelineType.USAGE.toString(), "usage_task"),
+          Map.entry(PipelineType.TEST_SUITE.toString(), "test_suite_task"),
+          Map.entry(PipelineType.DATA_INSIGHT.toString(), "data_insight_task"),
+          Map.entry(PipelineType.ELASTIC_SEARCH_REINDEX.toString(), "elasticsearch_reindex_task"),
+          Map.entry(PipelineType.APPLICATION.toString(), "application_task"),
+          // The UI reads policy agent logs from `ingestion_task`
+          // (see agentsDataMapper.ts PIPELINE_TYPE_TO_LOG_TASK_FIELD).
+          Map.entry(PipelineType.POLICY_AGENT.toString(), DEFAULT_TASK_KEY));
+
+  /** Resolves the log task key for a pipeline type, falling back to {@link #DEFAULT_TASK_KEY}. */
+  static String taskKeyOf(String pipelineType) {
+    return TYPE_TO_TASK.getOrDefault(pipelineType, DEFAULT_TASK_KEY);
+  }
 
   URL validateServiceURL(String serviceURL);
 
