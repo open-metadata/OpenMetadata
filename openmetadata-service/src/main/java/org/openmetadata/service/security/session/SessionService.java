@@ -606,6 +606,50 @@ public class SessionService implements Managed {
         : DEFAULT_MAX_ACTIVE_SESSIONS_PER_USER;
   }
 
+  /**
+   * Revokes every non-terminal session for a user. Called when the user is deleted (soft or hard) or
+   * otherwise off-boarded — without it a soft-deleted user keeps API access until their token
+   * expires. Bounded: each pass reads at most {@link #CLEANUP_BATCH_SIZE} sessions and the loop is
+   * capped, so a user with a pathological session count degrades rather than spinning.
+   */
+  public int revokeSessionsForUser(String userId) {
+    int revoked = 0;
+    if (!nullOrEmpty(userId)) {
+      java.util.Set<String> previousBatchIds = java.util.Collections.emptySet();
+      for (int attempt = 0; attempt < SESSION_LIMIT_MAX_ITERATIONS; attempt++) {
+        List<UserSession> sessions =
+            repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, CLEANUP_BATCH_SIZE);
+        if (sessions.isEmpty()) {
+          break;
+        }
+        java.util.Set<String> currentBatchIds =
+            sessions.stream().map(UserSession::getId).collect(java.util.stream.Collectors.toSet());
+        // A revoke that loses every compare-and-set leaves the session ACTIVE, so the next pass
+        // reads it back. Without this the loop burns all its passes on the same stuck rows and
+        // reports them as revoked once per pass.
+        if (currentBatchIds.equals(previousBatchIds)) {
+          LOG.warn(
+              "Unable to revoke {} session(s) for user {}; leaving them to session cleanup",
+              currentBatchIds.size(),
+              userId);
+          break;
+        }
+        for (UserSession session : sessions) {
+          if (revokeSession(session.getId()).filter(SessionService::isTerminal).isPresent()) {
+            revoked++;
+          }
+        }
+        previousBatchIds = currentBatchIds;
+      }
+    }
+    return revoked;
+  }
+
+  private static boolean isTerminal(UserSession session) {
+    return session.getStatus() == SessionStatus.REVOKED
+        || session.getStatus() == SessionStatus.EXPIRED;
+  }
+
   private int sessionLookupLimit(int maxActiveSessionsPerUser) {
     long lookupLimit = (long) maxActiveSessionsPerUser * SESSION_LIMIT_LOOKUP_MULTIPLIER;
     return lookupLimit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) lookupLimit;
