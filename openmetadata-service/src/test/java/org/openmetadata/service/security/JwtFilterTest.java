@@ -572,6 +572,28 @@ class JwtFilterTest {
   }
 
   @Test
+  void sessionIssuedUnderTheOtherNativePasswordProviderNameIsAccepted() {
+    // basic and openmetadata are two names for the same native-password authenticator. Renaming one
+    // to the other is not a provider swap, so it must not invalidate every live session.
+    UserSession openMetadataSession = activeSession("session-1", "sam", "openmetadata");
+    AuthServeletHandlerRegistry.setSessionService(
+        null, sessionServiceReturning(openMetadataSession));
+    JwtFilter basicProviderFilter =
+        new JwtFilter(
+            jwkProvider, List.of("sub", "email"), "openmetadata.org", false, AuthProvider.BASIC);
+
+    try {
+      ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      basicProviderFilter.filter(context);
+      verify(context, times(1))
+          .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
+  }
+
+  @Test
   void sessionIssuedByDecommissionedProviderIsRejected() {
     UserSession googleSession = activeSession("session-1", "sam", "google");
     AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(googleSession));
