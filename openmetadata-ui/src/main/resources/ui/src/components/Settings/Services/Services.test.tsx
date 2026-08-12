@@ -194,40 +194,46 @@ jest.mock('../../common/ListView/ListView.component', () => ({
   ListView: jest
     .fn()
     .mockImplementation(
-      ({ cardRenderer, tableProps, searchProps, handleDeletedSwitchChange }) => (
-      <div data-testid="mocked-list-view">
-        <button
-          data-testid="trigger-search"
-          onClick={() => searchProps.onSearch('no-such-service')}
-        />
-        <button
-          data-testid="trigger-deleted-switch"
-          onClick={handleDeletedSwitchChange}
-        />
-        <div data-testid="empty-text-container">
-          {tableProps.locale?.emptyText}
+      ({
+        cardRenderer,
+        tableProps,
+        searchProps,
+        handleDeletedSwitchChange,
+      }) => (
+        <div data-testid="mocked-list-view">
+          <button
+            data-testid="trigger-search"
+            onClick={() => searchProps.onSearch('no-such-service')}
+          />
+          <button
+            data-testid="trigger-deleted-switch"
+            onClick={handleDeletedSwitchChange}
+          />
+          <div data-testid="empty-text-container">
+            {tableProps.locale?.emptyText}
+          </div>
+          <div data-testid="card-renderer-container">
+            {cardRenderer({
+              ...mockService,
+              description: isDescription ? 'test description' : '',
+            })}
+          </div>
+          <div data-testid="table-props-container">
+            {tableProps.columns.map(
+              (column: ColumnsType[0], key: string) =>
+                column.render && (
+                  <>
+                    <div key={key}>{column.title as string}</div>
+                    <div key={key}>
+                      {column.render(column.title, column, 1) as ReactNode}
+                    </div>
+                  </>
+                )
+            )}
+          </div>
         </div>
-        <div data-testid="card-renderer-container">
-          {cardRenderer({
-            ...mockService,
-            description: isDescription ? 'test description' : '',
-          })}
-        </div>
-        <div data-testid="table-props-container">
-          {tableProps.columns.map(
-            (column: ColumnsType[0], key: string) =>
-              column.render && (
-                <>
-                  <div key={key}>{column.title as string}</div>
-                  <div key={key}>
-                    {column.render(column.title, column, 1) as ReactNode}
-                  </div>
-                </>
-              )
-          )}
-        </div>
-      </div>
-    )),
+      )
+    ),
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
