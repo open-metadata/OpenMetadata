@@ -773,7 +773,9 @@
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Entity Type can be 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE."
+            "description": "Entity Type (case-insensitive). Use 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE.",
+            "default": "TABLE",
+            "examples": ["TABLE", "COLUMN"]
           },
           "testPlatform": {
             "type": "string",
