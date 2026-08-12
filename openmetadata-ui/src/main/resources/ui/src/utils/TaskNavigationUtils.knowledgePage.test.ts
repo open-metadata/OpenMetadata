@@ -17,14 +17,14 @@ describe('getKnowledgeCenterPagePath', () => {
   it('points at the Context Center article route', () => {
     // /knowledge-center/<fqn> is not a registered route — only the landing page is — so a task
     // opened from an article used to land on a page that does not resolve.
-    expect(getKnowledgeCenterPagePath('Onboarding.Runbook', 'tasks', 'open')).toBe(
-      '/context-center/articles/Onboarding.Runbook/tasks/open'
-    );
+    expect(
+      getKnowledgeCenterPagePath('Onboarding.Runbook', 'tasks', 'open')
+    ).toBe('/context-center/articles/Onboarding.Runbook/tasks/open');
   });
 
   it('encodes the page FQN', () => {
-    expect(getKnowledgeCenterPagePath('Onboarding.My Runbook', 'tasks', 'open')).toBe(
-      '/context-center/articles/Onboarding.My%20Runbook/tasks/open'
-    );
+    expect(
+      getKnowledgeCenterPagePath('Onboarding.My Runbook', 'tasks', 'open')
+    ).toBe('/context-center/articles/Onboarding.My%20Runbook/tasks/open');
   });
 });

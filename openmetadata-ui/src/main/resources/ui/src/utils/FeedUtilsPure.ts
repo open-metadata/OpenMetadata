@@ -163,9 +163,9 @@ export const buildMentionLink = (entityType: string, entityFqn: string) => {
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
   } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
     // Articles live under the Context Center; /knowledge-center/<fqn> is not a registered route.
-    return `${document.location.protocol}//${
-      document.location.host
-    }${ROUTES.CONTEXT_CENTER_ARTICLES}/${getEncodedFqn(entityFqn)}`;
+    return `${document.location.protocol}//${document.location.host}${
+      ROUTES.CONTEXT_CENTER_ARTICLES
+    }/${getEncodedFqn(entityFqn)}`;
   }
 
   return `${document.location.protocol}//${
