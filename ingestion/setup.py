@@ -52,6 +52,13 @@ VERSIONS = {
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy<3.8",
+    # spaCy models are published as GitHub release wheels, not on PyPI, and are pinned per
+    # spaCy minor: 3.7.1 is what spacy<3.8 resolves to via spaCy's compatibility index.
+    # Bump this alongside the "spacy" pin above.
+    "spacy-en-model": (
+        "en_core_web_md @ https://github.com/explosion/spacy-models/releases/download/"
+        "en_core_web_md-3.7.1/en_core_web_md-3.7.1-py3-none-any.whl"
+    ),
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
@@ -498,6 +505,12 @@ test = {
     VERSIONS["pyarrow"],
     VERSIONS["trino"],
     VERSIONS["spacy"],
+    # The PII tests build a Presidio analyzer, which loads this spaCy model. Installing it as a
+    # declared test dependency keeps the download out of the test run: build_analyzer_engine()
+    # otherwise fetches it on first use, and because a failed load never populates
+    # load_nlp_engine's @cache, every test module retries the download -- so a transient
+    # github.com blip fails the whole job. Installed here it also lands in the cached venv.
+    VERSIONS["spacy-en-model"],
     VERSIONS["pydomo"],
     VERSIONS["looker-sdk"],
     VERSIONS["lkml"],
