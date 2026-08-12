@@ -995,21 +995,22 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await adminPage.getByTestId('activity_feed').click();
     await waitForAllLoadersToDisappear(adminPage);
 
+    // Scoped to #feedData throughout: the right-hand panel renders
+    // message-container for the selected item, so an unscoped match could be
+    // satisfied by the panel and would not prove both kinds share the list.
+    const feedList = adminPage.locator(
+      '#feedData [data-testid="message-container"]'
+    );
+
     // Conversation thread (from /api/v1/feed) must be visible...
     await expect(
-      adminPage
-        .locator('[data-testid="message-container"]')
-        .filter({ hasText: conversationMessage })
-        .first()
+      feedList.filter({ hasText: conversationMessage }).first()
     ).toBeVisible({ timeout: 30_000 });
 
     // ...alongside the auto "Created" change-event activity (from /api/v1/activity).
     // On the buggy either-or code these two never render together.
     await expect(
-      adminPage
-        .locator('[data-testid="message-container"]')
-        .filter({ hasText: /created/i })
-        .first()
+      feedList.filter({ hasText: /created/i }).first()
     ).toBeVisible();
   });
 
@@ -1021,8 +1022,9 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await waitForAllLoadersToDisappear(adminPage);
 
     // Open the auto "Created …" change-event activity in the right panel.
+    // Scoped to #feedData so this is the list card, not the panel's own copy.
     const activityCard = adminPage
-      .locator('[data-testid="message-container"]')
+      .locator('#feedData [data-testid="message-container"]')
       .filter({ hasText: /created/i })
       .first();
     await expect(activityCard).toBeVisible({ timeout: 30_000 });
@@ -1059,11 +1061,16 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
       }
     });
 
-    const feedListCount = () =>
-      adminPage.locator('#feedData [data-testid="message-container"]').count();
+    const feedList = adminPage.locator(
+      '#feedData [data-testid="message-container"]'
+    );
+    const feedListCount = () => feedList.count();
 
-    const seededConversation = adminPage
-      .locator('[data-testid="message-container"]')
+    // Scoped to #feedData deliberately: the right-hand panel renders
+    // message-container too, so an unscoped wait can be satisfied by the panel
+    // while the list is still empty — leaving the same 0 baseline this gate
+    // exists to prevent.
+    const seededConversation = feedList
       .filter({ hasText: conversationMessage })
       .first();
 

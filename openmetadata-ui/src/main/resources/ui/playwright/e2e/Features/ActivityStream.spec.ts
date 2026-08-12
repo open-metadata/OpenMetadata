@@ -84,9 +84,12 @@ test.describe('Activity Stream on Entity Pages', () => {
 
     await expect(page.getByTestId('global-setting-left-panel')).toBeVisible();
 
+    // Scoped to #feedData: the right-hand panel renders message-container for
+    // the auto-selected item too, so an unscoped match could pass on the panel
+    // without the event ever appearing in the list this test is about.
     await expect(
       page
-        .locator('[data-testid="message-container"]')
+        .locator('#feedData [data-testid="message-container"]')
         .filter({ hasText: seededActivitySummary })
         .first()
     ).toBeVisible({ timeout: 30_000 });
