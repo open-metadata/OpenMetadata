@@ -110,3 +110,28 @@ class TestDownloadPbitFiles:
         written = extract_dir / "reports" / "sales" / "q1.pbit"
         assert written.exists(), "a legitimate .pbit key should download inside the extract directory"
         assert written.read_bytes() == b"attacker-controlled bytes"
+
+    @patch(
+        "metadata.ingestion.source.dashboard.powerbi.file_client.get_reader",
+        return_value=_FakeReader(),
+    )
+    def test_escaping_key_does_not_skip_other_keys_in_same_group(self, _get_reader, tmp_path):
+        """A traversal key must be skipped individually, without aborting the
+        legitimate keys grouped with it."""
+        extract_dir = tmp_path / "extract"
+        extract_dir.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+
+        # both blobs share the "sub" directory group; one escapes, one is legit
+        grouped = {"sub": ["sub/../../outside/bad.pbit", "sub/good.pbit"]}
+        download_pbit_files(
+            blob_grouped_by_directory=grouped,
+            config=MagicMock(),
+            client=MagicMock(),
+            bucket_name="bucket",
+            extract_dir=str(extract_dir),
+        )
+
+        assert not (outside / "bad.pbit").exists(), "the escaping key must be skipped"
+        assert (extract_dir / "sub" / "good.pbit").exists(), "the legitimate key in the same group must still download"

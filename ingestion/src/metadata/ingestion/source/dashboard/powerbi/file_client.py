@@ -19,6 +19,7 @@ import traceback
 import zipfile
 from collections import defaultdict
 from functools import singledispatch
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from metadata.clients.aws_client import AWSClient
@@ -85,11 +86,11 @@ def _safe_local_path(extract_dir: str, blob: str) -> str:
     write outside the extract directory (path traversal / arbitrary file write), so
     the resolved path is validated against the resolved extract directory.
     """
-    base = os.path.realpath(extract_dir)
-    target = os.path.realpath(os.path.join(base, blob))  # noqa: PTH118
-    if target != base and not target.startswith(base + os.sep):
+    base = Path(extract_dir).resolve()
+    target = (base / blob).resolve()
+    if not target.is_relative_to(base):
         raise PowerBIFileConfigException(f"Skipping .pbit object key that escapes the extract directory: {blob}")
-    return target
+    return str(target)
 
 
 def download_pbit_files(
@@ -106,16 +107,19 @@ def download_pbit_files(
         kwargs = {}
         if bucket_name:
             kwargs = {"bucket_name": bucket_name}
-        try:
-            for blob in blobs:
-                if blob:
-                    local_file_path = _safe_local_path(extract_dir, blob)
-                    reader = get_reader(config_source=config, client=client)
-                    # create the required dir before downloading
-                    os.makedirs(os.path.dirname(local_file_path), exist_ok=True)  # noqa: PTH103, PTH120
-                    reader.download(path=blob, local_file_path=local_file_path, **kwargs)
-        except PowerBIFileConfigException as exc:
-            logger.warning(exc)
+        for blob in blobs:
+            if not blob:
+                continue
+            try:
+                # validate per blob so one escaping key does not skip the rest
+                local_file_path = _safe_local_path(extract_dir, blob)
+            except PowerBIFileConfigException as exc:
+                logger.warning(exc)
+                continue
+            reader = get_reader(config_source=config, client=client)
+            # create the required dir before downloading
+            os.makedirs(os.path.dirname(local_file_path), exist_ok=True)  # noqa: PTH103, PTH120
+            reader.download(path=blob, local_file_path=local_file_path, **kwargs)
 
 
 def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
