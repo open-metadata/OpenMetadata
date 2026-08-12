@@ -18,7 +18,12 @@ from typing import Optional
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.utils.logger import ingestion_logger
 
-from .constants import AirbyteDestination, AirbyteSource  # noqa: TID252
+from .constants import (  # noqa: TID252
+    DESTINATION_TYPE_LOOKUP,
+    SOURCE_TYPE_LOOKUP,
+    AirbyteDestination,
+    AirbyteSource,
+)
 from .models import AirbyteDestinationResponse, AirbyteSourceResponse, AirbyteStream  # noqa: TID252
 
 logger = ingestion_logger()
@@ -28,24 +33,23 @@ def get_source_table_details(stream: AirbyteStream, source_connection: AirbyteSo
     """
     Get the source table details
     """
-    source_name = source_connection.sourceName
-    source_database = (source_connection.connectionConfiguration or {}).get("database")
+    source_config = source_connection.resolved_configuration
+    source_type = SOURCE_TYPE_LOOKUP.get(source_connection.resolved_type or "")
+    source_database = source_config.get("database")
     source_schema = stream.namespace
 
-    if source_name not in [
-        AirbyteSource.POSTGRES.value,
-        AirbyteSource.MSSQL.value,
-        AirbyteSource.MYSQL.value,
-        AirbyteSource.MONGODB.value,
-    ]:
-        logger.warning(f"Lineage of airbyte pipeline with source [{source_name}] is not supported yet")
+    if source_type is None:
+        logger.warning(
+            f"Lineage of airbyte pipeline with source [{source_connection.resolved_type}] is not supported yet"
+        )
         return None
 
-    if source_name == AirbyteSource.MYSQL.value:
+    if source_type == AirbyteSource.MYSQL:
         source_schema = source_database
         source_database = None
-    elif source_name == AirbyteSource.MONGODB.value:
-        source_schema = (source_connection.connectionConfiguration or {}).get("database_config", {}).get("database")
+    elif source_type == AirbyteSource.MONGODB:
+        # database_config may be absent or explicitly None on the public-API shape
+        source_schema = (source_config.get("database_config") or {}).get("database")
         source_database = None
 
     return TableDetails(
@@ -61,19 +65,18 @@ def get_destination_table_details(
     """
     Get the destination table details
     """
-    destination_name = destination_connection.destinationName
-    destination_database = (destination_connection.connectionConfiguration or {}).get("database")
-    destination_schema = (destination_connection.connectionConfiguration or {}).get("schema")
+    destination_config = destination_connection.resolved_configuration
+    destination_type = DESTINATION_TYPE_LOOKUP.get(destination_connection.resolved_type or "")
+    destination_database = destination_config.get("database")
+    destination_schema = destination_config.get("schema")
 
-    if destination_name not in [
-        AirbyteDestination.POSTGRES.value,
-        AirbyteDestination.MSSQL.value,
-        AirbyteDestination.MYSQL.value,
-    ]:
-        logger.warning(f"Lineage of airbyte pipeline with destination [{destination_name}] is not supported yet")
+    if destination_type is None:
+        logger.warning(
+            f"Lineage of airbyte pipeline with destination [{destination_connection.resolved_type}] is not supported yet"
+        )
         return None
 
-    if destination_name == AirbyteDestination.MYSQL.value:
+    if destination_type == AirbyteDestination.MYSQL:
         destination_schema = destination_database
         destination_database = None
 

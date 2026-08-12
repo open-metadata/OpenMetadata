@@ -119,6 +119,8 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `frontend-react.md` | UI `*.{ts,tsx}` — components, hooks, state, types, and the CI lint code-rules |
 | `frontend-styling.md` | UI `*.{ts,tsx,less,css}` — `tw:` prefix, design tokens, ring→border, token-audit |
 | `component-library.md` | UI `*.{ts,tsx}` — prefer `ui-core-components`, do not add Ant Design for new work |
+| `frontend-performance.md` | UI `*.{ts,tsx}` — waterfalls, barrel imports, re-renders, bundle discipline |
+| `frontend-a11y.md` | UI `*.{ts,tsx}` — semantics over `div`+`role`, keyboard, focus, contrast, targets |
 | `i18n.md` | UI `*.{ts,tsx}` + `src/locale/**` — no string literals, `yarn i18n`, translate placeholders |
 | `frontend-playwright.md` | UI `playwright/**` — E2E test constraints |
 | `python-ingestion.md` | `ingestion/src/**/*.py` — pytest style, connector-specific-file rule, `model_str()` |

@@ -1,6 +1,7 @@
 package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -19,7 +20,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -85,7 +85,11 @@ class MultiUrlJwkProviderTest {
       when(mockGenerator.getJWKSResponse()).thenReturn(jwksResponse);
       mockedStatic.when(JWTTokenGenerator::getInstance).thenReturn(mockGenerator);
       MultiUrlJwkProvider provider = new MultiUrlJwkProvider(List.of());
-      assertThrows(UnhandledServerException.class, () -> provider.get(UNKNOWN_KID));
+      // An unknown key id is an authentication failure (401), not a 500, and it
+      // must chain the underlying cause so server logs keep the real reason.
+      AuthenticationException ex =
+          assertThrows(AuthenticationException.class, () -> provider.get(UNKNOWN_KID));
+      assertInstanceOf(SigningKeyNotFoundException.class, ex.getCause());
     }
   }
 
@@ -125,7 +129,7 @@ class MultiUrlJwkProviderTest {
       Jwk externalResult = provider.get(EXTERNAL_KID);
       assertNotNull(externalResult);
       assertEquals(EXTERNAL_KID, externalResult.getId());
-      assertThrows(UnhandledServerException.class, () -> provider.get(UNKNOWN_KID));
+      assertThrows(AuthenticationException.class, () -> provider.get(UNKNOWN_KID));
     }
   }
 

@@ -25,6 +25,18 @@ export const SYSTEM_POLICY_NAMES = {
   taskAuthorPolicy: 'TaskAuthorPolicy',
 };
 
+/**
+ * Policy resource names, mirrored for Playwright so tests never import app code
+ * from `src/`. The backend is the source of truth (`GET /v1/policies/resources`);
+ * add members here as tests need them.
+ */
+export enum ResourceEntity {
+  ALL = 'all',
+  TABLE = 'table',
+  TEST_CASE = 'testCase',
+  TEST_SUITE = 'testSuite',
+}
+
 export const RULE_DETAILS = {
   resources: 'All',
   operations: 'All',

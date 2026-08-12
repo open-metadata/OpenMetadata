@@ -830,7 +830,7 @@
             ]
         },
         {
-            "name": "not_null_customers_customer_id",
+            "name": "customer_id.not_null_customers_customer_id",
             "tableFqn": "postgres_sample.jaffle_shop.public.customers",
             "results": [
                 { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
@@ -841,7 +841,7 @@
             ]
         },
         {
-            "name": "unique_customers_customer_id",
+            "name": "customer_id.unique_customers_customer_id",
             "tableFqn": "postgres_sample.jaffle_shop.public.customers",
             "results": [
                 { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
@@ -863,7 +863,7 @@
             ]
         },
         {
-            "name": "not_null_orders_order_id",
+            "name": "order_id.not_null_orders_order_id",
             "tableFqn": "postgres_sample.jaffle_shop.public.orders",
             "results": [
                 { "result": "0 null values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
@@ -874,7 +874,7 @@
             ]
         },
         {
-            "name": "unique_orders_order_id",
+            "name": "order_id.unique_orders_order_id",
             "tableFqn": "postgres_sample.jaffle_shop.public.orders",
             "results": [
                 { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
@@ -885,7 +885,7 @@
             ]
         },
         {
-            "name": "accepted_values_orders_status",
+            "name": "status.accepted_values_orders_status",
             "tableFqn": "postgres_sample.jaffle_shop.public.orders",
             "results": [
                 { "result": "Found 5 values not in set: [placed, shipped, completed, return_pending, returned]", "testCaseStatus": "Failed", "testResultValues": [{ "name": "forbiddenCount", "value": "5" }] },
@@ -896,7 +896,7 @@
             ]
         },
         {
-            "name": "relationships_orders_customer_id",
+            "name": "customer_id.relationships_orders_customer_id",
             "tableFqn": "postgres_sample.jaffle_shop.public.orders",
             "results": [
                 { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
@@ -907,7 +907,7 @@
             ]
         },
         {
-            "name": "not_null_stg_customers_customer_id",
+            "name": "customer_id.not_null_stg_customers_customer_id",
             "tableFqn": "postgres_sample.jaffle_shop.public.stg_customers",
             "results": [
                 { "result": "0 null values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "nullCount", "value": "0" }] },
@@ -918,7 +918,7 @@
             ]
         },
         {
-            "name": "unique_stg_customers_customer_id",
+            "name": "customer_id.unique_stg_customers_customer_id",
             "tableFqn": "postgres_sample.jaffle_shop.public.stg_customers",
             "results": [
                 { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
@@ -926,6 +926,76 @@
                 { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
                 { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
                 { "result": "0 duplicate values found in column customer_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "table_row_count_to_be_between",
+            "tableFqn": "sample_data.ecommerce_db.shopify.dim_customer",
+            "results": [
+                { "result": "Found 642 rows vs. the expected range [1000, 10000].", "testCaseStatus": "Failed", "testResultValues": [{ "name": "rowCount", "value": "642" }], "maxBound": 10000, "minBound": 1000 },
+                { "result": "Found 787 rows vs. the expected range [1000, 10000].", "testCaseStatus": "Failed", "testResultValues": [{ "name": "rowCount", "value": "787" }], "maxBound": 10000, "minBound": 1000 },
+                { "result": "Found 1204 rows vs. the expected range [1000, 10000].", "testCaseStatus": "Success", "testResultValues": [{ "name": "rowCount", "value": "1204" }], "maxBound": 10000, "minBound": 1000 },
+                { "result": "Found 812 rows vs. the expected range [1000, 10000].", "testCaseStatus": "Failed", "testResultValues": [{ "name": "rowCount", "value": "812" }], "maxBound": 10000, "minBound": 1000 },
+                { "result": "Found 1198 rows vs. the expected range [1000, 10000].", "testCaseStatus": "Success", "testResultValues": [{ "name": "rowCount", "value": "1198" }], "maxBound": 10000, "minBound": 1000 },
+                { "result": "Found 1150 rows vs. the expected range [1000, 10000].", "testCaseStatus": "Success", "testResultValues": [{ "name": "rowCount", "value": "1150" }], "maxBound": 10000, "minBound": 1000 },
+                { "result": "Found 903 rows vs. the expected range [1000, 10000].", "testCaseStatus": "Failed", "testResultValues": [{ "name": "rowCount", "value": "903" }], "maxBound": 10000, "minBound": 1000 },
+                { "result": "Found 1132 rows vs. the expected range [1000, 10000].", "testCaseStatus": "Success", "testResultValues": [{ "name": "rowCount", "value": "1132" }], "maxBound": 10000, "minBound": 1000 }
+            ]
+        },
+        {
+            "name": "email.column_values_to_match_regex",
+            "tableFqn": "sample_data.ecommerce_db.shopify.dim_customer",
+            "results": [
+                { "result": "Found 1180 value(s) matching regex pattern vs 1204 value(s) in the column.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "likeCount", "value": "1180" }] },
+                { "result": "Found 1102 value(s) matching regex pattern vs 1204 value(s) in the column.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "likeCount", "value": "1102" }] },
+                { "result": "Found 1204 value(s) matching regex pattern vs 1204 value(s) in the column.", "testCaseStatus": "Success", "testResultValues": [{ "name": "likeCount", "value": "1204" }] },
+                { "result": "Found 954 value(s) matching regex pattern vs 1204 value(s) in the column.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "likeCount", "value": "954" }] },
+                { "result": "Found 1198 value(s) matching regex pattern vs 1198 value(s) in the column.", "testCaseStatus": "Success", "testResultValues": [{ "name": "likeCount", "value": "1198" }] },
+                { "result": "Found 1204 value(s) matching regex pattern vs 1204 value(s) in the column.", "testCaseStatus": "Success", "testResultValues": [{ "name": "likeCount", "value": "1204" }] },
+                { "result": "Error computing ColumnValuesToMatchRegex for email - database error", "testCaseStatus": "Aborted", "testResultValues": [{ "name": "likeCount", "value": "None" }] },
+                { "result": "Found 1204 value(s) matching regex pattern vs 1204 value(s) in the column.", "testCaseStatus": "Success", "testResultValues": [{ "name": "likeCount", "value": "1204" }] }
+            ]
+        },
+        {
+            "name": "order_id.column_values_to_be_unique",
+            "tableFqn": "sample_data.ecommerce_db.shopify.fact_order",
+            "results": [
+                { "result": "Found 23 duplicate values in column order_id", "testCaseStatus": "Failed", "testResultValues": [{ "name": "duplicateCount", "value": "23" }] },
+                { "result": "Found 12 duplicate values in column order_id", "testCaseStatus": "Failed", "testResultValues": [{ "name": "duplicateCount", "value": "12" }] },
+                { "result": "Found 7 duplicate values in column order_id", "testCaseStatus": "Failed", "testResultValues": [{ "name": "duplicateCount", "value": "7" }] },
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "Found 3 duplicate values in column order_id", "testCaseStatus": "Failed", "testResultValues": [{ "name": "duplicateCount", "value": "3" }] },
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] },
+                { "result": "0 duplicate values found in column order_id", "testCaseStatus": "Success", "testResultValues": [{ "name": "duplicateCount", "value": "0" }] }
+            ]
+        },
+        {
+            "name": "total_price.column_value_max_to_be_between",
+            "tableFqn": "sample_data.ecommerce_db.shopify.fact_order",
+            "results": [
+                { "result": "Found max=12500 vs. the expected min=100, max=5000.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "maxValue", "value": "12500" }], "maxBound": 5000, "minBound": 100 },
+                { "result": "Found max=8900 vs. the expected min=100, max=5000.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "maxValue", "value": "8900" }], "maxBound": 5000, "minBound": 100 },
+                { "result": "Found max=7549 vs. the expected min=100, max=5000.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "maxValue", "value": "7549" }], "maxBound": 5000, "minBound": 100 },
+                { "result": "Found max=4890 vs. the expected min=100, max=5000.", "testCaseStatus": "Success", "testResultValues": [{ "name": "maxValue", "value": "4890" }], "maxBound": 5000, "minBound": 100 },
+                { "result": "Found max=4321 vs. the expected min=100, max=5000.", "testCaseStatus": "Success", "testResultValues": [{ "name": "maxValue", "value": "4321" }], "maxBound": 5000, "minBound": 100 },
+                { "result": "Found max=6100 vs. the expected min=100, max=5000.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "maxValue", "value": "6100" }], "maxBound": 5000, "minBound": 100 },
+                { "result": "Found max=3980 vs. the expected min=100, max=5000.", "testCaseStatus": "Success", "testResultValues": [{ "name": "maxValue", "value": "3980" }], "maxBound": 5000, "minBound": 100 },
+                { "result": "We expect `max` to be informed on the profiler for ColumnValueMaxToBeBetween max=None.", "testCaseStatus": "Aborted", "testResultValues": [{ "name": "maxValue", "value": "None" }] }
+            ]
+        },
+        {
+            "name": "net_sales.column_values_to_be_between",
+            "tableFqn": "sample_data.ecommerce_db.shopify.fact_sale",
+            "results": [
+                { "result": "Found min=-250, max=8790 vs. the expected min=0, max=10000.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "minValue", "value": "-250" }, { "name": "maxValue", "value": "8790" }], "maxBound": 10000, "minBound": 0 },
+                { "result": "Found min=-1043, max=9120 vs. the expected min=0, max=10000.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "minValue", "value": "-1043" }, { "name": "maxValue", "value": "9120" }], "maxBound": 10000, "minBound": 0 },
+                { "result": "Found min=0, max=9540 vs. the expected min=0, max=10000.", "testCaseStatus": "Success", "testResultValues": [{ "name": "minValue", "value": "0" }, { "name": "maxValue", "value": "9540" }], "maxBound": 10000, "minBound": 0 },
+                { "result": "Found min=-87, max=12040 vs. the expected min=0, max=10000.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "minValue", "value": "-87" }, { "name": "maxValue", "value": "12040" }], "maxBound": 10000, "minBound": 0 },
+                { "result": "Found min=12, max=8730 vs. the expected min=0, max=10000.", "testCaseStatus": "Success", "testResultValues": [{ "name": "minValue", "value": "12" }, { "name": "maxValue", "value": "8730" }], "maxBound": 10000, "minBound": 0 },
+                { "result": "Found min=0, max=9210 vs. the expected min=0, max=10000.", "testCaseStatus": "Success", "testResultValues": [{ "name": "minValue", "value": "0" }, { "name": "maxValue", "value": "9210" }], "maxBound": 10000, "minBound": 0 },
+                { "result": "Found min=-430, max=8020 vs. the expected min=0, max=10000.", "testCaseStatus": "Failed", "testResultValues": [{ "name": "minValue", "value": "-430" }, { "name": "maxValue", "value": "8020" }], "maxBound": 10000, "minBound": 0 },
+                { "result": "Found min=5, max=8880 vs. the expected min=0, max=10000.", "testCaseStatus": "Success", "testResultValues": [{ "name": "minValue", "value": "5" }, { "name": "maxValue", "value": "8880" }], "maxBound": 10000, "minBound": 0 }
             ]
         }
     ]

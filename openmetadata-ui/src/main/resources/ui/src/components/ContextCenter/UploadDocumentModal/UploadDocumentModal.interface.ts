@@ -20,7 +20,12 @@ export interface UploadDocumentModalProps {
   onUploaded?: (files: ContextFile[]) => void;
 }
 
-export type UploadStatus = 'done' | 'error';
+export enum UploadStatus {
+  Done = 'done',
+  Error = 'error',
+  Uploaded = 'uploaded',
+  Retrying = 'retrying',
+}
 
 export interface QueuedFile {
   id: string;
