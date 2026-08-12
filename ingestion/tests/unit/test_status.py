@@ -49,8 +49,7 @@ class TestStatus(TestCase):
         self.status.records = [f"record_{i}" for i in range(total)]
 
         output = self.status.as_string()
-        self.assertIn(f"{total} total items", output)
-        self.assertIn(f"showing first {MAX_STATUS_DISPLAY_ITEMS}", output)
+        self.assertIn(f"'records_total_items': {total}", output)
         self.assertIn("record_0", output)
         self.assertNotIn(f"record_{total - 1}", output)
 
@@ -70,7 +69,7 @@ class TestStatus(TestCase):
         self.status.warnings = [{f"warn_{i}": "reason"} for i in range(total)]
 
         output = self.status.as_string()
-        self.assertEqual(output.count("total items"), 2)
+        self.assertEqual(output.count("_total_items"), 2)
 
     def test_as_string_non_list_fields_unchanged(self):
         """Non-list fields like record_count should render normally."""

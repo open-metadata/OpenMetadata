@@ -12,6 +12,7 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -21,6 +22,10 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
+  private static final String ENTITY_TYPE_PARAM = "entityType";
+  private static final List<TestDefinitionEntityType> ENTITY_TYPES =
+      List.of(TestDefinitionEntityType.values());
+
   public TestDefinitionRepository() {
     super(
         TestDefinitionResource.COLLECTION_PATH,
@@ -144,6 +149,36 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.testDefinitionHasTestCases(testDefinitionName, testCaseCount));
     }
+  }
+
+  /**
+   * Canonicalizes the {@code entityType} listing filter for every door into {@link
+   * CollectionDAO.TestDefinitionDAO}. The DAO compares the value against the {@code
+   * test_definition.entityType} generated column with {@code =}, which PostgreSQL evaluates
+   * case-sensitively under the deterministic collations it ships with, so an un-normalized {@code
+   * Column} silently matched nothing while MySQL's case-insensitive collation matched it — see issue
+   * #29542. Canonicalizing here keeps both engines and both callers (the REST resource and the MCP
+   * tool) identical, and turns an unknown value into a {@code 400} instead of an empty page. A blank
+   * value stays an absent filter so that clients serializing an unset filter are not rejected.
+   */
+  public static void addEntityTypeFilter(ListFilter filter, String entityType) {
+    String value = CommonUtil.nullOrEmpty(entityType) ? "" : entityType.trim();
+    if (!value.isEmpty()) {
+      filter.addQueryParam(ENTITY_TYPE_PARAM, parseEntityType(value).value());
+    }
+  }
+
+  private static TestDefinitionEntityType parseEntityType(String entityType) {
+    return ENTITY_TYPES.stream()
+        .filter(candidate -> candidate.value().equalsIgnoreCase(entityType))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    String.format(
+                        "Invalid entityType '%s'. Must be one of %s",
+                        entityType,
+                        ENTITY_TYPES.stream().map(TestDefinitionEntityType::value).toList())));
   }
 
   @Override
