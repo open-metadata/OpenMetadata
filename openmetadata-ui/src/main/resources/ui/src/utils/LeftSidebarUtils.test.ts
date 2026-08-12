@@ -93,14 +93,14 @@ describe('getSidebarActiveKeys', () => {
   });
 
   it('should honour an extended nested-keys map (e.g. Collate)', () => {
+    const CUSTOM_DEEP_PATH = '/data-marketplace/data-access-requests';
     const nestedKeys = {
       ...SIDEBAR_NESTED_KEYS,
-      '/data-marketplace/data-access-requests':
-        '/data-marketplace/data-access-requests',
+      [CUSTOM_DEEP_PATH]: CUSTOM_DEEP_PATH,
     };
 
-    expect(
-      getSidebarActiveKeys('/data-marketplace/data-access-requests', nestedKeys)
-    ).toEqual(['/data-marketplace/data-access-requests']);
+    expect(getSidebarActiveKeys(CUSTOM_DEEP_PATH, nestedKeys)).toEqual([
+      CUSTOM_DEEP_PATH,
+    ]);
   });
 });
