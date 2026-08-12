@@ -133,7 +133,8 @@ public final class CsvAsyncJobManager {
 
   /** Audit export jobs are typed separately so they stay out of the CSV jobs tray. */
   public CsvAsyncJob getAuditExportJob(String jobId) {
-    return toCsvJob(dao.findAuditExportJobById(parseJobId(jobId)));
+    Long id = lookupIdOrNull(jobId);
+    return id == null ? null : toCsvJob(dao.findAuditExportJobById(id));
   }
 
   /**
@@ -141,7 +142,8 @@ public final class CsvAsyncJobManager {
    * leaves it out so status polling does not transfer the whole export on every tick.
    */
   public String getExportResult(String jobId) {
-    return dao.findCsvJobResultById(parseJobId(jobId));
+    Long id = lookupIdOrNull(jobId);
+    return id == null ? null : dao.findCsvJobResultById(id);
   }
 
   private CsvAsyncJob insertExportJob(
@@ -174,8 +176,8 @@ public final class CsvAsyncJobManager {
   }
 
   public CsvAsyncJob getJob(String jobId) {
-    BackgroundJob backgroundJob = dao.findCsvJobById(parseJobId(jobId));
-    return toCsvJob(backgroundJob);
+    Long id = lookupIdOrNull(jobId);
+    return id == null ? null : toCsvJob(dao.findCsvJobById(id));
   }
 
   public List<CsvAsyncJob> listJobs(String createdBy, int limit) {
@@ -402,6 +404,22 @@ public final class CsvAsyncJobManager {
 
   private long parseJobId(String jobId) {
     return Long.parseLong(jobId);
+  }
+
+  /**
+   * Job ids arrive from request paths, so anything that is not a {@code background_jobs} primary key
+   * — non-numeric, or numeric but wider than a long — simply matches no row. Returning null lets the
+   * resource answer 404 instead of letting {@code NumberFormatException} surface as a 500. Internal
+   * callers keep using {@link #parseJobId}, where a bad id is a programming error worth throwing on.
+   */
+  private static Long lookupIdOrNull(String jobId) {
+    Long id;
+    try {
+      id = Long.parseLong(jobId);
+    } catch (NumberFormatException e) {
+      id = null;
+    }
+    return id;
   }
 
   private long now() {

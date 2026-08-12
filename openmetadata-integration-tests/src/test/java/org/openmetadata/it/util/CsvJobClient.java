@@ -55,7 +55,12 @@ public final class CsvJobClient {
 
   public String startJob(String method, String path, String body)
       throws IOException, InterruptedException {
-    HttpResponse<String> response = request(method, path, body);
+    return startJob(method, path, body, SdkClients.getAdminToken());
+  }
+
+  public String startJob(String method, String path, String body, String token)
+      throws IOException, InterruptedException {
+    HttpResponse<String> response = request(method, path, body, token);
     assertTrue(
         response.statusCode() == 200 || response.statusCode() == 202,
         "Job creation failed: " + response.statusCode() + " " + response.body());

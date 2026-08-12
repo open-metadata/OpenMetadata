@@ -39,7 +39,6 @@ import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvExportPayload;
 import org.openmetadata.service.csv.CsvExportSpool;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -296,7 +295,7 @@ public class AuditLogResource {
   }
 
   private Response streamExportResult(SecurityContext securityContext, String jobId) {
-    CsvAsyncJob job = isServerGeneratedJobId(jobId) ? findAuditExportJob(jobId) : null;
+    CsvAsyncJob job = CsvAsyncJobManager.getInstance().getAuditExportJob(jobId);
     if (job != null) {
       validateOwnership(securityContext, job);
     }
@@ -364,23 +363,6 @@ public class AuditLogResource {
       legacy = false;
     }
     return legacy;
-  }
-
-  private static CsvAsyncJob findAuditExportJob(String jobId) {
-    CsvAsyncJob job;
-    try {
-      job = CsvAsyncJobManager.getInstance().getAuditExportJob(jobId);
-    } catch (EntityNotFoundException e) {
-      LOG.debug("Audit export job {} not found", jobId, e);
-      job = null;
-    }
-    return job;
-  }
-
-  // Job ids are the numeric primary key of the background_jobs row. Reject anything
-  // else before it reaches the lookup so a malformed id is a 404, not a 500.
-  private static boolean isServerGeneratedJobId(String jobId) {
-    return jobId != null && jobId.chars().allMatch(Character::isDigit) && !jobId.isEmpty();
   }
 
   /**

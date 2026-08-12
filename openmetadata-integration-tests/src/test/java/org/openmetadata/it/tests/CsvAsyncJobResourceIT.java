@@ -23,11 +23,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.CsvJobClient;
@@ -199,6 +202,23 @@ public class CsvAsyncJobResourceIT {
     HttpResponse<String> response =
         request("GET", "/v1/csvAsyncJobs/999999999/result", null, adminToken());
     assertEquals(404, response.statusCode());
+  }
+
+  /**
+   * Job ids come straight off the request path. An id that cannot name a row — non-numeric, or
+   * numeric but wider than a long — has to read as "no such job", not as a server error.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"99999999999999999999", "not-a-job-id", "12x34"})
+  void test_unusableJobIdIsNotFoundRatherThanServerError(String jobId) throws Exception {
+    for (String path :
+        List.of(
+            "/v1/csvAsyncJobs/" + jobId,
+            "/v1/csvAsyncJobs/" + jobId + "/result",
+            "/v1/audit/logs/export/" + jobId + "/result")) {
+      HttpResponse<String> response = request("GET", path, null, adminToken());
+      assertEquals(404, response.statusCode(), path + " returned " + response.body());
+    }
   }
 
   /**
@@ -383,8 +403,9 @@ public class CsvAsyncJobResourceIT {
     return result.body();
   }
 
-  private String startJob(String method, String path, String body, String token) throws Exception {
-    return CLIENT.startJob(method, path, body);
+  private String startJob(String method, String path, String body, String token)
+      throws IOException, InterruptedException {
+    return CLIENT.startJob(method, path, body, token);
   }
 
   private JsonNode awaitJobStatus(String jobId, String expectedStatus) {
