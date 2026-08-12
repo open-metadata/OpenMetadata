@@ -22,7 +22,10 @@ import {
 } from '../../utils/admin';
 import { descriptionBox } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
-import { waitForTaskCreateResponse } from '../../utils/task';
+import {
+  waitForTaskCreateResponse,
+  waitForTaskListResponse,
+} from '../../utils/task';
 import {
   addTagSuggestion,
   approveTaskFromDetails,
@@ -149,6 +152,21 @@ const navigateToActivityFeedTasks = async (page: Page) => {
   await openEntityTasksTab(page);
 };
 
+// Closed tasks live behind the task filter dropdown, not a tab. The previous
+// getByRole('tab', { name: /Closed/i }) matched nothing anywhere in the app —
+// the isVisible() guard around it meant the whole assertion never ran.
+const switchToClosedTaskFilter = async (page: Page) => {
+  await page.getByTestId('user-profile-page-task-filter-icon').click();
+
+  const closedOption = page.getByTestId('closed-tasks');
+
+  await expect(closedOption).toBeVisible();
+
+  const tasksListResponse = waitForTaskListResponse(page);
+  await closedOption.click();
+  await tasksListResponse;
+};
+
 test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   const user = new UserClass();
   const entities: Array<
@@ -185,6 +203,12 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // Each test drives four full page loads (entity page, task form, entity
+    // page again, task panel). That lands around 27s warm but has overrun the
+    // 60s default on a cold shard, timing out on the first interaction —
+    // the cause of this spec's intermittent failures. Triple the budget.
+    test.slow();
+
     await authenticateAdminPage(page);
   });
 
@@ -298,6 +322,9 @@ test.describe('Task Workflow - Table Column Tasks', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // Same multi-page-load shape as the first describe — see the note there.
+    test.slow();
+
     await authenticateAdminPage(page);
   });
 
@@ -428,6 +455,9 @@ test.describe('Task Activity Feed Integration', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // Same multi-page-load shape as the first describe — see the note there.
+    test.slow();
+
     await authenticateAdminPage(page);
   });
 
@@ -462,11 +492,9 @@ test.describe('Task Activity Feed Integration', () => {
 
       await page.reload();
       await waitForPageLoaded(page);
+      await navigateToActivityFeedTasks(page);
 
-      const closedTab = page.getByRole('tab', { name: /Closed/i });
-
-      await expect(closedTab).toBeVisible({ timeout: 30_000 });
-      await closedTab.click();
+      await switchToClosedTaskFilter(page);
 
       const closedTaskCard = page
         .locator('[data-testid="task-feed-card"]')
