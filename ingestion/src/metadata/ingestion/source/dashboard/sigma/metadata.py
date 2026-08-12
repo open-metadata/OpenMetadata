@@ -138,14 +138,14 @@ class SigmaSource(DashboardServiceSource):
                 ],
                 dataModels=[
                     FullyQualifiedEntityName(
-                        fqn.build(
+                        fqn.build(  # pyright: ignore[reportArgumentType]  # always a str for DashboardDataModel
                             self.metadata,
                             entity_type=DashboardDataModel,
-                            service_name=self.context.get().dashboard_service,
+                            service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
                             data_model_name=data_model,
                         )
                     )
-                    for data_model in self.context.get().dataModels or []
+                    for data_model in self.context.get().dataModels or []  # pyright: ignore[reportAttributeAccessIssue]
                 ]
                 if self.source_config.includeDataModels
                 else None,
