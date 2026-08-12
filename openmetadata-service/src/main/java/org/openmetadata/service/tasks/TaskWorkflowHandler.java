@@ -1026,18 +1026,14 @@ public class TaskWorkflowHandler {
    * {@code Agent}. Comparing against the task's own suggestion separates the two.
    */
   private boolean isAgentAuthored(Task task, JsonNode payloadNode, String appliedValue) {
-    if (!AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(payloadNode.path("source").asText(null))) {
-      return false;
-    }
-    String proposed = originalSuggestedValue(task);
-    return proposed == null || proposed.equals(appliedValue);
-  }
-
-  private String originalSuggestedValue(Task task) {
-    if (task == null || task.getPayload() == null) {
-      return null;
-    }
-    return JsonUtils.valueToTree(task.getPayload()).path("suggestedValue").asText(null);
+    boolean agentSourced =
+        AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(payloadNode.path("source").asText(null));
+    String proposed =
+        Optional.ofNullable(task)
+            .map(Task::getPayload)
+            .map(payload -> JsonUtils.valueToTree(payload).path("suggestedValue").asText(null))
+            .orElse(null);
+    return agentSourced && (proposed == null || proposed.equals(appliedValue));
   }
 
   private void applySuggestion(
