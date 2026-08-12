@@ -901,6 +901,9 @@ class SessionServiceTest {
     when(repository.findByUserIdAndStatus(
             eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
         .thenReturn(List.of(first, second), List.of());
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.REFRESHING), anyInt()))
+        .thenReturn(List.of());
     when(repository.findById(first.getId())).thenReturn(Optional.of(first));
     when(repository.findById(second.getId())).thenReturn(Optional.of(second));
     when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
@@ -926,6 +929,9 @@ class SessionServiceTest {
     when(repository.findByUserIdAndStatus(
             eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
         .thenReturn(List.of(stuck));
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.REFRESHING), anyInt()))
+        .thenReturn(List.of());
     when(repository.findById(stuck.getId())).thenReturn(Optional.of(stuck));
     when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(false);
 
@@ -935,6 +941,37 @@ class SessionServiceTest {
     // instead of burning every remaining iteration on a row that will not move.
     verify(repository, times(2))
         .findByUserIdAndStatus(eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt());
+  }
+
+  @Test
+  void revokeSessionsForUser_alsoRevokesASessionThatIsMidRefresh() {
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("refreshing-user")
+            .withEmail("refreshing-user@example.com");
+    // A session mid-refresh holds a lease and is invisible to an ACTIVE-only lookup, and
+    // completeRefresh puts it back to ACTIVE — so without this it would outlive the delete.
+    UserSession refreshing =
+        activeSession(validSessionId('r'), user, 3L, 3L).toBuilder()
+            .status(SessionStatus.REFRESHING)
+            .refreshLeaseUntil(System.currentTimeMillis() + 15_000)
+            .build();
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), anyInt()))
+        .thenReturn(List.of());
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.REFRESHING), anyInt()))
+        .thenReturn(List.of(refreshing), List.of());
+    when(repository.findById(refreshing.getId())).thenReturn(Optional.of(refreshing));
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
+
+    assertEquals(1, sessionService.revokeSessionsForUser(user.getId().toString()));
+
+    ArgumentCaptor<UserSession> revoked = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository).updateIfVersion(revoked.capture(), anyLong());
+    assertEquals(SessionStatus.REVOKED, revoked.getValue().getStatus());
+    assertNull(revoked.getValue().getRefreshLeaseUntil());
   }
 
   @Test

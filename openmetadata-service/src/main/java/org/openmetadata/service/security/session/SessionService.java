@@ -32,6 +32,8 @@ public class SessionService implements Managed {
   private static final int SESSION_LIMIT_MAX_ITERATIONS = 20;
   private static final int SESSION_LIMIT_LOOKUP_MULTIPLIER = 4;
   private static final long SESSION_ACCESS_UPDATE_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(5);
+  private static final List<SessionStatus> REVOCABLE_STATUSES =
+      List.of(SessionStatus.ACTIVE, SessionStatus.REFRESHING);
 
   private volatile AuthenticationConfiguration authConfig;
   private final SessionStore repository;
@@ -607,26 +609,26 @@ public class SessionService implements Managed {
   }
 
   /**
-   * Revokes every non-terminal session for a user. Called when the user is deleted (soft or hard) or
+   * Revokes every revocable session for a user. Called when the user is deleted (soft or hard) or
    * otherwise off-boarded — without it a soft-deleted user keeps API access until their token
-   * expires. Bounded: each pass reads at most {@link #CLEANUP_BATCH_SIZE} sessions and the loop is
-   * capped, so a user with a pathological session count degrades rather than spinning.
+   * expires. Bounded: each pass reads at most {@link #CLEANUP_BATCH_SIZE} sessions per status and the
+   * loop is capped, so a user with a pathological session count degrades rather than spinning.
    */
   public int revokeSessionsForUser(String userId) {
     int revoked = 0;
     if (!nullOrEmpty(userId)) {
       java.util.Set<String> previousBatchIds = java.util.Collections.emptySet();
       for (int attempt = 0; attempt < SESSION_LIMIT_MAX_ITERATIONS; attempt++) {
-        List<UserSession> sessions =
-            repository.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, CLEANUP_BATCH_SIZE);
+        List<UserSession> sessions = findRevocableSessions(userId);
         if (sessions.isEmpty()) {
           break;
         }
         java.util.Set<String> currentBatchIds =
             sessions.stream().map(UserSession::getId).collect(java.util.stream.Collectors.toSet());
-        // A revoke that loses every compare-and-set leaves the session ACTIVE, so the next pass
-        // reads it back. Without this the loop burns all its passes on the same stuck rows and
-        // reports them as revoked once per pass.
+        // A revoke that loses every compare-and-set leaves the session where it was, so the next
+        // pass
+        // reads the same batch back. Stop instead of burning every remaining pass on rows that will
+        // not move; the cleanup sweep expires them at their timeout.
         if (currentBatchIds.equals(previousBatchIds)) {
           LOG.warn(
               "Unable to revoke {} session(s) for user {}; leaving them to session cleanup",
@@ -643,6 +645,21 @@ public class SessionService implements Managed {
       }
     }
     return revoked;
+  }
+
+  /**
+   * {@code REFRESHING} has to be included, not just {@code ACTIVE}: a session mid-refresh holds a
+   * lease and is invisible to an ACTIVE-only lookup, and {@code completeRefresh} /
+   * {@link #releaseRefreshLease} put it back to {@code ACTIVE} afterwards — so a user deleted inside
+   * that window would keep a live session. {@code PENDING} is not revocable by user because a login
+   * in flight has no user attached yet ({@code createPendingSession} sets no {@code userId}).
+   */
+  private List<UserSession> findRevocableSessions(String userId) {
+    List<UserSession> sessions = new ArrayList<>();
+    for (SessionStatus status : REVOCABLE_STATUSES) {
+      sessions.addAll(repository.findByUserIdAndStatus(userId, status, CLEANUP_BATCH_SIZE));
+    }
+    return sessions;
   }
 
   private static boolean isTerminal(UserSession session) {
