@@ -539,187 +539,184 @@ test.describe('Mention notifications in Notification Box', () => {
     await afterAction();
   });
 
-  // Failure needed to be investigated - skipping for now to unblock
-  // PR - https://github.com/open-metadata/OpenMetadata/pull/25894
-  test.fixme(
-    'Mention notification shows correct user details in Notification box',
-    async ({ adminPage, user1Page }) => {
-      await test.step('User1 mentions admin user in a reply', async () => {
-        await entity.visitEntityPage(user1Page);
+  test('Mention notification shows correct user details in Notification box', async ({
+    adminPage,
+    user1Page,
+  }) => {
+    await test.step('User1 mentions admin user in a reply', async () => {
+      await entity.visitEntityPage(user1Page);
 
-        await user1Page.getByTestId('activity_feed').click();
+      await user1Page.getByTestId('activity_feed').click();
 
-        await waitForAllLoadersToDisappear(user1Page);
+      await waitForAllLoadersToDisappear(user1Page);
 
-        const seededThread = user1Page
-          .locator('[data-testid="message-container"]')
-          .filter({ hasText: 'Initial conversation thread for mention test' })
-          .first();
+      const seededThread = user1Page
+        .locator('[data-testid="message-container"]')
+        .filter({ hasText: 'Initial conversation thread for mention test' })
+        .first();
 
-        await expect(seededThread).toBeVisible({ timeout: 30_000 });
-        await seededThread.click();
+      await expect(seededThread).toBeVisible({ timeout: 30_000 });
+      await seededThread.click();
 
-        await waitForAllLoadersToDisappear(user1Page);
+      await waitForAllLoadersToDisappear(user1Page);
 
-        await user1Page.getByTestId('comments-input-field').click();
+      await user1Page.getByTestId('comments-input-field').click();
 
-        const editorLocator = user1Page.locator(
-          '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+      const editorLocator = user1Page.locator(
+        '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+      );
+
+      await editorLocator.fill('Hey ');
+
+      await editorLocator.click();
+
+      await user1Page.keyboard.press('@');
+      const userSuggestionsResponse = user1Page.waitForResponse((response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') &&
+          url.includes(adminUser.responseData.displayName)
         );
-
-        await editorLocator.fill('Hey ');
-
-        await editorLocator.click();
-
-        await user1Page.keyboard.press('@');
-        const userSuggestionsResponse = user1Page.waitForResponse(
-          (response) => {
-            const url = response.url();
-
-            return (
-              url.includes('/api/v1/search/query') &&
-              url.includes(adminUser.responseData.displayName)
-            );
-          }
-        );
-        await editorLocator.pressSequentially(
-          adminUser.responseData.displayName
-        );
-        await userSuggestionsResponse;
-
-        await user1Page
-          .locator(`[data-value="@${adminUser.responseData.name}"]`)
-          .first()
-          .click();
-
-        await editorLocator.pressSequentially(', can you check this?');
-
-        await expect(
-          user1Page.locator('[data-testid="send-button"]')
-        ).toBeVisible();
-        await expect(
-          user1Page.locator('[data-testid="send-button"]')
-        ).not.toBeDisabled();
-
-        const postMentionResponse = user1Page.waitForResponse(
-          '/api/v1/feed/*/posts'
-        );
-        await user1Page.locator('[data-testid="send-button"]').click();
-        await postMentionResponse;
       });
+      await editorLocator.pressSequentially(adminUser.responseData.displayName);
+      await userSuggestionsResponse;
 
-      await test.step('Admin user checks notification for correct user and timestamp', async () => {
-        await adminPage.reload();
-        await waitForAllLoadersToDisappear(adminPage);
-        const notificationBell = adminPage.getByTestId('task-notifications');
+      await user1Page
+        .locator(`[data-value="@${adminUser.responseData.name}"]`)
+        .first()
+        .click();
 
-        await expect(notificationBell).toBeVisible();
+      await editorLocator.pressSequentially(', can you check this?');
 
-        const feedResponseForNotifications = adminPage.waitForResponse(
-          `/api/v1/tasks/assigned?*status=Open*`
-        );
+      await expect(
+        user1Page.locator('[data-testid="send-button"]')
+      ).toBeVisible();
+      await expect(
+        user1Page.locator('[data-testid="send-button"]')
+      ).not.toBeDisabled();
 
-        await notificationBell.click();
-        await feedResponseForNotifications;
-        const notificationBox = adminPage.locator('.notification-box');
+      const postMentionResponse = user1Page.waitForResponse(
+        '/api/v1/feed/*/posts'
+      );
+      await user1Page.locator('[data-testid="send-button"]').click();
+      await postMentionResponse;
+    });
 
-        await expect(notificationBox).toBeVisible();
+    await test.step('Admin user checks notification for correct user and timestamp', async () => {
+      await adminPage.reload();
+      await waitForAllLoadersToDisappear(adminPage);
+      const notificationBell = adminPage.getByTestId('task-notifications');
 
-        const mentionsTab = adminPage
-          .locator('.notification-box')
-          .getByText('Mentions');
+      await expect(notificationBell).toBeVisible();
 
-        const mentionsFeedResponse = adminPage.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/feed') &&
-            response.url().includes('filterType=MENTIONS')
-        );
+      const feedResponseForNotifications = adminPage.waitForResponse(
+        `/api/v1/tasks/assigned?*status=Open*`
+      );
 
-        await mentionsTab.click();
-        await mentionsFeedResponse;
+      await notificationBell.click();
+      await feedResponseForNotifications;
+      const notificationBox = adminPage.locator('.notification-box');
 
-        const mentionsList = adminPage
-          .getByRole('tabpanel', { name: 'Mentions' })
-          .getByRole('list');
+      await expect(notificationBox).toBeVisible();
 
-        await expect(mentionsList).toBeVisible();
+      const mentionsTab = adminPage
+        .locator('.notification-box')
+        .getByText('Mentions');
 
-        const firstNotificationItem = mentionsList
-          .locator('li.ant-list-item.notification-dropdown-list-btn')
-          .first();
+      const mentionsFeedResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.url().includes('filterType=MENTIONS')
+      );
 
-        const firstNotificationText = await firstNotificationItem.textContent();
+      await mentionsTab.click();
+      await mentionsFeedResponse;
 
-        expect(firstNotificationText?.toLowerCase()).toContain(
-          user1.responseData.name.toLowerCase()
-        );
-        expect(firstNotificationText?.toLowerCase()).not.toContain(
-          adminUser.responseData.name.toLowerCase()
-        );
+      const mentionsList = adminPage
+        .getByRole('tabpanel', { name: 'Mentions' })
+        .getByRole('list');
 
-        const mentionNotificationLink = firstNotificationItem.locator(
-          '[data-testid^="notification-link-"]'
-        );
+      await expect(mentionsList).toBeVisible();
 
-        const navigationPromise = adminPage.waitForURL(/activity_feed/);
-        await mentionNotificationLink.click();
-        await navigationPromise;
+      const firstNotificationItem = mentionsList
+        .locator('li.ant-list-item.notification-dropdown-list-btn')
+        .first();
 
-        expect(adminPage.url()).toContain('activity_feed');
-        expect(adminPage.url()).toContain('/all');
-      });
+      const firstNotificationText = await firstNotificationItem.textContent();
 
-      await test.step('Update user display name and verify reaction tooltip', async () => {
-        test.slow();
-        const newDisplayName = `UpdatedName${uuid()}`;
+      expect(firstNotificationText?.toLowerCase()).toContain(
+        user1.responseData.name.toLowerCase()
+      );
+      expect(firstNotificationText?.toLowerCase()).not.toContain(
+        adminUser.responseData.name.toLowerCase()
+      );
 
-        // Go to profile and update name
-        await redirectToHomePage(user1Page);
-        await visitOwnProfilePage(user1Page);
-        await editDisplayName(user1Page, newDisplayName);
+      const mentionNotificationLink = firstNotificationItem.locator(
+        '[data-testid^="notification-link-"]'
+      );
 
-        // Go back to entity
-        await entity.visitEntityPage(user1Page);
+      const navigationPromise = adminPage.waitForURL(/activity_feed/);
+      await mentionNotificationLink.click();
+      await navigationPromise;
 
-        await user1Page.getByTestId('activity_feed').click();
-        await waitForAllLoadersToDisappear(user1Page);
+      expect(adminPage.url()).toContain('activity_feed');
+      expect(adminPage.url()).toContain('/all');
+    });
 
-        // Find a message to react to.
-        const message = user1Page
-          .locator('[data-testid="message-container"]')
-          .first();
-        await expect(message).toBeVisible();
+    await test.step('Update user display name and verify reaction tooltip', async () => {
+      test.slow();
+      const newDisplayName = `UpdatedName${uuid()}`;
 
-        // Add reaction
-        const reactionResponse = user1Page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/feed') &&
-            response.request().method() === 'PATCH'
-        );
-        await message.locator('[data-testid="add-reactions"]').click();
-        await user1Page.locator('[title="rocket"]').click();
-        await reactionResponse;
+      // Go to profile and update name
+      await redirectToHomePage(user1Page);
+      await visitOwnProfilePage(user1Page);
+      await editDisplayName(user1Page, newDisplayName);
 
-        // Hover over the emoji button to see the popover
-        const emojiButton = message
-          .locator('[data-testid="emoji-button"]')
-          .last();
-        await emojiButton.hover();
+      // Go back to entity
+      await entity.visitEntityPage(user1Page);
 
-        // Verify tooltip using the data-testid from Emoji.tsx popoverContent
-        const tooltip = user1Page.getByTestId('popover-content');
-        await expect(tooltip).toBeVisible();
-        await expect(tooltip).toContainText(newDisplayName);
-        await expect(tooltip).toContainText('reacted with');
+      await user1Page.getByTestId('activity_feed').click();
+      await waitForAllLoadersToDisappear(user1Page);
 
-        // Ensure username is not displayed if it's different
-        if (newDisplayName !== user1.responseData.name) {
-          await expect(tooltip).not.toContainText(user1.responseData.name);
-        }
-      });
-    }
-  );
+      // Find a message to react to.
+      const message = user1Page
+        .locator('[data-testid="message-container"]')
+        .first();
+      await expect(message).toBeVisible();
+
+      // Add reaction
+      const reactionResponse = user1Page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/feed') &&
+          response.request().method() === 'PATCH'
+      );
+      await message.locator('[data-testid="add-reactions"]').click();
+      await user1Page.locator('[title="rocket"]').click();
+      await reactionResponse;
+
+      // Hover over the emoji button to see the popover
+      const emojiButton = message
+        .locator('[data-testid="emoji-button"]')
+        .last();
+      await emojiButton.hover();
+
+      // Verify tooltip using the data-testid from Emoji.tsx popoverContent
+      const tooltip = user1Page.getByTestId('popover-content');
+      await expect(tooltip).toBeVisible();
+      await expect(tooltip).toContainText(newDisplayName);
+      await expect(tooltip).toContainText('reacted with');
+
+      // Ensure username is not displayed if it's different
+      if (newDisplayName !== user1.responseData.name) {
+        await expect(tooltip).not.toContainText(user1.responseData.name);
+      }
+    });
+  });
 });
+
+const CHINESE_MENTION_THREAD_MESSAGE =
+  'Initial conversation for Chinese character encoding test';
 
 test.describe('Mentions: Chinese character encoding in activity feed', () => {
   const database = new DatabaseClass();
@@ -748,7 +745,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       // Create a conversation thread via API so we can post replies in the tests
       const conversationResponse = await apiContext.post('/api/v1/feed', {
         data: {
-          message: 'Initial conversation for Chinese character encoding test',
+          message: CHINESE_MENTION_THREAD_MESSAGE,
           about: `<#E::databaseSchema::${schemaFqn}>`,
           type: 'Conversation',
         },
@@ -758,7 +755,7 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
         apiContext,
         entityLink: `<#E::databaseSchema::${schemaFqn}>`,
         threadId: conversation.id,
-        message: 'Initial conversation for Chinese character encoding test',
+        message: CHINESE_MENTION_THREAD_MESSAGE,
       });
 
       await afterAction();
@@ -798,22 +795,22 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     await feedPromise;
     await waitForAllLoadersToDisappear(page);
 
+    // The All tab interleaves change-events with conversations and auto-selects
+    // whichever is newest, and change-events carry no editor at all. Never
+    // assume the seeded thread is already open — select it explicitly, so the
+    // editor's presence is a real assertion rather than a race on seed order.
+    const seededThread = page
+      .locator(
+        '[data-testid="message-container"], [data-testid="feed-reply-card"]'
+      )
+      .filter({ hasText: CHINESE_MENTION_THREAD_MESSAGE })
+      .first();
+
+    await expect(seededThread).toBeVisible({ timeout: 30_000 });
+    await seededThread.click();
+    await waitForAllLoadersToDisappear(page);
+
     const commentInput = page.getByTestId('comments-input-field');
-    if (!(await commentInput.isVisible().catch(() => false))) {
-      const seededThread = page
-        .locator(
-          '[data-testid="message-container"], [data-testid="feed-reply-card"]'
-        )
-        .filter({
-          hasText: 'Initial conversation for Chinese character encoding test',
-        })
-        .first();
-
-      await expect(seededThread).toBeVisible({ timeout: 30_000 });
-      await seededThread.click();
-      await waitForAllLoadersToDisappear(page);
-    }
-
     await expect(commentInput).toBeVisible({ timeout: 10000 });
     await commentInput.click();
 
@@ -895,5 +892,356 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
     await expect(replyCard.getByTestId('viewer-container')).toHaveText(
       `Check #${endpointName}`
     );
+  });
+});
+
+// Regressions introduced by the Task-redesign refactor (PR #25894): the entity
+// "All" tab merged activity change-events with conversations as an either-or,
+// hiding conversations, and the right-panel reply double-posted. These guard the fixes.
+test.describe('ActivityFeed: activity + conversation merge (regression #25894)', () => {
+  let adminUser: UserClass;
+  let entity: TableClass;
+  const conversationMessage = `Merge regression conversation ${uuid()}`;
+  const conversationMessage2 = `Second regression conversation ${uuid()}`;
+
+  const test = base.extend<{ adminPage: Page }>({
+    adminPage: async ({ browser }, use) => {
+      const page = await browser.newPage({ storageState: undefined });
+      await adminUser.login(page);
+      await use(page);
+      await page.close();
+    },
+  });
+
+  test.beforeAll(
+    'Setup entity and seeded conversation',
+    async ({ browser }) => {
+      adminUser = new UserClass();
+      entity = new TableClass();
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+      await entity.create(apiContext);
+
+      for (const message of [conversationMessage, conversationMessage2]) {
+        await apiContext.post('/api/v1/feed', {
+          data: {
+            message,
+            about: `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`,
+            type: 'Conversation',
+          },
+        });
+      }
+
+      const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+        `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
+      )}&type=Conversation&limit=25`;
+
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(feedUrl);
+            const data = await response.json();
+            const messages = (data.data ?? []).map(
+              (thread: { message?: string }) => thread.message
+            );
+
+            return (
+              messages.includes(conversationMessage) &&
+              messages.includes(conversationMessage2)
+            );
+          },
+          { timeout: 60_000, intervals: [2_000] }
+        )
+        .toBe(true);
+
+      // Wait until the auto "Created" change-event activity is indexed into the
+      // activity stream, so the merged list deterministically contains an
+      // activity in every test (indexing is near-instant in CI but can lag on a
+      // local backend).
+      const activityUrl = `/api/v1/activity/entity/table/name/${encodeURIComponent(
+        entity.entityResponseData.fullyQualifiedName ?? ''
+      )}?days=30&limit=50`;
+
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.get(activityUrl);
+            const data = await response.json();
+
+            return (data.data ?? []).length;
+          },
+          { timeout: 90_000, intervals: [3_000] }
+        )
+        .toBeGreaterThan(0);
+
+      await afterAction();
+    }
+  );
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await entity.delete(apiContext);
+    await adminUser.delete(apiContext);
+    await afterAction();
+  });
+
+  test('All tab shows BOTH the change-event activity and the conversation', async ({
+    adminPage,
+  }) => {
+    await entity.visitEntityPage(adminPage);
+    await adminPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    // Scoped to #feedData throughout: the right-hand panel renders
+    // message-container for the selected item, so an unscoped match could be
+    // satisfied by the panel and would not prove both kinds share the list.
+    const feedList = adminPage.locator(
+      '#feedData [data-testid="message-container"]'
+    );
+
+    // Conversation thread (from /api/v1/feed) must be visible...
+    await expect(
+      feedList.filter({ hasText: conversationMessage }).first()
+    ).toBeVisible({ timeout: 30_000 });
+
+    // ...alongside the auto "Created" change-event activity (from /api/v1/activity).
+    // On the buggy either-or code these two never render together.
+    await expect(
+      feedList.filter({ hasText: /created/i }).first()
+    ).toBeVisible();
+  });
+
+  test('A change-event activity is read-only (no comment editor)', async ({
+    adminPage,
+  }) => {
+    await entity.visitEntityPage(adminPage);
+    await adminPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    // Open the auto "Created …" change-event activity in the right panel.
+    // Scoped to #feedData so this is the list card, not the panel's own copy.
+    const activityCard = adminPage
+      .locator('#feedData [data-testid="message-container"]')
+      .filter({ hasText: /created/i })
+      .first();
+    await expect(activityCard).toBeVisible({ timeout: 30_000 });
+    await activityCard.click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    // Activities are read-only notifications — no comment box, no send button.
+    await expect(
+      adminPage.locator('#activity-panel [data-testid="comments-input-field"]')
+    ).toHaveCount(0);
+    await expect(
+      adminPage.locator('#activity-panel [data-testid="send-button"]')
+    ).toHaveCount(0);
+  });
+
+  test('Replying to a conversation stays isolated to that thread', async ({
+    adminPage,
+  }) => {
+    await entity.visitEntityPage(adminPage);
+    await adminPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    const newThreadCalls: string[] = [];
+    const replyPostCalls: string[] = [];
+    adminPage.on('request', (request) => {
+      if (request.method() !== 'POST') {
+        return;
+      }
+      const url = request.url().split('?')[0];
+      if (/\/api\/v1\/feed\/[^/]+\/posts$/.test(url)) {
+        replyPostCalls.push(url);
+      } else if (/\/api\/v1\/feed$/.test(url)) {
+        newThreadCalls.push(url);
+      }
+    });
+
+    const feedList = adminPage.locator(
+      '#feedData [data-testid="message-container"]'
+    );
+    const feedListCount = () => feedList.count();
+
+    // Scoped to #feedData deliberately: the right-hand panel renders
+    // message-container too, so an unscoped wait can be satisfied by the panel
+    // while the list is still empty — leaving the same 0 baseline this gate
+    // exists to prevent.
+    const seededConversation = feedList
+      .filter({ hasText: conversationMessage })
+      .first();
+
+    // Loaders disappearing does not mean the merged list has rendered. Taking
+    // the baseline before the seeded conversation is on screen recorded a 0,
+    // which then mismatched the real count after the reply.
+    await expect(seededConversation).toBeVisible({ timeout: 30_000 });
+
+    const countBeforeReply = await feedListCount();
+
+    // Reply to the FIRST seeded conversation.
+    const replyText = `Isolated reply ${uuid()}`;
+    await seededConversation.click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    await adminPage.getByTestId('comments-input-field').click();
+    await adminPage
+      .locator(
+        '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+      )
+      .fill(replyText);
+
+    const replyResponse = adminPage.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/v1\/feed\/[^/]+\/posts$/.test(response.url().split('?')[0])
+    );
+    await adminPage.locator('[data-testid="send-button"]').click();
+    await replyResponse;
+    await waitForAllLoadersToDisappear(adminPage);
+
+    // Isolation is structural: exactly one post to the thread's own id, NO new
+    // top-level thread created, and NO extra feed card injected — so the reply
+    // can only ever belong to this one conversation.
+    expect(replyPostCalls).toHaveLength(1);
+    expect(newThreadCalls).toHaveLength(0);
+    expect(await feedListCount()).toBe(countBeforeReply);
+
+    // And it renders on its own thread.
+    await expect(adminPage.getByText(replyText)).toBeVisible();
+  });
+
+  test('Activity is NOT fetched on the Tasks tab', async ({ adminPage }) => {
+    await entity.visitEntityPage(adminPage);
+    await adminPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    await adminPage.getByRole('menuitem', { name: /task/i }).click();
+    await waitForAllLoadersToDisappear(adminPage);
+    await expect(adminPage).toHaveURL(/activity_feed\/tasks/);
+
+    // Two different callers hit /activity/entity: the tab badge count via
+    // getFeedCounts with limit=0, which runs on every entity page load
+    // whatever the tab, and the list fetch with limit=50, which is the one the
+    // tab gates. Matching the endpoint alone caught the count request and
+    // failed for the wrong reason, so match only a fetch that retrieves events.
+    const isActivityListFetch = (url: string) =>
+      url.includes('/api/v1/activity/entity/') &&
+      !/[?&]limit=0(?:&|$)/.test(url);
+
+    // Watch only after the switch has settled. Attaching the listener before
+    // the click also caught the ALL tab's own activity fetch when that request
+    // was still being issued as the switch happened.
+    let activityFetchedOnTasks = false;
+    adminPage.on('request', (request) => {
+      if (isActivityListFetch(request.url())) {
+        activityFetchedOnTasks = true;
+      }
+    });
+
+    // Reload with Tasks active so every request below belongs to this tab.
+    await adminPage.reload();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    // Landing back on ALL would fetch activity legitimately and fail the
+    // assertion for the wrong reason.
+    await expect(adminPage).toHaveURL(/activity_feed\/tasks/);
+
+    expect(activityFetchedOnTasks).toBe(false);
+  });
+
+  test('All badge, header and rendered list agree on the count', async ({
+    adminPage,
+  }) => {
+    await entity.visitEntityPage(adminPage);
+    await adminPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    await expect(
+      adminPage.locator('#feedData [data-testid="message-container"]').first()
+    ).toBeVisible({ timeout: 30_000 });
+
+    const renderedCount = await adminPage
+      .locator('#feedData [data-testid="message-container"]')
+      .count();
+    const allBadge = (
+      await adminPage.getByTestId('left-panel-all-count').innerText()
+    ).trim();
+
+    // The "All" badge must equal the number of rendered items (conversations +
+    // activity events) — not the old activity-only / double-counted value.
+    expect(Number(allBadge)).toBe(renderedCount);
+
+    // With no tasks, the entity tab header total equals the same count.
+    await expect(
+      adminPage.getByRole('tab', { name: /activity feeds & tasks/i })
+    ).toContainText(String(renderedCount));
+  });
+
+  test('Auto-selects the first (newest) item on load', async ({
+    adminPage,
+  }) => {
+    await entity.visitEntityPage(adminPage);
+    await adminPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    const items = adminPage.locator(
+      '#feedData [data-testid="message-container"]'
+    );
+    await expect(items.first()).toBeVisible({ timeout: 30_000 });
+
+    // The FIRST (newest) item is the auto-selected one — deterministically,
+    // regardless of whether the conversation or activity request resolved first.
+    // (Asserting the position, not the content, since a reply in an earlier test
+    // can change which conversation is newest.)
+    await expect(items.first().locator('.is-active')).toBeVisible();
+    // ...and no item below it is the active one.
+    const activeCount = await adminPage
+      .locator('#feedData [data-testid="message-container"] .is-active')
+      .count();
+    expect(activeCount).toBe(1);
+  });
+
+  test('Reacting to an activity updates its reactions in the right panel', async ({
+    adminPage,
+  }) => {
+    await entity.visitEntityPage(adminPage);
+    await adminPage.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    // Select the auto "Created …" change-event activity into the right panel.
+    const activityCard = adminPage
+      .locator('#feedData [data-testid="message-container"]')
+      .filter({ hasText: /created/i })
+      .first();
+    await expect(activityCard).toBeVisible({ timeout: 30_000 });
+    await activityCard.click();
+    await waitForAllLoadersToDisappear(adminPage);
+
+    const panel = adminPage.locator('#activity-panel');
+    await expect(panel).toBeVisible();
+
+    await panel.locator('[data-testid="add-reactions"]').first().click();
+    await adminPage
+      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
+      .waitFor({ state: 'visible' });
+
+    // The picker button's title is the ReactionType value (🎉 == "hooray"); it
+    // fires PUT /api/v1/activity/{id}/reaction/hooray.
+    const reactionResponse = adminPage.waitForResponse((response) =>
+      /\/api\/v1\/activity\/[^/]+\/reaction\//.test(response.url())
+    );
+    await adminPage
+      .locator('[data-testid="reaction-button"][title="hooray"]')
+      .click();
+    await reactionResponse;
+
+    // The right panel must reflect the toggled reaction immediately (the fix:
+    // the selected activity is kept in sync, not just the list copy).
+    await expect(
+      panel.locator('[data-testid="feed-reaction-container"]')
+    ).toContainText('🎉', { timeout: 15_000 });
   });
 });
