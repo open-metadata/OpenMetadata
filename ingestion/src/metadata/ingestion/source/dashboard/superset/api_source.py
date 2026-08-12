@@ -282,7 +282,8 @@ class SupersetAPISource(SupersetSourceMixin):
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
                         ),
-                        columns=self.get_column_info(datasource_json.result.columns),
+                        columns=self.get_column_info(datasource_json.result.columns)
+                        or [],
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
                     yield Either(right=data_model_request)

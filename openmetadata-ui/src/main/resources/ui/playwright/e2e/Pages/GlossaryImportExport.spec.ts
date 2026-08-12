@@ -11,11 +11,6 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
-import {
-  CUSTOM_PROPERTIES_TYPES,
-  FIELD_VALUES_CUSTOM_PROPERTIES,
-} from '../../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -28,23 +23,16 @@ import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
-  uuid,
 } from '../../utils/common';
-import {
-  addCustomPropertiesForEntity,
-  deleteCreatedProperty,
-} from '../../utils/customProperty';
-import {
-  addMultiOwner,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { addMultiOwner } from '../../utils/entity';
 import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
+  getSetupCustomPropertiesForEntity,
   validateImportStatus,
 } from '../../utils/importUtils';
-import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({
@@ -58,8 +46,6 @@ const glossary1 = new Glossary();
 const glossary2 = new Glossary();
 const glossaryTerm1 = new GlossaryTerm(glossary1);
 const glossaryTerm2 = new GlossaryTerm(glossary2);
-const propertiesList = Object.values(CUSTOM_PROPERTIES_TYPES);
-
 const propertyListName: Record<string, string> = {};
 
 const additionalGlossaryTerm = createGlossaryTermRowDetails();
@@ -100,25 +86,10 @@ test.describe('Glossary Bulk Import Export', () => {
   test('Glossary Bulk Import Export', async ({ page }) => {
     test.setTimeout(5 * 60 * 1000);
 
-    await test.step('create custom properties for extension edit', async () => {
-      for (const property of propertiesList) {
-        const entity = CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm;
-        const propertyName = `pwcustomproperty${entity.name}test${uuid()}`;
-        propertyListName[property] = propertyName;
-
-        await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
-
-        await addCustomPropertiesForEntity({
-          page,
-          propertyName,
-          customPropertyData: entity,
-          customType: property,
-          tableConfig: {
-            columns: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns,
-          },
-        });
-      }
-    });
+    Object.assign(
+      propertyListName,
+      getSetupCustomPropertiesForEntity(GlobalSettingOptions.GLOSSARY_TERM)
+    );
 
     await test.step('should export data glossary term details', async () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -265,18 +236,6 @@ test.describe('Glossary Bulk Import Export', () => {
       await expect(
         page.getByTestId('bulk-import-details-modal')
       ).not.toBeAttached();
-    });
-
-    await test.step('delete custom properties', async () => {
-      for (const propertyName of Object.values(propertyListName)) {
-        await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
-
-        await page.waitForURL('**/settings/customProperties/glossaryTerm');
-
-        await waitForAllLoadersToDisappear(page);
-
-        await deleteCreatedProperty(page, propertyName);
-      }
     });
   });
 

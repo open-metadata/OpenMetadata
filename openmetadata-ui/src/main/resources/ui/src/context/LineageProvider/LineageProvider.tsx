@@ -21,6 +21,7 @@ import QueryString from 'qs';
 import {
   createContext,
   DragEvent,
+  lazy,
   useCallback,
   useContext,
   useEffect,
@@ -41,6 +42,7 @@ import {
   ReactFlowInstance,
   useKeyPress,
 } from 'reactflow';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -52,7 +54,6 @@ import {
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
-import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
@@ -98,36 +99,42 @@ import { drawEdgesForExport } from '../../utils/CanvasUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
-  addLineageHandler,
-  centerNodePosition,
   createColumnEdges,
   createEdgesAndEdgeMaps,
   createEntityEdgesAndMaps,
   createNewEdge,
-  createNodes,
   getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
-  getConnectedNodesEdges,
   getEdgeDataFromEdge,
-  getEntityTypeFromPlatformView,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getLoadingStatusValue,
   getModalBodyText,
   getNewLineageConnectionDetails,
-  getNodeLineageData,
   getUpdatedColumnsFromEdge,
-  getUpstreamDownstreamNodesEdges,
+} from '../../utils/EntityLineageEdgeUtils';
+import {
+  centerNodePosition,
   getViewportForLineageExport,
-  parseLineageData,
   positionNodesUsingElk,
-  removeLineageHandler,
+} from '../../utils/EntityLineageLayoutUtils';
+import {
+  createNodes,
+  getConnectedNodesEdges,
+  getEntityTypeFromPlatformView,
+  getNodeLineageData,
+  getUpstreamDownstreamNodesEdges,
   removeUnconnectedNodes,
-} from '../../utils/EntityLineageUtils';
+} from '../../utils/EntityLineageNodeUtils';
+import {
+  addLineageHandler,
+  parseLineageData,
+  removeLineageHandler,
+} from '../../utils/EntityLineagePureUtils';
+import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
-import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -137,6 +144,14 @@ import {
   LineagePlatformView,
   LineageProviderProps,
 } from './LineageProvider.interface';
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
 
 export const LineageContext = createContext({} as LineageContextType);
 
@@ -1331,7 +1346,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         await removeEdgeHandler(selectedEdge as Edge, true);
       }
 
+      // Close the modal and drop the selection in the same batch so the
+      // floating edit/delete button in EdgeInteractionOverlay unmounts
+      // right after removal. Doing this here (rather than inside the
+      // handlers) keeps `selectedEdge` populated while the confirmation
+      // modal is still mounted — getModalBodyText() destructures it
+      // during render and would crash the LineageProvider tree if
+      // `selectedEdge` were cleared before the modal unmounts.
       setShowDeleteModal(false);
+      setSelectedEdge(undefined);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -2018,7 +2041,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           </Drawer>
         )}
 
-        {showDeleteModal && (
+        {showDeleteModal && selectedEdge && (
           <Modal
             data-testid="delete-edge-confirmation-modal"
             maskClosable={false}
@@ -2033,7 +2056,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               setShowDeleteModal(false);
             }}
             onOk={onRemove}>
-            {getModalBodyText(selectedEdge as Edge)}
+            {getModalBodyText(selectedEdge)}
           </Modal>
         )}
         {showAddEdgeModal && (

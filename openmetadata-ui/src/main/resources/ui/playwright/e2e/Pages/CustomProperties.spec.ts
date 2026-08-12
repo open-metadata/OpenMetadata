@@ -23,6 +23,22 @@
  *
  * Entity setup (prepareCustomProperty) is done in beforeAll, not inside tests,
  * so cleanup always runs in afterAll even when a test fails mid-way.
+ *
+ * That serialisation only holds within this file. `PUT /api/v1/metadata/types/{id}`
+ * is read-modify-write on a single global row per entity type, so a spec writing
+ * the same row from another worker makes one side's property vanish while the API
+ * still answers 200. Two rules keep that from happening:
+ *
+ *   1. A spec that only *uses* custom properties must read the shared fixtures —
+ *      `EntityDataClass.customProperties[entityType][typeKey]` — rather than
+ *      create its own. entity-data.setup.ts creates every property type on every
+ *      entity type, sequentially, before any test runs.
+ *   2. A spec that must create or delete custom properties belongs in this file,
+ *      inside the describe.serial for its entity type. The exception is any spec
+ *      that Playwright already runs in isolation (the IntakeForm suites have
+ *      their own serial project), which cannot overlap with this file by design.
+ *
+ * Never PUT/PATCH `/api/v1/metadata/types/*` from a spec that runs in parallel.
  */
 
 import { APIRequestContext, expect, test } from '@playwright/test';
@@ -299,16 +315,30 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await mainEntity.prepareCustomProperty(apiContext);
 
         if (key === 'entity_table') {
-          for (let i = 0; i < 5; i++) {
-            const user = new UserClass();
-            await user.create(apiContext);
-            users.push(user);
+          // Created concurrently: sequential round-trips in this hook
+          // accumulate enough latency under load to exhaust its 60s budget.
+          // allSettled rather than all, so a partial failure still registers
+          // whatever was created for teardown before the hook fails — the
+          // rejection is rethrown, never swallowed.
+          const newUsers = Array.from({ length: 5 }, () => new UserClass());
+          const created = await Promise.allSettled(
+            newUsers.map((user) => user.create(apiContext))
+          );
+          // create() persists the user via /users/signup and only then assigns
+          // roles, so a rejection can still leave a real user behind. Register
+          // by "did it get an id", not by "did the promise settle happily".
+          users.push(...newUsers.filter((user) => user.responseData?.id));
+          const failed = created.find((result) => result.status === 'rejected');
+          if (failed) {
+            throw failed.reason;
           }
         } else if (key === 'entity_dashboard') {
           dashboardTopic1 = new TopicClass();
           dashboardTopic2 = new TopicClass();
-          await dashboardTopic1.create(apiContext);
-          await dashboardTopic2.create(apiContext);
+          await Promise.all([
+            dashboardTopic1.create(apiContext),
+            dashboardTopic2.create(apiContext),
+          ]);
           await setupCustomPropertyAdvancedSearchTest(
             page,
             cpasTestData,
@@ -3300,9 +3330,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
 
           await waitForAllLoadersToDisappear(page);
-          await page.locator('[data-testid="loader"]').waitFor({
-            state: 'detached',
-          });
 
           await page.getByTestId('add-field-btn').click();
 

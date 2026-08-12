@@ -707,7 +707,7 @@ class AirflowSource(PipelineServiceSource):
         return [
             Task(
                 name=task.task_id,
-                description=task.doc_md,
+                description=Markdown(task.doc_md) if task.doc_md else None,
                 sourceUrl=SourceUrl(
                     (
                         f"{clean_uri(host_port)}/dags/{quote(dag.dag_id)}/tasks/{quote(task.task_id)}"

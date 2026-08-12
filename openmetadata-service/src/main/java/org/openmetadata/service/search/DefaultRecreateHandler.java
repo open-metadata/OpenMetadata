@@ -86,7 +86,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   }
 
   @Override
-  public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
+  public boolean finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
     String entityType = context.getEntityType();
     String canonicalIndex = context.getCanonicalIndex();
     String stagedIndex = context.getStagedIndex();
@@ -95,13 +95,14 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     SearchClient searchClient = searchRepository.getSearchClient();
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
+    boolean promoted = false;
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
           "Cannot finalize reindex for entity '{}'. canonicalIndex={}, stagedIndex={}",
           entityType,
           canonicalIndex,
           stagedIndex);
-      return;
+      return false;
     }
 
     // Always-promote: partial data is better than no data. When reindex failed but the staged
@@ -134,7 +135,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
         if (aliasesToAttach.isEmpty()) {
           abortPromotionWithoutAliases(entityType, stagedIndex);
-          return;
+          return false;
         }
 
         Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
@@ -164,7 +165,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           LOG.error(
               "Failed to atomically swap aliases for entity '{}'. Old indices will not be deleted.",
               entityType);
-          return;
+          return false;
         }
 
         LOG.info(
@@ -180,6 +181,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         }
 
         stampPromoted(entityType);
+        promoted = true;
 
         for (String oldIndex : oldIndicesToDelete) {
           try {
@@ -203,6 +205,9 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
     } else {
+      // Nothing to promote (reindex failed and the staged index received zero documents). This is
+      // an intentional terminal state, not a retryable promotion failure, so report success.
+      promoted = true;
       try {
         if (searchClient.indexExists(stagedIndex)) {
           searchClient.deleteIndexWithBackoff(stagedIndex);
@@ -221,6 +226,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
     }
+    return promoted;
   }
 
   /**
@@ -275,7 +281,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
    * Promotes a single entity's staged index immediately after reindexing completes.
    * Uses aliases from indexMapping.json instead of reading from old index.
    */
-  public void promoteEntityIndex(EntityReindexContext context, boolean reindexSuccess) {
+  public boolean promoteEntityIndex(EntityReindexContext context, boolean reindexSuccess) {
     String entityType = context.getEntityType();
     String stagedIndex = context.getStagedIndex();
     String canonicalIndex = context.getCanonicalIndex();
@@ -284,13 +290,14 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     SearchClient searchClient = searchRepository.getSearchClient();
     IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
+    boolean promoted = false;
     if (canonicalIndex == null || stagedIndex == null) {
       LOG.error(
           "Cannot promote index for entity '{}'. canonicalIndex={}, stagedIndex={}",
           entityType,
           canonicalIndex,
           stagedIndex);
-      return;
+      return false;
     }
 
     // Always-promote: check doc count when reindex failed
@@ -315,7 +322,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       } finally {
         searchRepository.unregisterStagedIndex(entityType, stagedIndex);
       }
-      return;
+      // Nothing to promote (empty staged index intentionally discarded) — terminal, not retryable.
+      return true;
     }
 
     // Restore live serving settings on the staged index before alias swap. The bulk-build
@@ -334,7 +342,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
 
       if (aliasesToAttach.isEmpty()) {
         abortPromotionWithoutAliases(entityType, stagedIndex);
-        return;
+        return false;
       }
 
       Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
@@ -367,7 +375,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
             oldIndicesToDelete,
             stagedIndex,
             aliasesToAttach);
-        return;
+        return false;
       }
 
       LOG.info(
@@ -383,6 +391,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
 
       stampPromoted(entityType);
+      promoted = true;
 
       for (String oldIndex : oldIndicesToDelete) {
         try {
@@ -405,6 +414,7 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     } finally {
       searchRepository.unregisterStagedIndex(entityType, stagedIndex);
     }
+    return promoted;
   }
 
   /**

@@ -302,7 +302,63 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntity(Tag tag, boolean update) {
+    // setInheritedFields() sets disabled=true on the in-memory Tag whenever the parent
+    // Classification is disabled. That inherited value must never be persisted: once it is
+    // stored, re-enabling the Classification can no longer clear it and the Tag stays disabled
+    // forever.
+    //
+    // Leave the Tag holding its own flag afterwards rather than restoring the effective value.
+    // The entity is cached after this returns, so restoring would write the inherited true into
+    // the cache while the row holds false - the read then reports a Tag that is disabled with an
+    // enabled Classification, which is the very state this guard exists to prevent. It only
+    // shows up with a distributed cache, because an L1-only entry is invalidated on write and
+    // reloaded from the row. Restoring is also unnecessary: inheritance is re-applied on the way
+    // out, so the write response still reports the effective value.
+    tag.setDisabled(getOwnDisabled(tag, update, tag.getDisabled()));
     store(tag, update);
+  }
+
+  /**
+   * Returns the Tag's own {@code disabled} setting, with any value inherited from a disabled parent
+   * Classification removed. While the parent Classification is disabled the Tag always reads as
+   * disabled, so a user cannot express "disable this Tag individually" during that window - the
+   * stored value is therefore authoritative.
+   */
+  private Boolean getOwnDisabled(Tag tag, boolean update, Boolean effectiveDisabled) {
+    Boolean ownDisabled = effectiveDisabled;
+    if (Boolean.TRUE.equals(effectiveDisabled) && isParentClassificationDisabled(tag)) {
+      ownDisabled = update ? getStoredDisabled(tag.getId()) : Boolean.FALSE;
+    }
+    return ownDisabled;
+  }
+
+  private Boolean getStoredDisabled(UUID tagId) {
+    Boolean storedDisabled = Boolean.FALSE;
+    try {
+      storedDisabled = dao.findEntityById(tagId, ALL).getDisabled();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Tag {} not found while reading its stored disabled flag", tagId, e);
+    }
+    return storedDisabled;
+  }
+
+  private boolean isParentClassificationDisabled(Tag tag) {
+    boolean isDisabled = false;
+    EntityReference classificationRef = tag.getClassification();
+    if (classificationRef != null && classificationRef.getId() != null) {
+      try {
+        Classification classification =
+            Entity.getEntity(CLASSIFICATION, classificationRef.getId(), "", ALL, false);
+        isDisabled = Boolean.TRUE.equals(classification.getDisabled());
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Classification {} not found while checking the disabled flag of tag {}",
+            classificationRef.getId(),
+            tag.getId(),
+            e);
+      }
+    }
+    return isDisabled;
   }
 
   @Override
@@ -312,7 +368,19 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntities(List<Tag> entities) {
+    // Today every caller of this bulk path is create-only and applies setInheritedFields() after
+    // the store, so no inherited value can be present here. Strip it anyway: a future bulk update
+    // path would otherwise silently persist it and strand the Tags, which is the exact failure
+    // storeEntity() guards against. Tags are almost never created disabled, so the guard costs
+    // nothing on the common path.
+    entities.forEach(this::clearInheritedDisabled);
     storeMany(entities);
+  }
+
+  private void clearInheritedDisabled(Tag tag) {
+    if (Boolean.TRUE.equals(tag.getDisabled()) && isParentClassificationDisabled(tag)) {
+      tag.setDisabled(Boolean.FALSE);
+    }
   }
 
   @Override
@@ -930,6 +998,7 @@ public class TagRepository extends EntityRepository<Tag> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveRecognizerConfigOnPut();
       compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
@@ -954,6 +1023,17 @@ public class TagRepository extends EntityRepository<Tag> {
                   original.getAutoClassificationPriority(),
                   updated.getAutoClassificationPriority()));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
+    }
+
+    // CreateTag defaults recognizers to empty and autoClassificationEnabled to false, so a PUT
+    // that never mentions them is indistinguishable from one clearing them. Clear via PATCH.
+    private void preserveRecognizerConfigOnPut() {
+      if (operation != Operation.PUT || !nullOrEmpty(updated.getRecognizers())) {
+        return;
+      }
+      updated.setRecognizers(original.getRecognizers());
+      updated.setAutoClassificationEnabled(original.getAutoClassificationEnabled());
+      updated.setAutoClassificationPriority(original.getAutoClassificationPriority());
     }
 
     /**

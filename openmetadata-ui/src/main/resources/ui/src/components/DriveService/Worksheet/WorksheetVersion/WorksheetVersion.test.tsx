@@ -31,7 +31,7 @@ import { WorksheetVersionProps } from './WorksheetVersion.interface';
 
 jest.mock('../../../../utils/useRequiredParams');
 jest.mock('../../../../utils/RouterUtils');
-jest.mock('../../../../utils/EntityVersionUtils', () => ({
+jest.mock('../../../../utils/EntityVersionUtilsPure', () => ({
   getCommonExtraInfoForVersionDetails: jest.fn(() => ({
     ownerDisplayName: 'Test Owner',
     ownerRef: { id: 'owner-1', name: 'test-owner' },
@@ -53,8 +53,10 @@ jest.mock('../../../../utils/EntityVersionUtils', () => ({
 jest.mock('../../../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn(() => 'Column'),
 }));
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn((columns) => columns),
+  getTagsWithoutTier: jest.fn((tags) => tags),
+  getTierTags: jest.fn(() => []),
 }));
 jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest.fn(() => (

@@ -3,17 +3,21 @@ package org.openmetadata.service.util;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
 class EntityETagTest {
@@ -31,6 +35,62 @@ class EntityETagTest {
     assertEquals("W/\"1.2\"", weak);
     assertNull(EntityETag.generateETag(null));
     assertNull(EntityETag.generateWeakETag(null));
+  }
+
+  @Test
+  void etagIsStableForUnchangedEntity() {
+    EntityInterface entity = entity(1.2, 123456L);
+
+    assertEquals(EntityETag.generateETag(entity), EntityETag.generateETag(entity));
+  }
+
+  @Test
+  void etagChangesWhenVotesChangeWithoutVersionBump() {
+    // The P0 regression: an upvote writes a VOTED relationship and repopulates the entity's
+    // votes block but does NOT bump version/updatedAt. A version-only ETag stayed constant, so
+    // the post-vote conditional GET was answered 304 and the header rendered stale counts.
+    // The ETag must move when the votes block moves, even though version/updatedAt are identical.
+    UUID id = UUID.randomUUID();
+    EntityInterface before = table(id, 1.2, 123456L, 0);
+    EntityInterface after = table(id, 1.2, 123456L, 1);
+
+    assertEquals(before.getVersion(), after.getVersion());
+    assertEquals(before.getUpdatedAt(), after.getUpdatedAt());
+    assertNotEquals(EntityETag.generateETag(before), EntityETag.generateETag(after));
+  }
+
+  @Test
+  void etagChangesWhenVersionChanges() {
+    UUID id = UUID.randomUUID();
+    EntityInterface v1 = table(id, 1.0, 100L, 0);
+    EntityInterface v2 = table(id, 1.1, 200L, 0);
+
+    assertNotEquals(EntityETag.generateETag(v1), EntityETag.generateETag(v2));
+  }
+
+  @Test
+  void etagReflectsRequestedFieldsForPartialFetches() {
+    // The ETag hashes the exact partial representation that is serialized for the requested
+    // `fields`, not a canonical full entity. So `fields=tags` and `fields=owners` on the same
+    // entity are different representations and MUST get different ETags — a `fields=tags` 304 can
+    // never hand back an owners-bearing body. The same selection with unchanged data stays stable
+    // so the conditional GET still short-circuits to 304.
+    UUID id = UUID.randomUUID();
+    EntityInterface tagsOnly =
+        partialTable(id).withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+    EntityInterface ownersOnly =
+        partialTable(id)
+            .withOwners(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("user")
+                        .withName("u1")));
+    EntityInterface tagsOnlyUnchanged =
+        partialTable(id).withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+
+    assertNotEquals(EntityETag.generateETag(tagsOnly), EntityETag.generateETag(ownersOnly));
+    assertEquals(EntityETag.generateETag(tagsOnly), EntityETag.generateETag(tagsOnlyUnchanged));
   }
 
   @Test
@@ -67,10 +127,23 @@ class EntityETagTest {
   }
 
   private static EntityInterface entity(double version, long updatedAt) {
-    EntityInterface entity = mock(EntityInterface.class);
-    when(entity.getVersion()).thenReturn(version);
-    when(entity.getUpdatedAt()).thenReturn(updatedAt);
-    when(entity.getId()).thenReturn(UUID.randomUUID());
-    return entity;
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("etag_table")
+        .withVersion(version)
+        .withUpdatedAt(updatedAt);
+  }
+
+  private static EntityInterface table(UUID id, double version, long updatedAt, int upVotes) {
+    return new Table()
+        .withId(id)
+        .withName("etag_table")
+        .withVersion(version)
+        .withUpdatedAt(updatedAt)
+        .withVotes(new Votes().withUpVotes(upVotes).withDownVotes(0));
+  }
+
+  private static Table partialTable(UUID id) {
+    return new Table().withId(id).withName("etag_table").withVersion(1.0).withUpdatedAt(100L);
   }
 }

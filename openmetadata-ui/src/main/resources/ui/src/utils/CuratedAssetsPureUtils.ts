@@ -21,7 +21,7 @@ import type { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.inte
 import {
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
-} from './QueryBuilderUtils';
+} from './QueryBuilderPureUtils';
 import { getExplorePath } from './RouterUtils';
 
 // Query filter strings that are considered empty

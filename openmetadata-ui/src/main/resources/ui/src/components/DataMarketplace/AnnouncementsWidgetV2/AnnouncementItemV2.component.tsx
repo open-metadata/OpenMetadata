@@ -12,11 +12,9 @@
  */
 
 import { useMemo } from 'react';
-import { Thread } from '../../../generated/entity/feed/thread';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import AnnouncementCardV1Content from '../../MyData/Widgets/AnnouncementsWidgetV1/AnnouncementCardV1/AnnouncementCardV1Content.component';
-
 interface AnnouncementItemV2Props {
   announcement: Thread;
   onClick: () => void;

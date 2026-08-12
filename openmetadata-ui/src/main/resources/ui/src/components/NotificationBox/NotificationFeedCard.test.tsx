@@ -19,12 +19,16 @@ import NotificationFeedCard from './NotificationFeedCard.component';
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
   getRelativeTime: jest.fn().mockImplementation((date) => date),
+  getEpochMillisForPastDays: jest.fn().mockImplementation((days) => days),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getCurrentMillis: jest.fn().mockReturnValue(0),
 }));
 
 const mockPrepareFeedLink = jest.fn();
 const mockGetTaskDetailPath = jest.fn();
 
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   prepareFeedLink: (...args: any[]) => mockPrepareFeedLink(...args),
 }));
@@ -61,7 +65,7 @@ jest.mock('../../utils/EntityNameUtils', () => ({
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),
 }));
-jest.mock('../../utils/EntityBreadcrumbUtils', () => ({
+jest.mock('../../utils/EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
 }));
 

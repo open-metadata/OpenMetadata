@@ -16,6 +16,27 @@ name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
   workflow_dispatch:
+  # pull_request resolves the workflow file from the PR's own merge ref, so on
+  # this branch it is the trigger that actually fires. pull_request_target below
+  # is inert here: those runs resolve the default branch's copy, whose gate job
+  # skips same-repo PRs on the assumption that a pull_request run covers them.
+  # Without this trigger that assumption is false and the suite never runs.
+  pull_request:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths-ignore:
+      - ".github/**"
+      - "openmetadata-dist/**"
+      - "docker/**"
+      - "!docker/development/docker-compose.yml"
+      - "!docker/development/docker-compose-postgres.yml"
+      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
+      - "openmetadata-ui/src/main/resources/ui/scripts/**"
   pull_request_target:
     types:
       - labeled
@@ -38,13 +59,21 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
+  # Keyed by event too, so a pull_request run and a pull_request_target run for
+  # the same PR never cancel each other — one skips, the other does the work.
+  group: playwright-ci-pr-postgresql-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    # Fork PRs stay on the pull_request_target route, where the default
+    # branch's gate demands a "safe to test" label before handing over the
+    # cloud-connector secrets a pull_request run on a fork cannot read.
+    if: >-
+      ${{ !github.event.pull_request.draft &&
+          (github.event_name != 'pull_request' ||
+           github.event.pull_request.head.repo.full_name == github.repository) }}
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4
@@ -159,6 +188,7 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled \
               --project=Basic \
+              --project="Data Insight" \
               --project=SearchRBAC \
 
           else

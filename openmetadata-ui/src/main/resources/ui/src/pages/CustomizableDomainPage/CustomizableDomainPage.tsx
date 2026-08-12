@@ -27,7 +27,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/uiCustomization';
-import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageUtils';
+import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import { getDomainPath } from '../../utils/RouterUtils';

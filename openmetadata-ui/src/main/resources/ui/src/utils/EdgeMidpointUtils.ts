@@ -12,7 +12,8 @@
  */
 import { Edge, Node, Position } from 'reactflow';
 import { getEdgeCoordinates } from './CanvasUtils';
-import { getEdgePathData } from './EntityLineageUtils';
+import { computeEdgeVisualState, EdgeVisualState } from './EdgeStyleUtils';
+import { getEdgePathData } from './EntityLineageEdgeUtils';
 import { getEntityName } from './EntityNameUtils';
 
 export interface EdgeMidpoint {
@@ -21,12 +22,15 @@ export interface EdgeMidpoint {
   canvasX: number;
   canvasY: number;
   edge: Edge;
+  visualState: EdgeVisualState;
 }
 
 export const calculateEdgeMidpoints = (
   edges: Edge[],
   getNode: (id: string) => Node | undefined,
-  columnsInCurrentPages?: Map<string, string[]>
+  columnsInCurrentPages?: Map<string, string[]>,
+  tracedNodes: Set<string> = new Set(),
+  tracedColumns: Set<string> = new Set()
 ): EdgeMidpoint[] => {
   return edges
     .map((edge) => {
@@ -86,6 +90,7 @@ export const calculateEdgeMidpoints = (
         canvasX: centerX,
         canvasY: centerY,
         edge,
+        visualState: computeEdgeVisualState(edge, tracedNodes, tracedColumns),
       };
     })
     .filter(Boolean) as EdgeMidpoint[];

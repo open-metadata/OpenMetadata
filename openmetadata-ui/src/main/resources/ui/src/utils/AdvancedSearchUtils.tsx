@@ -32,29 +32,12 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
-import { getCountBadge } from '../utils/EntityDisplayUtils';
+import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
-
-export {
-  formatQueryValueBasedOnType,
-  getAssetsPageQuickFilters,
-  getChartsOptions,
-  getColumnsOptions,
-  getCustomPropertyAdvanceSearchEnumOptions,
-  getDataModelOptions,
-  getEmptyJsonTree,
-  getEmptyJsonTreeForQueryBuilder,
-  getOptionsFromAggregationBucket,
-  getSchemaFieldOptions,
-  getSearchLabel,
-  getSelectedOptionLabelString,
-  getServiceOptions,
-  getTasksOptions,
-} from './AdvancedSearchPureUtils';
 
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);

@@ -20,7 +20,9 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.2.1",
+    # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0)
+    "airflow": "apache-airflow==3.3.0",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -315,11 +317,15 @@ plugins: Dict[str, Set[str]] = {
     },
     "hive": {
         *COMMONS["hive"],
-        "thrift>=0.13,<1",
+        # CVE-2026-66053 (improper certificate validation) + CVE-2026-41608 / CVE-2026-48586
+        # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
+        # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
+        # has to move for this floor to be satisfiable.
+        "thrift>=0.24.0,<1",
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
         "thrift-sasl~=0.4",
-        "impyla~=0.18.0",
+        "impyla~=0.24.0",
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
@@ -328,8 +334,10 @@ plugins: Dict[str, Set[str]] = {
     },
     "impala": {
         "presto-types-parser>=0.0.2",
-        "impyla[kerberos]~=0.18.0",
-        "thrift>=0.13,<1",
+        # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
+        # thrift below the fixed 0.24.0.
+        "impyla[kerberos]~=0.24.0",
+        "thrift>=0.24.0,<1",
         "pure-sasl",
         "thrift-sasl~=0.4",
     },
@@ -427,7 +435,7 @@ plugins: Dict[str, Set[str]] = {
 dev = {
     "black==22.3.0",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.25.6",
+    "datamodel-code-generator==0.64.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "isort",

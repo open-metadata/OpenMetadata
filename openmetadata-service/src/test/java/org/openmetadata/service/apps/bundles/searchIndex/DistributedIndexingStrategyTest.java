@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -433,6 +434,7 @@ class DistributedIndexingStrategyTest {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     RecreateIndexHandler recreateIndexHandler = mock(RecreateIndexHandler.class);
+    when(recreateIndexHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext recreateContext = new ReindexContext();
     recreateContext.add(
         "table", "table_index", "table_original", "table_staged", Set.of(), "table", List.of());
@@ -548,6 +550,7 @@ class DistributedIndexingStrategyTest {
                         .build()))
             .build();
     RecreateIndexHandler recreateIndexHandler = mock(RecreateIndexHandler.class);
+    when(recreateIndexHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);

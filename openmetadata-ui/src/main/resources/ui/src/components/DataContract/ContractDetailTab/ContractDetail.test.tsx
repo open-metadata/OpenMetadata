@@ -33,7 +33,7 @@ import {
   validateContractById,
 } from '../../../rest/contractAPI';
 import '../../../test/unit/mocks/mui.mock';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   downloadContractAsODCSYaml,
   downloadContractYamlFile,
@@ -55,8 +55,11 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../../utils/BlockEditorUtils', () => ({
+  formatServerContent: jest.fn().mockReturnValue('formatted content'),
+}));
+
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
   isDescriptionContentEmpty: jest.fn(),
-  formatContent: jest.fn().mockReturnValue('formatted content'),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -887,7 +890,7 @@ describe('ContractDetail', () => {
   });
 
   describe('Contract Security', () => {
-    it('should display security section when contract has security data', () => {
+    it('should display security section when contract has security data', async () => {
       const contractWithSecurity: DataContract = {
         ...mockContract,
         security: {
@@ -913,11 +916,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      // Check that the security card is rendered
+      // security-card is non-lazy; contract-security-card is inside lazy ContractSecurityCard
       expect(screen.getByTestId('security-card')).toBeInTheDocument();
-      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
-
-      // Check the content
+      expect(
+        await screen.findByTestId('contract-security-card')
+      ).toBeInTheDocument();
       expect(
         screen.getByText('ContractSecurityCard - PII,Sensitive')
       ).toBeInTheDocument();

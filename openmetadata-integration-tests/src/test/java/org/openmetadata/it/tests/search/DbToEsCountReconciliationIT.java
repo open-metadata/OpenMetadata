@@ -2,9 +2,11 @@ package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +56,7 @@ class DbToEsCountReconciliationIT {
   // suite after the reindex snapshot but before the DB read — so they cannot be reconciled
   // cluster-wide on a shared cluster. Every other type is owned by stable reindex output.
   private static final Set<String> CONTENTION_PRONE_TYPES = Set.of("testSuite", "testCase");
+  private static final Duration RECONCILE_POLL_INTERVAL = Duration.ofSeconds(3);
 
   private static ServerHandle server;
   private static IndexAliasInspector inspector;
@@ -76,6 +79,36 @@ class DbToEsCountReconciliationIT {
     final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
     assertThat(run.getStatus().value()).isIn("success", "completed");
 
+    awaitCountsReconcile();
+  }
+
+  /**
+   * Polls the per-type DB↔ES counts until they reconcile. A reindex flips the run record to
+   * {@code success} when the bulk writes finish, but the engine refresh that makes those docs
+   * count-visible lags a beat (longer under nightly stress load), so an immediate count reads
+   * {@code es < db}. The {@code search-it} profile is serial, so the DB side is quiescent — the
+   * only moving part is that refresh, and the counts converge within {@link
+   * ReindexHelpers#searchPropagationTimeout()}. A genuine indexer regression never converges and
+   * still fails with the per-entity-type table.
+   */
+  private void awaitCountsReconcile() {
+    Awaitility.await("entity-type DB↔ES counts reconcile after reindex")
+        .atMost(ReindexHelpers.searchPropagationTimeout())
+        .pollInterval(RECONCILE_POLL_INTERVAL)
+        .pollDelay(Duration.ZERO)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              final List<String> mismatches = collectCountMismatches();
+              assertThat(mismatches)
+                  .as(
+                      "entity-type counts must reconcile DB ↔ ES post-reindex:%n%s",
+                      String.join("\n", mismatches))
+                  .isEmpty();
+            });
+  }
+
+  private List<String> collectCountMismatches() {
     final List<String> mismatches = new ArrayList<>();
     for (final String entityType : inspector.declaredEntityTypes()) {
       if (!db.canCount(entityType) || CONTENTION_PRONE_TYPES.contains(entityType)) {
@@ -93,12 +126,7 @@ class DbToEsCountReconciliationIT {
                 "  %-25s db=%d  es=%d  diff=%+d", entityType, dbCount, esCount, esCount - dbCount));
       }
     }
-
-    assertThat(mismatches)
-        .as(
-            "entity-type counts must reconcile DB ↔ ES post-reindex:%n%s",
-            String.join("\n", mismatches))
-        .isEmpty();
+    return mismatches;
   }
 
   private static void seedRepresentativeCohort(final TestNamespace ns) {

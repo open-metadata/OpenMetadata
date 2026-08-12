@@ -360,11 +360,11 @@ describe('ManifestJsonWidget', () => {
     jest.clearAllMocks();
   });
 
-  it('displays the sample JSON as a placeholder when value is empty (without writing it to form state)', () => {
+  it('displays the sample JSON as a placeholder when value is empty (without writing it to form state)', async () => {
     const onChange = jest.fn();
     render(<ManifestJsonWidget {...makeProps({ value: '', onChange })} />);
 
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('schema-editor')).toBeInTheDocument();
     // Sample is displayed in the editor...
     expect(screen.getByTestId('schema-editor')).toHaveTextContent(/"entries"/);
     // ...but we do NOT call onChange on mount — the field may be

@@ -35,10 +35,10 @@ import {
   getEpochMillisForPastDays,
   getShortRelativeTime,
 } from '../../../../../utils/date-time/DateTimeUtils';
-import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
-import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
 
 const { Text } = Typography;

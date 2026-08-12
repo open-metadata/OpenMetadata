@@ -33,7 +33,7 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
-import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServiceUtils';
+import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServicePureUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   showErrorToast,

@@ -44,12 +44,22 @@ import {
   updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
 import { addToRecentViewed } from '../../utils/CommonUtils';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TablePureUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+
+const DATA_MODEL_FIELDS = [
+  TabSpecificField.OWNERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.FOLLOWERS,
+  TabSpecificField.VOTES,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.DATA_PRODUCTS,
+  TabSpecificField.EXTENSION,
+].join(',');
 
 const DataModelsPage = () => {
   const { t } = useTranslation();
@@ -108,8 +118,7 @@ const DataModelsPage = () => {
     setIsLoading(true);
     try {
       const response = await getDataModelByFqn(dashboardDataModelFQN, {
-        // eslint-disable-next-line max-len
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`,
+        fields: DATA_MODEL_FIELDS,
         include: Include.All,
       });
       setDataModelData(response);

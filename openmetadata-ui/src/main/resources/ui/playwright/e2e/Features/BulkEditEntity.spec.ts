@@ -31,7 +31,6 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import {
   createColumnRowDetails,
-  createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
   createGlossaryTermRowDetails,
@@ -41,46 +40,67 @@ import {
   fillGlossaryTermDetails,
   fillRowDetails,
   fillTagDetails,
+  getSetupCustomPropertiesForEntity,
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
+
+interface GlossaryDetails {
+  name: string;
+  parent: string;
+}
 
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-const user1 = new UserClass();
-const user2 = new UserClass();
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm(glossary);
-const domain1 = new Domain();
-const domain2 = new Domain();
+let user1: UserClass;
+let user2: UserClass;
+let glossary: Glossary;
+let glossaryTerm: GlossaryTerm;
+let domain1: Domain;
+let domain2: Domain;
 
-const glossaryDetails = {
-  name: glossaryTerm.data.name,
-  parent: glossary.data.name,
+let glossaryDetails: GlossaryDetails;
+let databaseSchemaDetails1: ReturnType<
+  typeof createDatabaseSchemaRowDetails
+> & { glossary: GlossaryDetails };
+let tableDetails1: ReturnType<typeof createTableRowDetails> & {
+  glossary: GlossaryDetails;
 };
-
-const databaseSchemaDetails1 = {
-  ...createDatabaseSchemaRowDetails(),
-  glossary: glossaryDetails,
-};
-
-const tableDetails1 = {
-  ...createTableRowDetails(),
-  glossary: glossaryDetails,
-};
-
-const columnDetails1 = {
-  ...createColumnRowDetails(),
-  glossary: glossaryDetails,
+let columnDetails1: ReturnType<typeof createColumnRowDetails> & {
+  glossary: GlossaryDetails;
 };
 
 test.describe('Bulk Edit Entity', () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     test.slow();
+    user1 = new UserClass();
+    user2 = new UserClass();
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    domain1 = new Domain();
+    domain2 = new Domain();
+
+    glossaryDetails = {
+      name: glossaryTerm.data.name,
+      parent: glossary.data.name,
+    };
+    databaseSchemaDetails1 = {
+      ...createDatabaseSchemaRowDetails(),
+      glossary: glossaryDetails,
+    };
+    tableDetails1 = {
+      ...createTableRowDetails(),
+      glossary: glossaryDetails,
+    };
+    columnDetails1 = {
+      ...createColumnRowDetails(),
+      glossary: glossaryDetails,
+    };
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await user1.create(apiContext);
@@ -106,12 +126,9 @@ test.describe('Bulk Edit Entity', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASES
-      );
-    });
+    customPropertyRecord = getSetupCustomPropertiesForEntity(
+      GlobalSettingOptions.DATABASES
+    );
 
     await test.step('Perform bulk edit action', async () => {
       const databaseDetails = {
@@ -247,12 +264,9 @@ test.describe('Bulk Edit Entity', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.DATABASE_SCHEMA
-      );
-    });
+    customPropertyRecord = getSetupCustomPropertiesForEntity(
+      GlobalSettingOptions.DATABASE_SCHEMA
+    );
 
     await test.step('Perform bulk edit action', async () => {
       // visit entity Page
@@ -398,12 +412,9 @@ test.describe('Bulk Edit Entity', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.TABLES
-      );
-    });
+    customPropertyRecord = getSetupCustomPropertiesForEntity(
+      GlobalSettingOptions.TABLES
+    );
 
     await test.step('Perform bulk edit action', async () => {
       // visit entity page
@@ -646,12 +657,9 @@ test.describe('Bulk Edit Entity', () => {
     await glossary.create(apiContext);
     await glossaryTerm.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.GLOSSARY_TERM
-      );
-    });
+    customPropertyRecord = getSetupCustomPropertiesForEntity(
+      GlobalSettingOptions.GLOSSARY_TERM
+    );
 
     await test.step('Perform bulk edit action', async () => {
       await glossary.visitEntityPage(page);
@@ -780,12 +788,9 @@ test.describe('Bulk Edit Entity', () => {
     nestedGlossaryTerm.data.fullyQualifiedName = `${parentGlossaryTerm.responseData.fullyQualifiedName}."${nestedGlossaryTerm.data.name}"`;
     await nestedGlossaryTerm.create(apiContext);
 
-    await test.step('create custom properties for extension edit', async () => {
-      customPropertyRecord = await createCustomPropertiesForEntity(
-        page,
-        GlobalSettingOptions.GLOSSARY_TERM
-      );
-    });
+    customPropertyRecord = getSetupCustomPropertiesForEntity(
+      GlobalSettingOptions.GLOSSARY_TERM
+    );
 
     await test.step('Perform bulk edit action on nested glossary term', async () => {
       // Navigate to the parent glossary term page

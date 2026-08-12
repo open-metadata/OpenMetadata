@@ -86,7 +86,7 @@ import {
   TagSource,
 } from '../../../generated/type/tagLabel';
 import { bulkUpdateColumnsAsync } from '../../../rest/columnAPI';
-import { formatContent } from '../../../utils/BlockEditorUtils';
+import { formatClientContent } from '../../../utils/BlockEditorPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
@@ -249,7 +249,7 @@ const getDescriptionPreview = (description?: string): string => {
   }
 
   return (
-    stringToDOMElement(getSanitizeContent(formatContent(description, 'client')))
+    stringToDOMElement(getSanitizeContent(formatClientContent(description)))
       .textContent ?? ''
   ).slice(0, 100);
 };
@@ -440,6 +440,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           <AsyncSelectList
             autoFocus={false}
             fetchOptions={tagClassBase.getTags}
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={classificationTagOptions}
             key={`tags-${drawerKey}`}
             mode="multiple"
@@ -496,6 +497,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           </Typography>
           <TreeAsyncSelectList
             hasNoActionButtons
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={glossaryTermOptions}
             key={`glossaryTerms-${drawerKey}`}
             open={false}

@@ -24,6 +24,8 @@ import { settingClick } from '../../utils/sidebar';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+const SUCCESSFUL_RUN_STATUS = /success|completed|activeError/i;
+
 /**
  * Installs the Search Indexing Application from the marketplace.
  * Shared by the "Install application" step and the self-healing guard
@@ -136,7 +138,7 @@ const verifyLastExecutionStatus = async (page: Page) => {
         timeout: 300_000,
       }
     )
-    .toEqual(expect.stringMatching(/success|activeError/g));
+    .toEqual(expect.stringMatching(SUCCESSFUL_RUN_STATUS));
 
   await page.reload();
 
@@ -155,7 +157,7 @@ const verifyLastExecutionRun = async (page: Page, response: Response) => {
       await verifyLastExecutionStatus(page);
     } else {
       expect(responseData.data[0].status).toEqual(
-        expect.stringMatching(/success|activeError/g)
+        expect.stringMatching(SUCCESSFUL_RUN_STATUS)
       );
     }
   }

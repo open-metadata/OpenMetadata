@@ -29,11 +29,8 @@ import { SpreadsheetClass } from '../support/entity/SpreadsheetClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
-import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage } from './common';
-import { addCustomPropertiesForEntity } from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
-import { settingClick, SettingOptionsType } from './sidebar';
 
 // All operations across all entities
 export const ALL_OPERATIONS = [
@@ -673,57 +670,3 @@ export const serviceEntityConfig = {
     specificTest: testDashboardServiceSpecificOperations,
   },
 } as const;
-
-// Function to create custom properties for different entity types
-export const createCustomPropertyForEntity = async (
-  browser: any,
-  entityType: string,
-  customPropertyName: string,
-  adminUser: UserClass
-) => {
-  const page = await browser.newPage();
-  await adminUser.login(page);
-
-  // Map entity types to their correct API types (same as used in working tests)
-  const entityTypeMapping: Record<string, string> = {
-    Table: 'tables',
-    Dashboard: 'dashboards',
-    Pipeline: 'pipelines',
-    Topic: 'topics',
-    MlModel: 'mlmodels',
-    Container: 'containers',
-    SearchIndex: 'searchIndexes',
-    DashboardDataModel: 'dashboardDataModels',
-    Metric: 'metrics',
-    Database: 'databases',
-    DatabaseSchema: 'databaseSchemas',
-    'Database Schema': 'databaseSchemas',
-    StoredProcedure: 'storedProcedures',
-    GlossaryTerm: 'glossaryTerm',
-    Domain: 'domains',
-    ApiCollection: 'apiCollections',
-    ApiEndpoint: 'apiEndpoints',
-    DataProduct: 'dataProducts',
-    Directory: 'directories',
-    File: 'files',
-    Spreadsheet: 'spreadsheets',
-    Worksheet: 'worksheets',
-  };
-
-  const entityApiType =
-    entityTypeMapping[entityType] || entityType.toLowerCase();
-
-  await settingClick(page, entityApiType as SettingOptionsType, true);
-
-  await addCustomPropertiesForEntity({
-    page,
-    propertyName: customPropertyName,
-    customPropertyData: {
-      description: `Test ${entityType} custom property`,
-      entityApiType,
-    },
-    customType: 'String',
-  });
-
-  await page.close();
-};

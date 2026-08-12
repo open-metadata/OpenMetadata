@@ -16,7 +16,10 @@ import { isUndefined } from 'lodash';
 import * as path from 'path';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import { uuid } from '../../utils/common';
-import { getCustomPropertyCreationData } from '../../utils/customPropertyAdvancedSearchUtils';
+import {
+  getCustomPropertyCreationData,
+  getLazyLoadEnumCustomPropertyData,
+} from '../../utils/customPropertyAdvancedSearchUtils';
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { Glossary } from '../glossary/Glossary';
@@ -210,6 +213,19 @@ export class EntityDataClass {
           }
         );
       }
+    }
+
+    // Large-enum CP for the advanced-search lazy-load tests. Created here
+    // (sequentially, before any test runs) so no spec has to PUT the shared
+    // `table` entity type at runtime — that PUT is read-modify-write and
+    // silently loses concurrent updates.
+    if (entityType === 'table') {
+      const lazyEnum = getLazyLoadEnumCustomPropertyData(typesData);
+      this.customProperties[entityType]['enumLazy'] = lazyEnum;
+
+      await apiContext.put(`/api/v1/metadata/types/${createdMetadataType.id}`, {
+        data: lazyEnum,
+      });
     }
   }
 

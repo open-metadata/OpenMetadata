@@ -40,11 +40,9 @@ import {
   removeFollower,
   updateDashboardVotes,
 } from '../../rest/dashboardAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
+import { addToRecentViewed } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,

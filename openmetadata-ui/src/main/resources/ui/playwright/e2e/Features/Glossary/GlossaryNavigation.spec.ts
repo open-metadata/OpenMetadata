@@ -228,9 +228,7 @@ test.describe('Glossary Navigation', () => {
   });
 
   // UI-01: Empty glossary state (no terms)
-  // Skip: Test isolation issue - selectActiveGlossary not selecting the correct glossary
-  // eslint-disable-next-line playwright/no-skipped-test -- test isolation issue with selectActiveGlossary
-  test.skip('should show empty state when glossary has no terms', async ({
+  test('should show empty state when glossary has no terms', async ({
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -243,8 +241,11 @@ test.describe('Glossary Navigation', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, emptyGlossary.data.displayName);
 
-      // Verify empty state is shown (with default status filter active)
-      await expect(page.getByText('No Glossary Term found')).toBeVisible();
+      // A glossary with zero terms renders the empty-glossary placeholder, not
+      // the "No Glossary Term found" row that a non-matching status filter shows.
+      // GlossaryTermTab picks NO_DATA over CREATE here because glossaryTermStatus
+      // is null for a glossary (it only resolves to a status for a term).
+      await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
 
       // Verify add term button is available
       await expect(page.getByTestId('add-new-tag-button-header')).toBeVisible();

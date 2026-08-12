@@ -620,7 +620,17 @@ export const removeColumnLineage = async (
     .dispatchEvent('click');
   await deleteRes;
 
-  await editLineageClick(page);
+  // Reload before asserting. removeColumnEdge optimistically mutates local
+  // React state (setEntityLineage / removeEdgeById / setColumnsHavingLineage),
+  // so the edge disappears from the DOM regardless of what the server did.
+  // Only a fresh /api/v1/lineage/getLineage response proves the removal
+  // actually persisted.
+  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  await page.reload();
+  await lineageRes;
+
+  await waitForAllLoadersToDisappear(page);
+  await activateColumnLayer(page);
 
   await expect(
     page.getByTestId(`column-edge-${fromColumnNode}-${toColumnNode}`)

@@ -39,7 +39,6 @@ import {
 import { getAllDataProductsWithAssetsCount } from '../../../../rest/dataProductAPI';
 import { searchData } from '../../../../rest/miscAPI';
 import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
-import { getEntityTypeExploreQueryFilter } from '../../../../utils/FilterQueryUtils';
 import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -129,7 +128,7 @@ const DataProductsWidget = ({
   }, []);
 
   const handleTitleClick = useCallback(() => {
-    navigate(`${ROUTES.EXPLORE}?tab=data_product`);
+    navigate(ROUTES.DATA_PRODUCT);
   }, [navigate]);
 
   const emptyState = useMemo(
@@ -227,20 +226,16 @@ const DataProductsWidget = ({
     [dataProducts, loading]
   );
 
-  const footer = useMemo(() => {
-    const quickFilter = encodeURIComponent(
-      getEntityTypeExploreQueryFilter('dataproduct')
-    );
-    const exploreUrl = `${ROUTES.EXPLORE}?quickFilter=${quickFilter}`;
-
-    return (
+  const footer = useMemo(
+    () => (
       <WidgetFooter
-        moreButtonLink={exploreUrl}
+        moreButtonLink={ROUTES.DATA_PRODUCT}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
-    );
-  }, [t, showWidgetFooterMoreButton]);
+    ),
+    [t, showWidgetFooterMoreButton]
+  );
 
   const widgetHeader = useMemo(
     () => (

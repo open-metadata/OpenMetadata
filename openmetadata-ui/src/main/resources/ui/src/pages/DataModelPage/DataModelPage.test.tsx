@@ -84,7 +84,7 @@ jest.mock(
               onClick={() => {
                 handleUpdateOwner();
                 handleUpdateTier();
-                onUpdateDataModel();
+                onUpdateDataModel(dataModelData);
               }}>
               {UPDATE_DATA_MODEL}
             </button>
@@ -127,6 +127,9 @@ jest.mock('../../rest/dataModelsAPI', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   ...jest.requireActual('../../utils/CommonUtils'),
   addToRecentViewed: jest.fn(),
+}));
+
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
 }));
 
@@ -134,13 +137,13 @@ jest.mock('../../utils/DataModelsUtils', () => ({
   getSortedDataModelColumnTags: jest.fn().mockImplementation((tags) => tags),
 }));
 
-jest.mock('../../utils/TableUtils', () => {
+jest.mock('../../utils/TablePureUtils', () => {
   return {
     getTierTags: jest.fn().mockImplementation((tags) => tags),
   };
 });
 
-jest.mock('../../utils/TagsUtils', () => ({
+jest.mock('../../utils/TagsPureUtils', () => ({
   updateTierTag: () => mockUpdateTierTag(),
 }));
 

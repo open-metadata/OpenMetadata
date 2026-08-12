@@ -1190,20 +1190,21 @@ public class DistributedSearchIndexExecutor {
   /**
    * Promote a single entity's index when all its partitions complete.
    */
-  private void promoteEntityIndex(String entityType, boolean success) {
+  private boolean promoteEntityIndex(String entityType, boolean success) {
     if (recreateIndexHandler == null || recreateContext == null) {
       LOG.warn(
           "Cannot promote index for entity '{}' - no recreateIndexHandler or recreateContext",
           entityType);
-      return;
+      return false;
     }
 
     Optional<String> stagedIndexOpt = recreateContext.getStagedIndex(entityType);
     if (stagedIndexOpt.isEmpty()) {
       LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
-      return;
+      return true;
     }
 
+    boolean promoted = false;
     try {
       String canonicalIndex = recreateContext.getCanonicalIndex(entityType).orElse(null);
       String originalIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
@@ -1230,13 +1231,14 @@ public class DistributedSearchIndexExecutor {
 
       if (recreateIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
         LOG.info("Promoting index for entity '{}' (success={})", entityType, success);
-        defaultHandler.promoteEntityIndex(entityContext, success);
+        promoted = defaultHandler.promoteEntityIndex(entityContext, success);
       } else {
-        recreateIndexHandler.finalizeReindex(entityContext, success);
+        promoted = recreateIndexHandler.finalizeReindex(entityContext, success);
       }
     } catch (Exception e) {
       LOG.error("Failed to promote index for entity '{}'", entityType, e);
     }
+    return promoted;
   }
 
   /**

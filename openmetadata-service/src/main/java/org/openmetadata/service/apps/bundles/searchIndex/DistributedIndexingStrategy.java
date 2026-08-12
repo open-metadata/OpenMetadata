@@ -179,13 +179,19 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
 
     currentStats.set(stats);
 
-    boolean success =
+    boolean allPromoted =
         finalizeAllEntityReindex(
             recreateIndexHandler,
             recreateContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
 
     ExecutionResult.Status resultStatus = determineStatus(stats);
+    if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
+      LOG.error(
+          "Reindex finished but one or more staged indexes could not be promoted; reporting "
+              + "COMPLETED_WITH_ERRORS so the stale indexes are not treated as a clean rebuild");
+      resultStatus = ExecutionResult.Status.COMPLETED_WITH_ERRORS;
+    }
 
     StatsReconciler.reconcile(stats);
 
@@ -437,21 +443,24 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     }
   }
 
-  private void promoteColumnIndex(
+  private boolean promoteColumnIndex(
       RecreateIndexHandler recreateIndexHandler,
       ReindexContext recreateContext,
       boolean tableSuccess) {
     Optional<String> columnStagedIndex = recreateContext.getStagedIndex(Entity.TABLE_COLUMN);
     if (columnStagedIndex.isEmpty()) {
-      return;
+      return true;
     }
+    boolean promoted = false;
     try {
-      finalizeEntityReindex(
-          recreateIndexHandler, recreateContext, Entity.TABLE_COLUMN, tableSuccess);
-      LOG.info("Promoted column index (tableSuccess={})", tableSuccess);
+      promoted =
+          finalizeEntityReindex(
+              recreateIndexHandler, recreateContext, Entity.TABLE_COLUMN, tableSuccess);
+      LOG.info("Promoted column index (tableSuccess={}, promoted={})", tableSuccess, promoted);
     } catch (Exception ex) {
       LOG.error("Failed to promote column index", ex);
     }
+    return promoted;
   }
 
   private static int saturatedToInt(long value) {
@@ -518,10 +527,11 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
     Set<String> entitiesToFinalize = new HashSet<>(recreateContext.getEntities());
     entitiesToFinalize.removeAll(promotedEntities);
 
+    boolean allPromoted = true;
     if (promotedEntities.contains(Entity.TABLE)
         && !promotedEntities.contains(Entity.TABLE_COLUMN)) {
       boolean tableSuccess = computeEntitySuccess(Entity.TABLE, entityStatsMap);
-      promoteColumnIndex(recreateIndexHandler, recreateContext, tableSuccess);
+      allPromoted = promoteColumnIndex(recreateIndexHandler, recreateContext, tableSuccess);
       entitiesToFinalize.remove(Entity.TABLE_COLUMN);
     }
 
@@ -542,20 +552,32 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
                 entityType,
                 entitySuccess,
                 finalSuccess);
-            finalizeEntityReindex(recreateIndexHandler, recreateContext, entityType, entitySuccess);
+            boolean promoted =
+                finalizeEntityReindex(
+                    recreateIndexHandler, recreateContext, entityType, entitySuccess);
+            if (!promoted) {
+              allPromoted = false;
+              LOG.error(
+                  "Finalizer could not promote staged index for entity '{}'; it may still be served "
+                      + "by the stale pre-reindex index",
+                  entityType);
+            }
             if (Entity.TABLE.equals(entityType)) {
-              promoteColumnIndex(recreateIndexHandler, recreateContext, entitySuccess);
+              allPromoted &=
+                  promoteColumnIndex(recreateIndexHandler, recreateContext, entitySuccess);
             }
           } catch (Exception ex) {
+            allPromoted = false;
             LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
           }
         }
       }
     } catch (Exception e) {
+      allPromoted = false;
       LOG.error("Error during entity finalization", e);
     }
 
-    return finalSuccess;
+    return allPromoted;
   }
 
   private boolean computeEntitySuccess(
@@ -572,11 +594,12 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
         && stats.getSuccessRecords() + stats.getFailedRecords() >= stats.getTotalRecords();
   }
 
-  private void finalizeEntityReindex(
+  private boolean finalizeEntityReindex(
       RecreateIndexHandler recreateIndexHandler,
       ReindexContext recreateContext,
       String entityType,
       boolean success) {
+    boolean promoted = false;
     try {
       var entityReindexContext =
           org.openmetadata.service.search.EntityReindexContext.builder()
@@ -591,10 +614,11 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
                   new HashSet<>(listOrEmpty(recreateContext.getParentAliases(entityType))))
               .build();
 
-      recreateIndexHandler.finalizeReindex(entityReindexContext, success);
+      promoted = recreateIndexHandler.finalizeReindex(entityReindexContext, success);
     } catch (Exception ex) {
       LOG.error("Failed to finalize index recreation flow for {}", entityType, ex);
     }
+    return promoted;
   }
 
   @Override

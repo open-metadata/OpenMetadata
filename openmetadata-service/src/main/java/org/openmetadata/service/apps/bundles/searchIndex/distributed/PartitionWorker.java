@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.HeapBackpressure;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -211,6 +212,13 @@ public class PartitionWorker {
       while (currentOffset < rangeEnd
           && !stopped.get()
           && !Thread.currentThread().isInterrupted()) {
+        // Yield before pulling the next batch when the pod's heap is tight. AutoTune sizes batch
+        // and
+        // queue once at start from a fixed per-entity estimate; real entities (embeddings, wide
+        // tables) or co-tenant work can exceed it and OOM a small heap. Pausing the reader — not
+        // the
+        // writes — lets in-flight docs drain and GC reclaim, so reindex adapts to any pod size.
+        HeapBackpressure.awaitHeadroom();
         int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
 
         try {

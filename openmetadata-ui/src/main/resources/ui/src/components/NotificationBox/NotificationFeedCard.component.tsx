@@ -21,16 +21,15 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityLinkFromType } from '../../utils/EntityBreadcrumbUtils';
+import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
+import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtilsPure';
 import Fqn from '../../utils/Fqn';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { NotificationFeedProp } from './NotificationFeedCard.interface';
-
 const NotificationFeedCard: FC<NotificationFeedProp> = ({
   createdBy,
   entityFQN,

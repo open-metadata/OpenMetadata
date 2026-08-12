@@ -14,7 +14,6 @@
 import { RightOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
-import { lowerCase } from 'lodash';
 import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
@@ -24,16 +23,12 @@ import { EntityUrlMapType, ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { OwnerType } from '../enums/user.enum';
-import {
-  CardStyle,
-  FieldOperation,
-  TestCaseStatus,
-} from '../generated/entity/feed/thread';
+import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
 import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
-import { getEntityPlaceHolder } from './EntityDisplayUtils';
+import { getEntityPlaceHolder } from './EntityDisplayPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { buildMentionLink } from './FeedUtilsPure';
@@ -42,9 +37,10 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
-import { getTermQuery } from './SearchUtils';
+import { getTermQuery } from './SearchPureUtils';
 
-// Re-exports from FeedUtilsPure (backward compat)
+// Re-exports from FeedUtilsPure keep existing 1.13 consumers working while
+// individual imports are migrated across the backport sequence.
 export {
   buildMentionLink,
   deletePost,
@@ -250,21 +246,6 @@ export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
     )
   );
 };
-
-export const getTestCaseResultCount = (
-  count: number,
-  status: TestCaseStatus
-) => (
-  <div
-    className={`test-result-container ${lowerCase(status)}`}
-    data-testid={`test-${status}`}>
-    <Typography.Text
-      className="font-medium text-md"
-      data-testid={`test-${status}-value`}>
-      {count}
-    </Typography.Text>
-  </div>
-);
 
 const getActionLabelFromCardStyle = (
   cardStyle?: CardStyle,
