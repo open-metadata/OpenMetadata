@@ -70,11 +70,17 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     downloading = false,
     logs,
     mode = 'static',
+    streamHealth,
+    streamTruncated = false,
+    streamError = null,
   } = props;
 
-  // 'stream' == live run. Today the caller polls and grows `logs` while active,
-  // flipping to 'static' on terminal state. Reserved for future SSE self-fetch.
+  // 'stream' == live run: the caller grows `logs` while the run is active and
+  // flips to 'static' on terminal state.
   const isLive = mode === 'stream';
+  // A live run whose SSE tail is between attempts. The content on screen is
+  // still valid, it has just stopped growing for the moment.
+  const isReconnecting = isLive && streamHealth === 'connecting';
 
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -199,13 +205,22 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 </span>
               </div>
               <div className="lvm-actions tw:flex tw:items-center tw:gap-2">
-                {isLive && (
-                  <span
-                    aria-label={t('label.live')}
-                    className="lvm-dot lvm-dot--live"
-                    data-testid="log-viewer-live-indicator"
-                  />
-                )}
+                {isLive &&
+                  (isReconnecting ? (
+                    <span
+                      aria-label={t('label.reconnecting')}
+                      className="lvm-dot lvm-dot--reconnecting"
+                      data-testid="log-viewer-reconnecting-indicator"
+                      role="status"
+                      title={t('label.reconnecting')}
+                    />
+                  ) : (
+                    <span
+                      aria-label={t('label.live')}
+                      className="lvm-dot lvm-dot--live"
+                      data-testid="log-viewer-live-indicator"
+                    />
+                  ))}
                 {enableSearch && (
                   <div className="lvm-search">
                     <SearchMd aria-hidden className="lvm-search-icon" />
@@ -327,6 +342,22 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 </Tooltip>
               </div>
             </div>
+            {streamTruncated && (
+              <div
+                className="lvm-notice tw:px-4 tw:py-2"
+                data-testid="log-viewer-truncated-notice"
+                role="status">
+                {t('message.log-stream-truncated')}
+              </div>
+            )}
+            {streamError && (
+              <div
+                className="lvm-notice lvm-notice--error tw:px-4 tw:py-2"
+                data-testid="log-viewer-stream-error"
+                role="alert">
+                {streamError}
+              </div>
+            )}
             <div
               className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
               data-testid="log-viewer-body">
