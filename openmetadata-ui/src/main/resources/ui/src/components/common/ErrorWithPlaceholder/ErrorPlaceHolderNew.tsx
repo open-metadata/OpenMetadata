@@ -40,6 +40,10 @@ const ErrorPlaceHolderNew =
     NoData: typeof NoDataPlaceholderNew;
   };
 
+// Do NOT lazy-load this component. React.lazy resolves to a forwardRef wrapper
+// that drops these static members, so `<LazyErrorPlaceHolderNew.NoData>` would be
+// `undefined` at render with no compile-time error. Import the specific leaf
+// (e.g. NoDataPlaceholderNew) directly when a lazy boundary is required.
 ErrorPlaceHolderNew.Create = CreateErrorPlaceHolder;
 ErrorPlaceHolderNew.Assign = AssignErrorPlaceHolder;
 ErrorPlaceHolderNew.Filter = FilterErrorPlaceHolder;
