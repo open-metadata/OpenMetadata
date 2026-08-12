@@ -3,9 +3,11 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -37,6 +39,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -70,6 +73,7 @@ public class QueryVisibilityPolicyIT {
 
   private static final String PII_SENSITIVE_TAG = "PII.Sensitive";
   private static final String TIER1_TAG = "Tier.Tier1";
+  private static final String GOLD_CERTIFICATION = "Certification.Gold";
 
   @Test
   void test_queryVisibilityWithTableTagPolicy(TestNamespace ns) {
@@ -405,6 +409,41 @@ public class QueryVisibilityPolicyIT {
         "An untagged table must remain viewable — the rule must not over-block");
   }
 
+  /**
+   * A certified entity resolved during authorization must not leak its certification into a
+   * response that never projected it. The authorization load always requests certification so
+   * matchAnyCertification cannot fail open, and reuseAuthorizedEntity hands that same entity back as
+   * the response; without resetting certification a non-admin GET omitting {@code
+   * fields=certification} returned it while an admin GET (which bypasses policy and loads normally)
+   * did not, so the payload differed by principal.
+   */
+  @Test
+  void test_certification_notLeakedWhenFieldsParamOmitted(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseSchema schema = fieldPolicySchema(ns);
+    OpenMetadataClient viewer = userWithViewRule("certview", Rule.Effect.ALLOW, null, ns);
+
+    Table table = tableWith(schema, ns.shortPrefix() + "_certified", c -> {});
+    long now = System.currentTimeMillis();
+    table.setCertification(
+        new AssetCertification()
+            .withTagLabel(tagLabel(GOLD_CERTIFICATION))
+            .withAppliedDate(now)
+            .withExpiryDate(now + Duration.ofDays(30).toMillis()));
+    admin.tables().update(table.getId().toString(), table);
+    String id = table.getId().toString();
+
+    assertNotNull(
+        viewer.tables().get(id, "certification").getCertification(),
+        "certification must be present for a non-admin when explicitly requested");
+    assertNull(
+        viewer.tables().get(id).getCertification(),
+        "certification must not leak into a non-admin GET that did not request it");
+    assertNull(
+        admin.tables().get(id).getCertification(),
+        "admin GET without fields must also omit certification — payload must not differ by principal");
+  }
+
   private final Deque<Runnable> fixtureCleanups = new ArrayDeque<>();
 
   @AfterEach
@@ -418,13 +457,20 @@ public class QueryVisibilityPolicyIT {
     }
   }
 
-  /**
-   * Creates a principal carrying exactly one conditional DENY rule. Roles are assigned directly on
-   * the user: a role granted only through a team's defaultRoles is not applied to the subject
-   * during policy evaluation, which would leave the principal with no policy and make every
-   * assertion pass vacuously.
-   */
+  /** Principal carrying exactly one conditional DENY {@code VIEW_ALL} rule. */
   private OpenMetadataClient userDeniedBy(String label, String condition, TestNamespace ns) {
+    return userWithViewRule(label, Rule.Effect.DENY, condition, ns);
+  }
+
+  /**
+   * Creates a principal carrying exactly one {@code VIEW_ALL} rule with the given effect and
+   * optional condition (null for an unconditional rule). Roles are assigned directly on the user:
+   * a role granted only through a team's defaultRoles is not applied to the subject during policy
+   * evaluation, which would leave the principal with no policy and make every assertion pass
+   * vacuously.
+   */
+  private OpenMetadataClient userWithViewRule(
+      String label, Rule.Effect effect, String condition, TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String p = ns.shortPrefix() + label;
 
@@ -433,7 +479,7 @@ public class QueryVisibilityPolicyIT {
             .withName(p + "Rule")
             .withResources(List.of("All"))
             .withOperations(List.of(MetadataOperation.VIEW_ALL))
-            .withEffect(Rule.Effect.DENY)
+            .withEffect(effect)
             .withCondition(condition);
 
     CreatePolicy createPolicy = new CreatePolicy();
