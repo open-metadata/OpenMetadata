@@ -480,7 +480,9 @@ def is_safe_pandas_query(query_expression: Optional[str]) -> bool:  # noqa: UP04
 
     # Only comparisons, boolean and arithmetic operators over bare column names and
     # literals are allowed. Any Call or Attribute node is rejected, so no Series method
-    # (to_csv, values.tofile, .str...) and no @frame variable can be reached.
+    # (to_csv, values.tofile, .str...) and no @frame variable can be reached. Operators
+    # are listed explicitly to exclude MatMult: pandas reserves `@` for calling-frame
+    # variable references, so `a @ b` must not be treated as a safe filter.
     allowed_nodes = (
         ast.Expression,
         ast.BoolOp,
@@ -494,9 +496,20 @@ def is_safe_pandas_query(query_expression: Optional[str]) -> bool:  # noqa: UP04
         ast.Set,
         ast.Load,
         ast.boolop,
-        ast.operator,
         ast.unaryop,
         ast.cmpop,
+        ast.Add,
+        ast.Sub,
+        ast.Mult,
+        ast.Div,
+        ast.Mod,
+        ast.Pow,
+        ast.FloorDiv,
+        ast.BitAnd,
+        ast.BitOr,
+        ast.BitXor,
+        ast.LShift,
+        ast.RShift,
     )
 
     # Blank backtick-quoted column identifiers so unusual names do not fail the parse.

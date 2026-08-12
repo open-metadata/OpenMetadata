@@ -230,6 +230,14 @@ class TestHelpers(TestCase):
         self.assertFalse(is_safe_pandas_query("a.__class__.__init__.__globals__"))
         self.assertFalse(is_safe_pandas_query("a.__class__.__mro__[0]"))
 
+    def test_is_safe_pandas_query_blocks_matmul_operator(self):
+        """pandas reserves `@` for frame-variable references, so the binary `@`
+        operator (ast.MatMult) must not be treated as a safe filter"""
+        self.assertFalse(is_safe_pandas_query("a @ b"))
+        # legitimate boolean/bitwise combinations must still be allowed
+        self.assertTrue(is_safe_pandas_query("(a > 1) & (b < 2)"))
+        self.assertTrue(is_safe_pandas_query("a % 2 == 0"))
+
     def test_format_large_string_numbers(self):
         """test format_large_string_numbers"""
         assert format_large_string_numbers(1000) == "1.000K"
