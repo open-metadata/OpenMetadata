@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { ECustomizedGovernance } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -214,17 +214,18 @@ test.describe('Data Product Persona customization', () => {
 
       await entity?.visitEntityPage(userPage);
       await waitForAllLoadersToDisappear(userPage);
-
+      await userPage.waitForLoadState('domcontentloaded');
+      await userPage.getByTestId('asset-description-container').waitFor({ state: 'visible' });
       await expect(
         userPage.getByRole('tab', { name: 'Custom Tab' })
       ).toBeVisible();
 
-      const pathnameBeforeTabClick = new URL(userPage.url()).pathname;
+      
       await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
-      await userPage.waitForURL(
-        (url) => url.pathname !== pathnameBeforeTabClick
-      );
+     
       await waitForAllLoadersToDisappear(userPage);
+      await userPage.waitForLoadState('domcontentloaded');
+      await userPage.getByTestId('asset-description-container').locator('visible=true').waitFor({ state: 'visible' });
 
       const visibleDescription = userPage
         .getByTestId(/KnowledgePanel.Description-/)

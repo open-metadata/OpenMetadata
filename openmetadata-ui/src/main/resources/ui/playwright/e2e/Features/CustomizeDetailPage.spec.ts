@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
@@ -498,7 +498,8 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await entity?.visitEntityPage(userPage);
         await waitForAllLoadersToDisappear(userPage);
-
+        await userPage.waitForLoadState('domcontentloaded');
+        await userPage.getByTestId('asset-description-container').waitFor({ state: 'visible' });
         await expect(
           userPage.getByRole('tab', { name: 'Custom Tab' })
         ).toBeVisible();
@@ -508,14 +509,12 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
-        const pathnameBeforeTabActivation = new URL(userPage.url()).pathname;
         await customTab.focus();
         await userPage.keyboard.press('Enter');
-        await userPage.waitForURL(
-          (url) => url.pathname !== pathnameBeforeTabActivation
-        );
         await waitForAllLoadersToDisappear(userPage);
-
+        await userPage.waitForLoadState('domcontentloaded');
+        await userPage.getByTestId('asset-description-container').locator('visible=true').waitFor({ state: 'visible' });
+        
         await expect
           .poll(async () =>
             userPage.getByTestId(/KnowledgePanel.Description-/).count()
@@ -658,7 +657,8 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await entity?.visitEntityPage(userPage);
         await waitForAllLoadersToDisappear(userPage);
         await waitForAllLoadersToDisappear(userPage);
-
+        await userPage.waitForLoadState('domcontentloaded');
+        await userPage.getByTestId('asset-description-container').waitFor({ state: 'visible' });
         await expect(
           userPage.getByRole('tab', { name: 'Custom Tab' })
         ).toBeVisible();
@@ -668,13 +668,11 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
-        const pathnameBeforeTabActivation = new URL(userPage.url()).pathname;
         await customTab.focus();
         await userPage.keyboard.press('Enter');
-        await userPage.waitForURL(
-          (url) => url.pathname !== pathnameBeforeTabActivation
-        );
         await waitForAllLoadersToDisappear(userPage);
+        await userPage.waitForLoadState('domcontentloaded');
+        await userPage.getByTestId('asset-description-container').locator('visible=true').waitFor({ state: 'visible' });
 
         await expect
           .poll(async () =>

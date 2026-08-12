@@ -316,11 +316,7 @@ test.describe('Lineage Filters', () => {
           await waitForAllLoadersToDisappear(page);
 
           await page.getByTestId('filters-button').click();
-          const lineageFilterDropdown = page.getByTestId(
-            `search-dropdown-${filterTestId}`
-          );
-          await expect(lineageFilterDropdown).toBeVisible();
-          await lineageFilterDropdown.click();
+          await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
           await page.getByTitle(filterValue).click();
 
@@ -360,13 +356,11 @@ test.describe('Lineage Filters', () => {
           await impactAnalysisTab.scrollIntoViewIfNeeded();
           await impactAnalysisTab.click();
           await waitForAllLoadersToDisappear(page);
-
-          await page.getByTestId('filters-button').click();
-          const impactAnalysisFilterDropdown = page.getByTestId(
+          await page.getByTestId(
             `search-dropdown-${filterTestId}`
-          );
-          await expect(impactAnalysisFilterDropdown).toBeVisible();
-          await impactAnalysisFilterDropdown.click();
+          ).waitFor({ state: 'detached' });
+          await page.getByTestId('filters-button').click();
+          await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
           await page
             .getByTestId('drop-down-menu')

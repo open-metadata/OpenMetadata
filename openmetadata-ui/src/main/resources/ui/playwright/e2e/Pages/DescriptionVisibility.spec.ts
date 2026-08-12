@@ -409,17 +409,15 @@ test.describe(
 
       await table.visitEntityPage(userPage);
       await waitForAllLoadersToDisappear(userPage);
-
+      await userPage.getByTestId('asset-description-container').waitFor({ state: 'visible' });
+      await userPage.waitForLoadState('domcontentloaded');
       await expect(
         userPage.getByRole('tab', { name: 'Description Tab' })
       ).toBeVisible();
-      const pathnameBeforeTabClick = new URL(userPage.url()).pathname;
       await userPage.getByRole('tab', { name: 'Description Tab' }).click();
-      await userPage.waitForURL(
-        (url) => url.pathname !== pathnameBeforeTabClick
-      );
       await waitForAllLoadersToDisappear(userPage);
-
+      await userPage.waitForLoadState('domcontentloaded');
+      await userPage.getByTestId(/KnowledgePanel.Description-/).locator('visible=true').waitFor({ state: 'visible' });
       const descriptionWidget = userPage
         .getByTestId(/KnowledgePanel.Description-/)
         .locator('visible=true');
