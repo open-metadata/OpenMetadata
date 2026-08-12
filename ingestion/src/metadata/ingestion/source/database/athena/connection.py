@@ -267,11 +267,42 @@ class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
 
         return url
 
+    @staticmethod
+    def get_connection_url_without_credentials(
+        connection: AthenaConnectionConfig,
+    ) -> str:
+        """Build an Athena URL that delegates authentication to a Boto3 session."""
+        url = f"{connection.scheme.value}://:@athena.{connection.awsConfig.awsRegion}.amazonaws.com:443"  # pyright: ignore[reportOptionalMemberAccess]
+        url += f"?s3_staging_dir={quote_plus(str(connection.s3StagingDir))}"
+        if connection.workgroup:
+            url += f"&work_group={connection.workgroup}"
+        if connection.catalogId:
+            url += f"&catalog_name={quote_plus(connection.catalogId)}"
+
+        return url
+
     def _get_client(self) -> Engine:
+        connection_args = get_connection_args_common(self.service_connection)
+        if self.service_connection.awsConfig.assumeRoleArn:
+            if "session" in connection_args:
+                raise ValueError(
+                    "Athena connectionArguments must not define 'session' when assumeRoleArn is configured."
+                )
+            session = AWSClient(self.service_connection.awsConfig).create_session()
+
+            def get_connection_args_with_session(_):
+                return {**connection_args, "session": session}
+
+            get_connection_url_fn = self.get_connection_url_without_credentials
+            get_connection_args_fn = get_connection_args_with_session
+        else:
+            get_connection_url_fn = self.get_connection_url
+            get_connection_args_fn = get_connection_args_common
+
         engine = create_generic_db_connection(
             connection=self.service_connection,
-            get_connection_url_fn=self.get_connection_url,
-            get_connection_args_fn=get_connection_args_common,
+            get_connection_url_fn=get_connection_url_fn,
+            get_connection_args_fn=get_connection_args_fn,
         )
         self._on_close(engine.dispose)
         return engine
