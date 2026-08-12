@@ -33,7 +33,6 @@ import { POST_FEED_PAGE_COUNT } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import {
   Post,
@@ -59,7 +58,6 @@ import {
   getUserActivity,
   ListActivityParams,
   postFeedById,
-  postThread,
   removeActivityReaction,
   updatePost,
   updateThread,
@@ -101,7 +99,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   // For activity events (entity changes)
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<ActivityEvent>();
-  const [activityThread, setActivityThread] = useState<Thread | undefined>();
   const [isActivityLoading, setIsActivityLoading] = useState(false);
   // The activity fetchers all write to the same activityEvents state. Switching the
   // home widget filter quickly can let a slower earlier request resolve last and
@@ -468,10 +465,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setEntityThread((prev) =>
           prev.filter((thread) => thread.id !== data.id)
         );
-        // Clear activityThread if it's the deleted thread
-        if (activityThread?.id === data.id) {
-          setActivityThread(undefined);
-        }
       } else {
         const deleteResponse = await deletePostById(threadId, postId);
         if (deleteResponse) {
@@ -490,14 +483,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
             })
           );
           setActiveThread(data);
-          // Also update activityThread if it matches
-          if (activityThread?.id === threadId) {
-            setActivityThread(data);
-          }
         }
       }
     },
-    [activityThread]
+    []
   );
 
   const updateThreadHandler = useCallback(
@@ -552,15 +541,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           })
         );
         setSelectedThread(activeThreadData.data);
-        // Also update activityThread if it matches
-        if (activityThread?.id === threadId) {
-          setActivityThread(activeThreadData.data);
-        }
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
     },
-    [activityThread]
+    []
   );
 
   const updateFeed = useCallback(
@@ -653,6 +638,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setActivityEvents((prev) =>
           prev.map((a) => (a.id === activityId ? updatedActivity : a))
         );
+        // Keep the right-panel copy in sync, else its reactions go stale when
+        // toggled from either the list card or the panel itself.
+        setSelectedActivity((prev) =>
+          prev?.id === activityId ? updatedActivity : prev
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -677,24 +667,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setSelectedActivity(undefined);
   }, []);
 
-  const setActiveActivity = useCallback(async (activity?: ActivityEvent) => {
+  // Change-event activities are read-only notifications with no discussion
+  // thread of their own — selecting one just shows its change detail + reactions.
+  const setActiveActivity = useCallback((activity?: ActivityEvent) => {
     setSelectedActivity(activity);
-    setActivityThread(undefined);
-
-    if (activity?.about) {
-      try {
-        const response = await getAllFeeds(
-          activity.about,
-          undefined,
-          ThreadType.Conversation
-        );
-        if (response.data.length > 0) {
-          setActivityThread(response.data[0]);
-        }
-      } catch {
-        // No thread found for this activity, which is fine
-      }
-    }
   }, []);
 
   const showActivityDrawer = useCallback((activity: ActivityEvent) => {
@@ -703,41 +679,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setSelectedThread(undefined);
     setSelectedTask(undefined);
   }, []);
-
-  const postActivityComment = useCallback(
-    async (message: string, activity: ActivityEvent) => {
-      try {
-        if (activityThread) {
-          await postFeedById(activityThread.id, {
-            message,
-          } as Post);
-          const { data: refreshedThread } = await getFeedById(
-            activityThread.id
-          );
-          setActivityThread(refreshedThread);
-        } else {
-          // Create new thread
-          const threadData: CreateThread = {
-            message,
-            about: activity.about ?? '',
-            type: ThreadType.Conversation,
-          };
-
-          const createdThread = await postThread(threadData);
-          setEntityThread((prev) => [createdThread, ...prev]);
-
-          await postFeedById(createdThread.id, {
-            message,
-          } as Post);
-          const { data: refreshedThread } = await getFeedById(createdThread.id);
-          setActivityThread(refreshedThread);
-        }
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      }
-    },
-    [currentUser?.name, activityThread]
-  );
 
   const hideDrawer = useCallback(() => {
     setFocusReplyEditor(false);
@@ -897,14 +838,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       updateTestCaseIncidentStatus,
       activityEvents,
       selectedActivity,
-      activityThread,
       fetchActivityEvents: fetchActivityEventsHandler,
       fetchMyActivityFeed: fetchMyActivityFeedHandler,
       fetchFollowingActivity: fetchFollowingActivityHandler,
       fetchEntityActivity: fetchEntityActivityHandler,
       fetchUserActivity: fetchUserActivityHandler,
       updateActivityReaction,
-      postActivityComment,
     };
   }, [
     entityThread,
@@ -942,14 +881,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     updateTestCaseIncidentStatus,
     activityEvents,
     selectedActivity,
-    activityThread,
     fetchActivityEventsHandler,
     fetchMyActivityFeedHandler,
     fetchFollowingActivityHandler,
     fetchEntityActivityHandler,
     fetchUserActivityHandler,
     updateActivityReaction,
-    postActivityComment,
   ]);
 
   return (

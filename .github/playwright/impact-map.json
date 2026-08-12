@@ -97,6 +97,23 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtilsPure.ts",
+        "openmetadata-ui/src/main/resources/ui/src/interface/feed.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/feedsAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/Tasks/**/*.spec.ts",
+        "playwright/e2e/Pages/Tasks.spec.ts",
+        "playwright/e2e/Pages/TasksUIFlow.spec.ts",
+        "playwright/e2e/Pages/TaskComments.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**"
       ],
