@@ -71,40 +71,48 @@ const combineGrep = (base?: RegExp) => {
     [...new Set(`${base.flags}${shardGrep.flags}`)].join('')
   );
 };
+// Each conditional group is annotated separately: TypeScript does not propagate a
+// contextual type into a spread expression, so inlining these ternaries would widen
+// the tuples to arrays and break assignability to ReporterDescription.
+const htmlReporter: ReporterDescription[] = isPlannedShard
+  ? []
+  : [['html', { outputFolder: './playwright/output/playwright-report' }]];
+
+const blobReporter: ReporterDescription[] = isPlannedShard
+  ? [
+      [
+        'blob',
+        {
+          outputDir: './playwright/output/blob-report',
+          fileName: `report-${process.env.PW_SHARD_ID ?? 'local'}.zip`,
+        },
+      ],
+    ]
+  : [['blob']];
+
+const performanceReporter: ReporterDescription[] = isPlannedShard
+  ? [
+      [
+        './playwright/reporters/PerformanceReporter.ts',
+        { outputFile: './playwright/output/playwright-timings.json' },
+      ],
+    ]
+  : [];
+
 const reporters: ReporterDescription[] = [
   ['list'],
-  ...(!isPlannedShard
-    ? [['html', { outputFolder: './playwright/output/playwright-report' }]]
-    : []),
+  ...htmlReporter,
   [
     '@estruyf/github-actions-reporter',
     {
       useDetails: true,
       showError: true,
-      includeResults: ['skipped', 'fail', 'flaky'],
       showArtifactsLink: true,
     },
   ],
-  ...(isPlannedShard
-    ? [
-        [
-          'blob',
-          {
-            outputDir: './playwright/output/blob-report',
-            fileName: `report-${process.env.PW_SHARD_ID ?? 'local'}.zip`,
-          },
-        ],
-      ]
-    : [['blob']]),
+  ...blobReporter,
   ['json', { outputFile: './playwright/output/results.json' }],
-  ...(isPlannedShard
-    ? [
-        [
-          './playwright/reporters/PerformanceReporter.ts',
-          { outputFile: './playwright/output/playwright-timings.json' },
-        ],
-      ]
-    : []),
+  ...performanceReporter,
 ];
 
 /**
@@ -202,7 +210,18 @@ export default defineConfig({
         '**/IntakeForm.spec.ts',
         ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
+        '**/VisualRegression/**',
       ],
+    },
+    {
+      name: 'visual-regression',
+      testMatch: '**/VisualRegression/**/*.spec.ts',
+      dependencies: ['setup', 'entity-data-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        storageState: 'playwright/.auth/admin.json',
+      },
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
     // Playwright to do discovery for it on every default run even though its spec files are
@@ -251,7 +270,7 @@ export default defineConfig({
       name: 'Data Insight',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
-      grep: /data-insight/,
+      grep: combineGrep(/@data-insight/),
       teardown: 'entity-data-teardown',
     },
     {

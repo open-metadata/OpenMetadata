@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ComboData, EdgeData, NodeData } from '@antv/g6';
+import type { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
 import { RelationCardinality } from '../../../generated/configuration/glossaryTermRelationSettings';
 import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';

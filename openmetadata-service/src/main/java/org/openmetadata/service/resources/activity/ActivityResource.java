@@ -105,6 +105,7 @@ public class ActivityResource {
       @Parameter(description = "Filter by actor (user) ID") @QueryParam("actorId") UUID actorId,
       @Parameter(description = "Filter by domain IDs (comma-separated)") @QueryParam("domains")
           String domainsParam,
+      @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Number of days to look back (default 7, max 30)")
           @DefaultValue("7")
           @Min(1)
@@ -121,8 +122,12 @@ public class ActivityResource {
     // Calculate timestamp for filtering
     long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
 
-    // Get user's domain context for filtering
-    List<UUID> domainIds = getEffectiveDomains(securityContext, domainsParam);
+    // Get user's domain context for filtering. The domain FQN form matches the other activity
+    // endpoints; the comma-separated id form is kept for existing callers.
+    List<UUID> domainIds =
+        nullOrEmpty(domain)
+            ? getEffectiveDomains(securityContext, domainsParam)
+            : getEffectiveDomainsByFqn(securityContext, domain);
 
     List<ActivityEvent> events;
 
@@ -297,6 +302,50 @@ public class ActivityResource {
     List<ActivityEvent> events =
         activityStreamRepository.listByOwners(
             userRef.getId().toString(), teamIds, domainIds, afterTimestamp, limit);
+
+    return new ResultList<>(events, null, null, events.size());
+  }
+
+  @GET
+  @Path("/following")
+  @Operation(
+      operationId = "getFollowingActivityFeed",
+      summary = "Get activity feed for entities the current user follows",
+      description = "Get activity events for entities the current user follows.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Activity feed for followed entities",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ActivityEventList.class)))
+      })
+  public ResultList<ActivityEvent> getFollowingFeed(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
+      @Parameter(description = "Number of days to look back")
+          @DefaultValue("7")
+          @Min(1)
+          @Max(30)
+          @QueryParam("days")
+          int days,
+      @Parameter(description = "Maximum number of events to return")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(200)
+          @QueryParam("limit")
+          int limit) {
+
+    long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
+
+    String userName = securityContext.getUserPrincipal().getName();
+    EntityReference userRef = Entity.getEntityReferenceByName(Entity.USER, userName, null);
+    List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
+
+    List<ActivityEvent> events =
+        activityStreamRepository.listByFollowers(
+            userRef.getId().toString(), domainIds, afterTimestamp, limit);
 
     return new ResultList<>(events, null, null, events.size());
   }

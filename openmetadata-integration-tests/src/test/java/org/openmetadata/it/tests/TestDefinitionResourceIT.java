@@ -1,24 +1,29 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
@@ -32,6 +37,11 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, CreateTestDefinition> {
+
+  private static final List<String> ENTITY_TYPE_CASINGS =
+      List.of("COLUMN", "Column", "column", " Column ");
+  private static final List<String> BLANK_ENTITY_TYPES = List.of("", " ");
+  private static final int ENTITY_TYPE_FILTER_LIMIT = 1000000;
 
   // Disable tests that don't apply to TestDefinition
   {
@@ -254,5 +264,151 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
         Exception.class,
         () -> createEntity(request2),
         "Creating duplicate test definition should fail");
+  }
+
+  // ===================================================================
+  // ENTITY TYPE FILTER — issue #29542
+  // ===================================================================
+
+  @Test
+  void list_entityTypeFilterIsCaseInsensitive_200_OK(TestNamespace ns) {
+    TestDefinition columnDefinition = createColumnTestDefinition(ns, "casing_column");
+    TestDefinition tableDefinition = createTableTestDefinition(ns, "casing_table");
+
+    for (String casing : ENTITY_TYPE_CASINGS) {
+      assertColumnOnlyListing(SdkClients.adminClient(), casing, columnDefinition, tableDefinition);
+    }
+  }
+
+  @Test
+  void list_entityTypeFilterRejectsUnknownEntityType_400() {
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> listByEntityType(SdkClients.adminClient(), "Banana"));
+
+    assertEquals(400, exception.getStatusCode());
+    assertTrue(
+        exception.getMessage().contains("Banana"),
+        "Error message must name the rejected value, was: " + exception.getMessage());
+  }
+
+  @Test
+  void list_emptyEntityTypeFilterIsIgnored_200_OK(TestNamespace ns) {
+    TestDefinition columnDefinition = createColumnTestDefinition(ns, "empty_column");
+    TestDefinition tableDefinition = createTableTestDefinition(ns, "empty_table");
+
+    for (String blank : BLANK_ENTITY_TYPES) {
+      Set<String> fullyQualifiedNames =
+          fullyQualifiedNamesOf(listByEntityType(SdkClients.adminClient(), blank).getData());
+
+      assertTrue(
+          fullyQualifiedNames.contains(columnDefinition.getFullyQualifiedName()),
+          "A blank entityType must not filter out COLUMN test definitions");
+      assertTrue(
+          fullyQualifiedNames.contains(tableDefinition.getFullyQualifiedName()),
+          "A blank entityType must not filter out TABLE test definitions");
+    }
+  }
+
+  /**
+   * Proves that a caller holding no roles at all sees exactly what an admin sees, which is what the
+   * issue disputed. It does not cover the one configuration that genuinely does diverge: a
+   * {@code DomainOnlyAccessRole} holder with no domains, whose listing is broken by
+   * {@code EntityUtil.addDomainQueryParam} overwriting this very query param with the resource type.
+   * That is a separate defect, unrelated to casing, and is not fixed or exercised here.
+   */
+  @Test
+  void list_entityTypeFilterYieldsSameResultForAdminAndRoleLessUser_200_OK(TestNamespace ns) {
+    TestDefinition columnDefinition = createColumnTestDefinition(ns, "rbac_column");
+    TestDefinition tableDefinition = createTableTestDefinition(ns, "rbac_table");
+
+    OpenMetadataClient nonAdminClient = createNonAdminClient(ns);
+
+    for (String casing : ENTITY_TYPE_CASINGS) {
+      assertColumnOnlyListing(SdkClients.adminClient(), casing, columnDefinition, tableDefinition);
+      assertColumnOnlyListing(nonAdminClient, casing, columnDefinition, tableDefinition);
+    }
+  }
+
+  private OpenMetadataClient createNonAdminClient(TestNamespace ns) {
+    String name = ns.shortPrefix("etfilter");
+    String email = name + "@test.openmetadata.org";
+    SdkClients.adminClient().users().create(new CreateUser().withName(name).withEmail(email));
+
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /**
+   * Asserts the filtered listing by set membership rather than by set equality: test definitions are
+   * a global collection and this class runs with {@link ExecutionMode#CONCURRENT}, so a sibling test
+   * can add or remove one between two list calls. Membership of definitions this test owns is stable
+   * and still distinguishes a working filter from one that silently returns nothing.
+   */
+  private void assertColumnOnlyListing(
+      OpenMetadataClient client,
+      String entityTypeParam,
+      TestDefinition columnDefinition,
+      TestDefinition tableDefinition) {
+    ListResponse<TestDefinition> response = listByEntityType(client, entityTypeParam);
+    List<TestDefinition> definitions = response.getData();
+    Set<String> fullyQualifiedNames = fullyQualifiedNamesOf(definitions);
+
+    assertTrue(
+        definitions.stream().allMatch(d -> d.getEntityType() == TestDefinitionEntityType.COLUMN),
+        "entityType=" + entityTypeParam + " must return only COLUMN test definitions");
+    assertTrue(
+        response.getPaging().getTotal() > 0,
+        "entityType="
+            + entityTypeParam
+            + " must produce a non-zero paging total, which is served by the DAO's separate"
+            + " listCount query");
+    assertTrue(
+        fullyQualifiedNames.contains(columnDefinition.getFullyQualifiedName()),
+        "entityType="
+            + entityTypeParam
+            + " must return the COLUMN test definition "
+            + columnDefinition.getFullyQualifiedName());
+    assertFalse(
+        fullyQualifiedNames.contains(tableDefinition.getFullyQualifiedName()),
+        "entityType="
+            + entityTypeParam
+            + " must not return the TABLE test definition "
+            + tableDefinition.getFullyQualifiedName());
+  }
+
+  private static ListResponse<TestDefinition> listByEntityType(
+      OpenMetadataClient client, String entityTypeParam) {
+    ListParams params =
+        new ListParams()
+            .setLimit(ENTITY_TYPE_FILTER_LIMIT)
+            .addFilter("entityType", entityTypeParam);
+
+    return client.testDefinitions().list(params);
+  }
+
+  private static Set<String> fullyQualifiedNamesOf(List<TestDefinition> definitions) {
+    return definitions.stream()
+        .map(TestDefinition::getFullyQualifiedName)
+        .collect(Collectors.toSet());
+  }
+
+  private TestDefinition createColumnTestDefinition(TestNamespace ns, String name) {
+    return createTestDefinition(ns, name, TestDefinitionEntityType.COLUMN);
+  }
+
+  private TestDefinition createTableTestDefinition(TestNamespace ns, String name) {
+    return createTestDefinition(ns, name, TestDefinitionEntityType.TABLE);
+  }
+
+  private TestDefinition createTestDefinition(
+      TestNamespace ns, String name, TestDefinitionEntityType entityType) {
+    CreateTestDefinition request = new CreateTestDefinition();
+    request.setName(ns.prefix(name));
+    request.setDescription("Test definition for entityType filtering");
+    request.setEntityType(entityType);
+    request.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+
+    return createEntity(request);
   }
 }

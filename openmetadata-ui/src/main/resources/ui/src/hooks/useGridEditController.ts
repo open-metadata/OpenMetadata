@@ -127,12 +127,23 @@ function useClipboardHandlers(
 
         return undefined;
       } else {
+        // Selecting the textarea moves focus off the grid cell. Restore it afterwards,
+        // otherwise every subsequent key (arrow navigation, Ctrl+V) is delivered to <body>
+        // and the grid stops responding until the user clicks a cell again.
+        const previouslyFocused = document.activeElement as HTMLElement | null;
         const textarea = document.createElement('textarea');
         textarea.value = tsv.join('\n');
         document.body.appendChild(textarea);
         textarea.select();
-        const success = document.execCommand('copy');
-        document.body.removeChild(textarea);
+        let success = false;
+        try {
+          success = document.execCommand('copy');
+        } finally {
+          // execCommand can throw in some browsers rather than returning false; clean up and
+          // hand focus back either way, so a failed copy cannot leave the grid unusable.
+          document.body.removeChild(textarea);
+          previouslyFocused?.focus();
+        }
 
         return success;
       }
@@ -194,10 +205,12 @@ export function useGridEditController({
   dataSource,
   setDataSource,
   columns,
+  rowIdKey = 'id',
 }: {
   dataSource: Record<string, string>[];
   setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
   columns: Column<Record<string, string>>[];
+  rowIdKey?: string | null;
 }) {
   const [gridContainer, setGridContainer] = useState<HTMLElement | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -287,7 +300,7 @@ export function useGridEditController({
     if (gridContainer) {
       gridContainer
         .querySelector('.rdg')
-        ?.addEventListener('scroll', highlightSelectedRange);
+        ?.addEventListener('scroll', highlightSelectedRange, { passive: true });
 
       return () => {
         gridContainer
@@ -817,10 +830,13 @@ export function useGridEditController({
           }
         }, 1);
 
-        return [...data, { id: data.length + '' }];
+        return [
+          ...data,
+          rowIdKey === null ? {} : { [rowIdKey]: data.length + '' },
+        ];
       }
     );
-  }, [gridContainer, setDataSource]);
+  }, [gridContainer, rowIdKey, setDataSource]);
 
   const focusFirstCell = useCallback(() => {
     const firstCell = gridContainer?.querySelector(

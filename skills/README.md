@@ -4,6 +4,12 @@ Complete AI development workflow for OpenMetadata. Provides structured planning,
 
 Inspired by [obra/superpowers](https://github.com/obra/superpowers) and [everything-claude-code](https://github.com/affaan-m/everything-claude-code), tailored for OpenMetadata's multi-language, schema-first architecture.
 
+### Vendored third-party skills
+
+`skills/vendor/` holds skills copied verbatim from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (MIT) — `react-best-practices`, `web-design-guidelines`, and `composition-patterns` — so every contributor has them with no install or network step. Each records its upstream commit in a `VENDORED.md`. **Do not edit them**: local changes are lost on the next refresh, and repo-specific guidance belongs in `.claude/rules/`, which auto-loads by path glob and takes precedence. See [`skills/vendor/README.md`](vendor/README.md).
+
+They are authoring-time aids, not gates — a skill only fires if an agent reads it. Enforcement is deterministic and lives in `ui-checkstyle`; see [`docs/ui-code-quality-gate.md`](../docs/ui-code-quality-gate.md).
+
 ## Installation
 
 ### Claude Code (Plugin)

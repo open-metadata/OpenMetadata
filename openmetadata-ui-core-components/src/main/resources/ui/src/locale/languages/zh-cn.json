@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "关闭",
+    "close-navigation-menu": "关闭导航菜单",
+    "copy-link": "复制链接",
+    "current-page": "当前页",
+    "date-range-picker": "日期范围选择器",
+    "delete": "删除",
+    "edit": "编辑",
+    "expand-navigation-menu": "展开导航菜单",
+    "field-documentation": "字段文档",
+    "hidden-breadcrumbs": "隐藏的面包屑",
+    "loading": "加载中…",
+    "next-page": "转到下一页",
+    "open-menu": "打开菜单",
+    "page": "页",
+    "pagination": "分页",
+    "pagination-navigation": "分页导航",
+    "previous-page": "转到上一页",
+    "records": "记录",
+    "remove-filter": "移除筛选",
+    "select-dates": "选择日期",
+    "show-hidden-breadcrumbs": "显示隐藏的面包屑",
+    "today": "今天"
+  }
+}

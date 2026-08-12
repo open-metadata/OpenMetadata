@@ -455,21 +455,29 @@
   }
   left: 8px;
 }
-.react-flow__panel.right {
-  right: 8px;
+
+.lineage-container {
+  .react-flow__panel {
+    &.bottom {
+      bottom: 8px;
+    }
+    &.right {
+      right: 8px;
+    }
+  }
+
+  .react-flow__minimap {
+    &.bottom.right {
+      bottom: 60px;
+    }
+  }
 }
 
 .react-flow__panel {
   margin: 0 !important;
-  &.bottom {
-    bottom: 8px;
-  }
 }
 
 .react-flow__minimap {
-  &.bottom.right {
-    bottom: 60px;
-  }
   height: 150px;
   border: 1px solid @border-color;
   border-radius: var(--om-radius-10);
