@@ -76,6 +76,22 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:  # noqa:
     return blob_grouped_by_directory
 
 
+def _safe_local_path(extract_dir: str, blob: str) -> str:
+    """Resolve the local download path for a blob and confirm it stays inside
+    ``extract_dir``.
+
+    Blob names come from the cloud storage listing and may contain ``..`` or
+    absolute-path components. Joining them naively would let a crafted object key
+    write outside the extract directory (path traversal / arbitrary file write), so
+    the resolved path is validated against the resolved extract directory.
+    """
+    base = os.path.realpath(extract_dir)
+    target = os.path.realpath(os.path.join(base, blob))  # noqa: PTH118
+    if target != base and not target.startswith(base + os.sep):
+        raise PowerBIFileConfigException(f"Skipping .pbit object key that escapes the extract directory: {blob}")
+    return target
+
+
 def download_pbit_files(
     blob_grouped_by_directory: Dict,  # noqa: UP006
     config,
@@ -86,20 +102,18 @@ def download_pbit_files(
     """
     Method to download the files from sources
     """
-    for (
-        key,
-        blobs,
-    ) in blob_grouped_by_directory.items():
+    for blobs in blob_grouped_by_directory.values():
         kwargs = {}
         if bucket_name:
             kwargs = {"bucket_name": bucket_name}
         try:
             for blob in blobs:
                 if blob:
+                    local_file_path = _safe_local_path(extract_dir, blob)
                     reader = get_reader(config_source=config, client=client)
                     # create the required dir before downloading
-                    os.makedirs(f"{extract_dir}/{key}", exist_ok=True)  # noqa: PTH103
-                    reader.download(path=blob, local_file_path=f"{extract_dir}/{blob}", **kwargs)
+                    os.makedirs(os.path.dirname(local_file_path), exist_ok=True)  # noqa: PTH103, PTH120
+                    reader.download(path=blob, local_file_path=local_file_path, **kwargs)
         except PowerBIFileConfigException as exc:
             logger.warning(exc)
 
