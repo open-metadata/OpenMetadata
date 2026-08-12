@@ -1,18 +1,11 @@
-"""Offline guard tests for ClickZetta native test execution."""
+"""ClickZetta test-suite registration follows the standard SQLAlchemy contract."""
 
-import pytest
-
-from metadata.data_quality.interface.sqlalchemy.clickzetta.test_suite_interface import (
-    ClickzettaTestSuiteInterface,
+from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
+    SQATestSuiteInterface,
 )
+from metadata.ingestion.source.database.clickzetta.service_spec import ServiceSpec
+from metadata.utils.importer import get_class_path
 
 
-def test_clickzetta_allows_standard_read_only_test_definitions():
-    for name in ("columnValuesToBeNotNull", "columnValuesToBeUnique", "tableRowCountToBeBetween"):
-        ClickzettaTestSuiteInterface.validate_test_definition_name(name)
-
-
-def test_clickzetta_rejects_unbounded_or_mutating_test_definitions():
-    for name in ("tableCustomSQLQuery", "tableRuleLibrarySqlExpression", "tableDiff"):
-        with pytest.raises(ValueError, match="not supported"):
-            ClickzettaTestSuiteInterface.validate_test_definition_name(name)
+def test_clickzetta_uses_the_standard_sqlalchemy_test_suite():
+    assert ServiceSpec.test_suite_class == get_class_path(SQATestSuiteInterface)
