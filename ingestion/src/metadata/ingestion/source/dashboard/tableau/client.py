@@ -71,6 +71,16 @@ class TableauDataModelsException(Exception):  # noqa: N818
     """
 
 
+class TableauUpstreamTablesRedacted(Exception):  # noqa: N818
+    """
+    Raise when the Metadata API returns source tables with every name withheld.
+
+    Tableau does not omit assets the account may not read. It returns them with the table
+    and database names nulled and only the identifiers left, so no table can be resolved
+    and lineage is silently empty for the whole run.
+    """
+
+
 class TableauClient:
     """
     Wrapper to TableauServerConnection
@@ -301,6 +311,33 @@ class TableauClient:
             "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
             "#enable-the-tableau-metadata-api-for-tableau-server\n"
         )
+
+    def test_get_source_tables(self):
+        """
+        Check that the Metadata API returns usable source tables.
+
+        Tableau withholds table and database names from accounts without Catalog
+        permissions on external assets, returning the table objects with only their
+        identifiers. Table lineage then cannot be built for anything, so this is worth
+        catching at connection time instead of after a run that looks successful.
+
+        Passes when there is nothing to judge, meaning the sampled workbook declares no
+        source tables at all, which is normal for file backed data sources.
+        """
+        workbook = self.test_get_workbooks()
+        datasources = self._query_datasources(dashboard_id=workbook.id, entities_per_page=50, offset=0)
+
+        named, redacted = [], []
+        for datasource in (datasources.nodes if datasources else None) or []:
+            for table in datasource.upstreamTables or []:
+                (named if table.name else redacted).append(datasource.name or datasource.id)
+
+        if redacted and not named:
+            raise TableauUpstreamTablesRedacted(
+                f"Tableau returned {len(redacted)} source table(s) with no name, "
+                f"for data source(s): {', '.join(sorted(set(redacted))[:5])}"
+            )
+        return True
 
     def _query_datasources(
         self, dashboard_id: str, entities_per_page: int, offset: int
