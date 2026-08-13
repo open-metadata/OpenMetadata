@@ -84,6 +84,7 @@ import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
 import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { LineageBand } from '../../generated/api/lineage/lineageScene';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { Table } from '../../generated/entity/data/table';
 import { LineageLayer } from '../../generated/settings/settings';
@@ -243,8 +244,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     isColumnLevelLineage,
     selectedColumn,
     setSelectedColumn,
+    sceneBand,
     setIsRepositioning,
     isDQEnabled,
+    bumpLineageMutationTick,
     reset,
   } = useLineageStore();
 
@@ -1058,7 +1061,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   useEffect(() => {
-    if (!selectedColumn) {
+    if (!selectedColumn || sceneBand === LineageBand.Field) {
       return;
     }
 
@@ -1070,17 +1073,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setTracedColumns(connectedColumnEdges);
     setTracedNodes(new Set());
     setSelectedEdge(undefined);
-  }, [selectedColumn, columnEdges]);
+  }, [selectedColumn, columnEdges, sceneBand]);
 
   const onColumnMouseEnter = useCallback(
     (column: string) => {
+      if (sceneBand === LineageBand.Field) {
+        return;
+      }
       const { connectedColumnEdges } = getAllTracedColumnEdge(
         column,
         columnEdges
       );
       setTracedColumns(connectedColumnEdges);
     },
-    [columnEdges]
+    [columnEdges, sceneBand]
   );
 
   const removeEdgeHandler = async (
@@ -1096,6 +1102,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     const edgeData = getEdgeDataFromEdge(edge);
 
     await removeLineageHandler(edgeData);
+    bumpLineageMutationTick();
 
     let filteredEdges: EdgeDetails[] = [];
 
@@ -1137,6 +1144,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     const selectedEdge = createNewEdge(edge);
     const updatedCols = selectedEdge.edge.lineageDetails?.columnsLineage ?? [];
     await addLineageHandler(selectedEdge);
+    bumpLineageMutationTick();
 
     const updatedEdgeWithColumns = (entityLineage.edges ?? []).map((obj) => {
       if (
@@ -1704,6 +1712,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       try {
         await addLineageHandler(newEdge);
+        bumpLineageMutationTick();
 
         setStatus('success');
         setLoading(false);
@@ -1759,6 +1768,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       try {
         await updateLineageEdge(updatedEdgeDetails);
+        bumpLineageMutationTick();
         const updatedEdges = (entityLineage.edges ?? []).map((edge) => {
           if (
             edge.fromEntity.id === updatedEdgeDetails.edge.fromEntity.id &&
@@ -1997,11 +2007,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         if (activeNode) {
           removeNodeHandler(activeNode);
         } else if (selectedEdge) {
-          removeEdgeHandler(selectedEdge, true);
+          if (selectedEdge.data?.isColumnLineage) {
+            removeColumnEdge(selectedEdge, true);
+          } else {
+            removeEdgeHandler(selectedEdge, true);
+          }
         }
       }
     }
-  }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
+  }, [
+    isEditMode,
+    deletePressed,
+    backspacePressed,
+    activeNode,
+    selectedEdge,
+    removeColumnEdge,
+    removeEdgeHandler,
+  ]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {
@@ -2025,6 +2047,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const activityFeedContextValues: LineageContextType = useMemo(() => {
     return {
       nodes,
+      setSceneNodes: setNodes,
       edges,
       reactFlowInstance,
       entityLineage,
@@ -2263,7 +2286,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         )}
         {showAddEdgeModal && (
           <AddPipeLineModal
-            loading={loading}
+            loading={sceneBand === undefined ? loading : status === 'waiting'}
             selectedEdge={selectedEdge}
             showAddEdgeModal={showAddEdgeModal}
             onModalCancel={handleModalCancel}

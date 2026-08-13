@@ -13,7 +13,10 @@
 
 import { expect, test } from '@playwright/test';
 import * as fs from 'fs';
-import { performZoomOut } from '../../utils/lineage';
+import {
+  dismissLineageMapOnboarding,
+  performZoomOut,
+} from '../../utils/lineage';
 
 /**
  * Regression test: exported lineage PNG must include edge lines.
@@ -40,10 +43,11 @@ test.describe(
     test('exported PNG includes edge lines between nodes', async ({ page }) => {
       // Navigate to the lineage view and wait for lineage data to load
       const lineageResponsePromise = page.waitForResponse(
-        '/api/v1/lineage/getLineage*'
+        '**/api/v1/lineage/scene?*'
       );
       await page.goto(LINEAGE_URL);
       await lineageResponsePromise;
+      await dismissLineageMapOnboarding(page);
 
       // Wait for nodes to render, then wait until the canvas has been drawn.
       // CanvasEdgeRenderer draws on requestAnimationFrame — polling the canvas

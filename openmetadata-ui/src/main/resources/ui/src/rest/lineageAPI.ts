@@ -26,7 +26,13 @@ import { EntityType } from '../enums/entity.enum';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { HydrateLineageRequest } from '../generated/api/lineage/hydrateLineageRequest';
 import { HydrateLineageResponse } from '../generated/api/lineage/hydrateLineageResponse';
+import {
+  LineageBand,
+  LineageLens,
+  LineageScene,
+} from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
+import { LineageDetails } from '../generated/type/entityLineage';
 import APIClient from './index';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
@@ -107,6 +113,54 @@ export const getLineageDataByFQN = async ({
   });
 
   return response.data;
+};
+
+export const getLineageScene = async ({
+  focusFqn,
+  entityType,
+  lens,
+  band,
+  config,
+  queryFilter,
+}: {
+  focusFqn?: string;
+  entityType?: string;
+  lens: LineageLens;
+  band: LineageBand;
+  config?: LineageConfig;
+  queryFilter?: string;
+}) => {
+  const {
+    upstreamDepth = 1,
+    downstreamDepth = 1,
+    nodesPerLayer = 200,
+  } = config ?? {};
+  const response = await APIClient.get<LineageScene>('lineage/scene', {
+    params: {
+      focusFqn,
+      entityType,
+      lens,
+      band,
+      upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+      size: nodesPerLayer,
+    },
+  });
+
+  return response.data;
+};
+
+export const getLineageEdgeDetails = async (
+  fromId: string,
+  toId: string
+): Promise<LineageDetails> => {
+  const response = await APIClient.get<{ edge: LineageDetails }>(
+    `lineage/getLineageEdge/${fromId}/${toId}`
+  );
+
+  return response.data.edge;
 };
 
 export const getPlatformLineage = async ({

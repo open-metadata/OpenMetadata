@@ -42,7 +42,7 @@ let pipelineServiceFqn: string;
 let topicFqn: string;
 let pipelineFqn: string;
 
-const LINEAGE_API = '/api/v1/lineage/getLineage?fqn=*';
+const LINEAGE_API = '**/api/v1/lineage/scene?*';
 
 test.describe('Lineage Pipeline Annotator', () => {
   test.beforeAll(async ({ browser }) => {
@@ -169,7 +169,9 @@ test.describe('Lineage Pipeline Annotator', () => {
     const lineageResponse = await lineageResponsePromise;
     const lineageData = await lineageResponse.json();
 
-    const nodeFqns = Object.keys(lineageData.nodes ?? {});
+    const nodeFqns = (lineageData.nodes ?? []).map(
+      (node: { fullyQualifiedName?: string }) => node.fullyQualifiedName
+    );
 
     expect(nodeFqns).not.toContain(dbServiceFqn);
     expect(nodeFqns).not.toContain(messagingServiceFqn);
@@ -188,10 +190,11 @@ test.describe('Lineage Pipeline Annotator', () => {
     const lineageResponse = await lineageResponsePromise;
     const lineageData = await lineageResponse.json();
 
-    const downstreamEdges = Object.values(lineageData.downstreamEdges ?? {});
+    const sceneEdges = lineageData.edges ?? [];
 
-    const hasPipelineAnnotation = downstreamEdges.some(
-      (edge) => edge?.pipeline?.fullyQualifiedName === pipelineFqn
+    const hasPipelineAnnotation = sceneEdges.some(
+      (edge: { pipeline?: { fullyQualifiedName?: string } }) =>
+        edge.pipeline?.fullyQualifiedName === pipelineFqn
     );
 
     expect(hasPipelineAnnotation).toBe(true);

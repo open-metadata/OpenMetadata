@@ -178,4 +178,5 @@ export interface LineageNodeType
   requestSchema?: APISchema;
   fields?: SearchIndexField[];
   isTempTable?: boolean;
+  lineageMapSubtitle?: string;
 }
