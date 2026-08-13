@@ -169,7 +169,27 @@ public final class AuditPackGenerator {
     if (renderer == null) {
       LOG.warn("Audit pack PDF requested but no renderer is registered; completing with JSON only");
     } else {
-      result = renderer.render(body, manifest);
+      result = renderSafely(renderer, body, manifest);
+    }
+    return result;
+  }
+
+  /**
+   * The renderer is supplied by the distribution, so from here it is untrusted code: the
+   * JSON-fallback guarantee has to hold even when an implementation ignores the contract and
+   * throws, or hands back a null Optional. Without this the exception would reach
+   * {@link #run(UUID)} and mark the whole report Failed — exactly what pluggability was meant to
+   * avoid. Broad by design: any failure inside a third-party renderer must degrade rather than
+   * lose the pack.
+   */
+  private static Optional<byte[]> renderSafely(
+      AuditPackPdfRenderer renderer, AuditPackDocument body, AuditReportManifest manifest) {
+    Optional<byte[]> result = Optional.empty();
+    try {
+      Optional<byte[]> rendered = renderer.render(body, manifest);
+      result = rendered == null ? Optional.empty() : rendered;
+    } catch (Exception rendererFailure) {
+      LOG.warn("Audit pack PDF renderer failed; completing with JSON only", rendererFailure);
     }
     return result;
   }

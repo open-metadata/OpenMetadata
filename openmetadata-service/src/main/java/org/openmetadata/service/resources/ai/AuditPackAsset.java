@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.resources.ai;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.entity.ai.GovernanceMetadata;
 import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
@@ -35,12 +37,20 @@ public record AuditPackAsset(
     Object governanceMetadata,
     Long updatedAt) {
 
-  /** Compliance assessments recorded against this asset. Never null; empty when none apply. */
+  /**
+   * Compliance assessments recorded against this asset. Never null; empty when none apply.
+   *
+   * <p>Returns an unmodifiable defensive copy rather than the live list off the governance object:
+   * renderers are external code, and a pack is a point-in-time snapshot, so neither the caller nor
+   * a later mutation of the entity should be able to change what this reports. Copied through
+   * {@link ArrayList} rather than {@link List#copyOf} so a null element — possible in a
+   * deserialised entity — degrades to the renderer rather than throwing here.
+   */
   public List<AIComplianceRecord> complianceRecords() {
     AICompliance compliance = aiCompliance();
     List<AIComplianceRecord> records =
         compliance == null ? null : compliance.getComplianceRecords();
-    return records == null ? List.of() : records;
+    return records == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(records));
   }
 
   private AICompliance aiCompliance() {

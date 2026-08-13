@@ -152,6 +152,40 @@ class AuditPackGeneratorTest {
       assertEquals(List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Pdf)));
     }
 
+    /**
+     * Renderers are supplied by the distribution. One that ignores the never-throw contract must
+     * not take the pack down with it — the exception would otherwise reach run(...) and mark the
+     * whole report Failed.
+     */
+    @Test
+    void pdfFormatFallsBackToJsonWhenTheRendererThrows() {
+      AuditPackGenerator.setPdfRenderer(
+          (document, manifest) -> {
+            throw new IllegalStateException("template blew up");
+          });
+
+      assertEquals(List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Pdf)));
+    }
+
+    @Test
+    void bothFormatStillEmitsJsonWhenTheRendererThrows() {
+      AuditPackGenerator.setPdfRenderer(
+          (document, manifest) -> {
+            throw new IllegalStateException("template blew up");
+          });
+
+      assertEquals(
+          List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Both)));
+    }
+
+    /** A null Optional violates the contract too, and must not NPE the job. */
+    @Test
+    void pdfFormatFallsBackToJsonWhenTheRendererReturnsNull() {
+      AuditPackGenerator.setPdfRenderer((document, manifest) -> null);
+
+      assertEquals(List.of(AuditReportFormat.Json), formatsOf(artifactsFor(AuditReportFormat.Pdf)));
+    }
+
     @Test
     void bothFormatStillEmitsJsonWhenTheRendererDeclines() {
       AuditPackGenerator.setPdfRenderer((document, manifest) -> Optional.empty());
