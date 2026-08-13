@@ -75,6 +75,7 @@ import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
+import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
@@ -508,29 +509,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params =
-          convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
-
-      client.updateByQuery(
-          u ->
-              u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                  .query(exactFieldQuery(fieldAndValue))
-                  .conflicts(Conflicts.Proceed)
-                  .script(
-                      s ->
-                          s.inline(
-                              inline ->
-                                  inline
-                                      .lang(
-                                          l ->
-                                              l.builtin(
-                                                  os.org.opensearch.client.opensearch._types
-                                                      .BuiltinScriptLanguage.Painless))
-                                      .source(updates.getKey())
-                                      .params(params)))
-                  .refresh(Refresh.True));
-
-      LOG.info("Successfully updated children in OpenSearch for index: {}", indexName);
+      submitChildUpdate(
+          List.of(Entity.getSearchRepository().getIndexOrAliasName(indexName)),
+          fieldAndValue,
+          updates);
+      LOG.info("Successfully submitted child update in OpenSearch for index: {}", indexName);
     } catch (IOException | OpenSearchException e) {
       SearchIndexRetryQueue.enqueue(
           null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
@@ -548,15 +531,38 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       LOG.error("OpenSearch client is not available. Cannot update children for indices.");
       return;
     }
+    submitChildUpdate(indexNames, fieldAndValue, updates);
+    LOG.info("Successfully submitted child update in OpenSearch for indices: {}", indexNames);
+  }
 
+  private void submitChildUpdate(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
+  }
+
+  /**
+   * Builds the inherited-field child propagation as an async update-by-query
+   * ({@code wait_for_completion=false}). A synchronous update-by-query over a large child set (for
+   * example a test suite with thousands of test cases) holds one HC5 socket open for the entire
+   * scan and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException};
+   * submitting it as a background task returns immediately and lets the cluster finish the
+   * propagation and the post-task {@code refresh} on its own.
+   */
+  UpdateByQueryRequest buildUpdateChildrenRequest(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
-
-    client.updateByQuery(
+    return UpdateByQueryRequest.of(
         u ->
             u.index(indexNames)
                 .query(exactFieldQuery(fieldAndValue))
                 .conflicts(Conflicts.Proceed)
+                .waitForCompletion(false)
                 .script(
                     s ->
                         s.inline(
@@ -570,8 +576,6 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                     .source(updates.getKey())
                                     .params(params)))
                 .refresh(Refresh.True));
-
-    LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
   }
 
   @Override
