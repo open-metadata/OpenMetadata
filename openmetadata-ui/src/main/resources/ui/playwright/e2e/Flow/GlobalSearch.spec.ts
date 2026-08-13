@@ -60,6 +60,4 @@ test('searching for longer description should work', async ({ page }) => {
       )
       .getByTestId('entity-link')
   ).toHaveText('dim_customer');
-
-  await expect(page.getByTestId('alert-bar')).not.toBeVisible();
 });

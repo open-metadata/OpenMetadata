@@ -30,6 +30,7 @@ import {
   addInputPortToDataProduct,
   addOutputPortToDataProduct,
   expandLineageSection,
+  expandPopulatedLineageSection,
   navigateToPortsTab,
   selectDataProduct,
   verifyPortCounts,
@@ -1468,6 +1469,9 @@ test.describe('Input Output Ports', () => {
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
         await expandLineageSection(page);
+        // The fullscreen button only exists on the populated view; without this
+        // an empty read left the click waiting out the whole test budget.
+        await expandPopulatedLineageSection(page);
       });
 
       await test.step('Enter fullscreen mode', async () => {

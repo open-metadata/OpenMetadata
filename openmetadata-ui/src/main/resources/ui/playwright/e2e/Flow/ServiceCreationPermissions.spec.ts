@@ -646,7 +646,16 @@ test.describe(
       await openPipelineActions(page);
 
       await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
+      // AgentOverflowMenu swaps these two by run state — `kill-button` while
+      // `status` is running or queued, `re-deploy-button` once it is neither —
+      // and PERMISSION_BY_ITEM gates both on the same `permissions.edit`, which
+      // is what this test is actually asserting. Matching either keeps the
+      // assertion about the permission instead of racing the agent's first run:
+      // the failure snapshot showed the agent still "Running", so the menu held
+      // Pause / Kill run / Edit / Delete and no re-deploy entry existed at all.
+      await expect(
+        page.getByTestId('re-deploy-button').or(page.getByTestId('kill-button'))
+      ).toBeVisible();
       await expect(
         getAgentCard(page, ingestionPipelineName).getByTestId(
           'run-agent-button'

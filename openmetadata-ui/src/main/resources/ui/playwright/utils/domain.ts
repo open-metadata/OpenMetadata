@@ -1674,15 +1674,33 @@ export const navigateToSubDomain = async (
 export const navigateToPortsTab = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 
+  // A reload lands back on this tab and /portsView is fetched during page load,
+  // before any listener below could exist. Clicking the already-active tab is
+  // then a no-op that fires no second request, so the wait never settled — and
+  // it was unbounded, so called from inside waitForPortRow's poll it consumed
+  // the entire remaining test budget: expect.poll cannot interrupt its own
+  // callback, which is why raising the poll timeout would have changed nothing.
+  const portsPanel = page.getByTestId('input-output-ports-tab');
+
+  if (await portsPanel.isVisible()) {
+    return;
+  }
+
   const portsTab = page.getByTestId('input_output_ports');
   await portsTab.waitFor({ state: 'visible' });
 
-  const portsViewResponse = page.waitForResponse((response) =>
-    response.url().includes('/portsView')
-  );
+  // Bounded, and tolerant of a miss: the request may already have been answered
+  // during load. The rendered panel below is the real signal, not the response.
+  const portsViewResponse = page
+    .waitForResponse((response) => response.url().includes('/portsView'), {
+      timeout: 15_000,
+    })
+    .catch(() => null);
+
   await portsTab.click();
   await portsViewResponse;
   await waitForAllLoadersToDisappear(page);
+  await portsPanel.waitFor({ state: 'visible', timeout: 15_000 });
 };
 
 /**
@@ -1700,7 +1718,19 @@ export const waitForPortRow = async (page: Page, portId: string) => {
   await expect
     .poll(
       async () => {
-        if (await portRow.isVisible()) {
+        // Give the row a bounded chance to arrive before reloading. isVisible()
+        // samples once, with no retry, and the poll's first pass runs with no
+        // initial delay — so on a slow render it fired while the /inputPorts
+        // request was still in flight (measured on a failing run: the response
+        // landed 3ms after this check had already decided to reload) and threw
+        // away the render that was about to happen. The reload is the heavy,
+        // destructive branch; it should be the fallback, not the first move.
+        const appeared = await portRow
+          .waitFor({ state: 'visible', timeout: 5_000 })
+          .then(() => true)
+          .catch(() => false);
+
+        if (appeared) {
           return true;
         }
 
@@ -1713,7 +1743,12 @@ export const waitForPortRow = async (page: Page, portId: string) => {
 
         return portRow.isVisible();
       },
-      { timeout: 60_000, intervals: [2_000, 5_000, 10_000] }
+      // Every await in the callback above is now bounded, so the poll can
+      // actually iterate and lose its own race. 30s leaves room inside the
+      // default 60s test budget for the setup that precedes it; the previous
+      // 60s matched the whole test timeout, so a genuine failure could only
+      // ever surface as a bare test timeout naming nothing.
+      { timeout: 30_000, intervals: [2_000, 5_000, 10_000] }
     )
     .toBe(true);
 };
@@ -1737,10 +1772,14 @@ export const expandLineageSection = async (page: Page) => {
     // /portsView endpoint but always carries pagination params, so matching on
     // '/portsView' alone can resolve against the counts response while the
     // lineage request is still in flight.
+    // Bounded explicitly: an unbounded wait here inherits the whole remaining
+    // test budget, so a missed match reports a bare test timeout instead of
+    // naming the request that never arrived.
     const lineageResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/portsView') &&
-        !response.url().includes('inputLimit=')
+        !response.url().includes('inputLimit='),
+      { timeout: 30_000 }
     );
 
     await header.click();
@@ -1757,6 +1796,51 @@ export const expandLineageSection = async (page: Page) => {
     .or(page.locator('.ports-lineage-view-empty'))
     .first()
     .waitFor({ state: 'visible' });
+};
+
+/**
+ * Expands the lineage section and waits for it to render *with* ports,
+ * reloading when it comes back empty.
+ *
+ * This is a mitigation for a server-side defect, not a fix for it. The failure
+ * snapshot shows the tab badge reading "Input Ports (1)" — the count probe's
+ * `paging.total` — next to a lineage that rendered its empty branch, because
+ * the same response carried zero rows. `DataProductRepository.getPaginatedPorts`
+ * takes `total` from an independent count query while rows have to survive an
+ * index-zip against an unordered `WHERE id IN (...)` result and a silent
+ * `if (entity != null)` drop, so the payload can contradict its own count.
+ *
+ * The visible consequence here: PortsLineageView renders
+ * `.ports-lineage-view-empty` whenever `hasAnyPorts` is false, and that branch
+ * carries no `toggle-fullscreen-btn` at all — so a caller that clicked it waited
+ * out the entire test budget rather than failing, reporting only "Target page,
+ * context or browser has been closed". `expandLineageSection` settles on either
+ * state by design (several tests assert the empty one), so a caller needing the
+ * populated view has to ask for it.
+ *
+ * Remounting re-runs the query and has been observed to return the full set, so
+ * the reload recovers it — but the count/rows contradiction is fixed server-side.
+ */
+export const expandPopulatedLineageSection = async (page: Page) => {
+  const lineageView = page.getByTestId('ports-lineage-view');
+
+  await expect
+    .poll(
+      async () => {
+        if (await lineageView.isVisible()) {
+          return true;
+        }
+
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await waitForAllLoadersToDisappear(page);
+        await navigateToPortsTab(page);
+        await expandLineageSection(page);
+
+        return lineageView.isVisible();
+      },
+      { timeout: 30_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
 };
 
 /**
