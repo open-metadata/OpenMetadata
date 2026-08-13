@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import {
-  ComponentType,
   CSSProperties,
   ReactNode,
   useCallback,
@@ -22,7 +21,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import marketplaceBg from '../../assets/img/widgets/marketplace-bg.png';
 import Loader from '../../components/common/Loader/Loader';
 import AnnouncementsWidgetV2 from '../../components/DataMarketplace/AnnouncementsWidgetV2/AnnouncementsWidgetV2.component';
@@ -32,7 +31,6 @@ import { TAB_GRID_MAX_COLUMNS } from '../../constants/CustomizeWidgets.constants
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
@@ -41,9 +39,22 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './data-marketplace-page.less';
 
-const ReactGridLayout = WidthProvider(RGL) as ComponentType<
-  ReactGridLayoutProps & { children?: ReactNode }
->;
+// The reader renders the widgets as a plain column: the layout here is always a
+// single full-width stack (`normalizeLayout` forces w/x and sorts by y) and the
+// grid was static anyway. A fixed-pitch grid sized every slot the same whatever
+// the widget held, so the visible gap was the grid's 30px margin minus however
+// far the panel overflowed its slot — 19px when empty, 17px with cards, and it
+// grew to 49px once the taller placeholder needed a second row. 18px holds the
+// spacing the grid used to land on, now identically for every widget. The
+// customize page still uses the grid, which is where drag and resize happen.
+const WIDGET_GAP = 18;
+
+// In AI mode the caller's `HeaderShell` owns the 20px gap to the content below
+// through its own bottom margin, matching the Domains/Data Products list pages —
+// the column must not stack another offset on top of it. The classic hero keeps
+// the original 8px offset it was designed against.
+const AI_MODE_GRID_STYLE = { gap: WIDGET_GAP, marginTop: 0 };
+const CLASSIC_GRID_STYLE = { gap: WIDGET_GAP, marginTop: 8 };
 
 const normalizeLayout = (l: WidgetConfig[]) =>
   l
@@ -54,8 +65,20 @@ const normalizeLayout = (l: WidgetConfig[]) =>
     }))
     .sort((a, b) => a.y - b.y);
 
-const DataMarketplacePage = () => {
+interface DataMarketplacePageProps {
+  /**
+   * Optional page-header renderer. When provided (AI mode), it replaces the
+   * default greeting-banner + search hero — the caller's header owns the
+   * title, breadcrumb, search and actions. Omit for the classic hero.
+   */
+  renderPageHeader?: () => ReactNode;
+}
+
+const DataMarketplacePage = ({
+  renderPageHeader,
+}: DataMarketplacePageProps) => {
   const { selectedPersona } = useApplicationStore();
+  const { i18n } = useTranslation();
 
   const defaultLayout = useMemo(
     () => dataMarketplaceClassBase.getDefaultLayout(EntityTabs.OVERVIEW),
@@ -66,8 +89,6 @@ const DataMarketplacePage = () => {
   const [layout, setLayout] = useState<Array<WidgetConfig>>(() => [
     ...defaultLayout,
   ]);
-
-  useGridLayoutDirection(false);
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -110,50 +131,59 @@ const DataMarketplacePage = () => {
     fetchDocument();
   }, [fetchDocument]);
 
+  // Depend on the resolved direction, not the i18n instance: the instance
+  // reference survives a language change, so memoising on it would keep a stale
+  // dir if the language ever changes without remounting this route.
+  const direction = i18n.dir();
+
   const widgets = useMemo(
     () =>
       layout.map((widget) => (
-        <div data-grid={widget} key={widget.i}>
+        <div dir={direction} key={widget.i}>
           {getWidgetsFromKey(PageType.DataMarketplace, widget)}
         </div>
       )),
-    [layout]
+    [layout, direction]
   );
 
   if (isLoading) {
     return <Loader />;
   }
 
+  const gridWrapperClassName = `marketplace-grid-wrapper${
+    renderPageHeader ? ' tw:!max-w-none' : ''
+  }`;
+
   return (
     <div className="tw:h-full tw:overflow-y-auto">
       <div className="tw:mb-8">
-        <div
-          className="marketplace-header-bg"
-          style={
-            { '--marketplace-bg': `url(${marketplaceBg})` } as CSSProperties
-          }>
-          <div className="marketplace-grid-wrapper" dir="ltr">
-            <div className="p-x-box">
-              <MarketplaceGreetingBanner />
-              <MarketplaceSearchBar />
+        {renderPageHeader ? (
+          <div className={gridWrapperClassName} dir="ltr">
+            <div className="tw:px-2 tw:pt-2">{renderPageHeader()}</div>
+          </div>
+        ) : (
+          <div
+            className="marketplace-header-bg"
+            style={
+              { '--marketplace-bg': `url(${marketplaceBg})` } as CSSProperties
+            }>
+            <div className="marketplace-grid-wrapper" dir="ltr">
+              <div className="p-x-box">
+                <MarketplaceGreetingBanner />
+                <MarketplaceSearchBar />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="marketplace-grid-wrapper" dir="ltr">
+        )}
+        <div className={gridWrapperClassName} dir="ltr">
           <div className="p-x-box">
             <AnnouncementsWidgetV2 widgetKey="announcements" />
           </div>
-          <ReactGridLayout
-            className="grid-container p-x-box"
-            cols={TAB_GRID_MAX_COLUMNS}
-            containerPadding={[0, 0]}
-            isDraggable={false}
-            isResizable={false}
-            margin={[16, 30]}
-            rowHeight={156}
-            style={{ marginTop: 8 }}>
+          <div
+            className="grid-container p-x-box tw:flex tw:flex-col"
+            style={renderPageHeader ? AI_MODE_GRID_STYLE : CLASSIC_GRID_STYLE}>
             {widgets}
-          </ReactGridLayout>
+          </div>
         </div>
       </div>
     </div>

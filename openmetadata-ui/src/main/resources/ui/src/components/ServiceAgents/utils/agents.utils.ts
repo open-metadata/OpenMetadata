@@ -23,7 +23,9 @@ import {
 import { TFunction } from 'i18next';
 import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
 import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
+import { convertSecondsToHumanReadableFormat } from '../../../utils/date-time/DateTimeUtils';
 import {
+  Agent,
   AgentActionPermissions,
   AgentStatus,
   RunStatus,
@@ -43,13 +45,29 @@ export const ALL_AGENT_PERMISSIONS: AgentActionPermissions = {
   delete: true,
 };
 
+// Single source of truth for every run entry point. An agent that is already
+// running or queued must not be triggerable again — a second trigger would
+// queue a duplicate run behind the one still waiting. A paused agent is not
+// triggerable either; `enabled` defaults to true in the IngestionPipeline
+// schema, so only an explicit false means paused.
+export const canRunAgent = (
+  agent: Agent,
+  permissions: AgentActionPermissions = NO_AGENT_PERMISSIONS
+): boolean =>
+  permissions.trigger &&
+  agent.enabled !== false &&
+  agent.status !== 'running' &&
+  agent.status !== 'queued';
+
 export const fmtNum = (n: number): string => n.toLocaleString();
 
-export type EtaState = 'idle' | 'wrapping' | 'seconds' | 'minutes';
+export type EtaState = 'idle' | 'wrapping' | 'seconds' | 'duration';
 
 export interface EtaInfo {
   state: EtaState;
   value?: number;
+  /** Pre-formatted multi-unit duration, e.g. `17h 41m`. Set only for the `duration` state. */
+  duration?: string;
 }
 
 export const getEtaInfo = (s: number | null): EtaInfo => {
@@ -60,7 +78,12 @@ export const getEtaInfo = (s: number | null): EtaInfo => {
     } else if (s < 60) {
       result = { state: 'seconds', value: s };
     } else {
-      result = { state: 'minutes', value: Math.round(s / 60) };
+      // Anything past a minute rolls up into hours/days rather than reading as "~1061 min left".
+      // Capped at two units so a long ETA stays glanceable.
+      result = {
+        state: 'duration',
+        duration: convertSecondsToHumanReadableFormat(s, 2),
+      };
     }
   }
 
@@ -94,7 +117,7 @@ export const formatEtaLong = (info: EtaInfo, t: TFunction): string => {
     idle: EM_DASH,
     wrapping: t('label.wrapping-up'),
     seconds: t('message.seconds-left', { count: info.value }),
-    minutes: t('message.minutes-left', { count: info.value }),
+    duration: t('message.duration-left', { duration: info.duration }),
   };
 
   return byState[info.state];
@@ -105,7 +128,8 @@ export const formatEtaShort = (info: EtaInfo, t: TFunction): string => {
     idle: EM_DASH,
     wrapping: t('label.wrapping-up'),
     seconds: t('message.seconds-short', { count: info.value }),
-    minutes: t('message.minutes-short', { count: info.value }),
+    // The formatted duration already carries its own h/m/s suffixes, so it needs no wrapper copy.
+    duration: info.duration ?? EM_DASH,
   };
 
   return byState[info.state];

@@ -39,7 +39,14 @@ import './marketplace-search-bar.less';
 
 const PAGE_SIZE = 5;
 
-const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
+const MarketplaceSearchBar = ({
+  isEditView,
+  compact,
+}: {
+  isEditView?: boolean;
+  /** Header-embedded sizing: 36px control height, no bottom margin. */
+  compact?: boolean;
+}) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
@@ -280,7 +287,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
 
   return (
     <div
-      className="marketplace-search-bar"
+      className={`marketplace-search-bar${compact ? ' tw:!mb-0' : ''}`}
       data-testid="marketplace-search-bar"
       ref={containerRef}>
       <div className="tw:relative">
@@ -318,7 +325,9 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
               t('label.data-product-plural') + ', ' + t('label.domain-plural'),
           })}
           value={searchValue}
-          wrapperClassName="marketplace-search-input tw:!rounded-xl tw:!items-center tw:!py-1"
+          wrapperClassName={`marketplace-search-input tw:!rounded-xl tw:!items-center ${
+            compact ? 'tw:!py-0' : 'tw:!py-1'
+          }`}
           onChange={(value) => handleChange(value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

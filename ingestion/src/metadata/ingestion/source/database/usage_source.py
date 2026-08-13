@@ -150,6 +150,7 @@ class UsageSource(QueryParserSource, ABC):
                                 logger.debug(traceback.format_exc())
                                 logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
                     logger.info(f"Processed {row_count} query log entries for usage")
+                    self.warn_if_query_log_truncated(row_count, "usage")
                     yield TableQueries(queries=queries)
             except Exception as exc:
                 if query:

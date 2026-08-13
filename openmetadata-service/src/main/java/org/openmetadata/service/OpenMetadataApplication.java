@@ -51,6 +51,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -70,6 +71,10 @@ import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.ee10.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.http.UriCompliance;
+import org.eclipse.jetty.http2.server.AbstractHTTP2ServerConnectionFactory;
+import org.eclipse.jetty.server.Connector;
+import org.eclipse.jetty.server.HttpConnectionFactory;
+import org.eclipse.jetty.server.ServerConnector;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
@@ -77,18 +82,15 @@ import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.jetbrains.annotations.NotNull;
-import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
-import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobParticipant;
@@ -121,6 +123,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.BackgroundJobCleanupScheduler;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
@@ -130,7 +133,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
-import org.openmetadata.service.mcpclient.McpChatServiceHolder;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
@@ -252,9 +254,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
 
-    // Configure URI compliance to LEGACY mode by default for Jetty 12
-    // This allows special characters in entity names that were permitted in Jetty 11
     configureUriCompliance(catalogConfig);
+    environment
+        .lifecycle()
+        .addServerLifecycleListener(server -> configureUriCompliance(server.getConnectors()));
 
     // Configure ServletHandler to preserve encoded slashes in paths
     // This is needed for entity names containing slashes (e.g., "domain.name/with-slash")
@@ -268,10 +271,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
 
-    // Initialize the shared LLM completion client from llmConfiguration
-    LLMClientHolder.initialize(catalogConfig.getLlmConfiguration());
     // Publish the platform-wide LLM configuration for features that need completions
     LlmConfigHolder.initialize(catalogConfig.getLlmConfiguration());
+    LLMClientHolder.initialize(catalogConfig.getLlmConfiguration());
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
@@ -396,9 +398,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(ETagRequestFilter.class);
     environment.jersey().register(ETagResponseFilter.class);
 
-    // Clears per-request ThreadLocals (inheritanceParentCache, ReadBundleContext,
-    // RequestEntityCache, impersonation context) after every response so state
-    // cannot leak across requests that share a Jetty worker thread.
+    // Clears per-request ThreadLocals (ReadBundleContext, RequestEntityCache, impersonation
+    // context) after every response so state cannot leak across requests that share a Jetty
+    // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
 
     // Register User Activity Tracking
@@ -410,6 +412,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
+    environment
+        .lifecycle()
+        .manage(
+            new BackgroundJobCleanupScheduler(
+                jdbi.onDemand(JobDAO.class), CsvAsyncJobManager.getInstance()));
 
     environment
         .lifecycle()
@@ -441,7 +449,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register MCP (depends on Auth Handlers for SSO)
     registerMCPServer(catalogConfig, environment);
-    initializeMcpChatService();
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
@@ -457,7 +464,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       return;
     }
     try {
-      if (isMcpServerEnabled()) {
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
         Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
         McpServerProvider mcpServer =
             (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
@@ -470,20 +477,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     } catch (Exception ex) {
       LOG.error("Error initializing MCP server", ex);
     }
-  }
-
-  private boolean isMcpServerEnabled() {
-    MCPConfiguration mcpConfig =
-        SettingsCache.getSettingOrDefault(
-            SettingsType.MCP_CONFIGURATION, new MCPConfiguration(), MCPConfiguration.class);
-    return mcpConfig != null && Boolean.TRUE.equals(mcpConfig.getEnabled());
-  }
-
-  private void initializeMcpChatService() {
-    AISettings aiSettings =
-        SettingsCache.getSettingOrDefault(SettingsType.AI_SETTINGS, null, AISettings.class);
-    McpChatSettings mcpChat = aiSettings == null ? null : aiSettings.getMcpChat();
-    McpChatServiceHolder.initialize(LlmConfigHolder.get(), mcpChat);
   }
 
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
@@ -577,30 +570,55 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
-   * Configure URI compliance for Jetty 12. By default, Jetty 12 uses strict URI compliance which
-   * rejects special characters that were allowed in Jetty 11. OpenMetadata allows special
-   * characters in entity names (including encoded chars like %22 for double quotes), so we
-   * default to UNSAFE compliance mode unless explicitly configured otherwise.
-   * Note: For tests using DropwizardAppExtension, uriCompliance must be set in YAML config
-   * since the server is initialized before run() is called.
+   * Jetty 12 defaults to strict URI compliance, which rejects encoded characters Jetty 11 allowed
+   * and that OpenMetadata entity names depend on (for example {@code %22} for a double quote).
+   * This configures the connector beans, which Dropwizard reads when it builds the server.
    */
-  private void configureUriCompliance(OpenMetadataApplicationConfig configuration) {
+  void configureUriCompliance(final OpenMetadataApplicationConfig configuration) {
     if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
-      // Configure application connectors - always set to UNSAFE for backward compatibility
-      for (ConnectorFactory connector : serverFactory.getApplicationConnectors()) {
-        if (connector instanceof HttpConnectorFactory httpConnector) {
-          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
-          LOG.info("Set URI compliance to UNSAFE for application connector");
-        }
-      }
-      // Configure admin connectors - always set to UNSAFE for backward compatibility
-      for (ConnectorFactory connector : serverFactory.getAdminConnectors()) {
-        if (connector instanceof HttpConnectorFactory httpConnector) {
-          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
-          LOG.info("Set URI compliance to UNSAFE for admin connector");
-        }
+      applyUnsafeUriCompliance(serverFactory.getApplicationConnectors());
+      applyUnsafeUriCompliance(serverFactory.getAdminConnectors());
+    }
+  }
+
+  private void applyUnsafeUriCompliance(final List<ConnectorFactory> connectors) {
+    for (final ConnectorFactory connector : connectors) {
+      if (connector instanceof HttpConnectorFactory httpConnector) {
+        httpConnector.setUriCompliance(UriCompliance.UNSAFE);
+        LOG.info("Set URI compliance to UNSAFE for {}", httpConnector.getClass().getSimpleName());
       }
     }
+  }
+
+  /**
+   * The connector beans above only reach HTTP/1.1: {@code HttpConnectorFactory} applies compliance
+   * to a defensive copy of the HttpConfiguration that it hands to the HTTP/1.1 connection factory,
+   * while an h2/h2c connector keeps the original and so retains Jetty's strict default — which
+   * rejects entity names containing {@code %} with "400 Ambiguous URI path encoding". Jetty
+   * connectors do not exist until Dropwizard builds the server, after {@link #run} returns, so the
+   * built connection factories are reconfigured once the server starts.
+   */
+  void configureUriCompliance(final Connector[] connectors) {
+    int configuredFactories = 0;
+    for (final Connector connector : connectors) {
+      if (connector instanceof ServerConnector serverConnector) {
+        configuredFactories += configureUriCompliance(serverConnector);
+      }
+    }
+    LOG.info("Set URI compliance to UNSAFE on {} Jetty connection factories", configuredFactories);
+  }
+
+  private int configureUriCompliance(final ServerConnector connector) {
+    final Collection<HttpConnectionFactory> httpFactories =
+        connector.getContainedBeans(HttpConnectionFactory.class);
+    final Collection<AbstractHTTP2ServerConnectionFactory> http2Factories =
+        connector.getContainedBeans(AbstractHTTP2ServerConnectionFactory.class);
+    httpFactories.forEach(
+        factory -> factory.getHttpConfiguration().setUriCompliance(UriCompliance.UNSAFE));
+    http2Factories.forEach(
+        factory -> factory.getHttpConfiguration().setUriCompliance(UriCompliance.UNSAFE));
+
+    return httpFactories.size() + http2Factories.size();
   }
 
   /**
@@ -795,7 +813,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   public void initialize(Bootstrap<OpenMetadataApplicationConfig> bootstrap) {
     bootstrap.setConfigurationSourceProvider(
         new SubstitutingSourceProvider(
-            bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
+            bootstrap.getConfigurationSourceProvider(),
+            new EnvironmentVariableSubstitutor(false, true)));
 
     // Register custom filter factories
     bootstrap

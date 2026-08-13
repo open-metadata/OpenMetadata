@@ -23,7 +23,7 @@ import { Box } from '@openmetadata/ui-core-components';
 import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
-import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
+import { ReactComponent as QuickLinkIcon } from '../assets/svg/quick-link.svg';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import contextCenterClassBase from './ContextCenterClassBase';
@@ -64,9 +64,7 @@ export const addToKnowledgeCenterRecentViewed = (
     }
     if (recentlyViewed) {
       const arrData = recentlyViewed
-        .filter(
-          (item) => item.fullyQualifiedName !== entityData.fullyQualifiedName
-        )
+        .filter((item) => item.id !== entityData.id)
         .sort(arraySorterByKey<RecentViewedKnowledgePage>('timestamp', true));
       arrData.unshift(entityData);
 
@@ -117,13 +115,14 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
       to={path}>
       <Box align="center" gap={2}>
         {isQuickLink ? (
-          <ExternalLinkIcon
+          <QuickLinkIcon
+            className="tw:shrink-0"
             height={16}
             style={{ verticalAlign: 'middle' }}
             width={16}
           />
         ) : (
-          <FileIcon height={16} width={16} />
+          <FileIcon className="tw:shrink-0" height={16} width={16} />
         )}
 
         <span className="tw:truncate">

@@ -16,7 +16,11 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import {
   dragAndDropTerm,
   performExpandAll,
@@ -258,8 +262,12 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await afterDeleteResponse;
 
       // Verify term is deleted from glossary
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
+      await page.goto(
+        `/glossary/${getEncodedFqn(
+          glossary.responseData.fullyQualifiedName as string
+        )}`
+      );
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)

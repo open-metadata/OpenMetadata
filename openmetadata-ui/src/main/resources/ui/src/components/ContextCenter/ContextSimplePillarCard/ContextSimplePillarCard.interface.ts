@@ -12,12 +12,19 @@
  */
 import { FC, ReactNode } from 'react';
 
+export interface ContextSimplePillarCardEmptyAction {
+  label: string;
+  onClick: () => void;
+  icon?: FC<{ className?: string }>;
+}
+
 export interface ContextSimplePillarCardProps {
   title: string;
   isLoading?: boolean;
   isEmpty?: boolean;
   emptyMessage?: string;
+  emptyAction?: ContextSimplePillarCardEmptyAction;
   dataTestId?: string;
   children: ReactNode;
-  icon: FC;
+  icon: FC<{ className?: string }>;
 }

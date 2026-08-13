@@ -15,6 +15,7 @@ package org.openmetadata.service.security;
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.Set;
 import lombok.Getter;
 
 public class AuthenticationException extends RuntimeException {
@@ -50,7 +51,7 @@ public class AuthenticationException extends RuntimeException {
 
   public static AuthenticationException getInvalidTokenException(String reason, Exception e) {
     String msg = String.format("Not Authorized! %s due to %s", reason, e);
-    return new AuthenticationException(msg);
+    return new AuthenticationException(msg, e);
   }
 
   public static AuthenticationException getExpiredTokenException() {
@@ -63,10 +64,12 @@ public class AuthenticationException extends RuntimeException {
     return new AuthenticationException(msg);
   }
 
-  public static AuthenticationException invalidEmailMessage(String principalDomain) {
+  public static AuthenticationException invalidEmailMessage(
+      String emailDomain, Set<String> expectedDomains) {
     return new AuthenticationException(
         String.format(
-            "Not Authorized! Email does not match the principal domain %s", principalDomain));
+            "Not Authorized! Email does not match the principal domain: '%s' is not one of %s",
+            emailDomain, String.join(", ", expectedDomains)));
   }
 
   private static ErrorResponse convertToErrorResponseMessage(String msg) {

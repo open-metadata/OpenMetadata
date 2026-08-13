@@ -98,9 +98,9 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension,odcsQualityRules,odcsElementExtensions";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -244,6 +244,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private void postCreateOrUpdate(DataContract dataContract) {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       TestSuite testSuite = getOrCreateTestSuite(dataContract);
+      // Write the reverse edge testSuite -> dataContract BEFORE any pipeline work so a
+      // pipeline-service outage cannot leave the contract without its reverse link.
+      // TestSuiteRepository.onTestSuiteExecutionComplete guards on
+      // testSuite.getDataContract() != null; without this link every future callback silently
+      // skips updateContractDQResults and the contract sits at Running indefinitely.
+      if (testSuite != null) {
+        ensureTestSuiteToDataContractRelationship(testSuite.getId(), dataContract.getId());
+      }
       // Create the ingestion pipeline only if needed
       if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
         IngestionPipeline pipeline = createIngestionPipeline(testSuite);
@@ -256,9 +264,42 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
         testSuiteRepository.createOrUpdate(null, testSuite, ADMIN_USER_NAME);
         if (!pipeline.getDeployed()) {
-          prepareAndDeployIngestionPipeline(pipeline, testSuite);
+          // Deploy is best-effort at creation time: a pipeline-service outage or misconfiguration
+          // must not block contract creation nor lose the reverse relationship written above.
+          // The user can re-deploy via /validate later.
+          try {
+            prepareAndDeployIngestionPipeline(pipeline, testSuite);
+          } catch (RuntimeException e) {
+            // Narrow to RuntimeException: deployPipeline throws
+            // IngestionPipelineDeploymentException (WebServiceException) on transport failures
+            // and NPE when the pipeline client is not wired (test harness). Both are recoverable
+            // at /validate time. Checked exceptions still propagate.
+            LOG.warn(
+                "Failed to deploy DQ pipeline for data contract {}: {}",
+                dataContract.getFullyQualifiedName(),
+                e.getMessage());
+          }
         }
       }
+    }
+  }
+
+  private void ensureTestSuiteToDataContractRelationship(UUID testSuiteId, UUID dataContractId) {
+    List<CollectionDAO.EntityRelationshipRecord> existing =
+        daoCollection
+            .relationshipDAO()
+            .findTo(testSuiteId, Entity.TEST_SUITE, Relationship.CONTAINS.ordinal());
+    boolean alreadyLinked =
+        existing.stream()
+            .anyMatch(
+                r -> Entity.DATA_CONTRACT.equals(r.getType()) && dataContractId.equals(r.getId()));
+    if (!alreadyLinked) {
+      addRelationship(
+          testSuiteId,
+          dataContractId,
+          Entity.TEST_SUITE,
+          Entity.DATA_CONTRACT,
+          Relationship.CONTAINS);
     }
   }
 
@@ -1396,6 +1437,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveUnspecifiedODCSPassthrough();
       compareAndUpdate(
           "latestResult",
           () ->
@@ -1417,9 +1459,42 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       compareAndUpdate("schema", () -> updateSchema(original, updated));
       compareAndUpdate("qualityExpectations", () -> updateQualityExpectations(original, updated));
       compareAndUpdate("semantics", () -> updateSemantics(original, updated));
+      compareAndUpdate(
+          "odcsQualityRules",
+          () ->
+              recordChange(
+                  "odcsQualityRules",
+                  original.getOdcsQualityRules(),
+                  updated.getOdcsQualityRules()));
+      compareAndUpdate(
+          "odcsElementExtensions",
+          () ->
+              recordChange(
+                  "odcsElementExtensions",
+                  original.getOdcsElementExtensions(),
+                  updated.getOdcsElementExtensions()));
       // Preserve immutable creation fields
       updated.setCreatedAt(original.getCreatedAt());
       updated.setCreatedBy(original.getCreatedBy());
+    }
+
+    /**
+     * The ODCS passthrough fields exist only so that an imported ODCS document can be exported back
+     * unchanged. They are not part of the OpenMetadata contract editing surface, so a PUT that never
+     * mentions them comes from a client unaware they exist rather than from a user asking to drop
+     * them — carry them forward. An explicit empty list still clears them, which is how
+     * PUT /odcs?mode=replace drops the rules a re-imported document no longer declares. PATCH is
+     * left alone so that removing a field there stays an explicit removal.
+     */
+    private void preserveUnspecifiedODCSPassthrough() {
+      if (operation.isPut()) {
+        if (updated.getOdcsQualityRules() == null) {
+          updated.setOdcsQualityRules(original.getOdcsQualityRules());
+        }
+        if (updated.getOdcsElementExtensions() == null) {
+          updated.setOdcsElementExtensions(original.getOdcsElementExtensions());
+        }
+      }
     }
 
     private void updateSchema(DataContract original, DataContract updated) {

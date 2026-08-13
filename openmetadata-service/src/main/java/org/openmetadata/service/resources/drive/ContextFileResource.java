@@ -69,7 +69,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
-import org.openmetadata.service.drive.ContextFileProcessingService;
+import org.openmetadata.service.drive.ContextFileExtractionService;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -99,12 +99,12 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
   private final ContextFileMapper mapper = new ContextFileMapper();
-  private final ContextFileProcessingService extractionService;
+  private final ContextFileExtractionService extractionService;
   private long maxFileSize = 5 * 1024 * 1024L;
 
   public ContextFileResource(Authorizer authorizer, Limits limits) {
     super(CONTEXT_FILE_ENTITY, authorizer, limits);
-    this.extractionService = new ContextFileProcessingService(repository);
+    this.extractionService = new ContextFileExtractionService(repository);
   }
 
   @Override
@@ -113,7 +113,6 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     if (config.getObjectStorage() != null) {
       maxFileSize = config.getObjectStorage().getMaxFileSize();
     }
-    extractionService.recoverInterruptedProcessing();
   }
 
   public static class ContextFileList extends ResultList<ContextFile> {}
@@ -175,10 +174,20 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           @QueryParam("orderBy")
           String orderBy,
       @Parameter(description = "Filter files by folder ID.") @QueryParam("folderId")
-          String folderId) {
+          String folderId,
+      @Parameter(
+              description =
+                  "Filter files by the user who last updated them (their username). Combine with "
+                      + "include=deleted to scope the archive page to files archived by that user - "
+                      + "an archived file cannot be edited, so updatedBy stays the user who archived it.")
+          @QueryParam("updatedBy")
+          String updatedBy) {
     ListFilter filter = new ListFilter(include);
     if (folderId != null && !folderId.isBlank()) {
       filter.addQueryParam("folderId", folderId);
+    }
+    if (updatedBy != null && !updatedBy.isBlank()) {
+      filter.addQueryParam("updatedBy", updatedBy);
     }
     if (orderBy == null || orderBy.isBlank()) {
       return super.listInternal(

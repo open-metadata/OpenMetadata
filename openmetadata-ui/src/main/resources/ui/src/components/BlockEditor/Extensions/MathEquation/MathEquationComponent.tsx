@@ -31,7 +31,9 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
   const inputRef = useRef<TextAreaRef>(null);
   const equation = node.attrs.math_equation;
 
-  const [isEditing, setIsEditing] = useState(Boolean(node.attrs.isEditing));
+  const [isEditing, setIsEditing] = useState(() =>
+    Boolean(node.attrs.isEditing)
+  );
 
   const handleSaveEquation = () => {
     updateAttributes({

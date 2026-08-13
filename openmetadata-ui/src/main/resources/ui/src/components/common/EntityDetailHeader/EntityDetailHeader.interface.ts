@@ -41,6 +41,11 @@ export interface EntityDetailHeaderProps {
   serviceLogoUrl?: string | null;
   /** Fallback leading icon (wrapped in a FeaturedIcon) when no logo is provided. */
   icon?: FC<{ className?: string }> | ReactNode;
+  /**
+   * Pre-rendered leading node the consumer fully controls; rendered as-is with
+   * no FeaturedIcon tile. Takes precedence over serviceLogoUrl/icon.
+   */
+  leading?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   /** Inline badge next to the title (e.g. status / BETA). */

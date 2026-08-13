@@ -23,6 +23,7 @@ import {
 } from '../../../../../mocks/IngestionListTable.mock';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
+import { getErrorPlaceHolder } from '../../../../../utils/IngestionUtils';
 import IngestionListTable from './IngestionListTable';
 
 const mockGetEntityPermissionByFqn = jest.fn();
@@ -74,11 +75,11 @@ jest.mock('./PipelineActions/PipelineActions', () =>
   ))
 );
 
-jest.mock('../../../../Modals/EntityDeleteModal/EntityDeleteModal', () =>
+jest.mock('../../../../common/DeleteModal/DeleteModal', () =>
   jest
     .fn()
-    .mockImplementation(({ onConfirm }) => (
-      <button onClick={onConfirm}>EntityDeleteModal</button>
+    .mockImplementation(({ onDelete }) => (
+      <button onClick={onDelete}>DeleteModal</button>
     ))
 );
 
@@ -164,6 +165,25 @@ describe('Ingestion', () => {
     });
 
     expect(screen.getByText('ErrorPlaceholder')).toBeInTheDocument();
+  });
+
+  it('should request the default empty placeholder with the ingestion table styling', async () => {
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          extraTableProps={{ scroll: undefined }}
+          ingestionData={[]}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    const lastCall = (getErrorPlaceHolder as jest.Mock).mock.calls.at(-1);
+
+    expect(lastCall?.[4]).toBe('tw:relative tw:py-8');
   });
 
   it('should not show the description column if showDescriptionCol is false', async () => {
@@ -285,7 +305,7 @@ describe('Ingestion', () => {
       userEvent.click(deleteSelection);
     });
 
-    const confirmButton = screen.getByText('EntityDeleteModal');
+    const confirmButton = screen.getByText('DeleteModal');
 
     fireEvent.click(confirmButton);
 

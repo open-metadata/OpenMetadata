@@ -340,6 +340,20 @@ class TestTypeCastedDataset:
         assert result_df["name"].iloc[0] == "Alice"
         assert result_df["name"].iloc[4] == "Eve"
 
+    def test_missing_string_values_stay_null_not_nan_string(self):
+        """Fields BurstIQ omits arrive as NaN; the astype must not turn them
+        into the literal string 'nan' (which would inflate valuesCount)."""
+        df = DF_NORMAL.copy()
+        nan = float("nan")
+        df["name"] = ["Alice", nan, nan, nan, nan]
+        df_factory = lambda: iter([df.copy()])  # noqa: E731
+        with _make_interface(df_factory) as interface:
+            result_df = _get_cast_df(interface, df)
+
+        assert result_df["name"].count() == 1
+        assert result_df["name"].isna().sum() == 4
+        assert "nan" not in result_df["name"].dropna().tolist()
+
     def test_json_and_array_excluded_from_other_cast_map(self):
         """
         ARRAY and JSON columns must not be in other_cast_map; attempting to

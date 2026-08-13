@@ -44,6 +44,7 @@ const baseAgent: Agent = {
   target: 0,
   errors: 3,
   warnings: 2,
+  recentRuns: [],
 };
 
 const buildUpdate = (overrides: Partial<ProgressUpdate>): ProgressUpdate => ({
@@ -195,6 +196,35 @@ describe('applyProgressToAgent', () => {
     expect(result.assets).toBe(30);
   });
 
+  it('derives pct from globalCounters done/total, not totalAssetsIngested', () => {
+    const result = applyProgressToAgent(
+      baseAgent,
+      buildUpdate({
+        totalAssetsIngested: 90,
+        globalCounters: [{ entityType: 'Table', done: 10, total: 100 }],
+      })
+    );
+
+    // assets still reflects the ingested count, but pct tracks counters (10/100)
+    expect(result.assets).toBe(90);
+    expect(result.pct).toBe(10);
+  });
+
+  it('keeps previous pct when counter totals are not all known', () => {
+    const agent: Agent = { ...baseAgent, pct: 35, assets: 20 };
+    const result = applyProgressToAgent(
+      agent,
+      buildUpdate({
+        globalCounters: [
+          { entityType: 'Table', done: 50, total: null },
+          { entityType: 'Database', done: 2, total: 4 },
+        ],
+      })
+    );
+
+    expect(result.pct).toBe(35);
+  });
+
   it('keeps totalAssetsIngested monotonic within a run', () => {
     const agent: Agent = { ...baseAgent, assets: 40, target: 100, pct: 40 };
     const result = applyProgressToAgent(
@@ -281,19 +311,17 @@ describe('applyProgressToAgent', () => {
     expect(result.finishedAt).toBe('just now');
   });
 
-  it('marks the agent failed with failStep on ERROR', () => {
+  it('marks the agent failed on ERROR', () => {
     const agent: Agent = { ...baseAgent, status: 'running', pct: 55, eta: 30 };
     const result = applyProgressToAgent(
       agent,
       buildUpdate({
         updateType: ProgressUpdateType.Error,
-        stepName: 'Source',
       })
     );
 
     expect(result.status).toBe('failed');
     expect(result.eta).toBeNull();
-    expect(result.failStep).toBe('Source');
     expect(result.pct).toBe(55);
   });
 
@@ -319,7 +347,6 @@ describe('resetAgentProgress', () => {
       target: 500,
       eta: 12,
       finishedAt: '1m ago',
-      failStep: 'Sink',
     };
 
     expect(resetAgentProgress(agent)).toEqual({
@@ -329,7 +356,6 @@ describe('resetAgentProgress', () => {
       target: 0,
       eta: null,
       finishedAt: undefined,
-      failStep: undefined,
     });
   });
 });

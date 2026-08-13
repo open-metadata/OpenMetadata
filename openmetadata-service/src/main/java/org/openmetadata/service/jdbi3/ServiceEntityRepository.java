@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
@@ -77,6 +78,11 @@ public abstract class ServiceEntityRepository<
             FIELD_DISPLAY_NAME,
             PropagationDescriptor.PropagationType.NESTED_FIELD,
             "service.displayName"));
+    if (supportsStyle) {
+      descriptors.add(
+          new PropagationDescriptor(
+              FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    }
     return descriptors;
   }
 

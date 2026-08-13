@@ -17,9 +17,17 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { FC, useCallback, useEffect, useState } from 'react';
+import {
+  FC,
+  KeyboardEvent,
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { FOLDER_CARD_CHILDREN_LIMIT } from '../../../constants/ContextCenter.constants';
@@ -33,6 +41,8 @@ import { DashboardFoldersCardProps } from './DashboardFoldersCard.interface';
 const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
   folders,
   isLoading = false,
+  onCreateFolder,
+  onOpenFile,
 }) => {
   const { t } = useTranslation();
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
@@ -72,17 +82,62 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
     }
   };
 
+  const toggleExpanded = (folderId: string) => {
+    const next = new Set(expandedKeys);
+    if (next.has(folderId)) {
+      next.delete(folderId);
+    } else {
+      next.add(folderId);
+    }
+    handleExpandedChange(next);
+  };
+
+  const handleToggleExpand = (e: MouseEvent, folderId: string) => {
+    e.stopPropagation();
+    toggleExpanded(folderId);
+  };
+
+  const handleToggleExpandKeyDown = (e: KeyboardEvent, folderId: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleExpanded(folderId);
+    }
+  };
+
+  const handleOpenFile = (e: MouseEvent, fileId: string) => {
+    e.stopPropagation();
+    onOpenFile(fileId);
+  };
+
+  const handleOpenFileKeyDown = (e: KeyboardEvent, fileId: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      onOpenFile(fileId);
+    }
+  };
+
   return (
     <ContextSimplePillarCard
       dataTestId="dashboard-folders-card"
-      emptyMessage={t('label.no-entity', { entity: t('label.folder-plural') })}
+      emptyAction={
+        onCreateFolder
+          ? {
+              label: t('label.new-folder'),
+              icon: Plus,
+              onClick: onCreateFolder,
+            }
+          : undefined
+      }
+      emptyMessage={t('message.no-folders-yet-create-one')}
       icon={FolderIcon}
       isEmpty={folders.length === 0}
       isLoading={isLoading}
       title={t('label.folder-plural')}>
       <Tree
         aria-label={t('label.folder-plural')}
-        className="tw:w-full tw:gap-0 tw:p-5 tw:pt-0"
+        className="tw:w-full tw:gap-0 tw:px-4 tw:py-3 tw:pt-0"
         expandedKeys={expandedKeys}
         onExpandedChange={handleExpandedChange}>
         {folders.map((folder) => {
@@ -95,20 +150,28 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
               key={folder.id}
               textValue={getEntityName(folder)}>
               <Tree.ItemContent
+                className="tw:pr-0"
                 hasChildItems={hasChildItems}
                 showExpandIcon={false}>
                 <Box
                   align="center"
                   className="tw:flex-1 tw:min-w-0"
-                  gap={2}
+                  gap={3}
                   justify="between">
-                  <Box align="center" gap={2}>
-                    <FolderIcon
-                      className="tw:size-3 tw:shrink-0 tw:text-quaternary"
-                      height={16}
-                      width={16}
-                    />
-                    <div className="tw:max-w-80">
+                  <Box
+                    align="center"
+                    className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
+                    gap={2}
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e: MouseEvent) =>
+                      handleToggleExpand(e, folder.id)
+                    }
+                    onKeyDown={(e: KeyboardEvent) =>
+                      handleToggleExpandKeyDown(e, folder.id)
+                    }>
+                    <FolderIcon className="tw:size-4 tw:shrink-0 tw:text-quaternary" />
+                    <div className="tw:min-w-0">
                       <Typography
                         ellipsis
                         className="tw:flex-1 tw:min-w-0 tw:text-secondary"
@@ -118,16 +181,14 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                       </Typography>
                     </div>
                   </Box>
-                  <Box align="center" gap={2}>
-                    <Badge size="xs" type="color">
-                      {folder.childrenCount ?? 0}
-                    </Badge>
-                    <Tree.ExpandButton
-                      className={classNames(
-                        !hasChildItems && 'tw:invisible tw:pointer-events-none'
-                      )}
-                    />
-                  </Box>
+                  <Badge size="xs" type="color">
+                    {folder.childrenCount ?? 0}
+                  </Badge>
+                  <Tree.ExpandButton
+                    className={classNames(
+                      !hasChildItems && 'tw:invisible tw:pointer-events-none'
+                    )}
+                  />
                 </Box>
               </Tree.ItemContent>
 
@@ -136,19 +197,30 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                   id={file.id}
                   key={file.id}
                   textValue={getEntityName(file)}>
-                  <Tree.ItemContent className="tw:ml-7!" showExpandIcon={false}>
-                    <FileIcon
-                      className="tw:size-4 tw:shrink-0"
-                      theme="light"
-                      type={file.fileExtension ?? ''}
-                      variant="default"
-                    />
-                    <Typography
-                      ellipsis
-                      className="tw:truncate tw:text-secondary"
-                      size="text-xs">
-                      {getEntityName(file)}
-                    </Typography>
+                  <Tree.ItemContent className="tw:ml-6!" showExpandIcon={false}>
+                    <Box
+                      align="center"
+                      className="tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:rounded tw:hover:bg-primary_hover"
+                      gap={2}
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e: MouseEvent) => handleOpenFile(e, file.id)}
+                      onKeyDown={(e: KeyboardEvent) =>
+                        handleOpenFileKeyDown(e, file.id)
+                      }>
+                      <FileIcon
+                        className="tw:size-4 tw:shrink-0"
+                        theme="light"
+                        type={file.fileExtension ?? ''}
+                        variant="default"
+                      />
+                      <Typography
+                        ellipsis
+                        className="tw:truncate tw:text-secondary"
+                        size="text-xs">
+                        {getEntityName(file)}
+                      </Typography>
+                    </Box>
                   </Tree.ItemContent>
                 </Tree.Item>
               ))}

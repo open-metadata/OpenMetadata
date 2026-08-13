@@ -101,8 +101,8 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>AlertRecentEventsTab</div>)
 );
 
-jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () =>
-  jest.fn().mockImplementation(() => <div>DeleteEntityModal</div>)
+jest.mock('../../components/common/DeleteModal/DeleteModal', () =>
+  jest.fn().mockImplementation(() => <div>DeleteModal</div>)
 );
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -181,7 +181,7 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('delete-button')).toBeInTheDocument();
     expect(screen.getByText('label.configuration')).toBeInTheDocument();
     expect(screen.getByText('label.recent-event-plural')).toBeInTheDocument();
-    expect(screen.getByText('DeleteEntityModal')).toBeInTheDocument();
+    expect(screen.getByText('DeleteModal')).toBeInTheDocument();
   });
 
   it('should render the description if alert description is present', async () => {

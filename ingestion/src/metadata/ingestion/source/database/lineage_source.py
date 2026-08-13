@@ -335,6 +335,7 @@ class LineageSource(QueryParserSource, ABC):
                         logger.debug(traceback.format_exc())
                         logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                 logger.info(f"Processed {row_count} query log entries for lineage")
+                self.warn_if_query_log_truncated(row_count, "lineage")
 
     def get_table_query(self) -> Iterator[TableQuery]:
         """

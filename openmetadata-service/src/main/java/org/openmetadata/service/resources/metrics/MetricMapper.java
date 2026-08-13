@@ -17,6 +17,9 @@ public class MetricMapper implements EntityMapper<Metric, CreateMetric> {
         .withAssets(create.getAssets())
         .withMetricType(create.getMetricType())
         .withUnitOfMeasurement(create.getUnitOfMeasurement())
-        .withCustomUnitOfMeasurement(create.getCustomUnitOfMeasurement());
+        .withCustomUnitOfMeasurement(create.getCustomUnitOfMeasurement())
+        .withDimensions(create.getDimensions())
+        .withMeasures(create.getMeasures())
+        .withFilters(create.getFilters());
   }
 }

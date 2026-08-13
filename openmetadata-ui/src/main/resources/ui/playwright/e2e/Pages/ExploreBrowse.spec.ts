@@ -14,7 +14,7 @@ import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   expandDatabaseInExploreTree,
@@ -25,8 +25,14 @@ import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
-const dashboard = new DashboardClass();
+// Explore tree's service bucket is capped at 166 and sorted alphabetically
+// (ElasticSearchAggregationManager orders by _key ASC), so a name starting with
+// a digit guarantees these services land within that bucket regardless of how
+// many other `pw-*` services have accumulated.
+const table = new TableClass(undefined, undefined, {
+  name: `0-pw-database-service-${uuid()}`,
+});
+const dashboard = new DashboardClass(`0-pw-dashboard-service-${uuid()}`);
 
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
@@ -36,7 +42,14 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
   // Response-based waiting (the same pattern used in expandServiceInExploreTree
   // etc.) anchors on the actual data fetch so children are fully rendered before
   // we interact with them.
-  const res = page.waitForResponse('/api/v1/search/query?*index=dataAsset*');
+  // ServiceType nodes drill down through POST /search/aggregate (service.style
+  // top hits for custom icons); every other level still uses GET /search/query.
+  const res = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query?') ||
+      (response.url().endsWith('/api/v1/search/aggregate') &&
+        response.request().method() === 'POST')
+  );
   await page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })

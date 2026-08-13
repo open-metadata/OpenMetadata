@@ -19,7 +19,7 @@ import {
   PipelineType,
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { IngestionPipelineLogByIdInterface } from '../../../pages/LogsViewerPage/LogsViewerPage.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../../../interface/IngestionPipelineLogs.interface';
 import {
   getAgentTypeFromPipelineType,
   getAgentUnitVerb,
@@ -175,6 +175,24 @@ describe('agentsDataMapper', () => {
       sourceConfig: {},
     };
 
+    it('should carry the enabled flag through for an enabled pipeline', () => {
+      const agent = mapPipelineToAgent({ ...basePipeline, enabled: true });
+
+      expect(agent.enabled).toBe(true);
+    });
+
+    it('should carry the enabled flag through for a paused pipeline', () => {
+      const agent = mapPipelineToAgent({ ...basePipeline, enabled: false });
+
+      expect(agent.enabled).toBe(false);
+    });
+
+    it('should leave enabled undefined when the pipeline does not define it', () => {
+      const agent = mapPipelineToAgent(basePipeline);
+
+      expect(agent.enabled).toBeUndefined();
+    });
+
     it('should aggregate progress for a running pipeline', () => {
       const pipeline: IngestionPipeline = {
         ...basePipeline,
@@ -210,6 +228,99 @@ describe('agentsDataMapper', () => {
       expect(agent.target).toBe(110);
       expect(agent.pct).toBe(Math.round((45 / 110) * 100));
       expect(agent.eta).toBe(30);
+    });
+
+    it('should not multiply a running agent by the number of steps', () => {
+      // The workflow's progress tracker is a singleton, so each step of the same run reports an
+      // identical copy of the whole map. Summing them would report 90 of 220.
+      const progress = {
+        schemas: { processed: 5, total: 10, estimatedRemainingSeconds: 10 },
+        tables: { processed: 40, total: 100, estimatedRemainingSeconds: 30 },
+      };
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          {
+            pipelineState: PipelineState.Running,
+            runId: 'run-1',
+            status: [
+              { name: 'Source', progress },
+              { name: 'Sink', progress },
+            ],
+          },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.assets).toBe(45);
+      expect(agent.target).toBe(110);
+      expect(agent.eta).toBe(30);
+    });
+
+    it('should not double count a finished run reported by two steps', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          {
+            pipelineState: PipelineState.Success,
+            runId: 'run-2',
+            status: [
+              { name: 'Source', errors: 0, records: 120, warnings: 1 },
+              { name: 'Sink', errors: 2, records: 120, warnings: 0 },
+            ],
+          },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      // Both steps saw the same 120 assets; only the failures belong to one step each.
+      expect(agent.assets).toBe(120);
+      expect(agent.errors).toBe(2);
+      expect(agent.warnings).toBe(1);
+    });
+
+    it('should expose the latest run timestamp so consumers can compare agents', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          {
+            pipelineState: PipelineState.Success,
+            runId: 'run-new',
+            status: [{ name: 'Source', records: 5 }],
+            timestamp: 1_700_000_500_000,
+          },
+          {
+            pipelineState: PipelineState.Success,
+            runId: 'run-old',
+            status: [{ name: 'Source', records: 900 }],
+            timestamp: 1_600_000_000_000,
+          },
+        ],
+      };
+
+      expect(mapPipelineToAgent(pipeline).lastRunAt).toBe(1_700_000_500_000);
+    });
+
+    it('should leave a queued run at zero progress rather than 100%', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          {
+            pipelineState: PipelineState.Queued,
+            runId: 'run-queued',
+            status: [],
+          },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.status).toBe('queued');
+      expect(agent.pct).toBe(0);
+      expect(agent.assets).toBe(0);
+      expect(agent.eta).toBeNull();
     });
 
     it('should mark a successful pipeline with pct 100 and a finishedAt string', () => {
@@ -369,7 +480,7 @@ describe('agentsDataMapper', () => {
       expect(agent.recentRuns[4].id).toBe('run-4');
     });
 
-    it('should sum errors and warnings across steps and set failStep on failure', () => {
+    it('should sum errors and warnings across steps', () => {
       const pipeline: IngestionPipeline = {
         ...basePipeline,
         pipelineStatuses: [
@@ -389,7 +500,6 @@ describe('agentsDataMapper', () => {
       expect(agent.status).toBe('failed');
       expect(agent.errors).toBe(3);
       expect(agent.warnings).toBe(3);
-      expect(agent.failStep).toBe('Sink');
     });
 
     it('should fall back to id/name when displayName is missing', () => {
@@ -408,7 +518,7 @@ describe('agentsDataMapper', () => {
   });
 
   describe('mapPipelineStatusToRun', () => {
-    it('should sum totals across steps and map nested steps', () => {
+    it('should take row counts as the high-water mark and sum failures, mapping nested steps', () => {
       const status: PipelineStatus = {
         runId: 'run-1',
         pipelineState: PipelineState.PartialSuccess,
@@ -444,10 +554,12 @@ describe('agentsDataMapper', () => {
 
       expect(run.id).toBe('run-1');
       expect(run.status).toBe('partial');
+      // Source and Sink both report the rows of the same run, so the row counts are the highest step
+      // rather than the sum (10, not 15); failures belong to the step that raised them, so they sum.
       expect(run.totals).toEqual({
-        records: 15,
+        records: 10,
         filtered: 1,
-        updated: 3,
+        updated: 2,
         warnings: 1,
         errors: 1,
       });
@@ -616,6 +728,26 @@ describe('agentsDataMapper', () => {
       const log: IngestionPipelineLogByIdInterface = {};
 
       expect(getLogTaskFieldForType(log, PipelineType.Lineage)).toBe('');
+    });
+
+    it('should pick the generic logs key whatever the pipeline type', () => {
+      const log: IngestionPipelineLogByIdInterface = { logs: 'fqn logs' };
+
+      expect(getLogTaskFieldForType(log, PipelineType.Metadata)).toBe(
+        'fqn logs'
+      );
+      expect(getLogTaskFieldForType(log, PipelineType.Usage)).toBe('fqn logs');
+    });
+
+    it('should prefer the generic logs key over the type-specific field', () => {
+      const log: IngestionPipelineLogByIdInterface = {
+        logs: 'fqn logs',
+        ingestion_task: 'metadata logs',
+      };
+
+      expect(getLogTaskFieldForType(log, PipelineType.Metadata)).toBe(
+        'fqn logs'
+      );
     });
   });
 });

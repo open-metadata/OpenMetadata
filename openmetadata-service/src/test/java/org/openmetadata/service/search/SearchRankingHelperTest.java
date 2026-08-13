@@ -1,14 +1,19 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingSignals;
 import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.StopWordsByLanguage;
@@ -34,6 +39,50 @@ class SearchRankingHelperTest {
             "provider.address.texas",
             "provideraddresstexas"),
         SearchRankingHelper.exactMatchTexts(significantQuery));
+  }
+
+  @Test
+  void exactMatchTextsHandlesNullAndBlankQueries() {
+    assertEquals(List.of(), SearchRankingHelper.exactMatchTexts((String) null));
+    assertEquals(List.of(), SearchRankingHelper.exactMatchTexts(Arrays.asList(null, "  ")));
+  }
+
+  @Test
+  void exactMatchTextsStripSingleSurroundingQuotePair() {
+    assertEquals(
+        List.of(
+            "customer orders",
+            "customer_orders",
+            "customer-orders",
+            "customer.orders",
+            "customerorders"),
+        SearchRankingHelper.exactMatchTexts("\"customer orders\""));
+  }
+
+  @Test
+  void exactMatchTextsIncludeRawVariantsBeforeStopwordStrippedVariants() {
+    RankingConfiguration ranking =
+        new RankingConfiguration()
+            .withStopWordsByLanguage(
+                new StopWordsByLanguage().withAdditionalProperty("en", List.of("of")));
+
+    String rawQuery = "cost of goods sold";
+    String significantQuery = SearchRankingHelper.significantQueryText(rawQuery, ranking);
+
+    assertEquals("cost goods sold", significantQuery);
+    assertEquals(
+        List.of(
+            "cost of goods sold",
+            "cost_of_goods_sold",
+            "cost-of-goods-sold",
+            "cost.of.goods.sold",
+            "costofgoodssold",
+            "cost goods sold",
+            "cost_goods_sold",
+            "cost-goods-sold",
+            "cost.goods.sold",
+            "costgoodssold"),
+        SearchRankingHelper.exactMatchTexts(List.of(rawQuery, significantQuery)));
   }
 
   @Test
@@ -92,6 +141,18 @@ class SearchRankingHelperTest {
     assertEquals("Warehouse", significantQuery);
     assertEquals(
         List.of("Warehouse", "warehouse"), SearchRankingHelper.exactMatchTexts(significantQuery));
+  }
+
+  @Test
+  void unescapePlainTextQueryRemovesUiEscapes() {
+    assertEquals(
+        "pw-ml-model-service.pw-mlmodel",
+        SearchRankingHelper.unescapePlainTextQuery("pw\\-ml\\-model\\-service.pw\\-mlmodel"));
+    assertEquals(
+        "customer:orders (daily)",
+        SearchRankingHelper.unescapePlainTextQuery("customer\\:orders \\(daily\\)"));
+    assertEquals("path\\name", SearchRankingHelper.unescapePlainTextQuery("path\\\\name"));
+    assertNull(SearchRankingHelper.unescapePlainTextQuery(null));
   }
 
   @Test
@@ -208,5 +269,38 @@ class SearchRankingHelperTest {
     assertNull(
         SearchRankingHelper.stageSearchAnalyzer(
             new RankingStage().withFields(List.of("name", "name.ngram"))));
+  }
+
+  @Test
+  void signalFieldEnabledUsesRankingSignalsAllowList() {
+    RankingConfiguration ranking =
+        new RankingConfiguration()
+            .withSignals(
+                new RankingSignals()
+                    .withFields(List.of("tier.tagFQN", "usageSummary.weeklyStats.percentileRank")));
+
+    assertTrue(SearchRankingHelper.signalFieldEnabled(ranking, "tier.tagFQN"));
+    assertFalse(SearchRankingHelper.signalFieldEnabled(ranking, "usageSummary.weeklyStats.count"));
+    assertTrue(
+        SearchRankingHelper.signalFieldEnabled(new RankingConfiguration(), "unlisted.signal"));
+  }
+
+  @Test
+  void stageFieldWeightsNormalizeConfiguredSearchFieldBoosts() {
+    RankingStage stage =
+        new RankingStage().withFields(List.of("displayName", "name", "description"));
+    AssetTypeConfiguration assetConfig =
+        new AssetTypeConfiguration()
+            .withSearchFields(
+                List.of(
+                    new FieldBoost().withField("displayName").withBoost(20.0),
+                    new FieldBoost().withField("name").withBoost(10.0),
+                    new FieldBoost().withField("description").withBoost(1.0)));
+
+    Map<String, Float> weights = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
+
+    assertEquals(1.25F, weights.get("displayName"));
+    assertEquals(1.0F, weights.get("name"));
+    assertEquals(0.775F, weights.get("description"));
   }
 }

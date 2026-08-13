@@ -298,6 +298,8 @@ export function getEntityTypeString(type: string) {
       return t('label.domain-lowercase');
     case AssetsOfEntity.TAG:
       return t('label.tag-lowercase');
+    case AssetsOfEntity.TEAM:
+      return t('label.team-lowercase');
     default:
       return t('label.data-product-lowercase');
   }

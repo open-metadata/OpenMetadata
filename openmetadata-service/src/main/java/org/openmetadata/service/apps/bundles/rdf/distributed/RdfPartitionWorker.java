@@ -28,8 +28,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.rdf.RdfIndexingFields;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 public class RdfPartitionWorker {
@@ -245,7 +245,7 @@ public class RdfPartitionWorker {
 
   private ResultList<? extends EntityInterface> readEntitiesKeyset(
       String entityType, String keysetCursor, int limit) throws SearchIndexException {
-    List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
+    List<String> fields = RdfIndexingFields.forEntityType(entityType);
     PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);
     return source.readNextKeyset(keysetCursor);
   }

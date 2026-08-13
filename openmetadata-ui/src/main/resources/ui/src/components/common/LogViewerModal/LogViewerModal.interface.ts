@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { StreamHealth } from '../../../utils/SseStreamUtils';
+
 export type LogViewerStatusTone = 'success' | 'error' | 'warning' | 'muted';
 
 export interface LogViewerStatus {
@@ -32,10 +34,28 @@ export interface LogViewerModalBaseProps {
   totalLines?: number;
   runId?: string;
   lastRun?: string;
+  // Infinite-scroll pagination: the caller owns fetching/paging and appends to
+  // `logs`; the modal invokes `onLoadMore` when the viewport nears the bottom.
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  // Shows a loader in place of the download button while a download is running.
+  downloading?: boolean;
+  // The full log text. The caller grows this as the run produces output.
+  logs: string;
+  // 'stream' means the underlying run is LIVE: the modal shows the live
+  // indicator and auto-follows the tail. The caller grows `logs` while the run
+  // is active — over SSE where the deployment supports it, otherwise by polling
+  // — then flips back to 'static' once the run reaches a terminal state.
+  mode?: 'static' | 'stream';
+  // Transport state of the SSE tail, when one is in use. 'connecting' after a
+  // drop shows a reconnecting indicator in place of the live dot.
+  streamHealth?: StreamHealth;
+  // The server could not replay the whole backlog: what is shown starts partway
+  // through the run and the rest has to come from the download.
+  streamTruncated?: boolean;
+  // A message from the server explaining why the tail stopped.
+  streamError?: string | null;
 }
 
-export type LogViewerModalProps = LogViewerModalBaseProps &
-  (
-    | { mode?: 'static'; logs: string; fqn?: never }
-    | { mode: 'stream'; fqn: string; runId: string; logs?: string }
-  );
+export type LogViewerModalProps = LogViewerModalBaseProps;

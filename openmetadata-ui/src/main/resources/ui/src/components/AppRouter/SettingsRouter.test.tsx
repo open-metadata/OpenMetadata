@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
 import SettingsRouter from './SettingsRouter';
 
 jest.mock('../../pages/AddNotificationPage/AddNotificationPage', () => ({
@@ -74,10 +75,23 @@ jest.mock(
 
 jest.mock(
   '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage',
-  () => ({
-    __esModule: true,
-    default: jest.fn().mockReturnValue(<div>GlobalSettingCategoryPage</div>),
-  })
+  () => {
+    // Surfaces the route param because the real page resolves all of its content from it. A mock
+    // that ignores params renders the same for a working route and for one that dropped
+    // `:settingCategory` — which is exactly how a blank settings page slipped through.
+    const { useParams } = jest.requireActual('react-router-dom');
+
+    // Named, uppercase, so react-hooks/rules-of-hooks recognises it as a component rather than a
+    // bare arrow calling a hook.
+    const GlobalSettingCategoryPageMock = () => (
+      <div>GlobalSettingCategoryPage:{useParams().settingCategory}</div>
+    );
+
+    return {
+      __esModule: true,
+      default: GlobalSettingCategoryPageMock,
+    };
+  }
 );
 
 jest.mock('../../pages/GlobalSettingPage/GlobalSettingPage', () => ({
@@ -448,5 +462,82 @@ describe.skip('SettingsRouter', () => {
     );
 
     expect(await screen.findByText('AlertDetailsPage')).toBeInTheDocument();
+  });
+});
+
+// The suite above is `describe.skip` at HEAD, so a case added there would never execute. This
+// block is separate so the route guard is actually exercised.
+describe('SettingsRouter services routes', () => {
+  const renderAt = (entry: string) =>
+    render(
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route element={<SettingsRouter />} path="/settings/*" />
+          <Route element={<div>NotFound</div>} path="/404" />
+        </Routes>
+      </MemoryRouter>
+    );
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // Both paths, because they are matched by different routes: `services/:tab` by the explicit
+  // services route and bare `services` by the generic `/settings/:settingCategory` one. An earlier
+  // fix guarded only the first, so `/settings/services` still rendered the listing.
+  it.each(['/settings/services/databases', '/settings/services'])(
+    'treats %s as not found when an app mode has replaced the listing',
+    async (entry) => {
+      jest
+        .spyOn(connectionsRouterClassBase, 'isServicesSettingsRouteDisabled')
+        .mockReturnValue(true);
+
+      renderAt(entry);
+
+      expect(await screen.findByText('NotFound')).toBeInTheDocument();
+      expect(screen.queryByText('ServicesPage')).not.toBeInTheDocument();
+    }
+  );
+
+  it('still renders /settings/services/databases by default', async () => {
+    jest
+      .spyOn(connectionsRouterClassBase, 'isServicesSettingsRouteDisabled')
+      .mockReturnValue(false);
+
+    renderAt('/settings/services/databases');
+
+    expect(await screen.findByText('ServicesPage')).toBeInTheDocument();
+    expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+  });
+
+  // The guard must not cost the route its `:settingCategory` param — the category page has nothing
+  // to render without it, which looked like a blank settings page rather than a routing mistake.
+  it('still renders /settings/services with its category param intact', async () => {
+    jest
+      .spyOn(connectionsRouterClassBase, 'isServicesSettingsRouteDisabled')
+      .mockReturnValue(false);
+
+    renderAt('/settings/services');
+
+    expect(
+      await screen.findByText('GlobalSettingCategoryPage:services')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
+  });
+
+  // Regression: this was gated on isEmbeddedMode(), which is also true while Classic is merely
+  // showing an embedded experience. Classic's own Settings > Services 404'd from then on.
+  it('keeps the services page while an embedded experience is only being displayed', async () => {
+    jest
+      .spyOn(connectionsRouterClassBase, 'isEmbeddedMode')
+      .mockReturnValue(true);
+    jest
+      .spyOn(connectionsRouterClassBase, 'isServicesSettingsRouteDisabled')
+      .mockReturnValue(false);
+
+    renderAt('/settings/services/databases');
+
+    expect(await screen.findByText('ServicesPage')).toBeInTheDocument();
+    expect(screen.queryByText('NotFound')).not.toBeInTheDocument();
   });
 });

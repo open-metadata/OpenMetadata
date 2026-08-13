@@ -10,17 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { Tooltip, Tree, TreeProps, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isString, isUndefined } from 'lodash';
+import { get, isEmpty, isString, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
@@ -28,6 +27,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { postAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
@@ -67,6 +67,10 @@ import {
   ExploreTreeProps,
   TreeNodeData,
 } from './ExploreTree.interface';
+
+const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
+const SERVICE_STYLE_TOP_HITS_SIZE = 1;
+
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   const tooltipText = node.tooltip ?? node.title;
 
@@ -100,6 +104,61 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
     </Tooltip>
   );
 };
+
+const getServiceStyleIcon = (bucket: Bucket) => {
+  const iconURL = get(
+    bucket,
+    [
+      'top_hits#top',
+      'hits',
+      'hits',
+      0,
+      '_source',
+      'service',
+      'style',
+      'iconURL',
+    ],
+    ''
+  );
+
+  return isString(iconURL) && !isEmpty(iconURL) ? iconURL : undefined;
+};
+
+export const getExploreTreeAggregationResponse = async ({
+  bucketToFind,
+  countQueryFilter,
+  searchQueryParam,
+}: {
+  bucketToFind: EntityFields;
+  countQueryFilter: Record<string, unknown>;
+  searchQueryParam: string;
+}) =>
+  bucketToFind === EntityFields.SERVICE
+    ? (
+        await postAggregateFieldOptions({
+          query: JSON.stringify(countQueryFilter),
+          queryText: searchQueryParam,
+          fieldName: bucketToFind,
+          fieldValue: '',
+          index: SearchIndex.DATA_ASSET,
+          deleted: false,
+          size: Number(SIZE.X_LARGE),
+          sourceFields: SERVICE_STYLE_SOURCE_FIELDS,
+          topHits: {
+            size: SERVICE_STYLE_TOP_HITS_SIZE,
+          },
+        })
+      ).data
+    : searchQuery({
+        query: searchQueryParam ?? '',
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: countQueryFilter,
+        searchIndex: SearchIndex.DATA_ASSET,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
 
 const ExploreTree = ({
   additionalQueryFilter,
@@ -216,15 +275,10 @@ const ExploreTree = ({
           activeQueryFilter: additionalQueryFilter,
         });
 
-        const res = await searchQuery({
-          query: searchQueryParam ?? '',
-          pageNumber: 0,
-          pageSize: 0,
-          queryFilter: countQueryFilter,
-          searchIndex: SearchIndex.DATA_ASSET,
-          includeDeleted: false,
-          trackTotalHits: true,
-          fetchSource: false,
+        const res = await getExploreTreeAggregationResponse({
+          bucketToFind,
+          countQueryFilter,
+          searchQueryParam,
         });
 
         const aggregations = getAggregations(res.aggregations);
@@ -254,7 +308,7 @@ const ExploreTree = ({
           let type = null;
           let logo = undefined;
           if (isEntityType) {
-            const iconClass = 'service-icon w-4 h-4 tw:text-quaternary';
+            const iconClass = 'service-icon w-4 h-4';
             logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
               <></>
             );
@@ -262,7 +316,7 @@ const ExploreTree = ({
             const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
             logo = (
               <img
-                alt="logo"
+                alt={t('label.service')}
                 src={serviceIcon}
                 style={{ width: 18, height: 18 }}
               />
@@ -271,7 +325,7 @@ const ExploreTree = ({
             type = 'Database';
             logo = searchClassBase.getEntityIcon(
               'database',
-              'service-icon w-4 h-4 tw:text-quaternary'
+              'service-icon w-4 h-4'
             ) ?? <></>;
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
@@ -279,10 +333,19 @@ const ExploreTree = ({
             type = 'Database Schema';
             logo = searchClassBase.getEntityIcon(
               'databaseSchema',
-              'service-icon w-4 h-4 tw:text-quaternary'
+              'service-icon w-4 h-4'
             ) ?? <></>;
           } else if (bucketToFind === EntityFields.SERVICE) {
-            logo = treeNode.icon;
+            const serviceIcon = getServiceStyleIcon(bucket);
+            logo = serviceIcon ? (
+              <img
+                alt={t('label.service')}
+                src={serviceIcon}
+                style={{ width: 18, height: 18 }}
+              />
+            ) : (
+              treeNode.icon
+            );
           }
 
           if (bucket.key.toLowerCase() === defaultServiceType) {
@@ -341,7 +404,11 @@ const ExploreTree = ({
   );
 
   const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
-    return expanded ? <IconDown /> : <IconRight />;
+    return expanded ? (
+      <ChevronDown className="tw:text-fg-tertiary!" />
+    ) : (
+      <ChevronRight className="tw:text-fg-tertiary!" />
+    );
   }, []);
 
   const onNodeSelect: TreeProps<DataNode>['onSelect'] = useCallback(

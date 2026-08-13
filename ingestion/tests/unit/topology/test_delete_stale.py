@@ -50,7 +50,7 @@ class TestDeleteStaleEntitiesMixin:
     def test_builds_request_and_returns_result(self):
         metadata = MagicMock()
         metadata.get_suffix.return_value = "/tables"
-        metadata.client.put.return_value = {
+        metadata.client.delete.return_value = {
             "status": "success",
             "numberOfRowsProcessed": 1,
             "numberOfRowsPassed": 1,
@@ -66,10 +66,10 @@ class TestDeleteStaleEntitiesMixin:
         )
 
         assert isinstance(result, BulkOperationResult)
-        metadata.client.put.assert_called_once()
+        metadata.client.delete.assert_called_once()
         url, kwargs = (
-            metadata.client.put.call_args.args[0],
-            metadata.client.put.call_args.kwargs,
+            metadata.client.delete.call_args.args[0],
+            metadata.client.delete.call_args.kwargs,
         )
         assert url == "/tables/deleteStale"
         body = kwargs["json"]
@@ -84,7 +84,7 @@ class TestDeleteStaleEntitiesMixin:
         metadata.get_suffix.return_value = "/tables"
         http_error = MagicMock()
         http_error.response.status_code = 404
-        metadata.client.put.side_effect = APIError({"message": "not found"}, http_error)
+        metadata.client.delete.side_effect = APIError({"message": "not found"}, http_error)
 
         result = OpenMetadata.delete_stale_entities(
             metadata,
@@ -101,7 +101,7 @@ class TestDeleteStaleEntitiesMixin:
         metadata.get_suffix.return_value = "/tables"
         http_error = MagicMock()
         http_error.response.status_code = 500
-        metadata.client.put.side_effect = APIError({"message": "boom"}, http_error)
+        metadata.client.delete.side_effect = APIError({"message": "boom"}, http_error)
 
         with pytest.raises(APIError):
             OpenMetadata.delete_stale_entities(
@@ -116,7 +116,7 @@ class TestDeleteStaleEntitiesMixin:
         (zero rows), which the client passes through so the caller does not fall back to legacy."""
         metadata = MagicMock()
         metadata.get_suffix.return_value = "/tables"
-        metadata.client.put.return_value = {
+        metadata.client.delete.return_value = {
             "status": "success",
             "numberOfRowsProcessed": 0,
             "numberOfRowsPassed": 0,

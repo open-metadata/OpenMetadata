@@ -13,6 +13,7 @@
 import { Button } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
+  Check,
   CheckCircle,
   Download01,
   Minus,
@@ -23,7 +24,7 @@ import {
   XClose,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, kebabCase } from 'lodash';
 import {
   FC,
   SVGProps,
@@ -60,6 +61,8 @@ const TERMINAL_STATUSES: CsvAsyncJobStatus[] = [
   'CANCELLED',
 ];
 
+const ACTIVE_JOBS_POLL_INTERVAL_MS = 5000;
+
 type StatusVariant = 'running' | 'success' | 'error';
 
 const getStatusVariant = (status: CsvAsyncJobStatus): StatusVariant => {
@@ -93,10 +96,19 @@ export const CsvJobsTray = () => {
   const [open, setOpen] = useState(false);
   const [cancellingJobId, setCancellingJobId] = useState<string>();
   const [downloadingJobId, setDownloadingJobId] = useState<string>();
+  const [downloadedJobIds, setDownloadedJobIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  // Jobs whose result the server no longer holds — released by retention, or
+  // produced before results moved into the shared job row.
+  const [expiredJobIds, setExpiredJobIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
     () => new Set()
   );
   const hasLoadedInitialJobs = useRef(false);
+  const autoOpenedJobIds = useRef<Set<string>>(new Set());
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -142,6 +154,21 @@ export const CsvJobsTray = () => {
     [visibleJobs]
   );
 
+  const hasActiveJobs = !isEmpty(activeJobs);
+
+  useEffect(() => {
+    const newlyFinished = visibleJobs.filter(
+      (job) =>
+        TERMINAL_STATUSES.includes(job.status) &&
+        !autoOpenedJobIds.current.has(job.jobId)
+    );
+
+    if (!isEmpty(newlyFinished)) {
+      newlyFinished.forEach((job) => autoOpenedJobIds.current.add(job.jobId));
+      setOpen(true);
+    }
+  }, [visibleJobs]);
+
   const handleCancel = useCallback(async (jobId: string) => {
     try {
       setCancellingJobId(jobId);
@@ -158,25 +185,47 @@ export const CsvJobsTray = () => {
     }
   }, []);
 
-  const handleDownload = useCallback(async (job: CsvAsyncJob) => {
-    try {
-      setDownloadingJobId(job.jobId);
-      const csvData = await getCsvAsyncJobResult(job.jobId);
-      const blob = new Blob([csvData], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${job.entityType}-${job.jobId}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setDownloadingJobId(undefined);
-    }
-  }, []);
+  const handleDownload = useCallback(
+    async (job: CsvAsyncJob) => {
+      try {
+        setDownloadingJobId(job.jobId);
+        const csvData = await getCsvAsyncJobResult(job.jobId);
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${job.entityType}-${job.jobId}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setDownloadedJobIds((current) => {
+          const next = new Set(current);
+          next.add(job.jobId);
+
+          return next;
+        });
+      } catch (error) {
+        // A 404 means the payload was released to reclaim storage, or the job
+        // predates result sharing. The row stays Completed but is not downloadable,
+        // so say that instead of surfacing the raw server message.
+        if ((error as AxiosError).response?.status === 404) {
+          setExpiredJobIds((current) => {
+            const next = new Set(current);
+            next.add(job.jobId);
+
+            return next;
+          });
+          showErrorToast(t('message.export-result-no-longer-available'));
+        } else {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        setDownloadingJobId(undefined);
+      }
+    },
+    [t]
+  );
 
   const handleDismiss = useCallback((jobId: string) => {
     setDismissedJobIds((current) => {
@@ -219,6 +268,39 @@ export const CsvJobsTray = () => {
     };
   }, [fetchJobs]);
 
+  // The websocket only reaches sockets held by the server that ran the job, so in
+  // a multi-server deployment the completion event is often delivered to a peer.
+  // Polling while work is outstanding is what actually keeps the tray truthful;
+  // the socket subscription above is just the fast path.
+  useEffect(() => {
+    if (!hasActiveJobs) {
+      return;
+    }
+
+    // Self-scheduling rather than setInterval: the next poll is queued only once
+    // the previous one settles, so a slow response cannot stack up concurrent
+    // requests racing to set the same state.
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const scheduleNextPoll = () => {
+      timeoutId = setTimeout(async () => {
+        await fetchJobs();
+
+        if (!cancelled) {
+          scheduleNextPoll();
+        }
+      }, ACTIVE_JOBS_POLL_INTERVAL_MS);
+    };
+
+    scheduleNextPoll();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [hasActiveJobs, fetchJobs]);
+
   const handleOpen = useCallback(() => {
     setOpen(true);
     fetchJobs();
@@ -229,7 +311,10 @@ export const CsvJobsTray = () => {
   }
 
   const renderJobTitle = (job: CsvAsyncJob) => {
-    const entityLabel = t(`label.${job.entityType}-plural`, {
+    // Job entity types are camelCase (dataAsset, databaseSchema) while the label
+    // keys are kebab-case, so look up the kebab form or every multi-word entity
+    // falls through to the raw type — "Exported dataAsset".
+    const entityLabel = t(`label.${kebabCase(job.entityType)}-plural`, {
       defaultValue: job.entityType,
     });
 
@@ -299,7 +384,11 @@ export const CsvJobsTray = () => {
       );
     }
 
-    if (job.status === 'COMPLETED' && job.operation === 'EXPORT') {
+    if (
+      job.status === 'COMPLETED' &&
+      job.operation === 'EXPORT' &&
+      !expiredJobIds.has(job.jobId)
+    ) {
       return (
         <Button
           className="csv-jobs-tray-action"
@@ -327,7 +416,7 @@ export const CsvJobsTray = () => {
   return (
     <div className="csv-jobs-tray">
       {open && (
-        <div className="csv-jobs-tray-popover">
+        <div className="csv-jobs-tray-popover tw:w-100!">
           <div className="csv-jobs-tray-header">
             <div className="csv-jobs-tray-title-wrap">
               <h3>{t('label.background-job-plural')}</h3>
@@ -348,7 +437,7 @@ export const CsvJobsTray = () => {
               </Button>
             )}
             <Button
-              className="csv-jobs-tray-close"
+              className="csv-jobs-tray-close tw:-mr-1.5"
               color="link-gray"
               iconLeading={Minus}
               onPress={() => setOpen(false)}
@@ -368,26 +457,30 @@ export const CsvJobsTray = () => {
                     <span className="csv-jobs-tray-kind-icon">
                       {variant === 'running' ? (
                         renderStatusIcon(job)
+                      ) : downloadedJobIds.has(job.jobId) ? (
+                        <Check size={16} />
                       ) : (
                         <KindIcon size={16} />
                       )}
                     </span>
                     <div className="csv-jobs-tray-body">
-                      <span className="csv-jobs-tray-title">
-                        {renderJobTitle(job)}
+                      <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1.5">
+                        <span className="csv-jobs-tray-title tw:min-w-0">
+                          {renderJobTitle(job)}
+                        </span>
+                        {variant !== 'running' && (
+                          <span
+                            aria-hidden="true"
+                            className={`csv-jobs-tray-state csv-jobs-tray-state-${variant} tw:shrink-0`}>
+                            {renderStatusIcon(job)}
+                          </span>
+                        )}
                       </span>
                       <span className="csv-jobs-tray-sub">
                         {renderJobSubLine(job)}
                       </span>
                     </div>
                     <div className="csv-jobs-tray-actions">
-                      {variant !== 'running' && (
-                        <span
-                          aria-hidden="true"
-                          className={`csv-jobs-tray-state csv-jobs-tray-state-${variant}`}>
-                          {renderStatusIcon(job)}
-                        </span>
-                      )}
                       {renderJobRowActions(job)}
                     </div>
                   </div>
@@ -405,20 +498,38 @@ export const CsvJobsTray = () => {
           </div>
         </div>
       )}
-      {!open && (
+      {!open && !isEmpty(visibleJobs) && (
         <div className="csv-jobs-tray-launcher-wrap">
           <button
             className="csv-jobs-tray-launcher"
             type="button"
             onClick={handleOpen}>
-            <span className="csv-jobs-tray-launcher-count">
-              {activeJobs.length || visibleJobs.length}
-            </span>
-            <span className="csv-jobs-tray-launcher-label">
-              {activeJobs.length > 0
-                ? t('label.count-jobs-running', { count: activeJobs.length })
-                : t('label.background-job-plural')}
-            </span>
+            {activeJobs.length > 0 ? (
+              <>
+                <span className="csv-jobs-tray-launcher-count">
+                  {activeJobs.length}
+                </span>
+                <span className="csv-jobs-tray-launcher-label">
+                  {t('label.count-jobs-running', { count: activeJobs.length })}
+                  <span
+                    aria-hidden
+                    className="tw:ml-1 tw:inline-flex tw:items-end tw:gap-0.5 tw:align-text-bottom">
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current" />
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:150ms]" />
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:300ms]" />
+                  </span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="csv-jobs-tray-launcher-count">
+                  {visibleJobs.length}
+                </span>
+                <span className="csv-jobs-tray-launcher-label">
+                  {t('label.background-job-plural')}
+                </span>
+              </>
+            )}
           </button>
         </div>
       )}

@@ -13,6 +13,10 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  TEST_CASE_LAST_RUN_BANNER_TEST_IDS,
+  type TestCaseLastRunBannerStatus,
+} from '../constant/dataQuality';
 import { TableClass } from '../support/entity/TableClass';
 import {
   fetchCompletedCsvAsyncJobResult,
@@ -45,6 +49,17 @@ export const getFailedRowsData = (table: TableClass) => {
       return row.slice(0, columnCount);
     }),
   };
+};
+
+export const verifyTestCaseLastRunBanner = async (
+  page: Page,
+  status: TestCaseLastRunBannerStatus
+) => {
+  const banner = page.getByTestId(TEST_CASE_LAST_RUN_BANNER_TEST_IDS[status]);
+
+  await expect(banner).toBeVisible();
+
+  return banner;
 };
 
 type CsvExportResponse = {
@@ -187,7 +202,6 @@ export const confirmIngestionPipelineHardDelete = async (page: Page) => {
   const deleteResponse = page.waitForResponse(
     '/api/v1/services/ingestionPipelines/*?hardDelete=true'
   );
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
   await page.getByTestId('confirm-button').click();
   await deleteResponse;
 };

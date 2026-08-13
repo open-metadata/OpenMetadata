@@ -52,6 +52,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     )
   ),
   Dot: jest.fn(() => <span />),
+  EmptyPlaceholder: jest.fn(({ title }: { title?: React.ReactNode }) => (
+    <div data-testid="empty-placeholder">{title}</div>
+  )),
   Dropdown: {
     Root: jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -129,10 +132,20 @@ describe('MemoriesView', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders no-data message when data is empty and not loading', () => {
-    render(<MemoriesView data={[]} isLoading={false} />);
+  it('renders filter empty placeholder when filtered and data is empty', () => {
+    render(<MemoriesView isFiltered data={[]} isLoading={false} />);
 
-    expect(screen.getByText('label.no-entity-available')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByText('label.no-results-for-filters')
+    ).toBeInTheDocument();
+  });
+
+  it('renders search empty placeholder when searching and data is empty', () => {
+    render(<MemoriesView isSearching data={[]} isLoading={false} />);
+
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('label.no-matching-results')).toBeInTheDocument();
   });
 
   it('renders skeletons when isLoading is true', () => {

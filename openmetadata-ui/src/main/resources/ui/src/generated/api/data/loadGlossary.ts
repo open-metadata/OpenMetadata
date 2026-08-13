@@ -348,6 +348,10 @@ export interface CreateGlossaryTermRequest {
      */
     displayName?: string;
     /**
+     * Fully qualified names of the domains the Glossary Term belongs to.
+     */
+    domains?: string[];
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;

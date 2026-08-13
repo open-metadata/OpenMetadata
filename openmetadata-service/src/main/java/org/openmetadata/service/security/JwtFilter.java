@@ -47,6 +47,7 @@ import java.net.URL;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -83,6 +84,10 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
+  public static final String IMPERSONATE_USER_HEADER = "X-Impersonate-User";
+  public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
+  private static final Set<String> NATIVE_PASSWORD_PROVIDER_VALUES =
+      Set.of(AuthProvider.BASIC.value(), AuthProvider.OPENMETADATA.value());
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -146,10 +151,21 @@ public class JwtFilter implements ContainerRequestFilter {
       List<String> jwtPrincipalClaims,
       String principalDomain,
       boolean enforcePrincipalDomain) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, enforcePrincipalDomain, null);
+  }
+
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      boolean enforcePrincipalDomain,
+      AuthProvider providerType) {
     this.jwkProvider = jwkProvider;
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.providerType = providerType;
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
@@ -164,6 +180,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     ImpersonationContext.clear();
+    ActivePersonaContext.clear();
 
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
@@ -178,7 +195,8 @@ public class JwtFilter implements ContainerRequestFilter {
               jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
       boolean isBotUser = isBot(claims);
 
-      String impersonateUser = requestContext.getHeaderString("X-Impersonate-User");
+      String impersonateUser = requestContext.getHeaderString(IMPERSONATE_USER_HEADER);
+      String activePersona = requestContext.getHeaderString(ACTIVE_PERSONA_HEADER);
       String impersonatedBy = null;
 
       if (impersonateUser != null && !impersonateUser.isEmpty()) {
@@ -209,7 +227,8 @@ public class JwtFilter implements ContainerRequestFilter {
               SecurityContext.DIGEST_AUTH,
               getUserRolesFromClaims(claims, isBotUser),
               isBotUser,
-              impersonatedBy);
+              impersonatedBy,
+              activePersona);
       LOG.debug("SecurityContext {}", catalogSecurityContext);
       requestContext.setSecurityContext(catalogSecurityContext);
 
@@ -218,8 +237,10 @@ public class JwtFilter implements ContainerRequestFilter {
       } else {
         ImpersonationContext.clear();
       }
+      ActivePersonaContext.setActivePersona(activePersona);
     } catch (Throwable t) {
       ImpersonationContext.clear();
+      ActivePersonaContext.clear();
       throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
@@ -411,11 +432,51 @@ public class JwtFilter implements ContainerRequestFilter {
         || !session.getUsername().equalsIgnoreCase(userName)) {
       throw AuthenticationException.getInvalidTokenException("Invalid session.");
     }
+    validateSessionProviderIsCurrent(session);
     try {
       sessionService.recordSessionAccess(session);
     } catch (Exception e) {
       LOG.warn("Failed to record session access for session {}", session.getId(), e);
     }
+  }
+
+  /**
+   * Sessions record the provider that authenticated them. Swapping {@code AUTHENTICATION_PROVIDER}
+   * decommissions that provider, so sessions minted under it must stop working immediately instead of
+   * living on until natural expiry — otherwise off-boarding a user by moving IdPs leaves their old
+   * token valid for up to a week. Checked per request against this pod's current config, so it holds
+   * on every pod without a session sweep.
+   */
+  private void validateSessionProviderIsCurrent(UserSession session) {
+    String sessionProvider = session.getProvider();
+    if (nullOrEmpty(sessionProvider) || providerType == null) {
+      return;
+    }
+    if (!isSameProvider(sessionProvider, providerType.value())) {
+      LOG.warn(
+          "Rejecting session {} issued by provider {} — the configured provider is now {}",
+          SessionService.truncateId(session.getId()),
+          sessionProvider,
+          providerType.value());
+      throw AuthenticationException.getInvalidTokenException(
+          "Session was issued by a provider that is no longer configured.");
+    }
+  }
+
+  /**
+   * {@code basic} and {@code openmetadata} are two historical names for the same native-password
+   * authenticator — {@code SecurityConfigurationManager.isNativePasswordProvider} treats them
+   * interchangeably and one servlet handler serves both. Renaming one to the other is not a provider
+   * swap and must not log the whole deployment out.
+   */
+  private static boolean isSameProvider(String sessionProvider, String configuredProvider) {
+    return sessionProvider.equalsIgnoreCase(configuredProvider)
+        || (isNativePasswordProviderValue(sessionProvider)
+            && isNativePasswordProviderValue(configuredProvider));
+  }
+
+  private static boolean isNativePasswordProviderValue(String provider) {
+    return NATIVE_PASSWORD_PROVIDER_VALUES.contains(provider.toLowerCase(Locale.ROOT));
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {

@@ -56,7 +56,7 @@ jest.mock('../../../../../utils/RouterUtils', () => ({
   getUserPath: jest.fn((userName) => `/users/${userName}`),
 }));
 
-jest.mock('../../../../../utils/TableUtils', () => ({
+jest.mock('../../../../../utils/EntityIconUtils', () => ({
   getEntityIcon: jest.fn(() => <div data-testid="entity-icon">EntityIcon</div>),
 }));
 

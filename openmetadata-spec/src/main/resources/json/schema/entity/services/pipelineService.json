@@ -31,6 +31,7 @@
         "Spline",
         "Spark",
         "OpenLineage",
+        "Prefect",
         "KafkaConnect",
         "DBTCloud",
         "Matillion",
@@ -85,6 +86,9 @@
         },
         {
           "name": "OpenLineage"
+        },
+        {
+          "name": "Prefect"
         },
         {
           "name": "KafkaConnect"
@@ -181,6 +185,9 @@
               "$ref": "./connections/pipeline/openLineageConnection.json"
             },
             {
+              "$ref": "./connections/pipeline/prefectConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/kafkaConnectConnection.json"
             },
             {
@@ -265,6 +272,9 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",

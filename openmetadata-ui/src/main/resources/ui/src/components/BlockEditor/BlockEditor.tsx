@@ -39,6 +39,7 @@ import {
 } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import './Extensions/File/file-node.less';
+import { slashMenuPluginKey } from './Extensions/slash-command';
 import { useCustomEditor } from './hooks/useCustomEditor';
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
@@ -65,6 +66,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       handleFileUpload,
       errorMessage,
       handleErrorMessage,
+      isPopoverOpenRef,
     } = useEntityAttachment();
 
     const editorWrapperRef = useRef<HTMLDivElement>(null);
@@ -200,14 +202,44 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         return;
       }
 
+      const htmlContent = formatClientContent(content);
+
+      // Skip re-applying content that is already in the editor (e.g. the
+      // autosave round-trip echoing back the same description). Calling
+      // setContent unconditionally forces a full document replace, which
+      // tears down NodeViews and resets Suggestion-plugin state, closing
+      // any open popover or the slash-command menu with no user action.
+      if (
+        formatServerContent(editor?.getHTML()) ===
+        formatServerContent(htmlContent)
+      ) {
+        return;
+      }
+
+      // Never replace editor content while the slash-command popup or a
+      // NodeView-hosted popover (e.g. the image/file Link-Upload popover) is
+      // open. An external content update (e.g. an autosave round-trip) would
+      // otherwise tear down the Suggestion plugin state or remount the
+      // NodeView, closing the popup with no user action, regardless of
+      // whether the HTML strings above happen to differ.
+      if (
+        slashMenuPluginKey?.getState(editor?.state)?.active ||
+        isPopoverOpenRef?.current
+      ) {
+        return;
+      }
+
       // We use setTimeout to avoid any flushSync console errors as
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-      setTimeout(() => {
-        if (content !== undefined) {
-          const htmlContent = formatClientContent(content);
+      // The editor is destroyed on unmount, so a timer left pending past this
+      // effect would call updateState on a torn-down ProseMirror view.
+      const timer = setTimeout(() => {
+        if (!editor.isDestroyed) {
           setEditorContent(editor, htmlContent);
         }
       });
+
+      return () => clearTimeout(timer);
     }, [content, editor]);
 
     // this effect to handle the editable state
@@ -222,7 +254,13 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       // We use setTimeout to avoid any flushSync console errors as
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-      setTimeout(() => editor.setEditable(editable));
+      const timer = setTimeout(() => {
+        if (!editor.isDestroyed) {
+          editor.setEditable(editable);
+        }
+      });
+
+      return () => clearTimeout(timer);
     }, [editable, editor]);
 
     // this effect to handle the RTL and LTR direction

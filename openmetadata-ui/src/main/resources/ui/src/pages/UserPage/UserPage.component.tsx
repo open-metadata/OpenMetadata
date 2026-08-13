@@ -163,7 +163,7 @@ const UserPage = () => {
           // Omit the undefined values from the User object
           setUserData(omitBy(newUserData, isUndefined) as User);
         } else {
-          throw t('message.unexpected-error');
+          throw t('server.unexpected-error');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);

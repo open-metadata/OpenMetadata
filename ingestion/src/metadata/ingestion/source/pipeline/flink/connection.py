@@ -31,16 +31,9 @@ from metadata.ingestion.source.pipeline.flink.client import FlinkClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: FlinkConnectionConfig) -> FlinkClient:
-    """
-    Create connection
-    """
-    return FlinkClient(connection)
-
-
 class FlinkConnection(BaseConnection[FlinkConnectionConfig, FlinkClient]):
     def _get_client(self) -> FlinkClient:
-        return get_connection(self.service_connection)
+        return FlinkClient(self.service_connection)
 
     def test_connection(
         self,

@@ -16,16 +16,28 @@ import {
   Box,
   Button,
   Card,
+  EmptyPlaceholder,
   SlideoutMenu,
 } from '@openmetadata/ui-core-components';
 import { AlignLeft } from '@untitledui/icons';
+import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
-import { Agent, AgentRun, RunStatus } from '../AgentsPage.interface';
+import {
+  Agent,
+  AgentActionPermissions,
+  AgentRun,
+  RunStatus,
+} from '../AgentsPage.interface';
 import { useAgentRuns } from '../hooks/useAgentRuns';
-import { AGENT_TYPE_ICON, fmtNum, RUN_META } from '../utils/agents.utils';
+import {
+  AGENT_TYPE_ICON,
+  canRunAgent,
+  fmtNum,
+  RUN_META,
+} from '../utils/agents.utils';
 import RunGlyph from './RunGlyph.component';
 import RunStepRow from './RunStepRow.component';
 
@@ -80,9 +92,13 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
 
         return (
           <button
+            // Selection is a 2px brand border rather than an outward glow: the rail is
+            // `overflow-x-auto`, which forces the block axis to `auto` too, so anything drawn outside
+            // the card's box gets clipped. Unselected cards carry the same 2px width so selecting one
+            // doesn't resize it.
             className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border tw:px-3 tw:py-2.5 tw:text-left ${
               isSelected
-                ? 'tw:border-utility-brand-600 tw:bg-primary tw:ring-4 tw:ring-utility-brand-600/10'
+                ? 'tw:border-utility-brand-600 tw:bg-primary'
                 : 'tw:border-secondary tw:bg-secondary'
             }`}
             data-testid="run-history-item"
@@ -118,6 +134,10 @@ interface RunHistoryDrawerProps {
   agent: Agent;
   open: boolean;
   initialRunId?: string;
+  // Must be a stable reference (memoize with `useCallback`) — it feeds
+  // `useAgentRuns`' effect deps, so an inline function re-fetches every render.
+  fetchRuns?: () => Promise<AgentRun[]>;
+  permissions?: AgentActionPermissions;
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
@@ -127,12 +147,14 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   agent,
   open,
   initialRunId,
+  fetchRuns,
+  permissions,
   onClose,
   onOpenLogs,
   onRun,
 }) => {
   const { t } = useTranslation();
-  const { runs, isLoading } = useAgentRuns(agent.fqn, true);
+  const { runs, isLoading } = useAgentRuns(agent.fqn, true, fetchRuns);
   const [selId, setSelId] = useState<string | undefined>();
   const Icon = AGENT_TYPE_ICON[agent.type] ?? (() => null);
 
@@ -184,7 +206,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             </div>
           </div>
           <Button
-            className="tw:font-semibold tw:ring-secondary"
+            className="tw:font-semibold tw:after:outline-secondary"
             color="secondary"
             data-testid="raw-logs-button"
             iconLeading={<AlignLeft size={15} />}
@@ -192,15 +214,17 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             onClick={() => onOpenLogs(agent)}>
             {t('label.raw-logs')}
           </Button>
-          <Button
-            className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
-            color="secondary"
-            data-testid="drawer-run-now-button"
-            iconLeading={<PlayIcon height={14} width={14} />}
-            size="sm"
-            onClick={() => onRun(agent)}>
-            {t('label.run-now')}
-          </Button>
+          {canRunAgent(agent, permissions) && (
+            <Button
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+              color="secondary"
+              data-testid="drawer-run-now-button"
+              iconLeading={<PlayIcon height={14} width={14} />}
+              size="sm"
+              onClick={() => onRun(agent)}>
+              {t('label.run-now')}
+            </Button>
+          )}
         </Box>
       </SlideoutMenu.Header>
 
@@ -273,7 +297,9 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               variant="ghost">
               <Box
                 align="center"
-                className="tw:border-b tw:border-secondary tw:pb-2.5 tw:pt-3.5"
+                className={`tw:pb-2.5 tw:pt-3.5 ${
+                  isEmpty(run.steps) ? '' : 'tw:border-b tw:border-secondary'
+                }`}
                 justify="between">
                 <span className="tw:text-sm tw:font-semibold tw:text-secondary">
                   {t('label.steps')}
@@ -282,13 +308,26 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   {run.steps.length} {t('label.steps-lowercase')}
                 </span>
               </Box>
-              {run.steps.map((s, idx) => (
-                <RunStepRow
-                  isLast={idx === run.steps.length - 1}
-                  key={idx}
-                  step={s}
-                />
-              ))}
+              {isEmpty(run.steps) ? (
+                // EmptyPlaceholder's shell is absolutely positioned and fills its nearest
+                // positioned ancestor, so the host has to be relative and carry its own height.
+                <div
+                  className="tw:relative tw:min-h-[120px]"
+                  data-testid="run-steps-empty">
+                  <EmptyPlaceholder
+                    title={t('message.no-steps-available')}
+                    variant="blank"
+                  />
+                </div>
+              ) : (
+                run.steps.map((s, idx) => (
+                  <RunStepRow
+                    isLast={idx === run.steps.length - 1}
+                    key={idx}
+                    step={s}
+                  />
+                ))
+              )}
             </Card>
           </>
         ) : (

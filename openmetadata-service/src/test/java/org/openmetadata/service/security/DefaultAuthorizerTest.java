@@ -33,6 +33,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -44,6 +45,7 @@ class DefaultAuthorizerTest {
   @AfterEach
   void clearImpersonationState() {
     ImpersonationContext.clear();
+    ActivePersonaContext.clear();
     CatalogSecurityContext.clearThreadLocalImpersonatedUser();
   }
 
@@ -177,6 +179,32 @@ class DefaultAuthorizerTest {
           () -> authorizer.authorize(securityContext, operationContext, resourceContext));
 
       mockedPolicyEvaluator.verifyNoInteractions();
+    }
+  }
+
+  @Test
+  void authorizeDoesNotTreatSelfAssignedReviewerAsReviewerOnCreate() {
+    SecurityContext securityContext = securityContext("attacker");
+    SubjectContext attackerContext = subjectContext("attacker", false, false, null);
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getReviewers()).thenReturn(List.of(entityReference(Entity.USER, "attacker")));
+    CreateResourceContext<?> createResourceContext = mock(CreateResourceContext.class);
+    when(createResourceContext.getEntity()).thenReturn(entity);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_PRODUCT, MetadataOperation.CREATE);
+
+    try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      mockedAuthorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(attackerContext);
+
+      authorizer.authorize(securityContext, operationContext, createResourceContext);
+
+      mockedPolicyEvaluator.verify(
+          () ->
+              PolicyEvaluator.hasPermission(
+                  attackerContext, createResourceContext, operationContext));
     }
   }
 
@@ -609,7 +637,7 @@ class DefaultAuthorizerTest {
   }
 
   @Test
-  void getSubjectContextUsesCatalogAndThreadLocalImpersonationHints() {
+  void getSubjectContextUsesCatalogAndThreadLocalRequestHints() {
     SubjectContext subjectContext = subjectContext("alice", false, false, null);
     SubjectContext threadLocalContext = subjectContext("bob", false, false, null);
     CatalogSecurityContext catalogSecurityContext =
@@ -619,16 +647,18 @@ class DefaultAuthorizerTest {
             CatalogSecurityContext.OPENID_AUTH,
             Set.of(),
             false,
-            "bot-user");
+            "bot-user",
+            "persona-a");
     SecurityContext wrappedSecurityContext = securityContext("bob");
     ImpersonationContext.setImpersonatedBy("job-bot");
+    ActivePersonaContext.setActivePersona("persona-b");
 
     try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class)) {
       mockedSubjectContext
-          .when(() -> SubjectContext.getSubjectContext("alice", "bot-user"))
+          .when(() -> SubjectContext.getSubjectContext("alice", "bot-user", "persona-a"))
           .thenReturn(subjectContext);
       mockedSubjectContext
-          .when(() -> SubjectContext.getSubjectContext("bob", "job-bot"))
+          .when(() -> SubjectContext.getSubjectContext("bob", "job-bot", "persona-b"))
           .thenReturn(threadLocalContext);
 
       assertSame(subjectContext, DefaultAuthorizer.getSubjectContext(catalogSecurityContext));

@@ -26,8 +26,7 @@ export type AgentFields =
   | 'assets'
   | 'target'
   | 'eta'
-  | 'finishedAt'
-  | 'failStep';
+  | 'finishedAt';
 
 export const isTerminalProgressUpdate = (
   updateType: ProgressUpdateType
@@ -59,25 +58,55 @@ const computeAssets = (agent: Agent, update: ProgressUpdate): number => {
   return Math.max(candidate, agent.assets);
 };
 
+/**
+ * Sum of every counter's `total`, but only when all totals are known. Returns
+ * null when there are no counters or any total is still unknown, so callers can
+ * distinguish "no reliable target yet" from a genuine zero.
+ */
+const sumKnownCounterTotals = (counters?: GlobalCounter[]): number | null =>
+  counters?.length &&
+  counters.every(
+    (counter) => counter.total !== null && counter.total !== undefined
+  )
+    ? counters.reduce((sum, counter) => sum + (counter.total ?? 0), 0)
+    : null;
+
 const computeTarget = (
   agent: Agent,
   update: ProgressUpdate,
   assets: number
 ): number => {
-  const counters = update.globalCounters;
+  const knownTotal = sumKnownCounterTotals(update.globalCounters);
   let target = agent.target;
-  if (
-    counters?.length &&
-    counters.every(
-      (counter) => counter.total !== null && counter.total !== undefined
-    )
-  ) {
-    target = counters.reduce((sum, counter) => sum + (counter.total ?? 0), 0);
+  if (knownTotal !== null) {
+    target = knownTotal;
   } else if (target === 0 && assets > 0) {
     target = Math.max(assets, 1);
   }
 
   return target;
+};
+
+/**
+ * Progress percentage is derived purely from globalCounters (done vs total),
+ * never from totalAssetsIngested. The two live on different scales — done/total
+ * count entities that survive scope pruning, while totalAssetsIngested counts
+ * leaf assets — so mixing them yields a misleading percentage. Falls back to the
+ * previous pct when counters are absent or their totals are not all known, and
+ * stays monotonic so the bar never moves backwards.
+ */
+const computeProgressPct = (agent: Agent, update: ProgressUpdate): number => {
+  const counters = update.globalCounters ?? [];
+  const total = sumKnownCounterTotals(counters);
+  let raw = agent.pct;
+  if (total !== null && total > 0) {
+    raw = Math.min(
+      100,
+      Math.round((sumGlobalCounters(counters) / total) * 100)
+    );
+  }
+
+  return Math.max(raw, agent.pct);
 };
 
 const computeEta = (agent: Agent, update: ProgressUpdate): number | null =>
@@ -91,17 +120,14 @@ const buildRunningFields = (
 ): Pick<Agent, AgentFields> => {
   const assets = computeAssets(agent, update);
   const target = computeTarget(agent, update, assets);
-  const rawPct =
-    target > 0 ? Math.min(100, Math.round((assets / target) * 100)) : agent.pct;
 
   return {
     status: 'running',
-    pct: Math.max(rawPct, agent.pct),
+    pct: computeProgressPct(agent, update),
     assets,
     target,
     eta: computeEta(agent, update),
     finishedAt: undefined,
-    failStep: undefined,
   };
 };
 
@@ -118,7 +144,6 @@ const buildCompletedFields = (
     target: Math.max(assets, 1),
     eta: 0,
     finishedAt: getShortRelativeTime(update.timestamp),
-    failStep: undefined,
   };
 };
 
@@ -136,7 +161,6 @@ const buildFailedFields = (
     target,
     eta: null,
     finishedAt: getShortRelativeTime(update.timestamp),
-    failStep: update.stepName ?? agent.failStep,
   };
 };
 
@@ -159,7 +183,9 @@ export const applyProgressToAgent = (
     fields = buildRunningFields(agent, update);
   }
 
-  return { ...agent, ...fields };
+  // The event names the run it belongs to, which is how a run that started
+  // while the page was open becomes tailable without refetching the pipeline.
+  return { ...agent, ...fields, currentRunId: update.runId };
 };
 
 /**
@@ -173,5 +199,4 @@ export const resetAgentProgress = (agent: Agent): Agent => ({
   target: 0,
   eta: null,
   finishedAt: undefined,
-  failStep: undefined,
 });

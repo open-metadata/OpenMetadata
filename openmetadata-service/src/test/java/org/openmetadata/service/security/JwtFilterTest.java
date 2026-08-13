@@ -45,11 +45,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionService;
@@ -94,6 +98,11 @@ class JwtFilterTest {
     String domain = "openmetadata.org";
     boolean enforcePrincipalDomain = false;
     jwtFilter = new JwtFilter(jwkProvider, principalClaims, domain, enforcePrincipalDomain);
+  }
+
+  @AfterEach
+  void clearRequestContext() {
+    ActivePersonaContext.clear();
   }
 
   @Test
@@ -155,6 +164,31 @@ class JwtFilterTest {
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testActivePersonaHeaderPropagatesWithoutEntityLookup() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    String activePersona = "9fb7e857-df45-42e9-b341-12d28c7b49aa";
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    when(context.getHeaderString(JwtFilter.ACTIVE_PERSONA_HEADER)).thenReturn(activePersona);
+
+    try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
+      jwtFilter.filter(context);
+      entity.verifyNoInteractions();
+    }
+
+    ArgumentCaptor<SecurityContext> securityContextArgument =
+        ArgumentCaptor.forClass(SecurityContext.class);
+    verify(context).setSecurityContext(securityContextArgument.capture());
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) securityContextArgument.getValue();
+    assertEquals(activePersona, catalogSecurityContext.activePersona());
+    assertEquals(activePersona, ActivePersonaContext.getActivePersona());
   }
 
   @Test
@@ -460,5 +494,72 @@ class JwtFilterTest {
     when(context.getHeaders()).thenReturn(headers);
 
     return context;
+  }
+
+  private static SessionService sessionServiceReturning(UserSession session) {
+    SessionService sessionService = mock(SessionService.class);
+    when(sessionService.getFreshSessionById(session.getId())).thenReturn(Optional.of(session));
+    return sessionService;
+  }
+
+  private static UserSession activeSession(String id, String username, String provider) {
+    return UserSession.builder()
+        .id(id)
+        .username(username)
+        .provider(provider)
+        .status(SessionStatus.ACTIVE)
+        .expiresAt(System.currentTimeMillis() + 60_000)
+        .idleExpiresAt(System.currentTimeMillis() + 60_000)
+        .build();
+  }
+
+  private static String sessionBoundJwt(String userName, String sessionId) {
+    return JWT.create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("sub", userName)
+        .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+        .withClaim(JWTTokenGenerator.SESSION_ID_CLAIM, sessionId)
+        .sign(algorithm);
+  }
+
+  @Test
+  void sessionIssuedUnderTheOtherNativePasswordProviderNameIsAccepted() {
+    // basic and openmetadata are two names for the same native-password authenticator. Renaming one
+    // to the other is not a provider swap, so it must not invalidate every live session.
+    UserSession openMetadataSession = activeSession("session-1", "sam", "openmetadata");
+    AuthServeletHandlerRegistry.setSessionService(
+        null, sessionServiceReturning(openMetadataSession));
+    JwtFilter basicProviderFilter =
+        new JwtFilter(
+            jwkProvider, List.of("sub", "email"), "openmetadata.org", false, AuthProvider.BASIC);
+
+    try {
+      ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      basicProviderFilter.filter(context);
+      verify(context, times(1))
+          .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
+  }
+
+  @Test
+  void sessionIssuedByDecommissionedProviderIsRejected() {
+    UserSession googleSession = activeSession("session-1", "sam", "google");
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(googleSession));
+    JwtFilter basicProviderFilter =
+        new JwtFilter(
+            jwkProvider, List.of("sub", "email"), "openmetadata.org", false, AuthProvider.BASIC);
+
+    try {
+      ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      Exception exception =
+          assertThrows(AuthenticationException.class, () -> basicProviderFilter.filter(context));
+      assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("no longer configured"));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
   }
 }

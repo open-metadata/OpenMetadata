@@ -26,6 +26,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -51,6 +52,7 @@ public class AIContextFinder {
   private static final Map<String, List<String>> CONTEXT_FILTER =
       Map.of("entityType", CONTEXT_ENTITY_TYPES);
   private static final int SEARCH_K = 100;
+  private static final int CHUNK_DEDUP_OVERSAMPLE = 3;
   private static final int MAX_ASSETS_PER_ITEM = 10;
   private static final int MAX_CONTENT_CHARS = 2000;
 
@@ -78,24 +80,41 @@ public class AIContextFinder {
   }
 
   public FoundContext find(String query, int size) {
-    List<KnowledgeItem> items = new ArrayList<>();
+    Map<String, KnowledgeItem> items = new LinkedHashMap<>();
     Map<String, CandidateAsset> candidates = new LinkedHashMap<>();
     VectorSearchResponse response = searchKnowledge(query, size);
     if (response != null && response.getHits() != null) {
       for (Map<String, Object> hit : response.getHits()) {
+        if (items.size() >= size) {
+          break;
+        }
         collectHit(hit, items, candidates);
       }
     }
-    return new FoundContext(items, new ArrayList<>(candidates.values()));
+    return new FoundContext(new ArrayList<>(items.values()), new ArrayList<>(candidates.values()));
   }
 
-  private void collectHit(
-      Map<String, Object> hit, List<KnowledgeItem> items, Map<String, CandidateAsset> candidates) {
+  /**
+   * Items are keyed by type + FQN. The vector index holds one document per body chunk — a long
+   * article matches once per relevant chunk and would otherwise appear repeatedly, blowing the
+   * caller's size budget with duplicates; first (highest-scoring) chunk wins. Type is part of the
+   * key because knowledge types can share an FQN (a metric and a page both named "Revenue") — an
+   * FQN-only key would drop the second item along with the assets it routes to.
+   */
+  void collectHit(
+      Map<String, Object> hit,
+      Map<String, KnowledgeItem> items,
+      Map<String, CandidateAsset> candidates) {
     KnowledgeItem item = toKnowledgeItem(hit);
     if (item != null) {
-      items.add(item);
-      for (CandidateAsset asset : routeToAssets(hit, item)) {
-        candidates.putIfAbsent(asset.fullyQualifiedName(), asset);
+      String itemKey = item.getType().value() + ":" + item.getFullyQualifiedName();
+      if (!items.containsKey(itemKey)) {
+        items.put(itemKey, item);
+        for (CandidateAsset asset : routeToAssets(hit, item)) {
+          // FQNs are only unique per entity type (a chart and a dashboard under the same service
+          // can share one) — a name-only key would silently drop the second asset.
+          candidates.putIfAbsent(asset.entityType() + ":" + asset.fullyQualifiedName(), asset);
+        }
       }
     }
   }
@@ -106,7 +125,12 @@ public class AIContextFinder {
       OpenSearchVectorService service = OpenSearchVectorService.getInstance();
       if (service != null) {
         try {
-          response = service.search(query, CONTEXT_FILTER, size, 0, SEARCH_K, 0.0);
+          // Over-fetch: collectHit dedupes chunk documents per FQN, so a long item occupying
+          // several top hits would otherwise shrink the page below the requested size. The KNN
+          // k (SEARCH_K) caps the real result set regardless.
+          response =
+              service.search(
+                  query, CONTEXT_FILTER, size * CHUNK_DEDUP_OVERSAMPLE, 0, SEARCH_K, 0.0);
         } catch (Exception e) {
           LOG.warn("AIContext find: vector search failed: {}", e.getMessage());
         }
@@ -119,7 +143,7 @@ public class AIContextFinder {
     KnowledgeItem item = null;
     String fqn = asString(hit.get("fullyQualifiedName"));
     KnowledgeItem.Type kind = knowledgeType(asString(hit.get("entityType")));
-    if (!nullOrEmpty(fqn) && kind != null) {
+    if (!nullOrEmpty(fqn) && kind != null && isApprovedForContext(hit, kind)) {
       item =
           new KnowledgeItem()
               .withType(kind)
@@ -129,6 +153,18 @@ public class AIContextFinder {
               .withContent(content(hit));
     }
     return item;
+  }
+
+  /**
+   * Draft / in-review glossary terms are untrusted as business-rule context — mirror the Approved
+   * filter the asset-anchored path applies in {@link AIContextBuilder}. Other knowledge types keep
+   * their existing behavior (a missing status means no review workflow applies).
+   */
+  static boolean isApprovedForContext(Map<String, Object> hit, KnowledgeItem.Type kind) {
+    String status = asString(hit.get("entityStatus"));
+    return kind != KnowledgeItem.Type.GLOSSARY_TERM
+        || nullOrEmpty(status)
+        || EntityStatus.APPROVED.value().equals(status);
   }
 
   static KnowledgeItem.Type knowledgeType(String entityType) {

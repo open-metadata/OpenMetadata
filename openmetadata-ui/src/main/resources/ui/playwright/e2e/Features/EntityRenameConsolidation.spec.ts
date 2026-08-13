@@ -74,6 +74,35 @@ async function performRename(
 }
 
 /**
+ * Helper to edit a classification via the Edit drawer (rename option was
+ * replaced by an Edit action in PR #31299).
+ */
+async function performClassificationEdit(
+  page: Page,
+  newName: string
+): Promise<void> {
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('edit-classification').click();
+
+  await expect(page.getByTestId('tags-form')).toBeVisible();
+
+  const nameField = page.getByTestId('name').getByRole('textbox');
+  await nameField.clear();
+  await nameField.fill(newName);
+
+  const patchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/classifications/') &&
+      response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('save-button').click();
+  const patchRes = await patchResponse;
+  expect(patchRes.status()).toBe(200);
+
+  await expect(page.getByTestId('tags-form')).not.toBeVisible();
+}
+
+/**
  * Helper to update description via UI
  */
 async function updateDescription(
@@ -327,9 +356,9 @@ test.describe(
         // Verify tag exists
         await expect(page.getByTestId(tag.data.name)).toBeVisible();
 
-        // Step 1: Rename the classification
+        // Step 1: Rename the classification via Edit drawer
         const newName = `renamed-class-${uuid()}`;
-        await performRename(page, newName, '/api/v1/classifications/');
+        await performClassificationEdit(page, newName);
         currentName = newName;
 
         // Step 2: Update description (triggers consolidation logic)
@@ -390,7 +419,7 @@ test.describe(
         // Perform 3 cycles of rename + update
         for (let i = 1; i <= 3; i++) {
           const newName = `renamed-class-cycle-${i}-${uuid()}`;
-          await performRename(page, newName, '/api/v1/classifications/');
+          await performClassificationEdit(page, newName);
           currentName = newName;
 
           await updateDescription(
@@ -643,8 +672,7 @@ test.describe(
     // DOMAIN TESTS
     // ===================================================================
 
-    // eslint-disable-next-line playwright/no-skipped-test -- domain rename consolidation not yet stable
-    test.skip('Domain - rename then update description should work', async ({
+    test('Domain - rename then update description should work', async ({
       page,
       browser,
     }) => {
@@ -699,8 +727,7 @@ test.describe(
       }
     });
 
-    // eslint-disable-next-line playwright/no-skipped-test -- domain rename consolidation not yet stable
-    test.skip('Domain - multiple rename + update cycles should work', async ({
+    test('Domain - multiple rename + update cycles should work', async ({
       page,
       browser,
     }) => {

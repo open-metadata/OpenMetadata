@@ -88,6 +88,12 @@ public class DefaultToolContext {
         case "get_asset_context":
           result = new GetAssetContextTool().execute(authorizer, securityContext, params);
           break;
+        case "get_persona_context":
+          result = new GetPersonaContextTool().execute(authorizer, securityContext, params);
+          break;
+        case "get_user_context":
+          result = new GetUserContextTool().execute(authorizer, securityContext, params);
+          break;
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;
@@ -166,13 +172,32 @@ public class DefaultToolContext {
       return new CallToolOutcome(
           errorResult(error), elapsedMs(startNanos), McpToolCallUsage.ErrorCategory.AUTH);
     } catch (Exception ex) {
-      LOG.error("Error executing tool '{}': {}", toolName, ex.getMessage(), ex);
+      int statusCode = resolveStatusCode(ex);
+      logToolFailure(toolName, ex, statusCode);
       Map<String, Object> error =
           errorPayload(
               String.format("Error executing tool: %s", McpResponseTrim.safeMessage(ex)),
-              resolveStatusCode(ex));
+              statusCode);
       return new CallToolOutcome(errorResult(error), elapsedMs(startNanos), classifyException(ex));
     }
+  }
+
+  /**
+   * Logs a failed tool call at a level matching who has to act on it. A 4xx means the caller sent a
+   * bad argument - an unknown field, a missing entity, a denied permission - which the model is
+   * expected to correct on retry, so it must not reach ERROR and page an operator through the alert
+   * pipeline. Only a genuine server fault (5xx) does.
+   */
+  private static void logToolFailure(String toolName, Exception ex, int statusCode) {
+    if (isServerFault(statusCode)) {
+      LOG.error("Error executing tool '{}': {}", toolName, ex.getMessage(), ex);
+    } else {
+      LOG.warn("Tool '{}' rejected the request ({}): {}", toolName, statusCode, ex.getMessage());
+    }
+  }
+
+  static boolean isServerFault(int statusCode) {
+    return statusCode >= STATUS_INTERNAL_ERROR;
   }
 
   /**

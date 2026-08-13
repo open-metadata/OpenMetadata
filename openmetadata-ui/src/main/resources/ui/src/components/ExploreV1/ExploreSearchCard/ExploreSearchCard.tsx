@@ -27,7 +27,7 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
-import { Constraint, Table } from '../../../generated/entity/data/table';
+import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
@@ -260,20 +260,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           });
         }
 
-        if (
-          columnSource.constraint &&
-          columnSource.constraint !== Constraint.Null
-        ) {
-          columnDetails.push({
-            key: t('label.constraint'),
-            value: (
-              <Typography.Text className="font-medium">
-                {columnSource.constraint}
-              </Typography.Text>
-            ),
-          });
-        }
-
         columnDetails.push({
           key: 'Owner',
           value: (
@@ -496,7 +482,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {!isEmpty(
                   (source as Table)?.certification?.tagLabel?.tagFQN
                 ) && (
-                  <div className="p-l-sm">
+                  <div className="tw:ml-1.5">
                     <CertificationTag
                       certification={
                         (source as Table).certification as AssetCertification

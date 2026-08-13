@@ -32,9 +32,10 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
+  AGGREGATE_PAGE_SIZE_LARGE,
   MAX_NAME_LENGTH,
   PAGE_SIZE_LARGE,
 } from '../../../../constants/constants';
@@ -447,7 +448,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         );
 
         const { data } = await getListTestDefinitions({
-          limit: PAGE_SIZE_LARGE,
+          limit: AGGREGATE_PAGE_SIZE_LARGE,
           entityType:
             selectedTestLevel === TestLevel.COLUMN
               ? EntityType.Column
@@ -833,7 +834,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     props: {
       'data-testid': 'dimensionColumns',
       isDisabled: !selectedTableFqn,
-      multiple: true,
       options: dimensionColumnOptions,
     },
   };
@@ -1045,6 +1045,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
                       label={t('message.select-test-level')}
                     />
                     <SelectionCardGroup
+                      layout="vertical"
                       options={testLevelOptions}
                       value={field.value}
                       onChange={(value) => {

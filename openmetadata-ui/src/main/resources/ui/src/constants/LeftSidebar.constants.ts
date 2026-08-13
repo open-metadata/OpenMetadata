@@ -17,10 +17,10 @@ import { ReactComponent as ClassificationIcon } from '../assets/svg/classificati
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
 import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/context-center.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
+import { ReactComponent as ColumnBulkIcon } from '../assets/svg/entity/column.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
-import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
@@ -43,7 +43,7 @@ import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.in
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
 import { createIconWithStroke } from '../utils/IconUtils';
-import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
+import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 type UntitledIconType = React.ComponentType<{
   size?: number;
@@ -62,6 +62,13 @@ export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.CONTEXT_CENTER_MEMORIES]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_INTEGRATIONS]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARCHIVE]: ROUTES.CONTEXT_CENTER,
+};
+
+export const SIDEBAR_ENTITY_PATH_ALIASES: Record<string, string> = {
+  [`/${ENTITY_PATH.metrics}`]: ROUTES.METRICS,
+  [`/${ENTITY_PATH.tags}`]: ROUTES.TAGS,
+  '/glossary-term': ROUTES.GLOSSARY,
+  '/observability/alert': ROUTES.OBSERVABILITY_ALERTS,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [

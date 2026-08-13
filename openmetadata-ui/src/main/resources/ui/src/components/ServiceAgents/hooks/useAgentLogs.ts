@@ -11,93 +11,64 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getIngestionPipelineLogById } from '../../../rest/ingestionPipelineAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { useIngestionLogSource } from '../../../hooks/useIngestionLogSource';
+import { StreamHealth } from '../../../utils/SseStreamUtils';
 import { LogLine } from '../AgentsPage.interface';
-import {
-  getLogTaskFieldForType,
-  parseLogLines,
-} from '../utils/agentsDataMapper';
+import { parseLogLines } from '../utils/agentsDataMapper';
 
 interface UseAgentLogsResult {
   lines: LogLine[];
   rawText: string;
   isLoading: boolean;
   hasMore: boolean;
+  // The run is still producing output. False once the stream reports the run
+  // finished, which lands before the agent's own status row catches up.
+  isLive: boolean;
+  isStreaming: boolean;
+  streamHealth: StreamHealth;
+  streamTruncated: boolean;
+  streamError: string | null;
   loadMore: () => void;
 }
 
 /**
- * Streams the raw logs for a pipeline run via `getIngestionPipelineLogById`,
- * picking the task field for the pipeline type and paginating through the
- * `after`/`total` cursor. Parses the accumulated text into LogLine[].
+ * Reads one agent run's logs and parses the accumulated text into LogLine[].
+ *
+ * Source selection — SSE tail while the run is live, paginated REST otherwise —
+ * lives in {@link useIngestionLogSource}, shared with the pipeline log viewer so
+ * the two cannot drift apart. A run with no known id (the agent list has not
+ * caught up, or the deployment reports no run) simply stays on the paginated
+ * path.
  */
 export const useAgentLogs = (
-  id: string,
+  fqn: string,
   pipelineType: PipelineType,
-  enabled: boolean
+  enabled: boolean,
+  isActive = false,
+  runId?: string
 ): UseAgentLogsResult => {
-  const [rawText, setRawText] = useState('');
-  const [after, setAfter] = useState<string | undefined>();
-  const [total, setTotal] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(false);
-  const requestIdRef = useRef(0);
+  const source = useIngestionLogSource({
+    enabled: Boolean(enabled && fqn),
+    ingestionFqn: fqn,
+    ingestionType: pipelineType,
+    runId,
+    runActive: isActive,
+  });
 
-  const fetchLogs = useCallback(
-    (cursor?: string) => {
-      const requestId = requestIdRef.current;
-      const isCurrent = () => requestId === requestIdRef.current;
-      setIsLoading(true);
-      getIngestionPipelineLogById(id, cursor)
-        .then((res) => {
-          if (!isCurrent()) {
-            return;
-          }
-          const chunk = getLogTaskFieldForType(res.data, pipelineType);
-          setRawText((prev) => (cursor ? prev + chunk : chunk));
-          setAfter(res.data.after);
-          setTotal(res.data.total);
-        })
-        .catch((err) => {
-          if (isCurrent()) {
-            showErrorToast(err as AxiosError);
-          }
-        })
-        .finally(() => {
-          if (isCurrent()) {
-            setIsLoading(false);
-          }
-        });
-    },
-    [id, pipelineType]
-  );
+  const lines = useMemo(() => parseLogLines(source.logs), [source.logs]);
 
-  useEffect(() => {
-    if (!enabled || !id) {
-      return;
-    }
-    requestIdRef.current += 1;
-    setRawText('');
-    setAfter(undefined);
-    setTotal(undefined);
-    fetchLogs();
-
-    return () => {
-      requestIdRef.current += 1;
-    };
-  }, [id, enabled, fetchLogs]);
-
-  const lines = useMemo(() => parseLogLines(rawText), [rawText]);
-  const hasMore =
-    after !== undefined && total !== undefined && Number(after) < Number(total);
-  const loadMore = useCallback(() => {
-    if (hasMore) {
-      fetchLogs(after);
-    }
-  }, [hasMore, after, fetchLogs]);
-
-  return { lines, rawText, isLoading, hasMore, loadMore };
+  return {
+    lines,
+    rawText: source.logs,
+    isLoading: source.loading,
+    hasMore: source.hasMore,
+    isLive: source.isLive,
+    isStreaming: source.isStreaming,
+    streamHealth: source.streamHealth,
+    streamTruncated: source.streamTruncated,
+    streamError: source.streamError,
+    loadMore: source.loadMore,
+  };
 };

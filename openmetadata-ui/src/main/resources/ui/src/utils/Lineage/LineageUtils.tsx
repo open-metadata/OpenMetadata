@@ -16,7 +16,7 @@ import {
   BreadcrumbItemType,
   Breadcrumbs,
 } from '@openmetadata/ui-core-components';
-import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
 import { NodeData } from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';

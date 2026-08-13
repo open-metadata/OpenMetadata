@@ -12,15 +12,18 @@
  */
 
 import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import HeaderShell from '../HeaderShell/HeaderShell.component';
 import { EntityDetailHeaderProps } from './EntityDetailHeader.interface';
+import './EntityDetailHeader.less';
 
 const EntityDetailHeader = ({
   breadcrumb,
   serviceLogoUrl,
   icon,
+  leading,
   title,
   subtitle,
   badge,
@@ -62,26 +65,28 @@ const EntityDetailHeader = ({
     onTabChange?.(String(key));
   };
 
-  const leading = serviceLogoUrl ? (
-    <Box
-      align="center"
-      className="tw:size-10 tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:p-1.5"
-      justify="center">
-      <img
-        alt=""
-        className="tw:size-full tw:object-contain"
-        src={serviceLogoUrl}
+  const resolvedLeading =
+    leading ??
+    (serviceLogoUrl ? (
+      <Box
+        align="center"
+        className="tw:size-10 tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:p-1.5"
+        justify="center">
+        <img
+          alt=""
+          className="tw:size-full tw:object-contain"
+          src={serviceLogoUrl}
+        />
+      </Box>
+    ) : icon ? (
+      <FeaturedIcon
+        color="brand"
+        icon={icon}
+        shape="square"
+        size="md"
+        theme="gradient"
       />
-    </Box>
-  ) : icon ? (
-    <FeaturedIcon
-      color="brand"
-      icon={icon}
-      shape="square"
-      size="md"
-      theme="gradient"
-    />
-  ) : undefined;
+    ) : undefined);
 
   const actions =
     primaryAction || secondaryActions ? (
@@ -93,7 +98,7 @@ const EntityDetailHeader = ({
 
   const footer = (
     <Tabs
-      className="tw:mt-1"
+      className="tw:mt-1 entity-detail-header-tabs"
       selectedKey={selectedKey}
       onSelectionChange={handleSelectionChange}>
       <Tabs.List type={tabListType}>
@@ -120,10 +125,10 @@ const EntityDetailHeader = ({
       actions={actions}
       badge={badge}
       breadcrumb={breadcrumb}
-      className={className}
+      className={classNames('entity-detail-header', className)}
       data-testid={dataTestId}
       footer={footer}
-      leading={leading}
+      leading={resolvedLeading}
       meta={meta}
       subtitle={subtitle}
       title={title}
