@@ -7281,30 +7281,25 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       assertTrue(
           paged.pages().size() >= HISTORY_MIN_PAGES,
           "Walk must cross at least " + HISTORY_MIN_PAGES + " pages to exercise deep cursors");
-      // Scope the invariant assertions to the versions this test created. Parallel-lane
-      // ITs can share the [startTs, endTs] window, and the /history endpoint UNION-ALLs
-      // entity_extension with the current-row table — under concurrent writes a
-      // (id, updatedAt) that belongs to another test can transiently show up in both
-      // sides. Filtering to ownEntityIds keeps this test focused on paging semantics
-      // for its own data. Cross-test pollution is out of scope here.
-      List<String> pagedOwn = ownVersions(paged.versionKeys(), ownEntityIds);
       assertEquals(
-          expected, pagedOwn, "Forward paged walk must reproduce the unpaginated read exactly");
-      assertNoRepeats(pagedOwn);
-      assertNewestFirst(pagedOwn);
+          expected,
+          ownVersions(paged.versionKeys(), ownEntityIds),
+          "Forward paged walk must reproduce the unpaginated read exactly");
+      assertNoRepeats(paged.versionKeys());
+      assertNewestFirst(paged.versionKeys());
 
       List<List<String>> backwardPages =
           walkBackward(client, basePath, startTs, endTs, paged.lastPageBeforeCursor());
       assertTrue(
           backwardPages.size() >= HISTORY_MIN_PAGES - 1,
           "Backward walk must cross multiple pages, got " + backwardPages.size());
-      List<String> backwardOwn = ownVersions(replayInForwardOrder(backwardPages), ownEntityIds);
+      List<String> backward = replayInForwardOrder(backwardPages);
       assertEquals(
           ownVersions(paged.versionKeysExcludingLastPage(), ownEntityIds),
-          backwardOwn,
+          ownVersions(backward, ownEntityIds),
           "Backward paged walk must reproduce the forward walk minus its final page");
-      assertNoRepeats(backwardOwn);
-      assertNewestFirst(backwardOwn);
+      assertNoRepeats(backward);
+      assertNewestFirst(backward);
     }
 
     private List<String> createVersionedEntities(TestNamespace ns) throws Exception {
