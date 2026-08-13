@@ -159,4 +159,74 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
       await afterAction();
     }
   });
+
+  test('entity tab count equals the sum of the All and Tasks badges', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+
+    // Own table: the sibling tests resolve tasks on the shared one and chromium
+    // runs fullyParallel, so sharing it would make these exact counts depend on
+    // test order.
+    const countedTable = new TableClass();
+
+    try {
+      await countedTable.create(apiContext);
+
+      const fqn = countedTable.entityResponseData?.fullyQualifiedName as string;
+      const assignee = assigneeUser.responseData.name;
+
+      // One open task and one resolved task. The resolved one is the whole
+      // point: the header counted every task while the Tasks badge counts only
+      // the open ones, so with no closed task the two agree by accident.
+      await createOpenTask(apiContext, fqn, assignee);
+      const resolvedTask = await createOpenTask(apiContext, fqn, assignee);
+      await resolveTask(apiContext, resolvedTask.id);
+
+      await countedTable.visitEntityPage(page);
+
+      const headerCount = page
+        .getByRole('tab', { name: /activity feeds & tasks/i })
+        .getByTestId('count');
+
+      await expect(headerCount).toBeVisible();
+
+      await navigateToTasksPanel(page);
+
+      const allBadge = page
+        .getByTestId('left-panel-all-count')
+        .getByTestId('filter-count');
+
+      await expect(allBadge).toBeVisible();
+      // Open filter is the default, and exactly one task is still open.
+      await expect(badge(page)).toHaveText('1', { timeout: 30_000 });
+
+      // Poll the difference: all three numbers land after first paint, so a
+      // single read races the count request and compares stale values. A
+      // non-zero delta is the defect — the header counting the resolved task
+      // that neither sub-tab badge includes.
+      await expect
+        .poll(
+          async () => {
+            const [header, all, tasks] = await Promise.all([
+              headerCount.innerText(),
+              allBadge.innerText(),
+              badge(page).innerText(),
+            ]);
+
+            return (
+              Number(header.trim()) -
+              (Number(all.trim()) + Number(tasks.trim()))
+            );
+          },
+          { timeout: 30_000 }
+        )
+        .toBe(0);
+    } finally {
+      await countedTable.delete(apiContext);
+      await afterAction();
+    }
+  });
 });

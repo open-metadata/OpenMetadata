@@ -242,6 +242,12 @@ cacheMemory:
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
+    # LOG_LEVEL sets the ROOT logger, and at DEBUG Jetty's HttpParser prints every request header
+    # verbatim — including `Authorization: Bearer <jwt>` and `Cookie: OM_SESSION=<id>`. DEBUG is
+    # exactly what support asks customers to enable and those logs get attached to tickets, so pin
+    # the framework logger independently of LOG_LEVEL.
+    org.eclipse.jetty:
+      level: ${JETTY_LOG_LEVEL:-INFO}
     org.openmetadata.service.util.jdbi.OMSqlLogger:
       level: ${SQL_LOG_LEVEL:-INFO}
       additive: false

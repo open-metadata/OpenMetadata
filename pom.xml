@@ -792,6 +792,11 @@
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5</artifactId>
+        <version>5.4.3</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
         <artifactId>httpcore5-h2</artifactId>
         <version>5.4.3</version>
       </dependency>

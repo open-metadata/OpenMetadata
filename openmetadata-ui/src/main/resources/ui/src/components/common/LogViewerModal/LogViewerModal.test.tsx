@@ -489,4 +489,73 @@ describe('LogViewerModal — live (stream) mode', () => {
       'true'
     );
   });
+
+  it('swaps the live dot for a reconnecting one while the tail is between attempts', () => {
+    render(
+      <LogViewerModal
+        {...defaultProps}
+        mode="stream"
+        streamHealth="connecting"
+      />
+    );
+
+    expect(
+      screen.getByTestId('log-viewer-reconnecting-indicator')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('log-viewer-live-indicator')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the live dot once the tail is connected', () => {
+    render(
+      <LogViewerModal {...defaultProps} mode="stream" streamHealth="live" />
+    );
+
+    expect(screen.getByTestId('log-viewer-live-indicator')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('log-viewer-reconnecting-indicator')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not show a reconnecting dot for a static run', () => {
+    render(<LogViewerModal {...defaultProps} streamHealth="connecting" />);
+
+    expect(
+      screen.queryByTestId('log-viewer-reconnecting-indicator')
+    ).not.toBeInTheDocument();
+  });
+
+  it('warns that earlier history was not replayed when the stream truncated', () => {
+    render(<LogViewerModal {...defaultProps} streamTruncated mode="stream" />);
+
+    expect(screen.getByTestId('log-viewer-truncated-notice')).toHaveTextContent(
+      'message.log-stream-truncated'
+    );
+  });
+
+  it('surfaces the server message when the stream fails', () => {
+    render(
+      <LogViewerModal
+        {...defaultProps}
+        mode="stream"
+        streamError="No log backend is configured on this deployment."
+      />
+    );
+
+    expect(screen.getByTestId('log-viewer-stream-error')).toHaveTextContent(
+      'No log backend is configured on this deployment.'
+    );
+  });
+
+  it('renders no notices by default', () => {
+    render(<LogViewerModal {...defaultProps} mode="stream" />);
+
+    expect(
+      screen.queryByTestId('log-viewer-truncated-notice')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('log-viewer-stream-error')
+    ).not.toBeInTheDocument();
+  });
 });
