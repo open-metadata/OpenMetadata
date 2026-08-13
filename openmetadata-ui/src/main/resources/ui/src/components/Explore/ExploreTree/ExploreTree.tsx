@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { Tooltip, Tree, TreeProps, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
@@ -19,7 +20,6 @@ import { Bucket } from 'Models';
 import Qs from 'qs';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';

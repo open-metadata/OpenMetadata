@@ -32,11 +32,7 @@ export const getBreadcrumbIcon = (
   entityType?: EntityType | string
 ): BreadcrumbIconFC | undefined =>
   entityType
-    ? ({ className }) => (
-        <>
-          {getEntityIcon(entityType, className)}
-        </>
-      )
+    ? ({ className }) => <>{getEntityIcon(entityType, className)}</>
     : undefined;
 
 /**

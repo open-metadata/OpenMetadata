@@ -175,9 +175,7 @@ export const getEntityIcon = (
   );
   const Icon = entityIconMapping[indexType];
 
-  return Icon ? (
-    <Icon className={className} style={iconStyle} />
-  ) : null;
+  return Icon ? <Icon className={className} style={iconStyle} /> : null;
 };
 
 export const getEntityTypeIcon = (entityType?: string) =>
