@@ -139,6 +139,23 @@ describe('useTestCaseList', () => {
     expect(lastPayload().testCaseStatus).toBe(TestCaseStatus.Failed);
   });
 
+  it('should apply a redirected lastRunRange to the list request', async () => {
+    const { result } = renderList({
+      params: {
+        lastRunRange: { startTs: 100, endTs: 200 },
+      },
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(lastPayload()).toEqual(
+      expect.objectContaining({
+        startTimestamp: 100,
+        endTimestamp: 200,
+      })
+    );
+  });
+
   it('should not fetch and should stop loading when the view permission is missing', async () => {
     const { result } = renderList({
       testCasePermission: {
