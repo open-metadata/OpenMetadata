@@ -44,6 +44,10 @@ on:
 env:
   # matrix can't use 'env'. When updating it, update it for both jobs.
   MAIN_PYTHON_VERSION: "3.10"
+  # Hugging Face uses a moving wheel name, so pin its immutable revision and content hash.
+  SPACY_MODEL_VERSION: "3.7.1"
+  SPACY_MODEL_REVISION: "22f17ee20cda126e498ea2fb92dc504bea0d111c"
+  SPACY_MODEL_SHA256: "6a0f857a2b4d219c6fa17d455f82430b365bf53171a2d919b9376e5dc9be032e"
   SONAR_OPTS: >-
     -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
     -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
@@ -76,6 +80,7 @@ jobs:
           filters: |
             python:
               - 'ingestion/**'
+              - '.github/workflows/py-tests-shared.yml'
               - 'openmetadata-spec/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
@@ -147,9 +152,46 @@ jobs:
           compression-level: 0
           retention-days: 1
 
+  prepare-spacy-model:
+    name: Prepare spaCy model
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    concurrency:
+      group: spacy-model-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Restore spaCy model wheel
+        id: spacy-model-cache
+        uses: actions/cache@v4
+        with:
+          path: .cache/spacy-model
+          key: spacy-model-${{ env.SPACY_MODEL_VERSION }}-${{ env.SPACY_MODEL_SHA256 }}
+
+      - name: Download spaCy model wheel
+        if: steps.spacy-model-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .cache/spacy-model
+          wheel_path=".cache/spacy-model/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl"
+          curl --fail --location --retry 10 --retry-all-errors --connect-timeout 20 --max-time 600 \
+            --output "${wheel_path}" \
+            "https://huggingface.co/spacy/en_core_web_md/resolve/${SPACY_MODEL_REVISION}/en_core_web_md-any-py3-none-any.whl"
+          echo "${SPACY_MODEL_SHA256}  ${wheel_path}" | sha256sum --check --strict
+        shell: bash
+
+      - name: Upload spaCy model wheel
+        uses: actions/upload-artifact@v6
+        with:
+          name: spacy-en-model
+          path: .cache/spacy-model/*.whl
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
   py-unit-tests:
     name: Unit Tests & Static Checks
-    needs: changes
+    needs: [changes, prepare-spacy-model]
     if: ${{ inputs.run-unit-tests && needs.changes.outputs.python == 'true' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -169,6 +211,19 @@ jobs:
         with:
           python-version: ${{ matrix.py-version }}
           install-server: 'false'
+
+      - name: Download spaCy model
+        uses: actions/download-artifact@v7
+        with:
+          name: spacy-en-model
+          path: /tmp/spacy-model
+
+      - name: Install and verify spaCy model
+        run: |
+          source env/bin/activate
+          uv pip install --no-deps /tmp/spacy-model/*.whl
+          python -c 'import spacy; spacy.load("en_core_web_md")'
+        shell: bash
 
       - name: Run Static Checks
         # basedpyright is configured with `pythonVersion = "3.10"` (the lowest
@@ -242,7 +297,7 @@ jobs:
 
   py-integration-tests:
     name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
-    needs: [changes, build-distribution]
+    needs: [changes, build-distribution, prepare-spacy-model]
     if: ${{ needs.changes.outputs.python == 'true' }}
     timeout-minutes: 180
     runs-on: ubuntu-latest
@@ -323,6 +378,21 @@ jobs:
         with:
           python-version: ${{ matrix.py-version}}
           args: ${{ inputs.compose-args }}
+
+      - name: Download spaCy model
+        if: matrix.shard.name == 'shard-1'
+        uses: actions/download-artifact@v7
+        with:
+          name: spacy-en-model
+          path: /tmp/spacy-model
+
+      - name: Install and verify spaCy model
+        if: matrix.shard.name == 'shard-1'
+        run: |
+          source env/bin/activate
+          uv pip install --no-deps /tmp/spacy-model/*.whl
+          python -c 'import spacy; spacy.load("en_core_web_md")'
+        shell: bash
 
       - name: Reclaim unused disk for the Exasol shard
         if: matrix.shard.needs-disk
