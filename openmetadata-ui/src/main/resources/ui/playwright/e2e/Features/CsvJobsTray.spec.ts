@@ -242,17 +242,19 @@ test.describe('CsvJobsTray', () => {
   // Lineage exports are background jobs now rather than a websocket-only push, so
   // they surface in the tray like any other export.
   test('shows a lineage export job in the tray', async ({ page }) => {
-    await mockJobsApi(page, [
-      {
-        ...RUNNING_EXPORT_JOB,
-        entityType: 'lineage',
-        jobId: 'pw-tray-lineage-export',
-        status: 'COMPLETED',
-        progress: 18,
-      },
-    ]);
+    const lineageJob = {
+      ...RUNNING_EXPORT_JOB,
+      entityType: 'lineage',
+      jobId: 'pw-tray-lineage-export',
+    };
+    await mockJobsApi(page, [lineageJob]);
     await activateJobsTray(page);
     await openTray(page);
+
+    await mockJobsApi(page, [
+      { ...lineageJob, status: 'COMPLETED', progress: 18 },
+    ]);
+    await triggerJobsRefresh(page);
 
     await expect(page.getByText(/Exported Lineage/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /download/i })).toBeVisible();
