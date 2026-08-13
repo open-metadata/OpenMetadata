@@ -183,12 +183,11 @@ export const navigateToCustomizeLandingPage = async (
   await waitForAllLoadersToDisappear(page);
 
   // Navigate to the customize landing page
-  await page.getByRole('tab', { name: 'Customize UI' }).click();
-
   const getCustomPageDataResponse = page.waitForResponse(
     `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
   );
 
+  await page.getByRole('tab', { name: 'Customize UI' }).click();
   await page.getByTestId('LandingPage').click();
   await getCustomPageDataResponse;
   await waitForAllLoadersToDisappear(page);
@@ -751,6 +750,10 @@ export const verifyDomainCountInDomainWidget = async (
   await expect
     .poll(
       async () => {
+        await page.reload();
+        await removeLandingBanner(page).catch(() => undefined);
+        await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
         if (
           !(await isLandingPageWidgetVisible(page, 'KnowledgePanel.Domains'))
         ) {
@@ -773,7 +776,7 @@ export const verifyDomainCountInDomainWidget = async (
 
         return text?.trim() ?? null;
       },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+      { timeout: 60_000, intervals: [5_000] }
     )
     .toContain(expectedCount.toString());
 };
@@ -791,6 +794,10 @@ export const verifyDataProductCountInDataProductWidget = async (
   await expect
     .poll(
       async () => {
+        await page.reload();
+        await removeLandingBanner(page).catch(() => undefined);
+        await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
         if (
           !(await isLandingPageWidgetVisible(
             page,
@@ -818,7 +825,7 @@ export const verifyDataProductCountInDataProductWidget = async (
 
         return text?.trim() ?? null;
       },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+      { timeout: 60_000, intervals: [5_000] }
     )
     .toContain(expectedCount.toString());
 };
