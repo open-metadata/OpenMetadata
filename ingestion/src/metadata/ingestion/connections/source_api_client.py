@@ -154,11 +154,11 @@ class TrackedREST(REST):
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("PATCH", path, duration_ms)
 
-    def delete(self, path, data=None, headers=None):
+    def delete(self, path, data=None, json=None, headers=None):
         """DELETE method with tracking."""
         start = perf_counter()
         try:
-            return super().delete(path, data, headers)
+            return super().delete(path, data, json, headers)
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("DELETE", path, duration_ms)
