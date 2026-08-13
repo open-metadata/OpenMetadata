@@ -3001,6 +3001,8 @@
     "are-you-want-to-restore": "{{entity}} geri yüklemek istediğinizden emin misiniz?",
     "assess-data-reliability-with-data-profiler-lineage": "Veri yönetimine doğru yaklaşımla veri odaklı dünyada rekabet avantajı kazanın. Verilerinizi güvence altına alın ve işletmenizi yenilik ve büyümeyi körüklemek için güçlendirin.",
     "asset-relations-select-term": "İlişkileri yönetmek için bir sözlük terimi veya metrik seçin.",
+    "assets-add-disabled-term-status": "Bu terim {{status}} durumunda. Onaylandığında varlıklar eklenebilir.",
+    "assets-add-restricted-term-status": "Bu terim {{status}} durumunda. Varlıklar yalnızca onaylanmış terimlere eklenebilir.",
     "assigned-you-a-new-task-lowercase": "size yeni bir görev atandı",
     "assigning-team-entity-description": "{{name}} takımına bir {{entity}} ekleyin. Bu {{entity}}, {{name}} takımındaki tüm kullanıcılar ve {{name}} altındaki tüm takımlar tarafından miras alınacaktır",
     "at-least-one-policy": "En az bir politika girin",

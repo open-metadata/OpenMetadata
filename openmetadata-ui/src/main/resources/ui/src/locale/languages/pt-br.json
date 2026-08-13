@@ -3001,6 +3001,8 @@
     "are-you-want-to-restore": "Você tem certeza que deseja restaurar {{entity}}?",
     "assess-data-reliability-with-data-profiler-lineage": "Obtenha uma vantagem competitiva no mundo orientado a dados com a abordagem certa para a governança de dados. Proteja seus dados e capacite seu negócio para impulsionar inovação e crescimento.",
     "asset-relations-select-term": "Selecione um termo do glossário ou uma métrica para gerenciar os relacionamentos.",
+    "assets-add-disabled-term-status": "Este termo está {{status}}. Os ativos podem ser adicionados assim que ele for aprovado.",
+    "assets-add-restricted-term-status": "Este termo está {{status}}. Os ativos só podem ser adicionados a termos aprovados.",
     "assigned-you-a-new-task-lowercase": "uma nova tarefa foi atribuída a você",
     "assigning-team-entity-description": "Adicione uma {{entity}} à {{name}}. Esta {{entity}} será herdada por todos os Usuários na Equipe {{name}}, bem como por todas as Equipes sob {{name}}",
     "at-least-one-policy": "Insira pelo menos uma política",
