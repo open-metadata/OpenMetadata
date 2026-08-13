@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 /**
  * Default implementation of LogStorageInterface that delegates to the existing
@@ -64,10 +65,8 @@ public class DefaultLogStorage implements LogStorageInterface {
   @Override
   public Map<String, Object> getLogs(
       String pipelineFQN, UUID runId, String afterCursor, int limit) {
-    // Load the real pipeline: Argo builds its workflow label selector from service.name, so a
-    // name-only stub finds nothing. Airflow needs only the name, which is why a stub sufficed.
-    // Outside the catch below: an unknown pipeline is the caller's error, and reporting it as
-    // "this run has no logs" would send them looking for a runner problem that does not exist.
+    // Load the real pipeline with its service: a runner may locate the run by service, not by
+    // pipeline name alone, so a name-only stub finds nothing.
     IngestionPipeline pipeline =
         Entity.getEntityByName(Entity.INGESTION_PIPELINE, pipelineFQN, "service", Include.ALL);
     try {
@@ -87,19 +86,11 @@ public class DefaultLogStorage implements LogStorageInterface {
 
       return result;
     } catch (Exception e) {
-      // If pipeline service client is not available (e.g., in tests or when Airflow is down),
-      // return empty logs instead of failing
-      LOG.warn(
-          "Failed to get logs from pipeline service client for pipeline: {}, runId: {}. Returning empty logs.",
-          pipelineFQN,
-          runId,
-          e);
-
-      Map<String, Object> result = new HashMap<>();
-      result.put("logs", "");
-      result.put("after", null);
-      result.put("total", 0L);
-      return result;
+      // Let the failure surface. Returning empty logs here made an unreachable pipeline service
+      // look like a run that simply produced none.
+      LOG.error("Failed to get logs for pipeline: {}, runId: {}", pipelineFQN, runId, e);
+      throw new UnhandledServerException(
+          String.format("Failed to get logs for pipeline %s", pipelineFQN), e);
     }
   }
 

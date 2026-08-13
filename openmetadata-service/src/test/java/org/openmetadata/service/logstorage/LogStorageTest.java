@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 @ExtendWith(MockitoExtension.class)
 public class LogStorageTest {
@@ -128,6 +129,18 @@ public class LogStorageTest {
 
     assertEquals("InvalidPrivateKeyException: bad PEM", result.get("logs"));
     assertEquals("1", result.get("total"));
+  }
+
+  @Test
+  void getLogsSurfacesAPipelineServiceFailure() {
+    // An unreachable pipeline service used to be reported as a run with no logs, which reads as
+    // "this run produced nothing" rather than "we could not reach the runner".
+    when(mockPipelineServiceClient.getLastIngestionLogs(any(IngestionPipeline.class), isNull()))
+        .thenThrow(new RuntimeException("pipeline service unreachable"));
+
+    assertThrows(
+        UnhandledServerException.class,
+        () -> defaultLogStorage.getLogs(testPipelineFQN, testRunId, null, 10));
   }
 
   @Test
