@@ -25,13 +25,21 @@ from metadata.__version__ import (
     match_versions,
 )
 from metadata.generated.schema.settings.settings import Settings, SettingType
-from metadata.ingestion.ometa.client import REST, HtmlResponseError
+from metadata.ingestion.ometa.client import REST, HtmlResponseError, is_html_body
 from metadata.ingestion.ometa.routes import ROUTES
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
 VERSION_PATH = "/system/version"
+
+# `REST` cannot say this - connectors use it against third-party APIs - but here we
+# know the target is an OpenMetadata server, whose UI answers index.html for unknown
+# routes. A `hostPort` missing `/api` therefore lands on the UI with a 200.
+HOST_PORT_HINT = (
+    "The OpenMetadata UI answers index.html for unknown routes, so `hostPort` most likely"
+    " does not point at the API: check that it ends in `/api` (e.g. https://<host>/api)."
+)
 
 
 class VersionMismatchException(Exception):  # noqa: N818
@@ -116,9 +124,10 @@ class OMetaServerMixin:
         try:
             payload = response.json()
         except JSONDecodeError as exc:
-            # `get_raw` skips the client's JSON handling, so classify the body here.
-            if "html" in response.headers.get("Content-Type", "").lower() or response.text.lstrip().startswith("<"):
-                raise HtmlResponseError(url, response.status_code) from exc
+            # `get_raw` skips the client's JSON handling, so classify the body here,
+            # with the same sniffing the client uses.
+            if is_html_body(response):
+                raise HtmlResponseError(url, response.status_code, hint=HOST_PORT_HINT) from exc
             raise VersionNotFoundException(
                 f"The response from [{url}] is not JSON"
                 f" (content type [{response.headers.get('Content-Type', 'unknown')}]): {response.text[:500]}"

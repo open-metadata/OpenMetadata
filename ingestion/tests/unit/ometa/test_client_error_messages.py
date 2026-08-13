@@ -77,8 +77,18 @@ class TestHtmlResponseIsNamed:
 
         message = str(err.value)
         assert VERSION_URL in message
-        assert "hostPort" in message
-        assert "/api" in message
+        assert "web page, not an API response" in message
+
+    def test_message_stays_provider_neutral(self):
+        """Connectors share this client, so it must not name OpenMetadata."""
+        client = _rest_returning(_response(200, UI_INDEX_HTML, "text/html"))
+
+        with pytest.raises(HtmlResponseError) as err:
+            client.get("/api/v1/dashboards")
+
+        message = str(err.value)
+        assert "OpenMetadata" not in message
+        assert "hostPort" not in message
 
     def test_html_sniffed_when_content_type_lies(self):
         client = _rest_returning(_response(200, UI_INDEX_HTML, "text/plain"))
@@ -111,14 +121,32 @@ class TestHtmlResponseIsNamed:
 class TestGetServerVersionErrors:
     """Every failure mode of /system/version must say what to fix."""
 
-    def test_html_page_propagates_host_port_hint(self):
+    def test_html_page_adds_the_host_port_hint(self):
+        """Here we know the target is an OpenMetadata server, so we can be specific."""
         client = MagicMock()
         client.get_raw.return_value = _response(200, UI_INDEX_HTML, "text/html")
 
         with pytest.raises(HtmlResponseError) as err:
             _Server(client).get_server_version()
 
-        assert "hostPort" in str(err.value)
+        message = str(err.value)
+        assert "hostPort" in message
+        assert "/api" in message
+
+    def test_xml_body_is_not_mistaken_for_a_ui_page(self):
+        """A body starting with `<` is not necessarily HTML - no misleading `/api` hint."""
+        client = MagicMock()
+        client.get_raw.return_value = _response(
+            200, '<?xml version="1.0"?><Error><Code>AccessDenied</Code></Error>', "application/xml"
+        )
+
+        with pytest.raises(VersionNotFoundException) as err:
+            _Server(client).get_server_version()
+
+        message = str(err.value)
+        assert "not JSON" in message
+        assert "application/xml" in message
+        assert "hostPort" not in message
 
     def test_not_found_names_the_url(self):
         client = MagicMock()

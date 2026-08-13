@@ -58,25 +58,26 @@ class RestTransportError(Exception):
 class HtmlResponseError(Exception):
     """An HTML page came back where the API answers JSON.
 
-    The OpenMetadata UI serves `index.html` for any route it does not recognise, so
-    this almost always means the request never reached the REST API: `hostPort` is
-    missing the `/api` suffix, or a proxy/login page intercepted it. Raised instead
-    of handing the caller a ``Response`` it would try to subscript.
+    The body is a web page, not an API response: the request reached a UI, a login
+    page or a proxy rather than the endpoint. Raised instead of handing the caller a
+    ``Response`` it would try to subscript.
+
+    ``REST`` is generic - connectors use it against third-party APIs too - so the
+    message stays provider-neutral. Callers that know which API they were talking to
+    pass a ``hint`` with the advice specific to it.
     """
 
-    def __init__(self, url: object, status_code: int) -> None:
+    def __init__(self, url: object, status_code: int, hint: Optional[str] = None) -> None:  # noqa: UP045
         super().__init__(
             f"Got an HTML page instead of JSON from [{url}] (HTTP {status_code})."
-            " The request reached the OpenMetadata UI, not the REST API - the UI answers"
-            " index.html for unknown routes. Check that `hostPort` points at the API"
-            " (e.g. https://<host>/api, ending in `/api`) and that no proxy or login page"
-            " is intercepting the call."
+            " The endpoint served a web page, not an API response - check the configured"
+            " host/URL and that no proxy or login page is intercepting the call." + (f" {hint}" if hint else "")
         )
         self.url = url
         self.status_code = status_code
 
 
-def _is_html_body(resp: requests.Response) -> bool:
+def is_html_body(resp: requests.Response) -> bool:
     """Whether a non-JSON body is an HTML page.
 
     Content type first; some proxies mislabel index.html as text/plain, so fall back
@@ -99,7 +100,7 @@ def _decode_body(resp: requests.Response, url: object):
     try:
         return resp.json()
     except JSONDecodeError as json_decode_error:
-        if _is_html_body(resp):
+        if is_html_body(resp):
             raise HtmlResponseError(url, resp.status_code) from json_decode_error
         logger.debug(
             "Non-JSON response (%s) from [%s] with content type [%s] returned as-is: %s",
