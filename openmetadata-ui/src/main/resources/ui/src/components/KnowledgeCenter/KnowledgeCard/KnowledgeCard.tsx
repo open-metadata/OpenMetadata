@@ -57,8 +57,10 @@ import {
 import { Trash01 } from '@untitledui/icons';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
+import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 
 export interface KnowledgeCardProps {
@@ -366,6 +368,9 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           setIsDeleting(true);
           try {
             await deleteKnowledgePage(knowledgePage.id, false, true);
+            queryClient.invalidateQueries({
+              queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+            });
             removeDraft(knowledgePage.id);
             afterDeleteAction(false);
           } catch (error) {

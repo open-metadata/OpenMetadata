@@ -510,19 +510,20 @@ class REST:
             headers=request_headers,
         )
 
-    def delete(self, path, data=None, headers=None):
+    def delete(self, path, data=None, json=None, headers=None):
         """
         DELETE method
 
         Parameters:
             path (str):
             data ():
+            json (): Request body for the endpoints that take one (e.g. ``deleteStale``)
             headers (dict): Optional custom headers to override default headers
 
         Returns:
             Response
         """
-        return self._request("DELETE", path, data, headers=headers)
+        return self._request("DELETE", path, data, json=json, headers=headers)
 
     def __enter__(self):
         return self
