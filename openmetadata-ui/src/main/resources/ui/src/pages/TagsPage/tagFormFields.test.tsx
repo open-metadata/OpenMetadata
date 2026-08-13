@@ -148,13 +148,9 @@ describe('tagFormFields', () => {
       expect(result.required).toBe(true);
     });
 
-    it('should have correct validation triggers', () => {
-      const result = getNameField(false);
-
-      expect(result.formItemProps?.validateTrigger).toEqual([
-        'onChange',
-        'onBlur',
-      ]);
+    it('should forward disabled prop', () => {
+      expect(getNameField(true, mockT).props?.isDisabled).toBe(true);
+      expect(getNameField(false, mockT).props?.isDisabled).toBe(false);
     });
   });
 

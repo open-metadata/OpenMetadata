@@ -87,6 +87,7 @@ const ClassificationDetails = forwardRef(
       isVersionView = false,
       isClassificationLoading = false,
       handleToggleDisable,
+      handleEditClassificationClick,
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
@@ -190,7 +191,6 @@ const ClassificationDetails = forwardRef(
       editDescriptionPermission,
       createPermission,
       deletePermission,
-      editDisplayNamePermission,
       editOwnerPermission,
       editDomainPermission,
     } = useMemo(() => {
@@ -209,9 +209,6 @@ const ClassificationDetails = forwardRef(
             classificationPermissions.EditAll),
         deletePermission:
           classificationPermissions.Delete && !isSystemClassification,
-        editDisplayNamePermission:
-          classificationPermissions.EditAll ||
-          classificationPermissions.EditDisplayName,
         editOwnerPermission:
           isEditable &&
           (classificationPermissions.EditAll ||
@@ -244,29 +241,22 @@ const ClassificationDetails = forwardRef(
       [isTier, isSystemClassification, editClassificationPermission]
     );
 
+    // The edit drawer edits every classification field, so it needs full
+    // EditAll access.
+    const showEditOption = useMemo(
+      () =>
+        !isVersionView &&
+        !isClassificationDisabled &&
+        editClassificationPermission,
+      [isVersionView, isClassificationDisabled, editClassificationPermission]
+    );
+
     const showManageButton = useMemo(
       () =>
         !isVersionView &&
-        (editDisplayNamePermission || deletePermission || showDisableOption),
-      [
-        editDisplayNamePermission,
-        deletePermission,
-        showDisableOption,
-        isVersionView,
-      ]
+        (showEditOption || deletePermission || showDisableOption),
+      [showEditOption, deletePermission, showDisableOption, isVersionView]
     );
-
-    const handleUpdateDisplayName = async (data: {
-      name: string;
-      displayName?: string;
-    }) => {
-      if (!isUndefined(currentClassification)) {
-        return handleUpdateClassification?.({
-          ...currentClassification,
-          ...data,
-        });
-      }
-    };
 
     const handleUpdateDescription = async (updatedHTML: string) => {
       if (!isUndefined(currentClassification)) {
@@ -330,12 +320,16 @@ const ClassificationDetails = forwardRef(
         getClassificationExtraDropdownContent(
           showDisableOption,
           isClassificationDisabled,
-          handleEnableDisableClassificationClick
+          handleEnableDisableClassificationClick,
+          showEditOption,
+          handleEditClassificationClick
         ),
       [
         isClassificationDisabled,
         showDisableOption,
         handleEnableDisableClassificationClick,
+        showEditOption,
+        handleEditClassificationClick,
       ]
     );
 
@@ -454,19 +448,14 @@ const ClassificationDetails = forwardRef(
                     <ManageButton
                       isRecursiveDelete
                       afterDeleteAction={handleAfterDeleteAction}
-                      allowRename={!isSystemClassification}
                       allowSoftDelete={false}
                       canDelete={deletePermission && !isClassificationDisabled}
                       displayName={getEntityName(currentClassification)}
-                      editDisplayNamePermission={
-                        editDisplayNamePermission && !isClassificationDisabled
-                      }
                       entityFQN={currentClassification?.fullyQualifiedName}
                       entityId={currentClassification.id}
                       entityName={currentClassification.name}
                       entityType={EntityType.CLASSIFICATION}
                       extraDropdownContent={extraDropdownContent}
-                      onEditDisplayName={handleUpdateDisplayName}
                     />
                   )}
                 </ButtonGroup>
