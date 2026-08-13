@@ -140,8 +140,13 @@ Gotchas:
 - Consumers overriding a border must match where it's drawn: `::after` for
   Button/ButtonUtility/Tab, the element for Input/Select/Badge/Card.
 
-Rings legitimately remain only where `ring-offset-*` fills the gap with a colour
-(`color-picker-field`, `icon-picker-field`) — `outline-offset` leaves it transparent.
+There are **no** remaining `ring-*` usages and the ESLint rule has **no allow-list**. Even
+`ring-offset-*` halos convert: the offset gap uses `--tw-ring-offset-color` (default `#fff`),
+so when the ring colour is also white the two merge into one `(ring + offset)`px band —
+`ring-2 ring-white ring-offset-2` is exactly `outline-4 outline-white`. Where the colours
+differ, `outline-offset-N` matches the geometry with a transparent gap. Consumer focus rings
+on `Button` are usually pure duplicates of its built-in
+`focus-visible:outline-2 focus-visible:outline-offset-2` — delete rather than convert.
 
 Full rationale, measurements, and the anti-pattern table:
 [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](../openmetadata-ui/src/main/resources/ui/docs/colors.md) §2.3.1.
@@ -152,6 +157,34 @@ The `Button` component supports these `color` values:
 
 - `primary`, `secondary`, `tertiary`, `link-gray`, `link-color`
 - `primary-destructive`, `secondary-destructive`, `tertiary-destructive`, `link-destructive`
+
+### i18n — `core` namespace
+
+The library owns its own translations. Everything lives under a flat
+`label.*` bucket inside the `core` i18next namespace. Use the wrapper hook:
+
+```tsx
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
+const { t } = useCoreTranslation();
+<button aria-label={t('label.close')}>×</button>;
+```
+
+**Rules (enforced by `yarn check-i18n-all` — CI hard-fail, precommit hook):**
+
+1. **No string literals in user-facing UI.** Every string goes through `t()`.
+2. **No English fallback in `t()` calls.** Write `t('label.close')`, not
+   `t('label.close', 'Close')`. The library eagerly loads all 20 language
+   bundles at boot, so a missing key is a real bug — the raw key rendering
+   is the signal.
+3. **Keys are flat under `label.*`** (with `message.*` for messages).
+   No per-component nesting.
+4. **After adding a key** to `src/locale/languages/en-us.json`, run
+   `yarn i18n` to sync the 19 sibling files with placeholders, then
+   **replace every placeholder with a real translation**. Gate 4
+   (`check-translations-not-english`) fails if any non-en-us value is
+   identical to its en-us source. Legitimate loanwords (French "Page",
+   Dutch "Records") go in `scripts/translation-allowlist.json` per
+   language.
 
 ### Dark Mode
 

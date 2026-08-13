@@ -77,4 +77,17 @@ public interface AggregationManagementClient {
    * @throws IOException if the aggregation operation fails
    */
   Response getEntityTypeCounts(SearchRequest request, String index) throws IOException;
+
+  /**
+   * Same as {@link #getEntityTypeCounts(SearchRequest, String)} but resolves per-subject
+   * visibility, so a ContextMemory count matches what the same caller sees in the
+   * {@code /contextCenter/memories} listing instead of being capped at the org-wide memories.
+   * Defaults to the subject-less overload, which fails closed.
+   *
+   * @param subjectContext the caller, used to evaluate per-document visibility rules
+   */
+  default Response getEntityTypeCounts(
+      SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    return getEntityTypeCounts(request, index);
+  }
 }

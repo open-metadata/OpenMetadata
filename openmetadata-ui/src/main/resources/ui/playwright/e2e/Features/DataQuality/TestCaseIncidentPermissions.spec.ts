@@ -28,6 +28,7 @@ import { getApiContext } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
+import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
 
 // --- Objects ---
 let viewIncidentsPolicy: PolicyClass;
@@ -62,9 +63,11 @@ const test = base.extend<{
   consumerLikePage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   viewIncidentsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -116,6 +119,7 @@ test.describe(
       expect(testCaseRes.status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('entity-page-header')).toBeVisible();
+      await verifyTestCaseLastRunBanner(page, 'failed');
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
       await expect(incidentTab).toBeVisible();
       await incidentTab.click();

@@ -90,8 +90,8 @@ def build_gcp_token_callback(gcp_credentials) -> TokenCallback:
     impersonate = gcp_credentials.gcpImpersonateServiceAccount
 
     def _callback() -> Tuple[str, datetime]:  # noqa: UP006
-        import google.auth  # noqa: PLC0415
-        from google.auth.transport.requests import Request as AuthRequest  # noqa: PLC0415
+        import google.auth
+        from google.auth.transport.requests import Request as AuthRequest
 
         if impersonate and impersonate.impersonateServiceAccount:
             credentials = get_gcp_impersonate_credentials(

@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "Close",
+    "close-navigation-menu": "Close navigation menu",
+    "copy-link": "Copy link",
+    "current-page": "Current page",
+    "date-range-picker": "Date range picker",
+    "delete": "Delete",
+    "edit": "Edit",
+    "expand-navigation-menu": "Expand navigation menu",
+    "field-documentation": "Field documentation",
+    "hidden-breadcrumbs": "Hidden breadcrumbs",
+    "loading": "Loading…",
+    "next-page": "Go to next page",
+    "open-menu": "Open menu",
+    "page": "Page",
+    "pagination": "Pagination",
+    "pagination-navigation": "Pagination Navigation",
+    "previous-page": "Go to previous page",
+    "records": "Records",
+    "remove-filter": "Remove filter",
+    "select-dates": "Select dates",
+    "show-hidden-breadcrumbs": "Show hidden breadcrumbs",
+    "today": "Today"
+  }
+}

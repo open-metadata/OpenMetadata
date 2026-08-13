@@ -791,6 +791,19 @@ public class FeedRepository {
     return deleted;
   }
 
+  public List<UUID> fetchConversationThreadIdsOlderThan(long cutoffMillis, int batchSize) {
+    List<UUID> result = List.of();
+    if (isLegacyThreadStorageAvailable()) {
+      result =
+          dao.feedDAO()
+              .fetchConversationThreadIdsOlderThan(
+                  getLegacyThreadTableName(), cutoffMillis, batchSize);
+    } else {
+      LOG.debug("Skipping conversation retention fetch because thread storage is unavailable");
+    }
+    return result;
+  }
+
   public void deleteByAbout(UUID entityId) {
     deleteByAbout(List.of(entityId));
   }

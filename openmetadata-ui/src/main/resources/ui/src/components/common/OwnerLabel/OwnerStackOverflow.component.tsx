@@ -111,7 +111,10 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         size="xs">
         <Avatar
           className={classNames(
-            'tw:bg-brand-50 tw:ring-2 tw:ring-white tw:text-brand-700 tw:font-medium',
+            // Border on ::after: Avatar's own outline draws its inset contrast border, so an
+            // element-level outline would clobber it. This edge was a non-inset ring, so the
+            // overlay outline sits at offset 0 (outward), keeping both edges visible.
+            'tw:bg-brand-50 tw:after:pointer-events-none tw:after:absolute tw:after:inset-0 tw:after:rounded-[inherit] tw:after:outline-2 tw:after:outline-white tw:text-brand-700 tw:font-medium',
             fontSizeClass
           )}
           placeholder={remainingCountLabel}
@@ -121,7 +124,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
       <AriaTooltip
         className={({ isEntering, isExiting }) =>
           classNames(
-            'tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+            'tw:z-50 tw:max-h-96! tw:w-72 tw:overflow-y-auto tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
             isEntering &&
               'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-bottom:slide-in-from-top-1 tw:placement-top:slide-in-from-bottom-1',
             isExiting &&

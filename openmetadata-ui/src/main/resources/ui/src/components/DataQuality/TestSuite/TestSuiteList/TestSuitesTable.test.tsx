@@ -158,6 +158,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     Box: MockBox,
     EmptyPlaceholder: MockEmptyPlaceholder,
+    Skeleton: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
+      <div data-testid={testId} />
+    ),
     Table: MockTable,
   };
 });
@@ -419,6 +422,13 @@ describe('TestSuitesTable component', () => {
     renderTable({ isLoading: true });
 
     expect(screen.queryByTestId('svc.suite')).not.toBeInTheDocument();
+  });
+
+  it('should render table-scoped skeleton rows while loading', () => {
+    renderTable({ isLoading: true });
+
+    expect(screen.getAllByTestId('test-suite-loading-row')).toHaveLength(5);
+    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
   });
 
   it('should render pagination when showPagination is true', () => {

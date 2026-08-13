@@ -151,16 +151,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       throw new IOException("Elasticsearch client is not available");
     }
 
+    Query sourceUrlQuery =
+        Query.of(q -> q.bool(b -> b.must(m -> m.term(t -> t.field("sourceUrl").value(sourceUrl)))));
     SearchRequest searchRequest =
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(
-                        q ->
-                            q.bool(
-                                b ->
-                                    b.must(
-                                        m -> m.term(t -> t.field("sourceUrl").value(sourceUrl))))));
+                    .query(restrictToOrgWideMemories(sourceUrlQuery)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -183,22 +180,20 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       throw new IOException("Elasticsearch client is not available");
     }
 
+    Query fieldQuery =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(m -> m.wildcard(w -> w.field(fieldName).value(fieldValue)))
+                            .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
     SearchRequest searchRequest =
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(index))
                     .from(from)
                     .size(size)
-                    .query(
-                        q ->
-                            q.bool(
-                                b ->
-                                    b.must(
-                                            m ->
-                                                m.wildcard(
-                                                    w -> w.field(fieldName).value(fieldValue)))
-                                        .filter(
-                                            f -> f.term(t -> t.field("deleted").value(deleted))))));
+                    .query(restrictToOrgWideMemories(fieldQuery)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -399,6 +394,20 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   }
 
   /**
+   * ANDs the org-wide-only ContextMemory filter into a query built outside {@link
+   * ElasticSearchRequestBuilder} (which applies the same default in its {@code build}). These paths
+   * take no {@link SubjectContext}, so they cannot tell whose restricted memory a document is and
+   * must fail closed. Non-memory documents are unaffected.
+   */
+  private Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((ElasticQueryBuilder) contextMemoryVisibility.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
+
+  /**
    * Enforces ContextMemory shareConfig visibility on search results for non-admin subjects. Applied
    * independently of {@code shouldApplyRbacConditions} because memory visibility is a per-memory
    * privacy guarantee, not an RBAC policy — disabling RBAC search filtering must not expose private
@@ -409,22 +418,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext);
     if (visibilityBuilder != null) {
-      Query visibilityQuery = ((ElasticQueryBuilder) visibilityBuilder).buildV2();
-      Query existingQuery = requestBuilder.query();
-      if (existingQuery != null) {
-        Query combinedQuery =
-            Query.of(
-                qb ->
-                    qb.bool(
-                        b -> {
-                          b.must(existingQuery);
-                          b.filter(visibilityQuery);
-                          return b;
-                        }));
-        requestBuilder.query(combinedQuery);
-      } else {
-        requestBuilder.query(visibilityQuery);
-      }
+      requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
+    }
+    // Admins get no filter but are still resolved. An unidentifiable subject is NOT resolved, so
+    // ElasticSearchRequestBuilder#build falls back to its org-wide-only default instead of running
+    // the search unfiltered.
+    if (contextMemoryVisibility.isSubjectResolvable(subjectContext)) {
+      requestBuilder.contextMemoryVisibilityResolved();
     }
   }
 
@@ -599,6 +599,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
         requestBuilder.from(request.getFrom());
         requestBuilder.size(request.getSize());
+        applyContextMemoryVisibility(subjectContext, requestBuilder);
 
         // Add aggregations for NLQ query
         addAggregationsToNLQQuery(requestBuilder, request.getIndex());
@@ -910,7 +911,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
     try {
-      response = client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
+      response =
+          client.search(
+              s -> s.index(indexName).query(restrictToOrgWideMemories(boolQuery)).size(1000),
+              JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -1382,7 +1386,10 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
 
     baseQueryBuilder.minimumShouldMatch(1);
-    Query originalQuery = baseQueryBuilder.build();
+    // The subject's visibility filter was ANDed into the query this rewrite has just demoted to a
+    // should clause, where minimumShouldMatch(1) lets a name/displayName phrase match satisfy the
+    // query without it. Re-AND the memory guard so hierarchy search cannot become a bypass.
+    Query originalQuery = restrictToOrgWideMemories(baseQueryBuilder.build());
     requestBuilder.query(originalQuery);
 
     // Add fqnParts aggregation to fetch parent terms
@@ -1648,7 +1655,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(query)
+                    .query(restrictToOrgWideMemories(query))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
@@ -1703,7 +1710,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(query)
+                    .query(restrictToOrgWideMemories(query))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
@@ -1814,7 +1821,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(finalMainQuery)
+                    .query(restrictToOrgWideMemories(finalMainQuery))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();

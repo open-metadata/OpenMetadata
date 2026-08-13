@@ -13,7 +13,11 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Agent, AgentRun } from '../AgentsPage.interface';
+import {
+  Agent,
+  AgentActionPermissions,
+  AgentRun,
+} from '../AgentsPage.interface';
 import { useAgentRuns } from '../hooks/useAgentRuns';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
@@ -87,12 +91,23 @@ const agent: Agent = {
 
 const mockOnRun = jest.fn();
 
-const renderDrawer = (initialRunId?: string) =>
+const TRIGGER_PERMISSION: AgentActionPermissions = {
+  trigger: true,
+  edit: false,
+  delete: false,
+};
+
+const renderDrawer = (
+  initialRunId?: string,
+  agentOverrides?: Partial<Agent>,
+  permissions: AgentActionPermissions = TRIGGER_PERMISSION
+) =>
   render(
     <RunHistoryDrawer
       open
-      agent={agent}
+      agent={{ ...agent, ...agentOverrides }}
       initialRunId={initialRunId}
+      permissions={permissions}
       onClose={jest.fn()}
       onOpenLogs={jest.fn()}
       onRun={mockOnRun}
@@ -134,6 +149,50 @@ describe('RunHistoryDrawer', () => {
     fireEvent.click(screen.getByText('label.run-now'));
 
     expect(mockOnRun).toHaveBeenCalledWith(agent);
+  });
+
+  it('should hide the Run now button for a running agent', () => {
+    renderDrawer(undefined, { status: 'running' });
+
+    expect(
+      screen.queryByTestId('drawer-run-now-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should hide the Run now button for a queued agent to avoid a duplicate run', () => {
+    renderDrawer(undefined, { status: 'queued' });
+
+    expect(
+      screen.queryByTestId('drawer-run-now-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should hide the Run now button without trigger permission', () => {
+    renderDrawer(undefined, undefined, {
+      trigger: false,
+      edit: true,
+      delete: true,
+    });
+
+    expect(
+      screen.queryByTestId('drawer-run-now-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should hide the Run now button while permissions are unresolved', () => {
+    render(
+      <RunHistoryDrawer
+        open
+        agent={agent}
+        onClose={jest.fn()}
+        onOpenLogs={jest.fn()}
+        onRun={mockOnRun}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('drawer-run-now-button')
+    ).not.toBeInTheDocument();
   });
 
   it('should forward fetchRuns to useAgentRuns', () => {

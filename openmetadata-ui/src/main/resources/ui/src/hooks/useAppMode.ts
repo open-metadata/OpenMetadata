@@ -14,11 +14,14 @@
 import { isUndefined } from 'lodash';
 import { create } from 'zustand';
 import {
+  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+import { DefaultAppMode } from '../generated/api/configuration/appConfiguration';
+import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 
 /**
  * Payload persisted in `sessionStorage[APP_MODE_SESSION_KEY]`.
@@ -321,3 +324,103 @@ export const isAppModeHintFresh = (hint: AppModeHint | null): boolean =>
  * active mode is the default.
  */
 export const useIsAiMode = (): boolean => useAppMode() !== DEFAULT_APP_MODE;
+
+/**
+ * Synchronously resolve the app mode a freshly-authenticated user should
+ * land in, using the same precedence as {@link useResolvedAppMode} minus
+ * the async persona lookup:
+ *
+ *   1. `sessionStorage` tuple (mid-session re-auth in an already-AI tab)
+ *   2. Fresh cross-tab hint (a sibling tab in this browser is in AI)
+ *   3. User's stored `preferences.appMode` (the "remember" checkbox)
+ *   4. `DEFAULT_APP_MODE`
+ *
+ * Persona-based resolution requires an API call and is deferred to
+ * `useResolvedAppMode`, which runs after login and will re-write the mode
+ * if the persona disagrees. This helper only exists so the post-login
+ * redirect can pick the right landing route (`/` for non-default modes,
+ * `/my-data` for Classic) without waiting for the async resolver.
+ *
+ * Pure — no side effects. Safe to call from event handlers.
+ */
+export const resolveInitialAppMode = (userName?: string): string => {
+  // Distinguish "explicit session tuple" from "no session at all" by
+  // reading the raw sessionStorage payload. `useAppModeStore.currentMode`
+  // returns `DEFAULT_APP_MODE` in BOTH cases, which would let a
+  // sibling-tab AI hint override an explicit Classic session — exactly
+  // what the resolver's `validSession` check guards against.
+  const session = readSession();
+  if (session) {
+    return session.mode;
+  }
+
+  const hint = readHint();
+  if (isHintFresh(hint) && hint && hint.mode !== DEFAULT_APP_MODE) {
+    return hint.mode;
+  }
+
+  if (userName) {
+    const pref = usePersistentStorage.getState().getUserPreference(userName);
+    if (pref?.appMode && pref.appMode !== DEFAULT_APP_MODE) {
+      return pref.appMode;
+    }
+  }
+
+  return DEFAULT_APP_MODE;
+};
+
+/**
+ * Translate the yaml/DB-facing `appConfiguration.defaultAppMode` wire value
+ * ("ai" | "classic") into the runtime mode string consumed by `useAppMode` /
+ * `useResolvedAppMode`. Core has always used `DEFAULT_APP_MODE` ("default")
+ * for Classic, while the Collate plugin registers its routes under
+ * `AI_APP_MODE` ("ai"). The wire value stays the readable "ai"/"classic"
+ * pair for admins; this map is the only place that needs to know the
+ * runtime strings differ.
+ */
+export const CONFIG_MODE_TO_RUNTIME: Record<string, string> = {
+  [DefaultAppMode.Classic]: DEFAULT_APP_MODE,
+  [DefaultAppMode.AI]: AI_APP_MODE,
+};
+
+/**
+ * Safe wrapper around {@link CONFIG_MODE_TO_RUNTIME} for the nullable wire
+ * value returned by `getAppConfiguration()` / `AppConfiguration.defaultAppMode`.
+ */
+export const translateWireMode = (
+  wireMode: string | null | undefined
+): string | null =>
+  wireMode ? CONFIG_MODE_TO_RUNTIME[wireMode] ?? null : null;
+
+/**
+ * Resolve the effective app mode at boot from the fallback chain, highest
+ * precedence first:
+ *
+ *   1. `userPref`    — the user's own stored preference (`user_preferences`).
+ *   2. `personaMode` — the admin-curated persona app mode, when known.
+ *   3. `appDefault`  — the tenant-wide "first impression" default
+ *                       (`appConfiguration.defaultAppMode`, translated).
+ *   4. `DEFAULT_APP_MODE` — the hardcoded constant, last resort.
+ *
+ * Pure — no side effects, no storage reads. Callers are responsible for
+ * supplying each signal (see `AuthProvider`'s bootstrap wiring).
+ */
+export const resolveEffectiveAppMode = (
+  userPref: string | null | undefined,
+  personaMode: string | null | undefined,
+  appDefault: string | null | undefined
+): string => userPref ?? personaMode ?? appDefault ?? DEFAULT_APP_MODE;
+
+// In-memory cache of the tenant-wide app-mode default (already translated
+// to the runtime string), populated once at boot from `getAppConfiguration()`
+// by `AuthProvider`. Deliberately NOT persisted anywhere — it is a soft
+// fallback consulted only when neither the user's preference nor the
+// persona have an opinion. See `resolveEffectiveAppMode` and
+// `useResolvedAppMode`, which both consult it as the third-priority signal.
+let appDefaultMode: string | null = null;
+
+export const setAppDefaultMode = (mode: string | null): void => {
+  appDefaultMode = mode;
+};
+
+export const getAppDefaultMode = (): string | null => appDefaultMode;

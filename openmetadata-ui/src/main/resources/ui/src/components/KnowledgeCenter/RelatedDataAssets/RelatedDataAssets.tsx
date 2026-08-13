@@ -29,9 +29,9 @@ import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { EntityReference } from '../../../generated/entity/type';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { RelatedDataAssetsForm } from './RelatedDataAssetsForm';
 

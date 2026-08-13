@@ -23,6 +23,7 @@ import { redirectToHomePage, uuid } from '../../utils/common';
 import {
   assignTagToChildren,
   copyAndGetClipboardText,
+  escapeESReservedCharacters,
   getFirstRowColumnLink,
   removeTagsFromChildren,
   waitForAllLoadersToDisappear,
@@ -103,13 +104,22 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByText('Name', { exact: true }).click();
     await page.locator('[data-testid="searchbar-component"] input').click();
 
-    const testSearchResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*q=%2Atemp-test-case%2A*`
-    );
+    const searchTerm = 'temp-test-case';
+    const testSearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) &&
+        (responseUrl.searchParams.get('q') ?? '') ===
+          `*${escapeESReservedCharacters(searchTerm)}*`
+      );
+    });
 
     await page
       .locator('[data-testid="searchbar-component"] input')
-      .fill('temp-test-case');
+      .fill(searchTerm);
 
     await testSearchResponse;
     await page
@@ -160,11 +170,18 @@ test.describe('Table pagination sorting search scenarios ', () => {
     // Combine it with a search term that matches nothing to deterministically
     // land on the empty-state placeholder.
     const noMatchSearch = `no-match-${uuid()}`;
-    const emptySearchResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-        response.url().includes(noMatchSearch)
-    );
+    const emptySearchResponse = page.waitForResponse((response) => {
+      const responseUrl = new URL(response.url());
+
+      return (
+        responseUrl.pathname.includes(
+          '/api/v1/dataQuality/testCases/search/list'
+        ) &&
+        (responseUrl.searchParams.get('q') ?? '').includes(
+          escapeESReservedCharacters(noMatchSearch)
+        )
+      );
+    });
     await page.locator('[data-testid="searchbar-component"] input').click();
     await page
       .locator('[data-testid="searchbar-component"] input')
@@ -248,7 +265,8 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
     await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
-    await pageSizeDropdown.hover();
+    await expect(pageSizeDropdown).toBeEnabled();
+    await pageSizeDropdown.click();
 
     const pageSizeOption = page
       .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
@@ -397,20 +415,29 @@ test.describe('Table & Data Model columns table pagination', () => {
 });
 
 test.describe('Tags and glossary terms should be consistent for search ', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const testClassification = new ClassificationClass();
-  const testTag = new TagClass({
-    classification: testClassification.data.name,
-  });
+  let glossary: Glossary;
+  let glossaryTerm: GlossaryTerm;
+  let testClassification: ClassificationClass;
+  let testTag: TagClass;
 
   test.beforeAll(async ({ browser }) => {
-    const { apiContext } = await performAdminLogin(browser);
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    testClassification = new ClassificationClass();
+    testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
 
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await testClassification.create(apiContext);
-    await testTag.create(apiContext);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('Glossary term should be consistent for search', async ({
@@ -586,7 +613,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       page.getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    page.reload();
+    await page.reload();
     // Wait for page to be fully loaded
     await waitForAllLoadersToDisappear(page);
     const getRequest = page.waitForResponse(

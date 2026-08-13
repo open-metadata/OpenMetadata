@@ -507,10 +507,15 @@ export const verifyWidgetFooterViewMore = async (
     widgetKey,
     expectedLink,
     link,
+    // Callers that seed enough rows for the link to be guaranteed pass true, so
+    // a missing footer fails instead of quietly ending the check. Defaults to
+    // false because most widgets here have no seeded row count to rely on.
+    requireViewMore = false,
   }: {
     widgetKey: string;
     expectedLink?: string;
     link?: string;
+    requireViewMore?: boolean;
   }
 ) => {
   // Wait for the page to load
@@ -523,6 +528,11 @@ export const verifyWidgetFooterViewMore = async (
 
   // Check for widget footer
   const widgetFooter = widget.locator('[data-testid="widget-footer"]');
+
+  if (requireViewMore) {
+    await expect(widgetFooter).toBeVisible();
+  }
+
   const footerExists = await widgetFooter.isVisible().catch(() => false);
 
   if (!footerExists) {
@@ -532,6 +542,11 @@ export const verifyWidgetFooterViewMore = async (
 
   // Footer exists, check for view more button
   const viewMoreButton = widget.locator('.footer-view-more-button');
+
+  if (requireViewMore) {
+    await expect(viewMoreButton).toBeVisible();
+  }
+
   const buttonExists = await viewMoreButton.isVisible().catch(() => false);
 
   if (!buttonExists) {
@@ -677,7 +692,8 @@ export const verifyWidgetHeaderNavigation = async (
   page: Page,
   widgetKey: string,
   expectedTitle: string,
-  navigationUrl: string
+  navigationUrl: string,
+  destinationTestId?: string
 ) => {
   const widget = await waitForLandingPageWidget(page, widgetKey);
 
@@ -698,10 +714,16 @@ export const verifyWidgetHeaderNavigation = async (
   // Click header title to navigate
   await headerTitle.click();
 
-  const currentUrl = page.url();
+  // Poll instead of reading page.url() once: the click starts a client-side
+  // navigation, so a single read can still observe the landing page URL.
+  await expect.poll(() => page.url()).toContain(navigationUrl);
 
-  // Wait for navigation
-  expect(currentUrl).toContain(navigationUrl);
+  // Optionally prove the destination rendered. A URL check alone cannot tell a
+  // working page from one stuck on its loader. Must run before the redirect
+  // below, which takes the browser back to the landing page.
+  if (destinationTestId) {
+    await expect(page.getByTestId(destinationTestId)).toBeVisible();
+  }
 
   // Home keeps background requests alive on some persona routes; use the lighter
   // redirect path and wait on rendered state instead of networkidle.

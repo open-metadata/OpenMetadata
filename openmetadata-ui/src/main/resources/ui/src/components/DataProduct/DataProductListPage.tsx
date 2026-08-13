@@ -20,8 +20,16 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Globe01, SearchLg } from '@untitledui/icons';
+import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { NO_DATA, ROUTES } from '../../constants/constants';
@@ -29,7 +37,6 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { withPageLayout } from '../../hoc/withPageLayout';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -38,7 +45,13 @@ import {
   getClassificationTags,
   getGlossaryTags,
 } from '../../utils/TagsPureUtils';
+import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
+import {
+  CLIPPED_NAME_CLASS,
+  COMPACT_CELL_CLIP_CLASS,
+  NAME_CELL_CLIP_CLASS,
+} from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
@@ -53,6 +66,7 @@ import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.compon
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -107,22 +121,7 @@ const DataProductListPage = ({
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const { pageHeader } = usePageHeader({
-    titleKey: 'label.data-product-plural',
-    descriptionMessageKey: 'message.data-product-description',
-    createPermission: permissions.dataProduct?.Create || false,
-    addButtonLabelKey: 'label.add-data-product',
-    onAddClick: openDrawer,
-    learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
-    variant: isAiMode ? 'search' : undefined,
-    breadcrumb: headerBreadcrumb,
-  });
-
-  const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.data-product',
-    count: dataProductListing.totalEntities,
-    loading: dataProductListing.loading,
-  });
+  const showHeaderSearch = isAiMode;
 
   const [searchInputValue, setSearchInputValue] = useState(
     dataProductListing.urlState.searchQuery ?? ''
@@ -143,6 +142,38 @@ const DataProductListPage = ({
       debouncedSearch.cancel();
     };
   }, [debouncedSearch]);
+
+  const searchInputProps = {
+    icon: SearchLg,
+    placeholder: t('label.search'),
+    value: searchInputValue,
+    onChange: (value: string) => {
+      setSearchInputValue(value);
+      debouncedSearch(value);
+    },
+  };
+
+  const headerSearch = showHeaderSearch ? (
+    <Input className="tw:w-72" {...searchInputProps} />
+  ) : undefined;
+
+  const { pageHeader } = usePageHeader({
+    titleKey: 'label.data-product-plural',
+    descriptionMessageKey: 'message.data-product-description',
+    createPermission: permissions.dataProduct?.Create || false,
+    addButtonLabelKey: 'label.add-data-product',
+    onAddClick: openDrawer,
+    learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
+    variant: isAiMode ? 'search' : undefined,
+    search: headerSearch,
+    breadcrumb: headerBreadcrumb,
+  });
+
+  const { titleAndCount } = useTitleAndCount({
+    titleKey: 'label.data-product',
+    count: dataProductListing.totalEntities,
+    loading: dataProductListing.loading,
+  });
 
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const { renderDataProductCard } = useDomainCardTemplates();
@@ -170,14 +201,27 @@ const DataProductListPage = ({
             entity.displayName !== entity.name;
 
           return (
-            <Box align="center" direction="row" gap={3}>
+            <Box
+              align="center"
+              className={NAME_CELL_CLIP_CLASS}
+              direction="row"
+              gap={3}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
-              <Box direction="col">
-                <Typography size="text-sm" weight="medium">
+              <Box className="tw:min-w-0" direction="col">
+                <Typography
+                  className={CLIPPED_NAME_CLASS}
+                  ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+                  size="text-sm"
+                  weight="medium">
                   {entityName}
                 </Typography>
                 {showName && (
-                  <Typography size="text-xs">{entity.name}</Typography>
+                  <Typography
+                    className={CLIPPED_NAME_CLASS}
+                    ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
+                    size="text-xs">
+                    {entity.name}
+                  </Typography>
                 )}
               </Box>
             </Box>
@@ -202,9 +246,20 @@ const DataProductListPage = ({
           const domain = domains[0];
 
           return (
-            <Box align="center" direction="row" gap={1}>
+            <Box
+              align="center"
+              className={COMPACT_CELL_CLIP_CLASS}
+              direction="row"
+              gap={1}>
               <Globe01 size={16} style={{ flexShrink: 0 }} />
-              <Typography size="text-sm">
+              <Typography
+                className={CLIPPED_NAME_CLASS}
+                ellipsis={{
+                  tooltip: renderBreakableTooltip(
+                    domain.displayName || domain.name
+                  ),
+                }}
+                size="text-sm">
                 {domain.displayName || domain.name}
               </Typography>
             </Box>
@@ -288,6 +343,7 @@ const DataProductListPage = ({
           <EntityListingTable
             ariaLabel={t('label.data-product')}
             columns={dataProductColumns}
+            containerClassName="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
             entities={dataProductListing.entities}
             loading={dataProductListing.loading}
             renderCell={renderDataProductCell}
@@ -308,6 +364,7 @@ const DataProductListPage = ({
     return (
       <>
         <EntityCardView
+          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={dataProductListing.entities}
           loading={dataProductListing.loading}
           renderCard={renderDataProductCard}
@@ -348,26 +405,24 @@ const DataProductListPage = ({
             createPermission: permissions.dataProduct?.Create || false,
             count: dataProductListing.totalEntities,
             breadcrumb: headerBreadcrumb,
+            search: headerSearch,
           })
         : pageHeader}
 
-      <Card style={{ marginBottom: 20 }} variant="elevated">
+      <Card
+        className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
+          'tw:mb-5': !isAiMode,
+        })}
+        variant="elevated">
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {titleAndCount}
-            <Input
-              className="tw:max-w-86"
-              icon={SearchLg}
-              placeholder={t('label.search')}
-              value={searchInputValue}
-              onChange={(value) => {
-                setSearchInputValue(value);
-                debouncedSearch(value);
-              }}
-            />
+            {!showHeaderSearch && titleAndCount}
+            {!showHeaderSearch && (
+              <Input className="tw:max-w-86" {...searchInputProps} />
+            )}
             {quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle value={view} onChange={setView} />
@@ -383,6 +438,19 @@ const DataProductListPage = ({
   );
 };
 
+const DataProductListPageWithLayout: FC<DataProductListPageProps> = (props) => {
+  const isAiMode = useIsAiMode();
+
+  return (
+    <PageLayoutV1
+      fullHeight={isAiMode}
+      pageTitle={props.pageTitle}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <DataProductListPage {...props} />
+    </PageLayoutV1>
+  );
+};
+
 export { DataProductListPage };
 
-export default withPageLayout(DataProductListPage);
+export default DataProductListPageWithLayout;

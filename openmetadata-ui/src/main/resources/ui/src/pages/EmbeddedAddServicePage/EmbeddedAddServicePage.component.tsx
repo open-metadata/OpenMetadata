@@ -246,7 +246,7 @@ const EmbeddedAddServicePage = () => {
   };
 
   const handleServiceCategoryChange = (category: ServiceCategory) => {
-    setShowErrorMessage({ ...showErrorMessage, serviceType: false });
+    setShowErrorMessage((prev) => ({ ...prev, serviceType: false }));
     setServiceConfig((prev) => ({
       ...prev,
       serviceType: '',
@@ -505,6 +505,7 @@ const EmbeddedAddServicePage = () => {
                           : 0
                       }
                       data={serviceConfig as ServicesType}
+                      isAdditionalValidationPending={isServiceNameChecking}
                       isSubmitDisabled={isStep2NextDisabled}
                       ref={connectionFormRef}
                       serviceCategory={serviceCategory}

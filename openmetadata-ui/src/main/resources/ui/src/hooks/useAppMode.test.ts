@@ -14,16 +14,24 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import {
+  AI_APP_MODE,
   APP_MODE_HINT_STORAGE_KEY,
   APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import {
   clearAppMode,
+  CONFIG_MODE_TO_RUNTIME,
+  getAppDefaultMode,
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
+  resolveEffectiveAppMode,
+  resolveInitialAppMode,
+  setAppDefaultMode,
+  translateWireMode,
   useAppMode,
   useAppModeStore,
   writeAppMode,
@@ -341,5 +349,208 @@ describe('readAppModeSession', () => {
     );
 
     expect(readAppModeSession()).toBeNull();
+  });
+});
+
+describe('resolveInitialAppMode', () => {
+  const TEST_USER = 'test-user';
+
+  beforeEach(() => {
+    resetStore();
+    // Persistent user-prefs store is not cleared by resetStore — clear
+    // any lingering preference so tests are hermetic.
+    usePersistentStorage.getState().clearUserPreference(TEST_USER);
+  });
+
+  it('returns DEFAULT_APP_MODE when no signal is present', () => {
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('returns the session tuple mode when present (mid-session re-auth in AI tab)', () => {
+    act(() => {
+      writeAppMode('ai');
+    });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
+  });
+
+  it('returns the hint mode when session is empty and hint is fresh (sibling AI tab)', () => {
+    // Simulate a sibling AI tab having written the hint — but this tab
+    // has no session tuple yet (fresh open).
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: 'ai', ts: Date.now() })
+    );
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
+  });
+
+  it('ignores a stale hint (past TTL) and falls through', () => {
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({
+        mode: 'ai',
+        ts: Date.now() - APP_MODE_HINT_TTL_MS - 1_000,
+      })
+    );
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('ignores a fresh DEFAULT-mode hint (no positive AI signal)', () => {
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: DEFAULT_APP_MODE, ts: Date.now() })
+    );
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('returns the stored user preference when no session and no fresh hint', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: 'ai' });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
+  });
+
+  it('ignores a DEFAULT-valued preference (falls through to default)', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: DEFAULT_APP_MODE });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('ignores a null-valued preference', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: null });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('returns default when userName is undefined (skips the preference lookup)', () => {
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: 'ai' });
+
+    expect(resolveInitialAppMode(undefined)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('session tuple wins over a conflicting hint', () => {
+    act(() => {
+      writeAppMode('ai');
+    });
+    // Force-overwrite the hint written by writeAppMode with a conflict.
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: DEFAULT_APP_MODE, ts: Date.now() })
+    );
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
+  });
+
+  // Regression: an explicit Classic session tuple must win over a
+  // fresh AI hint from a sibling tab. Reading only in-memory
+  // `currentMode` conflates "no session" with "explicit Classic
+  // session" (both return DEFAULT_APP_MODE), which used to let a
+  // stray AI hint reroute a Classic re-auth to `/`.
+  it('explicit Classic session tuple wins over a fresh AI hint', () => {
+    act(() => {
+      writeAppMode(DEFAULT_APP_MODE);
+    });
+    // Overwrite the hint that writeAppMode just wrote (also DEFAULT)
+    // with a conflicting AI hint from a hypothetical sibling tab.
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: 'ai', ts: Date.now() })
+    );
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('explicit Classic session tuple wins over a conflicting stored AI preference', () => {
+    act(() => {
+      writeAppMode(DEFAULT_APP_MODE);
+    });
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: 'ai' });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('fresh hint wins over a conflicting stored user preference', () => {
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: 'ai', ts: Date.now() })
+    );
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: DEFAULT_APP_MODE });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
+  });
+});
+
+describe('resolveEffectiveAppMode', () => {
+  it('user preference wins over everything', () => {
+    expect(resolveEffectiveAppMode('ai', 'default', 'default')).toBe('ai');
+  });
+
+  it('persona wins over app default', () => {
+    expect(resolveEffectiveAppMode(null, 'ai', 'default')).toBe('ai');
+  });
+
+  it('app default wins over constant', () => {
+    expect(resolveEffectiveAppMode(null, null, 'ai')).toBe('ai');
+  });
+
+  it('constant is the final fallback', () => {
+    expect(resolveEffectiveAppMode(null, null, null)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('treats undefined the same as null for every signal', () => {
+    expect(resolveEffectiveAppMode(undefined, undefined, undefined)).toBe(
+      DEFAULT_APP_MODE
+    );
+  });
+});
+
+describe('CONFIG_MODE_TO_RUNTIME / translateWireMode', () => {
+  it('maps the wire "classic" value to DEFAULT_APP_MODE', () => {
+    expect(CONFIG_MODE_TO_RUNTIME.classic).toBe(DEFAULT_APP_MODE);
+    expect(translateWireMode('classic')).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('maps the wire "ai" value to AI_APP_MODE', () => {
+    expect(CONFIG_MODE_TO_RUNTIME.ai).toBe(AI_APP_MODE);
+    expect(translateWireMode('ai')).toBe(AI_APP_MODE);
+  });
+
+  it('returns null for a null/undefined wire value', () => {
+    expect(translateWireMode(null)).toBeNull();
+    expect(translateWireMode(undefined)).toBeNull();
+  });
+
+  it('returns null for an unrecognised wire value', () => {
+    expect(translateWireMode('bogus')).toBeNull();
+  });
+});
+
+describe('setAppDefaultMode / getAppDefaultMode', () => {
+  afterEach(() => {
+    setAppDefaultMode(null);
+  });
+
+  it('defaults to null', () => {
+    expect(getAppDefaultMode()).toBeNull();
+  });
+
+  it('stores and returns whatever was set', () => {
+    setAppDefaultMode(AI_APP_MODE);
+
+    expect(getAppDefaultMode()).toBe(AI_APP_MODE);
   });
 });

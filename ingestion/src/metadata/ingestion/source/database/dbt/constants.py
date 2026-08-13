@@ -159,6 +159,7 @@ class DbtCommonEnum(Enum):
     RESOURCETYPE = "resource_type"
     MANIFEST_NODE = "manifest_node"
     UPSTREAM = "upstream"
+    UPSTREAM_BY_NAME = "upstream_by_name"
     RESULTS = "results"
     TEST_SUITE_NAME = "test_suite_name"
     DBT_TEST_SUITE = "DBT_TEST_SUITE"

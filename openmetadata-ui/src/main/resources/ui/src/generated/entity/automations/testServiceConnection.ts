@@ -64,7 +64,7 @@ export interface TestServiceConnection {
  * Drive Connection.
  */
 export interface TestServiceConnectionConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -230,6 +230,8 @@ export interface TestServiceConnectionConnection {
  *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
+ * Omni BI connector: models, topics, workbooks/dashboards and lineage
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -341,7 +343,7 @@ export interface TestServiceConnectionConnection {
  *
  * Custom Drive Connection to build a source that is not supported.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -373,6 +375,8 @@ export interface ConfigObject {
      * CA certificate, client certificate, and private key for SSL validation. Required when
      * verifySSL is 'validate'.
      *
+     * SSL Configuration for Prefect API connection.
+     *
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
@@ -386,6 +390,8 @@ export interface ConfigObject {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * API token to authenticate with Omni.
      *
      * To Connect to Dagster Cloud
      *
@@ -417,7 +423,7 @@ export interface ConfigObject {
      *
      * Custom search service type
      */
-    type?: ConfigType;
+    type?: AirflowConnectionType;
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
@@ -573,6 +579,9 @@ export interface ConfigObject {
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
+     * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
+     * automatically.
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Pipeline Service Management/UI URI.
@@ -580,6 +589,9 @@ export interface ConfigObject {
      * Pipeline Service Management/UI URL.
      *
      * Spline REST Server Host & Port.
+     *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
      *
      * KafkaConnect Service Management/UI URI.
      *
@@ -635,7 +647,7 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?: ConfigScheme;
+    scheme?: AirflowConnectionScheme;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -721,17 +733,18 @@ export interface ConfigObject {
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
      *
-     * Database of the data source.
-     *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
-     *
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
      *
      * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
      * blank, all namespaces will be ingested.
@@ -1039,6 +1052,8 @@ export interface ConfigObject {
      * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
      * SAP S/4HANA Cloud.
      *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
+     *
      * Types of methods used to authenticate to the alation instance
      *
      * Authentication type to connect to Apache Ranger.
@@ -1167,7 +1182,7 @@ export interface ConfigObject {
      *
      * Choose between mysql and postgres connection for alation database
      */
-    connection?: ConfigConnection;
+    connection?: AirflowConnectionConnection;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1228,6 +1243,21 @@ export interface ConfigObject {
      * Verify ( Connection Argument for SSL ) to connect to Trino.
      */
     verify?: string;
+    /**
+     * Redshift cluster identifier. Leave empty for standard Redshift hostnames
+     * (*.redshift.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM
+     * authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find
+     * it in AWS Console -> Amazon Redshift -> Clusters ('Cluster identifier' column).
+     */
+    clusterIdentifier?: string;
+    /**
+     * Redshift Serverless workgroup name. Leave empty for standard Redshift Serverless
+     * hostnames (*.redshift-serverless.amazonaws.com) - it is derived automatically. Set this
+     * ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a
+     * custom DNS name. Find it in AWS Console -> Amazon Redshift -> Redshift Serverless ->
+     * Workgroups.
+     */
+    workgroupName?: string;
     /**
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
@@ -1608,6 +1638,8 @@ export interface ConfigObject {
     dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
+     *
+     * Regex to exclude or include data models (Omni topics) that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
     /**
@@ -1860,6 +1892,8 @@ export interface ConfigObject {
     useEmulator?: boolean;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -2369,6 +2403,8 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to exclude or include charts that matches the pattern.
  *
+ * Regex to exclude or include data models (Omni topics) that matches the pattern.
+ *
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex exclude pipelines.
@@ -2528,6 +2564,13 @@ export enum AuthProvider {
  *
  * OAuth 2.0 client credentials for SAP S/4HANA Cloud.
  *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
+ *
  * ThoughtSpot authentication configuration
  *
  * Types of methods used to authenticate to the alation instance
@@ -2676,13 +2719,28 @@ export interface AuthenticationType {
      */
     tokenEndpoint?: string;
     /**
-     * Access Token for the API
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
      */
-    accessToken?: string;
+    accountId?: string;
     /**
+     * Prefect Cloud API key for authentication.
+     *
      * Elastic Search API Key for API Authentication
      */
     apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
+    /**
+     * Access Token for the API
+     */
+    accessToken?: string;
     /**
      * Elastic Search API Key ID for API Authentication
      */
@@ -3233,6 +3291,8 @@ export enum KafkaSecurityProtocol {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * SSL Configuration for Prefect API connection.
+ *
  * SSL Configuration for OpenMetadata Server
  *
  * OpenMetadata Client configured to validate SSL certificates.
@@ -3316,7 +3376,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: Connection;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -3359,7 +3419,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface Connection {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -3545,7 +3605,7 @@ export interface SecurityConfigClass {
  *
  * Choose between mysql and postgres connection for alation database
  */
-export interface ConfigConnection {
+export interface AirflowConnectionConnection {
     /**
      * Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g.
      * ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be
@@ -3575,6 +3635,10 @@ export interface ConfigConnection {
     type?: ConnectionType;
     /**
      * Database of the data source.
+     *
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
@@ -3985,6 +4049,8 @@ export enum ConnectionScheme {
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
+ * SSL Configuration for Prefect API connection.
+ *
  * SSL Configuration for OpenMetadata Server
  */
 export interface ConnectionSSLConfig {
@@ -4119,9 +4185,9 @@ export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database: string;
     /**
@@ -4331,9 +4397,9 @@ export interface HiveMetastoreConnectionDetails {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database?: string;
     /**
@@ -4655,7 +4721,7 @@ export enum RunMode {
  *
  * Couchbase driver scheme options.
  */
-export enum ConfigScheme {
+export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
@@ -4782,6 +4848,8 @@ export enum SpaceType {
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * SSL Configuration for OpenMetadata Server
  *
@@ -4970,7 +5038,7 @@ export enum TokenType {
  *
  * Custom Drive service type
  */
-export enum ConfigType {
+export enum AirflowConnectionType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -5048,6 +5116,7 @@ export enum ConfigType {
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nifi = "Nifi",
+    Omni = "Omni",
     OpenLineage = "OpenLineage",
     OpenMetadata = "OpenMetadata",
     OpenSearch = "OpenSearch",
@@ -5056,6 +5125,7 @@ export enum ConfigType {
     Postgres = "Postgres",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
+    Prefect = "Prefect",
     Presto = "Presto",
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",

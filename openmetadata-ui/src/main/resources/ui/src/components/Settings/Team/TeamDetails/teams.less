@@ -14,9 +14,9 @@
 @import '../../../../styles/variables.less';
 
 .team-list-container {
-  padding: 20px 0 10px 0;
+  padding: var(--om-space-20) 0 var(--om-space-10) 0;
   .ant-btn {
-    border-radius: 4px;
+    border-radius: var(--om-radius-sm);
   }
 }
 
@@ -24,7 +24,7 @@
 .list-table {
   .ant-table-row .ant-table-cell:first-child,
   .ant-table-thead .ant-table-cell:first-child {
-    padding-left: 16px;
+    padding-left: var(--om-space-16);
   }
 }
 
@@ -52,7 +52,7 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    gap: 4px;
+    gap: var(--om-space-4);
   }
 
   .teams-hierarchy-team-name-cell {
@@ -115,7 +115,7 @@
 }
 
 .teams-layout {
-  margin: -12px 0;
+  margin: calc(-1 * var(--om-space-12)) 0;
 
   .teams-profile {
     background-color: @team-avatar-bg;
@@ -126,7 +126,7 @@
       background: var(--tw-color-bg-primary);
     }
     .collapse-panel-container {
-      padding: 20px;
+      padding: var(--om-space-20);
     }
     .ant-card-head {
       background: var(--tw-color-bg-primary);
@@ -134,21 +134,21 @@
 
     .ant-collapse-header,
     .ant-collapse-content {
-      padding: 0 35px 0 0;
+      padding: 0 var(--om-space-35) 0 0;
     }
 
     .ant-collapse-content-box {
-      margin-top: 12px;
+      margin-top: var(--om-space-12);
       padding: 0;
     }
 
     .ant-collapse-arrow {
       top: 28px !important; // overriding from antd
       right: 0px !important;
-      padding: 6px;
+      padding: var(--om-space-6);
       background-color: @background-color;
-      border: 1px solid #d9d9d9;
-      border-radius: 4px;
+      border: 1px solid var(--om-legacy-color-d9d9d9);
+      border-radius: var(--om-radius-sm);
     }
 
     .ant-collapse-arrow.arrow-icon-non-organization {
@@ -156,7 +156,7 @@
     }
 
     .domain-link {
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
     }
   }
 
@@ -165,7 +165,7 @@
     .teams-scroll-component {
       width: 100%;
       max-height: calc(100vh - 120px);
-      padding: 8px 20px;
+      padding: var(--om-space-8) var(--om-space-20);
       overflow-y: scroll;
       scrollbar-width: none;
 
@@ -178,8 +178,8 @@
   .edit-team-name {
     border: 1px solid @border-light;
     background-color: var(--tw-color-bg-primary);
-    border-radius: 4px;
-    padding: 4px;
+    border-radius: var(--om-radius-sm);
+    padding: var(--om-space-4);
     width: 20px;
     height: 20px;
     display: flex;

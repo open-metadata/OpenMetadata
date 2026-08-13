@@ -17,6 +17,7 @@ import traceback
 from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.exc import NoSuchTableError
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -178,7 +179,7 @@ class SqlColumnHandlerMixin:
             foreign_constraints = []
         try:
             pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
-        except (NotImplementedError, KeyError):
+        except (NotImplementedError, KeyError, NoSuchTableError):
             logger.debug(
                 f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
@@ -546,8 +547,8 @@ class SqlColumnHandlerMixin:
         # We explicitly define columns to avoid expensive DESCRIBE/introspection
         # queries that autoload_with would trigger for every table.
         try:
-            from sqlalchemy import Column as SaColumn  # noqa: PLC0415
-            from sqlalchemy import MetaData, Table, select  # noqa: PLC0415
+            from sqlalchemy import Column as SaColumn
+            from sqlalchemy import MetaData, Table, select
 
             metadata = MetaData()
 
@@ -582,7 +583,7 @@ class SqlColumnHandlerMixin:
             )
         # Attempt 2: text() fallback (option 2) but dialect-safe
         try:
-            from sqlalchemy import text  # noqa: PLC0415
+            from sqlalchemy import text
 
             quoted_columns = ", ".join(quote(c) for c in column_names)
             query = text(f"SELECT {quoted_columns} FROM {full_table_name} LIMIT :limit")

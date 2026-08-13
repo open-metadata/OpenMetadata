@@ -10,6 +10,7 @@ import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -31,6 +32,7 @@ import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.Lists;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,10 +41,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -95,6 +96,7 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -106,8 +108,12 @@ import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -119,18 +125,27 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static final String TEST_SUITE_FIELD = "testSuite";
   public static final String TEST_DEFINITION_FIELD = "testDefinition";
   public static final String INCIDENTS_FIELD = "incidentId";
+  public static final String INCIDENT_STATUS_FIELD = "incidentStatus";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns,topDimensions";
+  private static final String PLATFORM_WIDE_EXPORT = "*";
+  // `domains` is required so the CSV paths can post-filter on the domain each test case inherits
+  // from its linked table — test cases never materialize a domain relationship of their own.
+  private static final String EXPORT_FIELDS = "testDefinition,testSuite,domains";
+  private static final String PLATFORM_WIDE_EXPORT_FIELDS =
+      "testDefinition,testSuite,dataProducts,domains";
+  private static final String OUT_OF_DOMAIN_MESSAGE =
+      "Entity '%s' is outside the domains you have access to";
+  // One message for "absent" and for "outside your domains" — telling them apart would turn the
+  // row detail into a cross-domain existence oracle.
+  private static final String TEST_SUITE_UNAVAILABLE_MESSAGE = "Test suite '%s' not found";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
   public static final String TEST_SUITES_REVISION_EXTENSION =
       "internal.testCase.testSuitesRevision";
   public static final String TEST_SUITES_REVISION_FIELD = "testSuitesRevision";
   private static final String TEST_SUITES_REVISION_SCHEMA = "testSuitesRevision";
-  private final ExecutorService asyncExecutor =
-      Executors.newFixedThreadPool(
-          1, java.lang.Thread.ofPlatform().name("om-test-case-async").factory());
 
   public TestCaseRepository() {
     super(
@@ -162,6 +177,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(TEST_CASE_RESULT) ? getTestCaseResult(test) : test.getTestCaseResult());
     test.setIncidentId(
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
+    test.setIncidentStatus(
+        fields.contains(INCIDENT_STATUS_FIELD)
+            ? getIncidentStatus(test)
+            : test.getIncidentStatus());
   }
 
   private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
@@ -186,6 +205,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           testCases, fields.contains(TEST_CASE_RESULT), fields.contains(INCIDENTS_FIELD));
     }
 
+    if (fields.contains(INCIDENT_STATUS_FIELD)) {
+      fetchAndSetIncidentStatuses(testCases);
+    }
+
     Set<String> linkedTableFields = resolveLinkedTableFields(testCases, fields);
     if (!linkedTableFields.isEmpty()) {
       Map<String, Table> tableCache = batchLoadLinkedTables(testCases, linkedTableFields);
@@ -200,6 +223,35 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     } finally {
       linkedTablesCache.remove();
     }
+  }
+
+  @Override
+  public ResultList<TestCase> listFromSearchWithOffset(
+      UriInfo uriInfo,
+      Fields fields,
+      SearchListFilter searchListFilter,
+      int limit,
+      int offset,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SecurityContext securityContext)
+      throws IOException {
+    ResultList<TestCase> resultList =
+        super.listFromSearchWithOffset(
+            uriInfo,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            queryString,
+            securityContext);
+    if (fields.contains(INCIDENT_STATUS_FIELD) && !nullOrEmpty(resultList.getData())) {
+      fetchAndSetIncidentStatuses(resultList.getData());
+    }
+    return resultList;
   }
 
   private Map<String, Table> batchLoadLinkedTables(
@@ -417,28 +469,74 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       fqnHashToFqn.put(FullyQualifiedName.buildHash(fqn), fqn);
     }
 
-    List<CollectionDAO.LatestRecordWithFQNHash> records =
-        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
-
     Map<String, TestCaseResult> fqnToResult = new HashMap<>();
-    for (CollectionDAO.LatestRecordWithFQNHash record : records) {
-      String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
-      if (fqn != null && record.getJson() != null) {
-        TestCaseResult result = JsonUtils.readValue(record.getJson(), TestCaseResult.class);
-        if (result != null) {
-          fqnToResult.put(fqn, result);
+    if (setResults) {
+      List<CollectionDAO.LatestRecordWithFQNHash> records =
+          daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
+      for (CollectionDAO.LatestRecordWithFQNHash record : records) {
+        String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
+        if (fqn != null && record.getJson() != null) {
+          TestCaseResult result = JsonUtils.readValue(record.getJson(), TestCaseResult.class);
+          if (result != null) {
+            fqnToResult.put(fqn, result);
+          }
+        }
+      }
+    }
+
+    // Ongoing incident = latest unresolved resolution-status record, not the result's stamped id.
+    Map<String, UUID> fqnToOngoingIncident = new HashMap<>();
+    if (setIncidents) {
+      List<CollectionDAO.LatestRecordWithFQNHash> incidentRecords =
+          daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecordBatch(fqns);
+      for (CollectionDAO.LatestRecordWithFQNHash record : incidentRecords) {
+        String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
+        if (fqn != null && record.getJson() != null) {
+          TestCaseResolutionStatus latest =
+              JsonUtils.readValue(record.getJson(), TestCaseResolutionStatus.class);
+          if (latest != null
+              && latest.getStateId() != null
+              && !TestCaseResolutionStatusTypes.Resolved.equals(
+                  latest.getTestCaseResolutionStatusType())) {
+            fqnToOngoingIncident.put(fqn, latest.getStateId());
+          }
         }
       }
     }
 
     for (TestCase testCase : testCases) {
-      TestCaseResult result = fqnToResult.get(testCase.getFullyQualifiedName());
       if (setResults) {
-        testCase.setTestCaseResult(result);
+        testCase.setTestCaseResult(fqnToResult.get(testCase.getFullyQualifiedName()));
       }
       if (setIncidents) {
-        testCase.setIncidentId(result != null ? result.getIncidentId() : null);
+        testCase.setIncidentId(fqnToOngoingIncident.get(testCase.getFullyQualifiedName()));
       }
+    }
+  }
+
+  private void fetchAndSetIncidentStatuses(List<TestCase> testCases) {
+    List<String> fqns =
+        testCases.stream()
+            .map(TestCase::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+    List<CollectionDAO.LatestRecordWithFQNHash> records =
+        daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecordBatch(fqns);
+
+    Map<String, TestCaseResolutionStatus> hashToStatus = new HashMap<>();
+    for (CollectionDAO.LatestRecordWithFQNHash record : records) {
+      if (record.getJson() != null) {
+        hashToStatus.put(
+            record.getEntityFQNHash(),
+            JsonUtils.readValue(record.getJson(), TestCaseResolutionStatus.class));
+      }
+    }
+
+    for (TestCase testCase : testCases) {
+      testCase.setIncidentStatus(
+          hashToStatus.get(FullyQualifiedName.buildHash(testCase.getFullyQualifiedName())));
     }
   }
 
@@ -922,7 +1020,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult");
+    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult", INCIDENTS_FIELD);
   }
 
   @Override
@@ -1018,24 +1116,26 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     RdfUpdater.updateEntity(testSuite);
   }
 
-  @Transaction
   @Override
   protected void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     if (hardDelete) {
-      for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
-        LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId());
-        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-            (TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        for (CollectionDAO.EntityRelationshipRecord child : children) {
-          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
-        }
-      }
+      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+          (TestCaseResolutionStatusRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+      AsyncService.getInstance()
+          .execute(
+              () -> {
+                for (CollectionDAO.EntityRelationshipRecord child : children) {
+                  try {
+                    LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
+                    testCaseResolutionStatusRepository.deleteById(child.getId(), true);
+                  } catch (Exception e) {
+                    LOG.error(
+                        "Error recursively hard deleting {} {}", child.getType(), child.getId(), e);
+                  }
+                }
+              });
     }
   }
 
@@ -1047,15 +1147,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void deleteAllTestCaseResults(String fqn) {
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    testCaseResultRepository.deleteAllTestCaseResults(fqn);
-    asyncExecutor.submit(
-        () -> {
-          try {
-            testCaseResultRepository.deleteAllTestCaseResults(fqn);
-          } catch (Exception e) {
-            LOG.error("Error deleting test case results for test case {}", fqn, e);
-          }
-        });
+    AsyncService.getInstance()
+        .execute(
+            () -> {
+              try {
+                testCaseResultRepository.deleteAllTestCaseResults(fqn);
+              } catch (RuntimeException e) {
+                LOG.error("Error deleting test case results for test case {}", fqn, e);
+              }
+            });
   }
 
   @SneakyThrows
@@ -1086,21 +1186,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCaseResult;
   }
 
-  /**
-   * Check all the test case results that have an ongoing incident and get the stateId of the
-   * incident
-   */
+  /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
   private UUID getIncidentId(TestCase test) {
     TestCaseResolutionStatusRepository tcrsRepo =
         (TestCaseResolutionStatusRepository)
             Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-    TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
+    return tcrsRepo.getOngoingIncidentStateId(test.getFullyQualifiedName());
+  }
 
-    if (latest != null && latest.getStateId() != null) {
-      return latest.getStateId();
-    }
-
-    return null;
+  private TestCaseResolutionStatus getIncidentStatus(TestCase test) {
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    return tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
@@ -1681,9 +1779,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () ->
               recordChange(
                   "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult()));
-      compareAndUpdate(
-          INCIDENTS_FIELD,
-          () -> recordChange(INCIDENTS_FIELD, original.getIncidentId(), updated.getIncidentId()));
     }
   }
 
@@ -1892,7 +1987,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
     List<TestCase> testCases = getTestCasesForExport(name, recursive);
-    return new TestCaseCsv(user, null).exportCsv(testCases, callback);
+    List<TestCase> visibleTestCases =
+        DomainAccessFilter.retainAccessible(testCases, SubjectContext.getSubjectContext(user));
+    return new TestCaseCsv(user, null).exportCsv(visibleTestCases, callback);
   }
 
   @Override
@@ -1925,10 +2022,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       boolean recursive,
       String targetEntityType)
       throws IOException {
-    TestSuite targetBundleSuite =
-        TEST_SUITE.equals(targetEntityType)
-            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
-            : null;
+    TestSuite targetBundleSuite = resolveTargetBundleSuite(name, targetEntityType, user);
     return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
   }
 
@@ -1942,11 +2036,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String targetEntityType,
       CsvImportProgressCallback callback)
       throws IOException {
-    TestSuite targetBundleSuite =
-        TEST_SUITE.equals(targetEntityType)
-            ? Entity.getEntityByName(TEST_SUITE, name, "", Include.ALL)
-            : null;
+    TestSuite targetBundleSuite = resolveTargetBundleSuite(name, targetEntityType, user);
     return new TestCaseCsv(user, targetBundleSuite).importCsv(csv, dryRun);
+  }
+
+  /**
+   * Resolves the Bundle Suite the imported test cases get attached to, rejecting a suite outside the
+   * importing user's domains — attaching test cases to it is a write the domain policy must gate.
+   */
+  private TestSuite resolveTargetBundleSuite(String name, String targetEntityType, String user) {
+    TestSuite targetBundleSuite = null;
+    if (TEST_SUITE.equals(targetEntityType)) {
+      // Unlike the per-row suite, this one distinguishes 403 (exists, foreign) from 404 (absent).
+      // Nothing is written yet, so refusing loudly is the useful behaviour, and the bit it reveals
+      // is already available from GET /v1/dataQuality/testSuites/name/{fqn}.
+      targetBundleSuite = Entity.getEntityByName(TEST_SUITE, name, FIELD_DOMAINS, Include.ALL);
+      SubjectContext subjectContext = SubjectContext.getSubjectContext(user);
+      if (!DomainAccessFilter.isAccessible(subjectContext, targetBundleSuite.getDomains())) {
+        throw new AuthorizationException(
+            String.format(OUT_OF_DOMAIN_MESSAGE, targetBundleSuite.getFullyQualifiedName()));
+      }
+    }
+    return targetBundleSuite;
   }
 
   private List<TestCase> getTestCasesForExport(String name, boolean recursive) {
@@ -1955,10 +2066,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // 2. A test suite FQN - export test cases in that test suite
     // 3. "*" - export all test cases (platform-wide)
 
-    if ("*".equals(name)) {
+    if (PLATFORM_WIDE_EXPORT.equals(name)) {
       // Platform-wide export
-      return listAll(
-          new Fields(allowedFields, "testDefinition,testSuite, dataProducts"), new ListFilter());
+      return listAll(new Fields(allowedFields, PLATFORM_WIDE_EXPORT_FIELDS), new ListFilter());
     }
 
     // Try to determine if name is a table or test suite
@@ -1985,13 +2095,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     ListFilter filter = new ListFilter(ALL);
     filter.addQueryParam("entityFQN", tableFqn);
     filter.addQueryParam("includeAllTests", "true");
-    return new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
+    return new ArrayList<>(listAll(new Fields(allowedFields, EXPORT_FIELDS), filter));
   }
 
   private List<TestCase> getTestCasesForTestSuite(UUID testSuiteId) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     filter.addQueryParam("testSuiteId", testSuiteId.toString());
-    return listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter);
+    return listAll(new Fields(allowedFields, EXPORT_FIELDS), filter);
   }
 
   public static class TestCaseCsv extends EntityCsv<TestCase> {
@@ -2002,10 +2112,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
     private final EntityRepository<EntityInterface> versioningRepo =
         (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
+    private final SubjectContext subjectContext;
 
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
       super(TEST_CASE, HEADERS, user);
       this.targetBundleSuite = targetBundleSuite;
+      this.subjectContext = SubjectContext.getSubjectContext(user);
     }
 
     @Override
@@ -2031,8 +2143,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           String useDynamicAssertionStr = nullOrEmpty(csvRecord.get(8)) ? null : csvRecord.get(8);
           String inspectionQuery = nullOrEmpty(csvRecord.get(9)) ? null : csvRecord.get(9);
 
-          // Convert entityFQN to EntityLink
-          String entityLink = convertFQNToEntityLink(entityFQN);
+          // Rows may target any entity, not just the one the endpoint was authorized against, so
+          // the domain policy has to be enforced per row before anything is created or updated.
+          String entityLink = resolveAccessibleTargetLink(printer, csvRecord, entityFQN);
+          if (entityLink == null) {
+            continue;
+          }
 
           // Get test definition
           TestDefinition testDefinition =
@@ -2077,18 +2193,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
           // Get test suite if provided, otherwise get or create default test suite
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
-            try {
-              TestSuite testSuite =
-                  Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
-              testCase.withTestSuite(testSuite.getEntityReference());
-              importedTestSuiteIds.putIfAbsent(
-                  testSuite.getFullyQualifiedName(), testSuite.getId());
-            } catch (EntityNotFoundException e) {
-              importFailure(
-                  printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
-              importResult.withStatus(ApiStatus.ABORTED);
+            TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
+            if (testSuite == null) {
               continue;
             }
+            testCase.withTestSuite(testSuite.getEntityReference());
+            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
           } else {
             // No test suite provided - get or create the default basic test suite
             EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
@@ -2188,6 +2298,90 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           }
         }
       }
+    }
+
+    /**
+     * Resolves the entity link for the row's target, or reports the row as failed and returns null.
+     * The row is reported as a failure rather than aborting the whole import: rows are applied one
+     * by one and are not rolled back, so aborting would misreport the rows already written.
+     *
+     * <p>For a domain-restricted subject, a target that cannot be resolved at all and one that
+     * resolves outside their domains take the identical branch, so the row detail is the same for
+     * both and the response cannot be used as a cross-domain existence oracle — the rule {@link
+     * #resolveAccessibleTestSuite} applies to the CSV-supplied suite. Resolution has to happen
+     * inside this gate rather than before it: {@link #convertFQNToEntityLink} looks the FQN up to
+     * decide whether it names a table or a column, so leaving it outside would report "no such
+     * table" for an absent target before the gate ever ran. Subjects the filter does not apply to
+     * keep the underlying resolution error, which is what tells them their CSV is wrong.
+     */
+    private String resolveAccessibleTargetLink(
+        CSVPrinter printer, CSVRecord csvRecord, String entityFQN) throws IOException {
+      String entityLink;
+      if (DomainAccessFilter.shouldApply(subjectContext)) {
+        entityLink = resolveInDomainTargetLink(entityFQN);
+        if (entityLink == null) {
+          importFailure(printer, String.format(OUT_OF_DOMAIN_MESSAGE, entityFQN), csvRecord);
+          importResult.withStatus(ApiStatus.FAILURE);
+        }
+      } else {
+        entityLink = convertFQNToEntityLink(entityFQN);
+      }
+      return entityLink;
+    }
+
+    /**
+     * Returns the entity link of a target the subject may write to, or null when the CSV-supplied
+     * FQN names nothing, cannot be resolved to a table or column, or sits outside their domains.
+     *
+     * <p>The lookup is per row rather than batched because the row's target is only known once the
+     * row is parsed; it reads through the 30-second entity cache, so a CSV repeating a table costs
+     * one query, not one per row.
+     */
+    private String resolveInDomainTargetLink(String entityFQN) {
+      String entityLink = null;
+      try {
+        String candidate = convertFQNToEntityLink(entityFQN);
+        EntityInterface target =
+            Entity.getEntity(EntityLink.parse(candidate), FIELD_DOMAINS, Include.NON_DELETED);
+        if (subjectContext.hasDomains(target.getDomains())) {
+          entityLink = candidate;
+        }
+      } catch (EntityNotFoundException | IllegalArgumentException e) {
+        LOG.debug("Target '{}' named in the imported CSV is unavailable", entityFQN);
+      }
+      return entityLink;
+    }
+
+    /**
+     * Resolves the test suite named by the row, or reports the row as failed and returns null. The
+     * CSV-supplied suite needs the same domain gate as the row's target entity: attaching a test
+     * case adds a CONTAINS relationship from the suite and bumps its version, so an
+     * attacker-controlled column must not reach a suite outside the importing user's domains.
+     *
+     * <p>"Does not exist" and "outside your domains" deliberately take the identical branch, so the
+     * row detail is the same for both and the response cannot be used as a cross-domain existence
+     * oracle. (The status set here is advisory only — {@code EntityCsv.setFinalStatus} recomputes the
+     * reported status from the row counts — but taking one branch keeps the two indistinguishable
+     * regardless of what any future caller does with it.)
+     */
+    private TestSuite resolveAccessibleTestSuite(
+        CSVPrinter printer, CSVRecord csvRecord, String testSuiteFqn) throws IOException {
+      TestSuite testSuite = null;
+      try {
+        TestSuite candidate =
+            Entity.getEntityByName(TEST_SUITE, testSuiteFqn, FIELD_DOMAINS, Include.NON_DELETED);
+        if (DomainAccessFilter.isAccessible(subjectContext, candidate.getDomains())) {
+          testSuite = candidate;
+        }
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Test suite '{}' named in the imported CSV does not exist", testSuiteFqn);
+      }
+      if (testSuite == null) {
+        importFailure(
+            printer, String.format(TEST_SUITE_UNAVAILABLE_MESSAGE, testSuiteFqn), csvRecord);
+        importResult.withStatus(ApiStatus.ABORTED);
+      }
+      return testSuite;
     }
 
     @Override

@@ -88,6 +88,10 @@ import { getMetrics } from '../../rest/metricsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getAllClassifications, getTags } from '../../rest/tagAPI';
 import { formatTeamsResponse, formatUsersResponse } from '../APIUtils';
+import {
+  getCustomPropertyReferenceSearchIndex,
+  getCustomPropertyTypeDisplayName,
+} from '../CustomProperty.utils';
 import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
@@ -437,22 +441,6 @@ const getEntityReferenceSelectValue = (
   }
 
   return undefined;
-};
-
-const getCustomPropertyReferenceSearchIndex = (
-  customProperty: CustomPropertyDefinition
-) => {
-  const config = customProperty.customPropertyConfig?.config;
-
-  if (Array.isArray(config) && config.length) {
-    return config.join(',') as SearchIndex;
-  }
-
-  if (typeof config === 'string' && config.trim()) {
-    return config as SearchIndex;
-  }
-
-  return SearchIndex.ALL;
 };
 
 const BULK_EDIT_PICKER_WIDTH = 340;
@@ -1100,7 +1088,10 @@ const InlineBulkEditReferencePickerEditor = ({
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -1382,7 +1373,10 @@ const InlineCustomPropertiesEditor = ({
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('scroll', updatePosition, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -1669,7 +1663,9 @@ const InlineCustomPropertiesEditor = ({
                       <label className="bulk-edit-custom-property-label">
                         <span>{propertyLabel}</span>
                         <span className="bulk-edit-custom-property-type">
-                          {customProperty.propertyType.name?.toUpperCase()}
+                          {getCustomPropertyTypeDisplayName(
+                            customProperty.propertyType.name
+                          )}
                         </span>
                       </label>
                       {renderField(customProperty)}

@@ -289,6 +289,7 @@ class PartitionWorkerTest {
   void initializeKeysetCursorHandlesRegularAndTimeSeriesEntities() throws Exception {
     @SuppressWarnings("unchecked")
     EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    ListFilter reindexFilter = mock(ListFilter.class);
 
     UUID jobId = UUID.randomUUID();
     SearchIndexPartition tablePartition =
@@ -323,7 +324,8 @@ class PartitionWorkerTest {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
       when(coordinator.getPartitionStartCursor(jobId, "table", 5L)).thenReturn(null);
-      when(repository.getCursorAtOffset(any(ListFilter.class), eq(4))).thenReturn("cursor-4");
+      when(repository.getReindexFilter()).thenReturn(reindexFilter);
+      when(repository.getCursorAtOffset(reindexFilter, 4)).thenReturn("cursor-4");
 
       assertNull(
           invokePrivate(
