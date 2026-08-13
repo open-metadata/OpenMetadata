@@ -41,7 +41,10 @@ import {
   verifyDescriptionRequiresScroll,
   verifyEndOfDescriptionReachable,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  clickTabAndWaitForPanel,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
@@ -409,18 +412,24 @@ test.describe(
 
       await table.visitEntityPage(userPage);
       await waitForAllLoadersToDisappear(userPage);
-      await userPage.getByTestId('asset-description-container').waitFor({ state: 'visible' });
+      await userPage
+        .getByTestId('asset-description-container')
+        .waitFor({ state: 'visible' });
       await userPage.waitForLoadState('domcontentloaded');
-      await expect(
-        userPage.getByRole('tab', { name: 'Description Tab' })
-      ).toBeVisible();
-      await userPage.getByRole('tab', { name: 'Description Tab' }).click();
-      await waitForAllLoadersToDisappear(userPage);
-      await userPage.waitForLoadState('domcontentloaded');
-      await userPage.getByTestId(/KnowledgePanel.Description-/).locator('visible=true').waitFor({ state: 'visible' });
+      const descriptionTab = userPage.getByRole('tab', {
+        name: 'Description Tab',
+      });
+      await expect(descriptionTab).toBeVisible();
+      // waitForLoadState('domcontentloaded') is a no-op here — an SPA tab click
+      // triggers no real navigation, so it resolved instantly and guarded
+      // nothing against react-router v7's deferred navigate(). Wait for the
+      // active tabpanel instead so the old "Columns" tab content can't still be
+      // the thing this assertion matches against.
+      await clickTabAndWaitForPanel(userPage, descriptionTab);
       const descriptionWidget = userPage
         .getByTestId(/KnowledgePanel.Description-/)
         .locator('visible=true');
+      await descriptionWidget.waitFor({ state: 'visible' });
       await expect(descriptionWidget).toBeVisible();
 
       // Widget truncates long content behind a "more" button

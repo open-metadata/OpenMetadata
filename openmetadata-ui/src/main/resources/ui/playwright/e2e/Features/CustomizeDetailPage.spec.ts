@@ -43,6 +43,7 @@ import {
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
 import {
+  clickTabAndWaitForPanel,
   getEncodedFqn,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -498,8 +499,15 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await entity?.visitEntityPage(userPage);
         await waitForAllLoadersToDisappear(userPage);
+        await waitForAllLoadersToDisappear(userPage, 'table-loading');
+        await waitForAllLoadersToDisappear(
+          userPage,
+          'entity-detail-widget-skeleton'
+        );
         await userPage.waitForLoadState('domcontentloaded');
-        await userPage.getByTestId('asset-description-container').waitFor({ state: 'visible' });
+        await userPage
+          .getByTestId('asset-description-container')
+          .waitFor({ state: 'visible' });
         await expect(
           userPage.getByRole('tab', { name: 'Custom Tab' })
         ).toBeVisible();
@@ -509,12 +517,23 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
-        await customTab.focus();
-        await userPage.keyboard.press('Enter');
-        await waitForAllLoadersToDisappear(userPage);
-        await userPage.waitForLoadState('domcontentloaded');
-        await userPage.getByTestId('asset-description-container').locator('visible=true').waitFor({ state: 'visible' });
-        
+        // waitForLoadState('domcontentloaded') is a no-op on this SPA tab
+        // switch and guarded nothing against react-router v7's deferred
+        // navigate(); wait for the tab's own panel to become active instead.
+        await clickTabAndWaitForPanel(userPage, customTab);
+        // The Description widget is lazy-loaded and shows
+        // entity-detail-widget-skeleton (CommonWidgets' Suspense fallback)
+        // until its chunk resolves — without this wait the count() poll below
+        // can run while only the skeleton, not the widget, is in the DOM.
+        await waitForAllLoadersToDisappear(
+          userPage,
+          'entity-detail-widget-skeleton'
+        );
+        await userPage
+          .getByTestId('asset-description-container')
+          .locator('visible=true')
+          .waitFor({ state: 'visible' });
+
         await expect
           .poll(async () =>
             userPage.getByTestId(/KnowledgePanel.Description-/).count()
@@ -656,9 +675,15 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await entity?.visitEntityPage(userPage);
         await waitForAllLoadersToDisappear(userPage);
-        await waitForAllLoadersToDisappear(userPage);
+        await waitForAllLoadersToDisappear(userPage, 'table-loading');
+        await waitForAllLoadersToDisappear(
+          userPage,
+          'entity-detail-widget-skeleton'
+        );
         await userPage.waitForLoadState('domcontentloaded');
-        await userPage.getByTestId('asset-description-container').waitFor({ state: 'visible' });
+        await userPage
+          .getByTestId('asset-description-container')
+          .waitFor({ state: 'visible' });
         await expect(
           userPage.getByRole('tab', { name: 'Custom Tab' })
         ).toBeVisible();
@@ -668,11 +693,22 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
-        await customTab.focus();
-        await userPage.keyboard.press('Enter');
-        await waitForAllLoadersToDisappear(userPage);
-        await userPage.waitForLoadState('domcontentloaded');
-        await userPage.getByTestId('asset-description-container').locator('visible=true').waitFor({ state: 'visible' });
+        // waitForLoadState('domcontentloaded') is a no-op on this SPA tab
+        // switch and guarded nothing against react-router v7's deferred
+        // navigate(); wait for the tab's own panel to become active instead.
+        await clickTabAndWaitForPanel(userPage, customTab);
+        // The Description widget is lazy-loaded and shows
+        // entity-detail-widget-skeleton (CommonWidgets' Suspense fallback)
+        // until its chunk resolves — without this wait the count() poll below
+        // can run while only the skeleton, not the widget, is in the DOM.
+        await waitForAllLoadersToDisappear(
+          userPage,
+          'entity-detail-widget-skeleton'
+        );
+        await userPage
+          .getByTestId('asset-description-container')
+          .locator('visible=true')
+          .waitFor({ state: 'visible' });
 
         await expect
           .poll(async () =>

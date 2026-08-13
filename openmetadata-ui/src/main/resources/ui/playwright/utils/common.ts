@@ -1131,9 +1131,7 @@ export const testPaginationNavigation = async (
   await expect(page.getByTestId('previous')).toBeEnabled();
   let afterValue: string | null = '';
   if (validateUrl) {
-    await page.waitForURL(
-      (url) => url.searchParams.get('currentPage') === '2'
-    );
+    await page.waitForURL((url) => url.searchParams.get('currentPage') === '2');
     const currentUrl = page.url();
     const urlObj = new URL(currentUrl);
     const searchParams = urlObj.searchParams;
@@ -1214,9 +1212,20 @@ export const testPaginationNavigation = async (
 
     await expect(pageSizeDropdown).toHaveText('25 / Page');
 
-    const newRowCount = await page
-      .locator('tbody > tr[data-row-key]:visible')
-      .count();
+    // The page-size API response resolving and the URL settling to
+    // pageSize=25 don't guarantee React has committed the re-render that
+    // grows the table under react-router v7's deferred navigate() — a
+    // one-shot count() can still catch the stale 15-row DOM in that window.
+    // Poll until the row count actually reflects the change before reading
+    // it for the assertions below.
+    const rowsLocator = page.locator('tbody > tr[data-row-key]:visible');
+    if (validateRowCount) {
+      await expect
+        .poll(() => rowsLocator.count(), { timeout: 15_000 })
+        .not.toBe(initialRowCount);
+    }
+
+    const newRowCount = await rowsLocator.count();
     if (validateRowCount) {
       expect(newRowCount).toBeLessThanOrEqual(25);
       expect(newRowCount).not.toBe(initialRowCount);

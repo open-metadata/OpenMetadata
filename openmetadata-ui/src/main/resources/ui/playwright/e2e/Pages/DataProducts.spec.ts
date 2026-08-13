@@ -227,13 +227,27 @@ test.describe('Data Products', () => {
     await test.step('Navigate to Data Products page', async () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await waitForAllLoadersToDisappear(page);
+      await page.waitForLoadState('domcontentloaded');
     });
 
     await test.step('Search for specific data product', async () => {
+      // The listing page debounces search input by 300ms before firing
+      // /api/v1/search/query — waitForAllLoadersToDisappear alone doesn't
+      // guarantee that debounced request has even been sent yet, so assertions
+      // right after can still see the pre-search (unfiltered) list.
+      await page
+        .getByRole('main')
+        .getByPlaceholder('Search').waitFor({ state: 'visible' });
+      const searchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(dataProduct1.data.name)
+      );
       await page
         .getByRole('main')
         .getByPlaceholder('Search')
         .fill(dataProduct1.data.name);
+      await searchResponse;
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText(dataProduct1.data.displayName)).toBeVisible();
@@ -243,7 +257,11 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Clear search', async () => {
+      const clearResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
+      );
       await page.getByRole('main').getByPlaceholder('Search').clear();
+      await clearResponse;
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByLabel('Pagination Navigation')).toBeVisible();

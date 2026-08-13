@@ -245,15 +245,45 @@ export const removeCertificationFromWidget = async (
   await expect(page.getByTestId('add-certification')).toBeVisible();
 };
 
+/**
+ * Clicks whichever of add-domain / edit-domain is currently showing. A prior
+ * domain assignment triggers a PATCH-driven re-render that swaps one button for
+ * the other, but that re-render is deferred under react-router v7's
+ * startTransition — a single isVisible() check right after can still see the
+ * stale button. Poll until exactly one of the two is actually visible.
+ */
+const clickAddOrEditDomainButton = async (page: Page) => {
+  const addBtn = page.getByTestId('add-domain');
+  const editBtn = page.getByTestId('edit-domain');
+
+  let visibility: { addVisible: boolean; editVisible: boolean } = {
+    addVisible: false,
+    editVisible: false,
+  };
+
+  await expect
+    .poll(
+      async () => {
+        visibility = {
+          addVisible: await addBtn.isVisible(),
+          editVisible: await editBtn.isVisible(),
+        };
+
+        return visibility.addVisible || visibility.editVisible;
+      },
+      { timeout: 15_000 }
+    )
+    .toBe(true);
+
+  await (visibility.addVisible ? addBtn : editBtn).click();
+};
+
 export const assignDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
   multiSelect = false
 ) => {
-  const addBtn = page.getByTestId('add-domain');
-  const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await clickAddOrEditDomainButton(page);
   await waitForAllLoadersToDisappear(page);
 
   const searchDomain = page.waitForResponse(
@@ -296,10 +326,7 @@ export const removeDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
-  const addBtn = page.getByTestId('add-domain');
-  const editBtn = page.getByTestId('edit-domain');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await clickAddOrEditDomainButton(page);
   await waitForAllLoadersToDisappear(page);
 
   await page
@@ -1706,6 +1733,7 @@ export const waitForPortRow = async (page: Page, portId: string) => {
 
         await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('input-output-ports-tab').waitFor({ state: 'visible' });
 
         if (!(await page.getByTestId('input-output-ports-tab').isVisible())) {
           await navigateToPortsTab(page);
