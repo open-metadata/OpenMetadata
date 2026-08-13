@@ -521,7 +521,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return wasRunnerCleanupSkipped;
   }
 
-  boolean deleteDeployedPipeline(IngestionPipeline entity, boolean allowUnavailableRunner) {
+  protected boolean deleteDeployedPipeline(
+      IngestionPipeline entity, boolean allowUnavailableRunner) {
     boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
       try {

@@ -10633,8 +10633,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
         if (stored == null) { // New column added
           continue;
         }
-        // Store Original and Updated Column Map
-        if (!stored.getFullyQualifiedName().equals(updated.getFullyQualifiedName())) {
+        // Store Original and Updated Column Map. Objects.equals because a column persisted before
+        // its repository set column FQNs on the write path carries a null one, and re-ingesting
+        // that row would otherwise NPE here. The update repopulates the FQN, so rows written by
+        // an older version repair themselves on the next run.
+        //
+        // A null stored FQN is not a rename: this map is a from -> to for rewriting lineage edges
+        // that already exist, and a column being given an FQN for the first time has no prior edge
+        // to rewrite. Skipping it also keeps a null key out of the map handed to
+        // handleColumnLineageUpdates.
+        if (stored.getFullyQualifiedName() != null
+            && !Objects.equals(stored.getFullyQualifiedName(), updated.getFullyQualifiedName())) {
           originalUpdatedColumnFqns.putIfAbsent(
               stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
         }
@@ -11579,6 +11588,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setOwners(ownersMap.getOrDefault(entity.getId(), entity.getOwners()));
       entity.setDomains(domainsMap.getOrDefault(entity.getId(), entity.getDomains()));
     }
+  }
+
+  /**
+   * Batch-loads tags onto these entities in one query, for authorization. Used by the bulk path so a
+   * tag policy evaluates against tags fetched once for the whole request rather than once per entity.
+   */
+  public void batchLoadTags(List<T> entities) {
+    fetchAndSetTags(entities, getFields(FIELD_TAGS));
   }
 
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
