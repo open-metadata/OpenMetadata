@@ -52,8 +52,13 @@ def _response(
     return resp
 
 
-def _rest_returning(resp: requests.Response) -> REST:
-    client = REST(ClientConfig(base_url="https://release-1-13.getcollate.io", retry=0))
+def _rest_returning(resp: requests.Response, raise_on_html: bool = True) -> REST:
+    """A REST client whose single request answers `resp`.
+
+    `raise_on_html` defaults to True here because these tests exercise the
+    OpenMetadata client, which opts in; the plain default is covered separately.
+    """
+    client = REST(ClientConfig(base_url="https://release-1-13.getcollate.io", retry=0, raise_on_html=raise_on_html))
     client._session = MagicMock()
     client._session.request.return_value = resp
     return client
@@ -89,6 +94,17 @@ class TestHtmlResponseIsNamed:
         message = str(err.value)
         assert "OpenMetadata" not in message
         assert "hostPort" not in message
+
+    def test_raising_is_opt_in(self):
+        """Connectors build this client against third-party APIs and some tolerate a
+        non-JSON reply on purpose (e.g. `AirflowApiClient.get_version`), so the
+        default must keep handing back the Response."""
+        client = _rest_returning(_response(200, UI_INDEX_HTML, "text/html"), raise_on_html=False)
+
+        response = client.get("/v2/version")
+
+        assert isinstance(response, requests.Response)
+        assert response.status_code == 200
 
     def test_html_sniffed_when_content_type_lies(self):
         client = _rest_returning(_response(200, UI_INDEX_HTML, "text/plain"))

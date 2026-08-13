@@ -90,17 +90,21 @@ def is_html_body(resp: requests.Response) -> bool:
     return head.startswith("<") and "<html" in head.lower()
 
 
-def _decode_body(resp: requests.Response, url: object):
+def _decode_body(resp: requests.Response, url: object, raise_on_html: bool = False):
     """Decode a successful response body.
 
-    JSON when it parses; the ``Response`` itself for the text payloads some
-    endpoints answer with (CSV and ODCS-YAML exports); an ``HtmlResponseError``
-    when it is a UI page, since no endpoint legitimately answers HTML.
+    JSON when it parses; otherwise the ``Response`` itself, for the text payloads
+    some endpoints answer with (CSV and ODCS-YAML exports).
+
+    ``raise_on_html`` turns an HTML page into an ``HtmlResponseError`` instead. It
+    is opt-in because callers disagree on what HTML means: the OpenMetadata API
+    never answers it, but connectors share this client and some deliberately
+    tolerate a non-JSON reply on their ingestion path.
     """
     try:
         return resp.json()
     except JSONDecodeError as json_decode_error:
-        if is_html_body(resp):
+        if raise_on_html and is_html_body(resp):
             raise HtmlResponseError(url, resp.status_code) from json_decode_error
         logger.debug(
             "Non-JSON response (%s) from [%s] with content type [%s] returned as-is: %s",
@@ -190,6 +194,10 @@ class ClientConfig(ConfigModel):
     user_agent: Optional[str] = None  # noqa: UP045
     raw_data: Optional[bool] = False  # noqa: UP045
     allow_redirects: Optional[bool] = False  # noqa: UP045
+    # Treat an HTML body as an error rather than handing the caller the raw
+    # Response. Off by default: connectors share this client against third-party
+    # APIs, and some tolerate a non-JSON reply on purpose.
+    raise_on_html: bool = False
     auth_token_mode: Optional[str] = "Bearer"  # noqa: UP045
     verify: Optional[Union[bool, str]] = None  # noqa: UP007, UP045
     cookies: Optional[Any] = None  # noqa: UP045
@@ -370,7 +378,7 @@ class REST:
                 return resp
 
             if resp.text != "":
-                return _decode_body(resp, url)
+                return _decode_body(resp, url, self.config.raise_on_html)
 
         except HTTPError as http_error:
             # retry if we hit Rate Limit
