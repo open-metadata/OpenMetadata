@@ -19,6 +19,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
@@ -53,7 +54,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -386,28 +387,22 @@ public class QueryVisibilityPolicyIT {
     String taggedFqn = tagged.getFullyQualifiedName();
     String columnTaggedId = columnTagged.getId().toString();
 
-    assertThrows(
-        ForbiddenException.class,
+    assertForbidden(
         () -> denied.tables().get(taggedId),
         "GET by id without fields must be denied for a tag matched by a DENY rule");
-    assertThrows(
-        ForbiddenException.class,
+    assertForbidden(
         () -> denied.tables().getByName(taggedFqn),
         "GET by name without fields must be denied for a tag matched by a DENY rule");
-    assertThrows(
-        ForbiddenException.class,
-        () -> denied.tables().get(taggedId, "tags"),
-        "GET with fields=tags must remain denied");
-    assertThrows(
-        ForbiddenException.class,
+    assertForbidden(
+        () -> denied.tables().get(taggedId, "tags"), "GET with fields=tags must remain denied");
+    assertForbidden(
         () -> denied.tables().get(taggedId, "owners"),
         "A projection without tags must not bypass the DENY rule");
 
     // Column-level enforcement is projection-dependent (column tags hydrate only when columns and
     // tags are both loaded). The authorization field set must therefore union the caller's
     // projection rather than replace it, or this case silently regresses.
-    assertThrows(
-        ForbiddenException.class,
+    assertForbidden(
         () -> denied.tables().get(columnTaggedId, "columns,tags"),
         "A column-level tag must stay enforced when the caller requests columns and tags");
 
@@ -531,6 +526,16 @@ public class QueryVisibilityPolicyIT {
   }
 
   /** Principal carrying exactly one conditional DENY {@code VIEW_ALL} rule. */
+  /**
+   * Asserts a call is rejected with HTTP 403. The concrete exception type a status maps to is not
+   * uniform across SDK versions (e.g. a release line without a dedicated 403 type surfaces the
+   * generic one), so this pins the status code on the shared supertype instead of a subclass.
+   */
+  private void assertForbidden(Executable call, String message) {
+    OpenMetadataException exception = assertThrows(OpenMetadataException.class, call, message);
+    assertEquals(403, exception.getStatusCode(), message);
+  }
+
   private OpenMetadataClient userDeniedBy(String label, String condition, TestNamespace ns) {
     return userWithViewRule(label, Rule.Effect.DENY, condition, ns);
   }
@@ -632,8 +637,7 @@ public class QueryVisibilityPolicyIT {
             c -> c.setOwners(List.of(new EntityReference().withId(self.getId()).withType("user"))));
     Table unowned = tableWith(schema, ns.shortPrefix() + "_unowned", c -> {});
 
-    assertThrows(
-        ForbiddenException.class,
+    assertForbidden(
         () -> denied.tables().get(owned.getId().toString()),
         "isOwner DENY must fire without fields=owners");
     assertNotNull(
@@ -658,8 +662,7 @@ public class QueryVisibilityPolicyIT {
     assertNotNull(
         denied.tables().get(owned.getId().toString()),
         "noOwner DENY must not fire on an entity that has an owner");
-    assertThrows(
-        ForbiddenException.class,
+    assertForbidden(
         () -> denied.tables().get(unowned.getId().toString()),
         "noOwner DENY must fire on an entity with no owner");
   }
@@ -689,8 +692,7 @@ public class QueryVisibilityPolicyIT {
     assertNotNull(
         denied.tables().get(inDomain.getId().toString()),
         "noDomain DENY must not fire on an entity that has a domain");
-    assertThrows(
-        ForbiddenException.class,
+    assertForbidden(
         () -> denied.tables().get(noDomain.getId().toString()),
         "noDomain DENY must fire on an entity with no domain");
   }
@@ -714,8 +716,7 @@ public class QueryVisibilityPolicyIT {
             ns.shortPrefix() + "_onetag",
             c -> c.setTags(List.of(tagLabel(PII_SENSITIVE_TAG))));
 
-    assertThrows(
-        ForbiddenException.class,
+    assertForbidden(
         () -> denied.tables().get(bothTags.getId().toString()),
         "matchAllTags DENY must fire when all listed tags are present");
     assertNotNull(
