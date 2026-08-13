@@ -20,7 +20,7 @@ because the ``Metric`` namespace is global (FQN == name).
 """
 
 import hashlib
-from typing import List, Optional, Tuple  # noqa: UP035
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import (
@@ -34,7 +34,6 @@ from metadata.generated.schema.entity.data.metric import (
 from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.utils import fqn
 
 # Column layout of INFORMATION_SCHEMA.SEMANTIC_{DIMENSIONS,FACTS,METRICS}:
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
@@ -50,12 +49,11 @@ SEMANTIC_SYNONYMS_IDX = 5
 # Snowflake data types that make a dimension a TIME dimension rather than CATEGORICAL.
 _TIME_TYPE_MARKERS = ("DATE", "TIME", "TIMESTAMP")
 
-# Metric names are qualified with the full service/database/schema/view path but must
-# stay a *single* FQN segment, so the path is joined with "-" rather than ".".
-METRIC_NAME_SEPARATOR = "-"
-# `entityName` in openmetadata-spec/.../type/basic.json caps names at 256 characters.
-MAX_METRIC_NAME_LENGTH = 256
-_NAME_DIGEST_LENGTH = 12
+# A metric name is prefixed with its service so the global Metric namespace stays
+# browsable by service; the digest after it carries the identity. Cap the prefix so a
+# long service name cannot push the name past the 256-character entityName limit.
+SERVICE_PREFIX_MAX_LEN = 64
+_FALLBACK_SERVICE_PREFIX = "snowflake"
 
 _METRIC_TYPE_BY_PREFIX = {
     "SUM": MetricType.SUM,
@@ -67,70 +65,58 @@ _METRIC_TYPE_BY_PREFIX = {
 
 
 def _unquote_name_part(part: str) -> str:
-    """Strip Snowflake quoting and nothing else.
+    """Normalize one identifier before hashing its canonical identity.
 
     Every derivation of a metric name starts here, because the two call sites
     disagree on quoting: the metadata stage passes the topology context value,
     which may be quoted, while the lineage workflow passes the raw
     INFORMATION_SCHEMA value, which never is. Normalizing before anything else
-    keeps both paths on the same name for the same metric.
+    keeps both paths on the same name for the same metric. Snowflake represents
+    an embedded quote as ``""`` inside a quoted identifier; decode that wrapper
+    representation without removing quotes that belong to the identifier itself.
     """
-    return fqn.unquote_name(part or "").replace('"', "")
+    value = part or ""
+    if len(value) >= 2 and value.startswith('"') and value.endswith('"'):
+        return value[1:-1].replace('""', '"')
+    return value
 
 
-def _sanitize_name_part(part: str) -> str:
-    """Reduce one identifier to a single FQN-safe segment.
+def _service_prefix(service: str) -> str:
+    """FQN-safe prefix derived from the OpenMetadata service name.
 
-    Unquotes the Snowflake identifier, then removes the characters that carry
-    structural meaning in an OpenMetadata name: ``.`` (FQN separator), ``"``
-    (FQN quoting) and ``::`` (forbidden by the ``entityName`` pattern).
+    A service name is user-defined and may carry ``.``, spaces, or ``::``, any of
+    which would stop the metric name from being a single FQN segment --
+    ``MetricRepository`` assigns the FQN from the raw name without quoting it. Map
+    everything outside ``[alnum]``/``_``/``-`` to ``-``. This is deliberately lossy:
+    the digest is what makes the name unique, so two services that flatten to the
+    same prefix still produce different names.
     """
-    cleaned = _unquote_name_part(part)
-    for reserved in (".", ":"):
-        cleaned = cleaned.replace(reserved, "_")
-    return cleaned
-
-
-def _path_digest(parts: Tuple[str, ...]) -> str:  # noqa: UP006
-    """Short digest of the path *before* the lossy `.`/`:` rewrite, joined on a
-    character no Snowflake identifier can contain so the encoding is unambiguous.
-
-    Hashing the pre-rewrite form is what restores uniqueness; hashing anything
-    earlier than that (the quoted original) would make the name depend on which
-    call site derived it.
-    """
-    return hashlib.sha256("\x00".join(part or "" for part in parts).encode("utf-8")).hexdigest()[:_NAME_DIGEST_LENGTH]
+    safe = "".join(char if char.isalnum() or char in "_-" else "-" for char in _unquote_name_part(service))
+    return safe[:SERVICE_PREFIX_MAX_LEN].strip("-") or _FALLBACK_SERVICE_PREFIX
 
 
 def build_metric_name(service: str, database: str, schema: str, view: str, table: str, metric: str) -> str:
-    """Globally-unique metric name as a single, dot-free FQN segment.
+    """Stable ``<service>-<digest>`` name for a Snowflake semantic-view metric.
 
-    A Metric's FQN *is* its name (``MetricRepository.setFullyQualifiedName``) and the
-    server derives dimension/measure FQNs by appending to it, so a dot-separated name
-    yields six-segment FQNs that positional FQN parsers read as
-    ``service.database.schema.table.column``. We still qualify with the full path —
-    the Metric namespace is flat, so a bare metric name would collide across
-    schemas, databases and services — but join with ``METRIC_NAME_SEPARATOR`` so the
-    whole thing stays one segment.
+    A Metric's FQN is its name, so the name must be globally unique and remain one
+    FQN-safe segment. Hash the complete canonical identity instead of exposing a
+    lossy, separator-joined path, and lead with the service so the global Metric
+    namespace is still browsable. ``displayName`` retains the Snowflake metric name
+    for the UI.
 
     ``table`` is the *logical* table the metric is declared on. Snowflake scopes a
     semantic object's name to its logical table — every object is declared as
     ``<table_alias>.<name> AS <expr>`` — so one view may define both ``orders.total``
     and ``returns.total``, and the logical table is part of the metric's identity.
 
-    The readable path alone does not identify the metric: ``_sanitize_name_part`` is
-    lossy (``a.b`` and ``a_b`` both yield ``a_b``) and ``METRIC_NAME_SEPARATOR`` is
-    itself legal inside a quoted identifier (``("x-y", "z")`` and ``("x", "y-z")``
-    join to the same string). Either collision would silently overwrite one metric
-    with another, so every name carries a digest of the raw path. It is deterministic,
-    which the lineage workflow relies on to re-derive the name through this same
-    function.
+    NUL separates identity components because Snowflake identifiers cannot contain
+    it, keeping part boundaries unambiguous. The full digest avoids introducing a
+    connector-defined truncation collision and stays well below the entity-name
+    length limit.
     """
-    unquoted = tuple(_unquote_name_part(part) for part in (service, database, schema, view, table, metric))
-    suffix = f"{METRIC_NAME_SEPARATOR}{_path_digest(unquoted)}"
-    path = METRIC_NAME_SEPARATOR.join(_sanitize_name_part(part) for part in unquoted)
-    # Truncating the readable path never costs uniqueness -- that lives in the digest.
-    return f"{path[: MAX_METRIC_NAME_LENGTH - len(suffix)]}{suffix}"
+    identity = tuple(_unquote_name_part(part) for part in (service, database, schema, view, table, metric))
+    digest = hashlib.sha256("\x00".join(identity).encode("utf-8")).hexdigest()
+    return f"{_service_prefix(service)}-{digest}"
 
 
 def infer_metric_type(expression: Optional[str]) -> MetricType:  # noqa: UP045
@@ -163,19 +149,17 @@ def _dimension_type(data_type: Optional[str]) -> Optional[Type]:  # noqa: UP045
 
 
 def _child_name(row) -> str:
-    """``<logical table>-<name>`` for a Metric's dimension/measure children.
+    """``<logical table>.<name>`` for a Metric's dimension/measure children.
 
     The logical table is part of a semantic object's identity — Snowflake declares
     each as ``<table_alias>.<name>`` and permits the same name on two tables — and the
     server FQNs these children as ``<metric name>.dimension.<name>``. Without the
     qualifier a colliding pair produced two children sharing one FQN; unlike the
     Metric itself these models carry no ``displayName``, so the qualifier has to live
-    in the name. Sanitized because that FQN would otherwise gain segments from a
-    dotted identifier.
+    in the name. The server quotes dotted child names when building their FQNs, so
+    the Snowflake name does not need the Metric name's UI-specific sanitization.
     """
-    return METRIC_NAME_SEPARATOR.join(
-        _sanitize_name_part(part) for part in (row[SEMANTIC_TABLE_IDX], row[SEMANTIC_NAME_IDX])
-    )
+    return ".".join(_unquote_name_part(part) for part in (row[SEMANTIC_TABLE_IDX], row[SEMANTIC_NAME_IDX]))
 
 
 def _dimension(row) -> MetricDimension:

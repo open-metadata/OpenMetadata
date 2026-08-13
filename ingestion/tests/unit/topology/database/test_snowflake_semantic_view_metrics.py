@@ -23,7 +23,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
-    MAX_METRIC_NAME_LENGTH,
+    SERVICE_PREFIX_MAX_LEN,
     build_metric_name,
     build_metric_request,
     infer_metric_type,
@@ -36,31 +36,46 @@ DIM_REGION = ("customers", "region", "VARCHAR", "customers.c_region", "Customer 
 FACT_LINE_AMOUNT = ("orders", "line_amount", "NUMBER", "orders.o_totalprice", "Line amount", None)
 
 
-def test_build_metric_name_is_qualified():
-    """The readable path leads the name; the trailing digest disambiguates paths
-    that sanitize or join to the same string (see the collision tests below)."""
+def test_build_metric_name_uses_the_full_identity_digest():
     name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "orders", "total_revenue")
 
-    assert name.startswith("snowflake_svc-TEST_DB-SALES-sales_analysis-orders-total_revenue-")
+    assert name == ("snowflake_svc-eed93a1845927f3132d8602337a7cd8ad25ec9ceffb02c7faa7f2ff9c9e5476f")
 
 
 def test_build_metric_name_is_a_single_fqn_segment():
-    """A Metric's FQN *is* its name, and the server appends dimension/measure names
-    to it. Any dot would turn those into multi-segment FQNs that positional FQN
-    parsers misread as service.database.schema.table.column."""
     name = build_metric_name("snowflake_svc", "TEST_DB", "SALES", "sales_analysis", "orders", "total_revenue")
 
     assert "." not in name
+    assert "::" not in name
 
 
-def test_build_metric_name_strips_separators_from_identifiers():
-    """Quoted Snowflake identifiers may themselves contain dots, which would
-    reintroduce FQN segments, and `::` is rejected by the entityName pattern."""
+def test_build_metric_name_never_exposes_reserved_identifier_characters():
     name = build_metric_name("svc", '"my.db"', "S", '"v.1"', "t", "a::b")
 
-    assert name.startswith("svc-my_db-S-v_1-t-a__b-")
+    assert name.startswith("svc-")
     assert "." not in name
     assert "::" not in name
+
+
+def test_build_metric_name_sanitizes_the_service_prefix():
+    """A service name is user-defined; a Metric's FQN is its raw name, so anything
+    that would split the FQN has to be flattened out of the prefix."""
+    name = build_metric_name('"prod.snowflake eu::1"', "DB", "S", "V", "t", "metric")
+
+    assert name.startswith("prod-snowflake-eu--1-")
+    assert "." not in name
+    assert "::" not in name
+
+
+def test_build_metric_name_stays_unique_when_service_prefixes_collide():
+    """The prefix is lossy -- `a.b` and `a-b` flatten to the same string -- so the
+    digest, which hashes the raw service name, is what keeps the names apart."""
+    dotted = build_metric_name("prod.svc", "DB", "S", "V", "t", "metric")
+    dashed = build_metric_name("prod-svc", "DB", "S", "V", "t", "metric")
+
+    assert dotted.startswith("prod-svc-")
+    assert dashed.startswith("prod-svc-")
+    assert dotted != dashed
 
 
 def test_build_metric_name_is_unique_per_path_element():
@@ -71,11 +86,7 @@ def test_build_metric_name_is_unique_per_path_element():
     assert build_metric_name(*base) not in variants
 
 
-def test_build_metric_name_survives_lossy_sanitization():
-    """`.` and `:` are rewritten to `_`, which is itself legal in an identifier, so
-    the sanitized form alone is not injective: `a.b` and `a_b` are distinct Snowflake
-    objects that must not collapse onto one Metric. A Metric's FQN *is* its name, so
-    a collision silently overwrites one metric with the other."""
+def test_build_metric_name_distinguishes_dotted_and_underscored_identifiers():
     dotted = build_metric_name("svc", "db", "a.b", "view", "t", "metric")
     underscored = build_metric_name("svc", "db", "a_b", "view", "t", "metric")
 
@@ -83,9 +94,6 @@ def test_build_metric_name_survives_lossy_sanitization():
 
 
 def test_build_metric_name_is_unambiguous_across_part_boundaries():
-    """METRIC_NAME_SEPARATOR is legal inside a quoted Snowflake identifier, so
-    joining on it alone is ambiguous: ("sales-prod", "reporting") and
-    ("sales", "prod-reporting") would otherwise produce the same name."""
     left = build_metric_name("svc", "db", "sales-prod", "reporting", "t", "metric")
     right = build_metric_name("svc", "db", "sales", "prod-reporting", "t", "metric")
 
@@ -123,20 +131,19 @@ def test_metric_children_are_qualified_by_logical_table():
         view_ref=None,
     )
 
-    assert [d.name for d in request.dimensions] == ["ORDERS-STATUS", "RETURNS-STATUS"]
-    assert [m.name for m in request.measures] == ["ORDERS-AMOUNT", "RETURNS-AMOUNT"]
+    assert [d.name for d in request.dimensions] == ["ORDERS.STATUS", "RETURNS.STATUS"]
+    assert [m.name for m in request.measures] == ["ORDERS.AMOUNT", "RETURNS.AMOUNT"]
 
 
-def test_metric_child_names_stay_a_single_fqn_segment():
-    """The child FQN appends the name to the metric's, so a dot in either the logical
-    table or the object name would add spurious segments."""
+def test_metric_child_names_preserve_dots():
+    """The server quotes dotted child names when appending them to the metric FQN."""
     row = ('"my.table"', '"my.dim"', "VARCHAR", "t.c", None, None)
 
     request = build_metric_request(
         "svc", "DB", "S", "V", metric_row=ORDER_COUNT, dimension_rows=[row], fact_rows=[], view_ref=None
     )
 
-    assert "." not in request.dimensions[0].name
+    assert request.dimensions[0].name == "my.table.my.dim"
 
 
 def test_build_metric_name_ignores_identifier_quoting():
@@ -150,14 +157,22 @@ def test_build_metric_name_ignores_identifier_quoting():
     assert from_metadata == from_lineage
 
 
-def test_build_metric_name_respects_the_entity_name_limit():
+def test_build_metric_name_normalizes_escaped_identifier_quotes():
+    from_metadata = build_metric_name("svc", "DB", '"My""Schema"', "view", "table", "metric")
+    from_lineage = build_metric_name("svc", "DB", 'My"Schema', "view", "table", "metric")
+
+    assert from_metadata == from_lineage
+
+
+def test_build_metric_name_has_fixed_length_for_long_identifiers():
+    """The service prefix is capped so the name cannot exceed the 256-character
+    entityName limit, and the digest is what stays stable and distinguishing."""
     long_name = build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "t" * 80, "m" * 80)
 
-    assert len(long_name) == MAX_METRIC_NAME_LENGTH
-    # deterministic: the lineage workflow re-derives the name through this function
+    assert len(long_name) == SERVICE_PREFIX_MAX_LEN + 1 + 64
     assert long_name == build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "t" * 80, "m" * 80)
-    # the digest keeps truncated names distinct
     assert long_name != build_metric_name("s" * 80, "d" * 80, "c" * 80, "v" * 80, "t" * 80, "x" * 80)
+    assert long_name != build_metric_name("s" * 90, "d" * 80, "c" * 80, "v" * 80, "t" * 80, "m" * 80)
 
 
 def test_infer_metric_type_by_prefix():
@@ -190,9 +205,9 @@ def test_build_metric_request_maps_all_fields():
     assert request.metricType == MetricType.SUM
     assert request.metricExpression.language == Language.SQL
     assert request.metricExpression.code == "SUM(orders.line_amount)"
-    assert [d.name for d in request.dimensions] == ["customers-region"]
+    assert [d.name for d in request.dimensions] == ["customers.region"]
     assert request.dimensions[0].expression == "customers.c_region"
-    assert [m.name for m in request.measures] == ["orders-line_amount"]
+    assert [m.name for m in request.measures] == ["orders.line_amount"]
     assert request.measures[0].expression == "orders.o_totalprice"
     assert request.assets.root[0].id.root == view_ref.id.root
 
@@ -272,8 +287,8 @@ def test_yield_table_metrics_yields_one_per_metric():
     assert names == {"total_revenue", "order_count"}
     revenue = next(r for r in requests if r.displayName == "total_revenue")
     assert str(revenue.assets.root[0].id.root) == "12345678-1234-1234-1234-123456789012"
-    assert [d.name for d in revenue.dimensions] == ["customers-region"]
-    assert [m.name for m in revenue.measures] == ["orders-line_amount"]
+    assert [d.name for d in revenue.dimensions] == ["customers.region"]
+    assert [m.name for m in revenue.measures] == ["orders.line_amount"]
 
 
 def test_yield_table_metrics_flushes_the_sink_before_resolving_the_view():
@@ -419,7 +434,7 @@ def test_dimensions_carry_the_detail_stripped_from_columns():
 
     dimension = request.dimensions[0]
 
-    assert dimension.name == "customers-REGION"
+    assert dimension.name == "customers.REGION"
     assert dimension.description == "Customer region Synonyms: geo, area."
     assert dimension.expression == "customers.c_region"
 
@@ -449,10 +464,10 @@ def test_dimension_type_is_classified_from_the_data_type():
     by_name = {d.name: d.type for d in request.dimensions}
 
     assert by_name == {
-        "orders-ORDER_DATE": Type.TIME,
-        "orders-SHIPPED_AT": Type.TIME,
-        "customers-REGION": Type.CATEGORICAL,
-        "orders-UNTYPED": None,
+        "orders.ORDER_DATE": Type.TIME,
+        "orders.SHIPPED_AT": Type.TIME,
+        "customers.REGION": Type.CATEGORICAL,
+        "orders.UNTYPED": None,
     }
 
 
@@ -467,7 +482,7 @@ def test_measure_aggregation_is_inferred_only_when_aggregated():
 
     by_name = {m.name: m.aggregation for m in request.measures}
 
-    assert by_name == {"orders-REVENUE": "SUM", "orders-LINE_AMOUNT": None}
+    assert by_name == {"orders.REVENUE": "SUM", "orders.LINE_AMOUNT": None}
 
 
 def test_semantic_description_is_none_when_the_row_is_bare():
