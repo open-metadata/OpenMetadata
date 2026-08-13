@@ -95,6 +95,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -1467,6 +1468,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       }
     }
 
+    // On-demand policy fields are batch-loaded once for the whole request rather than per entity:
+    // the first policy that reads tags hydrates them for every existing entity in a single query,
+    // avoiding an N+1. A field no policy inspects is never loaded. New on-demand fields are added
+    // here as another entry, with no change to ResourceContext.
+    BulkFieldHydrator bulkFieldHydrator =
+        new BulkFieldHydrator(
+            Map.of(
+                Entity.FIELD_TAGS,
+                () -> repository.batchLoadTags(new ArrayList<>(existingByFqn.values()))));
+
     // Phase 3: Auth check using batch results
     for (T entity : preparedEntities) {
       try {
@@ -1483,7 +1494,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           OperationContext operationContext = new OperationContext(entityType, operation);
           T existingEntity = existingByFqn.get(entity.getFullyQualifiedName());
           ResourceContext<T> resourceContext =
-              new ResourceContext<>(entityType, existingEntity, repository);
+              new ResourceContext<>(entityType, existingEntity, repository, bulkFieldHydrator);
           authorizer.authorize(securityContext, operationContext, resourceContext);
         }
 

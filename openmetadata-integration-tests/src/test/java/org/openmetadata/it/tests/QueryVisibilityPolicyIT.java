@@ -7,6 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -17,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -45,6 +50,8 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.Tables;
@@ -444,6 +451,72 @@ public class QueryVisibilityPolicyIT {
         "admin GET without fields must also omit certification — payload must not differ by principal");
   }
 
+  /**
+   * A tag-based DENY on {@code EDIT_ALL} must be enforced on the bulk upsert path. Bulk
+   * authorization batch-hydrates tags for the whole request; this verifies the DENY fires for the
+   * tagged table (whose tags load in that batch) while an untagged table the principal may edit
+   * still passes — i.e. the batch hydration feeds policy evaluation correctly.
+   */
+  @Test
+  void test_tagDenyPolicy_enforcedOnBulkUpdate(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = fieldPolicySchema(ns);
+    String p = ns.shortPrefix();
+
+    tableWith(schema, p + "_bulktagged", c -> c.setTags(List.of(tagLabel(PII_SENSITIVE_TAG))));
+    tableWith(schema, p + "_bulkuntagged", c -> {});
+
+    Rule allowEdit =
+        new Rule()
+            .withName(p + "bulkAllow")
+            .withResources(List.of("All"))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.VIEW_ALL))
+            .withEffect(Rule.Effect.ALLOW);
+    Rule denyTagged =
+        new Rule()
+            .withName(p + "bulkDeny")
+            .withResources(List.of("All"))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("matchAnyTag('" + PII_SENSITIVE_TAG + "')");
+    String email = principalWithRules("bulk", List.of(allowEdit, denyTagged), ns);
+    String token = JwtAuthProvider.tokenFor(email, email, new String[] {}, 86400L);
+
+    List<CreateTable> updates =
+        List.of(
+            updateRequest(schema, p + "_bulktagged"), updateRequest(schema, p + "_bulkuntagged"));
+    BulkOperationResult result = bulkUpdateTables(updates, token);
+
+    assertEquals(
+        1, result.getNumberOfRowsPassed(), "the untagged table the principal may edit must pass");
+    assertEquals(
+        1,
+        result.getNumberOfRowsFailed(),
+        "the tagged table must be denied by the tag policy on the bulk path");
+  }
+
+  private CreateTable updateRequest(DatabaseSchema schema, String name) {
+    CreateTable create = new CreateTable();
+    create.setName(name);
+    create.setDatabaseSchema(schema.getFullyQualifiedName());
+    create.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    return create;
+  }
+
+  private BulkOperationResult bulkUpdateTables(List<CreateTable> tables, String token)
+      throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/tables/bulk"))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(tables)))
+            .build();
+    HttpResponse<String> response =
+        HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), "bulk endpoint returns 200 with per-entity results");
+    return JsonUtils.readValue(response.body(), BulkOperationResult.class);
+  }
+
   private final Deque<Runnable> fixtureCleanups = new ArrayDeque<>();
 
   @AfterEach
@@ -471,20 +544,29 @@ public class QueryVisibilityPolicyIT {
    */
   private OpenMetadataClient userWithViewRule(
       String label, Rule.Effect effect, String condition, TestNamespace ns) {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    String p = ns.shortPrefix() + label;
-
     Rule viewRule =
         new Rule()
-            .withName(p + "Rule")
+            .withName(ns.shortPrefix() + label + "Rule")
             .withResources(List.of("All"))
             .withOperations(List.of(MetadataOperation.VIEW_ALL))
             .withEffect(effect)
             .withCondition(condition);
+    String email = principalWithRules(label, List.of(viewRule), ns);
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /**
+   * Creates a policy carrying {@code rules}, a role holding it, and a user with that role assigned
+   * directly (not via a team's defaultRoles, which is not applied during policy evaluation).
+   * Returns the user's email, which is also the JWT subject for {@link JwtAuthProvider}.
+   */
+  private String principalWithRules(String label, List<Rule> rules, TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String p = ns.shortPrefix() + label;
 
     CreatePolicy createPolicy = new CreatePolicy();
     createPolicy.setName(p + "_pol");
-    createPolicy.setRules(List.of(viewRule));
+    createPolicy.setRules(rules);
     Policy policy = admin.policies().create(createPolicy);
     fixtureCleanups.push(() -> admin.policies().delete(policy.getId()));
 
@@ -502,7 +584,7 @@ public class QueryVisibilityPolicyIT {
     User user = admin.users().create(createUser);
     fixtureCleanups.push(() -> admin.users().delete(user.getId()));
 
-    return SdkClients.createClient(email, email, new String[] {});
+    return email;
   }
 
   private DatabaseSchema fieldPolicySchema(TestNamespace ns) throws Exception {

@@ -43,6 +43,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private Fields requestedFields;
   private final Set<String> loadedFieldNames = new HashSet<>();
   private RelationIncludes relationIncludes;
+  // When set (bulk authorization), on-demand fields are batch-loaded for the whole request instead
+  // of once per entity. Null for single-entity requests, which keep the per-entity load.
+  private BulkFieldHydrator bulkFieldHydrator;
 
   public ResourceContext(@NonNull String resource) {
     this.resource = resource;
@@ -110,6 +113,21 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.name = null;
     this.entity = entity;
     this.entityRepository = repository;
+  }
+
+  /**
+   * Bulk-authorization variant: {@code bulkFieldHydrator} is shared by every {@link ResourceContext}
+   * in one bulk request. The first entity whose policy reads an on-demand field batch-loads it for
+   * the whole request; later reads are no-ops. Omitting it (the constructor above) keeps the
+   * per-entity on-demand load used by single-entity requests.
+   */
+  public ResourceContext(
+      @NonNull String resource,
+      T entity,
+      EntityRepository<T> repository,
+      BulkFieldHydrator bulkFieldHydrator) {
+    this(resource, entity, repository);
+    this.bulkFieldHydrator = bulkFieldHydrator;
   }
 
   @Override
@@ -183,9 +201,14 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
    * policies use no tag conditions therefore never pays for them. The fields are applied to the
    * existing instance, so this adds no entity reload.
    */
-  private void ensureTagsLoaded() {
+  // Package-private so the bulk batch-vs-per-entity routing can be unit-tested directly.
+  void ensureTagsLoaded() {
     if (!loadedFieldNames.contains(Entity.FIELD_TAGS) && entityRepository.isSupportsTags()) {
-      entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+      if (bulkFieldHydrator != null) {
+        bulkFieldHydrator.hydrate(Entity.FIELD_TAGS); // one batch query for the whole bulk request
+      } else {
+        entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+      }
       loadedFieldNames.add(Entity.FIELD_TAGS);
     }
   }
