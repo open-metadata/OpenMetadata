@@ -4298,6 +4298,7 @@
     "to-add-new-line": "para adicionar uma nova linha",
     "token-has-no-expiry": "Este token não tem data de expiração.",
     "token-security-description": "Qualquer pessoa que tenha seu Token JWT poderá enviar solicitações de API REST para o {{brandName}} Server. Não exponha o Token JWT em seu código de aplicativo. Não o compartilhe no GitHub ou em qualquer outro lugar online.",
+    "total-data-assets-description": "Total de ativos presentes na conexão do serviço.",
     "total-data-assets-widget-description": "Visão geral de todos os ativos de dados dentro do serviço. <0>saber mais.</0>",
     "total-entity-insight": "Exibir o número mais recente de ativos de dados por tipo.",
     "tour-follow-step": "Siga um ativo de dados para se manter informado sobre as alterações nele. Em seu feed de atividades, todas as mudanças no ativo de dados que você está seguindo são mostradas. Você também receberá alertas se este ativo de dados tiver problemas de qualidade de dados.",
