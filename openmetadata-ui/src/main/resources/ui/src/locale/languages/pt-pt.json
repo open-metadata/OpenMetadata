@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "Os agentes AutoPilot estão em execução.",
     "auto-pilot-already-running": "A aplicação AutoPilot já está em execução. Aguarde a conclusão da execução atual antes de iniciar uma nova.",
     "auto-pilot-no-agents-message": "Nenhum agente AutoPilot presente.",
+    "auto-pilot-triggered-message": "A aplicação AutoPilot foi acionada; os agentes serão gerados e executados automaticamente.",
     "automate-provisioning-with-scim": "Automatize o aprovisionamento com SCIM",
     "automate-your-tasks-by-creating-custom-workflows": "Automatize as suas tarefas criando fluxos de trabalho personalizados.",
     "availability-time-contract-description": "Hora do dia em que se espera que os dados estejam disponíveis",

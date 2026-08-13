@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "AutoPilot-agenterna körs.",
     "auto-pilot-already-running": "AutoPilot-applikationen körs redan. Vänta tills den aktuella körningen är klar innan du startar en ny.",
     "auto-pilot-no-agents-message": "Inga AutoPilot-agenter finns.",
+    "auto-pilot-triggered-message": "AutoPilot-applikationen har startats. Agenter genereras och körs automatiskt.",
     "automate-provisioning-with-scim": "Automatisera provisionering med SCIM",
     "automate-your-tasks-by-creating-custom-workflows": "Automatisera dina uppgifter genom att skapa anpassade arbetsflöden.",
     "availability-time-contract-description": "Tidpunkt på dygnet då data förväntas vara tillgängliga",

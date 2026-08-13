@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "AutoPilot 代理程式正在執行。",
     "auto-pilot-already-running": "AutoPilot 應用程式已在執行中。請等待目前執行完成後再開始新的執行。",
     "auto-pilot-no-agents-message": "沒有 AutoPilot 代理程式。",
+    "auto-pilot-triggered-message": "AutoPilot 應用程式已觸發，代理程式將自動產生並執行。",
     "automate-provisioning-with-scim": "使用 SCIM 自動化佈建",
     "automate-your-tasks-by-creating-custom-workflows": "建立自訂工作流程以自動化您的任務。",
     "availability-time-contract-description": "預期資料可用的時間段",

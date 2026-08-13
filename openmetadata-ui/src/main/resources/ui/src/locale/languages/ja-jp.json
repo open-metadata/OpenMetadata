@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "AutoPilotエージェントが実行中です。",
     "auto-pilot-already-running": "AutoPilotアプリケーションは既に実行中です。新しい実行を開始する前に、現在の実行が完了するまでお待ちください。",
     "auto-pilot-no-agents-message": "AutoPilot エージェントが存在しません。",
+    "auto-pilot-triggered-message": "AutoPilotアプリケーションが起動されました。エージェントは自動的に生成され、実行されます。",
     "automate-provisioning-with-scim": "SCIM でプロビジョニングを自動化",
     "automate-your-tasks-by-creating-custom-workflows": "カスタムワークフローを作成してタスクを自動化します。",
     "availability-time-contract-description": "データが利用可能になると予想される時刻帯",

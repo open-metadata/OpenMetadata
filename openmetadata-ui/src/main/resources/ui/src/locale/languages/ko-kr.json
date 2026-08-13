@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "AutoPilot 에이전트가 실행 중입니다.",
     "auto-pilot-already-running": "AutoPilot 애플리케이션이 이미 실행 중입니다. 새 실행을 시작하기 전에 현재 실행이 완료될 때까지 기다려 주십시오.",
     "auto-pilot-no-agents-message": "AutoPilot 에이전트가 없습니다.",
+    "auto-pilot-triggered-message": "AutoPilot 애플리케이션이 실행되었습니다. 에이전트가 자동으로 생성되어 실행됩니다.",
     "automate-provisioning-with-scim": "SCIM으로 프로비저닝 자동화",
     "automate-your-tasks-by-creating-custom-workflows": "사용자 정의 워크플로를 만들어 작업을 자동화하세요.",
     "availability-time-contract-description": "데이터가 사용 가능할 것으로 예상되는 하루 중 시간",

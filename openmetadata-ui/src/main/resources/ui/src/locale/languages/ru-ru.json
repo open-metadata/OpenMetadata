@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "Агенты AutoPilot работают.",
     "auto-pilot-already-running": "Приложение AutoPilot уже запущено. Пожалуйста, дождитесь завершения текущего запуска перед началом нового.",
     "auto-pilot-no-agents-message": "Нет агентов AutoPilot.",
+    "auto-pilot-triggered-message": "Приложение AutoPilot запущено, агенты будут созданы и запущены автоматически.",
     "automate-provisioning-with-scim": "Автоматизируйте подготовку с помощью SCIM",
     "automate-your-tasks-by-creating-custom-workflows": "Автоматизируйте задачи, создавая собственные рабочие процессы.",
     "availability-time-contract-description": "Время суток, к которому ожидается доступность данных",

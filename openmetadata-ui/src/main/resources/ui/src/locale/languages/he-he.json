@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "סוכני AutoPilot פועלים.",
     "auto-pilot-already-running": "אפליקציית AutoPilot כבר רצה. אנא המתן עד שהריצה הנוכחית תסתיים לפני שתתחיל ריצה חדשה.",
     "auto-pilot-no-agents-message": "אין סוכני AutoPilot נוכחים.",
+    "auto-pilot-triggered-message": "אפליקציית AutoPilot הופעלה, הסוכנים ייווצרו ויופעלו באופן אוטומטי.",
     "automate-provisioning-with-scim": "הפוך את ההקצאה לאוטומטית באמצעות SCIM",
     "automate-your-tasks-by-creating-custom-workflows": "אוטמט את המשימות שלך על ידי יצירת תהליכי עבודה מותאמים אישית.",
     "availability-time-contract-description": "שעת היום שבה צפויים הנתונים להיות זמינים",

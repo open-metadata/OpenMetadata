@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "وكلاء AutoPilot قيد التشغيل.",
     "auto-pilot-already-running": "تطبيق AutoPilot قيد التشغيل بالفعل. يرجى الانتظار حتى يكتمل التشغيل الحالي قبل بدء تشغيل جديد.",
     "auto-pilot-no-agents-message": "لا يوجد وكلاء AutoPilot حاليًا.",
+    "auto-pilot-triggered-message": "تم تشغيل تطبيق AutoPilot، وسيتم إنشاء الوكلاء وتشغيلهم تلقائيًا.",
     "automate-provisioning-with-scim": "أتمتة التزويد باستخدام SCIM",
     "automate-your-tasks-by-creating-custom-workflows": "أتمت مهامك من خلال إنشاء سير عمل مخصص.",
     "availability-time-contract-description": "الوقت المتوقع لتوافر البيانات",

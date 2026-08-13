@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "AutoPilot ایجنٹس چل رہے ہیں۔",
     "auto-pilot-already-running": "برنامه AutoPilot در حال حاضر در حال اجرا است. لطفاً منتظر بمانید تا اجرای فعلی کامل شود قبل از شروع یک اجرای جدید.",
     "auto-pilot-no-agents-message": "هیچ سوئیت AutoPilot وجود ندارد.",
+    "auto-pilot-triggered-message": "برنامه AutoPilot اجرا شد؛ عامل‌ها به‌صورت خودکار ایجاد و اجرا می‌شوند.",
     "automate-provisioning-with-scim": "خودکارسازی تأمین با SCIM",
     "automate-your-tasks-by-creating-custom-workflows": "وظایف خود را با ایجاد جریان‌های کاری سفارشی خودکار کنید.",
     "availability-time-contract-description": "زمان روزی که انتظار می‌رود داده‌ها در دسترس باشند",

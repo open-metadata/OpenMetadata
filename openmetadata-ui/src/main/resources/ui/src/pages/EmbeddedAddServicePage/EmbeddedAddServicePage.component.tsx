@@ -42,8 +42,8 @@ import { FiltersConfigFormHandle } from '../../components/Settings/Services/Serv
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
-  ServiceCategoryParam,
   SERVICE_DEFAULT_ERROR_MAP,
+  ServiceCategoryParam,
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -67,7 +67,7 @@ import {
   getAddServiceEntityBreadcrumb,
   getValidatedServiceType,
 } from '../../utils/ServiceUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from '../AddServicePage/AddServicePage.interface';
 import { useServiceNameValidation } from '../AddServicePage/useServiceNameValidation';
@@ -357,6 +357,7 @@ const EmbeddedAddServicePage = () => {
         )
       ) {
         await triggerTheAutoPilotApplication(serviceDetails);
+        showSuccessToast(t('message.auto-pilot-triggered-message'), 5000);
       }
     } catch (error) {
       handleEntityCreationError({

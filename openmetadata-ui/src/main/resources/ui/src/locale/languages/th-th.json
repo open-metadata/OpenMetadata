@@ -3020,6 +3020,7 @@
     "auto-pilot-agents-running-message": "เอเจนต์ AutoPilot กำลังทำงาน",
     "auto-pilot-already-running": "แอปพลิเคชัน AutoPilot กำลังทำงานอยู่แล้ว กรุณารอให้การทำงานปัจจุบันเสร็จสิ้นก่อนเริ่มใหม่",
     "auto-pilot-no-agents-message": "ไม่มีตัวจัดการ AutoPilot",
+    "auto-pilot-triggered-message": "แอปพลิเคชัน AutoPilot ถูกเรียกใช้แล้ว เอเจนต์จะถูกสร้างและทำงานโดยอัตโนมัติ",
     "automate-provisioning-with-scim": "ทำการจัดสรรอัตโนมัติด้วย SCIM",
     "automate-your-tasks-by-creating-custom-workflows": "ทำให้งานของคุณเป็นอัตโนมัติโดยการสร้างเวิร์กโฟลว์ที่กำหนดเอง",
     "availability-time-contract-description": "เวลาของวันที่คาดว่าข้อมูลจะใช้งานได้",
