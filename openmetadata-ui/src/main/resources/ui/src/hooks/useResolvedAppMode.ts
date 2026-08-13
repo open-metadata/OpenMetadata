@@ -93,10 +93,13 @@ const resolvePersonaAppMode = (
  * the resolver falls through to compute a fresh candidate.
  *
  * Consumers should invoke this hook exactly once, high in the tree
- * (e.g. `AppRoot`). It has no return value — its effects are `writeAppMode`
- * / `clearAppMode` calls.
+ * (e.g. `AppRoot`). Its work is done through effects — `writeAppMode` /
+ * `clearAppMode` calls. It returns the `registrySettled` flag described
+ * below so the router can tell "the owning plugin has not registered its
+ * routes yet" apart from "no plugin owns this mode", which are otherwise
+ * indistinguishable from an empty registry.
  */
-export const useResolvedAppMode = (): void => {
+export const useResolvedAppMode = (): boolean => {
   const defaultPersonaId = useApplicationStore(
     (state) => state.currentUser?.defaultPersona?.id
   );
@@ -258,4 +261,6 @@ export const useResolvedAppMode = (): void => {
     registeredRoutes,
     registrySettled,
   ]);
+
+  return registrySettled;
 };

@@ -202,3 +202,18 @@ RUN apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8 \
   && apt-get -qq autoremove -y --purge \
   && rm -rf /var/lib/apt/lists/*
 USER openmetadata
+
+# Every source build is done, so the setuptools<81 pin above can be lifted. That pin is
+# build-time only: cx_Oracle and mysqlclient import pkg_resources from their setup.py and
+# 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x on disk is
+# what keeps scanners reporting CVE-2026-59890.
+# Keep this the LAST pip layer -- a later layer that compiles a package needing
+# pkg_resources would fail here, and the error would not look like a setuptools problem.
+RUN pip install --upgrade "setuptools>=83"
+
+
+# Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
+# See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
+# final pip install, or a later install restores the fixture.
+COPY --chown=openmetadata:openmetadata ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
+RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh
