@@ -607,6 +607,15 @@ def isolated_parse_query_cache():
             "UPDATE my_schema.my_table(col1) SET col1 = 1 WHERE id = 2",
             "my_schema.my_table",
         ),
+        # --- Quoted identifiers containing parentheses are not truncated ---
+        (
+            'INSERT INTO "my(table)" VALUES (1)',
+            '"my(table)"',
+        ),
+        (
+            'UPDATE "my_schema"."my(table)"(col1) SET col1 = 1',
+            '"my_schema"."my(table)"',
+        ),
         # --- Block comments inside qualified identifiers ---
         (
             "INSERT INTO my_schema./*inline*/my_table VALUES (1)",

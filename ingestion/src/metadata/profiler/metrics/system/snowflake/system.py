@@ -59,12 +59,14 @@ _cache = LRUCache(LRU_CACHE_SIZE)
 def _normalize_dml_sql(query: str) -> str:
     """Normalize a SQL query before DML pattern matching.
 
-    Three-pass process:
+    Four-pass process:
     1. Replace /* ... */ block comments with a single space so they act as a
        token separator but do not expose their body to the regex.
     2. Strip -- single-line comments (remove to end of line, leave the newline).
     3. Strip leading/trailing whitespace so re.match() can find the DML keyword
        at position 0.
+    4. Collapse whitespace after a dot so qualified names split by a block
+       comment are rejoined.
 
     This prevents comment bodies (e.g. commented-out SQL snippets) from being
     mistaken for actual DML operations.
@@ -101,7 +103,7 @@ def _parse_query(query: Optional[str]) -> Optional[str]:  # noqa: UP045
     return _parse_cached(_normalize_dml_sql(query))
 
 
-@_cache.wrap(key_func=lambda *a, **kw: sha256_hash(a[0]))
+@_cache.wrap(key_func=sha256_hash)
 def _parse_cached(normalized: str) -> Optional[str]:  # noqa: UP045
     match = re.match(QUERY_PATTERN, normalized, re.IGNORECASE)
     try:
@@ -114,13 +116,9 @@ def _parse_cached(normalized: str) -> Optional[str]:  # noqa: UP045
         if internal_identifier:
             return internal_identifier
 
-        # Strip trailing parenthesised column list if the regex captured it,
-        # e.g. "my_table(col1)" -> "my_table", but keep IDENTIFIER(...) intact.
-        paren_idx = identifier.find("(")
-        if paren_idx != -1:
-            identifier = identifier[:paren_idx]
-
-        return identifier  # noqa: TRY300
+        # Anchored at the end so a quoted identifier containing parens ("my(table)")
+        # survives; the closing paren is optional as QUERY_PATTERN may stop mid-list.
+        return re.sub(r"\([^()]*\)?$", "", identifier)
     except (IndexError, AttributeError):
         logger.debug("Could not find identifier in query. Skipping row.")
         return None
