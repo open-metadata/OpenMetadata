@@ -643,22 +643,80 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       String entityType = entry.getKey();
       List<EntityInterface> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
-      for (int i = 0; i < entitiesOfType.size(); i++) {
-        entitiesById.put(
-            entry.getValue().get(i).getId(), new EntityWithType(entitiesOfType.get(i), entityType));
+      // Key each entity by its own id. Pairing the result with the request list
+      // by index assumed the bulk fetch answered in request order and returned
+      // one row per ref; it backs onto `SELECT id, json FROM <table> WHERE id IN
+      // (<ids>)`, which carries no ORDER BY, so neither holds. A reordered
+      // result mapped entities onto the wrong id — surfacing as the wrong asset
+      // against a port, with no error — and a short result left the trailing
+      // ids unmapped, so they were dropped below while `total` (counted by a
+      // separate query) still included them.
+      for (EntityInterface entityOfType : entitiesOfType) {
+        entitiesById.put(entityOfType.getId(), new EntityWithType(entityOfType, entityType));
       }
     }
 
     // Preserve original order from relationship records
     List<EntityWithType> entities = new ArrayList<>();
+    List<UUID> unresolved = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipRecord record : relationshipRecords) {
       EntityWithType entity = entitiesById.get(record.getId());
       if (entity != null) {
         entities.add(entity);
+      } else {
+        unresolved.add(record.getId());
       }
     }
 
+    // Relationships whose target no longer resolves — deleted, or excluded by
+    // the NON_DELETED filter. countFindTo counts rows in entity_relationship,
+    // which knows nothing about whether the target still exists, so `total`
+    // included these while the rows could not. A caller sizing its empty state
+    // off the rows then contradicts its own count: the ports tab rendered
+    // "Input Ports (1)" above an empty list.
+    //
+    // Recount over the full relationship set so the count matches what can
+    // actually be rendered. This is the rare path — it costs nothing when every
+    // relationship resolves, which is the normal case — and it reads references
+    // only, not entity JSON, so it stays much cheaper than the page fetch above.
+    if (!unresolved.isEmpty()) {
+      int resolvableTotal = countResolvablePorts(dataProductId, relationship);
+      LOG.warn(
+          "Data product {} has {} unresolvable port relationship(s) {}; reporting total={} "
+              + "instead of the {} relationship rows on record",
+          dataProductId,
+          unresolved.size(),
+          unresolved,
+          resolvableTotal,
+          total);
+      total = resolvableTotal;
+    }
+
     return new ResultList<>(entities, offset, total);
+  }
+
+  /**
+   * Counts the port relationships whose target entity still resolves, so a page can report a total
+   * it is able to return. Reads references rather than entity JSON: enough to know an id is live,
+   * without paying for the full fetch the page itself performs.
+   */
+  private int countResolvablePorts(UUID dataProductId, Relationship relationship) {
+    List<CollectionDAO.EntityRelationshipRecord> allRecords =
+        daoCollection.relationshipDAO().findTo(dataProductId, DATA_PRODUCT, relationship.ordinal());
+
+    Map<String, List<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipRecord record : allRecords) {
+      idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
+    }
+
+    int resolvable = 0;
+    for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      resolvable +=
+          Entity.getEntityRepository(entry.getKey())
+              .getReferences(entry.getValue(), NON_DELETED)
+              .size();
+    }
+    return resolvable;
   }
 
   public DataProductPortsView getPortsView(

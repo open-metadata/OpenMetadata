@@ -3203,6 +3203,48 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_softDeletedPortAssetIsNotCountedInTotal(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_soft_deleted_port"))
+            .withDescription("Data product for soft-deleted port count consistency")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    Table softDeletedTable = createTestTable(ns, "soft_del_input", domain);
+    Table survivingTable = createTestTable(ns, "soft_del_surviving", domain);
+
+    bulkAddInputPorts(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets()
+            .withAssets(
+                List.of(
+                    softDeletedTable.getEntityReference(), survivingTable.getEntityReference())));
+
+    assertEquals(2, getInputPorts(dataProduct.getId(), 10, 0).getPaging().getTotal());
+
+    // Soft delete, unlike the hard delete in test_deletingAssetRemovesItFromPorts:
+    // the entity_relationship row survives, so countFindTo still counts this port
+    // while the NON_DELETED filter keeps the entity out of the returned rows. The
+    // page then advertised a port it could not carry -- the ports tab rendered
+    // "Input Ports (1)" above an empty list.
+    SdkClients.adminClient()
+        .tables()
+        .delete(softDeletedTable.getId().toString(), Map.of("hardDelete", "false"));
+
+    ResultList<Map<String, Object>> inputPorts = getInputPorts(dataProduct.getId(), 10, 0);
+    assertEquals(1, inputPorts.getData().size());
+    assertEquals(survivingTable.getId(), getEntityId(inputPorts.getData().get(0)));
+    assertEquals(inputPorts.getData().size(), inputPorts.getPaging().getTotal());
+
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertEquals(1, portsView.getInputPorts().getData().size());
+    assertEquals(1, portsView.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
   void softDeletedExpert_notReturnedInSingleGet(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Domain domain = getOrCreateDomain(ns);
