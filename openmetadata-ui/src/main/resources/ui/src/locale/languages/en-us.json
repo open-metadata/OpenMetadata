@@ -3001,6 +3001,8 @@
     "are-you-want-to-restore": "Are you sure you want to restore {{entity}}?",
     "assess-data-reliability-with-data-profiler-lineage": "Gain a competitive edge in the data-driven world with the right approach to data governance. Secure your data and empower your business to fuel innovation and growth.",
     "asset-relations-select-term": "Select a glossary term or metric to manage relationships.",
+    "assets-add-disabled-term-status": "This term is {{status}}. Assets can be added once it is approved.",
+    "assets-add-restricted-term-status": "This term is {{status}}. Assets can only be added to approved terms.",
     "assigned-you-a-new-task-lowercase": "a new task has been assigned to you",
     "assigning-team-entity-description": "Add a {{entity}} to {{name}}. This {{entity}} will be inherited by all the users in the team {{name}} as well as all the teams under {{name}}",
     "at-least-one-policy": "Enter at least one policy",

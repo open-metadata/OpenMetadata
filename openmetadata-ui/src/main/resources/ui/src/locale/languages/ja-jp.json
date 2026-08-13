@@ -3001,6 +3001,8 @@
     "are-you-want-to-restore": "{{entity}} を復元してもよろしいですか？",
     "assess-data-reliability-with-data-profiler-lineage": "データプロファイラ、リネージ、サンプルデータなどを用いてデータの信頼性を評価します。",
     "asset-relations-select-term": "関係を管理するには、用語集の用語またはメトリクスを選択してください。",
+    "assets-add-disabled-term-status": "この用語は{{status}}です。承認されるとアセットを追加できます。",
+    "assets-add-restricted-term-status": "この用語は{{status}}です。アセットは承認済みの用語にのみ追加できます。",
     "assigned-you-a-new-task-lowercase": "新しいタスクが割り当てられました",
     "assigning-team-entity-description": "{{entity}} を {{name}} に追加します。この {{entity}} はチーム {{name}} のすべてのユーザーとサブチームに継承されます。",
     "at-least-one-policy": "最低でも 1 つのポリシーを入力してください",
