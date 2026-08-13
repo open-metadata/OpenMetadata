@@ -13,6 +13,7 @@
 import {
   APIRequestContext,
   expect,
+  Locator,
   Page,
   test as base,
 } from '@playwright/test';
@@ -21,7 +22,10 @@ import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
-import { insertActivityEventForTest } from '../../utils/activityAPI';
+import {
+  FEED_ITEM_TIMEOUT,
+  insertActivityEventForTest,
+} from '../../utils/activityAPI';
 import { REACTION_EMOJIS, reactOnFeedCard } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -903,6 +907,11 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   let entity: TableClass;
   const conversationMessage = `Merge regression conversation ${uuid()}`;
   const conversationMessage2 = `Second regression conversation ${uuid()}`;
+  // Run-unique so the seeded change-event can be pinned by text. Matching the
+  // generic "created" header instead would also match the table's own auto
+  // "Created" event if the consumer happens to deliver it mid-run, and every
+  // worker in a shard shares one database.
+  const activityMarker = `Merge regression activity ${uuid()}`;
 
   const test = base.extend<{ adminPage: Page }>({
     adminPage: async ({ browser }, use) => {
@@ -913,9 +922,35 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     },
   });
 
+  const openActivityFeedTab = async (page: Page) => {
+    await entity.visitEntityPage(page);
+    await page.getByTestId('activity_feed').click();
+    await waitForAllLoadersToDisappear(page);
+
+    // Scoped to #feedData throughout: the right-hand panel renders
+    // message-container for the selected item, so an unscoped match could be
+    // satisfied by the panel and would not prove both kinds share the list.
+    return page.locator('#feedData [data-testid="message-container"]');
+  };
+
+  // The list is merged from two independent fetches (/api/v1/feed and
+  // /api/v1/activity) and re-sorts — moving the auto-selection with it — as each
+  // one lands. Anything asserting on order, counts or the active item has to
+  // wait for BOTH kinds to be on screen first, or it races the slower response.
+  const waitForBothFeedKinds = async (feedList: Locator) => {
+    await expect(
+      feedList.filter({ hasText: conversationMessage }).first()
+    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+    await expect(
+      feedList.filter({ hasText: activityMarker }).first()
+    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
+  };
+
   test.beforeAll(
     'Setup entity and seeded conversation',
     async ({ browser }) => {
+      test.slow(true);
+
       adminUser = new UserClass();
       entity = new TableClass();
 
@@ -924,6 +959,21 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
       await adminUser.create(apiContext);
       await adminUser.setAdminRole(apiContext);
       await entity.create(apiContext);
+
+      // Seed the change-event directly instead of waiting for the table's own
+      // auto "Created" event to arrive through the ActivityFeedAlert consumer.
+      // That consumer ticks on its pollInterval, drains at most batchSize
+      // change_event rows per tick, and parks on any commit-order offset gap —
+      // so on an AUT running the whole suite in parallel the backlog puts the
+      // event arbitrarily far behind and no poll timeout here can outlast it.
+      // Async delivery is the backend's contract (ActivityResourceIT); these
+      // tests are about how the merged list renders.
+      await insertActivityEventForTest(
+        apiContext,
+        entity,
+        activityMarker,
+        'EntityCreated'
+      );
 
       for (const message of [conversationMessage, conversationMessage2]) {
         await apiContext.post('/api/v1/feed', {
@@ -939,6 +989,8 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
         `<#E::table::${entity.entityResponseData.fullyQualifiedName}>`
       )}&type=Conversation&limit=25`;
 
+      // /api/v1/feed writes synchronously, so this only covers read-your-write
+      // lag on a loaded server — nothing here waits on an async pipeline.
       await expect
         .poll(
           async () => {
@@ -953,29 +1005,9 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
               messages.includes(conversationMessage2)
             );
           },
-          { timeout: 60_000, intervals: [2_000] }
+          { timeout: 30_000, intervals: [1_000] }
         )
         .toBe(true);
-
-      // Wait until the auto "Created" change-event activity is indexed into the
-      // activity stream, so the merged list deterministically contains an
-      // activity in every test (indexing is near-instant in CI but can lag on a
-      // local backend).
-      const activityUrl = `/api/v1/activity/entity/table/name/${encodeURIComponent(
-        entity.entityResponseData.fullyQualifiedName ?? ''
-      )}?days=30&limit=50`;
-
-      await expect
-        .poll(
-          async () => {
-            const response = await apiContext.get(activityUrl);
-            const data = await response.json();
-
-            return (data.data ?? []).length;
-          },
-          { timeout: 90_000, intervals: [3_000] }
-        )
-        .toBeGreaterThan(0);
 
       await afterAction();
     }
@@ -991,43 +1023,29 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test('All tab shows BOTH the change-event activity and the conversation', async ({
     adminPage,
   }) => {
-    await entity.visitEntityPage(adminPage);
-    await adminPage.getByTestId('activity_feed').click();
-    await waitForAllLoadersToDisappear(adminPage);
-
-    // Scoped to #feedData throughout: the right-hand panel renders
-    // message-container for the selected item, so an unscoped match could be
-    // satisfied by the panel and would not prove both kinds share the list.
-    const feedList = adminPage.locator(
-      '#feedData [data-testid="message-container"]'
-    );
+    const feedList = await openActivityFeedTab(adminPage);
 
     // Conversation thread (from /api/v1/feed) must be visible...
     await expect(
       feedList.filter({ hasText: conversationMessage }).first()
-    ).toBeVisible({ timeout: 30_000 });
+    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
 
-    // ...alongside the auto "Created" change-event activity (from /api/v1/activity).
+    // ...alongside the seeded change-event activity (from /api/v1/activity).
     // On the buggy either-or code these two never render together.
     await expect(
-      feedList.filter({ hasText: /created/i }).first()
-    ).toBeVisible();
+      feedList.filter({ hasText: activityMarker }).first()
+    ).toBeVisible({ timeout: FEED_ITEM_TIMEOUT });
   });
 
   test('A change-event activity is read-only (no comment editor)', async ({
     adminPage,
   }) => {
-    await entity.visitEntityPage(adminPage);
-    await adminPage.getByTestId('activity_feed').click();
-    await waitForAllLoadersToDisappear(adminPage);
+    const feedList = await openActivityFeedTab(adminPage);
+    await waitForBothFeedKinds(feedList);
 
-    // Open the auto "Created …" change-event activity in the right panel.
-    // Scoped to #feedData so this is the list card, not the panel's own copy.
-    const activityCard = adminPage
-      .locator('#feedData [data-testid="message-container"]')
-      .filter({ hasText: /created/i })
-      .first();
-    await expect(activityCard).toBeVisible({ timeout: 30_000 });
+    // Open the seeded change-event activity in the right panel. Scoped to
+    // #feedData so this is the list card, not the panel's own copy.
+    const activityCard = feedList.filter({ hasText: activityMarker }).first();
     await activityCard.click();
     await waitForAllLoadersToDisappear(adminPage);
 
@@ -1043,9 +1061,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test('Replying to a conversation stays isolated to that thread', async ({
     adminPage,
   }) => {
-    await entity.visitEntityPage(adminPage);
-    await adminPage.getByTestId('activity_feed').click();
-    await waitForAllLoadersToDisappear(adminPage);
+    const feedList = await openActivityFeedTab(adminPage);
 
     const newThreadCalls: string[] = [];
     const replyPostCalls: string[] = [];
@@ -1061,23 +1077,17 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
       }
     });
 
-    const feedList = adminPage.locator(
-      '#feedData [data-testid="message-container"]'
-    );
     const feedListCount = () => feedList.count();
 
-    // Scoped to #feedData deliberately: the right-hand panel renders
-    // message-container too, so an unscoped wait can be satisfied by the panel
-    // while the list is still empty — leaving the same 0 baseline this gate
-    // exists to prevent.
+    // Loaders disappearing does not mean the merged list has rendered, and the
+    // conversation alone is not enough either: the activity fetch lands
+    // separately and would grow the list between the baseline and the
+    // post-reply count. Both kinds have to be on screen before counting.
+    await waitForBothFeedKinds(feedList);
+
     const seededConversation = feedList
       .filter({ hasText: conversationMessage })
       .first();
-
-    // Loaders disappearing does not mean the merged list has rendered. Taking
-    // the baseline before the seeded conversation is on screen recorded a 0,
-    // which then mismatched the real count after the reply.
-    await expect(seededConversation).toBeVisible({ timeout: 30_000 });
 
     const countBeforeReply = await feedListCount();
 
@@ -1114,9 +1124,11 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   });
 
   test('Activity is NOT fetched on the Tasks tab', async ({ adminPage }) => {
-    await entity.visitEntityPage(adminPage);
-    await adminPage.getByTestId('activity_feed').click();
-    await waitForAllLoadersToDisappear(adminPage);
+    const feedList = await openActivityFeedTab(adminPage);
+
+    // Switch away only once the ALL tab has fully settled, so its own activity
+    // fetch cannot still be in flight when the listener below is attached.
+    await waitForBothFeedKinds(feedList);
 
     await adminPage.getByRole('menuitem', { name: /task/i }).click();
     await waitForAllLoadersToDisappear(adminPage);
@@ -1155,26 +1167,29 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test('All badge, header and rendered list agree on the count', async ({
     adminPage,
   }) => {
-    await entity.visitEntityPage(adminPage);
-    await adminPage.getByTestId('activity_feed').click();
-    await waitForAllLoadersToDisappear(adminPage);
-
-    await expect(
-      adminPage.locator('#feedData [data-testid="message-container"]').first()
-    ).toBeVisible({ timeout: 30_000 });
-
-    const renderedCount = await adminPage
-      .locator('#feedData [data-testid="message-container"]')
-      .count();
-    const allBadge = (
-      await adminPage.getByTestId('left-panel-all-count').innerText()
-    ).trim();
+    const feedList = await openActivityFeedTab(adminPage);
+    await waitForBothFeedKinds(feedList);
 
     // The "All" badge must equal the number of rendered items (conversations +
     // activity events) — not the old activity-only / double-counted value.
-    expect(Number(allBadge)).toBe(renderedCount);
+    // Polled rather than compared once because the consumer can deliver this
+    // table's own "Created" event mid-test, growing both numbers a beat apart.
+    await expect
+      .poll(
+        async () => {
+          const rendered = await feedList.count();
+          const allBadge = (
+            await adminPage.getByTestId('left-panel-all-count').innerText()
+          ).trim();
+
+          return Number(allBadge) === rendered;
+        },
+        { timeout: 15_000, intervals: [1_000] }
+      )
+      .toBe(true);
 
     // With no tasks, the entity tab header total equals the same count.
+    const renderedCount = await feedList.count();
     await expect(
       adminPage.getByRole('tab', { name: /activity feeds & tasks/i })
     ).toContainText(String(renderedCount));
@@ -1183,14 +1198,12 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
   test('Auto-selects the first (newest) item on load', async ({
     adminPage,
   }) => {
-    await entity.visitEntityPage(adminPage);
-    await adminPage.getByTestId('activity_feed').click();
-    await waitForAllLoadersToDisappear(adminPage);
+    const items = await openActivityFeedTab(adminPage);
 
-    const items = adminPage.locator(
-      '#feedData [data-testid="message-container"]'
-    );
-    await expect(items.first()).toBeVisible({ timeout: 30_000 });
+    // Both sources must have landed first. The merged list re-sorts as each one
+    // arrives and the auto-selection follows the new top item, so asserting the
+    // position mid-settle can catch the active card at index 1.
+    await waitForBothFeedKinds(items);
 
     // The FIRST (newest) item is the auto-selected one — deterministically,
     // regardless of whether the conversation or activity request resolved first.
@@ -1198,25 +1211,21 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     // can change which conversation is newest.)
     await expect(items.first().locator('.is-active')).toBeVisible();
     // ...and no item below it is the active one.
-    const activeCount = await adminPage
-      .locator('#feedData [data-testid="message-container"] .is-active')
-      .count();
-    expect(activeCount).toBe(1);
+    await expect(
+      adminPage.locator(
+        '#feedData [data-testid="message-container"] .is-active'
+      )
+    ).toHaveCount(1);
   });
 
   test('Reacting to an activity updates its reactions in the right panel', async ({
     adminPage,
   }) => {
-    await entity.visitEntityPage(adminPage);
-    await adminPage.getByTestId('activity_feed').click();
-    await waitForAllLoadersToDisappear(adminPage);
+    const feedList = await openActivityFeedTab(adminPage);
+    await waitForBothFeedKinds(feedList);
 
-    // Select the auto "Created …" change-event activity into the right panel.
-    const activityCard = adminPage
-      .locator('#feedData [data-testid="message-container"]')
-      .filter({ hasText: /created/i })
-      .first();
-    await expect(activityCard).toBeVisible({ timeout: 30_000 });
+    // Select the seeded change-event activity into the right panel.
+    const activityCard = feedList.filter({ hasText: activityMarker }).first();
     await activityCard.click();
     await waitForAllLoadersToDisappear(adminPage);
 
