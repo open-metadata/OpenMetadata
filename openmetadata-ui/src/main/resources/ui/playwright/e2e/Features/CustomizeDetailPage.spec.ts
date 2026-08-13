@@ -43,9 +43,8 @@ import {
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
 import {
-  clickTabAndWaitForPanel,
   getEncodedFqn,
-  waitForAllLoadersToDisappear,
+  waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -517,14 +516,11 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
-        // waitForLoadState('domcontentloaded') is a no-op on this SPA tab
-        // switch and guarded nothing against react-router v7's deferred
-        // navigate(); wait for the tab's own panel to become active instead.
-        await clickTabAndWaitForPanel(userPage, customTab);
-        // The Description widget is lazy-loaded and shows
-        // entity-detail-widget-skeleton (CommonWidgets' Suspense fallback)
-        // until its chunk resolves — without this wait the count() poll below
-        // can run while only the skeleton, not the widget, is in the DOM.
+        await customTab.focus();
+        await userPage.keyboard.press('Enter');
+        await waitForAllLoadersToDisappear(userPage);
+        await userPage.waitForLoadState('domcontentloaded');
+          
         await waitForAllLoadersToDisappear(
           userPage,
           'entity-detail-widget-skeleton'
@@ -693,14 +689,11 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
-        // waitForLoadState('domcontentloaded') is a no-op on this SPA tab
-        // switch and guarded nothing against react-router v7's deferred
-        // navigate(); wait for the tab's own panel to become active instead.
-        await clickTabAndWaitForPanel(userPage, customTab);
-        // The Description widget is lazy-loaded and shows
-        // entity-detail-widget-skeleton (CommonWidgets' Suspense fallback)
-        // until its chunk resolves — without this wait the count() poll below
-        // can run while only the skeleton, not the widget, is in the DOM.
+        await customTab.focus();
+        await userPage.keyboard.press('Enter');
+        await waitForAllLoadersToDisappear(userPage);
+        await userPage.waitForLoadState('domcontentloaded');
+        
         await waitForAllLoadersToDisappear(
           userPage,
           'entity-detail-widget-skeleton'

@@ -59,50 +59,6 @@ export const waitForAllLoadersToDisappear = async (
   await expect(loaders).toHaveCount(0, { timeout });
 };
 
-/**
- * Clicks a tab and waits for react-router v7's deferred navigate() (wrapped in
- * React.startTransition) to actually commit before returning — otherwise callers can
- * assert against the previous tab's still-mounted content. Optionally waits for an API
- * response tied to the new tab's data.
- */
-export const clickTabAndWaitForPanel = async (
-  page: Page,
-  tab: Locator,
-  options?: {
-    urlIncludes?: string;
-    responseMatcher?: (response: Response) => boolean;
-  }
-) => {
-  const responsePromise = options?.responseMatcher
-    ? page.waitForResponse(options.responseMatcher)
-    : undefined;
-
-  await tab.click();
-
-  // startTransition can defer the commit across more than one rAF — a single
-  // requestAnimationFrame round trip isn't guaranteed to land after it flushes.
-  // Two consecutive frames force at least one full paint cycle to elapse since
-  // the click before we read anything URL- or DOM-derived below.
-
-  if (responsePromise) {
-    await responsePromise;
-  }
-
-  await waitForAllLoadersToDisappear(page);
-
-  // aria-selected flips only once activeKey has actually caught up to the
-  // click — the single most direct signal that the deferred transition
-  // committed, independent of URL shape or DOM tab order.
-  await expect(tab).toHaveAttribute('aria-selected', 'true');
-
-  const panelId = await tab.getAttribute('aria-controls');
-  const panel = panelId
-    ? page.locator(`#${panelId}`)
-    : page.locator('[role="tabpanel"][aria-hidden="false"]').first();
-
-  await panel.waitFor({ state: 'visible' });
-};
-
 export const visitEntityPage = async (data: {
   page: Page;
   searchTerm: string;
