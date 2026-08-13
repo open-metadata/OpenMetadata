@@ -15,7 +15,6 @@ import { Button, Typography } from 'antd';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import './widget-empty-state.less';
 
@@ -66,10 +65,7 @@ const WidgetEmptyState = ({
 
   return (
     <div className={`widget-empty-state ${className}`} data-testid={dataTestId}>
-      <ErrorPlaceHolder
-        className="border-none"
-        icon={icon}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder.Custom className="border-none" icon={icon}>
         <div className="d-flex flex-col items-center">
           {title && (
             <Typography.Text className="empty-state-title text-md font-semibold m-b-sm">
@@ -84,7 +80,7 @@ const WidgetEmptyState = ({
           {actionButton}
           {actionLink}
         </div>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.Custom>
     </div>
   );
 };

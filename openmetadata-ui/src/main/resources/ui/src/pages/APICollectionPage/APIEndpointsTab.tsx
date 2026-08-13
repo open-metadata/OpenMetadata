@@ -30,7 +30,6 @@ import {
   DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../constants/TableKeys.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
@@ -303,12 +302,7 @@ function APIEndpointsTab({
       }
       loading={apiEndpointsLoading}
       locale={{
-        emptyText: (
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-          />
-        ),
+        emptyText: <ErrorPlaceHolder.NoData className="mt-0-important" />,
       }}
       pagination={false}
       rowKey="id"

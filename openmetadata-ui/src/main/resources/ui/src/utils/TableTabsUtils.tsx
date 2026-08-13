@@ -26,7 +26,6 @@ import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/Entity
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
@@ -48,9 +47,12 @@ const ActivityFeedTab = withSuspenseFallback(
   TAB_CONTENT_FALLBACK
 );
 
-const ErrorPlaceHolder = withSuspenseFallback(
+const PermissionErrorPlaceholder = withSuspenseFallback(
   lazy(
-    () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
+    () =>
+      import(
+        '../components/common/ErrorWithPlaceholder/PermissionErrorPlaceholder'
+      )
   ),
   TAB_CONTENT_FALLBACK
 );
@@ -249,12 +251,11 @@ export const getTableDetailPageBaseTabs = ({
       key: EntityTabs.SAMPLE_DATA,
       children:
         !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder
+          <PermissionErrorPlaceholder
             className="border-none"
             permissionValue={t('label.view-entity', {
               entity: t('label.sample-data'),
             })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         ) : (
           <SampleDataTableComponent
@@ -285,12 +286,11 @@ export const getTableDetailPageBaseTabs = ({
           tableId={tableDetails?.id ?? ''}
         />
       ) : (
-        <ErrorPlaceHolder
+        <PermissionErrorPlaceholder
           className="border-none"
           permissionValue={t('label.view-entity', {
             entity: t('label.query-plural'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       ),
     },

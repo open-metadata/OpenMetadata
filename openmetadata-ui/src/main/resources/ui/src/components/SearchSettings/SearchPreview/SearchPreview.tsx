@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../constants/SearchSettings.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { SearchSettings } from '../../../generated/api/search/previewSearchRequest';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -130,7 +129,7 @@ const SearchPreview = ({
     }
 
     if (data.length === 0) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />;
+      return <ErrorPlaceHolder.NoData />;
     }
 
     return (

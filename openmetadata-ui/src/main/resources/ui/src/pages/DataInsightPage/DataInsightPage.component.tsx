@@ -21,7 +21,6 @@ import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -119,12 +118,11 @@ const DataInsightPage = () => {
 
   if (!viewDataInsightChartPermission && !viewKPIPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none h-min-80"
         permissionValue={t('label.view-entity', {
           entity: t('label.data-insight'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
@@ -133,12 +131,11 @@ const DataInsightPage = () => {
     return (
       <Row align="middle" className="w-full h-full" justify="center">
         <Col span={24}>
-          <ErrorPlaceHolder
+          <ErrorPlaceHolder.Permission
             className="border-none"
             permissionValue={t('label.view-entity', {
               entity: t('label.data-insight'),
             })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </Col>
       </Row>

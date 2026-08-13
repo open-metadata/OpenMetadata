@@ -26,7 +26,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -830,13 +830,12 @@ export default function EntitySummaryPanel({
     }
     if (!viewPermission) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="border-none h-min-80"
           permissionValue={t('label.view-entity', {
             entity: t('label.data-asset'),
           })}
           size={SIZE.MEDIUM}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       );
     }
@@ -954,13 +953,12 @@ export default function EntitySummaryPanel({
               onDisplayNameUpdate={handleDisplayNameUpdate}
             />
           )}
-          <ErrorPlaceHolder
+          <ErrorPlaceHolder.Permission
             className="border-none h-min-80"
             permissionValue={t('label.view-entity', {
               entity: t('label.data-asset'),
             })}
             size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </>
       );

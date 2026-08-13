@@ -31,7 +31,7 @@ import { ReactComponent as ExitFullScreenIcon } from '../../assets/svg/ic-exit-f
 import { ReactComponent as FullscreenIcon } from '../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as LineageIcon } from '../../assets/svg/ic-platform-lineage.svg';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
+import { SIZE } from '../../enums/common.enum';
 import { getEntityGraphData } from '../../rest/rdfAPI';
 import { GraphData } from '../../rest/rdfAPI.interface';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -310,11 +310,9 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
 
   if (!entity) {
     return (
-      <ErrorPlaceHolder
-        className="tw:h-full"
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder.Custom className="tw:h-full">
         {t('label.no-entity-selected', { entity: t('label.asset') })}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.Custom>
     );
   }
 
@@ -376,21 +374,19 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
         className="knowledge-graph-3d-stage"
         style={{ background: STAGE_BACKDROP }}>
         {isEmpty ? (
-          <ErrorPlaceHolder
+          <ErrorPlaceHolder.Custom
             className="knowledge-graph-3d-empty"
-            icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}>
             {t('message.no-knowledge-graph-data')}
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolder.Custom>
         ) : (
           <ErrorBoundary
             fallbackRender={() => (
-              <ErrorPlaceHolder
+              <ErrorPlaceHolder.Custom
                 className="knowledge-graph-3d-empty"
-                icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}
-                type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                icon={<LineageIcon height={SIZE.LARGE} width={SIZE.LARGE} />}>
                 {t('message.knowledge-graph-3d-webgl-unavailable')}
-              </ErrorPlaceHolder>
+              </ErrorPlaceHolder.Custom>
             )}>
             <Suspense fallback={<Loader />}>
               <KnowledgeGraph3DScene

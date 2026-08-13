@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 import AlertDetailsContent from './components/AlertDetailsContent';
@@ -43,17 +42,16 @@ function AlertDetailsPage({
 
   if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.alert-detail-plural'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
   if (!loadingCount && isUndefined(alertDetails)) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return <ErrorPlaceHolder.NoData className="m-0" />;
   }
 
   return (

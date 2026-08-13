@@ -20,7 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Edge } from 'reactflow';
 import { PAGE_SIZE } from '../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
+import { SIZE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -95,15 +95,14 @@ const AddPipeLineModal = ({
     if (isUndefined(selectedEdge)) {
       if (edgeSearchValue) {
         return (
-          <ErrorPlaceHolder
+          <ErrorPlaceHolder.Filter
             className="mt-0-important"
             size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
         );
       }
 
-      return <ErrorPlaceHolder />;
+      return <ErrorPlaceHolder.NoData />;
     }
 
     return;

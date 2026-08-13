@@ -32,7 +32,6 @@ import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constan
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { TestCaseType } from '../../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
@@ -359,11 +358,10 @@ export const QualityTab = () => {
 
   if (permissions && !permissions?.ViewTests) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         permissionValue={t('label.view-entity', {
           entity: t('label.data-observability'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

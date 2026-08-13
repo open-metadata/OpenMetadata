@@ -24,7 +24,7 @@ import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -700,10 +700,9 @@ const ExploreTree = ({
 
   if (treeData.length === 0) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Custom
         className="h-min-80 d-flex flex-col justify-center border-none"
-        size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        size={SIZE.MEDIUM}>
         <Typography.Paragraph
           className="font-medium"
           style={{ marginBottom: '0' }}>
@@ -729,7 +728,7 @@ const ExploreTree = ({
             }}
           />
         </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.Custom>
     );
   }
 

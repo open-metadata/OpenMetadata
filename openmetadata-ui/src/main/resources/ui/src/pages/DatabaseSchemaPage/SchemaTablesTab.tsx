@@ -37,7 +37,6 @@ import {
   DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS,
 } from '../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -388,10 +387,7 @@ function SchemaTablesTab({
       loading={tableDataLoading}
       locale={{
         emptyText: (
-          <ErrorPlaceHolder
-            className="mt-0-important border-none"
-            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-          />
+          <ErrorPlaceHolder.NoData className="mt-0-important border-none" />
         ),
       }}
       pagination={false}

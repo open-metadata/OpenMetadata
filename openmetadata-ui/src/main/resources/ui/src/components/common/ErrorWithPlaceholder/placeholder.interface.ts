@@ -12,25 +12,7 @@
  */
 
 import { ReactElement, ReactNode } from 'react';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-
-export interface ErrorPlaceholderProps {
-  children?: React.ReactNode;
-  type?: ERROR_PLACEHOLDER_TYPE;
-  buttonId?: string;
-  heading?: string;
-  doc?: string;
-  button?: React.ReactNode;
-  className?: string;
-  size?: SIZE;
-  icon?: ReactElement;
-  onClick?: () => void;
-  permission?: boolean;
-  placeholderText?: ReactNode;
-  permissionValue?: string;
-  buttonTitle?: string;
-  contentMaxWidthClass?: string;
-}
+import { SIZE } from '../../../enums/common.enum';
 
 export interface NoDataPlaceholderProps {
   size?: SIZE;

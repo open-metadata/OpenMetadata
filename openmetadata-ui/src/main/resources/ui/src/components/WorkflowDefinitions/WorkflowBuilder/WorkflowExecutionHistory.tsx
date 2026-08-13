@@ -28,7 +28,6 @@ import {
   PAGE_SIZE_BASE,
 } from '../../../constants/constants';
 import { getStatusMapping } from '../../../constants/WorkflowBuilder.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import {
@@ -228,7 +227,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
   if (!workflowFqn) {
     return (
       <div className="tw:flex tw:justify-center tw:items-center tw:min-h-100">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+        <ErrorPlaceHolder.NoData />
       </div>
     );
   }
@@ -245,9 +244,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
           dataSource={instances}
           loading={loading}
           locale={{
-            emptyText: (
-              <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-            ),
+            emptyText: <ErrorPlaceHolder.NoData />,
           }}
           pagination={false}
           rowKey={(record) => record.id ?? ''}

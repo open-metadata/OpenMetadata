@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Task } from '../../../rest/tasksAPI';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
@@ -85,15 +84,14 @@ const TaskListV1 = ({
         className="p-x-md no-data-placeholder-container h-full"
         data-testid="no-data-placeholder-container"
         id="taskData">
-        <ErrorPlaceHolderNew
-          icon={<FeedEmptyIcon height={140} width={140} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <ErrorPlaceHolderNew.Custom
+          icon={<FeedEmptyIcon height={140} width={140} />}>
           <Typography.Paragraph
             className="placeholder-text"
             style={{ marginBottom: '0' }}>
             {emptyPlaceholderText}
           </Typography.Paragraph>
-        </ErrorPlaceHolderNew>
+        </ErrorPlaceHolderNew.Custom>
       </div>
     );
   }

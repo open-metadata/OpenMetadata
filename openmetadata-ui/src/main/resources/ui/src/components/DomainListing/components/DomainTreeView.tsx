@@ -28,7 +28,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -953,7 +952,7 @@ const DomainTreeView = ({
   ]);
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.CoreCreate
         buttonId="domain-add-button"
         buttonTitle={t('label.add-entity', {
           entity: t('label.domain'),
@@ -964,7 +963,6 @@ const DomainTreeView = ({
         })}
         icon={<FolderEmptyIcon />}
         permission={permissions.domain?.Create}
-        type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
         onClick={openAddDomainDrawer}
       />
     );

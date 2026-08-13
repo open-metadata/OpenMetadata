@@ -37,7 +37,6 @@ import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
@@ -332,14 +331,13 @@ const RolesListPage = () => {
             loading={isLoading}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
+                <ErrorPlaceHolder.Create
                   className="border-none"
                   heading={t('label.role').toString()}
                   permission={addRolePermission}
                   permissionValue={t('label.create-entity', {
                     entity: t('label.role'),
                   })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={handleAddRole}
                 />
               ),

@@ -20,7 +20,6 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
@@ -298,14 +297,13 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           ))
         ) : (
           <div>
-            <ErrorPlaceHolderNew
+            <ErrorPlaceHolderNew.Custom
               className="text-grey-14 m-t-lg"
-              icon={<AddPlaceHolderIcon height={100} width={100} />}
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              icon={<AddPlaceHolderIcon height={100} width={100} />}>
               <Typography.Paragraph className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
               </Typography.Paragraph>
-            </ErrorPlaceHolderNew>
+            </ErrorPlaceHolderNew.Custom>
           </div>
         )}
       </div>

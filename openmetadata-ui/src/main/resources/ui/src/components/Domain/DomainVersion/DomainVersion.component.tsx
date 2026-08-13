@@ -100,7 +100,7 @@ const DomainVersion = () => {
     if (loading) {
       return <Loader />;
     } else if (!selectedData) {
-      return <ErrorPlaceHolder />;
+      return <ErrorPlaceHolder.NoData />;
     } else {
       return (
         <DomainDetails

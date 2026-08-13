@@ -63,7 +63,7 @@ const SampleDataWithMessages: FC<{
       <div
         className="border-default border-radius-sm p-y-lg"
         data-testid="no-data">
-        <ErrorPlaceHolder>
+        <ErrorPlaceHolder.NoData>
           <Typography.Paragraph>
             <Transi18next
               i18nKey="message.view-sample-data-entity"
@@ -80,7 +80,7 @@ const SampleDataWithMessages: FC<{
               }}
             />
           </Typography.Paragraph>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.NoData>
       </div>
     );
   }

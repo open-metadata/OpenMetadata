@@ -15,7 +15,6 @@ import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -131,14 +130,13 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         loading={isDetailsLoading}
         locale={{
           emptyText: (
-            <ErrorPlaceHolder
+            <ErrorPlaceHolder.Assign
               permission
               className="p-y-md border-none"
               heading={t('label.user')}
               permissionValue={t('label.create-entity', {
                 entity: t('label.user'),
               })}
-              type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
             />
           ),
         }}

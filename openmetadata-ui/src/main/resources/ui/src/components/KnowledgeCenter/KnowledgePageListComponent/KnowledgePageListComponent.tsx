@@ -48,7 +48,7 @@ import { KNOWLEDGE_CENTER_DOC_LINK } from '../../../constants/docs.constant';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -503,12 +503,11 @@ const KnowledgePageListComponent = forwardRef<
 
     if (!hasViewPermission) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Permission
           className="border-none"
           permissionValue={t('label.view-entity', {
             entity: t('label.article-plural'),
           })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       );
     }
@@ -528,7 +527,7 @@ const KnowledgePageListComponent = forwardRef<
 
     if (!isLoading && isEmpty(knowledgePages)) {
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.Custom
           className="border-none"
           icon={
             <AddPlaceHolderIcon
@@ -536,8 +535,7 @@ const KnowledgePageListComponent = forwardRef<
               height={SIZE.LARGE}
               width={SIZE.LARGE}
             />
-          }
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          }>
           <div
             className="bg-white h-full flex-center"
             data-testid="create-error-placeholder-create">
@@ -588,7 +586,7 @@ const KnowledgePageListComponent = forwardRef<
             </Space>
           </div>
           {addQuickLinkModalElement}
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.Custom>
       );
     }
 

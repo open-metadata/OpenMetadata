@@ -11,103 +11,44 @@
  *  limitations under the License.
  */
 
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
 import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
 import CustomNoDataPlaceHolderNew from './CustomNoDataPlaceHolderNew';
 import FilterErrorPlaceHolder from './FilterErrorPlaceHolder';
 import NoDataPlaceholderNew from './NoDataPlaceholderNew';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
-import { ErrorPlaceholderProps } from './placeholder.interface';
+import { NoDataPlaceholderProps } from './placeholder.interface';
 
-const ErrorPlaceHolderNew = ({
-  doc,
-  onClick,
-  type,
-  children,
-  heading,
-  className,
-  size = SIZE.LARGE,
-  button,
-  permission,
-  buttonId,
-  icon,
-  placeholderText,
-  permissionValue,
-}: ErrorPlaceholderProps) => {
-  const getErrorPlaceHolder = () => {
-    switch (type) {
-      case ERROR_PLACEHOLDER_TYPE.CREATE:
-        return (
-          <CreateErrorPlaceHolder
-            buttonId={buttonId}
-            className={className}
-            doc={doc}
-            heading={heading}
-            permission={permission}
-            permissionValue={permissionValue}
-            placeholderText={placeholderText}
-            size={size}
-            onClick={onClick}
-          />
-        );
+/**
+ * New-design compound component. Each variant is a narrow-typed sub-component
+ * that accepts only the props it consumes — pick one explicitly, e.g.
+ * `<ErrorPlaceHolderNew.Permission permissionValue={…} />`. The bare
+ * `<ErrorPlaceHolderNew>` renders the new-design no-data placeholder (the
+ * historical default). No `.CoreCreate` — that variant is legacy-only.
+ */
+const ErrorPlaceHolderNewBase = (props: NoDataPlaceholderProps) => (
+  <NoDataPlaceholderNew {...props} />
+);
 
-      case ERROR_PLACEHOLDER_TYPE.ASSIGN:
-        return (
-          <AssignErrorPlaceHolder
-            button={button}
-            className={className}
-            heading={heading}
-            permission={permission}
-            permissionValue={permissionValue}
-            size={size}>
-            {children}
-          </AssignErrorPlaceHolder>
-        );
-
-      case ERROR_PLACEHOLDER_TYPE.FILTER:
-        return (
-          <FilterErrorPlaceHolder
-            className={className}
-            doc={doc}
-            placeholderText={placeholderText}
-            size={size}
-          />
-        );
-
-      case ERROR_PLACEHOLDER_TYPE.PERMISSION:
-        return (
-          <PermissionErrorPlaceholder
-            className={className}
-            permissionValue={permissionValue}
-            size={size}
-          />
-        );
-
-      case ERROR_PLACEHOLDER_TYPE.CUSTOM:
-        return (
-          <CustomNoDataPlaceHolderNew
-            className={className}
-            icon={icon}
-            size={size}>
-            {children}
-          </CustomNoDataPlaceHolderNew>
-        );
-
-      default:
-        return (
-          <NoDataPlaceholderNew
-            className={className}
-            icon={icon}
-            placeholderText={placeholderText}
-            size={size}>
-            {children}
-          </NoDataPlaceholderNew>
-        );
-    }
+const ErrorPlaceHolderNew =
+  ErrorPlaceHolderNewBase as typeof ErrorPlaceHolderNewBase & {
+    Create: typeof CreateErrorPlaceHolder;
+    Assign: typeof AssignErrorPlaceHolder;
+    Filter: typeof FilterErrorPlaceHolder;
+    Permission: typeof PermissionErrorPlaceholder;
+    Custom: typeof CustomNoDataPlaceHolderNew;
+    NoData: typeof NoDataPlaceholderNew;
   };
 
-  return getErrorPlaceHolder();
-};
+// Do NOT lazy-load this component. React.lazy resolves to a forwardRef wrapper
+// that drops these static members, so `<LazyErrorPlaceHolderNew.NoData>` would be
+// `undefined` at render with no compile-time error. Import the specific leaf
+// (e.g. NoDataPlaceholderNew) directly when a lazy boundary is required.
+ErrorPlaceHolderNew.Create = CreateErrorPlaceHolder;
+ErrorPlaceHolderNew.Assign = AssignErrorPlaceHolder;
+ErrorPlaceHolderNew.Filter = FilterErrorPlaceHolder;
+ErrorPlaceHolderNew.Permission = PermissionErrorPlaceholder;
+ErrorPlaceHolderNew.Custom = CustomNoDataPlaceHolderNew;
+ErrorPlaceHolderNew.NoData = NoDataPlaceholderNew;
 
 export default ErrorPlaceHolderNew;

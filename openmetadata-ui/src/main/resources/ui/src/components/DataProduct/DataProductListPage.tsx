@@ -35,7 +35,6 @@ import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
@@ -311,16 +310,11 @@ const DataProductListPage = ({
   const content = useMemo(() => {
     if (!dataProductListing.loading && isEmpty(dataProductListing.entities)) {
       if (isSearchOrFilterActive()) {
-        return (
-          <ErrorPlaceHolder
-            className="border-none"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        );
+        return <ErrorPlaceHolder.Filter className="border-none" />;
       }
 
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.CoreCreate
           buttonId="data-product-add-button"
           buttonTitle={t('label.add-entity', {
             entity: t('label.data-product'),
@@ -331,7 +325,6 @@ const DataProductListPage = ({
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.dataProduct?.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={openDrawer}
         />
       );

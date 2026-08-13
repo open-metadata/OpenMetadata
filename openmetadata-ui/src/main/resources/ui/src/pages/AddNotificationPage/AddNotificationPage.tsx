@@ -51,7 +51,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   NotificationTemplate,
   ProviderType,
@@ -296,13 +295,13 @@ const AddNotificationPage = () => {
 
   if (isSystemProvider) {
     return (
-      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder.Custom>
         <Typography.Paragraph
           className="tw-max-w-md"
           style={{ marginBottom: '0' }}>
           {t('message.system-alert-edit-message')}
         </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.Custom>
     );
   }
 

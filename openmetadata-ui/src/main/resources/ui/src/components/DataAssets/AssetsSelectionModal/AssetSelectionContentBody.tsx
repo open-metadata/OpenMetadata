@@ -238,11 +238,11 @@ const AssetSelectionContentBody = ({
         )}
 
         {!isLoading && items.length === 0 && (
-          <ErrorPlaceHolder>
+          <ErrorPlaceHolder.NoData>
             {emptyPlaceHolderText && (
               <Typography as="p">{emptyPlaceHolderText}</Typography>
             )}
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolder.NoData>
         )}
 
         {isLoading && items.length === 0 && <Loader size="small" />}

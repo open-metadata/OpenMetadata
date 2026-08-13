@@ -68,7 +68,6 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -2019,12 +2018,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
@@ -2034,9 +2032,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
       className="service-details-page"
       pageTitle={getEntityName(serviceDetails)}>
       {isEmpty(serviceDetails) ? (
-        <ErrorPlaceHolder className="m-0 h-min-80">
+        <ErrorPlaceHolder.NoData className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolder.NoData>
       ) : (
         <Row data-testid="service-page" gutter={[0, 12]}>
           <Col span={24}>

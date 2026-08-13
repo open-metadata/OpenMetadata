@@ -242,7 +242,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       }
       loading={isChildrenLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+        emptyText: <ErrorPlaceHolder.NoData className="p-y-md" />,
       }}
       pagination={false}
       rowKey="id"

@@ -18,7 +18,6 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Persona } from '../../generated/entity/teams/persona';
 import {
   AppMode,
@@ -77,13 +76,11 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
     return (
       <PageLayoutV1 className="bg-grey" pageTitle="Settings App Mode Page">
         <div data-testid="app-mode-unavailable-placeholder">
-          <ErrorPlaceHolder
-            className="m-t-lg"
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <ErrorPlaceHolder.Custom className="m-t-lg">
             <Typography.Paragraph className="w-max-500">
               {t('message.app-mode-not-available')}
             </Typography.Paragraph>
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolder.Custom>
         </div>
       </PageLayoutV1>
     );

@@ -43,7 +43,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
   AlertType,
@@ -378,7 +377,7 @@ const NotificationListPage = () => {
             loading={Boolean(loadingCount)}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
+                <ErrorPlaceHolder.Create
                   permission
                   className="p-y-md"
                   doc={ALERTS_DOCS}
@@ -386,7 +385,6 @@ const NotificationListPage = () => {
                   permissionValue={t('label.create-entity', {
                     entity: t('label.alert'),
                   })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
                   onClick={() =>
                     navigate(
                       getSettingPath(

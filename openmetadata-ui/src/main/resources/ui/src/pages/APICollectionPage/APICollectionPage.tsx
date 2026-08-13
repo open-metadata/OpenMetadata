@@ -43,7 +43,6 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
@@ -594,24 +593,23 @@ const APICollectionPage: FunctionComponent = () => {
 
   if (!viewAPICollectionPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.api-collection'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
 
   if (isError) {
     return (
-      <ErrorPlaceHolder className="m-0">
+      <ErrorPlaceHolder.NoData className="m-0">
         {getEntityMissingError(
           EntityType.API_COLLECTION,
           decodedAPICollectionFQN
         )}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 

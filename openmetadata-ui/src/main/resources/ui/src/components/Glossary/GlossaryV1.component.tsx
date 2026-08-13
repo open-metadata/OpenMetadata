@@ -24,7 +24,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
+import { SIZE } from '../../enums/common.enum';
 import { EntityAction, EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -410,13 +410,12 @@ const GlossaryV1 = ({
     if (!(glossaryPermission.ViewAll || glossaryPermission.ViewBasic)) {
       return (
         <div className="full-height">
-          <ErrorPlaceHolder
+          <ErrorPlaceHolder.Permission
             className="mt-0-important border-none"
             permissionValue={t('label.view-entity', {
               entity: t('label.glossary'),
             })}
             size={SIZE.X_LARGE}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </div>
       );

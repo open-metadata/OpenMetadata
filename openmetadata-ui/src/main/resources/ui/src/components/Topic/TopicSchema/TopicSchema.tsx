@@ -466,7 +466,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       )}
       {isEmpty(messageSchema?.schemaFields) &&
       isEmpty(messageSchema?.schemaText) ? (
-        <ErrorPlaceHolder />
+        <ErrorPlaceHolder.NoData />
       ) : (
         <>
           {!isEmpty(messageSchema?.schemaFields) && !isVersionView && (

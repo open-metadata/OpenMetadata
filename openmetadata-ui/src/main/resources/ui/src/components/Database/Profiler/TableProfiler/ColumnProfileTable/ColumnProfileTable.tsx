@@ -20,7 +20,6 @@ import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -434,9 +433,8 @@ const ColumnProfileTable = () => {
 
   if (permissions && !permissions?.ViewDataProfile) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         permissionValue={Operation.ViewDataProfile}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

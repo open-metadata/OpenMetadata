@@ -16,7 +16,6 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { PropertyValue } from '../../../common/CustomPropertyTable/PropertyValue';
@@ -76,10 +75,9 @@ const CustomPropertiesSection = ({
 
     return (
       <div className="lineage-items-list">
-        <ErrorPlaceHolderNew
+        <ErrorPlaceHolderNew.Custom
           className="text-grey-14"
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          icon={<AddPlaceHolderIcon height={100} width={100} />}>
           <div className="p-t-md text-justify no-data-placeholder">
             <Transi18next
               i18nKey="message.no-custom-properties-entity"
@@ -97,7 +95,7 @@ const CustomPropertiesSection = ({
               }}
             />
           </div>
-        </ErrorPlaceHolderNew>
+        </ErrorPlaceHolderNew.Custom>
       </div>
     );
   }, [searchText, emptyStateMessage]);
@@ -109,19 +107,12 @@ const CustomPropertiesSection = ({
   if (!viewCustomPropertiesPermission) {
     return (
       <div className="lineage-items-list">
-        <ErrorPlaceHolderNew
+        <ErrorPlaceHolderNew.Permission
           className="text-grey-14 permission-error-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
-          <Transi18next
-            i18nKey="message.no-access-placeholder"
-            renderElement={<span />}
-            values={{
-              entity: t('label.view-entity', {
-                entity: t('label.custom-property-plural'),
-              }),
-            }}
-          />
-        </ErrorPlaceHolderNew>
+          permissionValue={t('label.view-entity', {
+            entity: t('label.custom-property-plural'),
+          })}
+        />
       </div>
     );
   }

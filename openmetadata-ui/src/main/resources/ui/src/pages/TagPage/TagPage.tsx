@@ -76,7 +76,6 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
-import { TAGS_DOCS } from '../../constants/docs.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
@@ -85,7 +84,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
@@ -430,10 +428,6 @@ const TagPage = () => {
       await handleTagDelete(tagItem.id);
       setIsDelete(false);
     }
-  };
-
-  const handleAddTagClick = () => {
-    navigate(ROUTES.TAGS);
   };
 
   const fetchClassificationTagAssets = useCallback(async () => {
@@ -816,23 +810,14 @@ const TagPage = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         {getEntityMissingError('tag', tagFqn)}
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 
   if (!tagItem) {
-    return (
-      <ErrorPlaceHolder
-        buttonId="add-tag"
-        className="mt-0-important"
-        doc={TAGS_DOCS}
-        heading={t('label.tag')}
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-        onClick={handleAddTagClick}
-      />
-    );
+    return <ErrorPlaceHolder.NoData className="mt-0-important" />;
   }
 
   const learningIcon = (

@@ -26,7 +26,6 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
@@ -368,9 +367,7 @@ export const CustomizablePage = () => {
     return (
       <Row className="bg-white h-full">
         <Col span={24}>
-          <ErrorPlaceHolder
-            className="m-t-lg"
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <ErrorPlaceHolder.Custom className="m-t-lg">
             <Typography.Paragraph className="w-max-500">
               <Transi18next
                 i18nKey="message.no-persona-message"
@@ -388,7 +385,7 @@ export const CustomizablePage = () => {
                 }}
               />
             </Typography.Paragraph>
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolder.Custom>
         </Col>
       </Row>
     );
@@ -487,6 +484,6 @@ export const CustomizablePage = () => {
       );
 
     default:
-      return <ErrorPlaceHolder />;
+      return <ErrorPlaceHolder.NoData />;
   }
 };

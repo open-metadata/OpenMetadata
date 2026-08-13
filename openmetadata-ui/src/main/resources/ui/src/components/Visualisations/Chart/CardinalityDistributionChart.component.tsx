@@ -55,7 +55,7 @@ export interface CardinalityDistributionChartProps {
 
 const renderPlaceholder = (placeholderText?: string | React.ReactNode) => (
   <div className="tw:flex tw:items-center tw:justify-center tw:h-full tw:w-full tw:min-h-87.5">
-    <ErrorPlaceHolder placeholderText={placeholderText} />
+    <ErrorPlaceHolder.NoData placeholderText={placeholderText} />
   </div>
 );
 

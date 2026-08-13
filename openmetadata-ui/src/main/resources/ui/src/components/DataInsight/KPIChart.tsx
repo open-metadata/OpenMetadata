@@ -41,7 +41,7 @@ import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
+import { SIZE } from '../../enums/common.enum';
 import {
   Kpi,
   KpiResult,
@@ -319,12 +319,11 @@ const KPIChart: FC<Props> = ({
               {viewKPIPermission ? (
                 <EmptyGraphPlaceholder />
               ) : (
-                <ErrorPlaceHolder
+                <ErrorPlaceHolder.Permission
                   className="border-none"
                   permissionValue={t('label.view-entity', {
                     entity: t('label.kpi-uppercase'),
                   })}
-                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
                 />
               )}
             </Col>
@@ -334,31 +333,33 @@ const KPIChart: FC<Props> = ({
         <Space
           className="w-full justify-center items-center"
           direction="vertical">
-          <ErrorPlaceHolder
-            button={
-              <Button
-                ghost
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={handleAddKpi}>
-                {t('label.add-entity', {
-                  entity: t('label.kpi-uppercase'),
-                })}
-              </Button>
-            }
-            className="m-0 border-none"
-            permission={createKPIPermission}
-            permissionValue={t('label.create-entity', {
-              entity: t('label.kpi-uppercase'),
-            })}
-            size={SIZE.MEDIUM}
-            type={
-              createKPIPermission
-                ? ERROR_PLACEHOLDER_TYPE.ASSIGN
-                : ERROR_PLACEHOLDER_TYPE.NO_DATA
-            }>
-            {createKPIPermission && t('message.no-kpi-available-add-new-one')}
-          </ErrorPlaceHolder>
+          {createKPIPermission ? (
+            <ErrorPlaceHolder.Assign
+              button={
+                <Button
+                  ghost
+                  icon={<PlusOutlined />}
+                  type="primary"
+                  onClick={handleAddKpi}>
+                  {t('label.add-entity', {
+                    entity: t('label.kpi-uppercase'),
+                  })}
+                </Button>
+              }
+              className="m-0 border-none"
+              permission={createKPIPermission}
+              permissionValue={t('label.create-entity', {
+                entity: t('label.kpi-uppercase'),
+              })}
+              size={SIZE.MEDIUM}>
+              {t('message.no-kpi-available-add-new-one')}
+            </ErrorPlaceHolder.Assign>
+          ) : (
+            <ErrorPlaceHolder.NoData
+              className="m-0 border-none"
+              size={SIZE.MEDIUM}
+            />
+          )}
         </Space>
       )}
     </Card>

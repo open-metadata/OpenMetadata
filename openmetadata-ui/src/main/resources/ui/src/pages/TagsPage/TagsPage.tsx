@@ -797,11 +797,11 @@ const TagsPage = () => {
   }
   if (error) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder.NoData>
         <Typography as="p" className="tw:text-center tw:m-auto">
           {error}
         </Typography>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.NoData>
     );
   }
 

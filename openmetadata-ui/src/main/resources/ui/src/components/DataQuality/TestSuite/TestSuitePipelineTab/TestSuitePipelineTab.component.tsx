@@ -35,7 +35,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -381,9 +380,8 @@ const TestSuitePipelineTab = ({
           />
         </Box>
       ) : (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.NoData
           placeholderText={t('message.no-test-suite-table-pipeline')}
-          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
         />
       ),
     [testSuite, createPermission, t]

@@ -17,7 +17,6 @@ import { isEmpty } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   AnnouncementEntity,
   listAnnouncements,
@@ -102,13 +101,11 @@ const AnnouncementThreadBody = ({
 
   if (isEmpty(announcements) && !isThreadLoading) {
     return (
-      <ErrorPlaceHolder
-        className="h-auto mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder.Custom className="h-auto mt-24">
         <Typography.Paragraph data-testid="announcement-error">
           {t('message.no-announcement-message')}
         </Typography.Paragraph>
-      </ErrorPlaceHolder>
+      </ErrorPlaceHolder.Custom>
     );
   }
 

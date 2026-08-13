@@ -27,7 +27,6 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
@@ -171,12 +170,11 @@ export const getSearchIndexDetailsTabs = ({
         />
       ) : (
         <div className="m-t-xlg">
-          <ErrorPlaceHolder
+          <ErrorPlaceHolder.Permission
             className="border-none"
             permissionValue={t('label.view-entity', {
               entity: t('label.sample-data'),
             })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
           />
         </div>
       ),

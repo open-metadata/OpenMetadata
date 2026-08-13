@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
@@ -168,10 +167,7 @@ const AddAttributeModal: FC<Props> = ({
             </Col>
           </Row>
           {isEmpty(searchedData) ? (
-            <ErrorPlaceHolder
-              className="mt-0-important p-y-lg"
-              type={ERROR_PLACEHOLDER_TYPE.FILTER}
-            />
+            <ErrorPlaceHolder.Filter className="mt-0-important p-y-lg" />
           ) : (
             searchedData.map((option) => (
               <Row

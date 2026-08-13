@@ -37,7 +37,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -369,9 +368,7 @@ const RolesDetailPage = () => {
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         {isEmpty(role) ? (
-          <ErrorPlaceHolder
-            className="h-min-80 border-none"
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <ErrorPlaceHolder.Custom className="h-min-80 border-none">
             <div className="text-center">
               <p>
                 {t('message.no-entity-found-for-name', {
@@ -387,7 +384,7 @@ const RolesDetailPage = () => {
                 {t('label.go-back')}
               </Button>
             </div>
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolder.Custom>
         ) : (
           <>
             <Row className="flex justify-between">

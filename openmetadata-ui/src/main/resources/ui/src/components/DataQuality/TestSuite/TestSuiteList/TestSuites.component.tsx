@@ -16,7 +16,6 @@ import { Col, Form, Row, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../../utils/formPureUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -73,12 +72,11 @@ export const TestSuites = () => {
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.test-suite'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

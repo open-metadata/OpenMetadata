@@ -22,7 +22,6 @@ import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -124,16 +123,11 @@ const SubDomainsTable = ({
   const content = useMemo(() => {
     if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
       if (isSearchOrFilterActive()) {
-        return (
-          <ErrorPlaceHolder
-            className="border-none"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        );
+        return <ErrorPlaceHolder.Filter className="border-none" />;
       }
 
       return (
-        <ErrorPlaceHolder
+        <ErrorPlaceHolder.CoreCreate
           buttonId="subdomain-add-button"
           buttonTitle={t('label.add-entity', { entity: t('label.sub-domain') })}
           className="border-none"
@@ -142,7 +136,6 @@ const SubDomainsTable = ({
           })}
           icon={<FolderEmptyIcon />}
           permission={permissions.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
           onClick={onAddSubDomain}
         />
       );

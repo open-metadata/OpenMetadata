@@ -20,10 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
-import {
-  ERROR_PLACEHOLDER_TYPE,
-  SORT_ORDER,
-} from '../../../../enums/common.enum';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
@@ -39,7 +36,6 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
-import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -668,14 +664,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     if (statusCounts.total === 0) {
       return (
-        <ErrorPlaceHolderNew
+        <ErrorPlaceHolderNew.Custom
           className="text-grey-14 m-t-lg"
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          icon={<AddPlaceHolderIcon height={100} width={100} />}>
           <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
             {t('message.no-data-quality-test-message')}
           </Typography.Paragraph>
-        </ErrorPlaceHolderNew>
+        </ErrorPlaceHolderNew.Custom>
       );
     }
 
@@ -725,14 +720,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (incidentCounts.total === 0) {
       return (
         <div className="m-t-lg">
-          <ErrorPlaceHolderNew
+          <ErrorPlaceHolderNew.Custom
             className="text-grey-14"
-            icon={<AddPlaceHolderIcon height={100} width={100} />}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            icon={<AddPlaceHolderIcon height={100} width={100} />}>
             <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
               {t('message.no-data-quality-test-message')}
             </Typography.Paragraph>
-          </ErrorPlaceHolderNew>
+          </ErrorPlaceHolderNew.Custom>
         </div>
       );
     }
@@ -861,19 +855,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   if (!hasViewTests) {
     return (
       <div className="lineage-items-list">
-        <ErrorPlaceHolderNew
+        <ErrorPlaceHolderNew.Permission
           className="text-grey-14 permission-error-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
-          <Transi18next
-            i18nKey="message.no-access-placeholder"
-            renderElement={<span />}
-            values={{
-              entity: t('label.view-entity', {
-                entity: t('label.data-quality'),
-              }),
-            }}
-          />
-        </ErrorPlaceHolderNew>
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-quality'),
+          })}
+        />
       </div>
     );
   }

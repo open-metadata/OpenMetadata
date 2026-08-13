@@ -88,7 +88,7 @@ function DirectoryChildrenTable() {
       data-testid="container-list-table"
       dataSource={containerData.children}
       locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+        emptyText: <ErrorPlaceHolder.NoData className="p-y-md" />,
       }}
       pagination={false}
       rowKey="id"

@@ -90,19 +90,63 @@ jest.mock('../../../common/NextPrevious/NextPrevious', () => ({
     .mockImplementation(() => <div>NextPrevious.component</div>),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolder.component</div>),
-}));
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  const __eph = (() => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => <div>ErrorPlaceHolder.component</div>),
+  }))() as unknown as { default?: unknown };
+  const __ephC = (__eph && __eph.default) || __eph;
+  const __ephT: Record<string, string> = {
+    Create: 'CREATE',
+    CoreCreate: 'CORE_CREATE',
+    Assign: 'ASSIGN',
+    Filter: 'FILTER',
+    Permission: 'PERMISSION',
+    Custom: 'CUSTOM',
+    NoData: 'NO_DATA',
+  };
+  if (typeof __ephC === 'function') {
+    const __ephFn = __ephC as ((p: Record<string, unknown>) => unknown) &
+      Record<string, unknown>;
+    Object.keys(__ephT).forEach((v) => {
+      __ephFn[v] = (props: Record<string, unknown>) =>
+        __ephFn({ ...props, type: __ephT[v] });
+    });
+  }
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolderNew.component</div>),
-}));
+  return __eph;
+});
+
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => {
+  const __eph = (() => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(() => <div>ErrorPlaceHolderNew.component</div>),
+  }))() as unknown as { default?: unknown };
+  const __ephC = (__eph && __eph.default) || __eph;
+  const __ephT: Record<string, string> = {
+    Create: 'CREATE',
+    CoreCreate: 'CORE_CREATE',
+    Assign: 'ASSIGN',
+    Filter: 'FILTER',
+    Permission: 'PERMISSION',
+    Custom: 'CUSTOM',
+    NoData: 'NO_DATA',
+  };
+  if (typeof __ephC === 'function') {
+    const __ephFn = __ephC as ((p: Record<string, unknown>) => unknown) &
+      Record<string, unknown>;
+    Object.keys(__ephT).forEach((v) => {
+      __ephFn[v] = (props: Record<string, unknown>) =>
+        __ephFn({ ...props, type: __ephT[v] });
+    });
+  }
+
+  return __eph;
+});
 
 jest.mock('../../../Explore/ExploreQuickFilters', () => ({
   __esModule: true,

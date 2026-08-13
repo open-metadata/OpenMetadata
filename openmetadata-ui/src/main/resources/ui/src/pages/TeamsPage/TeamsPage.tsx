@@ -27,7 +27,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
@@ -541,23 +540,17 @@ const TeamsPage = () => {
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none"
         permissionValue={t('label.view-entity', {
           entity: t('label.team-plural'),
         })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }
 
   if (isEmpty(selectedTeam)) {
-    return (
-      <ErrorPlaceHolder
-        className="border-none"
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
-    );
+    return <ErrorPlaceHolder.NoData className="border-none" />;
   }
 
   return (

@@ -23,7 +23,6 @@ import SettingItemCard from '../../components/Settings/SettingItemCard/SettingIt
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
 import globalSettingsClassBase from '../../utils/GlobalSettingsClassBase';
 import {
@@ -72,10 +71,9 @@ const GlobalSettingPage = () => {
 
   if (isEmpty(settingItems)) {
     return (
-      <ErrorPlaceHolder
+      <ErrorPlaceHolder.Permission
         className="border-none h-min-80"
         permissionValue={t('label.setting-plural')}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
   }

@@ -236,7 +236,7 @@ const CustomMetricGraphs = ({
               <div>
                 {isEmpty(metric) ? (
                   <div className="tw:flex tw:h-full tw:w-full tw:items-center tw:justify-center">
-                    <ErrorPlaceHolder className="mt-0-important" />
+                    <ErrorPlaceHolder.NoData className="mt-0-important" />
                   </div>
                 ) : (
                   <ResponsiveContainer

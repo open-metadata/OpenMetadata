@@ -288,7 +288,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                       ))}
                     </Row>
                   ) : (
-                    <ErrorPlaceHolder />
+                    <ErrorPlaceHolder.NoData />
                   )}
                 </Col>
               </Row>
