@@ -1047,10 +1047,9 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run version api call. Return `true` if response is not None
+        Run version api call. Raises with an actionable message if the API is not reachable.
         """
-        raw_version = self.client.get("/system/version")["version"]
-        return raw_version is not None
+        return bool(self.get_server_version())
 
     def close(self):
         """

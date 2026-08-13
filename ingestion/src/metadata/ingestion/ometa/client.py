@@ -55,6 +55,66 @@ class RestTransportError(Exception):
         self.cause = cause
 
 
+class HtmlResponseError(Exception):
+    """An HTML page came back where the API answers JSON.
+
+    The OpenMetadata UI serves `index.html` for any route it does not recognise, so
+    this almost always means the request never reached the REST API: `hostPort` is
+    missing the `/api` suffix, or a proxy/login page intercepted it. Raised instead
+    of handing the caller a ``Response`` it would try to subscript.
+    """
+
+    def __init__(self, url: object, status_code: int) -> None:
+        super().__init__(
+            f"Got an HTML page instead of JSON from [{url}] (HTTP {status_code})."
+            " The request reached the OpenMetadata UI, not the REST API - the UI answers"
+            " index.html for unknown routes. Check that `hostPort` points at the API"
+            " (e.g. https://<host>/api, ending in `/api`) and that no proxy or login page"
+            " is intercepting the call."
+        )
+        self.url = url
+        self.status_code = status_code
+
+
+def _is_html_body(resp: requests.Response) -> bool:
+    """Whether a non-JSON body is an HTML page.
+
+    Content type first; some proxies mislabel index.html as text/plain, so fall back
+    to sniffing an `<html` tag in the head of the body. CSV and ODCS-YAML exports are
+    legitimate non-JSON payloads and must not match.
+    """
+    if "html" in resp.headers.get("Content-Type", "").lower():
+        return True
+    head = resp.text[:2048].lstrip()
+    return head.startswith("<") and "<html" in head.lower()
+
+
+def _decode_body(resp: requests.Response, url: object):
+    """Decode a successful response body.
+
+    JSON when it parses; the ``Response`` itself for the text payloads some
+    endpoints answer with (CSV and ODCS-YAML exports); an ``HtmlResponseError``
+    when it is a UI page, since no endpoint legitimately answers HTML.
+    """
+    try:
+        return resp.json()
+    except JSONDecodeError as json_decode_error:
+        if _is_html_body(resp):
+            raise HtmlResponseError(url, resp.status_code) from json_decode_error
+        logger.debug(
+            "Non-JSON response (%s) from [%s] with content type [%s] returned as-is: %s",
+            resp.status_code,
+            url,
+            resp.headers.get("Content-Type", "unknown"),
+            json_decode_error,
+        )
+        return resp
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")
+    return None
+
+
 class APIError(Exception):
     """
     Represent API related error.
@@ -309,18 +369,7 @@ class REST:
                 return resp
 
             if resp.text != "":
-                try:
-                    return resp.json()
-                except JSONDecodeError as json_decode_error:
-                    logger.debug(
-                        "Non-JSON response (%s) returned as-is: %s",
-                        resp.status_code,
-                        json_decode_error,
-                    )
-                    return resp
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Unexpected error while returning response {resp} in json format - {exc}")
+                return _decode_body(resp, url)
 
         except HTTPError as http_error:
             # retry if we hit Rate Limit
@@ -336,6 +385,10 @@ class REST:
                     raise APIError(error, http_error) from http_error
             else:
                 raise
+        except HtmlResponseError:
+            # Already carries the actionable message; the catch-all below would
+            # downgrade it to a warning and hand the caller a None.
+            raise
         except (
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
