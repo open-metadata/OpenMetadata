@@ -48,6 +48,7 @@ import {
   getIngestionPipelines,
   getPipelineServiceHostIp,
 } from '../../rest/ingestionPipelineAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   addServiceFollower,
   getServiceByFQN,
@@ -670,7 +671,7 @@ describe('ServiceDetailsPage', () => {
       expect(getIngestionPipelines).toHaveBeenCalledTimes(1);
     });
 
-    it('should still issue a single request when a search is active', async () => {
+    it('should re-run the active search instead of discarding it', async () => {
       await renderComponent();
 
       await act(async () => {
@@ -678,13 +679,16 @@ describe('ServiceDetailsPage', () => {
       });
 
       (getIngestionPipelines as jest.Mock).mockClear();
+      (searchQuery as jest.Mock).mockClear();
 
       await act(async () => {
         fireEvent.click(screen.getByTestId('trigger-metadata-refresh'));
       });
 
-      // Clearing the search re-runs the list effect; the handler must not also fetch itself.
-      expect(getIngestionPipelines).toHaveBeenCalledTimes(1);
+      // Exactly one request, and it is the filtered read — a refresh must neither wipe the user's
+      // search nor fall back to the unfiltered list.
+      expect(searchQuery).toHaveBeenCalledTimes(1);
+      expect(getIngestionPipelines).not.toHaveBeenCalled();
     });
   });
 

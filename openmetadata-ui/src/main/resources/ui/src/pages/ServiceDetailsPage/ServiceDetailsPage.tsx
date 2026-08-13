@@ -1646,17 +1646,20 @@ const ServiceDetailsPage: FunctionComponent = () => {
           ingestionPagingCursor?.pageSize ?? ingestionPageSize
         );
       } else {
-        // Clearing the search is enough: the effect keyed on `searchText` refetches the unfiltered
-        // list. Doing both — as this used to — cost two identical requests per refresh.
-        setSearchText('');
+        // Refresh means "re-read what I am looking at", so a live search is re-run rather than
+        // discarded. Clearing it instead would both wipe the user's filter and cost two requests,
+        // since the effect keyed on `searchText` fetches as well.
+        await searchPipelines(searchText, currentIngestionPage);
       }
     },
     [
       collateAgentPagingCursor,
       collateAgentPageSize,
+      currentIngestionPage,
       getAllIngestionWorkflows,
       ingestionPagingCursor,
       ingestionPageSize,
+      searchPipelines,
       searchText,
     ]
   );
