@@ -339,6 +339,9 @@ class OpenMetadata(
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
+            # The OpenMetadata API never answers HTML, so a page here means the
+            # request reached the UI or a proxy instead of the API.
+            raise_on_html=True,
             **(additional_client_config_arguments or {}),
         )
 
@@ -1047,10 +1050,9 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run version api call. Return `true` if response is not None
+        Run version api call. Raises with an actionable message if the API is not reachable.
         """
-        raw_version = self.client.get("/system/version")["version"]
-        return raw_version is not None
+        return bool(self.get_server_version())
 
     def close(self):
         """
