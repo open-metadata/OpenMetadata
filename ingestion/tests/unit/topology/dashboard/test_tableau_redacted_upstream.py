@@ -25,6 +25,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from metadata.ingestion.source.dashboard.tableau.client import (
+    MAX_SOURCE_TABLE_SAMPLE_PAGES,
+    SOURCE_TABLE_SAMPLE_PAGE_SIZE,
     TableauClient,
     TableauUpstreamTablesRedacted,
 )
@@ -63,6 +65,26 @@ def build_client(datasources):
     return client
 
 
+def build_paging_client(pages):
+    """A client whose data sources span more than one page."""
+    with patch.object(TableauClient, "__init__", lambda self, *a, **kw: None):
+        client = TableauClient()
+    client.test_get_workbooks = MagicMock(return_value=MagicMock(id="wb-1"))
+    client._query_datasources = MagicMock(side_effect=pages)
+    return client
+
+
+def full_page(tables, prefix):
+    """A page Tableau would not mark as the last one, so the check reads on."""
+    return TableauDatasources(
+        nodes=[
+            DataSource(id=f"{prefix}-{index}", name=f"{prefix}-{index}", upstreamTables=tables)
+            for index in range(SOURCE_TABLE_SAMPLE_PAGE_SIZE)
+        ],
+        totalCount=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+    )
+
+
 def datasources_with(tables, name="rpt_repro_transfer_out_mv (reporting_prod.finance)"):
     return TableauDatasources(
         nodes=[DataSource(id="ds-1", name=name, upstreamTables=tables)],
@@ -92,6 +114,9 @@ class TestGetSourceTablesCheck:
         client = build_client(datasources_with([VISIBLE_TABLE]))
 
         assert client.test_get_source_tables() is True
+        assert client._query_datasources.call_count == 1, (
+            "a healthy connection must not cost more than the single query it used to"
+        )
 
     def test_no_upstream_tables_passes(self):
         """
@@ -115,3 +140,45 @@ class TestGetSourceTablesCheck:
         client = build_client(None)
 
         assert client.test_get_source_tables() is True
+
+    def test_named_table_on_a_later_page_passes(self):
+        """
+        Permissions on external assets are granted per asset, so a blackout only counts
+        as one if it holds past the first page. Judging from one page alone would report
+        a permissions problem that is not there.
+        """
+        client = build_paging_client(
+            [
+                full_page([REDACTED_TABLE], prefix="ds-page-1"),
+                datasources_with([VISIBLE_TABLE], name="ds-page-2"),
+            ]
+        )
+
+        assert client.test_get_source_tables() is True
+
+    def test_blackout_across_every_page_fails(self):
+        client = build_paging_client(
+            [
+                full_page([REDACTED_TABLE], prefix="ds-page-1"),
+                datasources_with([REDACTED_TABLE], name="ds-page-2"),
+            ]
+        )
+
+        with pytest.raises(TableauUpstreamTablesRedacted) as excinfo:
+            client.test_get_source_tables()
+
+        assert f"{SOURCE_TABLE_SAMPLE_PAGE_SIZE + 1} source table(s)" in str(excinfo.value), (
+            "both pages should have been counted"
+        )
+
+    def test_the_sample_is_capped(self):
+        """
+        Every test connection step shares one timeout, so a workbook with thousands of
+        data sources must not be read to the end just to report a blackout.
+        """
+        client = build_paging_client([full_page([REDACTED_TABLE], prefix=f"ds-{n}") for n in range(50)])
+
+        with pytest.raises(TableauUpstreamTablesRedacted):
+            client.test_get_source_tables()
+
+        assert client._query_datasources.call_count == MAX_SOURCE_TABLE_SAMPLE_PAGES

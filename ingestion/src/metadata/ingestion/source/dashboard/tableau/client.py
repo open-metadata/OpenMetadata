@@ -46,6 +46,11 @@ from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
 
+# GetSourceTables samples a workbook rather than reading all of it. Every test connection
+# step shares one timeout, so the sample is capped instead of following totalCount.
+SOURCE_TABLE_SAMPLE_PAGE_SIZE = 50
+MAX_SOURCE_TABLE_SAMPLE_PAGES = 3
+
 
 class TableauWorkBookException(Exception):  # noqa: N818
     """
@@ -329,14 +334,26 @@ class TableauClient:
         if workbook.id is None:
             raise TableauDataModelsException("Unable to get any workbooks to fetch tableau data sources")
 
-        datasources = self._query_datasources(dashboard_id=workbook.id, entities_per_page=50, offset=0)
+        # Permissions on external assets are granted per asset, so one workbook can mix
+        # readable and withheld tables and a single page can be misleading. One readable
+        # name is enough to stop, so a healthy connection still costs one query.
+        redacted = []
+        for index in range(MAX_SOURCE_TABLE_SAMPLE_PAGES):
+            datasources = self._query_datasources(
+                dashboard_id=workbook.id,
+                entities_per_page=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+                offset=index * SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+            )
+            nodes = (datasources.nodes if datasources else None) or []
+            for datasource in nodes:
+                for table in datasource.upstreamTables or []:
+                    if table.name:
+                        return True
+                    redacted.append(datasource.name or datasource.id)
+            if len(nodes) < SOURCE_TABLE_SAMPLE_PAGE_SIZE:
+                break
 
-        named, redacted = [], []
-        for datasource in (datasources.nodes if datasources else None) or []:
-            for table in datasource.upstreamTables or []:
-                (named if table.name else redacted).append(datasource.name or datasource.id)
-
-        if redacted and not named:
+        if redacted:
             raise TableauUpstreamTablesRedacted(
                 f"Tableau returned {len(redacted)} source table(s) with no name, "
                 f"for data source(s): {', '.join(sorted(set(redacted))[:5])}"
