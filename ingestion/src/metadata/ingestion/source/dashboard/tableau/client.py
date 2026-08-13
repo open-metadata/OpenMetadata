@@ -325,6 +325,10 @@ class TableauClient:
         source tables at all, which is normal for file backed data sources.
         """
         workbook = self.test_get_workbooks()
+
+        if workbook.id is None:
+            raise TableauDataModelsException("Unable to get any workbooks to fetch tableau data sources")
+
         datasources = self._query_datasources(dashboard_id=workbook.id, entities_per_page=50, offset=0)
 
         named, redacted = [], []
