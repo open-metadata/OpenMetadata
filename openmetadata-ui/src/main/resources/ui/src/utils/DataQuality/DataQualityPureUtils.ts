@@ -376,8 +376,17 @@ const buildDataQualityDimensionFilter = (dimension: string) => {
 export const buildDataQualityDashboardFilters = (data: {
   filters?: DataQualityDashboardChartFilters;
   unhealthy?: boolean;
+  /** Retained for compatibility with callers using the former table mode. */
+  isTableApi?: boolean;
 }) => {
-  const { filters, unhealthy = false } = data;
+  const { filters, unhealthy = false, isTableApi = false } = data;
+
+  // Route legacy table-mode calls through the dedicated builder so private
+  // consumers keep their existing contract without mixing index field sets.
+  if (isTableApi) {
+    return buildDataQualityTableFilters(filters);
+  }
+
   const mustFilter = [];
 
   if (unhealthy) {

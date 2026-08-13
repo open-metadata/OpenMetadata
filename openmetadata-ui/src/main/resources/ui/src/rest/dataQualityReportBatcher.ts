@@ -52,7 +52,9 @@ const flushChunk = async (chunk: PendingReport[]): Promise<void> => {
       const result = resultByKey.get(String(index));
 
       if (result?.report) {
-        pending.subscribers.forEach(({ resolve }) => resolve(result.report as DataQualityReport));
+        pending.subscribers.forEach(({ resolve }) =>
+          resolve(result.report as DataQualityReport)
+        );
       } else {
         const error = new Error(
           result?.error ?? 'Data quality report request failed'

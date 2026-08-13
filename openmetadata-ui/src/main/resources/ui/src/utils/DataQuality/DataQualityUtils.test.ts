@@ -121,12 +121,8 @@ describe('DataQualityUtils', () => {
       expect(path.search).toContain('testCaseStatus=Failed');
       expect(path.search).toContain('lastRunRange%5BstartTs%5D=100');
       expect(path.search).toContain('lastRunRange%5BendTs%5D=200');
-      expect(path.search).toContain(
-        'lastRunRange%5Bkey%5D=customRange'
-      );
-      expect(path.search).toContain(
-        'lastRunRange%5Btitle%5D=100%20-%3E%20200'
-      );
+      expect(path.search).toContain('lastRunRange%5Bkey%5D=customRange');
+      expect(path.search).toContain('lastRunRange%5Btitle%5D=100%20-%3E%20200');
       expect(path.search).toContain('tags%5B%5D=PII.Sensitive');
       expect(path.search).toContain('tier=Tier.Tier1');
       expect(path.search).toContain('dataProductFqn=marketing');
@@ -812,6 +808,36 @@ describe('DataQualityUtils', () => {
 
       expect(tagsFilter).toBeDefined();
       expect(tierFilter).toBeDefined();
+    });
+
+    it('preserves table-index filtering for legacy isTableApi callers', () => {
+      const result = buildDataQualityDashboardFilters({
+        // Keep this legacy option covered because private consumers can call
+        // the exported helper directly even though current UI code does not.
+        isTableApi: true,
+        filters: {
+          tags: ['PII.Sensitive'],
+          entityFQN: 'service.db.schema.table',
+          testCaseStatus: TestCaseStatus.Success,
+          testCaseType: TestCaseType.column,
+          startTs: 100,
+          endTs: 200,
+        },
+      });
+
+      expect(result).toEqual([
+        {
+          bool: {
+            should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }],
+          },
+        },
+        {
+          term: {
+            'fullyQualifiedName.keyword': 'service.db.schema.table',
+          },
+        },
+        { term: { deleted: false } },
+      ]);
     });
 
     it('includes every test-case filter in the report query', () => {
