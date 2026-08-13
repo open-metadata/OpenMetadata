@@ -4273,6 +4273,7 @@
     "to-add-new-line": "om een nieuwe regel toe te voegen",
     "token-has-no-expiry": "Deze token heeft geen vervaldatum.",
     "token-security-description": "Iedereen die je JWT-token heeft, kan REST API-verzoeken sturen naar de {{brandName}} Server. Blootstel het JWT-token niet in je toepassingscode. Deel het niet op GitHub of ergens anders online.",
+    "total-data-assets-description": "Totaal aantal assets in de serviceverbinding.",
     "total-data-assets-widget-description": "Overzicht van alle data-assets binnen de service. <0>meer informatie.</0>",
     "total-entity-insight": "Toon de aantallen data-assets per type.",
     "tour-follow-step": "Volg een data-asset om op de hoogte te blijven van de wijzigingen. In je activiteitenfeed worden alle wijzigingen aan de data-asset die je volgt, getoond. Je ontvangt ook meldingen als deze data-asset problemen met de datakwaliteit heeft.",

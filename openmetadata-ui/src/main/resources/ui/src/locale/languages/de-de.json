@@ -4273,6 +4273,7 @@
     "to-add-new-line": "um eine neue Zeile hinzuzufügen",
     "token-has-no-expiry": "Dieses Token hat kein Ablaufdatum.",
     "token-security-description": "Jeder, der Ihr JWT-Token hat, kann REST-API-Anfragen an den {{brandName}} Server senden. Geben Sie das JWT-Token nicht in Ihrem Anwendungscode preis. Teilen Sie es nicht auf GitHub oder an anderer Stelle online.",
+    "total-data-assets-description": "Gesamtzahl der Assets in der Dienstverbindung.",
     "total-data-assets-widget-description": "Übersicht über alle Datenvermögenswerte innerhalb des Dienstes. <0>Mehr erfahren.</0>",
     "total-entity-insight": "Anzeigen der neuesten Anzahl von Datenvermögenswerten nach Typ.",
     "tour-follow-step": "Folgen Sie einem Datenvermögen, um über Änderungen informiert zu bleiben. In Ihrem Aktivitäts-Feed werden alle Änderungen am von Ihnen verfolgten Datenvermögen angezeigt. Sie erhalten auch Benachrichtigungen, wenn dieses Datenvermögen Datenqualitätsprobleme aufweist.",

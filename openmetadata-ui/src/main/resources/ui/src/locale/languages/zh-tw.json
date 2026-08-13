@@ -4273,6 +4273,7 @@
     "to-add-new-line": "新增一行",
     "token-has-no-expiry": "此權杖沒有到期日期。",
     "token-security-description": "任何擁有您 JWT 權杖的人都可以向 {{brandName}} 伺服器發送 REST API 請求。請勿在您的應用程式程式碼中暴露 JWT 權杖。請勿在 GitHub 或任何其他線上地方分享它。",
+    "total-data-assets-description": "該服務連線中的資產總數。",
     "total-data-assets-widget-description": "服務內所有資料資產的概觀。<0>了解更多。</0>",
     "total-entity-insight": "依類型顯示最新的資料資產數量。",
     "tour-follow-step": "追蹤資料資產以隨時了解其變更。在您的活動摘要中會顯示您追蹤的資料資產的所有變更。如果此資料資產有資料品質問題，您也會收到警示。",

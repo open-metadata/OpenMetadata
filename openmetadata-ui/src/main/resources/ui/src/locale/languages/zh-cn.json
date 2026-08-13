@@ -4273,6 +4273,7 @@
     "to-add-new-line": "添加新行",
     "token-has-no-expiry": "此令牌没有过期日期",
     "token-security-description": "任何拥有您的 JWT 令牌的人都可以向 {{brandName}} 服务器发送 REST API 请求。请不要在源代码中公开 JWT 令牌。不要在 GitHub 或任何其他网络上分享它。",
+    "total-data-assets-description": "该服务连接中的资产总数。",
     "total-data-assets-widget-description": "服务中所有数据资产的概览。<0>了解更多。</0>",
     "total-entity-insight": "按类型显示最新的数据资产数量",
     "tour-follow-step": "选择关注一个数据资产以获取其最新变更信息。这些信息将会展示在活动信息流页面, 并能在数据质控出现问题时提醒您。",

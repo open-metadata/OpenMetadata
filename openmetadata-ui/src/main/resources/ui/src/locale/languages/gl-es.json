@@ -4273,6 +4273,7 @@
     "to-add-new-line": "para engadir unha nova liña",
     "token-has-no-expiry": "Este token non ten data de caducidade.",
     "token-security-description": "Calquera que teña o teu Token JWT poderá enviar solicitudes REST API ao servidor de {{brandName}}. Non expoñas o Token JWT no código da túa aplicación. Non o compartas en GitHub nin noutro lugar en liña.",
+    "total-data-assets-description": "Total de activos presentes na conexión do servizo.",
     "total-data-assets-widget-description": "Visión xeral de todos os activos de datos dentro do servizo. <0>saber máis.</0>",
     "total-entity-insight": "Mostrar o número máis recente de activos de datos por tipo.",
     "tour-follow-step": "Segue un activo de datos para estar informado sobre os cambios. No teu feed de actividades mostrarase todo o relacionado co activo de datos que segues. Tamén recibirás alertas se este activo ten problemas de calidade de datos.",

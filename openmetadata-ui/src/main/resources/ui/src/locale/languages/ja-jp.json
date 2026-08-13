@@ -4273,6 +4273,7 @@
     "to-add-new-line": "改行するには",
     "token-has-no-expiry": "このトークンには有効期限がありません。",
     "token-security-description": "JWTトークンを持つ人は{{brandName}}サーバーにREST APIリクエストを送信できます。アプリケーションコードに埋め込んだり、GitHubやインターネット上に公開しないでください。",
+    "total-data-assets-description": "サービス接続に存在するアセットの総数。",
     "total-data-assets-widget-description": "サービス内すべてのデータアセットの概要。<0>詳細を見る。</0>",
     "total-entity-insight": "タイプ別に最新のデータアセットの数を表示します。",
     "tour-follow-step": "データアセットをフォローして、変更情報を把握しましょう。アクティビティフィードではフォロー中のアセットのすべての変更が表示され、品質上の問題がある場合には通知も受け取れます。",

@@ -4273,6 +4273,7 @@
     "to-add-new-line": "för att lägga till en ny rad",
     "token-has-no-expiry": "Denna token har inget utgångsdatum.",
     "token-security-description": "Alla som har din JWT-token kommer att kunna skicka REST API-förfrågningar till {{brandName}}-servern. Exponera inte JWT-token i din applikationskod. Dela den inte på GitHub eller någon annanstans online.",
+    "total-data-assets-description": "Totalt antal tillgångar i tjänsteanslutningen.",
     "total-data-assets-widget-description": "Översikt över alla datatillgångar inuti tjänsten. <0>läs mer.</0>",
     "total-entity-insight": "Visa det senaste antalet datatillgångar per typ.",
     "tour-follow-step": "Följ en datatillgång för att hålla dig informerad om ändringar i den. I ditt aktivitetsflöde visas alla ändringar i den datatillgång du följer. Du får också aviseringar om denna datatillgång har datakvalitetsproblem.",
