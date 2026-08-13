@@ -4190,6 +4190,7 @@
     "sso-configuration-test-success": "Votre configuration SSO est valide et accessible. Vous pouvez l'enregistrer quand vous êtes prêt.",
     "sso-new-config-save-warning": "L'enregistrement d'une nouvelle configuration SSO vous déconnectera et vous redirigera vers la page de connexion. Testez d'abord votre configuration pour éviter d'être verrouillé.",
     "sso-provider-not-supported": "Le fournisseur SSO {{provider}} n'est pas pris en charge.",
+    "sso-provider-unreachable": "Impossible de joindre le fournisseur d'identité pour démarrer la connexion. Vérifiez qu'il est accessible et réessayez.",
     "sso-test-login-description": "Connectez-vous à votre fournisseur d'identité avec ces paramètres non enregistrés. Cela s'exécute dans une fenêtre séparée et ne modifie jamais votre session actuelle.",
     "sso-test-login-error": "La connexion n'a pas pu être validée en raison d'une erreur serveur. Veuillez réessayer.",
     "sso-test-login-failed": "La connexion a abouti, mais cette configuration refuserait l'accès.",

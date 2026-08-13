@@ -112,6 +112,7 @@ import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
+import org.openmetadata.service.exception.SessionStoreUnavailableExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
@@ -700,6 +701,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
+    // Redis outage is transient and self-healing: answer 503 + Retry-After rather than a 500
+    // carrying the raw Lettuce message.
+    environment.jersey().register(SessionStoreUnavailableExceptionMapper.class);
   }
 
   private void registerMicrometerFilter(
@@ -1295,6 +1299,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       this.sessionService = sessionService;
       this.validationIntervalSeconds =
           Math.max(MIN_VALIDATION_INTERVAL_SECONDS, validationIntervalSeconds);
+      if (this.validationIntervalSeconds != validationIntervalSeconds) {
+        LOG.warn(
+            "Configured WebSocket session validation interval {}s is below the supported minimum; "
+                + "clamped to {}s.",
+            validationIntervalSeconds,
+            this.validationIntervalSeconds);
+      }
+      LOG.info("WebSocket session validation interval: {}s", this.validationIntervalSeconds);
     }
 
     @Override

@@ -4190,6 +4190,7 @@
     "sso-configuration-test-success": "您的 SSO 設定有效且可連線。準備就緒後即可儲存。",
     "sso-new-config-save-warning": "儲存新的 SSO 設定將使您登出並重新導向至登入頁面。請先測試您的設定，以免遭到鎖定。",
     "sso-provider-not-supported": "不支援 SSO 提供者 {{provider}}。",
+    "sso-provider-unreachable": "無法連線身分提供者以開始登入。請確認其可連線後再試一次。",
     "sso-test-login-description": "使用這些未儲存的設定登入您的身分提供者。此操作會在獨立視窗中執行，絕不會變更您目前的工作階段。",
     "sso-test-login-error": "由於伺服器錯誤，無法驗證登入。請重試。",
     "sso-test-login-failed": "登入已完成，但此設定會拒絕該登入。",

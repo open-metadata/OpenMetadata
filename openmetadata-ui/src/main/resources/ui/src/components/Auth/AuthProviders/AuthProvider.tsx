@@ -127,6 +127,10 @@ interface AuthProviderProps {
 
 const cookieStorage = new CookieStorage();
 
+// How long to wait for an SSO login to navigate away from the sign-in page before treating the
+// identity provider as unreachable.
+const LOGIN_REDIRECT_TIMEOUT_MS = 10_000;
+
 const userAPIQueryFields = [
   TabSpecificField.PROFILE,
   TabSpecificField.TEAMS,
@@ -265,9 +269,31 @@ export const AuthProvider = ({
     let attempts = 0;
     const maxAttempts = 100;
 
+    // Every SSO SDK starts login by fetching the IdP's discovery document. If the IdP is
+    // unreachable that fetch rejects (or never settles) and, with the loading flag already set,
+    // the sign-in page spins forever with no way back. Surface the failure and hand the page back
+    // to the user so they can retry. Harmless on the happy path: the browser navigates to the IdP
+    // before the watchdog fires, tearing this timer down with the page.
+    const failLogin = (error: unknown) => {
+      setApplicationLoading(false);
+      showErrorToast(
+        error as AxiosError,
+        t('message.sso-provider-unreachable')
+      );
+    };
+    const watchdog = setTimeout(
+      () => failLogin(new Error(t('message.sso-provider-unreachable'))),
+      LOGIN_REDIRECT_TIMEOUT_MS
+    );
+
     const invokeLogin = () => {
       if (authenticatorRef.current) {
-        authenticatorRef.current.invokeLogin?.();
+        Promise.resolve(authenticatorRef.current.invokeLogin?.()).catch(
+          (error) => {
+            clearTimeout(watchdog);
+            failLogin(error);
+          }
+        );
         resetWebAnalyticSession();
       } else if (attempts < maxAttempts) {
         // Polling mechanism to wait for authenticator ref to be available.
@@ -278,6 +304,7 @@ export const AuthProvider = ({
         setTimeout(invokeLogin, 50);
       } else {
         // Max attempts reached, stop loading and silently fail
+        clearTimeout(watchdog);
         setApplicationLoading(false);
       }
     };

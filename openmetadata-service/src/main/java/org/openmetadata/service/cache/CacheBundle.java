@@ -93,6 +93,17 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       cacheInvalidationPubSub.setHandler(
           msg -> {
             try {
+              // Out-of-band signal: an admin changed the security configuration on another pod.
+              // Reload ours from the database so the whole cluster serves the same SSO config —
+              // otherwise a non-sticky load balancer sends logins to pods still on the old
+              // provider.
+              if (org.openmetadata.service.security.auth.SecurityConfigurationManager
+                  .SECURITY_CONFIG_INVALIDATION_TYPE
+                  .equals(msg.type())) {
+                org.openmetadata.service.security.auth.SecurityConfigurationManager.getInstance()
+                    .applyRemoteSecurityConfigChange();
+                return;
+              }
               // Out-of-band signal: a session was revoked on another pod, drop any WebSocket
               // connections this pod is holding for that user. Encoded as type=session, op=revoke,
               // id=<userId> so it rides the existing channel without needing a second subscriber.

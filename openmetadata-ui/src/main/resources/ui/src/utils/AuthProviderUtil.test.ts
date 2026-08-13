@@ -10,10 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { UserProfile } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { get } from 'lodash';
+import {
+  AuthenticationConfigurationWithScope,
+  UserProfile,
+} from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { AuthProvider } from '../generated/settings/settings';
 import {
   extractNameFromUserProfile,
+  getAuthConfig,
   getNameFromUserData,
+  getUserManagerConfig,
 } from './AuthProvider.util';
 
 const userProfile = {
@@ -543,5 +551,52 @@ describe('prepareUserProfileFromClaims', () => {
       name: '',
       email: '',
     });
+  });
+});
+
+describe('getAuthConfig', () => {
+  it('should strip a trailing slash from the authority so endpoint URLs do not double up', () => {
+    const config = getAuthConfig({
+      authority: 'https://dev-tenant.us.auth0.com/',
+      clientId: 'client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      provider: AuthProvider.Auth0,
+    } as AuthenticationConfiguration);
+
+    expect(config.authority).toEqual('https://dev-tenant.us.auth0.com');
+  });
+
+  it('should not request offline_access for Okta public clients', () => {
+    const config = getAuthConfig({
+      authority: 'https://tenant.okta.com',
+      clientId: 'client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      provider: AuthProvider.Okta,
+    } as AuthenticationConfiguration);
+
+    expect(get(config, 'scopes')).toEqual(['openid', 'profile', 'email']);
+  });
+
+  it('should carry the configured responseType through to the OIDC user manager', () => {
+    const config = getUserManagerConfig({
+      authority: 'https://accounts.google.com',
+      clientId: 'client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      scope: 'openid email profile',
+      responseType: 'code',
+    } as AuthenticationConfigurationWithScope);
+
+    expect(config.response_type).toEqual('code');
+  });
+
+  it('should default responseType to id_token when the server does not send one', () => {
+    const config = getUserManagerConfig({
+      authority: 'https://accounts.google.com',
+      clientId: 'client-id',
+      callbackUrl: 'http://localhost:8585/callback',
+      scope: 'openid email profile',
+    } as AuthenticationConfigurationWithScope);
+
+    expect(config.response_type).toEqual('id_token');
   });
 });

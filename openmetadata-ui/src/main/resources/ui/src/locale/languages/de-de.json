@@ -4190,6 +4190,7 @@
     "sso-configuration-test-success": "Ihre SSO-Konfiguration ist gültig und erreichbar. Sie können sie speichern, wenn Sie bereit sind.",
     "sso-new-config-save-warning": "Beim Speichern einer neuen SSO-Konfiguration werden Sie abgemeldet und zur Anmeldeseite weitergeleitet. Testen Sie Ihre Konfiguration zuerst, um eine Aussperrung zu vermeiden.",
     "sso-provider-not-supported": "SSO-Provider {{provider}} wird nicht unterstützt.",
+    "sso-provider-unreachable": "Der Identitätsanbieter konnte für die Anmeldung nicht erreicht werden. Prüfen Sie, ob er erreichbar ist, und versuchen Sie es erneut.",
     "sso-test-login-description": "Melden Sie sich mit diesen ungespeicherten Einstellungen bei Ihrem Identitätsanbieter an. Dies läuft in einem separaten Fenster und ändert Ihre aktuelle Sitzung nicht.",
     "sso-test-login-error": "Die Anmeldung konnte aufgrund eines Serverfehlers nicht überprüft werden. Bitte versuchen Sie es erneut.",
     "sso-test-login-failed": "Die Anmeldung wurde abgeschlossen, aber diese Konfiguration würde die Anmeldung ablehnen.",

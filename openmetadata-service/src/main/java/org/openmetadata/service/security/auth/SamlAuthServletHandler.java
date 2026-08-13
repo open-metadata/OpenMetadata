@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.extractDisplayNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
+import static org.openmetadata.service.security.SecurityUtil.writeFailureResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeMessageResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -200,7 +201,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML login initiation failed");
     } catch (Exception e) {
       LOG.error("Error handling SAML login", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      writeFailureResponse(resp, e);
     }
   }
 
@@ -444,7 +445,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       sessionService.releaseRefreshLease(leasedSession);
       LOG.error("Error handling SAML refresh", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      writeFailureResponse(resp, e);
     }
   }
 

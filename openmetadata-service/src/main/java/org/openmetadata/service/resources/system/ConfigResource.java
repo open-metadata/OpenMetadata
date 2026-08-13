@@ -96,6 +96,10 @@ public class ConfigResource {
       responseAuthConfig.setProvider(yamlConfig.getProvider());
       responseAuthConfig.setProviderName(yamlConfig.getProviderName());
       responseAuthConfig.setClientType(yamlConfig.getClientType());
+      // Copied explicitly because a fresh AuthenticationConfiguration defaults responseType to
+      // id_token. Omitting it reports implicit flow whatever the deployment configured, and Google,
+      // Okta and Auth0 have all discontinued implicit flow for public clients.
+      responseAuthConfig.setResponseType(yamlConfig.getResponseType());
       responseAuthConfig.setEnableSelfSignup(yamlConfig.getEnableSelfSignup());
       responseAuthConfig.setEnableAutoRedirect(yamlConfig.getEnableAutoRedirect());
       responseAuthConfig.setJwtPrincipalClaims(yamlConfig.getJwtPrincipalClaims());

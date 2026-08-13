@@ -32,11 +32,10 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
     } = useAuth0();
 
     useImperativeHandle(ref, () => ({
+      // Returned, not swallowed: a failure here (unreachable IdP) must reach the caller so the
+      // sign-in page stops loading and shows an error instead of spinning.
       invokeLogin() {
-        loginWithRedirect().catch((error) => {
-          // eslint-disable-next-line no-console
-          console.error(error);
-        });
+        return loginWithRedirect();
       },
       async invokeLogout() {
         try {

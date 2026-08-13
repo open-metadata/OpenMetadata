@@ -22,9 +22,12 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import io.lettuce.core.RedisException;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.SecurityContext;
@@ -47,7 +50,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -55,6 +60,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
+  private static final int STORE_RETRY_AFTER_SECONDS = 5;
 
   private SecurityUtil() {}
 
@@ -408,6 +414,76 @@ public final class SecurityUtil {
     writeJsonResponse(
         response,
         JsonUtils.pojoToJson(Map.of("error", message == null ? StringUtils.EMPTY : message)));
+  }
+
+  /**
+   * Writes an unexpected failure on a servlet auth path with the status the failure actually
+   * deserves. These paths have no JAX-RS exception mapper, so a bare {@code 500 + e.getMessage()}
+   * catch-all reports a rejected credential and a transient Redis outage as server bugs — and leaks
+   * the driver's message while doing it. A rejected credential is the caller's 4xx; a session store
+   * that is unreachable is a retryable 503; only the rest is a 500, and that one carries a generic
+   * message because an unclassified exception's text is an internal detail. Callers log the failure
+   * before delegating here, so nothing is lost.
+   */
+  public static void writeFailureResponse(HttpServletResponse response, Throwable failure) {
+    // Default generic: an unclassified failure is a server fault whose message is an internal
+    // detail. It stays in the log, not on the wire.
+    int status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+    String message = "Authentication service error";
+    // EntityNotFoundException is checked first on purpose: it extends the SDK's WebServiceException
+    // with NOT_FOUND, and answering 404 on a login endpoint tells an unauthenticated caller which
+    // accounts exist. A user that no longer resolves is a rejected credential, not a lookup miss.
+    if (failure instanceof EntityNotFoundException) {
+      status = HttpServletResponse.SC_UNAUTHORIZED;
+      message = "Invalid credentials";
+    } else if (isSessionStoreUnavailable(failure)) {
+      LOG.error("Session store unavailable while handling an auth request", failure);
+      status = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
+      message = "The session store is temporarily unavailable. Please retry.";
+      response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(STORE_RETRY_AFTER_SECONDS));
+    } else if (carriesResponseStatus(failure)) {
+      status = responseStatusOf(failure);
+      message = failure.getMessage();
+    }
+    try {
+      writeErrorResponse(response, status, message);
+    } catch (IOException e) {
+      LOG.error("Error writing error response", e);
+    }
+  }
+
+  /**
+   * Three unrelated hierarchies carry an intended HTTP status and none of them share a supertype:
+   * JAX-RS {@link WebApplicationException}, {@link AuthenticationException}, and the SDK's {@link
+   * WebServiceException} (the parent of {@code CustomExceptionMessage}, which is what the basic and
+   * LDAP authenticators throw for a rejected credential). Missing any one of them reports a 4xx as a
+   * 500.
+   */
+  private static boolean carriesResponseStatus(Throwable failure) {
+    return failure instanceof WebApplicationException
+        || failure instanceof AuthenticationException
+        || failure instanceof WebServiceException;
+  }
+
+  private static int responseStatusOf(Throwable failure) {
+    if (failure instanceof WebApplicationException webApplicationException) {
+      return webApplicationException.getResponse().getStatus();
+    }
+    if (failure instanceof AuthenticationException authenticationException) {
+      return authenticationException.getResponse().getStatus();
+    }
+    return ((WebServiceException) failure).getResponse().getStatus();
+  }
+
+  private static boolean isSessionStoreUnavailable(Throwable failure) {
+    Throwable cause = failure;
+    while (cause != null) {
+      if (cause instanceof RedisException) {
+        return true;
+      }
+      cause = cause.getCause();
+    }
+    return false;
   }
 
   public static void writeMessageResponse(HttpServletResponse response, int status, String message)
