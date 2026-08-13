@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Button, Card } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -94,12 +100,25 @@ const AgentGroup: FC<AgentGroupProps> = ({
             Agent on the metadata list and takes that same top-right spot on the Collate AI list,
             whose header carries no add button. */}
         {onRefresh && (
-          <Button
-            data-testid="agent-group-refresh"
-            iconLeading={isRefreshing ? <Loader size="x-small" /> : ReloadIcon}
-            isDisabled={isRefreshing}
-            onClick={onRefresh}
-          />
+          <Tooltip
+            title={t('label.refresh-entity', {
+              entity: t('label.agent-plural'),
+            })}>
+            <Button
+              color="secondary"
+              data-testid="agent-group-refresh"
+              iconLeading={
+                isRefreshing ? (
+                  <Loader size="x-small" />
+                ) : (
+                  <ReloadIcon width={14} />
+                )
+              }
+              isDisabled={isRefreshing}
+              size="md"
+              onClick={onRefresh}
+            />
+          </Tooltip>
         )}
         {addAgentSlot ??
           (canCreateAgent && (
