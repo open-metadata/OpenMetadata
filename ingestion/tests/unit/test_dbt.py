@@ -4099,14 +4099,49 @@ class TestAddDbtSourceFreshnessResults:
         return result, sources.metadata.generated_at
 
     @staticmethod
-    def _source(sources_generate_time, run_results_generate_time=None):
+    def _source(sources_generate_time, run_results_generate_time=None, search_across_databases=False):
         source = DbtSource.__new__(DbtSource)
         source.metadata = MagicMock()
         source.status = MagicMock()
         source.context = MagicMock()
+        source.config = MagicMock()
+        source.config.serviceName = "snowflake_svc"
+        source.source_config = MagicMock()
+        source.source_config.searchAcrossDatabases = search_across_databases
+        source.context.get.return_value.dbt_tests = {}
         source.context.get.return_value.sources_generate_time = sources_generate_time
         source.context.get.return_value.run_results_generate_time = run_results_generate_time
         return source
+
+    @staticmethod
+    def _es_lookup(*known_fqns):
+        """
+        An es_search_from_fqn that resolves only the tables the warehouse actually has.
+
+        fqn.build() for a Table runs its own ES lookup, so a mock with a flat return_value
+        echoes the mocked entity back whatever table name it was asked for - which silently
+        defeats any assertion about which name we looked up.  Matching on the search string
+        keeps those assertions honest, and lets a wildcard service resolve elsewhere the way
+        searchAcrossDatabases does.
+        """
+        from metadata.generated.schema.entity.data.table import Table
+
+        def _search(*_args, fqn_search_string, **_kwargs):
+            for known in known_fqns:
+                service, _, rest = known.partition(".")
+                searched_service, _, searched_rest = fqn_search_string.partition(".")
+                if searched_rest == rest and searched_service in (service, "*"):
+                    return [
+                        Table(
+                            id=uuid.uuid4(),
+                            name=known.split(".")[-1],
+                            columns=[],
+                            fullyQualifiedName=known,
+                        )
+                    ]
+            return []
+
+        return _search
 
     @staticmethod
     def _freshness_dbt_test(dbt_test_result):
@@ -4252,31 +4287,13 @@ class TestAddDbtSourceFreshnessResults:
         depends_on, so resolving upstreams like a test node does yields [] and the result
         is dropped before it is ever sent - the test case has no table to attach to.
         """
-        from metadata.generated.schema.entity.data.table import Table
-        from metadata.ingestion.source.database.dbt.models import DbtObjects
-
         manifest_node = self._manifest_source_node()
         sources = self._parsed_sources()
         source = self._source(sources.metadata.generated_at)
-        source.config = MagicMock()
-        source.config.serviceName = "snowflake_svc"
-        source.context.get.return_value.dbt_tests = {}
-        source.metadata.es_search_from_fqn.return_value = [
-            Table(
-                id=uuid.uuid4(),
-                name="orders",
-                columns=[],
-                fullyQualifiedName="snowflake_svc.RAW_DB.RAW.orders",
-            )
-        ]
+        source.metadata.es_search_from_fqn.side_effect = self._es_lookup("snowflake_svc.RAW_DB.RAW.orders")
 
-        source.add_dbt_sources(
-            manifest_node.unique_id,
-            manifest_node=manifest_node,
-            dbt_objects=DbtObjects(dbt_manifest=MagicMock(), dbt_sources=sources),
-        )
+        dbt_test = self._add_source_and_get_test(source, manifest_node, sources)
 
-        dbt_test = source.context.get.return_value.dbt_tests[manifest_node.unique_id + "_freshness"]
         assert dbt_test[DbtCommonEnum.UPSTREAM.value] == ["snowflake_svc.RAW_DB.RAW.orders"]
         assert dbt_test[DbtCommonEnum.IS_FRESHNESS.value] is True
         # the freshness test case is named after the source table, not the source
@@ -4291,20 +4308,65 @@ class TestAddDbtSourceFreshnessResults:
         source.metadata.add_test_case_results.assert_called_once()
 
     def test_freshness_is_skipped_when_the_source_table_is_not_in_openmetadata(self):
-        from metadata.ingestion.source.database.dbt.models import DbtObjects
-
         manifest_node = self._manifest_source_node()
         sources = self._parsed_sources()
         source = self._source(sources.metadata.generated_at)
-        source.config = MagicMock()
-        source.config.serviceName = "snowflake_svc"
-        source.context.get.return_value.dbt_tests = {}
-        source.metadata.es_search_from_fqn.return_value = []
+        source.metadata.es_search_from_fqn.side_effect = self._es_lookup()
+
+        assert self._add_source_and_get_test(source, manifest_node, sources) is None
+        assert source.context.get.return_value.dbt_tests == {}
+
+    def _add_source_and_get_test(self, source, manifest_node, sources):
+        from metadata.ingestion.source.database.dbt.models import DbtObjects
 
         source.add_dbt_sources(
             manifest_node.unique_id,
             manifest_node=manifest_node,
             dbt_objects=DbtObjects(dbt_manifest=MagicMock(), dbt_sources=sources),
         )
+        return source.context.get.return_value.dbt_tests.get(manifest_node.unique_id + "_freshness")
 
-        assert source.context.get.return_value.dbt_tests == {}
+    def test_source_fqn_uses_the_physical_identifier_not_the_logical_name(self):
+        """
+        dbt lets a source declare `identifier` independently of `name`, and the warehouse
+        table - so the OpenMetadata entity - is named after `identifier`.  Building the FQN
+        from `name` looks up a table that does not exist and drops the freshness test.
+        """
+        manifest_node = self._manifest_source_node()
+        manifest_node.name = "logical_orders"
+        manifest_node.identifier = "physical_orders"
+        sources = self._parsed_sources()
+        source = self._source(sources.metadata.generated_at)
+        source.metadata.es_search_from_fqn.side_effect = self._es_lookup("snowflake_svc.RAW_DB.RAW.physical_orders")
+
+        dbt_test = self._add_source_and_get_test(source, manifest_node, sources)
+
+        assert dbt_test is not None, "freshness test was dropped - the FQN used the logical name"
+        assert dbt_test[DbtCommonEnum.UPSTREAM.value] == ["snowflake_svc.RAW_DB.RAW.physical_orders"]
+        # the test case is still named after the logical source name
+        assert dbt_test[DbtCommonEnum.MANIFEST_NODE.value].name == "logical_orders_freshness"
+
+    def test_source_fqn_follows_the_entity_found_across_services(self):
+        """
+        With searchAcrossDatabases the lookup retries against every service, so the table it
+        finds may live under a different one than the ingestion is configured for.  The test
+        case has to attach to the entity that was found, not to the FQN we guessed.
+        """
+        manifest_node = self._manifest_source_node()
+        sources = self._parsed_sources()
+        source = self._source(sources.metadata.generated_at, search_across_databases=True)
+        source.config.serviceName = "configured_svc"
+        source.metadata.es_search_from_fqn.side_effect = self._es_lookup("actual_svc.RAW_DB.RAW.orders")
+
+        dbt_test = self._add_source_and_get_test(source, manifest_node, sources)
+
+        assert dbt_test[DbtCommonEnum.UPSTREAM.value] == ["actual_svc.RAW_DB.RAW.orders"]
+        assert generate_entity_link(dbt_test) == ["<#E::table::actual_svc.RAW_DB.RAW.orders>"]
+
+        source.add_dbt_test_result(dbt_test)
+
+        source.status.failed.assert_not_called()
+        assert (
+            source.metadata.add_test_case_results.call_args.kwargs["test_case_fqn"]
+            == "actual_svc.RAW_DB.RAW.orders.orders_freshness"
+        )

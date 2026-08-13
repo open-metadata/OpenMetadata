@@ -126,6 +126,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
+    get_source_physical_name,
     map_dbt_metric_type,
     order_metrics_by_dependency,
     validate_custom_property_value,
@@ -713,11 +714,16 @@ class DbtSource(DbtServiceSource):
             service_name=self.config.serviceName,
             database_name=get_corrected_name(manifest_node.database),
             schema_name=get_corrected_name(manifest_node.schema_),
-            table_name=get_dbt_model_name(manifest_node),
+            table_name=get_source_physical_name(manifest_node),
         )
-        if not source_fqn or not self._get_table_entity(table_fqn=source_fqn):
+        table_entity = self._get_table_entity(table_fqn=source_fqn) if source_fqn else None
+        if not table_entity:
             logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
             return
+
+        # searchAcrossDatabases lets the lookup resolve under a different service, so the
+        # test case has to follow the entity that was actually found, not the FQN we guessed
+        source_fqn = model_str(table_entity.fullyQualifiedName)
 
         self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
         self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = [source_fqn]
