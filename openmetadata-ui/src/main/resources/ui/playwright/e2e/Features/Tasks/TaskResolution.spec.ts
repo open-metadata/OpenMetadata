@@ -597,38 +597,18 @@ test.describe('Task Resolution - Close by Creator', () => {
         }
       );
 
-      if (!resolveResponse.ok()) {
-        // Try PATCH as fallback. `Closed` is NOT a valid `TaskEntityStatus` — the
-        // enum is Open / InProgress / Pending / Approved / Granted / ManualRevoke /
-        // Rejected / Completed / Cancelled / Failed / Revoked / Expired. Pre-H4-diff
-        // guard, the invalid value was silently tolerated by the lenient JsonPatch
-        // application path; the refactor to `JsonUtils.applyPatch(..., Task.class)`
-        // made Jackson's enum validation visible, so this fallback started 400ing.
-        // The creator-closes-their-own-task intent maps to `Cancelled`.
-        const closeResponse = await apiContext.patch(
-          `/api/v1/tasks/${task.id}`,
-          {
-            data: [
-              {
-                op: 'replace',
-                path: '/status',
-                value: 'Cancelled',
-              },
-            ],
-            headers: { 'Content-Type': 'application/json-patch+json' },
-          }
-        );
-        expect(closeResponse.ok()).toBe(true);
-      }
+      // Creator closes their own task by rejecting via /resolve — the only
+      // supported path. The previous PATCH fallback to /status was writing an
+      // invalid TaskEntityStatus (Closed, later Cancelled — both blocked by
+      // H4's workflow-decision status guard once the refactor to
+      // JsonUtils.applyPatch made Jackson's enum validation visible). Assert
+      // the primary /resolve call succeeded and drop the dead fallback.
+      expect(resolveResponse.ok()).toBe(true);
 
-      // Verify task is resolved/closed
+      // Verify task landed in the expected resolved state
       const getTaskResponse = await apiContext.get(`/api/v1/tasks/${task.id}`);
       const closedTask = await getTaskResponse.json();
-
-      // Task should be in a closed/completed state
-      expect(['Completed', 'Cancelled', 'Rejected']).toContain(
-        closedTask.status
-      );
+      expect(['Completed', 'Rejected']).toContain(closedTask.status);
     } finally {
       await afterAction();
     }
