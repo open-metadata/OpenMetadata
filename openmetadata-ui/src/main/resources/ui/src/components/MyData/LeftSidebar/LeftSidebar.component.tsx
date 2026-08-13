@@ -28,7 +28,10 @@ import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCu
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useSidebarItems } from '../../../hooks/useSidebarItems';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
-import { getSidebarActiveKeys } from '../../../utils/LeftSidebarUtils';
+import {
+  getSidebarActiveKeys,
+  getSidebarPathname,
+} from '../../../utils/LeftSidebarUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
@@ -54,10 +57,10 @@ const LeftSidebar = () => {
   const selectedKeys = useMemo(
     () =>
       getSidebarActiveKeys(
-        location.pathname,
+        getSidebarPathname(location.pathname, location.state),
         leftSidebarClassBase.getSidebarNestedKeys()
       ),
-    [location.pathname]
+    [location.pathname, location.state]
   );
 
   const handleLogoutClick = useCallback(() => {

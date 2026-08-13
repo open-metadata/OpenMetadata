@@ -19,6 +19,7 @@ import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.co
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,6 +33,12 @@ const IncidentManager = ({
   isDateRangePickerVisible = true,
 }: IncidentManagerProps) => {
   const { t } = useTranslation();
+  const breadcrumbData = [
+    {
+      name: t('label.incident-manager'),
+      url: observabilityRouterClassBase.getIncidentManagerPath(),
+    },
+  ];
   const {
     commonTestCasePermission,
     filters,
@@ -183,6 +190,7 @@ const IncidentManager = ({
       </div>
 
       <IncidentManagerTable
+        breadcrumbData={breadcrumbData}
         handleAssigneeUpdate={handleAssigneeUpdate}
         handleSeveritySubmit={handleSeveritySubmit}
         handleStatusSubmit={handleStatusSubmit}

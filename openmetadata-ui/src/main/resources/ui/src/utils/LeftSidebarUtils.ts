@@ -10,7 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
 import { SIDEBAR_ENTITY_PATH_ALIASES } from '../constants/LeftSidebar.constants';
+
+interface BreadcrumbLocationState {
+  breadcrumbData?: Array<{ url?: string }>;
+}
+
+const TEST_CASE_ROUTE_PREFIX = ROUTES.TEST_CASE_DETAILS.replace(
+  `/${PLACEHOLDER_ROUTE_FQN}`,
+  ''
+);
+
+export const getSidebarPathname = (
+  pathname: string,
+  locationState: unknown
+): string => {
+  if (!pathname.startsWith(`${TEST_CASE_ROUTE_PREFIX}/`)) {
+    return pathname;
+  }
+
+  const originUrl = (locationState as BreadcrumbLocationState | null)
+    ?.breadcrumbData?.[0]?.url;
+
+  return originUrl ?? ROUTES.INCIDENT_MANAGER;
+};
 
 export const getSidebarActiveKeys = (
   pathname: string,

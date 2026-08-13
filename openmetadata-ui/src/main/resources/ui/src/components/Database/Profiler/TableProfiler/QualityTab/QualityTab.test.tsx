@@ -154,13 +154,13 @@ jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
     ));
 });
 jest.mock('../../DataQualityTab/DataQualityTab', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ showPagination }) => (
-      <div data-show-pagination={String(showPagination)}>
-        DataQualityTab.component
-      </div>
-    ));
+  return jest.fn().mockImplementation(({ breadcrumbData, showPagination }) => (
+    <div
+      data-breadcrumb={JSON.stringify(breadcrumbData)}
+      data-show-pagination={String(showPagination)}>
+      DataQualityTab.component
+    </div>
+  ));
 });
 
 jest.mock('../../../../../hoc/LimitWrapper', () => {
@@ -177,6 +177,18 @@ jest.mock('../../../../../hooks/useCustomLocation/useCustomLocation', () => ({
   default: jest.fn().mockImplementation(() => ({
     pathname: '/test-path',
     search: '?test=value',
+    state: {
+      breadcrumbData: [
+        {
+          name: 'label.test-suite-plural',
+          url: '/data-quality/test-suites/table-suites',
+        },
+        {
+          name: 'svc.db.schema.table',
+          url: '/table/svc.db.schema.table/profiler/data-quality',
+        },
+      ],
+    },
   })),
 }));
 
@@ -261,6 +273,27 @@ describe('QualityTab', () => {
       await screen.findByText('label.pipeline-plural')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('0');
+  });
+
+  it('should forward the table suite navigation breadcrumbs to test case links', async () => {
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    const dataQualityTab = await screen.findByText('DataQualityTab.component');
+
+    expect(
+      JSON.parse(dataQualityTab.getAttribute('data-breadcrumb') ?? '[]')
+    ).toStrictEqual([
+      {
+        name: 'label.test-suite-plural',
+        url: '/data-quality/test-suites/table-suites',
+      },
+      {
+        name: 'svc.db.schema.table',
+        url: '/table/svc.db.schema.table/profiler/data-quality',
+      },
+    ]);
   });
 
   it('should keep the filter toolbar responsive at constrained widths', async () => {
