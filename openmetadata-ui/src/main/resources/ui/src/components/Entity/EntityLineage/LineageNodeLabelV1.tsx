@@ -34,9 +34,10 @@ import {
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
+import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityIcon, getServiceIcon } from '../../../utils/TableUtils';
+import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { LineageNodeType } from '../../Lineage/Lineage.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 

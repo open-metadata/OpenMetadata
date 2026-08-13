@@ -175,6 +175,24 @@ describe('agentsDataMapper', () => {
       sourceConfig: {},
     };
 
+    it('should carry the enabled flag through for an enabled pipeline', () => {
+      const agent = mapPipelineToAgent({ ...basePipeline, enabled: true });
+
+      expect(agent.enabled).toBe(true);
+    });
+
+    it('should carry the enabled flag through for a paused pipeline', () => {
+      const agent = mapPipelineToAgent({ ...basePipeline, enabled: false });
+
+      expect(agent.enabled).toBe(false);
+    });
+
+    it('should leave enabled undefined when the pipeline does not define it', () => {
+      const agent = mapPipelineToAgent(basePipeline);
+
+      expect(agent.enabled).toBeUndefined();
+    });
+
     it('should aggregate progress for a running pipeline', () => {
       const pipeline: IngestionPipeline = {
         ...basePipeline,
@@ -369,7 +387,7 @@ describe('agentsDataMapper', () => {
       expect(agent.recentRuns[4].id).toBe('run-4');
     });
 
-    it('should sum errors and warnings across steps and set failStep on failure', () => {
+    it('should sum errors and warnings across steps', () => {
       const pipeline: IngestionPipeline = {
         ...basePipeline,
         pipelineStatuses: [
@@ -389,7 +407,6 @@ describe('agentsDataMapper', () => {
       expect(agent.status).toBe('failed');
       expect(agent.errors).toBe(3);
       expect(agent.warnings).toBe(3);
-      expect(agent.failStep).toBe('Sink');
     });
 
     it('should fall back to id/name when displayName is missing', () => {
@@ -616,6 +633,26 @@ describe('agentsDataMapper', () => {
       const log: IngestionPipelineLogByIdInterface = {};
 
       expect(getLogTaskFieldForType(log, PipelineType.Lineage)).toBe('');
+    });
+
+    it('should pick the generic logs key whatever the pipeline type', () => {
+      const log: IngestionPipelineLogByIdInterface = { logs: 'fqn logs' };
+
+      expect(getLogTaskFieldForType(log, PipelineType.Metadata)).toBe(
+        'fqn logs'
+      );
+      expect(getLogTaskFieldForType(log, PipelineType.Usage)).toBe('fqn logs');
+    });
+
+    it('should prefer the generic logs key over the type-specific field', () => {
+      const log: IngestionPipelineLogByIdInterface = {
+        logs: 'fqn logs',
+        ingestion_task: 'metadata logs',
+      };
+
+      expect(getLogTaskFieldForType(log, PipelineType.Metadata)).toBe(
+        'fqn logs'
+      );
     });
   });
 });

@@ -159,6 +159,7 @@ export const ENDPOINT_TO_FILTER_MAP: Record<string, string> = {
   [EntityTypeEndpoint.Database]: 'Database',
   [EntityTypeEndpoint.Topic]: 'Topic',
   [EntityTypeEndpoint.Dashboard]: 'Dashboard',
+  [EntityTypeEndpoint.Chart]: 'Chart',
   [EntityTypeEndpoint.Pipeline]: 'Pipeline',
   [EntityTypeEndpoint.SearchIndex]: 'Search Index',
   [EntityTypeEndpoint.MlModel]: 'ML Model',

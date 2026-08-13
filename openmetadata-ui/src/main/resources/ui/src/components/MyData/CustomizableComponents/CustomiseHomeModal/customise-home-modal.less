@@ -43,8 +43,8 @@
   }
 
   .ant-modal-close {
-    margin-top: 16px;
-    margin-right: 24px;
+    margin-top: var(--om-space-16);
+    margin-right: var(--om-space-24);
   }
 
   .customise-home-modal-header {
@@ -52,7 +52,7 @@
     background: linear-gradient(91.17deg, @blue-31 0%, @blue-32 100%);
 
     .add-icon {
-      font-size: 32px;
+      font-size: var(--om-font-size-32);
     }
   }
 
@@ -63,7 +63,7 @@
       max-width: 250px;
 
       .sidebar-option {
-        padding: 10px @padding-md;
+        padding: var(--om-space-10) @padding-md;
 
         &.active {
           font-weight: @font-semibold;
@@ -88,7 +88,7 @@
       }
 
       .sidebar-widget-icon {
-        padding: 2px;
+        padding: var(--om-space-2);
         margin-right: @padding-xs;
 
         svg {
@@ -104,7 +104,7 @@
 
       .selected-widget-icon {
         margin-left: @size-xxs;
-        padding: 0 2px 2px 2px;
+        padding: 0 var(--om-space-2) var(--om-space-2) var(--om-space-2);
 
         svg {
           width: 14px;
@@ -133,7 +133,7 @@
     border-radius: 0 0 @border-rad-sm @border-rad-sm;
 
     button {
-      padding: 1px 28px;
+      padding: var(--om-space-1) var(--om-space-28);
     }
 
     .ant-btn.ant-btn-default:not(:hover) {
@@ -157,5 +157,5 @@
 .widget-count {
   color: @blue-9;
   background-color: @alert-info-icon-bg-1;
-  padding: 2px @padding-xs;
+  padding: var(--om-space-2) @padding-xs;
 }

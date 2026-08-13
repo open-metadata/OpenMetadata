@@ -14,6 +14,7 @@
 import { APIRequestContext, expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { UserClass } from '../../support/user/UserClass';
+import { createAdminApiContext } from '../../utils/admin';
 import {
   createNewPage,
   redirectToHomePage,
@@ -178,8 +179,8 @@ test.describe('User Profile Online Status', () => {
   test('Should update online status in real-time when user becomes active', async ({
     page,
   }) => {
-    // This test verifies that the online status updates when viewing a user's profile
-    // We'll use the admin user since they're always active
+    const { afterAction } = await createAdminApiContext();
+    await afterAction();
 
     // First navigate to admin profile
     await redirectToHomePage(page);

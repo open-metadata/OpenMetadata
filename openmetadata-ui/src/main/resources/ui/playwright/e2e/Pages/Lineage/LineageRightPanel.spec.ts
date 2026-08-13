@@ -43,6 +43,8 @@ test.describe(
   'Verify custom properties tab visibility logic for supported entity types lineage',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
+    test.describe.configure({ mode: 'default' });
+
     const supportedEntities = [
       { entity: new TableClass(), type: 'table' },
       { entity: new TopicClass(), type: 'topic' },
@@ -112,6 +114,8 @@ test.describe(
 );
 
 test.describe('Verify custom properties tab is NOT visible for unsupported entity types in platform lineage', () => {
+  test.describe.configure({ mode: 'default' });
+
   const unsupportedServices = [
     {
       service: new DatabaseServiceClass(),

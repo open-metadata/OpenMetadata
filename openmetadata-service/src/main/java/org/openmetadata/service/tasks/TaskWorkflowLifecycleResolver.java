@@ -421,29 +421,68 @@ public final class TaskWorkflowLifecycleResolver {
   }
 
   public static Map<String, Object> buildWorkflowStartVariables(Task draftTask) {
-    Map<String, Object> variables = new LinkedHashMap<>();
-    List<?> fallbackAssignees =
-        !nullOrEmpty(draftTask.getAssignees()) ? draftTask.getAssignees() : null;
-    variables.put("taskEntityId", draftTask.getId().toString());
-    variables.put("taskWorkflowManaged", true);
-    variables.put("taskName", draftTask.getName());
-    variables.put("taskDisplayName", draftTask.getDisplayName());
-    variables.put("taskDescription", draftTask.getDescription());
-    variables.put("taskType", draftTask.getType() != null ? draftTask.getType().value() : null);
-    variables.put(
-        "taskCategory", draftTask.getCategory() != null ? draftTask.getCategory().value() : null);
-    variables.put(
-        "taskPriority", draftTask.getPriority() != null ? draftTask.getPriority().value() : null);
-    variables.put("taskPayload", serializeWorkflowVariable(draftTask.getPayload()));
-    variables.put("taskDueDate", draftTask.getDueDate());
-    variables.put(
-        "taskExternalReference", serializeWorkflowVariable(draftTask.getExternalReference()));
-    variables.put("taskTags", serializeWorkflowVariable(draftTask.getTags()));
-    variables.put("taskCreatedBy", serializeWorkflowVariable(draftTask.getCreatedBy()));
-    variables.put("taskUpdatedBy", draftTask.getUpdatedBy());
-    variables.put("taskReviewers", serializeWorkflowVariable(draftTask.getReviewers()));
-    variables.put("taskAssignees", serializeWorkflowVariable(fallbackAssignees));
-    return variables;
+    return WorkflowStartVariables.of(draftTask).toVariables();
+  }
+
+  /**
+   * Typed carrier for a workflow-managed task's start variables. Owns the variable-name contract in
+   * one place (the constants below) so the process-variable map is built from a typed {@link Task}
+   * instead of scattered {@code put("literal", …)} calls. {@link #toVariables()} produces the exact
+   * map the Flowable engine is started with; it stays a null-tolerant {@link LinkedHashMap} because
+   * several fields (display name, description, due date, priority, …) are optional.
+   */
+  public record WorkflowStartVariables(Task task) {
+    public static final String TASK_ENTITY_ID = "taskEntityId";
+    public static final String TASK_WORKFLOW_MANAGED = "taskWorkflowManaged";
+    public static final String TASK_NAME = "taskName";
+    public static final String TASK_DISPLAY_NAME = "taskDisplayName";
+    public static final String TASK_DESCRIPTION = "taskDescription";
+    public static final String TASK_TYPE = "taskType";
+    public static final String TASK_CATEGORY = "taskCategory";
+    public static final String TASK_PRIORITY = "taskPriority";
+    public static final String TASK_PAYLOAD = "taskPayload";
+    public static final String TASK_DUE_DATE = "taskDueDate";
+    public static final String TASK_EXTERNAL_REFERENCE = "taskExternalReference";
+    public static final String TASK_TAGS = "taskTags";
+    public static final String TASK_CREATED_BY = "taskCreatedBy";
+    public static final String TASK_UPDATED_BY = "taskUpdatedBy";
+    public static final String TASK_REVIEWERS = "taskReviewers";
+    public static final String TASK_ASSIGNEES = "taskAssignees";
+
+    // Trigger-supplied start variables: these need the resolved WorkflowDefinition / form-schema
+    // binding, so they aren't derivable from Task and toVariables() doesn't emit them. The names
+    // live here so every caller that triggers a workflow shares one contract instead of repeating
+    // the literals.
+    public static final String TASK_FORM_SCHEMA_ID = "taskFormSchemaId";
+    public static final String TASK_FORM_SCHEMA_VERSION = "taskFormSchemaVersion";
+    public static final String WORKFLOW_DEFINITION_ID = "workflowDefinitionId";
+
+    public static WorkflowStartVariables of(Task task) {
+      return new WorkflowStartVariables(task);
+    }
+
+    public Map<String, Object> toVariables() {
+      List<?> fallbackAssignees = !nullOrEmpty(task.getAssignees()) ? task.getAssignees() : null;
+      Map<String, Object> variables = new LinkedHashMap<>();
+      variables.put(TASK_ENTITY_ID, task.getId().toString());
+      variables.put(TASK_WORKFLOW_MANAGED, true);
+      variables.put(TASK_NAME, task.getName());
+      variables.put(TASK_DISPLAY_NAME, task.getDisplayName());
+      variables.put(TASK_DESCRIPTION, task.getDescription());
+      variables.put(TASK_TYPE, task.getType() != null ? task.getType().value() : null);
+      variables.put(TASK_CATEGORY, task.getCategory() != null ? task.getCategory().value() : null);
+      variables.put(TASK_PRIORITY, task.getPriority() != null ? task.getPriority().value() : null);
+      variables.put(TASK_PAYLOAD, serializeWorkflowVariable(task.getPayload()));
+      variables.put(TASK_DUE_DATE, task.getDueDate());
+      variables.put(
+          TASK_EXTERNAL_REFERENCE, serializeWorkflowVariable(task.getExternalReference()));
+      variables.put(TASK_TAGS, serializeWorkflowVariable(task.getTags()));
+      variables.put(TASK_CREATED_BY, serializeWorkflowVariable(task.getCreatedBy()));
+      variables.put(TASK_UPDATED_BY, task.getUpdatedBy());
+      variables.put(TASK_REVIEWERS, serializeWorkflowVariable(task.getReviewers()));
+      variables.put(TASK_ASSIGNEES, serializeWorkflowVariable(fallbackAssignees));
+      return variables;
+    }
   }
 
   private static Object resolveTransitionForm(

@@ -834,7 +834,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                   align="start"
                   gap={2}
                   key={`error-${index}-${error.substring(0, 20)}`}>
-                  <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0 tw:mt-[6px]" />
+                  <div className="tw:w-1.5 tw:h-1.5 tw:rounded-full tw:bg-utility-error-600 tw:shrink-0 tw:mt-1.5" />
                   <Typography
                     className="tw:wrap-break-word"
                     data-testid={`entity-error-${index}`}

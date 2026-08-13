@@ -22,7 +22,6 @@ import {
   restoreSecurityConfig,
   SecurityConfigSnapshot,
 } from '../../utils/ssoAuth';
-import { getToken } from '../../utils/tokenStorage';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -45,13 +44,13 @@ const CLAIM_SCENARIOS = [
 for (const scenario of CLAIM_SCENARIOS) {
   test.describe(
     `Okta self-signup username resolution — ${scenario.title} (issue #26591)`,
-    { tag: ['@sso', '@Platform'] },
+    { tag: ['@sso', '@Platform', '@okta'] },
     () => {
       test.slow();
       // eslint-disable-next-line playwright/no-skipped-test
       test.skip(
-        providerType !== 'okta' || !username || !password,
-        `Requires ${SSO_ENV.PROVIDER_TYPE}=okta with ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
+        !username || !password,
+        `Requires ${SSO_ENV.USERNAME}/${SSO_ENV.PASSWORD}`
       );
 
       test.describe.configure({ mode: 'serial' });
@@ -66,12 +65,12 @@ for (const scenario of CLAIM_SCENARIOS) {
         'Apply the Okta public config for this claim scenario',
         async ({ browser }) => {
           helper = getProviderHelper(providerType);
-          const { apiContext, afterAction, page } = await performAdminLogin(
+          const { apiContext, afterAction, token } = await performAdminLogin(
             browser
           );
 
           try {
-            adminJwt = await getToken(page);
+            adminJwt = token;
 
             if (!adminJwt) {
               throw new Error(

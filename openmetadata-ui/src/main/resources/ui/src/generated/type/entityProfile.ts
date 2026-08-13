@@ -125,10 +125,7 @@ export interface Profile {
     /**
      * Timestamp on which profile is taken.
      */
-    timestamp?: number;
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
+    timestamp?:               number;
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Number of values that contain distinct values.

@@ -5,6 +5,7 @@ import {
 import { Button } from '@/components/base/buttons/button';
 import { Select } from '@/components/base/select/select';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import {
   ArrowLeft,
@@ -81,7 +82,7 @@ const compactPageInputClassName = cx(
 // The Select trigger's border is an outline now (it replaced a ring, which WebKit does not
 // pixel-snap). The old `outline-none!` only suppressed the native focus outline and was
 // harmless; keeping it would erase the border itself. `focus-visible:outline-none!` stays —
-// it reproduces what `focus-visible:ring-0` used to do (no edge while focused).
+// it reproduces what `[&>button]:focus-visible:outline-none!` used to do (no edge while focused).
 const compactRowsPerPageSelectClassName =
   'tw:w-[42px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:focus-visible:outline-none! tw:[&>button>span]:h-6 tw:[&>button>span]:gap-1 tw:[&>button>span]:px-1 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
 
@@ -105,15 +106,17 @@ const MobilePagination = ({
   className,
   onPageChange,
 }: MobilePaginationProps) => {
+  const { t } = useCoreTranslation();
+
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={t('label.pagination', 'Pagination')}
       className={cx(
         'tw:flex tw:items-center tw:justify-between tw:md:hidden',
         className
       )}>
       <Button
-        aria-label="Go to previous page"
+        aria-label={t('label.previous-page', 'Go to previous page')}
         color="secondary"
         iconLeading={ArrowLeft}
         size="sm"
@@ -126,7 +129,7 @@ const MobilePagination = ({
       </span>
 
       <Button
-        aria-label="Go to next page"
+        aria-label={t('label.next-page', 'Go to next page')}
         color="secondary"
         iconLeading={ArrowRight}
         size="sm"
@@ -349,6 +352,8 @@ export const PaginationCardMinimal = ({
   onPageChange,
   className,
 }: PaginationCardMinimalProps) => {
+  const { t } = useCoreTranslation();
+
   return (
     <div
       className={cx(
@@ -358,7 +363,7 @@ export const PaginationCardMinimal = ({
       <MobilePagination page={page} total={total} onPageChange={onPageChange} />
 
       <nav
-        aria-label="Pagination"
+        aria-label={t('label.pagination', 'Pagination')}
         className={cx(
           'tw:hidden tw:items-center tw:gap-3 tw:md:flex',
           align === 'center' && 'tw:justify-between'
@@ -417,6 +422,7 @@ export const PaginationCardWithControls = ({
   onPageSizeChange,
   ...props
 }: PaginationCardWithControlsProps) => {
+  const { t } = useCoreTranslation();
   const totalPages = Math.max(total, 1);
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const [pageInput, setPageInput] = useState(String(currentPage));
@@ -500,9 +506,11 @@ export const PaginationCardWithControls = ({
       onPageChange={handlePageChange}>
       <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-5 tw:gap-y-3">
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>Page</span>
+          <span className={compactTextClassName}>
+            {t('label.page', 'Page')}
+          </span>
           <input
-            aria-label="Current page"
+            aria-label={t('label.current-page', 'Current page')}
             className={compactPageInputClassName}
             inputMode="numeric"
             max={totalPages}
@@ -562,9 +570,11 @@ export const PaginationCardWithControls = ({
         </div>
 
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>Records</span>
+          <span className={compactTextClassName}>
+            {t('label.records', 'Records')}
+          </span>
           <Select
-            aria-label="Records"
+            aria-label={t('label.records', 'Records')}
             className={compactRowsPerPageSelectClassName}
             data-testid="rows-per-page-dropdown"
             fontSize="xs"

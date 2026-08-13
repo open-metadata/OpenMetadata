@@ -609,7 +609,13 @@ test.describe('Search Settings', () => {
           .getByTestId('field-weight-slider')
           .locator('.ant-slider-handle');
 
-        // Register before triggering so the delayed stale response is awaited.
+        // Register before triggering so the delayed stale request and response
+        // are both observed.
+        const stalePreviewRequest = page.waitForRequest(
+          (request) =>
+            request.url().includes('/api/v1/search/preview') &&
+            getDatabaseNgramBoost(request) >= STALE_BOOST_THRESHOLD
+        );
         const stalePreviewResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/search/preview') &&
@@ -620,6 +626,7 @@ test.describe('Search Settings', () => {
         // Home -> 0 weight fires the fast "fresh" request, issued last.
         await ngramSliderHandle.focus();
         await page.keyboard.press('End');
+        await stalePreviewRequest;
         await page.keyboard.press('Home');
 
         // Wait until the delayed stale response has been delivered, then give the

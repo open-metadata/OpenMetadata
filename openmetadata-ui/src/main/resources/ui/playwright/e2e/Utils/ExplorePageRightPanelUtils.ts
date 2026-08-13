@@ -19,7 +19,7 @@ import { navigateToExploreAndSelectEntity } from '../../utils/explore';
  * KC entities are not in ENDPOINT_TO_FILTER_MAP, so no category filter is applied.
  */
 export async function navigateToKCEntity(page: Page, entityName: string) {
-  const navParams = { page, entityName, exploreTab: 'Knowledge Center' };
+  const navParams = { page, entityName, exploreTab: 'Context Center' };
   const summaryPanel = page.locator(
     '[data-testid="entity-summary-panel-container"]'
   );

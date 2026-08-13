@@ -59,6 +59,22 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	$(MAKE) py_antlr js_antlr
 	$(MAKE) install
 
+## Reference docs generation (deterministic; CI fails if the committed output drifts)
+.PHONY: generate-entity-index
+generate-entity-index:  ## Generate docs/generated/entity-index.md from schemas + resources
+	python3 scripts/generate_entity_index.py
+
+.PHONY: generate-api-reference
+generate-api-reference:  ## Generate docs/generated/api-reference.md from JAX-RS resources
+	python3 scripts/generate_api_reference.py
+
+.PHONY: generate-reference-docs
+generate-reference-docs: generate-entity-index generate-api-reference  ## Regenerate all docs/generated/*.md
+
+.PHONY: harness-check
+harness-check:  ## Warn on harness decay (dead refs, doc sizes, rule globs, generated-doc freshness)
+	python3 scripts/harness/check_harness.py
+
 .PHONY: install_antlr_cli
 ANTLR_VERSION := 4.9.2
 # Dots escaped so the banner match below is a real version match, not a
@@ -73,6 +89,15 @@ ANTLR_VERSION_RE := $(subst .,\.,$(ANTLR_VERSION))
 #      rate-limit our shared CI egress IP and have broken the build repeatedly.
 #   3. Pinned, checksum-verified download (macOS, non-Debian images, or a distro
 #      carrying a different ANTLR such as jammy's 4.7.2).
+#
+# The checksum is what makes step 3 trustworthy; the archive check next to it is a
+# second opinion, so it reads the archive with whichever tool the host has rather
+# than insisting on one. Requiring a JDK tool to install a CLI that only needs a
+# JRE to run breaks slim runtime images (e.g. ingestion-base ships
+# default-jre-headless, which has java but no jar) on a download that already
+# verified clean. A tool that is present and rejects the archive still fails the
+# build; only the case where no reader exists falls through to the checksum alone,
+# and such a host has no java either, so it could not run the CLI regardless.
 #
 # The version match in step 2 is exact. A distro shipping a different ANTLR falls
 # through to the download rather than silently generating parsers that the pinned
@@ -140,7 +165,11 @@ install_antlr_cli:  ## Install antlr CLI locally
 				--connect-timeout 15 --max-time 60 \
 				--output "$$jar_file" "$$url" \
 				&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | $$sha_check \
-				&& jar tf "$$jar_file" > /dev/null; then \
+				&& { if command -v jar > /dev/null 2>&1; then \
+					jar tf "$$jar_file" > /dev/null; \
+				elif command -v unzip > /dev/null 2>&1; then \
+					unzip -tqq "$$jar_file" > /dev/null; \
+				else :; fi; }; then \
 				break 2; \
 			fi; \
 			echo "ANTLR $(ANTLR_VERSION) download failed from $$url (attempt $$attempt)" >&2; \
@@ -234,8 +263,8 @@ build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with th
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base:local
 
-.PHONY: build-ingestion-base-slim-local
-build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
+.PHONY: build-ingestion-slim-local
+build-ingestion-slim-local:  ## Builds the SLIM ingestion DEV docker operator with the local ingestion files
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile.ci . -t openmetadata/ingestion-base-slim:local --build-arg INGESTION_DEPENDENCY=slim
 

@@ -141,7 +141,11 @@ test.describe('Search index - deeply nested oversized columns', () => {
     // mechanism that replaced the dropped flattened columns.children.name search field. The
     // 25-level-deep leaf is past the default depth limit and is intentionally not indexed here.
     await searchInput.clear();
-    const byColumnResponse = page.waitForResponse('/api/v1/search/query?*');
+    const byColumnResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(searchableColumnName))
+    );
     await searchInput.fill(searchableColumnName);
     await byColumnResponse;
 

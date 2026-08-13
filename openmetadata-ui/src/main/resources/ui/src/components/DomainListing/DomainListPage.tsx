@@ -18,15 +18,15 @@ import {
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
+import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { withPageLayout } from '../../hoc/withPageLayout';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -42,6 +42,7 @@ import EntityListingTable from '../common/EntityListingTable/EntityListingTable.
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
@@ -96,23 +97,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const { pageHeader } = usePageHeader({
-    titleKey: 'label.domain-plural',
-    descriptionMessageKey: 'message.domain-description',
-    createPermission: permissions.domain?.Create || false,
-    addButtonLabelKey: 'label.add-domain',
-    addButtonTestId: 'add-domain',
-    onAddClick: openDrawer,
-    learningPageId: LEARNING_PAGE_IDS.DOMAIN,
-    variant: isAiMode ? 'search' : undefined,
-    breadcrumb: headerBreadcrumb,
-  });
-
-  const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.domain',
-    count: domainListing.totalEntities,
-    loading: domainListing.loading,
-  });
+  const showHeaderSearch = isAiMode;
 
   const [searchInputValue, setSearchInputValue] = useState(
     domainListing.urlState.searchQuery ?? ''
@@ -133,6 +118,39 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       debouncedSearch.cancel();
     };
   }, [debouncedSearch]);
+
+  const searchInputProps = {
+    icon: SearchLg,
+    placeholder: t('label.search'),
+    value: searchInputValue,
+    onChange: (value: string) => {
+      setSearchInputValue(value);
+      debouncedSearch(value);
+    },
+  };
+
+  const headerSearch = showHeaderSearch ? (
+    <Input className="tw:w-72" {...searchInputProps} />
+  ) : undefined;
+
+  const { pageHeader } = usePageHeader({
+    titleKey: 'label.domain-plural',
+    descriptionMessageKey: 'message.domain-description',
+    createPermission: permissions.domain?.Create || false,
+    addButtonLabelKey: 'label.add-domain',
+    addButtonTestId: 'add-domain',
+    onAddClick: openDrawer,
+    learningPageId: LEARNING_PAGE_IDS.DOMAIN,
+    variant: isAiMode ? 'search' : undefined,
+    search: headerSearch,
+    breadcrumb: headerBreadcrumb,
+  });
+
+  const { titleAndCount } = useTitleAndCount({
+    titleKey: 'label.domain',
+    count: domainListing.totalEntities,
+    loading: domainListing.loading,
+  });
 
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const isTreeView = view === ViewMode.Tree;
@@ -173,7 +191,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const content = useMemo(() => {
     if (isTreeView) {
       return (
-        <div className="tw:px-6 tw:pb-6">
+        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:pb-6">
           <DomainTreeView
             filters={domainListing.urlState.filters}
             openAddDomainDrawer={openDrawer}
@@ -218,6 +236,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           <EntityListingTable
             ariaLabel={t('label.domain')}
             columns={domainColumns}
+            containerClassName="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
             entities={domainListing.entities}
             loading={domainListing.loading}
             renderCell={renderDomainCell}
@@ -238,6 +257,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     return (
       <>
         <EntityCardView
+          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={domainListing.entities}
           loading={domainListing.loading}
           renderCard={renderDomainCard}
@@ -274,8 +294,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   return (
     <Box
-      direction="col"
-      style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
+      className={classNames('tw:min-h-0 tw:flex-1', {
+        'tw:h-[var(--om-page-height)]': isTreeView && !isAiMode,
+      })}
+      direction="col">
       {!renderPageHeader && !isAiMode && (
         <HeaderBreadcrumb items={breadcrumbItems} />
       )}
@@ -285,26 +307,24 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             createPermission: permissions.domain?.Create || false,
             count: domainListing.totalEntities,
             breadcrumb: headerBreadcrumb,
+            search: headerSearch,
           })
         : pageHeader}
 
-      <Card style={{ marginBottom: 20 }} variant="elevated">
+      <Card
+        className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
+          'tw:mb-5': !isAiMode,
+        })}
+        variant="elevated">
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {titleAndCount}
-            <Input
-              className="tw:max-w-86"
-              icon={SearchLg}
-              placeholder={t('label.search')}
-              value={searchInputValue}
-              onChange={(value) => {
-                setSearchInputValue(value);
-                debouncedSearch(value);
-              }}
-            />
+            {!showHeaderSearch && titleAndCount}
+            {!showHeaderSearch && (
+              <Input className="tw:max-w-86" {...searchInputProps} />
+            )}
             {!isTreeView && quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle
@@ -324,6 +344,19 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   );
 };
 
+const DomainListPageWithLayout: FC<DomainListPageProps> = (props) => {
+  const isAiMode = useIsAiMode();
+
+  return (
+    <PageLayoutV1
+      fullHeight={isAiMode}
+      pageTitle={props.pageTitle}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <DomainListPage {...props} />
+    </PageLayoutV1>
+  );
+};
+
 export { DomainListPage };
 
-export default withPageLayout(DomainListPage);
+export default DomainListPageWithLayout;

@@ -52,6 +52,7 @@ class LifeCycleQueryByTable(BaseModel):
 
     table_name: str = Field(..., alias="TABLE_NAME")
     created_at: Optional[datetime] = Field(None, alias="CREATED_AT")  # noqa: UP045
+    updated_at: Optional[datetime] = Field(None, alias="UPDATED_AT")  # noqa: UP045
 
 
 class LifeCycleQueryMixin:
@@ -93,6 +94,13 @@ class LifeCycleQueryMixin:
 
         return queries_dict
 
+    @staticmethod
+    def _build_access_details(value: Optional[datetime]) -> AccessDetails:  # noqa: UP045
+        """Convert a source timestamp into an AccessDetails, defaulting to the minimum date."""
+        source_datetime = value if value else datetime.min
+        timestamp_value = datetime_to_timestamp(source_datetime, milliseconds=True)
+        return AccessDetails(timestamp=Timestamp(timestamp_value))  # pyright: ignore[reportCallIssue]
+
     def get_life_cycle_data(self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str):  # noqa: UP006
         """
         Get the life cycle data
@@ -100,12 +108,11 @@ class LifeCycleQueryMixin:
         try:
             life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
             if life_cycle_data:
-                if life_cycle_data.created_at:
-                    timestamp_value = datetime_to_timestamp(life_cycle_data.created_at, milliseconds=True)
-                else:
-                    timestamp_value = datetime_to_timestamp(datetime.min, milliseconds=True)  # Using minimum date
-
-                life_cycle = LifeCycle(created=AccessDetails(timestamp=Timestamp(timestamp_value)))
+                life_cycle = LifeCycle(  # pyright: ignore[reportCallIssue]
+                    created=self._build_access_details(life_cycle_data.created_at)  # pyright: ignore[reportAttributeAccessIssue]
+                )
+                if life_cycle_data.updated_at:  # pyright: ignore[reportAttributeAccessIssue]
+                    life_cycle.updated = self._build_access_details(life_cycle_data.updated_at)  # pyright: ignore[reportAttributeAccessIssue]
 
                 yield Either(right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle))
         except Exception as exc:
@@ -146,10 +153,7 @@ class LifeCycleQueryMixin:
                 entity=Table,
                 entity_name=self.context.get().table,
                 entity_fqn=table_fqn,
-                query=self.life_cycle_query.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                ),
+                query=self.get_life_cycle_query(),
             )
         except Exception as exc:
             yield Either(

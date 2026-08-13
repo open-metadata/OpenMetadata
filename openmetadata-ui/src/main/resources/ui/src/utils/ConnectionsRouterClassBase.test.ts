@@ -64,6 +64,15 @@ describe('ConnectionsRouterClassBase', () => {
     it('isEmbeddedMode should always return false', () => {
       expect(router.isEmbeddedMode()).toBe(false);
     });
+
+    // The settings services route exists by default. Only a mode that replaces the listing
+    // outright overrides this — and deliberately not isEmbeddedMode(), which is also true while
+    // Classic is merely displaying an embedded experience.
+    it('isServicesSettingsRouteDisabled should always return false', () => {
+      router.setEmbeddedMode(true);
+
+      expect(router.isServicesSettingsRouteDisabled()).toBe(false);
+    });
   });
 
   describe('getSettingsServicesPath', () => {

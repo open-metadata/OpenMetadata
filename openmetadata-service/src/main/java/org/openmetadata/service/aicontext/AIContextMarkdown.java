@@ -28,11 +28,13 @@ import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
 
@@ -44,8 +46,13 @@ import org.openmetadata.service.Entity;
  * Structural markdown is preferred over prose because it aids both human reading and agent retrieval.
  */
 public final class AIContextMarkdown {
-  /** Media type of the OKF-style markdown document produced by {@link #render}. */
-  public static final String TEXT_MARKDOWN = "text/markdown";
+  /**
+   * Media type of the OKF-style markdown document produced by {@link #render}. The {@code
+   * charset=UTF-8} parameter is required: the document embeds non-ASCII glyphs (em dashes, arrows,
+   * the section sign) and, without an explicit charset, clients default {@code text/*} to
+   * ISO-8859-1 (RFC 2616) and mojibake the UTF-8 bytes.
+   */
+  public static final String TEXT_MARKDOWN = "text/markdown; charset=UTF-8";
 
   /** {@code ?format=} value that selects the structured AIContext JSON over markdown. */
   public static final String FORMAT_JSON = "json";
@@ -306,6 +313,32 @@ public final class AIContextMarkdown {
     if (assetContext != null && assetContext.getTable() != null) {
       appendTableContext(markdown, assetContext.getTable(), sections, headingPrefix);
     }
+    if (assetContext != null && assetContext.getGeneric() != null) {
+      appendGenericContext(markdown, assetContext.getGeneric(), sections, headingPrefix);
+    }
+  }
+
+  /**
+   * The fallback sub-context: an asset's fields plus the definition backing it (a metric's
+   * expression, a stored procedure's code, a query). Gated on SCHEMA like the table equivalent.
+   */
+  private static void appendGenericContext(
+      StringBuilder markdown,
+      GenericAssetContext generic,
+      Set<ContextSection> sections,
+      String headingPrefix) {
+    if (sections.contains(ContextSection.SCHEMA)) {
+      appendSchemaTable(markdown, generic.getFields(), headingPrefix);
+      appendDefinition(markdown, generic.getDefinition(), headingPrefix);
+    }
+  }
+
+  private static void appendDefinition(
+      StringBuilder markdown, String definition, String headingPrefix) {
+    if (!nullOrEmpty(definition)) {
+      appendHeading(markdown, headingPrefix, "Definition");
+      appendSqlBlock(markdown, definition);
+    }
   }
 
   private static void appendTableContext(
@@ -315,6 +348,7 @@ public final class AIContextMarkdown {
       String headingPrefix) {
     if (sections.contains(ContextSection.SCHEMA)) {
       appendSchemaTable(markdown, table.getColumns(), headingPrefix);
+      appendDataModel(markdown, table.getDataModel(), headingPrefix);
     }
     if (sections.contains(ContextSection.CONSTRAINTS)) {
       appendPrimaryKey(markdown, table);
@@ -366,6 +400,40 @@ public final class AIContextMarkdown {
           .append(" | ")
           .append(cell(column.getDescription()))
           .append(" |\n");
+    }
+  }
+
+  private static void appendDataModel(
+      StringBuilder markdown, TableDataModel dataModel, String headingPrefix) {
+    if (dataModel != null) {
+      appendHeading(markdown, headingPrefix, "Data Model");
+      appendDataModelMeta(markdown, dataModel);
+      appendSqlBlock(markdown, dataModel.getSql());
+    }
+  }
+
+  private static void appendDataModelMeta(StringBuilder markdown, TableDataModel dataModel) {
+    StringBuilder meta = new StringBuilder();
+    appendMetaPart(meta, "Type", dataModel.getModelType());
+    appendMetaPart(meta, "Path", dataModel.getPath());
+    appendMetaPart(meta, "Project", dataModel.getSourceProject());
+    if (meta.length() > 0) {
+      markdown.append('\n').append(meta).append('\n');
+    }
+  }
+
+  private static void appendMetaPart(StringBuilder meta, String label, String value) {
+    if (!nullOrEmpty(value)) {
+      if (meta.length() > 0) {
+        meta.append(" · ");
+      }
+      meta.append("**").append(label).append(":** `").append(inlineCodeValue(value)).append('`');
+    }
+  }
+
+  private static void appendSqlBlock(StringBuilder markdown, String sql) {
+    if (!nullOrEmpty(sql)) {
+      markdown.append("\n```sql\n").append(sql.strip()).append("\n```\n");
     }
   }
 

@@ -57,6 +57,7 @@ from metadata.ingestion.connections.test_connections import SourceConnectionExce
 from metadata.ingestion.source.database.databricks.auth import (
     catalog_url,
     get_auth_config,
+    get_data_diff_connection_dict,
     probe_target,
 )
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
@@ -73,6 +74,9 @@ from metadata.ingestion.source.database.databricks.queries import (
     TEST_TABLE_LINEAGE,
     TEST_TABLE_TAGS,
     TEST_VIEW_DEFINITIONS,
+)
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_user_agent,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -259,9 +263,15 @@ def get_connection(connection: DatabricksConnectionConfig) -> Engine:
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
+    connection_arguments = connection.connectionArguments.root
+    if connection_arguments is None:
+        connection_arguments = {}
+        connection.connectionArguments.root = connection_arguments
 
     if connection.httpPath:
-        connection.connectionArguments.root["http_path"] = connection.httpPath
+        connection_arguments["http_path"] = connection.httpPath
+
+    connection_arguments["user_agent_entry"] = get_databricks_user_agent()
 
     auth_args = get_auth_config(connection)
 
@@ -405,6 +415,10 @@ class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
         engine = get_connection(self.service_connection)
         self._on_close(engine.dispose)
         return engine
+
+    def get_connection_dict(self) -> dict:
+        """Return the connection parameters for data-diff."""
+        return get_data_diff_connection_dict(self.service_connection)
 
     def close(self) -> None:
         # Not _on_close: that registry is reset by close(), so a sub-owner

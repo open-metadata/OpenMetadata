@@ -13,6 +13,7 @@
 import { Grid } from '@openmetadata/ui-core-components';
 import QueryString from 'qs';
 import { useTranslation } from 'react-i18next';
+import type { NavigateFunction } from 'react-router-dom';
 import {
   ABORTED_CHART_COLOR_SCHEME,
   FAILED_CHART_COLOR_SCHEME,
@@ -22,6 +23,7 @@ import { DATA_QUALITY_DASHBOARD_HEADER } from '../../../constants/DataQuality.co
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { getTestCaseTabPath } from '../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
@@ -63,6 +65,7 @@ export interface DqDashboardSectionContentProps {
   sectionKey: DqDashboardSectionKey;
   pieChartFilters: DqDashboardChartFilters;
   defaultFilters: DqDashboardChartFilters;
+  navigate?: NavigateFunction;
 }
 
 /**
@@ -76,10 +79,14 @@ export const DqDashboardSectionContent = ({
   sectionKey,
   pieChartFilters,
   defaultFilters,
+  navigate,
 }: DqDashboardSectionContentProps) => {
   const { t } = useTranslation();
   const testCasesPath = observabilityRouterClassBase.getDataQualityPagePath(
     DataQualityPageTabs.TEST_CASES
+  );
+  const testSuitesPath = observabilityRouterClassBase.getDataQualityPagePath(
+    DataQualityPageTabs.TEST_SUITES
   );
   const incidentPath = observabilityRouterClassBase.getIncidentManagerPath();
 
@@ -91,18 +98,24 @@ export const DqDashboardSectionContent = ({
             <DataAssetsCoveragePieChartWidget
               chartFilter={pieChartFilters}
               className={DQ_DASHBOARD_PIE_CHART_CLASS}
+              navigate={navigate}
+              redirectPath={testSuitesPath}
             />
           </Grid.Item>
           <Grid.Item span={8}>
             <EntityHealthStatusPieChartWidget
               chartFilter={pieChartFilters}
               className={DQ_DASHBOARD_PIE_CHART_CLASS}
+              navigate={navigate}
+              redirectPath={testCasesPath}
             />
           </Grid.Item>
           <Grid.Item span={8}>
             <TestCaseStatusPieChartWidget
               chartFilter={pieChartFilters}
               className={DQ_DASHBOARD_PIE_CHART_CLASS}
+              navigate={navigate}
+              redirectPath={testCasesPath}
             />
           </Grid.Item>
         </Grid>
@@ -120,10 +133,8 @@ export const DqDashboardSectionContent = ({
               chartFilter={defaultFilters}
               name="success"
               redirectPath={{
+                ...getTestCaseTabPath(TestCaseStatus.Success, defaultFilters),
                 pathname: testCasesPath,
-                search: QueryString.stringify({
-                  testCaseStatus: TestCaseStatus.Success,
-                }),
               }}
               testCaseStatus={TestCaseStatus.Success}
               title={t('label.success')}
@@ -135,10 +146,8 @@ export const DqDashboardSectionContent = ({
               chartFilter={defaultFilters}
               name="aborted"
               redirectPath={{
+                ...getTestCaseTabPath(TestCaseStatus.Aborted, defaultFilters),
                 pathname: testCasesPath,
-                search: QueryString.stringify({
-                  testCaseStatus: TestCaseStatus.Aborted,
-                }),
               }}
               testCaseStatus={TestCaseStatus.Aborted}
               title={t('label.aborted')}
@@ -150,10 +159,8 @@ export const DqDashboardSectionContent = ({
               chartFilter={defaultFilters}
               name="failed"
               redirectPath={{
+                ...getTestCaseTabPath(TestCaseStatus.Failed, defaultFilters),
                 pathname: testCasesPath,
-                search: QueryString.stringify({
-                  testCaseStatus: TestCaseStatus.Failed,
-                }),
               }}
               testCaseStatus={TestCaseStatus.Failed}
               title={t('label.failed')}
@@ -164,58 +171,53 @@ export const DqDashboardSectionContent = ({
 
     case 'incident-metrics':
       return (
-        <Grid colGap="6">
-          <Grid.Item span={6}>
-            <IncidentTypeAreaChartWidget
-              chartFilter={defaultFilters}
-              incidentStatusType={TestCaseResolutionStatusTypes.New}
-              name="open-incident"
-              redirectPath={{
-                pathname: incidentPath,
-                search: QueryString.stringify({
-                  testCaseResolutionStatusType:
-                    TestCaseResolutionStatusTypes.New,
-                  startTs: defaultFilters.startTs,
-                  endTs: defaultFilters.endTs,
-                }),
-              }}
-              title={t('label.open-incident-plural')}
-            />
-          </Grid.Item>
-          <Grid.Item span={6}>
-            <IncidentTypeAreaChartWidget
-              chartFilter={defaultFilters}
-              incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
-              name="resolved-incident"
-              redirectPath={{
-                pathname: incidentPath,
-                search: QueryString.stringify({
-                  testCaseResolutionStatusType:
-                    TestCaseResolutionStatusTypes.Resolved,
-                  startTs: defaultFilters.startTs,
-                  endTs: defaultFilters.endTs,
-                }),
-              }}
-              title={t('label.resolved-incident-plural')}
-            />
-          </Grid.Item>
-          <Grid.Item span={6}>
-            <IncidentTimeChartWidget
-              chartFilter={defaultFilters}
-              incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESPONSE}
-              name="response-time"
-              title={t('label.response-time')}
-            />
-          </Grid.Item>
-          <Grid.Item span={6}>
-            <IncidentTimeChartWidget
-              chartFilter={defaultFilters}
-              incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESOLUTION}
-              name="resolution-time"
-              title={t('label.resolution-time')}
-            />
-          </Grid.Item>
-        </Grid>
+        <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-2 tw:xl:grid-cols-4">
+          <IncidentTypeAreaChartWidget
+            chartFilter={defaultFilters}
+            height={60}
+            incidentStatusType={TestCaseResolutionStatusTypes.New}
+            name="open-incident"
+            redirectPath={{
+              pathname: incidentPath,
+              search: QueryString.stringify({
+                testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
+                startTs: defaultFilters.startTs,
+                endTs: defaultFilters.endTs,
+              }),
+            }}
+            title={t('label.open-incident-plural')}
+          />
+          <IncidentTypeAreaChartWidget
+            chartFilter={defaultFilters}
+            height={60}
+            incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
+            name="resolved-incident"
+            redirectPath={{
+              pathname: incidentPath,
+              search: QueryString.stringify({
+                testCaseResolutionStatusType:
+                  TestCaseResolutionStatusTypes.Resolved,
+                startTs: defaultFilters.startTs,
+                endTs: defaultFilters.endTs,
+              }),
+            }}
+            title={t('label.resolved-incident-plural')}
+          />
+          <IncidentTimeChartWidget
+            chartFilter={defaultFilters}
+            height={60}
+            incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESPONSE}
+            name="response-time"
+            title={t('label.response-time')}
+          />
+          <IncidentTimeChartWidget
+            chartFilter={defaultFilters}
+            height={60}
+            incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESOLUTION}
+            name="resolution-time"
+            title={t('label.resolution-time')}
+          />
+        </div>
       );
 
     default:
