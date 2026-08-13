@@ -296,7 +296,6 @@ test.describe('CsvJobsTray', () => {
       { ...RUNNING_EXPORT_JOB, status: 'COMPLETED', progress: 18 },
     ]);
 
-
     await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible({
       timeout: 30_000,
     });
