@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1748 endpoints** across 73 resource packages · 1738 carry a summary.
+**1755 endpoints** across 74 resource packages · 1745 carry a summary.
 
 ## (root)
 
@@ -748,6 +748,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/dataQuality/testCases/search/list` | List test cases using search service |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus` | List the test case failure statuses |
 | `POST` | `/v1/dataQuality/testCases/testCaseIncidentStatus` | Create a new test case failure status |
+| `PUT` | `/v1/dataQuality/testCases/testCaseIncidentStatus/bulk` | Bulk create test case failure statuses |
+| `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/incidentGroups` | List open incident counts grouped by a dimension |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/search/list` | List test case resolution status using search service |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/{stateId}` | Get test case failure statuses for a sequence id |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/{id}` | Get test case failure status by id |
@@ -1467,6 +1469,12 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/searchIndexes/{id}/versions/{version}` | Get a version of the SearchIndex |
 | `PUT` | `/v1/searchIndexes/{id}/vote` | Update Vote for a Entity |
 
+## services
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/overview` | Get service counts and one merged, name-sorted page of services |
+
 ## services/apiservices
 
 | Method | Path | Purpose |
@@ -1954,6 +1962,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/personas/name/{fqn}/context` | Get the materialized AI context for a persona by name |
 | `DELETE` | `/v1/personas/name/{name}` | Delete a Persona by name |
 | `GET` | `/v1/personas/name/{name}` | Get a Persona by name |
+| `GET` | `/v1/personas/search` | Search personas |
 | `DELETE` | `/v1/personas/{id}` | Delete a Persona by id |
 | `GET` | `/v1/personas/{id}` | Get a persona by id |
 | `PATCH` | `/v1/personas/{id}` | Update a Persona |
@@ -2049,6 +2058,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/users/{id}/assets` | List assets owned by this user or their teams |
 | `GET` | `/v1/users/{id}/versions` | List user versions |
 | `GET` | `/v1/users/{id}/versions/{version}` | Get a version of the user |
+| `GET` | `/v1/users/{userId}/preferences` | Get user preferences |
+| `DELETE` | `/v1/users/{userId}/preferences/{type}` | Delete a user preference |
+| `PUT` | `/v1/users/{userId}/preferences/{type}` | Create or replace a user preference |
 
 ## testsupport
 
