@@ -115,8 +115,8 @@ export const getGlossaryTermDetailPageTabs = (
   } = props;
 
   // Draft / In Review terms can still reach Approved, so use the actionable
-  // "once it is approved" copy. Terminal states (Rejected, Deprecated, Archived,
-  // ...) will not, so use status-neutral copy that does not promise approval.
+  // Terminal states (Rejected, Deprecated, Archived,
+  // will not, so use status-neutral copy that does not promise approval.
   const glossaryTermStatus = glossaryTerm.entityStatus ?? EntityStatus.Approved;
   const isTermPendingApproval =
     glossaryTermStatus === EntityStatus.Draft ||
