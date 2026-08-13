@@ -14,7 +14,6 @@
 // Deliberately does not mock @openmetadata/ui-core-components: the real Table
 // collection is what rejects duplicate column ids.
 import { render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getTestCaseFailedSampleData } from '../../../../rest/testAPI';
 import FailedTestCaseSampleData from './FailedTestCaseSampleData.component';
