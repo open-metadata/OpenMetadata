@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
 
@@ -1110,9 +1111,7 @@ public class IngestionPipelineResource
         Object logs = lastIngestionLogs.remove("logs");
         if (logs != null) {
           lastIngestionLogs.put(
-              PipelineServiceClientInterface.taskKeyOf(
-                  ingestionPipeline.getPipelineType().toString()),
-              logs.toString());
+              TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()), logs.toString());
         }
       } else {
         throw new PipelineServiceClientException(
@@ -1203,8 +1202,7 @@ public class IngestionPipelineResource
               Object logs = logChunk.remove("logs");
               if (logs != null) {
                 logChunk.put(
-                    PipelineServiceClientInterface.taskKeyOf(
-                        ingestionPipeline.getPipelineType().toString()),
+                    TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
                     logs.toString());
               }
             } else {

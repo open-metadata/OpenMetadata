@@ -69,7 +69,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.config.WorkflowConfigBuilder;
@@ -167,6 +166,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
   // Default values
   private static final String DEFAULT_CRON_SCHEDULE = "0 0 * * *";
+  private static final String DEFAULT_TASK_KEY = "ingestion_task";
   private static final String POD_PREFIX = "Pod: ";
   private static final String NAMESPACE_PREFIX = " in namespace: ";
   private static final String KUBERNETES_CLUSTER_PREFIX = "Kubernetes cluster - namespace: ";
@@ -1118,8 +1118,10 @@ public class K8sPipelineClient extends PipelineServiceClient {
         return Map.of("logs", NO_LOGS_MESSAGE + podName);
       }
 
-      String taskKey =
-          PipelineServiceClientInterface.taskKeyOf(ingestionPipeline.getPipelineType().value());
+      String taskKey = TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().value());
+      if (taskKey == null) {
+        taskKey = DEFAULT_TASK_KEY;
+      }
 
       return IngestionLogHandler.buildLogResponse(logs, after, taskKey);
 
