@@ -171,6 +171,8 @@ class TestHelpers(TestCase):
         self.assertFalse(is_safe_sql_query("truncate table test"))
         self.assertFalse(is_safe_sql_query("TRUNCATE TABLE test"))
 
+        self.assertFalse(is_safe_sql_query("BEGIN TRANSACTION; SELECT * FROM table1; COMMIT"))
+
     def test_is_safe_sql_query_dangerous_functions(self):
         """Test is_safe_sql_query blocks dangerous database functions"""
         self.assertFalse(is_safe_sql_query("SELECT pg_read_file('/etc/passwd')"))
