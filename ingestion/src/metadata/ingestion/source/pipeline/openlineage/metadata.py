@@ -29,9 +29,13 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
+    Kafka as KafkaBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    Kinesis as KinesisBrokerConfig,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
-    KafkaBrokerConfig,
-    KinesisBrokerConfig,
     OpenLineageConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
