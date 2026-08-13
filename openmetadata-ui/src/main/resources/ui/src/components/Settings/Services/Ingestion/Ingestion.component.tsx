@@ -45,6 +45,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   collateAgentPagingInfo,
   onCollateAgentPageChange,
   agentCounts,
+  isLoading,
   refreshAgentsList,
   workflowStartAt,
 }: IngestionProps) => {
@@ -114,9 +115,16 @@ const Ingestion: React.FC<IngestionProps> = ({
     [decodedServiceFQN, serviceCategory, tab, navigate]
   );
 
+  // Keyed off the rendered list rather than the raw route param, which is absent on the default
+  // sub-tab — refreshing must never ask for the list the user cannot see.
   const handleRefresh = useCallback(
-    () => refreshAgentsList(subTab as ServiceAgentSubTabs),
-    [refreshAgentsList, subTab]
+    () =>
+      refreshAgentsList(
+        isCollateSubTabSelected
+          ? ServiceAgentSubTabs.COLLATE_AI
+          : ServiceAgentSubTabs.METADATA
+      ),
+    [refreshAgentsList, isCollateSubTabSelected]
   );
 
   const subTabItems = useMemo(() => {
@@ -149,7 +157,11 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   return (
     <div className="agents-tab" data-testid="ingestion-details-container">
-      <DeploymentSummaryCard agents={agents} />
+      {/* `agents` is one page of the list; the Metadata badge count is the service's real total. */}
+      <DeploymentSummaryCard
+        agents={agents}
+        totalAgents={agentCounts?.[ServiceAgentSubTabs.METADATA]}
+      />
 
       {isCollateAIWidgetSupported && (
         <Tabs
@@ -176,6 +188,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         <MetadataAgentsView
           agents={agents}
           ingestionPipelineList={ingestionPipelineList}
+          isRefreshing={isLoading}
           serviceCategory={serviceCategory}
           serviceDetails={serviceDetails}
           serviceName={decodedServiceFQN}

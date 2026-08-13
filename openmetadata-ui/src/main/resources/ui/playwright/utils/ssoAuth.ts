@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
-import { getApiContext } from './common';
+import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import { performAdminLogin } from './admin';
+import { getApiContext, getAuthContext } from './common';
 
 export interface ProviderCredentials {
   username: string;
@@ -27,10 +28,11 @@ export interface ProviderConfigOverride {
 
 const SECURITY_CONFIG_ENDPOINT = '/api/v1/system/security/config';
 
-// Round-trippable = can be GET'd and PUT back unchanged. These two aren't:
-// GET returns empty-string placeholders that the PUT validator rejects.
+// GET returns these unusable for a PUT: ldap/saml as empty-string stubs the
+// validator rejects, oidc with its secret masked and nothing to unmask it.
 const NON_ROUND_TRIPPABLE_AUTH_FIELDS = [
   'ldapConfiguration',
+  'oidcConfiguration',
   'samlConfiguration',
 ] as const;
 
@@ -111,6 +113,42 @@ export const restoreSecurityConfig = async (
   });
 
   expect(response.status()).toBe(200);
+};
+
+/**
+ * Applies `override` for the lifetime of a suite; returns the restore function.
+ * The admin JWT must be captured before the swap — afterwards the admin can no
+ * longer authenticate.
+ */
+export const swapSecurityConfig = async (
+  browser: Browser,
+  override: ProviderConfigOverride
+): Promise<() => Promise<void>> => {
+  const { apiContext, afterAction, token } = await performAdminLogin(browser);
+
+  try {
+    if (!token) {
+      throw new Error(
+        'Failed to capture admin JWT before SSO swap — aborting to avoid leaving server in SSO mode'
+      );
+    }
+
+    const snapshot = await fetchSecurityConfig(apiContext);
+
+    await applyProviderConfig(apiContext, snapshot, override);
+
+    return async () => {
+      const adminContext = await getAuthContext(token);
+
+      try {
+        await restoreSecurityConfig(adminContext, snapshot);
+      } finally {
+        await adminContext.dispose();
+      }
+    };
+  } finally {
+    await afterAction();
+  }
 };
 
 export const verifyLoggedInUserMatches = async (
