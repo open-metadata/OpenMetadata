@@ -49,17 +49,8 @@ RUN dpkg --configure -a \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
-    # Pull bookworm-security fixes for known-vulnerable packages
-    # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
-    # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
-    # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
-    # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
-    # --only-upgrade is a no-op for packages not present in the base image.
-    && apt-get -qq install -y --only-upgrade \
-         libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
-         libpam0g libpam-modules libpam-modules-bin libpam-runtime \
-         curl libcurl4 libcurl3-gnutls libmariadb3 wget \
-         perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+    # Security upgrades are deliberately NOT done here -- see the RUN just above
+    # `USER openmetadata`.
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
@@ -118,6 +109,26 @@ ENV PATH="/home/openmetadata/.local/bin:${PATH}"
 # /usr/local copy stays on disk and image scanners keep reporting it
 # (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
 RUN pip install --no-cache-dir --upgrade "pip>=26.2,<27"
+
+# Pull bookworm-security fixes for packages that came in as dependencies of the apt
+# install near the top of this file (libnss3 via default-jre-headless, perl, curl,
+# libgnutls30, ...). Those land at whatever the apt index held when that layer ran.
+#
+# Keep this layer here, and do NOT fold it back into that apt RUN. A RUN's build cache
+# key is its literal text plus its parent layer digest -- the top-of-file apt layer's
+# parents never change, so the moment a layer cache is in play it is a permanent hit and
+# the Debian index freezes with it. That is how CVE-2026-16389 shipped in a 13 Aug
+# ingestion image: its apt layer was a 6 Aug cache hit, four days before nss
+# 2:3.87.1-1+deb12u4 reached bookworm-security. The release build runs without a layer
+# cache, but keeping the upgrade in a late layer is what keeps that true by construction
+# rather than by pipeline configuration.
+RUN apt-get -qq update \
+    && apt-get -qq install -y --only-upgrade \
+         libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
+         libpam0g libpam-modules libpam-modules-bin libpam-runtime \
+         curl libcurl4 libcurl3-gnutls libmariadb3 wget \
+         perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
+    && rm -rf /var/lib/apt/lists/*
 
 USER openmetadata
 
