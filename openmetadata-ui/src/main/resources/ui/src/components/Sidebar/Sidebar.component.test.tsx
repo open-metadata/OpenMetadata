@@ -101,4 +101,48 @@ describe('Sidebar', () => {
       '/data-quality'
     );
   });
+
+  it('should select Data Quality for a bundle suite detail page', () => {
+    render(
+      <MemoryRouter initialEntries={['/test-suites/Orders.Bundle']}>
+        <Sidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('nav-list')).toHaveAttribute(
+      'data-active-url',
+      '/data-quality'
+    );
+  });
+
+  it('should select Data Quality for a table suite detail page', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname:
+              '/table/service.database.schema.orders/profiler/data-quality',
+            state: {
+              breadcrumbData: [
+                {
+                  name: 'Test Suites',
+                  url: '/data-quality/test-suites/table-suites',
+                },
+                {
+                  name: 'orders',
+                  url: '/table/service.database.schema.orders/profiler/data-quality',
+                },
+              ],
+            },
+          },
+        ]}>
+        <Sidebar />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('nav-list')).toHaveAttribute(
+      'data-active-url',
+      '/data-quality'
+    );
+  });
 });

@@ -21,19 +21,31 @@ const TEST_CASE_ROUTE_PREFIX = ROUTES.TEST_CASE_DETAILS.replace(
   `/${PLACEHOLDER_ROUTE_FQN}`,
   ''
 );
+const TEST_SUITE_ROUTE_PREFIX = ROUTES.TEST_SUITES_WITH_FQN.replace(
+  `/${PLACEHOLDER_ROUTE_FQN}`,
+  ''
+);
 
 export const getSidebarPathname = (
   pathname: string,
   locationState: unknown
 ): string => {
-  if (!pathname.startsWith(`${TEST_CASE_ROUTE_PREFIX}/`)) {
-    return pathname;
-  }
-
   const originUrl = (locationState as BreadcrumbLocationState | null)
     ?.breadcrumbData?.[0]?.url;
 
-  return originUrl ?? ROUTES.INCIDENT_MANAGER;
+  if (originUrl) {
+    return originUrl;
+  }
+
+  if (pathname.startsWith(`${TEST_CASE_ROUTE_PREFIX}/`)) {
+    return ROUTES.INCIDENT_MANAGER;
+  }
+
+  if (pathname.startsWith(`${TEST_SUITE_ROUTE_PREFIX}/`)) {
+    return ROUTES.DATA_QUALITY;
+  }
+
+  return pathname;
 };
 
 export const getSidebarActiveKeys = (
