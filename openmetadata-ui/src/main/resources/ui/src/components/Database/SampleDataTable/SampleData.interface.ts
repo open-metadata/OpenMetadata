@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ColumnsType } from 'antd/lib/table';
+import { ColumnType } from 'antd/lib/table';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/tests/testCase';
@@ -24,8 +24,18 @@ export type SampleDataType =
 
 type RecordProps = Record<string, SampleDataType>;
 
+/**
+ * `name` is the column name as the source system reports it. It is kept apart
+ * from `key`/`dataIndex` because those address the row record, which cannot be
+ * keyed by a raw column name (see SampleDataTable.component).
+ */
+export interface SampleDataColumn extends ColumnType<RecordProps> {
+  name: string;
+  dataType: string;
+}
+
 export interface SampleData {
-  columns?: ColumnsType<RecordProps>;
+  columns?: SampleDataColumn[];
   rows?: RecordProps[];
 }
 

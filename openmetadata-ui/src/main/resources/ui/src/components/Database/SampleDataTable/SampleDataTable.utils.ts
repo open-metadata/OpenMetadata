@@ -13,7 +13,7 @@
 
 import { isObject, toString as lodashToString } from 'lodash';
 import { unparse } from 'papaparse';
-import { SampleDataType } from './SampleData.interface';
+import { SampleDataColumn, SampleDataType } from './SampleData.interface';
 
 export const ROW_LIMIT_OPTIONS = [10, 100, 1000];
 
@@ -21,15 +21,19 @@ export const stringifySampleDataValue = (value: SampleDataType): string =>
   isObject(value) ? JSON.stringify(value) : lodashToString(value);
 
 export const buildSampleDataCSVContent = (
-  columnNames: string[],
+  columns: Pick<SampleDataColumn, 'key' | 'name'>[],
   rows: Record<string, SampleDataType>[],
   rowLimit: number
 ): string => {
   const limitedRows = rows.slice(0, rowLimit);
+  const columnNames = columns.map(({ name }) => name);
 
   const data = limitedRows.map((row) =>
     Object.fromEntries(
-      columnNames.map((col) => [col, stringifySampleDataValue(row[col])])
+      columns.map(({ key, name }) => [
+        name,
+        stringifySampleDataValue(row[String(key ?? '')]),
+      ])
     )
   );
 
