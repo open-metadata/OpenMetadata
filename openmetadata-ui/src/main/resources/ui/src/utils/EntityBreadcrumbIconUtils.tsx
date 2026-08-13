@@ -12,7 +12,6 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import type { FC } from 'react';
 import { createPath } from 'react-router-dom';
 import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -35,7 +34,7 @@ export const getBreadcrumbIcon = (
   entityType
     ? ({ className }) => (
         <>
-          {getEntityIcon(entityType, classNames(className, 'tw:text-gray-500'))}
+          {getEntityIcon(entityType, className)}
         </>
       )
     : undefined;

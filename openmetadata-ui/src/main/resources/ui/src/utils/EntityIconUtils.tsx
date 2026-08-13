@@ -169,12 +169,15 @@ export const getEntityIcon = (
   size?: EntityIconSize
 ) => {
   const className = classNames(
+    'tw:text-fg-tertiary tw:[stroke-width:1.5]',
     iconClass,
     size && ENTITY_ICON_SIZE_CLASS_MAP[size]
   );
   const Icon = entityIconMapping[indexType];
 
-  return Icon ? <Icon className={className} style={iconStyle} /> : null;
+  return Icon ? (
+    <Icon className={className} style={iconStyle} />
+  ) : null;
 };
 
 export const getEntityTypeIcon = (entityType?: string) =>
