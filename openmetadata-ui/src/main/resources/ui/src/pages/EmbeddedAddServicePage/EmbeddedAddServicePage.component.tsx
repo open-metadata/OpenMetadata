@@ -42,8 +42,8 @@ import { FiltersConfigFormHandle } from '../../components/Settings/Services/Serv
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
-  SERVICE_DEFAULT_ERROR_MAP,
   ServiceCategoryParam,
+  SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
