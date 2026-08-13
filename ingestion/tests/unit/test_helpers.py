@@ -190,6 +190,21 @@ class TestHelpers(TestCase):
         self.assertFalse(is_safe_sql_query("EXEC sp_oacreate 'obj'"))
         self.assertFalse(is_safe_sql_query("exec SP_OACREATE 'obj'"))
 
+    def test_is_safe_sql_query_blocks_nested_dangerous_tokens(self):
+        """Dangerous functions and statements are rejected at any parse depth."""
+        self.assertFalse(is_safe_sql_query("SELECT COALESCE(pg_catalog.pg_read_file('/etc/passwd'), '')"))
+        self.assertFalse(is_safe_sql_query("SELECT (SELECT lo_import('/tmp/payload'))"))
+        self.assertFalse(
+            is_safe_sql_query("WITH changed AS (UPDATE users SET admin = true RETURNING *) SELECT * FROM changed")
+        )
+        self.assertFalse(is_safe_sql_query("SELECT 1; SELECT pg_write_file('/tmp/x', 'data')"))
+
+    def test_is_safe_sql_query_allows_safe_nested_queries_and_token_text(self):
+        """Nested reads and forbidden words inside data or comments remain valid."""
+        self.assertTrue(is_safe_sql_query("SELECT * FROM (SELECT id FROM users) nested_users"))
+        self.assertTrue(is_safe_sql_query("SELECT 'pg_read_file', 'DROP', 'UPDATE'"))
+        self.assertTrue(is_safe_sql_query("SELECT id FROM users -- DROP is comment text"))
+
     def test_is_safe_sql_query_none_input(self):
         """Test is_safe_sql_query handles None input"""
         self.assertTrue(is_safe_sql_query(None))

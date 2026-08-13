@@ -28,6 +28,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP
 
 import sqlparse
 from pydantic_core import Url  # noqa: TC002
+from sqlparse import tokens as sql_tokens
 from sqlparse.sql import Statement  # noqa: TC002
 
 from metadata.generated.schema.entity.data.chart import ChartType
@@ -405,7 +406,7 @@ def is_safe_sql_query(sql_query: str) -> bool:
         bool
     """
 
-    forbiden_token = {
+    forbidden_tokens = {
         "CREATE",
         "ALTER",
         "DROP",
@@ -451,10 +452,25 @@ def is_safe_sql_query(sql_query: str) -> bool:
         return True
 
     parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)  # noqa: UP006
-    # We split the tokens by "(" to capture cases like "INSERT(...)", "UPDATE(...), etc."
     for parsed_query in parsed_queries:
-        if any(token.normalized.upper().split("(")[0] in forbiden_token for token in parsed_query.tokens):
-            return False
+        normalized_tokens = []
+        for token in parsed_query.flatten():
+            if (
+                token.is_whitespace
+                or token.ttype in sql_tokens.Comment
+                or token.ttype in sql_tokens.Literal.String.Single
+            ):
+                continue
+            normalized_tokens.append(token.normalized.upper().strip('`"[]').split("(")[0])
+
+        for forbidden_token in forbidden_tokens:
+            forbidden_parts = forbidden_token.split()
+            token_count = len(forbidden_parts)
+            if any(
+                normalized_tokens[index : index + token_count] == forbidden_parts
+                for index in range(len(normalized_tokens) - token_count + 1)
+            ):
+                return False
     return True
 
 
