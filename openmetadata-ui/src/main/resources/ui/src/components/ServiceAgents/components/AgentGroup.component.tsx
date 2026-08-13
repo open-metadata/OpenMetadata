@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-} from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus, RefreshCw01 } from '@untitledui/icons';
+import { Badge, Box, Button, Card } from '@openmetadata/ui-core-components';
+import { ChevronDown, Plus } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';
 import Loader from '../../common/Loader/Loader';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
@@ -99,15 +94,10 @@ const AgentGroup: FC<AgentGroupProps> = ({
             Agent on the metadata list and takes that same top-right spot on the Collate AI list,
             whose header carries no add button. */}
         {onRefresh && (
-          <ButtonUtility
-            color="secondary"
+          <Button
             data-testid="agent-group-refresh"
-            icon={isRefreshing ? <Loader size="x-small" /> : RefreshCw01}
+            iconLeading={isRefreshing ? <Loader size="x-small" /> : ReloadIcon}
             isDisabled={isRefreshing}
-            size="sm"
-            tooltip={t('label.refresh-entity', {
-              entity: t('label.agent-plural'),
-            })}
             onClick={onRefresh}
           />
         )}
