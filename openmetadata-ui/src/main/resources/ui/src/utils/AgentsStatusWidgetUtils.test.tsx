@@ -127,9 +127,14 @@ describe('automationRunToAppRunRecord', () => {
     const jobStats = result.successContext?.stats?.jobStats;
 
     expect(jobStats?.successRecords).toBe(15);
-    expect(jobStats?.totalRecords).toBe(15);
     expect(jobStats?.failedRecords).toBe(2);
     expect(jobStats?.warningRecords).toBe(1);
+    // The total has to include the failures, or success + failed exceeds it and every success rate
+    // computes as 100%.
+    expect(jobStats?.totalRecords).toBe(17);
+    expect(jobStats?.totalRecords).toBe(
+      (jobStats?.successRecords ?? 0) + (jobStats?.failedRecords ?? 0)
+    );
   });
 
   it('leaves successContext unset when the run has no steps', () => {

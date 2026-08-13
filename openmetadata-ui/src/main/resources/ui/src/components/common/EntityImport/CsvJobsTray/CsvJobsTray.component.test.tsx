@@ -46,6 +46,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+  // ToastUtils pulls `toast` from this package, so an incomplete mock makes any
+  // error path throw instead of reporting.
+  toast: {
+    error: jest.fn(),
+    success: jest.fn(),
+    warning: jest.fn(),
+  },
 }));
 
 jest.mock('../../../../context/WebSocketProvider/WebSocketProvider', () => ({
@@ -248,5 +255,121 @@ describe('CsvJobsTray', () => {
 
     expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv-job');
+  });
+
+  // The completion websocket event only reaches sockets held by the server that
+  // ran the job, so on a multi-server deployment it is often delivered to a peer.
+  // Polling is what actually keeps the tray truthful.
+  it('polls for job updates while a job is active, without a websocket event', async () => {
+    mockGetCsvAsyncJobs
+      .mockResolvedValueOnce([
+        createJob({
+          jobId: 'running-job',
+          progress: 20,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ])
+      .mockResolvedValue([
+        createJob({ jobId: 'running-job', status: 'COMPLETED' }),
+      ]);
+
+    await act(async () => {
+      render(<CsvJobsTray />);
+    });
+
+    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('label.background-job-plural')).toBeInTheDocument();
+
+    // Once nothing is active the loop must stop rather than poll forever.
+    const callsAfterCompletion = mockGetCsvAsyncJobs.mock.calls.length;
+    await act(async () => {
+      jest.advanceTimersByTime(20000);
+    });
+
+    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(callsAfterCompletion);
+  });
+
+  // The poll is self-scheduling rather than a fixed interval, so a response
+  // slower than the interval cannot stack up concurrent requests.
+  it('does not start another poll while one is still in flight', async () => {
+    let resolveSlowFetch: (jobs: CsvAsyncJob[]) => void = () => undefined;
+    mockGetCsvAsyncJobs
+      .mockResolvedValueOnce([
+        createJob({
+          jobId: 'slow-job',
+          progress: 20,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ])
+      .mockImplementationOnce(
+        () =>
+          new Promise<CsvAsyncJob[]>((resolve) => {
+            resolveSlowFetch = resolve;
+          })
+      );
+
+    await act(async () => {
+      render(<CsvJobsTray />);
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
+
+    // Three further intervals elapse while the second poll is unresolved.
+    await act(async () => {
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      resolveSlowFetch([createJob({ jobId: 'slow-job', status: 'COMPLETED' })]);
+    });
+  });
+
+  it('marks a job undownloadable when its result is gone', async () => {
+    // Reset rather than clear: clearAllMocks keeps implementations, so a queued
+    // mock left by an earlier test would still answer here. Opening the tray
+    // re-fetches, so the job mock has to be persistent rather than queued.
+    mockGetCsvAsyncJobs.mockReset();
+    mockGetCsvAsyncJobResult.mockReset();
+    mockGetCsvAsyncJobs.mockResolvedValueOnce([]).mockResolvedValue([
+      createJob({
+        jobId: 'expired-export-job',
+        status: 'COMPLETED',
+      }),
+    ]);
+    mockGetCsvAsyncJobResult.mockRejectedValue({
+      response: { status: 404 },
+    });
+
+    await renderComponent();
+
+    await act(async () => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    fireEvent.click(await screen.findByText('label.background-job-plural'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.download' }));
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'label.download' })
+      ).not.toBeInTheDocument()
+    );
   });
 });

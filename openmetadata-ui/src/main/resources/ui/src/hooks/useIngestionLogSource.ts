@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { useCallback } from 'react';
-import { useLogStream } from '../components/common/LogViewerModal/useLogStream';
+import { useCallback, useMemo } from 'react';
+import {
+  getIngestionLogStreamUrl,
+  useLogStream,
+} from '../components/common/LogViewerModal/useLogStream';
 import { getLogTaskFieldForType } from '../components/ServiceAgents/utils/agentsDataMapper';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
@@ -69,12 +72,17 @@ export const useIngestionLogSource = ({
   const hasLog = enabled && Boolean(ingestionFqn);
   const canStream = hasLog && Boolean(runId);
 
+  const streamUrl = useMemo(
+    () =>
+      canStream ? getIngestionLogStreamUrl(ingestionFqn, runId ?? '') : '',
+    [canStream, ingestionFqn, runId]
+  );
+
   // The stream stops itself once it reaches a terminal frame, so it is safe to
   // leave `enabled` on for the whole active run — it will not reconnect after
   // the run finishes.
   const stream = useLogStream({
-    fqn: ingestionFqn,
-    runId: runId ?? '',
+    streamUrl,
     enabled: canStream && runActive,
   });
 
