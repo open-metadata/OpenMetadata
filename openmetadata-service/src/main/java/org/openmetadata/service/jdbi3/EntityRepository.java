@@ -10714,6 +10714,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  /**
+   * Batch-loads tags onto these entities in one query, for authorization. Used by the bulk path so a
+   * tag policy evaluates against tags fetched once for the whole request rather than once per entity.
+   */
+  public void batchLoadTags(List<T> entities) {
+    fetchAndSetTags(entities, getFields(FIELD_TAGS));
+  }
+
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
     if (!fields.contains(FIELD_DATA_PRODUCTS) || !supportsDataProducts || nullOrEmpty(entities)) {
       return;
