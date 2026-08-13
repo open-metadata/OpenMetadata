@@ -126,6 +126,7 @@ const AssetsTabs = forwardRef(
       isEntityDeleted = false,
       type = AssetsOfEntity.GLOSSARY,
       noDataPlaceholder,
+      addDisabledMessage,
       entityFqn,
       assetCount,
       preloadedData,
@@ -724,7 +725,7 @@ const AssetsTabs = forwardRef(
         return (
           <CreatePlaceholder
             actions={
-              permissions.Create
+              permissions.Create && !addDisabledMessage
                 ? [
                     {
                       key: 'add-asset',
@@ -738,9 +739,12 @@ const AssetsTabs = forwardRef(
                   ]
                 : undefined
             }
-            description={t('message.link-assets-description', {
-              entity: getEntityTypeString(type),
-            })}
+            description={
+              addDisabledMessage ??
+              t('message.link-assets-description', {
+                entity: getEntityTypeString(type),
+              })
+            }
             icon={<EmptyAssetIcon className="tw:text-utility-brand-600" />}
             title={t('label.no-assets-linked-yet')}
           />
@@ -749,6 +753,7 @@ const AssetsTabs = forwardRef(
     }, [
       searchValue,
       noDataPlaceholder,
+      addDisabledMessage,
       permissions,
       onAddAsset,
       isEntityDeleted,
