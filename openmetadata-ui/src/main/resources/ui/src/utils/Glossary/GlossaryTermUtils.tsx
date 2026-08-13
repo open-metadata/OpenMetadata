@@ -114,11 +114,20 @@ export const getGlossaryTermDetailPageTabs = (
     setPreviewAsset,
   } = props;
 
+  // Draft / In Review terms can still reach Approved, so use the actionable
+  // "once it is approved" copy. Terminal states (Rejected, Deprecated, Archived,
+  // ...) will not, so use status-neutral copy that does not promise approval.
   const glossaryTermStatus = glossaryTerm.entityStatus ?? EntityStatus.Approved;
+  const isTermPendingApproval =
+    glossaryTermStatus === EntityStatus.Draft ||
+    glossaryTermStatus === EntityStatus.InReview;
+  const assetsAddDisabledKey = isTermPendingApproval
+    ? 'message.assets-add-disabled-term-status'
+    : 'message.assets-add-restricted-term-status';
   const assetsAddDisabledMessage =
     glossaryTermStatus === EntityStatus.Approved
       ? undefined
-      : i18n.t('message.assets-add-disabled-term-status', {
+      : i18n.t(assetsAddDisabledKey, {
           status: i18n.t(`label.${kebabCase(glossaryTermStatus)}`, {
             defaultValue: glossaryTermStatus,
           }),

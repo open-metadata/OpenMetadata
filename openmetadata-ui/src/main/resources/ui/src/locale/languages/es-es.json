@@ -3002,6 +3002,7 @@
     "assess-data-reliability-with-data-profiler-lineage": "Evalúa la confiabilidad de los datos con el perfilador de datos, linaje, los datos de muestra y más.",
     "asset-relations-select-term": "Seleccione un término del glosario o una métrica para gestionar las relaciones.",
     "assets-add-disabled-term-status": "Este término está {{status}}. Los activos se pueden añadir una vez que esté aprobado.",
+    "assets-add-restricted-term-status": "Este término está {{status}}. Los activos solo se pueden añadir a términos aprobados.",
     "assigned-you-a-new-task-lowercase": "te ha asignado una nueva tarea",
     "assigning-team-entity-description": "Agrega un(a) {{entity}} a {{name}}. Este(a) {{entity}} será heredado(a) por todos los usuarios en el equipo {{name}} así como por todos los equipos bajo {{name}}",
     "at-least-one-policy": "Ingresa al menos una política",

@@ -3002,6 +3002,7 @@
     "assess-data-reliability-with-data-profiler-lineage": "Obtén unha vantaxe competitiva no mundo impulsado por datos co enfoque correcto para a gobernanza dos datos. Protexe os teus datos e potencia o teu negocio para impulsar a innovación e o crecemento.",
     "asset-relations-select-term": "Seleccione un termo do glosario ou unha métrica para xestionar as relacións.",
     "assets-add-disabled-term-status": "Este termo está {{status}}. Os activos pódense engadir unha vez que estea aprobado.",
+    "assets-add-restricted-term-status": "Este termo está {{status}}. Os activos só se poden engadir a termos aprobados.",
     "assigned-you-a-new-task-lowercase": "asignóuseche unha nova tarefa",
     "assigning-team-entity-description": "Engade un {{entity}} a {{name}}. Este {{entity}} será herdado por todos os usuarios do equipo {{name}}, así como por todos os equipos por baixo {{name}}.",
     "at-least-one-policy": "Introduce polo menos unha política",

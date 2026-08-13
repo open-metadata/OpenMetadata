@@ -3002,6 +3002,7 @@
     "assess-data-reliability-with-data-profiler-lineage": "Оценивайте надежность данных с помощью профиля данных и их происхождения.",
     "asset-relations-select-term": "Выберите термин глоссария или метрику для управления связями.",
     "assets-add-disabled-term-status": "Этот термин имеет статус {{status}}. Активы можно добавить после его утверждения.",
+    "assets-add-restricted-term-status": "Этот термин имеет статус {{status}}. Активы можно добавлять только к утверждённым терминам.",
     "assigned-you-a-new-task-lowercase": "вам поставлена новая задача.",
     "assigning-team-entity-description": "Добавьте объект «{{entity}}» в {{name}}. Этот объект будет унаследован всеми пользователями в команде {{name}}, а также всеми командами под {{name}}.",
     "at-least-one-policy": "Введите хотя бы одну политику",

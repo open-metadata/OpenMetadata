@@ -3002,6 +3002,7 @@
     "assess-data-reliability-with-data-profiler-lineage": "Verkrijg een concurrentievoordeel in de op datagedreven wereld met de juiste benadering van datamanagement. Beveilig uw data en geef uw bedrijf de kracht om innovatie en groei te stimuleren.",
     "asset-relations-select-term": "Selecteer een glossariumterm of metriek om relaties te beheren.",
     "assets-add-disabled-term-status": "Deze term is {{status}}. Assets kunnen worden toegevoegd zodra deze is goedgekeurd.",
+    "assets-add-restricted-term-status": "Deze term is {{status}}. Assets kunnen alleen aan goedgekeurde termen worden toegevoegd.",
     "assigned-you-a-new-task-lowercase": "er is een nieuwe taak aan u toegewezen",
     "assigning-team-entity-description": "Voeg een {{entity}} toe aan {{name}}. Dit {{entity}} zal worden overgenomen door alle gebruikers in het team {{name}} en ook door alle teams onder {{name}}",
     "at-least-one-policy": "Voer ten minste één beleidsregel in",

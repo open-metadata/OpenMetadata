@@ -3002,6 +3002,7 @@
     "assess-data-reliability-with-data-profiler-lineage": "اكتسب ميزة تنافسية في العالم المعتمد على البيانات من خلال النهج الصحيح لحوكمة البيانات. قم بتأمين بياناتك وتمكين عملك لتغذية الابتكار والنمو.",
     "asset-relations-select-term": "حدد مصطلح مسرد أو مقياساً لإدارة العلاقات.",
     "assets-add-disabled-term-status": "هذا المصطلح {{status}}. يمكن إضافة الأصول بعد الموافقة عليه.",
+    "assets-add-restricted-term-status": "هذا المصطلح {{status}}. لا يمكن إضافة الأصول إلا إلى المصطلحات المعتمدة.",
     "assigned-you-a-new-task-lowercase": "تم تعيين مهمة جديدة لك",
     "assigning-team-entity-description": "أضف {{entity}} إلى {{name}}. سيتم وراثة هذا {{entity}} من قبل جميع المستخدمين في الفريق {{name}} وكذلك جميع الفرق تحت {{name}}",
     "at-least-one-policy": "أدخل سياسة واحدة على الأقل",
