@@ -14,9 +14,9 @@
 import { render, screen } from '@testing-library/react';
 import { ServiceInsightsWidgetType } from '../../../enums/ServiceInsights.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { ServicesType } from '../../../interface/service.interface';
 import { getServiceInsightsWidgetPlaceholder } from '../../../utils/ServiceInsightsWidgets';
 import { getReadableCountString } from '../../../utils/ServicePureUtils';
-import { ServicesType } from '../../../interface/service.interface';
 import { TotalAssetsCount } from '../ServiceInsightsTab.interface';
 import TotalDataAssetsWidget from './TotalDataAssetsWidget';
 
