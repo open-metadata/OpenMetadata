@@ -48,12 +48,14 @@ import {
   KnowledgePage,
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import { searchGlossaryTerms } from '../../../rest/glossaryAPI';
 import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
@@ -85,6 +87,10 @@ interface QuickLinkFormValues {
   glossaryTerms: QuickLinkFormSelectItem[];
   relatedEntities: QuickLinkFormSelectItem[];
 }
+
+const QUICK_LINK_LABEL_KEY = 'label.quick-link';
+const URL_UPPERCASE_LABEL_KEY = 'label.url-uppercase';
+const SELECT_FIELD_LABEL_KEY = 'label.select-field';
 
 export interface QuickLinkFormModalProps {
   isOpen: boolean;
@@ -183,7 +189,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   useEffect(() => {
     form.reset(initialValues);
-  }, [initialValues]);
+  }, [initialValues, form]);
 
   useEffect(() => {
     if (isOpen) {
@@ -350,9 +356,12 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         { fields: getKnowledgePageFields() }
       );
 
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('message.entity-saved-successfully', {
-          entity: t('label.quick-link'),
+          entity: t(QUICK_LINK_LABEL_KEY),
         })
       );
       onSave({
@@ -414,12 +423,12 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const urlField: FieldProp = {
     name: 'url',
     required: true,
-    label: t('label.url-uppercase'),
+    label: t(URL_UPPERCASE_LABEL_KEY),
     id: 'root/url',
     type: FieldTypes.TEXT,
     rules: {
       required: t('label.field-required', {
-        field: t('label.url-uppercase'),
+        field: t(URL_UPPERCASE_LABEL_KEY),
       }),
       validate: (value: string) =>
         isValidUrl(value) || t('message.invalid-url'),
@@ -428,7 +437,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
       'data-testid': 'url',
       disabled: !permissions.EditAll,
     },
-    placeholder: t('label.url-uppercase'),
+    placeholder: t(URL_UPPERCASE_LABEL_KEY),
   };
 
   const descriptionField: FieldProp = {
@@ -467,7 +476,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         />
       ),
     },
-    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
+    placeholder: t(SELECT_FIELD_LABEL_KEY, { field: t('label.tag-plural') }),
   };
 
   const glossaryTermsField: FieldProp = {
@@ -493,7 +502,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         />
       ),
     },
-    placeholder: t('label.select-field', {
+    placeholder: t(SELECT_FIELD_LABEL_KEY, {
       field: t('label.glossary-term-plural'),
     }),
   };
@@ -520,14 +529,14 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         />
       ),
     },
-    placeholder: t('label.select-field', {
+    placeholder: t(SELECT_FIELD_LABEL_KEY, {
       field: t('label.data-asset-plural'),
     }),
   };
 
   const title = isUndefined(quickLink)
-    ? t('label.add-entity', { entity: t('label.quick-link') })
-    : `${t('label.edit-entity', { entity: t('label.quick-link') })} ${
+    ? t('label.add-entity', { entity: t(QUICK_LINK_LABEL_KEY) })
+    : `${t('label.edit-entity', { entity: t(QUICK_LINK_LABEL_KEY) })} ${
         getEntityName(quickLink) || t('label.untitled')
       }`;
 
