@@ -189,6 +189,22 @@ INNER JOIN sys.schemas as sch
 """
 )
 
+# Synonyms are aliases, not tables or views, so they are never ingested as entities.
+# Lineage resolves the references made through them against this mapping instead.
+# base_object_name is a bracket-quoted multipart name, e.g. [db].[schema].[object].
+MSSQL_GET_SYNONYMS = textwrap.dedent(
+    """
+SELECT
+    DB_NAME() AS database_name,
+    sch.name AS schema_name,
+    syn.name AS synonym_name,
+    syn.base_object_name AS base_object_name
+FROM sys.synonyms AS syn
+INNER JOIN sys.schemas AS sch
+    ON syn.schema_id = sch.schema_id
+"""
+)
+
 MSSQL_GET_DATABASE = """
 SELECT name FROM master.sys.databases order by name
 """
