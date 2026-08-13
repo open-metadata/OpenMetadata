@@ -25,6 +25,14 @@ from metadata.profiler.orm.functions.count import CountFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.orm.types.custom_image import CustomImage
 
+# Alias for the per-value occurrence count exposed by the grouped sub-select/CTE that the
+# unique-count implementations read back from. It must never be derived from the column name:
+# BigQuery profiles nested STRUCT subfields under a dotted name (``customer.email``), and its
+# dialect renders that name two incompatible ways - ``format_label`` substitutes the dot
+# (``customer_email``) while ``quote_column`` splits it into ``\`customer\`.\`email\```. A derived
+# label therefore can never be referenced back. Issue #30152.
+UNIQUE_COUNT_GROUP_ALIAS = "value_occurrences"
+
 
 def _get_unique_count_expressions(col: Column, dialect: str) -> Tuple[ColumnElement, ColumnElement]:  # noqa: UP006
     """
