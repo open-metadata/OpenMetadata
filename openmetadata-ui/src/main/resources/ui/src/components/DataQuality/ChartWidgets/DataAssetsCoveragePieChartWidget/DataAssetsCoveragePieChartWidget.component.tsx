@@ -37,9 +37,12 @@ import '../chart-widgets.less';
 const DataAssetsCoveragePieChartWidget = ({
   className = '',
   chartFilter,
+  navigate: navigateProp,
+  redirectPath,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const routerNavigate = useNavigate();
+  const navigate = navigateProp ?? routerNavigate;
   const [isLoading, setIsLoading] = useState(true);
   const [dataAssetsCoverageStates, setDataAssetsCoverageStates] = useState<{
     covered: number;
@@ -50,16 +53,16 @@ const DataAssetsCoveragePieChartWidget = ({
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
       if (index === 0) {
-        navigate(
+        const testSuitesPath =
           observabilityRouterClassBase.getDataQualityPagePath(
             DataQualityPageTabs.TEST_SUITES
-          )
-        );
+          );
+        navigate(redirectPath ?? testSuitesPath);
       } else if (index === 1) {
         navigate(ROUTES.EXPLORE);
       }
     },
-    [navigate]
+    [navigate, redirectPath]
   );
 
   const { data, chartLabel } = useMemo(
@@ -87,11 +90,10 @@ const DataAssetsCoveragePieChartWidget = ({
   const fetchDataAssetsCoverage = async () => {
     setIsLoading(true);
     try {
-      const { data: coverageData } = await fetchEntityCoveredWithDQ(
-        chartFilter,
-        false
-      );
-      const { data: totalData } = await fetchTotalEntityCount(chartFilter);
+      const [{ data: coverageData }, { data: totalData }] = await Promise.all([
+        fetchEntityCoveredWithDQ(chartFilter, false),
+        fetchTotalEntityCount(chartFilter),
+      ]);
       if (coverageData.length === 0 || totalData.length === 0) {
         setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
 

@@ -249,48 +249,57 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     if (nullOrEmpty(entities)) {
       return;
     }
-    fetchAndSetDefaultService(entities);
-    fetchAndSetParents(entities, fields);
+    fetchAndSetServiceAndParent(entities);
     fetchAndSetStatistics(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (Directory entity : entities) {
       clearFieldsInternal(entity, fields);
+      if (!fields.contains(FIELD_PARENT)) {
+        entity.withParent(null);
+      }
     }
   }
 
-  private void fetchAndSetDefaultService(List<Directory> directories) {
-    Map<UUID, EntityReference> serviceMap = batchFetchFromByType(directories, Entity.DRIVE_SERVICE);
-    directories.forEach(directory -> directory.withService(serviceMap.get(directory.getId())));
-  }
-
-  private void fetchAndSetParents(List<Directory> directories, EntityUtil.Fields fields) {
-    if (!fields.contains(FIELD_PARENT)) {
-      return;
-    }
-    Map<UUID, EntityReference> parentMap = batchFetchFromByType(directories, DIRECTORY);
-    directories.forEach(directory -> directory.withParent(parentMap.get(directory.getId())));
-  }
-
-  private Map<UUID, EntityReference> batchFetchFromByType(
-      List<Directory> directories, String fromEntityType) {
-    Map<UUID, EntityReference> resultMap = new HashMap<>();
+  /**
+   * Resolves both the drive service and the parent directory from a single CONTAINS batch query.
+   * Every directory has a service->directory edge, and nested directories additionally have a
+   * parent->directory edge, so one findFromBatch returns both; they are partitioned by the from
+   * entity type. Parent is always resolved (not only when requested) because setInheritedFields
+   * needs it to inherit a nested directory's domain from its parent directory instead of the drive
+   * service, matching the single-entity setFields path. It is nulled out after inheritance if not
+   * requested.
+   */
+  private void fetchAndSetServiceAndParent(List<Directory> directories) {
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
             .findFromBatch(entityListToStrings(directories), Relationship.CONTAINS.ordinal());
+    Map<UUID, EntityReference> serviceMap = new HashMap<>();
+    Map<UUID, EntityReference> parentMap = new HashMap<>();
     Map<UUID, EntityReference> refById = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
-      if (fromEntityType.equals(record.getFromEntity())) {
+      String fromType = record.getFromEntity();
+      Map<UUID, EntityReference> target =
+          switch (fromType) {
+            case Entity.DRIVE_SERVICE -> serviceMap;
+            case DIRECTORY -> parentMap;
+            default -> null;
+          };
+      if (target != null) {
         UUID directoryId = UUID.fromString(record.getToId());
         UUID fromId = UUID.fromString(record.getFromId());
         EntityReference ref =
             refById.computeIfAbsent(
-                fromId, id -> getEntityReferenceById(fromEntityType, id, Include.NON_DELETED));
-        resultMap.put(directoryId, ref);
+                fromId, id -> getEntityReferenceById(fromType, id, Include.NON_DELETED));
+        target.put(directoryId, ref);
       }
     }
-    return resultMap;
+    directories.forEach(
+        directory ->
+            directory
+                .withService(serviceMap.get(directory.getId()))
+                .withParent(parentMap.get(directory.getId())));
   }
 
   private void fetchAndSetStatistics(List<Directory> directories, EntityUtil.Fields fields) {
@@ -600,7 +609,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                   List.of(
                       Pair.of(8, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(9, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(getDomains(printer, csvRecord, 10, newDirectory.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 11));
 
       if (processRecord) {

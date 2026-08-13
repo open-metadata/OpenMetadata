@@ -41,6 +41,39 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+  Breadcrumbs: jest
+    .fn()
+    .mockImplementation(
+      ({
+        items,
+        maxItems,
+      }: {
+        items: { id: string; label: React.ReactNode }[];
+        maxItems?: number;
+      }) => {
+        const shouldCollapse = Boolean(maxItems && items.length > maxItems);
+        const displayItems = shouldCollapse
+          ? [items[0], { id: 'ellipsis', label: null }, items[items.length - 1]]
+          : items;
+
+        return (
+          <ol>
+            {displayItems.map((item, index) => (
+              <li key={item.id}>
+                {shouldCollapse && index === 1 ? (
+                  <svg data-testid="dots-horizontal-icon" />
+                ) : (
+                  <span>{item.label}</span>
+                )}
+                {index < displayItems.length - 1 && (
+                  <svg data-testid="chevron-right-icon" />
+                )}
+              </li>
+            ))}
+          </ol>
+        );
+      }
+    ),
 }));
 
 jest.mock('react-i18next', () => ({

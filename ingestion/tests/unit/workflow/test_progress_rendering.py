@@ -16,13 +16,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate
     ProgressNode,
     ProgressUpdate,
 )
-from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
-from metadata.workflow.progress_render import (
-    ProgressReporter,
+from metadata.ingestion.progress import (
     format_eta,
     render_progress_tree,
     snapshot_to_progress_payload,
 )
+from metadata.ingestion.progress.registry import ProgressNodeSnapshot, ProgressRegistry
 
 
 def _tree_snapshot():
@@ -33,6 +32,30 @@ def _tree_snapshot():
     for _ in range(20):
         reg.advance(["xyz", "abc"])
     return reg.snapshot()
+
+
+class TestReporterAssetsIngested:
+    def test_counts_all_leaf_types(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.open(["db"], "DatabaseSchema", 1)
+        reg.open(["db", "sch"], "Table", 3)
+        reg.open(["db", "sch"], "StoredProcedure", 2)
+        for _ in range(3):
+            reg.advance(["db", "sch"], "Table")
+        for _ in range(2):
+            reg.advance(["db", "sch"], "StoredProcedure")
+        assert reg.assets_ingested() == 5
+
+    def test_survives_scope_pruning(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.open(["db", "sch"], "Table", 2)
+        reg.advance(["db", "sch"], "Table")
+        reg.advance(["db", "sch"], "Table")
+        reg.close(["db", "sch"])
+        reg.close(["db"])
+        assert reg.assets_ingested() == 2
 
 
 class TestProgressRendering:
@@ -98,20 +121,20 @@ def _snowflake_like_registry() -> ProgressRegistry:
     return registry
 
 
-class TestProgressReporter:
+class TestRegistryReporting:
     def test_cli_header_is_assets_ingested(self):
         registry = _snowflake_like_registry()
-        text = ProgressReporter(registry).cli()
+        text = registry.render_cli()
         assert text.splitlines()[0] == f"Ingested: {registry.assets_ingested():,} assets"
 
     def test_cli_still_shows_active_scope(self):
-        text = ProgressReporter(_snowflake_like_registry()).cli()
+        text = _snowflake_like_registry().render_cli()
         assert "sales.public" in text
         assert "45/310" in text
 
     def test_payload_root_carries_asset_total(self):
         registry = _snowflake_like_registry()
-        payload = ProgressReporter(registry).payload()
+        payload = registry.sse_payload()
         assert set(payload) == {
             "label",
             "entityType",
@@ -129,13 +152,13 @@ class TestProgressReporter:
             runId="r",
             timestamp=1,
             updateType="PROCESSING",
-            progress=ProgressReporter(_snowflake_like_registry()).payload(),
+            progress=_snowflake_like_registry().sse_payload(),
         )
         assert update.progress is not None
         assert update.progress.processed == 45
 
     def test_payload_is_none_before_anything_starts(self):
-        assert ProgressReporter(ProgressRegistry()).payload() is None
+        assert ProgressRegistry().sse_payload() is None
 
     def test_progress_update_carries_global_counters(self):
         reg = ProgressRegistry()
@@ -143,7 +166,7 @@ class TestProgressReporter:
         reg.track("Workspaces")
         reg.track("Workspaces")
         reg.track("Workspaces")
-        counters = ProgressReporter(reg).global_counters()
+        counters = reg.global_counters()
         update = ProgressUpdate(
             runId="r1",
             timestamp=1,
@@ -165,7 +188,7 @@ class TestGroupHeader:
         for _ in range(12):
             reg.track("DatabaseSchema")
         reg.advance([], "Table")
-        lines = ProgressReporter(reg).cli().splitlines()
+        lines = reg.render_cli().splitlines()
         assert lines[0] == "Database 2/4"
         assert lines[1].startswith("DatabaseSchema 12/45")
         assert lines[2] == "Ingested: 1 assets"
@@ -174,25 +197,25 @@ class TestGroupHeader:
         reg = ProgressRegistry()
         reg.set_total("Workspaces", None)
         reg.track("Workspaces")
-        assert ProgressReporter(reg).cli() == "Workspaces 1"
+        assert reg.render_cli() == "Workspaces 1"
 
     def test_header_renders_with_empty_tree_when_counter_active(self):
         reg = ProgressRegistry()
         reg.set_total("Workspaces", 4)
         for _ in range(4):
             reg.track("Workspaces")
-        assert ProgressReporter(reg).cli() == "Workspaces 4/4"
+        assert reg.render_cli() == "Workspaces 4/4"
 
     def test_no_group_keeps_legacy_header(self):
         reg = ProgressRegistry()
         reg.open([], "Database", None)
         reg.open(["x"], "Table", 2)
         reg.advance(["x"], "Table")
-        assert ProgressReporter(reg).cli().splitlines()[0] == "Ingested: 1 assets"
+        assert reg.render_cli().splitlines()[0] == "Ingested: 1 assets"
 
     def test_cli_empty_when_no_progress(self):
         reg = ProgressRegistry()
-        assert ProgressReporter(reg).cli() == ""
+        assert reg.render_cli() == ""
 
 
 class TestGlobalCountersOnSseUpdate:
@@ -202,7 +225,7 @@ class TestGlobalCountersOnSseUpdate:
         reg.track("Workspaces")
         reg.track("Workspaces")
         reg.track("Workspaces")
-        assert ProgressReporter(reg).global_counters() == [("Workspaces", 3, 10)]
+        assert reg.global_counters() == [("Workspaces", 3, 10)]
 
 
 class TestFormatEta:
@@ -227,14 +250,14 @@ class TestEtaSeconds:
         reg = ProgressRegistry()
         reg.open([], "Database", None)
         reg.set_total("DatabaseSchema", 45)
-        assert ProgressReporter(reg).eta_seconds() is None
+        assert reg.eta_seconds() is None
 
     def test_no_counter_with_total_is_none(self):
         reg = ProgressRegistry()
         reg.open([], "Database", None)
         reg.set_total("Workspaces", None)
         reg.track("Workspaces")
-        assert ProgressReporter(reg).eta_seconds() is None
+        assert reg.eta_seconds() is None
 
     def test_complete_is_none(self):
         reg = ProgressRegistry()
@@ -242,32 +265,32 @@ class TestEtaSeconds:
         reg.set_total("DatabaseSchema", 4)
         for _ in range(4):
             reg.track("DatabaseSchema")
-        assert ProgressReporter(reg).eta_seconds() is None
+        assert reg.eta_seconds() is None
 
     def test_computable_without_open_when_counter_active(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.set_total("DatabaseSchema", 10)
             for _ in range(2):
                 reg.track("DatabaseSchema")
             clock.return_value = 60.0
-            assert ProgressReporter(reg).eta_seconds() == 240
+            assert reg.eta_seconds() == 240
 
     def test_normal_case_uses_cumulative_rate(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.open([], "Database", None)
             reg.set_total("DatabaseSchema", 10)
             for _ in range(2):
                 reg.track("DatabaseSchema")
             clock.return_value = 60.0
-            assert ProgressReporter(reg).eta_seconds() == 240
+            assert reg.eta_seconds() == 240
 
     def test_driver_is_last_counter_with_total(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.open([], "Database", None)
             reg.set_total("Database", 4)
@@ -276,13 +299,13 @@ class TestEtaSeconds:
             for _ in range(4):
                 reg.track("DatabaseSchema")
             clock.return_value = 100.0
-            assert ProgressReporter(reg).eta_seconds() == 400
+            assert reg.eta_seconds() == 400
 
 
 class TestEtaInHeader:
     def test_eta_suffix_on_driver_line_only(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.open([], "Database", None)
             reg.set_total("Database", 4)
@@ -292,7 +315,7 @@ class TestEtaInHeader:
             for _ in range(9):
                 reg.track("DatabaseSchema")
             clock.return_value = 120.0
-            lines = ProgressReporter(reg).cli().splitlines()
+            lines = reg.render_cli().splitlines()
         assert lines[0] == "Database 2/4"
         assert lines[1].startswith("DatabaseSchema 9/45")
         assert "~8m" in lines[1]
@@ -302,7 +325,7 @@ class TestEtaInHeader:
         reg = ProgressRegistry()
         reg.open([], "Database", None)
         reg.set_total("DatabaseSchema", 45)
-        assert "~" not in ProgressReporter(reg).cli()
+        assert "~" not in reg.render_cli()
 
 
 class TestHeaderIngestedSuppression:
@@ -310,7 +333,7 @@ class TestHeaderIngestedSuppression:
         registry = ProgressRegistry()
         registry.set_total("Queries", 100)
         registry.track("Queries", 12)
-        text = ProgressReporter(registry).cli()
+        text = registry.render_cli()
         assert "Queries 12/100" in text
         assert "Ingested:" not in text
 
@@ -318,7 +341,7 @@ class TestHeaderIngestedSuppression:
         registry = ProgressRegistry()
         registry.set_total("LineageRecords", None)
         registry.track("LineageRecords", 8210)
-        text = ProgressReporter(registry).cli()
+        text = registry.render_cli()
         assert "LineageRecords 8210" in text
         assert "/" not in text
         assert "Ingested:" not in text
@@ -327,5 +350,5 @@ class TestHeaderIngestedSuppression:
         registry = ProgressRegistry()
         registry.open(["db", "schema"], "Table", 3)
         registry.advance(["db", "schema"], "Table")
-        text = ProgressReporter(registry).cli()
+        text = registry.render_cli()
         assert "Ingested: 1 assets" in text

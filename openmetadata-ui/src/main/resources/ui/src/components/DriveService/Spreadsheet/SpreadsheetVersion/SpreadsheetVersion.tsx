@@ -44,7 +44,7 @@ import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import Loader from '../../../common/Loader/Loader';
 import Table from '../../../common/Table/Table';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -168,7 +168,7 @@ const SpreadsheetVersion = ({
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.SPREADSHEET}
                     showActions={false}

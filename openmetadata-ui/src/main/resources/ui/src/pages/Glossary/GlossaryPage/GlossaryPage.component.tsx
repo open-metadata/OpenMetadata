@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  Button as CoreButton,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BookOpen01, Data, File02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -31,14 +36,13 @@ import {
 } from '../../../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
-import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   EntityAction,
   EntityType,
@@ -47,11 +51,13 @@ import {
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { Paging } from '../../../generated/type/paging';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import {
+  getGlossariesByName,
   getGlossariesList,
   patchGlossaries,
   patchGlossaryTerm,
@@ -71,6 +77,15 @@ import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
+
+const GLOSSARY_LIST_FIELDS = [
+  TabSpecificField.OWNERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.REVIEWERS,
+  TabSpecificField.VOTES,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.TERM_COUNT,
+];
 
 const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
@@ -101,6 +116,7 @@ const GlossaryPage = () => {
     activeGlossary,
     setActiveGlossary,
     updateActiveGlossary,
+    updateGlossary: updateGlossaryInList,
   } = useGlossaryStore();
 
   const isImportAction = useMemo(
@@ -153,19 +169,12 @@ const GlossaryPage = () => {
       let allGlossaries: Glossary[] = [];
       let nextPage = paging.after;
       let isGlossaryFound = false;
-      setInitialised(false);
+      let settledPaging: Paging | undefined;
       setIsLoading(true);
 
       do {
         const { data, paging: glossaryPaging } = await getGlossariesList({
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.TAGS,
-            TabSpecificField.REVIEWERS,
-            TabSpecificField.VOTES,
-            TabSpecificField.DOMAINS,
-            TabSpecificField.TERM_COUNT,
-          ],
+          fields: GLOSSARY_LIST_FIELDS,
           limit: PAGE_SIZE_LARGE,
           ...(nextPage && { after: nextPage }),
         });
@@ -181,11 +190,14 @@ const GlossaryPage = () => {
         }
 
         nextPage = glossaryPaging?.after;
-
-        handlePagingChange(glossaryPaging);
+        settledPaging = glossaryPaging;
       } while (nextPage && !isGlossaryFound);
 
       setGlossaries(allGlossaries);
+
+      if (settledPaging) {
+        handlePagingChange(settledPaging);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -201,14 +213,7 @@ const GlossaryPage = () => {
       setIsMoreGlossaryLoading(true);
 
       const { data, paging: glossaryPaging } = await getGlossariesList({
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.REVIEWERS,
-          TabSpecificField.VOTES,
-          TabSpecificField.DOMAINS,
-          TabSpecificField.TERM_COUNT,
-        ],
+        fields: GLOSSARY_LIST_FIELDS,
         limit: PAGE_SIZE_LARGE,
         after: after,
       });
@@ -457,8 +462,15 @@ const GlossaryPage = () => {
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
         navigate(getGlossaryPath(fqn));
-        // Refresh glossary list to update term count after deletion
-        fetchGlossaryList();
+
+        const rootFqn = glossaryFqn ? Fqn.split(glossaryFqn)[0] : undefined;
+        if (rootFqn) {
+          updateGlossaryInList(
+            await getGlossariesByName(rootFqn, {
+              fields: GLOSSARY_LIST_FIELDS,
+            })
+          );
+        }
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -468,7 +480,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaryFqn, activeGlossary, fetchGlossaryList]
+    [glossaryFqn, activeGlossary, fetchGlossaryList, updateGlossaryInList]
   );
 
   const handleAssetClick = useCallback(
@@ -498,27 +510,43 @@ const GlossaryPage = () => {
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <div className="full-height">
-        <ErrorPlaceHolder
-          buttonId="add-glossary"
-          className="mt-0-important border-none"
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary')}
-          permission={createGlossaryPermission}
-          permissionValue={
-            createGlossaryPermission
-              ? t('label.create-entity', {
-                  entity: t('label.glossary'),
-                })
-              : ''
+      <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
+        <EmptyPlaceholder
+          description={t('message.glossary-empty-description')}
+          features={[
+            {
+              key: 'create-glossary',
+              icon: <BookOpen01 className="tw:text-fg-brand-primary" />,
+              title: t('label.create-a-glossary'),
+              description: t('message.create-a-glossary-description'),
+            },
+            {
+              key: 'add-terms',
+              icon: <File02 className="tw:text-fg-warning-primary" />,
+              title: t('label.add-terms'),
+              description: t('message.add-terms-description'),
+            },
+            {
+              key: 'link-to-data',
+              icon: <Data className="tw:text-fg-success-primary" />,
+              title: t('label.link-them-to-data'),
+              description: t('message.link-them-to-data-description'),
+            },
+          ]}
+          footer={
+            createGlossaryPermission ? (
+              <CoreButton
+                color="primary"
+                data-testid="add-glossary"
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryClick}>
+                {t('label.add-entity', { entity: t('label.glossary') })}
+              </CoreButton>
+            ) : undefined
           }
-          size={SIZE.X_LARGE}
-          type={
-            createGlossaryPermission
-              ? ERROR_PLACEHOLDER_TYPE.CREATE
-              : ERROR_PLACEHOLDER_TYPE.NO_DATA
-          }
-          onClick={handleAddGlossaryClick}
+          title={t('message.build-your-business-dictionary')}
+          variant="features"
         />
       </div>
     );

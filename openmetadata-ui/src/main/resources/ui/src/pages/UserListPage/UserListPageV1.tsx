@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -577,7 +577,7 @@ const UserListPageV1 = () => {
           </p>
         </Modal>
 
-        <DeleteWidgetModal
+        <DeleteEntityModal
           afterDeleteAction={async () => {
             handleSearch('');
             // Update current count when Create / Delete operation performed

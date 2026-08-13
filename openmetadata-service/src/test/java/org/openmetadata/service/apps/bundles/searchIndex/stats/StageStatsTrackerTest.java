@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -285,6 +286,40 @@ class StageStatsTrackerTest {
     }
 
     @Test
+    @DisplayName("Should include sink warnings in persisted warning total")
+    void testFlushIncludesSinkWarnings() {
+      tracker.recordReader(StatsResult.WARNING);
+      tracker.recordProcess(StatsResult.WARNING);
+      tracker.incrementPendingSink();
+      tracker.recordSink(StatsResult.WARNING);
+
+      tracker.flush();
+
+      verify(statsDAO, times(1))
+          .incrementStats(
+              anyString(),
+              anyString(),
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              eq(3L),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyInt(),
+              anyInt(),
+              anyLong());
+    }
+
+    @Test
     @DisplayName("Should handle null DAO gracefully")
     void testFlushWithNullDAO() {
       StageStatsTracker trackerWithNullDAO =
@@ -322,7 +357,11 @@ class StageStatsTrackerTest {
               anyLong());
 
       tracker.recordReader(StatsResult.SUCCESS);
+      tracker.recordProcess(StatsResult.WARNING);
       tracker.flush();
+
+      assertEquals(1, tracker.getReader().getSuccess().get());
+      assertEquals(1, tracker.getProcess().getWarnings().get());
     }
   }
 

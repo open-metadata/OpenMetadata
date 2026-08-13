@@ -14,7 +14,7 @@ import { expect, Page, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   expandDatabaseInExploreTree,
@@ -25,19 +25,38 @@ import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const table = new TableClass();
-const dashboard = new DashboardClass();
+// Explore tree's service bucket is capped at 166 and sorted alphabetically
+// (ElasticSearchAggregationManager orders by _key ASC), so a name starting with
+// a digit guarantees these services land within that bucket regardless of how
+// many other `pw-*` services have accumulated.
+const table = new TableClass(undefined, undefined, {
+  name: `0-pw-database-service-${uuid()}`,
+});
+const dashboard = new DashboardClass(`0-pw-dashboard-service-${uuid()}`);
 
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
+  // Set up response listener BEFORE clicking. After #29642, ExploreTree skips
+  // setIsLoading on browse selections, so loader-based waiting is unreliable.
+  // Response-based waiting (the same pattern used in expandServiceInExploreTree
+  // etc.) anchors on the actual data fetch so children are fully rendered before
+  // we interact with them.
+  // ServiceType nodes drill down through POST /search/aggregate (service.style
+  // top hits for custom icons); every other level still uses GET /search/query.
+  const res = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query?') ||
+      (response.url().endsWith('/api/v1/search/aggregate') &&
+        response.request().method() === 'POST')
+  );
   await page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
     .locator('.ant-tree-switcher svg')
     .first()
     .click();
-
+  await res;
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -225,13 +244,9 @@ test.describe(
       await expandServiceInExploreTree(page, table.serviceResponseData.name);
 
       await test.step('Selecting a service in the tree adds browse chips', async () => {
-        const browseRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page
           .getByTestId(`explore-tree-title-${table.serviceResponseData.name}`)
           .click();
-        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -239,11 +254,7 @@ test.describe(
       });
 
       await test.step('Removing the service-type chip clears the browse', async () => {
-        const removeRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('remove-browse-chip-serviceType').click();
-        await removeRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -258,24 +269,24 @@ test.describe(
       test.slow();
 
       await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
-        await expandTreeNode(page, 'Databases');
-
-        // Explicit visibility wait before clicking. The expandTreeNode helper
-        // only waits for loaders to disappear, but the tree's child rows can
-        // continue to animate/reposition for a beat after that — the
-        // subsequent .click() then times out with "waiting for element to be
-        // visible, enabled and stable". toBeVisible polls until the element
-        // is stable too, which lets the click land cleanly.
         const serviceTitle = page.getByTestId(
           `explore-tree-title-${table.service.serviceType.toLowerCase()}`
         );
-        await expect(serviceTitle).toBeVisible();
 
-        const browseRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
-        await serviceTitle.click();
-        await browseRes;
+        // The browse rebuild collapses the tree and can detach the row
+        // mid-click; retry expand → click until the chip confirms the select.
+        await expect(async () => {
+          if (!(await serviceTitle.isVisible())) {
+            await expandTreeNode(page, 'Databases');
+          }
+          await serviceTitle.click();
+          await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
+            {
+              timeout: 5000,
+            }
+          );
+        }).toPass({ timeout: 60000 });
+
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -292,11 +303,7 @@ test.describe(
       });
 
       await test.step('Query-panel Clear restores the full browse estate', async () => {
-        const clearRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('clear-all-chips').click();
-        await clearRes;
         await waitForAllLoadersToDisappear(page);
 
         const url = new URL(page.url());

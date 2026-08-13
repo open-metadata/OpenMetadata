@@ -1,5 +1,11 @@
-FROM python:3.10-bookworm
+FROM python:3.12-slim-bookworm
 
+# The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
+# before configuring third-party apt repositories.
+RUN apt-get -qq update \
+    && apt-get -qq install -y --no-install-recommends \
+         curl ca-certificates gnupg \
+    && rm -rf /var/lib/apt/lists/*
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
@@ -7,7 +13,6 @@ RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/ap
 RUN dpkg --configure -a \
     && apt-get -qq update \
     && apt-get -qq install -y \
-    alien \
     build-essential \
     default-libmysqlclient-dev \
     freetds-bin \
@@ -26,8 +31,12 @@ RUN dpkg --configure -a \
     libssl-dev \
     libxml2 \
     libkrb5-dev \
-    default-jdk \
+    default-jre-headless \
     openssl \
+    # mysqlclient 2.2+ locates libmysqlclient through pkg-config (2.1.x used
+    # mysql_config) and has no Linux wheels, so it always builds from source.
+    # The slim base omits pkg-config, unlike the python:3.12-bookworm base.
+    pkg-config \
     # To ensure compatibility with unixodbc package
     odbcinst=2.3.11-2+deb12u1 \
     postgresql \
@@ -42,11 +51,15 @@ RUN dpkg --configure -a \
     && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
     # Pull bookworm-security fixes for known-vulnerable packages
     # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
-    # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5).
+    # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
+    # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
+    # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
     # --only-upgrade is a no-op for packages not present in the base image.
     && apt-get -qq install -y --only-upgrade \
          libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
          libpam0g libpam-modules libpam-modules-bin libpam-runtime \
+         curl libcurl4 libcurl3-gnutls libmariadb3 wget \
+         perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
@@ -99,6 +112,13 @@ RUN groupadd -g 1000 openmetadata && useradd -m -u 1000 -g 1000 openmetadata
 RUN chown -R openmetadata:openmetadata /ingestion
 ENV HOME=/home/openmetadata
 ENV PATH="/home/openmetadata/.local/bin:${PATH}"
+
+# Refresh the interpreter-level pip before dropping privileges. The per-user
+# pip upgrade below only writes to ~/.local, so the base image's
+# /usr/local copy stays on disk and image scanners keep reporting it
+# (CVE-2025-8869, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643 -- fixed in 26.1.2).
+RUN pip install --no-cache-dir --upgrade "pip>=26.2,<27"
+
 USER openmetadata
 
 # Disable pip cache dir
@@ -109,7 +129,7 @@ ENV PIP_QUIET=1
 
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
-RUN pip install --upgrade pip "setuptools<81"
+RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
@@ -129,3 +149,18 @@ RUN [ $(uname -m) = "x86_64" ] \
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
+
+# Every source build is done, so the setuptools<81 pin above can be lifted. That pin is
+# build-time only: cx_Oracle and mysqlclient import pkg_resources from their setup.py and
+# 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x on disk is
+# what keeps scanners reporting CVE-2026-59890.
+# Keep this the LAST pip layer -- a later layer that compiles a package needing
+# pkg_resources would fail here, and the error would not look like a setuptools problem.
+RUN pip install --upgrade "setuptools>=83"
+
+
+# Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
+# See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
+# final pip install, or a later install restores the fixture.
+COPY --chown=openmetadata:openmetadata ingestion/scripts/strip_spacy_test_fixture.sh /tmp/strip_spacy_test_fixture.sh
+RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture.sh

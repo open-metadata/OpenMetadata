@@ -417,7 +417,7 @@ public class FileRepository extends EntityRepository<File> {
                   List.of(
                       Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(13, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 14))
+          .withDomains(getDomains(printer, csvRecord, 14, newFile.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 15));
       if (processRecord) {
         createEntity(printer, csvRecord, newFile, FILE);

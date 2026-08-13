@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createTheme, ThemeProvider } from '@mui/material';
 import { render, screen, waitFor } from '@testing-library/react';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -125,18 +124,6 @@ jest.mock('../Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
-const mockTheme = createTheme({
-  palette: {
-    primary: {
-      main: '#1890ff',
-      dark: '#096dd9',
-    },
-  },
-  typography: {
-    fontWeightMedium: 500,
-  },
-});
-
 const renderComponent = (props = {}) => {
   const defaultProps = {
     value: [],
@@ -148,11 +135,7 @@ const renderComponent = (props = {}) => {
     ...props,
   };
 
-  return render(
-    <ThemeProvider theme={mockTheme}>
-      <DomainSelectableTree {...defaultProps} />
-    </ThemeProvider>
-  );
+  return render(<DomainSelectableTree {...defaultProps} />);
 };
 
 describe('DomainSelectableTree', () => {
@@ -373,27 +356,23 @@ describe('DomainSelectableTree', () => {
 
   it('should handle visible prop change', async () => {
     const { rerender } = render(
-      <ThemeProvider theme={mockTheme}>
-        <DomainSelectableTree
-          isMultiple={false}
-          value={[]}
-          visible={false}
-          onCancel={mockOnCancel}
-          onSubmit={mockOnSubmit}
-        />
-      </ThemeProvider>
+      <DomainSelectableTree
+        isMultiple={false}
+        value={[]}
+        visible={false}
+        onCancel={mockOnCancel}
+        onSubmit={mockOnSubmit}
+      />
     );
 
     rerender(
-      <ThemeProvider theme={mockTheme}>
-        <DomainSelectableTree
-          visible
-          isMultiple={false}
-          value={[]}
-          onCancel={mockOnCancel}
-          onSubmit={mockOnSubmit}
-        />
-      </ThemeProvider>
+      <DomainSelectableTree
+        visible
+        isMultiple={false}
+        value={[]}
+        onCancel={mockOnCancel}
+        onSubmit={mockOnSubmit}
+      />
     );
 
     await waitFor(() => {

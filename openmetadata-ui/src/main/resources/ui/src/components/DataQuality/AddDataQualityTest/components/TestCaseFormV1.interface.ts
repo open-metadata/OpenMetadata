@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 
-import { DrawerProps } from 'antd';
+import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
+import { UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
 import {
   EntityReference,
   TagLabel,
   TestCase,
 } from '../../../../generated/tests/testCase';
+import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
@@ -26,15 +28,60 @@ import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCar
 // =============================================
 // COMPONENT PROPS
 // =============================================
-export interface TestCaseFormV1Props {
-  drawerProps?: DrawerProps;
-  className?: string;
+export interface TestCaseFormDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  onFormSubmit?: (testCase: TestCase) => void;
+  onActiveFieldChange?: (fieldId: string) => void;
   table?: Table;
   testSuite?: TestSuite;
-  onFormSubmit?: (testCase: TestCase) => void;
-  onCancel?: () => void;
-  loading?: boolean;
   testLevel?: TestLevel;
+  variant?: 'drawer' | 'modal';
+  title?: ReactNode;
+  headerActions?: ReactNode;
+  width?: number | string;
+  showDocPanel?: boolean;
+  testCase?: TestCase;
+  showOnlyParameter?: boolean;
+  onUpdate?: (testCase: TestCase) => void;
+}
+
+export interface TestCaseFormContext {
+  selectedDefinition?: TestDefinition;
+  selectedTableData?: Table;
+  selectedColumn?: string;
+  selectedTestLevel: TestLevel;
+  generateName: () => string;
+  canCreatePipeline: boolean;
+  isCheckingPermissions?: boolean;
+}
+
+export interface TestCaseFormBodyProps {
+  form: UseFormReturn<FormValues>;
+  table?: Table;
+  testSuite?: TestSuite;
+  errorMessage?: string;
+  onErrorDismiss?: () => void;
+  onActiveFieldChange?: (fieldId: string) => void;
+  onContextChange?: (context: TestCaseFormContext) => void;
+  isEditMode?: boolean;
+  showOnlyParameter?: boolean;
+  // In edit mode the drawer resolves the test definition up front via a
+  // targeted getTestDefinitionById; passing it in lets the body render the
+  // parameter section immediately instead of waiting on (and flickering
+  // against) the async test-definition list.
+  editDefinition?: TestDefinition;
+}
+
+export interface TestCaseSchedulerSectionProps {
+  form: UseFormReturn<FormValues>;
+  table?: Table;
+  testSuite?: TestSuite;
+  selectedTableData?: Table;
+  hasTestSuite: boolean;
+  canCreatePipeline: boolean;
+  schedulerOptions?: string[];
+  onActiveFieldChange?: (fieldId: string) => void;
 }
 
 // =============================================
@@ -44,16 +91,22 @@ export interface FormValues {
   testLevel: TestLevel;
   selectedTable?: string;
   selectedColumn?: string;
-  testTypeId?: string;
+  // Select-backed fields hold a FormSelectItem while the react-aria control is
+  // active and a plain string once resolved; the transform helpers unwrap both.
+  testTypeId?: string | FormSelectItem;
   testName?: string;
+  displayName?: string;
   description?: string;
   tags?: TagLabel[];
   glossaryTerms?: TagLabel[];
   computePassedFailedRowCount?: boolean;
   useDynamicAssertion?: boolean;
-  params?: Record<string, string | { [key: string]: string }[]>;
+  params?: Record<
+    string,
+    string | FormSelectItem | { [key: string]: string }[]
+  >;
   parameterValues?: Array<{ name: string; value: string }>;
-  dimensionColumns?: string[];
+  dimensionColumns?: Array<string | FormSelectItem>;
   topDimensions?: number;
   // Scheduler fields
   pipelineName?: string;

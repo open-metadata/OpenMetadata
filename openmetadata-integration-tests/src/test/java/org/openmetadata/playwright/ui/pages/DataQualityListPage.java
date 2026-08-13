@@ -5,6 +5,8 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.WaitForSelectorState;
+import java.time.Duration;
+import org.awaitility.Awaitility;
 import org.openmetadata.playwright.ui.UiSession;
 
 /**
@@ -17,6 +19,9 @@ public final class DataQualityListPage extends PageObject {
   private static final String API_LIST_SUITES = "/api/v1/dataQuality/testSuites/search/list";
   private static final String TESTID_TEST_SUITES_TAB = "test-suites";
   private static final String TESTID_TEST_SUITE_CONTAINER = "test-suite-container";
+  private static final Duration PAGE_SIZE_RETRY_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration PAGE_SIZE_RETRY_INTERVAL = Duration.ofSeconds(2);
+  private static final double PAGE_SIZE_MENU_TIMEOUT_MS = 5_000;
 
   private DataQualityListPage(final Page page, final UiSession session) {
     super(page, session);
@@ -45,11 +50,12 @@ public final class DataQualityListPage extends PageObject {
     return this;
   }
 
-  /** Clear the search bar. */
+  /** Clear the search bar by emptying it (the refactored search Input has no Ant clear icon). */
   public DataQualityListPage clearSearch() {
     page.waitForResponse(
         r -> r.url().contains(API_LIST),
-        () -> page.locator(".ant-input-clear-icon").first().click());
+        () ->
+            page.locator("[data-testid='test-case-container'] [data-testid='searchbar']").fill(""));
     return this;
   }
 
@@ -186,9 +192,37 @@ public final class DataQualityListPage extends PageObject {
 
   /** Open the page-size dropdown and assert the standard 3 options render. */
   public DataQualityListPage assertPageSizeOptionsCount(final int expected) {
-    openMenu(byTestId("page-size-selection-dropdown"), page.locator(".ant-dropdown-menu"));
-    PlaywrightAssertions.assertThat(page.locator(".ant-dropdown-menu-item")).hasCount(expected);
+    // The single-click open of this Ant page-size dropdown races the still-loading, data-heavy DQ
+    // list under external-cluster latency and intermittently leaves the panel closed, timing out
+    // the
+    // menu wait. Retry the open+assert under a short per-attempt timeout, resetting any half-open
+    // panel between attempts — mirrors IncidentManagerPage.openDropdownAndSelectPageSize50, which
+    // drives the SAME dropdown resiliently.
+    Awaitility.await("page-size dropdown shows " + expected + " options")
+        .atMost(PAGE_SIZE_RETRY_TIMEOUT)
+        .pollInterval(PAGE_SIZE_RETRY_INTERVAL)
+        .pollDelay(Duration.ZERO)
+        .ignoreExceptions()
+        .untilAsserted(() -> openAndCountPageSizeOptions(expected));
     return this;
+  }
+
+  private void openAndCountPageSizeOptions(final int expected) {
+    // Ant toggles this panel on trigger click, so a stuck-open menu from a prior attempt would be
+    // closed by the next click; Escape resets it (a no-op when nothing is open). The
+    // :not(.ant-dropdown-hidden) scope pins the wait to the just-opened page-size overlay rather
+    // than a foreign hidden .ant-dropdown-menu Ant leaves portaled in <body>.
+    page.keyboard().press("Escape");
+    final Locator pageSizeMenu =
+        page.locator(".ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu");
+    byTestId("page-size-selection-dropdown").click();
+    pageSizeMenu.waitFor(
+        new Locator.WaitForOptions()
+            .setState(WaitForSelectorState.VISIBLE)
+            .setTimeout(PAGE_SIZE_MENU_TIMEOUT_MS));
+    PlaywrightAssertions.assertThat(
+            page.locator(".ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu-item"))
+        .hasCount(expected);
   }
 
   @Override

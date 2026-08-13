@@ -45,6 +45,12 @@ public class TestNamespace {
     return Collections.unmodifiableList(roots);
   }
 
+  public List<EntityRoot> drainTrackedRoots() {
+    List<EntityRoot> trackedRoots = List.copyOf(roots);
+    roots.clear();
+    return trackedRoots;
+  }
+
   public void setMethodId(String methodId) {
     this.methodId = methodId;
     // Reset cached short prefix when method changes

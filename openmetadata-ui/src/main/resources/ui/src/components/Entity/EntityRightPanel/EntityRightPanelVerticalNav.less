@@ -18,7 +18,7 @@
   &.drawer-entity-right-panel-vertical-nav {
     height: 100vh;
     max-height: calc(100vh - 70px);
-    margin-right: 8px;
+    margin-right: var(--om-space-8);
   }
   height: 100%;
   width: 80px;
@@ -29,10 +29,10 @@
   flex-direction: column;
   align-items: center;
   border: 1px solid @grey-15;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
 
   .ant-menu-vertical .ant-menu-item:not(:last-child) {
-    margin-bottom: 0px;
+    margin-bottom: 0;
   }
   .vertical-nav-menu {
     background: transparent;
@@ -40,7 +40,7 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 20px; // Gap between menu items
+    gap: var(--om-space-20); // Gap between menu items
 
     .ant-menu-item {
       display: flex;
@@ -52,7 +52,7 @@
       height: auto !important; // Override default height
       line-height: normal !important;
       margin: 0 !important;
-      gap: 6px; // Gap between icon and text
+      gap: var(--om-space-6); // Gap between icon and text
 
       background: transparent;
 
@@ -89,7 +89,7 @@
           height: 32px;
           width: 4px;
           background-color: @primary-6;
-          border-radius: 0 4px 4px 0;
+          border-radius: 0 var(--om-radius-sm) var(--om-radius-sm) 0;
         }
 
         .ant-menu-item-icon {
@@ -98,17 +98,17 @@
 
         .ant-menu-title-content {
           color: @primary-6;
-          font-weight: 600;
+          font-weight: var(--om-font-weight-semibold);
         }
       }
       .ant-menu-item-icon {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px; // Enforce base font size
+        font-size: var(--om-font-size-md); // Enforce base font size
         width: 24px; // Container width
         height: 24px; // Container height
-        transition: all 0.2s ease;
+        transition: all var(--om-duration-200) ease;
         background: transparent;
         color: @grey-600;
 
@@ -126,8 +126,8 @@
 
       .ant-menu-title-content {
         display: block;
-        font-size: 11px; // Slightly larger for readability
-        font-weight: 400;
+        font-size: var(--om-font-size-11); // Slightly larger for readability
+        font-weight: var(--om-font-weight-regular);
         text-align: center;
         line-height: 1.2;
         width: 54px; // Slightly wider to prevent aggressive wrapping

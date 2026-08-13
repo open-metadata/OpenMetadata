@@ -14,27 +14,28 @@
 import type { CacheLocation } from '@auth0/auth0-react';
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import { lazy, ReactNode } from 'react';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { withPageSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
 
-const Auth0ProviderComponent = withSuspenseFallback(
+const Auth0ProviderComponent = withPageSuspenseFallback(
   lazy(() =>
     import('@auth0/auth0-react').then((m) => ({ default: m.Auth0Provider }))
   )
 );
 
-const MsalProviderComponent = withSuspenseFallback(
+const MsalProviderComponent = withPageSuspenseFallback(
   lazy(() =>
     import('@azure/msal-react').then((m) => ({ default: m.MsalProvider }))
   )
 );
 
-const OktaAuthProviderComponent = withSuspenseFallback(
+const OktaAuthProviderComponent = withPageSuspenseFallback(
   lazy(() =>
     import('./OktaAuthProvider').then((m) => ({ default: m.OktaAuthProvider }))
   )
 );
 
-const BasicAuthProviderComponent = withSuspenseFallback(
+// Auth providers wrap the app shell, so their cold chunks need a visible page fallback.
+const BasicAuthProviderComponent = withPageSuspenseFallback(
   lazy(() => import('./BasicAuthProvider'))
 );
 

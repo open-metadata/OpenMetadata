@@ -13,6 +13,7 @@
 
 import { lazy, Suspense } from 'react';
 import { DomainLabelProps } from '../components/common/DomainLabel/DomainLabel.interface';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { OwnerLabelV2Props } from '../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { EntityType } from '../enums/entity.enum';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -42,7 +43,7 @@ interface LazyCommonWidgetsProps {
 }
 
 export const LazyCommonWidgets = (props: LazyCommonWidgetsProps) => (
-  <Suspense fallback={null}>
+  <Suspense fallback={<EntityDetailWidgetSkeleton />}>
     <CommonWidgets {...props} />
   </Suspense>
 );

@@ -41,6 +41,7 @@ import {
 } from '../../utils/dataQuality';
 import {
   addMultiOwner,
+  escapeESReservedCharacters,
   removeOwnersFromList,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -158,7 +159,8 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
         '/api/v1/dataQuality/testSuites/search/list'
       ) &&
       responseUrl.searchParams.get('testSuiteType') === 'logical' &&
-      responseUrl.searchParams.get('q') === `*${bundleSuiteName}*`
+      responseUrl.searchParams.get('q') ===
+        `*${escapeESReservedCharacters(bundleSuiteName)}*`
     );
   });
 
@@ -202,7 +204,9 @@ test(
       );
       await page.click('[data-testid="add-test-suite-btn"]');
       await initialListResponse;
-      await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
+      await page
+        .locator('[data-testid="test-suite-name"] input')
+        .fill(NEW_TEST_SUITE.name);
       await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
@@ -361,9 +365,6 @@ test(
       await ownerPage.click('[data-testid="manage-button"]');
       await ownerPage.click('[data-testid="delete-button"]');
 
-      // Click on Permanent/Hard delete option
-      await ownerPage.click('[data-testid="hard-delete-option"]');
-      await ownerPage.fill('[data-testid="confirmation-text-input"]', 'DELETE');
       const deleteResponse = ownerPage.waitForResponse(
         '/api/v1/dataQuality/testSuites/*?hardDelete=true&recursive=true'
       );

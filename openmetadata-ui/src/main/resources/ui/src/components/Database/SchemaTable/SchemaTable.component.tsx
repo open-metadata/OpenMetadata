@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { Label } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
   Dropdown,
-  Form,
   Row,
   Select,
   TableProps,
@@ -55,6 +55,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import {
   Column,
+  Constraint,
   Table as TableType,
 } from '../../../generated/entity/data/table';
 import { TestSummary } from '../../../generated/tests/testCase';
@@ -106,10 +107,7 @@ import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import {
-  EntityName,
-  EntityNameWithAdditionFields,
-} from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
@@ -169,6 +167,9 @@ const SchemaTable = () => {
   } = useFqn({ type: EntityType.TABLE });
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+  const [editConstraint, setEditConstraint] = useState<
+    Constraint | undefined
+  >();
 
   const {
     permissions: tablePermissions,
@@ -599,10 +600,11 @@ const SchemaTable = () => {
 
   const handleEditDisplayNameClick = useCallback((record: Column) => {
     setEditColumnDisplayName(record);
+    setEditConstraint(record.constraint);
   }, []);
 
   const handleEditColumnData = async (data: EntityName) => {
-    const { displayName, constraint } = data as EntityNameWithAdditionFields;
+    const { displayName } = data;
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
@@ -612,21 +614,23 @@ const SchemaTable = () => {
           editColumnDisplayName.fullyQualifiedName,
           {
             displayName: displayName,
-            ...(isEmpty(constraint)
+            ...(isEmpty(editConstraint)
               ? {
                   removeConstraint: true,
                 }
-              : { constraint }),
-          },
+              : { constraint: editConstraint }),
+          } as Partial<Column>,
           'displayName'
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setEditColumnDisplayName(undefined);
+        setEditConstraint(undefined);
       }
     } else {
       setEditColumnDisplayName(undefined);
+      setEditConstraint(undefined);
     }
   };
 
@@ -920,22 +924,26 @@ const SchemaTable = () => {
   );
 
   const additionalFieldsInEntityNameModal = (
-    <Form.Item
-      label={t('label.entity-type-plural', {
-        entity: t('label.constraint'),
-      })}
-      name="constraint">
+    <div className="tw:flex tw:flex-col tw:gap-1.5">
+      <Label>
+        {t('label.entity-type-plural', {
+          entity: t('label.constraint'),
+        })}
+      </Label>
       <Select
         allowClear
         data-testid="constraint-type-select"
+        getPopupContainer={(triggerNode) => triggerNode.parentElement}
         options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),
           }),
         })}
+        value={editConstraint}
+        onChange={(value) => setEditConstraint(value)}
       />
-    </Form.Item>
+    </div>
   );
 
   const handleEditTable = () => {

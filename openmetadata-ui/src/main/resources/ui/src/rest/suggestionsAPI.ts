@@ -99,6 +99,22 @@ const buildEntityLink = (task: Task): string => {
   return EntityLink.getEntityLink(entityType, entityFQN);
 };
 
+const getTaskCreatedBy = (task: Task): Task['createdBy'] | undefined => {
+  if (task.createdBy?.id) {
+    return task.createdBy;
+  }
+
+  if (task.createdById) {
+    return {
+      id: task.createdById,
+      name: task.updatedBy ?? task.createdById,
+      type: 'user',
+    };
+  }
+
+  return undefined;
+};
+
 const taskToSuggestion = (task: Task): Suggestion => {
   const payload = task.payload;
 
@@ -113,7 +129,7 @@ const taskToSuggestion = (task: Task): Suggestion => {
       | string
       | undefined,
     tagLabels: (payload?.tagsToAdd as TagLabel[] | undefined) ?? undefined,
-    createdBy: task.createdBy,
+    createdBy: getTaskCreatedBy(task),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     updatedBy: task.updatedBy,

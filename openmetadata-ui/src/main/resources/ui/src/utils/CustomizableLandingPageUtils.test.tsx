@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { act, render, screen } from '@testing-library/react';
 import { mockWidget } from '../mocks/AddWidgetTabContent.mock';
 import { mockCurrentAddWidget } from '../mocks/CustomizablePage.mock';
 import {
@@ -22,8 +23,100 @@ import {
   getUniqueFilteredLayout,
   getWidgetWidthLabelFromKey,
 } from './CustomizableLandingPagePureUtils';
+import { getWidgetFromKey } from './CustomizableLandingPageUtils';
+
+jest.mock(
+  '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper',
+  () => ({
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ children, loading }) => (
+      <div data-loading={String(Boolean(loading))} data-testid="widget-wrapper">
+        {children}
+      </div>
+    )),
+  })
+);
+
+jest.mock('./CustomizeMyDataPageClassBase', () => {
+  const React = require('react');
+  const PendingWidget = React.lazy(() => new Promise(() => undefined));
+
+  return {
+    __esModule: true,
+    default: {
+      getWidgetsFromKey: jest.fn(() => PendingWidget),
+    },
+  };
+});
 
 describe('CustomizableLandingPageUtils', () => {
+  describe('getWidgetFromKey', () => {
+    it('should render normal widget chunks without a per-widget loader', () => {
+      const { container } = render(
+        getWidgetFromKey({
+          widgetConfig: {
+            h: 3,
+            i: 'KnowledgePanel.ActivityFeed',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.queryByTestId('widget-wrapper')).not.toBeInTheDocument();
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('should preserve widget slots while edit-mode chunks load', () => {
+      render(
+        getWidgetFromKey({
+          isEditView: true,
+          widgetConfig: {
+            h: 3,
+            i: 'KnowledgePanel.ActivityFeed',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.getByTestId('widget-wrapper')).toHaveAttribute(
+        'data-loading',
+        'true'
+      );
+    });
+
+    it('should preserve empty placeholder slots while placeholder chunks load', async () => {
+      render(
+        getWidgetFromKey({
+          handleOpenAddWidgetModal: jest.fn(),
+          handlePlaceholderWidgetKey: jest.fn(),
+          widgetConfig: {
+            h: 3,
+            i: 'ExtraWidget.EmptyWidgetPlaceholder',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.getByTestId('widget-wrapper')).toHaveAttribute(
+        'data-loading',
+        'true'
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+    });
+  });
+
   describe('getNewWidgetPlacement', () => {
     it('should place widget in same row if space available', () => {
       const currentLayout = [

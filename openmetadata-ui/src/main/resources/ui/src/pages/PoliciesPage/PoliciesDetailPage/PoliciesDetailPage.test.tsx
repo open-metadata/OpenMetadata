@@ -45,7 +45,7 @@ jest.mock('../../../rest/teamsAPI', () => ({
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../../components/common/EntityDescription/Description', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="description-data">Description</div>)

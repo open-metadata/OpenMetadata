@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, type Response } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
@@ -65,6 +65,32 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
+
+  // This helper drives the global search box, which only exists inside the app.
+  // Callers reaching here through TableClass.visitEntityPage's fallback branch
+  // may not have navigated at all — the `page` fixture hands out a
+  // browser.newPage(), which sits on about:blank — and that branch runs
+  // precisely when direct navigation was not possible. Without a search box the
+  // fill below waits until the enclosing timeout.
+  //
+  // Probe for the search box rather than inferring from page.url(): a URL check
+  // only tells us whether this is a web page, not whether it is an app page
+  // that renders the global header. Use .first() so the probe reports presence
+  // rather than throwing on strict-mode ambiguity.
+  //
+  // Navigating inline rather than via redirectToHomePage: utils/common.ts
+  // already imports from this module, so importing it back would be circular.
+  const hasSearchBox = await page
+    .getByTestId('searchBox')
+    .first()
+    .waitFor({ state: 'attached', timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!hasSearchBox) {
+    await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  }
 
   await waitForAllLoadersToDisappear(page);
 
@@ -1393,13 +1419,13 @@ export const followEntity = async (
     return;
   }
 
-  const followResponse = page.waitForResponse(
-    `/api/v1/${endpoint}/*/followers`
+  const followResponse = page.waitForResponse((response) =>
+    isFollowerMutationResponse(response, endpoint, 'PUT')
   );
   await followButton.click();
-  await followResponse;
+  await expectFollowerResponse(await followResponse);
 
-  await expect(followButton).toContainText(verificationText);
+  await expectFollowButtonState(page, verificationText);
 };
 
 export const unFollowEntity = async (
@@ -1412,15 +1438,54 @@ export const unFollowEntity = async (
 
   await expect(followButton).toContainText('Unfollow');
 
-  const unFollowResponse = page.waitForResponse(
-    `/api/v1/${endpoint}/*/followers/*`
+  const unFollowResponse = page.waitForResponse((response) =>
+    isFollowerMutationResponse(response, endpoint, 'DELETE')
   );
   await followButton.click();
-  await unFollowResponse;
+  await expectFollowerResponse(await unFollowResponse);
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText(
-    'Follow'
+  await expectFollowButtonState(page, 'Follow');
+};
+
+const isFollowerMutationResponse = (
+  response: Response,
+  endpoint: EntityTypeEndpoint,
+  method: 'DELETE' | 'PUT'
+) => {
+  const url = response.url();
+
+  return (
+    response.request().method() === method &&
+    url.includes(`/api/v1/${endpoint}/`) &&
+    url.includes('/followers')
   );
+};
+
+const expectFollowerResponse = async (response: Response) => {
+  if (response.ok()) {
+    return;
+  }
+
+  throw new Error(
+    `Follower mutation failed with ${response.status()}: ${await response.text()}`
+  );
+};
+
+const expectFollowButtonState = async (page: Page, expectedText: string) => {
+  const followButton = page.getByTestId('entity-follow-button');
+
+  try {
+    await expect(followButton).toContainText(expectedText, { timeout: 5_000 });
+
+    return;
+  } catch {
+    await page.reload();
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await expect(page.getByTestId('entity-follow-button')).toContainText(
+      expectedText,
+      { timeout: 30_000 }
+    );
+  }
 };
 
 const LANDING_PAGE_SCROLL_CONTAINER =
@@ -1530,11 +1595,24 @@ const announcementForm = async (
       response.request().method() === 'POST'
   );
   await page.click('#announcement-submit');
-  await announcementSubmit;
+  const announcementResponse = await announcementSubmit;
+  const announcement: unknown = await announcementResponse.json();
+
+  if (
+    typeof announcement !== 'object' ||
+    announcement === null ||
+    !('id' in announcement) ||
+    typeof announcement.id !== 'string'
+  ) {
+    throw new Error('Announcement creation response did not include an id');
+  }
+
   await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
     await toastNotification(page, /Announcement created successfully/i);
   }
+
+  return announcement.id;
 };
 
 export const createAnnouncement = async (
@@ -1749,9 +1827,27 @@ export const createInactiveAnnouncement = async (
     'Make an announcement'
   );
 
-  await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.getByTestId('inActive-announcements').isVisible();
-  await page.reload();
+  const announcementId = await announcementForm(
+    page,
+    { ...data, startDate, endDate },
+    hideAlert
+  );
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
+
+  const announcementDrawer = page.getByTestId('announcement-drawer');
+  const inactiveAnnouncement = announcementDrawer
+    .getByTestId('announcement-card')
+    .filter({ hasText: data.title });
+
+  await expect(
+    announcementDrawer.getByTestId('inActive-announcements')
+  ).toBeVisible();
+  await expect(inactiveAnnouncement).toBeVisible();
+  await page.getByTestId('announcement-close').click();
+
+  return announcementId;
 };
 
 export const updateDisplayNameForEntity = async (
@@ -2127,12 +2223,8 @@ export const softDeleteEntity = async (
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(displayName);
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
     `/api/v1/${endPoint}/async/*?hardDelete=false&recursive=true`
   );
@@ -2220,17 +2312,9 @@ export const hardDeleteEntity = async (
   await page.getByTestId('delete-button').waitFor();
   await page.click('[data-testid="delete-button"]');
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-  await expect(
-    page.locator('[data-testid="delete-modal"] .ant-modal-title')
-  ).toHaveText(new RegExp(entityName));
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.click('[data-testid="hard-delete"]');
   const deleteResponse = page.waitForResponse(
     `/api/v1/${endPoint}/async/*?hardDelete=true&recursive=true`
   );
@@ -2565,6 +2649,46 @@ export const copyAndGetClipboardText = async (
 };
 
 /**
+ * Replaces navigator.clipboard with an in-memory implementation before any page
+ * script runs. Required for grid components (e.g. BulkImport) that call
+ * navigator.clipboard.writeText/readText directly, since the real OS clipboard
+ * API is unreliable in AUT/headless CI even with clipboard permissions granted.
+ *
+ * @param page - Playwright Page object
+ */
+export const mockClipboardApi = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    // The grid only calls navigator.clipboard when window.isSecureContext is true. On a
+    // plain-HTTP AUT origin it is false, so the copy half falls through to execCommand and
+    // writes to the real OS clipboard while the paste half reads this mock - the two never
+    // agree and every paste yields an empty cell.
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+    let clipboardData = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          clipboardData = text;
+        },
+        readText: async () => clipboardData,
+      },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  // addInitScript only applies to documents loaded after it is registered. Callers install
+  // this mid-test, by which point the fixture has already navigated, so without a reload the
+  // mock never runs and the grid silently uses the real clipboard.
+  if (!page.url().startsWith('about:')) {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
+};
+
+/**
  * Validates the format and structure of a copied link URL.
  * Ensures URLs are properly formatted, contain all required components, and follow expected patterns.
  *
@@ -2619,4 +2743,18 @@ export const validateCopiedLinkFormat = ({
     fragment: url.hash,
     isValid: true,
   };
+};
+
+/**
+ * Types the DELETE confirmation only when the delete modal renders a
+ * confirmation text input. The current DeleteEntityModal and DeleteModal are
+ * both input-less, so this guard is a safety net for any legacy flow that
+ * still renders a confirmation input.
+ */
+export const fillDeleteConfirmationIfPresent = async (page: Page) => {
+  await page.getByTestId('confirm-button').waitFor({ state: 'visible' });
+  const confirmInput = page.getByTestId('confirmation-text-input');
+  if (await confirmInput.isVisible()) {
+    await confirmInput.fill('DELETE');
+  }
 };

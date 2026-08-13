@@ -34,6 +34,7 @@ describe('PersonaClassBase', () => {
       const icons = instance.getEntityIcons();
 
       expect(icons['navigation']).toBeDefined();
+      expect(icons['app-mode']).toBeDefined();
       expect(icons['govern']).toBeDefined();
       expect(icons['dataAssets']).toBeDefined();
       expect(icons[PageType.Table]).toBeDefined();
@@ -46,11 +47,12 @@ describe('PersonaClassBase', () => {
   });
 
   describe('getCustomizePageCategories', () => {
-    it('returns navigation, home-page, data-marketplace, governance, and data-assets categories', () => {
+    it('returns navigation, app-mode, home-page, data-marketplace, governance, and data-assets categories', () => {
       const categories = instance.getCustomizePageCategories();
 
       expect(categories.map((category) => category.key)).toEqual([
         'navigation',
+        'app-mode',
         PageType.LandingPage,
         PageType.DataMarketplace,
         'governance',

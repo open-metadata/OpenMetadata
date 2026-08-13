@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { FormInstance } from 'antd';
+import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { LoadingState } from 'Models';
+import { MutableRefObject } from 'react';
+import { UseFormReturn } from 'react-hook-form';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
+import { EntityReference } from '../../generated/entity/type';
 
 export type DeleteTagDetailsType = {
   id: string;
@@ -31,8 +34,37 @@ export type DeleteTagsType = {
   state: boolean;
 };
 
+export interface TagFormSelectItem extends FormSelectItem {
+  value: EntityReference | string;
+}
+
+export interface TagFormValues {
+  id?: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  style?: {
+    color?: string;
+    iconURL?: string;
+  };
+  disabled?: boolean;
+  mutuallyExclusive?: boolean;
+  owners?: TagFormSelectItem[];
+  domains?: TagFormSelectItem[];
+}
+
+export const TAG_FORM_DEFAULTS: TagFormValues = {
+  id: '',
+  name: '',
+  displayName: '',
+  description: '',
+  owners: [],
+  domains: [],
+};
+
 export interface RenameFormProps {
-  formRef: FormInstance<Classification | Tag | undefined>;
+  form: UseFormReturn<TagFormValues>;
+  submitRef?: MutableRefObject<() => void>;
   isEditing: boolean;
   isTier: boolean;
   initialValues?: Classification | Tag;
@@ -51,7 +83,7 @@ export interface RenameFormProps {
 
 export interface ClassificationFormDrawerProps {
   open: boolean;
-  formRef: FormInstance;
+  form: UseFormReturn<TagFormValues>;
   classifications: Classification[];
   isTier: boolean;
   isLoading: boolean;
@@ -62,7 +94,7 @@ export interface ClassificationFormDrawerProps {
 export interface TagFormDrawerProps {
   open: boolean;
   editTag?: Tag;
-  formRef: FormInstance;
+  form: UseFormReturn<TagFormValues>;
   isTier: boolean;
   isLoading: boolean;
   permissions: {

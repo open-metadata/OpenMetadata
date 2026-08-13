@@ -22,13 +22,13 @@ def test_airbyte_connection_is_base_connection():
     assert issubclass(AirbyteConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+def test_get_client_builds_client():
+    with patch(f"{CONNECTION_MODULE}.AirbyteClient") as mock_client:
         conn = AirbyteConnection(MagicMock())
         client = conn.client
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    assert client is mock_client.return_value
+    mock_client.assert_called_once_with(conn.service_connection)
 
 
 def test_test_connection_runs_steps():

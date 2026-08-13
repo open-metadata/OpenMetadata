@@ -67,7 +67,7 @@ This directory contains UI resources and the developer handbook for the OpenMeta
 
 Quick links
 - Developer handbook: [DEVELOPER_HANDBOOK.md](./DEVELOPER_HANDBOOK.md)
-  - Purpose: folder/file conventions, styling (LESS), MUI + @untitledui/icons usage, testing rules, and more.
+  - Purpose: folder/file conventions, styling (LESS), @openmetadata/ui-core-components + @untitledui/icons usage, testing rules, and more.
 - Form utilities: [docs/formutils.md](./docs/formutils.md)
   - Purpose: building forms with the `react-hook-form` + `react-aria` stack (`getField`/`FieldProp`/`HookForm`/`FormFields`), validation, composition, escape hatches, and the drawer caller pattern.
 
@@ -76,7 +76,7 @@ Getting started (for a new developer)
 2. Read DEVELOPER_HANDBOOK.md for coding standards and folder structure.
 3. Key technologies:
    - React + TypeScript
-   - MUI (v5) as primary UI library
+   - @openmetadata/ui-core-components (Untitled UI / react-aria-components) as primary UI library
    - @untitledui/icons for icons
    - LESS (.module.less) for component styles
    - Jest + React Testing Library for tests
@@ -131,7 +131,7 @@ Before running Playwright tests, ensure you have:
    - Set the `PLAYWRIGHT_TEST_BASE_URL` environment variable to point to your server
 
 2. **Admin User Setup**: Tests require an admin user with the following credentials:
-   - Email: `admin@openmetadata.org`
+   - Email: `admin@open-metadata.org`
    - Password: `admin`
 
 ### Installation

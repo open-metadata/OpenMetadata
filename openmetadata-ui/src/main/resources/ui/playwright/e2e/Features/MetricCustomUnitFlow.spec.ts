@@ -165,11 +165,11 @@ test.describe(
       await test.step('Clean up - delete the metric', async () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
-        await page.locator('[role="dialog"].ant-modal').waitFor();
+        await page.getByTestId('delete-modal').waitFor();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+        await page.click('[data-testid="hard-delete"]');
 
         const deletePromise = page.waitForResponse(
           (response) =>

@@ -28,8 +28,18 @@ test.describe('Table & Data Model columns table pagination', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Change page size to 25
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+    const tablePageSizeDropdown = page.getByTestId(
+      'page-size-selection-dropdown'
+    );
+    await tablePageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(tablePageSizeDropdown).toBeVisible();
+    await tablePageSizeDropdown.hover();
+
+    const tablePageSizeOption = page
+      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+      .getByRole('menuitem', { name: '25 / Page' });
+    await expect(tablePageSizeOption).toBeVisible();
+    await tablePageSizeOption.click();
 
     await waitForAllLoadersToDisappear(page);
 

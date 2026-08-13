@@ -52,7 +52,7 @@ export const Label = ({
             // `TooltipTrigger` inherits the disabled state from the parent form field
             // but we don't that. We want the tooltip be enabled even if the parent
             // field is disabled.
-            className="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
+            className="tw:flex tw:items-center tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
             isDisabled={false}>
             <HelpCircle className="tw:size-4" />
           </TooltipTrigger>

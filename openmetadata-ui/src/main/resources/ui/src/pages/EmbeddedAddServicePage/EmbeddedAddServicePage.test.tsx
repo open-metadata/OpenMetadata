@@ -130,6 +130,7 @@ jest.mock(
 
     return React.forwardRef(function MockConnectionConfigForm(
       {
+        isAdditionalValidationPending,
         onSave,
         onCancel,
         onValidateAdditionalRequiredFields,
@@ -144,6 +145,7 @@ jest.mock(
       }));
 
       mockConnectionConfigFormProps({
+        isAdditionalValidationPending,
         onSave,
         onCancel,
         onValidateAdditionalRequiredFields,
@@ -248,6 +250,7 @@ const mockProps = {
 };
 
 type MockConnectionConfigFormProps = {
+  isAdditionalValidationPending?: boolean;
   onCancel?: () => void;
   onSave: (event: { formData: { host: string } }) => void;
   onValidateAdditionalRequiredFields?: () => boolean;
@@ -505,6 +508,26 @@ describe('EmbeddedAddServicePage', () => {
     expect(typeof lastProps.onValidateAdditionalRequiredFields).toBe(
       'function'
     );
+  });
+
+  it('passes pending service name validation to ConnectionConfigForm', async () => {
+    await act(async () => {
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    const lastProps = mockConnectionConfigFormProps.mock.calls.at(-1)?.[0];
+
+    expect(lastProps.isAdditionalValidationPending).toBe(true);
   });
 
   it('focuses the service name input when additional validation fails on empty name', async () => {

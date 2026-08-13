@@ -107,8 +107,6 @@ public class GenericPublisher implements Destination<ChangeEvent> {
           }
         }
       }
-    } catch (EventPublisherException ex) {
-      throw ex;
     } catch (Exception ex) {
       if (ex.getCause() instanceof UnknownHostException) {
         String message =

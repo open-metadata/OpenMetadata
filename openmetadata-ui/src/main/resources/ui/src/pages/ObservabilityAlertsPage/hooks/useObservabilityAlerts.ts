@@ -57,6 +57,8 @@ export function useObservabilityAlerts({
   const [alertPermissions, setAlertPermissions] = useState<AlertPermission[]>();
   const [alertResourcePermission, setAlertResourcePermission] =
     useState<OperationPermission>();
+  const [hasResourcePermissionError, setHasResourcePermissionError] =
+    useState(false);
   const {
     pageSize,
     currentPage,
@@ -74,13 +76,18 @@ export function useObservabilityAlerts({
   const fetchAlertResourcePermission = useCallback(async () => {
     try {
       setLoadingCount((count) => count + 1);
+      setHasResourcePermissionError(false);
       const permission = await getResourcePermission(
         ResourceEntity.EVENT_SUBSCRIPTION
       );
 
       setAlertResourcePermission(permission);
-    } catch {
-      // Error
+    } catch (error) {
+      // getResourcePermission is a GET, so showErrorToast suppresses its 401 /
+      // 403 responses. Track the failure explicitly so the empty state can show
+      // an error + retry cue instead of a silent create-less onboarding.
+      setHasResourcePermissionError(true);
+      showErrorToast(error as AxiosError);
     } finally {
       setLoadingCount((count) => count - 1);
     }
@@ -124,9 +131,14 @@ export function useObservabilityAlerts({
     async (params?: Partial<Paging>) => {
       setLoading(true);
       try {
+        const currentPagingParams: Partial<Paging> | undefined =
+          pagingCursor?.cursorType && pagingCursor?.cursorValue
+            ? { [pagingCursor.cursorType]: pagingCursor.cursorValue }
+            : undefined;
+        const requestParams = params ?? currentPagingParams;
         const { data, paging } = await getAllAlerts({
-          after: params?.after,
-          before: params?.before,
+          after: requestParams?.after,
+          before: requestParams?.before,
           limit: pageSize,
           alertType: AlertType.Observability,
         });
@@ -145,7 +157,7 @@ export function useObservabilityAlerts({
         setLoading(false);
       }
     },
-    [fetchAllAlertsPermission, handlePagingChange, pageSize, t]
+    [fetchAllAlertsPermission, handlePagingChange, pageSize, pagingCursor, t]
   );
 
   useEffect(() => {
@@ -224,6 +236,8 @@ export function useObservabilityAlerts({
   return {
     alertPermissions,
     alertResourcePermission,
+    hasResourcePermissionError,
+    refetchResourcePermission: fetchAlertResourcePermission,
     alerts,
     columnList,
     currentPage,
@@ -232,6 +246,7 @@ export function useObservabilityAlerts({
     handleAlertDelete,
     handlePageSizeChange,
     handleSelectAlert,
+    fetchAlerts,
     loading,
     loadingCount,
     onPageChange,

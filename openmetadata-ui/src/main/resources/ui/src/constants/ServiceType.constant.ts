@@ -174,6 +174,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Ssas,
   DatabaseServiceType.Epic,
   DashboardServiceType.Hex,
+  DashboardServiceType.Omni,
   DatabaseServiceType.SapSuccessFactors,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Dremio,
@@ -191,6 +192,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.SapS4Hana,
   DatabaseServiceType.SapBw4Hana,
   PipelineServiceType.SapBw4HanaPipeline,
+  PipelineServiceType.Prefect,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -239,9 +241,13 @@ export const ADVANCED_PROPERTIES = [
 
 export const CONNECTION_AUTH_TYPE_PROPERTY = 'authType';
 
+// Optional identity fields that belong in the Connection section (next to
+// host/database) even when the schema doesn't mark them required.
 export const OPTIONAL_CONNECTION_PROPERTIES = new Set([
   'billingProjectId',
   'hostPort',
+  'username',
+  'clientId',
 ]);
 
 export const OPTIONAL_SCOPE_PROPERTIES = new Set([

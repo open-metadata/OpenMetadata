@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { File06 } from '@untitledui/icons';
-import classNames from 'classnames';
+import { Card, Skeleton } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 
 interface ArticleVersionHeaderProps {
   knowledgePage?: KnowledgePage;
@@ -57,36 +56,20 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   }
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   return (
-    <div
-      className="tw:flex tw:flex-col tw:mb-5"
-      data-testid="article-version-header">
-      {!breadcrumbInsideCard && breadcrumbEl}
-
-      <Card className={classNames('tw:mb-0 tw:p-6', headerCardClassName)}>
-        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
-        <div className="tw:flex tw:gap-4 tw:items-center">
-          <div className="tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
-            <File06
-              className="tw:text-quaternary"
-              height={40}
-              strokeWidth={1.2}
-              style={{ verticalAlign: 'middle', flexShrink: 0 }}
-              width={40}
-            />
-          </div>
-
-          <Typography as="h3">
-            {getKnowledgePageName(knowledgePage, t)}
-          </Typography>
-        </div>
-      </Card>
+    <div className="tw:mb-5" data-testid="article-version-header">
+      {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
+      <HeaderShell
+        breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
+        padding="comfortable"
+        title={getKnowledgePageName(knowledgePage, t)}
+        variant={isEmbedded ? 'gradient' : 'flat'}
+      />
     </div>
   );
 };

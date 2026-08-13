@@ -40,6 +40,26 @@ public final class McpResponseTrim {
   public static final int MAX_RESPONSE_CHARS = 100_000;
 
   /**
+   * Machine-readable marker keys shared by tools, the dispatch layer and MCP clients. A tool signals
+   * a logical failure with {@link #ERROR_KEY} (optionally {@link #STATUS_CODE_KEY}); a partial-but-
+   * successful response with {@link #TRUNCATED_KEY} (dispatch floor) or {@link #HAS_MORE_KEY} plus
+   * {@link #NEXT_OFFSET_KEY} (per-tool paging). The dispatch layer reads {@link #ERROR_KEY} to set
+   * the protocol {@code isError} flag; the paging keys are the contract the unified-pagination work
+   * builds on. Centralizing the strings keeps tool output and dispatch detection from drifting apart.
+   */
+  public static final String ERROR_KEY = "error";
+
+  public static final String STATUS_CODE_KEY = "statusCode";
+  public static final String TRUNCATED_KEY = "truncated";
+  public static final String RESPONSE_SIZE_CHARS_KEY = "responseSizeChars";
+  public static final String MAX_RESPONSE_CHARS_KEY = "maxResponseChars";
+  public static final String HAS_MORE_KEY = "hasMore";
+  public static final String NEXT_OFFSET_KEY = "nextOffset";
+  public static final String NEXT_CURSOR_KEY = "nextCursor";
+  public static final String TOTAL_KEY = "total";
+  public static final String MESSAGE_KEY = "message";
+
+  /**
    * Elasticsearch index-only document fields — the embedding vector and the RAG source/context text
    * used to build it. Each adds several kB per node and carries no value for an LLM reading the
    * result, so search/lineage documents drop them before returning.
@@ -98,10 +118,10 @@ public final class McpResponseTrim {
     if (identity != null) {
       envelope.putAll(identity);
     }
-    envelope.put("truncated", Boolean.TRUE);
-    envelope.put("responseSizeChars", sizeChars);
-    envelope.put("maxResponseChars", MAX_RESPONSE_CHARS);
-    envelope.put("message", advice);
+    envelope.put(TRUNCATED_KEY, Boolean.TRUE);
+    envelope.put(RESPONSE_SIZE_CHARS_KEY, sizeChars);
+    envelope.put(MAX_RESPONSE_CHARS_KEY, MAX_RESPONSE_CHARS);
+    envelope.put(MESSAGE_KEY, advice);
     return envelope;
   }
 

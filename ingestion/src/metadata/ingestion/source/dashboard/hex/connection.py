@@ -33,16 +33,12 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def get_connection(connection: HexConnectionConfig) -> HexApiClient:
-    """
-    Create connection
-    """
-    return HexApiClient(connection)
-
-
 class HexConnection(BaseConnection[HexConnectionConfig, HexApiClient]):
     def _get_client(self) -> HexApiClient:
-        return get_connection(self.service_connection)
+        """
+        Create connection
+        """
+        return HexApiClient(self.service_connection)
 
     def test_connection(
         self,

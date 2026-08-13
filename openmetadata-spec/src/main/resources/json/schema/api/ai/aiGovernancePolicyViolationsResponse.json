@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/aiGovernancePolicyViolationsResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIGovernancePolicyViolationsResponse",
+  "description": "Recent AI governance policy violations.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.AIGovernancePolicyViolationsResponse",
+  "definitions": {
+    "aiGovernancePolicyViolation": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernancePolicyViolation",
+      "description": "Recent violation of an AI governance policy rule.",
+      "type": "object",
+      "properties": {
+        "entityType": { "type": "string" },
+        "entityId": { "type": "string" },
+        "entityName": { "type": "string" },
+        "ruleName": { "type": "string" },
+        "status": { "type": "string" },
+        "value": { "type": "string" },
+        "observedAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
+      },
+      "required": ["entityType", "entityId", "entityName", "ruleName", "status", "observedAt"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "data": {
+      "description": "Recent policy violations.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aiGovernancePolicyViolation"
+      },
+      "default": []
+    }
+  },
+  "required": ["data"],
+  "additionalProperties": false
+}

@@ -25,7 +25,11 @@ from metadata.ingestion.connections.test_connections import (
     raise_test_connection_exception,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import (
+    create_connection,
+    get_connection,
+    get_test_connection_fn,
+)
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 
@@ -74,9 +78,13 @@ def _test_connection(
     """
     Test the connection
     """
+    owned = create_connection(config)
+    if owned is not None:
+        with owned:
+            return owned.test_connection(metadata, automation_workflow=automation_workflow)
+    # Non-migrated / custom connector: legacy module-level test_connection.
+    # Migrated connectors go through create_connection above, so this always
+    # resolves to the legacy (metadata, connection, config) signature.
     test_connection_fn = get_test_connection_fn(config)
-    try:
-        return test_connection_fn(metadata, automation_workflow=automation_workflow)
-    except TypeError:
-        connection = get_connection(config)
-        return test_connection_fn(metadata, connection, config, automation_workflow=automation_workflow)
+    connection = get_connection(config)
+    return test_connection_fn(metadata, connection, config, automation_workflow=automation_workflow)

@@ -5,10 +5,7 @@ import io.dropwizard.jetty.MutableServletContextHandler;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
@@ -24,7 +21,6 @@ import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.resources.mcpclient.McpClientResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
@@ -71,67 +67,19 @@ public class McpServer implements McpServerProvider {
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, tools, prompts, config);
-
-    registerMcpClientToolExecutor();
   }
 
-  @SuppressWarnings("unchecked")
-  private void registerMcpClientToolExecutor() {
-    try {
-      McpClientResource mcpClientResource = McpClientResource.getInstance();
-      if (mcpClientResource == null) {
-        LOG.warn("McpClientResource not found — MCP Client chat will not have tool access.");
-        return;
-      }
-
-      String json = McpUtils.getJsonFromFile("json/data/mcp/tools.json");
-      List<Map<String, Object>> rawTools = McpUtils.loadDefinitionsFromJson(json);
-      List<Map<String, Object>> llmToolDefs = new ArrayList<>();
-      for (Map<String, Object> rawTool : rawTools) {
-        Map<String, Object> functionDef = new HashMap<>();
-        functionDef.put("name", rawTool.get("name"));
-        functionDef.put("description", rawTool.get("description"));
-        if (rawTool.containsKey("parameters")) {
-          Map<String, Object> params = (Map<String, Object>) rawTool.get("parameters");
-          Map<String, Object> cleanParams = new HashMap<>(params);
-          cleanParams.remove("examples");
-          functionDef.put("parameters", cleanParams);
-        }
-        Map<String, Object> tool = new HashMap<>();
-        tool.put("type", "function");
-        tool.put("function", functionDef);
-        llmToolDefs.add(tool);
-      }
-
-      mcpClientResource.registerToolExecutor(
-          (secCtx, toolName, arguments) -> {
-            Map<String, Object> args =
-                (arguments != null && !arguments.isBlank())
-                    ? JsonUtils.readValue(arguments, Map.class)
-                    : new HashMap<>();
-            McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(toolName, args, null);
-            McpSchema.CallToolResult callResult =
-                toolContext.callTool(authorizer, limits, toolName, secCtx, request);
-            return extractToolResultContent(callResult);
-          },
-          llmToolDefs);
-      LOG.info("Registered MCP tool executor with McpClientResource.");
-    } catch (Exception e) {
-      LOG.warn("Failed to register MCP Client tool executor: {}", e.getMessage());
-    }
-  }
-
-  private static String extractToolResultContent(McpSchema.CallToolResult result) {
-    if (result.content() == null || result.content().isEmpty()) {
-      return "{}";
-    }
-    StringBuilder sb = new StringBuilder();
-    for (McpSchema.Content content : result.content()) {
-      if (content instanceof McpSchema.TextContent textContent) {
-        sb.append(textContent.text());
-      }
-    }
-    return sb.length() > 0 ? sb.toString() : "{}";
+  /**
+   * Advertises only the features this server can actually handle.
+   *
+   * <p>Clients trust what we advertise and call it. If we claim a capability we have no handler for,
+   * the call comes back as MethodNotFound. So: no logging, because there is no logging/setLevel
+   * handler (VSCode used to call it), and no resources, because no resources are registered here.
+   * The resources flag would also advertise resources/subscribe, which protocol 2026-07-28 has
+   * replaced with subscriptions/listen.
+   */
+  protected McpSchema.ServerCapabilities buildServerCapabilities() {
+    return McpSchema.ServerCapabilities.builder().tools(true).prompts(true).build();
   }
 
   protected List<McpSchema.Tool> getTools() {
@@ -148,12 +96,7 @@ public class McpServer implements McpServerProvider {
       List<McpSchema.Prompt> prompts,
       OpenMetadataApplicationConfig config) {
     try {
-      McpSchema.ServerCapabilities serverCapabilities =
-          McpSchema.ServerCapabilities.builder()
-              .tools(true)
-              .prompts(true)
-              .resources(true, true)
-              .build();
+      McpSchema.ServerCapabilities serverCapabilities = buildServerCapabilities();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
       // Get base URL from MCP configuration or system settings
       String baseUrl = getBaseUrlFromConfig();
@@ -253,6 +196,32 @@ public class McpServer implements McpServerProvider {
       org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpStateChecker(
           state -> pendingAuthRepo.findByPac4jState(state) != null);
       LOG.info("Registered MCP state checker for SSO callback forwarding");
+
+      // Register the persister so handleLogin() links the OIDC round-trip state to the MCP pending
+      // request before it redirects to the provider, keeping the returning /callback resolvable.
+      org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+          (request, state, nonce, codeVerifier) -> {
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            Object authRequestId =
+                session == null
+                    ? null
+                    : session.getAttribute(
+                        org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                            .MCP_AUTH_REQUEST_ID);
+            if (authRequestId instanceof String id) {
+              pendingAuthRepo.updatePac4jSession(id, state, nonce, codeVerifier);
+              request.setAttribute(
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider.MCP_STATE_LINKED,
+                  Boolean.TRUE);
+            } else {
+              LOG.warn(
+                  "MCP pending-state persister could not resolve {} from the session; "
+                      + "the returning /callback will not match a pending request",
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                      .MCP_AUTH_REQUEST_ID);
+            }
+          });
+      LOG.info("Registered MCP pending-state persister for OIDC round-trip linking");
 
       // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization

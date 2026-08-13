@@ -12,6 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -76,6 +77,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+      </div>
+    )),
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
@@ -124,7 +132,9 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest
     .fn()
-    .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
+    .mockImplementation(({ children, to: _to, state: _state, ...rest }) => (
+      <a {...rest}>{children}</a>
+    )),
 }));
 
 jest.mock('../../utils/EntityNameUtils', () => ({
@@ -221,7 +231,8 @@ describe('IncidentManagerTable', () => {
       testCaseListData: { data: [], isLoading: false },
     });
 
-    expect(screen.getByTestId('filter-table-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-active-incidents')).toBeInTheDocument();
     expect(
       screen.queryByTestId('test-case-test_case_1')
     ).not.toBeInTheDocument();
@@ -236,9 +247,7 @@ describe('IncidentManagerTable', () => {
     });
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
-    expect(
-      screen.queryByTestId('filter-table-placeholder')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
   });
 
   it('should render NextPrevious when showPagination is true', () => {
@@ -267,5 +276,28 @@ describe('IncidentManagerTable', () => {
 
     expect(screen.queryByText('label.table')).not.toBeInTheDocument();
     expect(screen.queryByTestId('table-link')).not.toBeInTheDocument();
+  });
+
+  it('should attach the origin crumbs to the test case link navigation state', () => {
+    const breadcrumbData = [
+      { name: 'Incident Manager', url: '/incident-manager' },
+    ];
+
+    renderTable({ breadcrumbData });
+
+    const nameLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
+      ([props]) => props['data-testid'] === 'test-case-test_case_1'
+    );
+
+    expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData });
+  });
+
+  it('should truncate the table link and expose the full name via title', () => {
+    renderTable();
+
+    const tableLink = screen.getAllByTestId('table-link')[0];
+
+    expect(tableLink).toHaveAttribute('title', 'NameFromFQN');
+    expect(tableLink).toHaveClass('tw:truncate');
   });
 });

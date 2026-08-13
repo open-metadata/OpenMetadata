@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/driftProbe/schemaDriftProbe.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Schema Drift Probe",
+  "$comment": "@om-entity-type",
+  "description": "Test-only entity schema that lives in a subdirectory no hardcoded mapping knows about. It guards the schema path resolution against drifting from the schema layout.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name of the probe entity.",
+      "type": "string"
+    }
+  }
+}

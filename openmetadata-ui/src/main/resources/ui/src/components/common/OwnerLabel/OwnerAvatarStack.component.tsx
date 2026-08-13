@@ -103,12 +103,10 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
       </Link>
     );
 
-    if (isTeam) {
-      return linkContent;
-    }
-
     return (
-      <UserPopOverCard userName={owner.name ?? ''}>
+      <UserPopOverCard
+        type={isTeam ? OwnerType.TEAM : OwnerType.USER}
+        userName={owner.name ?? ''}>
         {linkContent}
       </UserPopOverCard>
     );
@@ -122,10 +120,12 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
     const linkContent = (
       <Link
         aria-label={entityName}
-        className="owner-avatar-stack-row"
+        className="owner-avatar-stack-row tw:max-w-40"
         data-testid="owner-link"
         to={ownerPath}>
-        {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        <div className="tw:shrink-0">
+          {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
+        </div>
         <Typography
           ellipsis
           as="span"
@@ -136,12 +136,10 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
       </Link>
     );
 
-    if (isTeam) {
-      return linkContent;
-    }
-
     return (
-      <UserPopOverCard userName={owner.name ?? ''}>
+      <UserPopOverCard
+        type={isTeam ? OwnerType.TEAM : OwnerType.USER}
+        userName={owner.name ?? ''}>
         {linkContent}
       </UserPopOverCard>
     );

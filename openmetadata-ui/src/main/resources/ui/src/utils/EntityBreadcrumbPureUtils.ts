@@ -123,9 +123,12 @@ export const getEntityBreadcrumbs = (
         getEntityName(entity as { name?: string; displayName?: string })
       );
     case EntityType.DATABASE:
-      return getBreadcrumbForDatabase(entity as Database);
+      return getBreadcrumbForDatabase(entity as Database, includeCurrent);
     case EntityType.DATABASE_SCHEMA:
-      return getBreadcrumbForDatabaseSchema(entity as DatabaseSchema);
+      return getBreadcrumbForDatabaseSchema(
+        entity as DatabaseSchema,
+        includeCurrent
+      );
     case EntityType.DATABASE_SERVICE:
       return getBreadcrumbForDatabaseService(
         entity.name,
@@ -245,7 +248,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.API_ENDPOINT:
       return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
     case EntityType.METRIC:
-      return getBreadcrumbForMetric(entity.name);
+      return getBreadcrumbForMetric(entity.name, includeCurrent);
     case EntityType.KPI:
       return getBreadCrumbForKpi(entity as Kpi);
     case EntityType.KNOWLEDGE_PAGE:
@@ -270,6 +273,7 @@ export const getEntityBreadcrumbs = (
                       ]
                     )
                   : '',
+                isServiceBreadcrumb: true,
               },
             ]
           : []),
@@ -281,6 +285,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.DATABASE,
                   columnData.database?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.DATABASE,
               },
             ]
           : []),
@@ -292,6 +297,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.DATABASE_SCHEMA,
                   columnData.databaseSchema?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.DATABASE_SCHEMA,
               },
             ]
           : []),
@@ -303,6 +309,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.TABLE,
                   columnData.table?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.TABLE,
               },
             ]
           : []),
@@ -311,6 +318,7 @@ export const getEntityBreadcrumbs = (
               {
                 name: entity.name,
                 url: '',
+                iconType: EntityType.TABLE_COLUMN,
               },
             ]
           : []),

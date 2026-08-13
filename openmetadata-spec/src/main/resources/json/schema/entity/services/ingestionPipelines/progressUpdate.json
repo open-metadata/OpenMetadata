@@ -91,6 +91,10 @@
       "description": "Estimated seconds until the run completes; null when not yet computable",
       "type": ["integer", "null"]
     },
+    "totalAssetsIngested": {
+      "description": "Monotonic count of leaf assets ingested so far (tables + stored procedures + other leaf entities). Survives scope pruning and is present on the terminal PIPELINE_COMPLETE event, so it carries the run's final asset total.",
+      "type": ["integer", "null"]
+    },
     "currentEntity": {
       "description": "FQN of the entity currently being processed",
       "type": "string"

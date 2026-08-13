@@ -24,12 +24,17 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, Edit01, Trash01 } from '@untitledui/icons';
+import { ChevronDown, Edit01, FileCheck02, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import Loader from '../../components/common/Loader/Loader';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
 import {
   FieldKind,
@@ -43,6 +48,8 @@ import {
   listIntakeForms,
   patchIntakeForm,
 } from '../../rest/intakeFormsAPI';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getIntakeFormFields } from '../../utils/IntakeFormUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import IntakeFormDesignerModal from './IntakeFormDesignerModal';
 
@@ -75,7 +82,7 @@ const IntakeFormsPage = () => {
     setLoading(true);
     try {
       const response = await listIntakeForms({
-        fields: 'owners,requiredFields',
+        fields: 'owners,formFields,requiredFields',
       });
       setForms(response.data ?? []);
     } catch (err) {
@@ -181,12 +188,24 @@ const IntakeFormsPage = () => {
       initialValue: null,
     });
 
-  const columns = [
-    { id: 'entityType', name: t('label.entity-type') },
-    { id: 'requiredFields', name: t('label.required-fields') },
-    { id: 'enabled', name: t('label.enabled') },
-    { id: 'actions', name: t('label.action-plural') },
-  ];
+  const breadcrumbs = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.GOVERNANCE,
+        t('label.intake-form-plural')
+      ),
+    [t]
+  );
+
+  const columns = useMemo(
+    () => [
+      { id: 'entityType', name: t('label.entity-type') },
+      { id: 'formFields', name: t('label.field-plural') },
+      { id: 'enabled', name: t('label.enabled') },
+      { id: 'actions', name: t('label.action-plural') },
+    ],
+    [t]
+  );
 
   const renderAddButton = () => {
     if (allEntityTypesCovered) {
@@ -233,158 +252,189 @@ const IntakeFormsPage = () => {
     );
   };
 
-  return (
-    <Box className="tw:gap-4 tw:p-6" direction="col">
-      <Box align="center" justify="between">
-        <PageHeader
-          data={{
-            header: t('label.intake-form-plural'),
-            subHeader: t('message.intake-form-plural-description'),
-          }}
-        />
-        {renderAddButton()}
-      </Box>
-
-      <Table
-        aria-label={t('label.intake-form-plural')}
-        data-testid="intake-forms-table">
-        <Table.Header columns={columns}>
-          {(col) => <Table.Head id={col.id} key={col.id} label={col.name} />}
-        </Table.Header>
-        <Table.Body
-          items={loading ? [] : forms}
-          renderEmptyState={() =>
-            loading ? (
-              <Loader data-testid="intake-forms-loading" size="small" />
-            ) : (
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('label.none')}
-              </Typography>
-            )
-          }>
-          {(record: IntakeForm) => (
-            <Table.Row data-testid={`row-${record.entityType}`} id={record.id}>
-              <Table.Cell>
-                <Typography size="text-sm" weight="semibold">
-                  {entityTypeLabel(record.entityType)}
-                </Typography>
-              </Table.Cell>
-              <Table.Cell>
-                <Box className="tw:gap-1" direction="col">
-                  {(record.requiredFields ?? []).length === 0 ? (
-                    <Typography className="tw:text-tertiary" size="text-sm">
-                      {t('label.none')}
-                    </Typography>
-                  ) : (
-                    (record.requiredFields ?? []).map((rf) => (
-                      <Badge
-                        color={
-                          rf.fieldKind === FieldKind.CustomProperty
-                            ? 'gray'
-                            : 'brand'
-                        }
-                        key={rf.fieldPath}
-                        size="sm"
-                        type="pill-color">
-                        {rf.fieldLabel}
-                        <Typography
-                          as="span"
-                          className="tw:ml-1 tw:text-tertiary"
-                          size="text-xs">
-                          ({rf.fieldPath})
-                        </Typography>
-                      </Badge>
-                    ))
-                  )}
-                </Box>
-              </Table.Cell>
-              <Table.Cell>
-                <Toggle
-                  aria-label={t('label.enabled')}
-                  data-testid={`toggle-${record.entityType}`}
-                  isSelected={record.enabled ?? false}
-                  onChange={(enabled) => handleToggleEnabled(record, enabled)}
-                />
-              </Table.Cell>
-              <Table.Cell>
-                <Box className="tw:gap-2">
-                  <Tooltip title={t('label.edit')}>
-                    <Button
-                      color="tertiary"
-                      data-testid={`edit-${record.entityType}`}
-                      iconLeading={Edit01}
-                      size="sm"
-                      onClick={() => handleEdit(record)}
-                    />
-                  </Tooltip>
-                  <Tooltip title={t('label.delete')}>
-                    <Button
-                      color="tertiary-destructive"
-                      data-testid={`delete-${record.entityType}`}
-                      iconLeading={Trash01}
-                      size="sm"
-                      onClick={() => setDeleteTarget(record)}
-                    />
-                  </Tooltip>
-                </Box>
-              </Table.Cell>
-            </Table.Row>
-          )}
-        </Table.Body>
-      </Table>
-
-      <ModalOverlay
-        isDismissable
-        isOpen={Boolean(deleteTarget)}
-        onOpenChange={(isOpen) => !isOpen && setDeleteTarget(null)}>
-        <Modal>
-          <Dialog
-            showCloseButton
-            data-testid="intake-form-delete-confirm"
-            title={t('label.delete-entity', {
-              entity: t('label.entity-intake-form', {
-                entity: deleteTarget
-                  ? entityTypeLabel(deleteTarget.entityType)
-                  : '',
-              }),
-            })}
-            width={480}
-            onClose={() => setDeleteTarget(null)}>
-            <Dialog.Content>
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('message.delete-intake-form-confirmation')}
-              </Typography>
-            </Dialog.Content>
-            <Dialog.Footer>
-              <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
-                <Button
-                  color="tertiary"
-                  size="sm"
-                  onPress={() => setDeleteTarget(null)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  color="primary-destructive"
-                  size="sm"
-                  onPress={handleDeleteConfirm}>
-                  {t('label.delete')}
-                </Button>
-              </div>
-            </Dialog.Footer>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
-
-      {modalState.open && (
-        <IntakeFormDesignerModal
-          entityType={modalState.entityType}
-          initialValue={modalState.initialValue}
-          open={modalState.open}
-          onCancel={closeModal}
-          onSubmit={handleSubmit}
-        />
-      )}
+  const headerBar = (
+    <Box align="center" justify="between">
+      <PageHeader
+        data={{
+          header: t('label.intake-form-plural'),
+          subHeader: t('message.intake-form-plural-description'),
+        }}
+      />
+      {renderAddButton()}
     </Box>
+  );
+
+  return (
+    <PageLayoutV1 pageTitle={t('label.intake-form-plural')}>
+      <Box className="tw:gap-4" direction="col">
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+        {headerBar}
+
+        {!loading && forms.length === 0 ? (
+          <div className="tw:relative tw:min-h-90">
+            <CreatePlaceholder
+              data-testid="intake-forms-empty"
+              description={t('message.no-intake-form-yet-description')}
+              icon={<FileCheck02 className="tw:text-fg-brand-primary" />}
+              title={t('message.no-intake-form-yet')}
+            />
+          </div>
+        ) : (
+          <Table
+            aria-label={t('label.intake-form-plural')}
+            data-testid="intake-forms-table">
+            <Table.Header columns={columns}>
+              {(col) => (
+                <Table.Head
+                  id={col.id}
+                  isRowHeader={col.id === 'entityType'}
+                  key={col.id}
+                  label={col.name}
+                />
+              )}
+            </Table.Header>
+            <Table.Body
+              items={loading ? [] : forms}
+              renderEmptyState={() => (
+                <Loader data-testid="intake-forms-loading" size="small" />
+              )}>
+              {(record: IntakeForm) => (
+                <Table.Row
+                  data-testid={`row-${record.entityType}`}
+                  id={record.id}>
+                  <Table.Cell>
+                    <Typography size="text-sm" weight="semibold">
+                      {entityTypeLabel(record.entityType)}
+                    </Typography>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Box className="tw:gap-1" direction="col">
+                      {getIntakeFormFields(record).length === 0 ? (
+                        <Typography className="tw:text-tertiary" size="text-sm">
+                          {NO_DATA_PLACEHOLDER}
+                        </Typography>
+                      ) : (
+                        getIntakeFormFields(record).map((field) => (
+                          <Badge
+                            color={
+                              field.fieldKind === FieldKind.CustomProperty
+                                ? 'gray'
+                                : 'brand'
+                            }
+                            key={field.fieldPath}
+                            size="sm"
+                            type="pill-color">
+                            {field.fieldLabel}
+                            <Typography
+                              as="span"
+                              className="tw:ml-1 tw:text-tertiary"
+                              size="text-xs">
+                              ({field.fieldPath})
+                            </Typography>
+                            <Typography
+                              as="span"
+                              className="tw:ml-1 tw:text-tertiary"
+                              size="text-xs">
+                              {field.required
+                                ? t('label.required')
+                                : t('label.optional')}
+                            </Typography>
+                          </Badge>
+                        ))
+                      )}
+                    </Box>
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Toggle
+                      aria-label={t('label.enabled')}
+                      data-testid={`toggle-${record.entityType}`}
+                      isSelected={record.enabled ?? false}
+                      onChange={(enabled) =>
+                        handleToggleEnabled(record, enabled)
+                      }
+                    />
+                  </Table.Cell>
+                  <Table.Cell>
+                    <Box className="tw:gap-2">
+                      <Tooltip title={t('label.edit')}>
+                        <Button
+                          color="tertiary"
+                          data-testid={`edit-${record.entityType}`}
+                          iconLeading={Edit01}
+                          size="sm"
+                          onClick={() => handleEdit(record)}
+                        />
+                      </Tooltip>
+                      <Tooltip title={t('label.delete')}>
+                        <Button
+                          color="tertiary-destructive"
+                          data-testid={`delete-${record.entityType}`}
+                          iconLeading={Trash01}
+                          size="sm"
+                          onClick={() => setDeleteTarget(record)}
+                        />
+                      </Tooltip>
+                    </Box>
+                  </Table.Cell>
+                </Table.Row>
+              )}
+            </Table.Body>
+          </Table>
+        )}
+
+        <ModalOverlay
+          isDismissable
+          isOpen={Boolean(deleteTarget)}
+          onOpenChange={(isOpen) => !isOpen && setDeleteTarget(null)}>
+          <Modal>
+            <Dialog
+              showCloseButton
+              data-testid="intake-form-delete-confirm"
+              title={t('label.delete-entity', {
+                entity: t('label.entity-intake-form', {
+                  entity: deleteTarget
+                    ? entityTypeLabel(deleteTarget.entityType)
+                    : '',
+                }),
+              })}
+              width={480}
+              onClose={() => setDeleteTarget(null)}>
+              <Dialog.Content>
+                <Typography className="tw:text-tertiary" size="text-sm">
+                  {t('message.delete-intake-form-confirmation')}
+                </Typography>
+              </Dialog.Content>
+              <Dialog.Footer>
+                <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
+                  <Button
+                    color="tertiary"
+                    size="sm"
+                    onPress={() => setDeleteTarget(null)}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    color="primary-destructive"
+                    size="sm"
+                    onPress={handleDeleteConfirm}>
+                    {t('label.delete')}
+                  </Button>
+                </div>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+
+        {modalState.open && (
+          <IntakeFormDesignerModal
+            entityType={modalState.entityType}
+            initialValue={modalState.initialValue}
+            open={modalState.open}
+            onCancel={closeModal}
+            onSubmit={handleSubmit}
+          />
+        )}
+      </Box>
+    </PageLayoutV1>
   );
 };
 

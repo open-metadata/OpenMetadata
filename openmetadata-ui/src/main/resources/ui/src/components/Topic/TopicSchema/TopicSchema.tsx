@@ -64,6 +64,7 @@ import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import Table from '../../common/Table/Table';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -76,7 +77,8 @@ import {
 } from './TopicSchema.interface';
 
 const SchemaEditor = withSuspenseFallback(
-  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor')),
+  <EntityDetailWidgetSkeleton lineCount={5} />
 );
 
 const ModalWithMarkdownEditor = withSuspenseFallback(

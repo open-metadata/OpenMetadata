@@ -78,7 +78,7 @@ const SqlQueryTab = () => {
   }
 
   return (
-    <Row className="p-md" gutter={[16, 16]}>
+    <Row className="sql-query-tab p-md" gutter={[16, 16]}>
       {permissions.query?.Create && !isVersionPage && (
         <Col className="d-flex justify-end" span={24}>
           <Button

@@ -47,7 +47,7 @@ import {
   stringToHTML,
 } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -367,8 +367,7 @@ const BotListV1 = ({
    * handle after delete bot action
    */
   const handleDeleteAction = useCallback(async () => {
-    await getResourceLimit('bot', true, true);
-    await reloadBotMap();
+    await Promise.all([getResourceLimit('bot', true, true), reloadBotMap()]);
     fetchBots(showDeleted);
   }, [selectedUser, reloadBotMap]);
 
@@ -533,7 +532,7 @@ const BotListV1 = ({
         />
       </Col>
 
-      <DeleteWidgetModal
+      <DeleteEntityModal
         afterDeleteAction={handleDeleteAction}
         allowSoftDelete={!showDeleted}
         entityId={selectedUser?.id || ''}

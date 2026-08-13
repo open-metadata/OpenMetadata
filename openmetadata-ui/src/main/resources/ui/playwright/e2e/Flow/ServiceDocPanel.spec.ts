@@ -135,7 +135,13 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator(String.raw`#root\/username`).focus();
 
       await expect(
-        docPanel.getByRole('heading', { name: 'Username', level: 1 })
+        docPanel.getByRole('heading', {
+          name: 'Reach your warehouse',
+          level: 1,
+        })
+      ).toBeVisible();
+      await expect(
+        docPanel.getByRole('heading', { name: 'Username', level: 3 })
       ).toBeVisible();
     });
 
@@ -149,17 +155,17 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.locator(String.raw`#root\/username`).focus();
 
       await expect(
-        docPanel.getByRole('heading', { name: 'Username', level: 1 })
+        docPanel.getByRole('heading', { name: 'Username', level: 3 })
       ).toBeVisible();
 
       await page.locator(String.raw`#root\/hostPort`).focus();
 
       await expect(
-        docPanel.getByRole('heading', { name: 'Username', level: 1 })
+        docPanel.getByRole('heading', { name: 'Username', level: 3 })
       ).toHaveCount(0);
 
       await expect(
-        docPanel.getByRole('heading', { name: 'Host Port', level: 1 })
+        docPanel.getByRole('heading', { name: 'Host Port', level: 3 })
       ).toBeVisible();
     });
 
@@ -173,13 +179,16 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.locator(String.raw`#root\/username`).focus();
       await expect(
-        docPanel.getByRole('heading', { name: 'Username', level: 1 })
+        docPanel.getByRole('heading', { name: 'Username', level: 3 })
       ).toBeVisible();
 
       await page.locator('#service-name').focus();
 
       await expect(
-        docPanel.getByRole('heading', { name: 'Name this service', level: 1 })
+        docPanel.getByRole('heading', {
+          name: 'Name it once, find it forever',
+          level: 1,
+        })
       ).toBeVisible();
       await expect(
         docPanel.getByRole('heading', { name: 'Requirements', level: 1 })
@@ -200,7 +209,10 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await expect(serviceNameInput).toBeFocused();
       await expect(
-        docPanel.getByRole('heading', { name: 'Name this service', level: 1 })
+        docPanel.getByRole('heading', {
+          name: 'Name it once, find it forever',
+          level: 1,
+        })
       ).toBeVisible();
       await expect(
         docPanel.getByRole('heading', { name: 'Requirements', level: 1 })
@@ -216,7 +228,10 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.locator('#service-name').focus();
       await expect(
-        docPanel.getByRole('heading', { name: 'Name this service', level: 1 })
+        docPanel.getByRole('heading', {
+          name: 'Name it once, find it forever',
+          level: 1,
+        })
       ).toBeVisible();
 
       await page
@@ -228,13 +243,19 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await expect(
         docPanel.getByRole('heading', {
-          name: 'GCP Credentials Configuration',
+          name: 'Reach your warehouse',
           level: 1,
+        })
+      ).toBeVisible();
+      await expect(
+        docPanel.getByRole('heading', {
+          name: 'GCP Credentials Configuration',
+          level: 3,
         })
       ).toBeVisible();
     });
 
-    test('should show field fallback without requirements for fields with no markdown docs', async ({
+    test('should show section docs without a field fallback for fields with no markdown docs', async ({
       page,
     }) => {
       await page.goto('/databaseServices/add-service', {
@@ -254,10 +275,13 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await expect(
         docPanel.getByRole('heading', {
-          name: 'Account Usage Schema Name',
+          name: 'Tune what gets ingested',
           level: 1,
         })
       ).toBeVisible();
+      await expect(
+        docPanel.getByRole('heading', { name: 'Account Usage Schema Name' })
+      ).toHaveCount(0);
       await expect(
         docPanel.getByRole('heading', { name: 'Requirements', level: 1 })
       ).toHaveCount(0);
@@ -276,11 +300,14 @@ test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.locator(String.raw`#root\/username`).focus();
       await expect(
-        docPanel.getByRole('heading', { name: 'Username', level: 1 })
+        docPanel.getByRole('heading', { name: 'Username', level: 3 })
       ).toBeVisible();
 
       await docPanel.getByRole('link', { name: /View.*docs/i }).focus();
 
+      await expect(
+        docPanel.getByRole('heading', { name: 'Setup Guide', level: 1 })
+      ).toBeVisible();
       await expect(
         docPanel.getByRole('heading', { name: 'Requirements', level: 1 })
       ).toBeVisible();

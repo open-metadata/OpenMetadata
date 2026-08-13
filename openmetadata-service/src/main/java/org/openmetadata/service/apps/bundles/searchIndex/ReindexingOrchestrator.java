@@ -26,6 +26,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.listeners.LoggingProgre
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.SlackProgressListener;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -524,12 +525,8 @@ public class ReindexingOrchestrator {
       try {
         String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
         if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
-          total +=
-              Entity.getEntityRepository(normalizedEntityType)
-                  .getDao()
-                  .listCount(
-                      new org.openmetadata.service.jdbi3.ListFilter(
-                          org.openmetadata.schema.type.Include.ALL));
+          EntityRepository<?> repository = Entity.getEntityRepository(normalizedEntityType);
+          total += repository.getDao().listCount(repository.getReindexFilter());
         }
       } catch (Exception e) {
         LOG.debug("Could not count entities for {}: {}", entityType, e.getMessage());

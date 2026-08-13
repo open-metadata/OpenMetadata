@@ -293,6 +293,10 @@ REDSHIFT_GET_DATABASE_NAMES = """
 SELECT datname FROM pg_database
 """
 
+REDSHIFT_GET_ALL_SCHEMAS = """
+SELECT database_name, schema_name FROM SVV_ALL_SCHEMAS
+"""
+
 REDSHIFT_TEST_GET_QUERIES = """
 SELECT
     has_table_privilege('SVV_TABLE_INFO', 'SELECT') as can_access_svv_table_info,

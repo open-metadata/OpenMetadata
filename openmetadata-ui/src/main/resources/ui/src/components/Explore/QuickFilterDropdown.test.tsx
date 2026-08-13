@@ -14,8 +14,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Children, cloneElement, isValidElement, ReactElement } from 'react';
 import QuickFilterDropdown from './QuickFilterDropdown';
 
+const mockUseLocation = jest.fn();
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useLocation: () => mockUseLocation(),
 }));
 
 jest.mock('../../constants/AdvancedSearch.constants', () => ({
@@ -130,6 +136,10 @@ const renderDropdown = (
   );
 
 describe('QuickFilterDropdown', () => {
+  beforeEach(() => {
+    mockUseLocation.mockReturnValue({ pathname: '/explore' });
+  });
+
   it('should fetch initial options when the dropdown is opened', () => {
     const onGetInitialOptions = jest.fn();
     renderDropdown({ onGetInitialOptions });
@@ -202,5 +212,63 @@ describe('QuickFilterDropdown', () => {
     expect(onSearch).toHaveBeenCalledWith('tab', 'entityType');
 
     jest.useRealTimers();
+  });
+
+  // Without a containing block on the list, the Checkbox's absolutely
+  // positioned hidden input resolves against the popover root, escapes the
+  // list's clip, and lets a click on an off-screen option scroll the page.
+  it('should own the containing block for its option list', () => {
+    renderDropdown();
+
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
+    expect(screen.getByTestId('quick-filter-option-list')).toHaveClass(
+      'tw:relative'
+    );
+  });
+
+  it('should close when the route pathname changes', () => {
+    const { rerender } = renderDropdown();
+
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+
+    mockUseLocation.mockReturnValue({ pathname: '/observability' });
+    rerender(
+      <QuickFilterDropdown
+        label="Entity Type"
+        options={OPTIONS}
+        searchKey="entityType"
+        selectedKeys={[]}
+        onChange={jest.fn()}
+        onGetInitialOptions={jest.fn()}
+        onSearch={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+  });
+
+  it('should stay open when parent rerenders with a new search handler', () => {
+    const { rerender } = renderDropdown({ onSearch: jest.fn() });
+
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+
+    rerender(
+      <QuickFilterDropdown
+        label="Entity Type"
+        options={OPTIONS}
+        searchKey="entityType"
+        selectedKeys={[]}
+        onChange={jest.fn()}
+        onGetInitialOptions={jest.fn()}
+        onSearch={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
   });
 });

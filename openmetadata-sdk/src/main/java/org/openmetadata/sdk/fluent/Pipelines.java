@@ -387,4 +387,14 @@ public final class Pipelines {
       return new PipelineDeleter(client, pipeline.getId().toString());
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().pipelines().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().pipelines().getContextByName(fqn);
+  }
 }

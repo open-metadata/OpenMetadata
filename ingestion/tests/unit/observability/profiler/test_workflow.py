@@ -39,6 +39,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.progress.modes import ManualProgress
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -183,14 +185,18 @@ def test_build_regex_from_filter():
 def test_build_database_params():
     """Verify that database filter patterns are correctly translated to API params"""
     # No filter pattern -> only service param
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_database_params()
     assert params == {"service": "my_service"}
 
     # Include filter -> databaseRegex with include mode
     include_config = deepcopy(config)
     include_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"includes": ["db.*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**include_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**include_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_database_params()
     assert params["databaseRegex"] == "db.*"
     assert params["regexMode"] == "include"
@@ -199,7 +205,9 @@ def test_build_database_params():
     # Exclude filter -> databaseRegex with exclude mode
     exclude_config = deepcopy(config)
     exclude_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"excludes": ["temp.*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**exclude_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**exclude_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_database_params()
     assert params["databaseRegex"] == "temp.*"
     assert params["regexMode"] == "exclude"
@@ -207,7 +215,9 @@ def test_build_database_params():
     # Multiple includes -> combined with OR
     multi_config = deepcopy(config)
     multi_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"includes": ["finance.*", "sales.*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**multi_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**multi_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_database_params()
     assert params["databaseRegex"] == "(finance.*)|(sales.*)"
     assert params["regexMode"] == "include"
@@ -216,7 +226,9 @@ def test_build_database_params():
     fqn_config = deepcopy(config)
     fqn_config["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
     fqn_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"includes": ["my_service.db.*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**fqn_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**fqn_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_database_params()
     assert params["regexFilterByFqn"] == "true"
 
@@ -231,14 +243,18 @@ def test_build_table_params():
     )
 
     # No filter pattern -> only service and database params
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_table_params(database)
     assert params == {"service": "my_service", "database": "my_service.db"}
 
     # Schema include filter
     schema_config = deepcopy(config)
     schema_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"includes": ["one_schema"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**schema_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**schema_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["databaseSchemaRegex"] == "one_schema"
     assert params["regexMode"] == "include"
@@ -247,7 +263,9 @@ def test_build_table_params():
     # Table exclude filter
     table_config = deepcopy(config)
     table_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {"excludes": ["temp.*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**table_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**table_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["tableRegex"] == "temp.*"
     assert params["regexMode"] == "exclude"
@@ -257,7 +275,9 @@ def test_build_table_params():
     both_config = deepcopy(config)
     both_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"includes": ["finance"]}
     both_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {"includes": ["orders.*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**both_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**both_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["databaseSchemaRegex"] == "finance"
     assert params["tableRegex"] == "orders.*"
@@ -269,7 +289,9 @@ def test_build_table_params():
     fqn_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
         "excludes": ["my_service.db.another_schema"]
     }
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**fqn_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**fqn_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["databaseSchemaRegex"] == "my_service.db.another_schema"
     assert params["regexMode"] == "exclude"
@@ -278,7 +300,9 @@ def test_build_table_params():
     conflict_config = deepcopy(config)
     conflict_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"includes": ["finance"]}
     conflict_config["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {"excludes": ["temp.*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**conflict_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**conflict_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["databaseSchemaRegex"] == "finance"
     assert params["regexMode"] == "include"
@@ -288,7 +312,9 @@ def test_build_table_params():
     conflict_config2 = deepcopy(config)
     conflict_config2["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {"excludes": ["hr"]}
     conflict_config2["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {"includes": ["orders.*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**conflict_config2), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**conflict_config2), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     params = fetcher._build_table_params(database)
     assert params["tableRegex"] == "orders.*"
     assert params["regexMode"] == "include"
@@ -361,14 +387,18 @@ def test_filter_classifications():
     # Include classification -> only tables with matching tags
     include_config = deepcopy(config)
     include_config["source"]["sourceConfig"]["config"]["classificationFilterPattern"] = {"includes": ["tag*"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**include_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**include_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     filtered = [t for t in all_tables if not fetcher.filter_classifications(t)]
     assert len(filtered) == 2
 
     # Exclude classification
     exclude_config = deepcopy(config)
     exclude_config["source"]["sourceConfig"]["config"]["classificationFilterPattern"] = {"excludes": ["tag2"]}
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**exclude_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**exclude_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     filtered = [t for t in all_tables if not fetcher.filter_classifications(t)]
     assert len(filtered) == 1
 
@@ -378,7 +408,9 @@ def test_filter_classifications():
         "excludes": ["tag1"],
         "includes": ["tag2"],
     }
-    fetcher = DatabaseFetcherStrategy(OpenMetadataWorkflowConfig(**both_config), None, None, Status())  # type: ignore
+    fetcher = DatabaseFetcherStrategy(
+        OpenMetadataWorkflowConfig(**both_config), None, None, Status(), ManualProgress(ProgressRegistry())
+    )  # type: ignore
     filtered = [t for t in all_tables if not fetcher.filter_classifications(t)]
     assert len(filtered) == 1
 

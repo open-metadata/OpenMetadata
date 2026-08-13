@@ -54,6 +54,7 @@ def test_database_step_values_match_schema():
     assert DatabaseStep.CheckAccess.value == "CheckAccess"
     assert DatabaseStep.GetTables.value == "GetTables"
     assert DatabaseStep.GetStreams.value == "GetStreams"
+    assert DatabaseStep.GetAccessHistory.value == "GetAccessHistory"
 
 
 def test_ping_succeeds_on_a_live_engine(engine):
@@ -136,7 +137,7 @@ def test_list_schemas_warns_when_no_schemas_visible(engine):
     with patch(f"{_MODULE}.inspect") as inspect_mock:
         inspect_mock.return_value.get_schema_names.return_value = []
         evidence = list_schemas(engine)
-    assert evidence.summary == "0 schemas enumerated"
+    assert evidence.summary == "no schemas enumerated"
     assert evidence.caveat is not None
     assert evidence.caveat.title == "No schemas visible in the database"
 
