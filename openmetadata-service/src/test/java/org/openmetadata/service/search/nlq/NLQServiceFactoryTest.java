@@ -1,8 +1,6 @@
 package org.openmetadata.service.search.nlq;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,87 +8,68 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 
 /**
- * Natural language search is an extension point with no OpenMetadata provider, so the factory must
- * report it unavailable for every configuration this distribution can produce.
+ * OpenMetadata ships no NLQ provider, so the factory must yield the no-op service for every
+ * configuration this distribution can produce, including the ones it no longer writes out.
  */
 class NLQServiceFactoryTest {
 
-  private static final String REAL_PROVIDER_CLASS = "com.example.search.nlq.ExternalNLQService";
+  private static final String MISSING_PROVIDER_CLASS = "com.example.search.nlq.ExternalNLQService";
 
   @Test
-  @DisplayName("A null search configuration reports no provider instead of throwing")
-  void nullConfigurationHasNoProvider() {
-    assertFalse(NLQServiceFactory.hasConfiguredProvider(null));
+  @DisplayName("A null search configuration yields the no-op service instead of throwing")
+  void nullConfigurationYieldsNoOp() {
     assertInstanceOf(NoOpNLQService.class, NLQServiceFactory.createNLQService(null));
   }
 
   @Test
-  @DisplayName("An absent naturalLanguageSearch section reports no provider")
-  void absentSectionHasNoProvider() {
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-
-    assertFalse(NLQServiceFactory.hasConfiguredProvider(config));
-    assertInstanceOf(NoOpNLQService.class, NLQServiceFactory.createNLQService(config));
-  }
-
-  @Test
-  @DisplayName("Semantic search alone does not enable natural language search")
-  void semanticSearchOnlyHasNoProvider() {
-    ElasticSearchConfiguration config = configWith(new NaturalLanguageSearchConfiguration());
-    config.getNaturalLanguageSearch().setSemanticSearchEnabled(true);
-
-    assertFalse(NLQServiceFactory.hasConfiguredProvider(config));
-  }
-
-  @Test
   @DisplayName(
-      "Enabling the flag without a provider does not make natural language search available")
-  void enabledWithNoOpProviderHasNoProvider() {
+      "An absent naturalLanguageSearch section yields the no-op service instead of throwing")
+  void absentSectionYieldsNoOp() {
+    assertInstanceOf(
+        NoOpNLQService.class, NLQServiceFactory.createNLQService(new ElasticSearchConfiguration()));
+  }
+
+  @Test
+  @DisplayName("Semantic search alone does not select an NLQ provider")
+  void semanticSearchOnlyYieldsNoOp() {
     ElasticSearchConfiguration config =
-        configWith(enabledWithProvider(NoOpNLQService.class.getName()));
+        configWith(new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
 
-    assertFalse(NLQServiceFactory.hasConfiguredProvider(config));
     assertInstanceOf(NoOpNLQService.class, NLQServiceFactory.createNLQService(config));
   }
 
   @Test
-  @DisplayName(
-      "Enabling the flag with a blank provider does not make natural language search available")
-  void enabledWithBlankProviderHasNoProvider() {
-    ElasticSearchConfiguration config = configWith(enabledWithProvider(""));
+  @DisplayName("A disabled configuration yields the no-op service even with a provider class set")
+  void disabledConfigurationYieldsNoOp() {
+    ElasticSearchConfiguration config =
+        configWith(
+            new NaturalLanguageSearchConfiguration()
+                .withEnabled(false)
+                .withProviderClass(MISSING_PROVIDER_CLASS));
 
-    assertFalse(NLQServiceFactory.hasConfiguredProvider(config));
+    assertInstanceOf(NoOpNLQService.class, NLQServiceFactory.createNLQService(config));
   }
 
   @Test
-  @DisplayName("A registered external provider is reported as available")
-  void enabledWithExternalProviderHasProvider() {
-    ElasticSearchConfiguration config = configWith(enabledWithProvider(REAL_PROVIDER_CLASS));
-
-    assertTrue(NLQServiceFactory.hasConfiguredProvider(config));
+  @DisplayName("A blank provider class yields the no-op service")
+  void blankProviderClassYieldsNoOp() {
+    assertInstanceOf(
+        NoOpNLQService.class, NLQServiceFactory.createNLQService(enabledWithProvider("")));
   }
 
   @Test
-  @DisplayName("A provider that cannot be loaded falls back to the no-op service")
+  @DisplayName("A provider class that cannot be loaded falls back to the no-op service")
   void unloadableProviderFallsBackToNoOp() {
-    ElasticSearchConfiguration config = configWith(enabledWithProvider(REAL_PROVIDER_CLASS));
-
-    assertInstanceOf(NoOpNLQService.class, NLQServiceFactory.createNLQService(config));
+    assertInstanceOf(
+        NoOpNLQService.class,
+        NLQServiceFactory.createNLQService(enabledWithProvider(MISSING_PROVIDER_CLASS)));
   }
 
-  @Test
-  @DisplayName("A disabled provider is not used even when a provider class is set")
-  void disabledWithExternalProviderHasNoProvider() {
-    NaturalLanguageSearchConfiguration nlqConfig = enabledWithProvider(REAL_PROVIDER_CLASS);
-    nlqConfig.setEnabled(false);
-
-    assertFalse(NLQServiceFactory.hasConfiguredProvider(configWith(nlqConfig)));
-  }
-
-  private static NaturalLanguageSearchConfiguration enabledWithProvider(String providerClass) {
-    return new NaturalLanguageSearchConfiguration()
-        .withEnabled(true)
-        .withProviderClass(providerClass);
+  private static ElasticSearchConfiguration enabledWithProvider(String providerClass) {
+    return configWith(
+        new NaturalLanguageSearchConfiguration()
+            .withEnabled(true)
+            .withProviderClass(providerClass));
   }
 
   private static ElasticSearchConfiguration configWith(

@@ -68,6 +68,8 @@ import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
@@ -464,7 +466,19 @@ public class SystemResource {
       })
   public Response checkSearchSettings(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return Response.ok().entity(Entity.getSearchRepository().isNlqServiceAvailable()).build();
+    return Response.ok().entity(isNaturalLanguageSearchEnabled()).build();
+  }
+
+  /**
+   * Natural language search is served by a distribution-specific endpoint, not by OpenMetadata, so
+   * this reflects the operator's {@code elasticsearch.naturalLanguageSearch.enabled} setting only.
+   * OpenMetadata does not expose that setting, leaving it disabled.
+   */
+  private boolean isNaturalLanguageSearchEnabled() {
+    ElasticSearchConfiguration searchConfig = applicationConfig.getElasticSearchConfiguration();
+    NaturalLanguageSearchConfiguration nlqConfig =
+        searchConfig != null ? searchConfig.getNaturalLanguageSearch() : null;
+    return nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled());
   }
 
   @GET

@@ -96,7 +96,6 @@ import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
-import org.openmetadata.service.search.nlq.NoOpNLQService;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -2845,7 +2844,6 @@ class SearchRepositoryBehaviorTest {
 
     repository.initializeNLQService(config);
     assertNull(repository.nlqService);
-    assertFalse(repository.isNlqServiceAvailable());
 
     NLQService nlqService = mock(NLQService.class);
     NaturalLanguageSearchConfiguration enabledConfig =
@@ -2855,9 +2853,6 @@ class SearchRepositoryBehaviorTest {
     config.setNaturalLanguageSearch(enabledConfig);
     try (var nlqServiceFactoryMock = mockStatic(NLQServiceFactory.class)) {
       nlqServiceFactoryMock
-          .when(() -> NLQServiceFactory.hasConfiguredProvider(config))
-          .thenReturn(true);
-      nlqServiceFactoryMock
           .when(() -> NLQServiceFactory.createNLQService(config))
           .thenReturn(nlqService);
 
@@ -2865,31 +2860,6 @@ class SearchRepositoryBehaviorTest {
     }
 
     assertEquals(nlqService, repository.nlqService);
-    assertTrue(repository.isNlqServiceAvailable());
-  }
-
-  @Test
-  void initializeNLQServiceIgnoresProviderThatFallsBackToNoOp() {
-    ElasticSearchConfiguration config =
-        new ElasticSearchConfiguration()
-            .withNaturalLanguageSearch(
-                new NaturalLanguageSearchConfiguration()
-                    .withEnabled(true)
-                    .withProviderClass("broken.Provider"));
-
-    try (var nlqServiceFactoryMock = mockStatic(NLQServiceFactory.class)) {
-      nlqServiceFactoryMock
-          .when(() -> NLQServiceFactory.hasConfiguredProvider(config))
-          .thenReturn(true);
-      nlqServiceFactoryMock
-          .when(() -> NLQServiceFactory.createNLQService(config))
-          .thenReturn(new NoOpNLQService());
-
-      repository.initializeNLQService(config);
-    }
-
-    assertNull(repository.nlqService);
-    assertFalse(repository.isNlqServiceAvailable());
   }
 
   @Test

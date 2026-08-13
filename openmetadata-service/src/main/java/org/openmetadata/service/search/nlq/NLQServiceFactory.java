@@ -11,8 +11,8 @@ import org.openmetadata.service.util.ReflectionUtil;
  * Factory for creating NLQService instances based on configuration.
  *
  * <p>This is an extension point: OpenMetadata ships {@link NoOpNLQService} as the only
- * implementation, so natural language search stays unavailable unless a distribution registers its
- * own provider class.
+ * implementation, and does not expose the {@code naturalLanguageSearch} settings that would select
+ * another one.
  */
 @Slf4j
 public class NLQServiceFactory {
@@ -21,25 +21,14 @@ public class NLQServiceFactory {
 
   private NLQServiceFactory() {}
 
-  /**
-   * Whether an NLQ provider other than {@link NoOpNLQService} is enabled. Callers use this to decide
-   * whether natural language search can actually serve a query, rather than trusting the {@code
-   * enabled} flag on its own.
-   */
-  public static boolean hasConfiguredProvider(ElasticSearchConfiguration config) {
+  public static NLQService createNLQService(ElasticSearchConfiguration config) {
     NaturalLanguageSearchConfiguration nlqConfig =
         config != null ? config.getNaturalLanguageSearch() : null;
     boolean enabled = nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled());
     String providerClass = enabled ? nlqConfig.getProviderClass() : null;
-    return !nullOrEmpty(providerClass) && !NO_OP_PROVIDER_CLASS.equals(providerClass);
-  }
-
-  public static NLQService createNLQService(ElasticSearchConfiguration config) {
     NLQService service = new NoOpNLQService();
-    if (hasConfiguredProvider(config)) {
-      service = instantiateProvider(config.getNaturalLanguageSearch().getProviderClass(), config);
-    } else {
-      LOG.info("No natural language search provider configured. Returning NoOpNLQService.");
+    if (!nullOrEmpty(providerClass) && !NO_OP_PROVIDER_CLASS.equals(providerClass)) {
+      service = instantiateProvider(providerClass, config);
     }
     return service;
   }
