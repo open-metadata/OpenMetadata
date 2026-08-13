@@ -3001,6 +3001,8 @@
     "are-you-want-to-restore": "{{entity}}을(를) 복원하시겠습니까?",
     "assess-data-reliability-with-data-profiler-lineage": "데이터 거버넌스에 대한 올바른 접근 방식으로 데이터 중심 세계에서 경쟁 우위를 확보하세요. 데이터를 보호하고 비즈니스가 혁신과 성장을 촉진할 수 있도록 지원하세요.",
     "asset-relations-select-term": "관계를 관리하려면 용어집 용어 또는 메트릭을 선택하세요.",
+    "assets-add-disabled-term-status": "이 용어는 {{status}} 상태입니다. 승인되면 자산을 추가할 수 있습니다.",
+    "assets-add-restricted-term-status": "이 용어는 {{status}} 상태입니다. 자산은 승인된 용어에만 추가할 수 있습니다.",
     "assigned-you-a-new-task-lowercase": "새로운 작업이 당신에게 할당되었습니다",
     "assigning-team-entity-description": "{{name}}에 {{entity}}를 추가하세요. 이 {{entity}}는 {{name}} 팀의 모든 사용자와 {{name}} 아래의 모든 팀에 상속됩니다",
     "at-least-one-policy": "최소 하나의 정책을 입력하세요",

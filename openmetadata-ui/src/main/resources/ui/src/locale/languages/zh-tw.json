@@ -3001,6 +3001,8 @@
     "are-you-want-to-restore": "您確定要還原 {{entity}} 嗎？",
     "assess-data-reliability-with-data-profiler-lineage": "透過正確的資料治理方法，在資料驅動的世界中獲得競爭優勢。保護您的資料並賦予您的業務能力，以推動創新和成長。",
     "asset-relations-select-term": "選擇詞彙表術語或指標以管理關係。",
+    "assets-add-disabled-term-status": "此術語為{{status}}。核准後即可新增資產。",
+    "assets-add-restricted-term-status": "此術語為{{status}}。資產只能新增至已核准的術語。",
     "assigned-you-a-new-task-lowercase": "已指派一項新任務給您",
     "assigning-team-entity-description": "將一個 {{entity}} 新增至 {{name}}。此 {{entity}} 將由團隊 {{name}} 中的所有使用者以及 {{name}} 下的所有團隊繼承。",
     "at-least-one-policy": "請至少輸入一項政策",
