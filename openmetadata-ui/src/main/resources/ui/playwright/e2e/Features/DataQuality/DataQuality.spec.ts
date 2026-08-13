@@ -789,7 +789,9 @@ test.describe(
           await expect(banner).toContainText(
             'This test has not run yet. Add it to a pipeline to start collecting results.'
           );
-          await expect(banner).toContainText('Next · Not scheduled');
+          await expect(banner.getByTestId('test-case-next-run')).toHaveText(
+            'Next · Not Scheduled'
+          );
         });
 
         const runResults = [
