@@ -296,6 +296,36 @@ describe('QualityTab', () => {
     ]);
   });
 
+  it('should use the canonical table name in breadcrumbs from a table page', async () => {
+    const { default: useCustomLocation } = jest.requireMock(
+      '../../../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    useCustomLocation.mockReturnValueOnce({
+      pathname: '/test-path',
+      search: '?test=value',
+      state: undefined,
+    });
+    (useTableProfiler as jest.Mock).mockReturnValueOnce({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        name: 'canonical-table-name',
+        displayName: 'Table Display Name',
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    const dataQualityTab = await screen.findByText('DataQualityTab.component');
+    const breadcrumbData = JSON.parse(
+      dataQualityTab.getAttribute('data-breadcrumb') ?? '[]'
+    );
+
+    expect(breadcrumbData.at(-1).name).toBe('canonical-table-name');
+  });
+
   it('should keep the filter toolbar responsive at constrained widths', async () => {
     await act(async () => {
       render(<QualityTab />);

@@ -239,7 +239,7 @@ export const QualityTab = () => {
       ? [
           ...getBreadcrumbForTable(table),
           {
-            name: getEntityName(table),
+            name: table.name,
             url: getEntityDetailsPath(
               EntityType.TABLE,
               table.fullyQualifiedName ?? '',
