@@ -959,6 +959,22 @@ describe('findPasswordFieldsWithoutPrefix', () => {
     ).toEqual([]);
   });
 
+  it('reports a bare prefix with no secret id after it', () => {
+    expect(
+      findPasswordFieldsWithoutPrefix(flatSchema, {
+        password: SECRET_FIELD_PREFIX,
+      })
+    ).toEqual([{ path: ['password'], key: 'password' }]);
+  });
+
+  it('reports a prefix followed only by whitespace as missing a secret id', () => {
+    expect(
+      findPasswordFieldsWithoutPrefix(flatSchema, {
+        password: `${SECRET_FIELD_PREFIX}   `,
+      })
+    ).toEqual([{ path: ['password'], key: 'password' }]);
+  });
+
   it('does not report an empty password field', () => {
     expect(findPasswordFieldsWithoutPrefix(flatSchema, {})).toEqual([]);
   });

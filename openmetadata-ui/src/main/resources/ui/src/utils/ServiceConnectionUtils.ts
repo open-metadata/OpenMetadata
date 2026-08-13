@@ -338,7 +338,8 @@ export type PasswordFieldWithoutPrefix = {
  * resolved against the currently-selected branch in `formData`, same
  * resolution strategy as {@link getMissingSchemaRequiredFieldsCountForSelectedBranch})
  * and reports every `format: 'password'` field whose current value is
- * non-empty and doesn't start with `prefix`.
+ * non-empty and either doesn't start with `prefix` or is just the bare
+ * prefix with no secret id after it.
  */
 export const findPasswordFieldsWithoutPrefix = (
   schema: Record<string, unknown>,
@@ -389,7 +390,7 @@ export const findPasswordFieldsWithoutPrefix = (
       typeof value === 'string' &&
       value.trim() !== '' &&
       value !== MASKED_PASSWORD_VALUE &&
-      !value.startsWith(prefix)
+      (!value.startsWith(prefix) || value.slice(prefix.length).trim() === '')
     ) {
       acc.push({ path: [key], key });
 
