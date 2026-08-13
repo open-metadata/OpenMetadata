@@ -152,6 +152,11 @@ server:
 # Set LOG_FORMAT=json for structured logs. The default text format preserves legacy output.
 logging:
   level: ${LOG_LEVEL:-INFO}
+  loggers:
+    # ROOT at DEBUG makes Jetty's HttpParser log every header verbatim, including Authorization
+    # bearer tokens and OM_SESSION cookies. Pin it so LOG_LEVEL=DEBUG stays safe to share.
+    org.eclipse.jetty:
+      level: ${JETTY_LOG_LEVEL:-INFO}
   appenders:
     - type: console
       threshold: INFO
