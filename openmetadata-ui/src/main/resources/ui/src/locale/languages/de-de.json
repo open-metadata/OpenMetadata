@@ -3001,6 +3001,7 @@
     "are-you-want-to-restore": "Sind Sie sicher, dass Sie {{entity}} wiederherstellen möchten?",
     "assess-data-reliability-with-data-profiler-lineage": "Gewinnen Sie einen Wettbewerbsvorteil in der datengetriebenen Welt mit dem richtigen Ansatz für das Datenmanagement. Schützen Sie Ihre Daten und ermöglichen Sie Ihrem Unternehmen, Innovation und Wachstum voranzutreiben.",
     "asset-relations-select-term": "Wählen Sie einen Glossarbegriff oder eine Metrik aus, um Beziehungen zu verwalten.",
+    "assets-add-disabled-term-status": "Dieser Begriff ist {{status}}. Assets können hinzugefügt werden, sobald er genehmigt ist.",
     "assigned-you-a-new-task-lowercase": "Ihnen wurde eine neue Aufgabe zugewiesen",
     "assigning-team-entity-description": "Fügen Sie {{entity}} zu {{name}} hinzu. Dieses {{entity}} wird von allen Benutzern im Team {{name}} sowie von allen Teams unter {{name}} übernommen.",
     "at-least-one-policy": "Geben Sie mindestens eine Richtlinie ein",

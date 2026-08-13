@@ -3001,6 +3001,7 @@
     "are-you-want-to-restore": "האם אתה בטוח שברצונך לשחזר את {{entity}}?",
     "assess-data-reliability-with-data-profiler-lineage": "השג יתרון תחרותי בעולם המבוסס על נתונים עם גישה נכונה לשיטת השלטון.  אבטח את הנתונים שלך ואפשר לעסוק בחדשנות ובצמיחה של העסק שלך.",
     "asset-relations-select-term": "בחר מונח מילון או מדד לניהול קשרים.",
+    "assets-add-disabled-term-status": "מונח זה במצב {{status}}. ניתן להוסיף נכסים לאחר אישורו.",
     "assigned-you-a-new-task-lowercase": "משימה חדשה הועברה אליך",
     "assigning-team-entity-description": "הוסף {{entity}} אל {{name}}. ה{{entity}} יוכתר על ידי כל המשתמשים בצוות {{name}} וגם על ידי כל הצוותים שבתוך {{name}}",
     "at-least-one-policy": "הזן לפחות מדיניות אחת",

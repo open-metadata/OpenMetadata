@@ -3001,6 +3001,7 @@
     "are-you-want-to-restore": "آیا مطمئن هستید که می‌خواهید {{entity}} را بازیابی کنید؟",
     "assess-data-reliability-with-data-profiler-lineage": "با رویکرد صحیح به حکمرانی داده، مزیت رقابتی در دنیای داده‌محور به‌دست آورید. داده‌های خود را ایمن کنید و کسب‌وکار خود را به سمت نوآوری و رشد سوق دهید.",
     "asset-relations-select-term": "یک اصطلاح واژه‌نامه یا معیار را برای مدیریت روابط انتخاب کنید.",
+    "assets-add-disabled-term-status": "این اصطلاح {{status}} است. پس از تأیید می‌توان دارایی‌ها را افزود.",
     "assigned-you-a-new-task-lowercase": "وظیفه جدیدی به شما اختصاص داده شده است.",
     "assigning-team-entity-description": "یک {{entity}} را به {{name}} اضافه کنید. این {{entity}} به تمامی کاربران تیم {{name}} و تمام تیم‌های زیرمجموعه {{name}} به ارث خواهد رسید.",
     "at-least-one-policy": "حداقل یک سیاست وارد کنید.",

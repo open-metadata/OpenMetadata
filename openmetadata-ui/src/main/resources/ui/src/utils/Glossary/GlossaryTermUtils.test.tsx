@@ -14,6 +14,7 @@
 import React from 'react';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs } from '../../enums/entity.enum';
+import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import glossaryTermClassBase, {
   GlossaryTermDetailPageTabProps,
 } from './GlossaryTermClassBase';
@@ -128,6 +129,40 @@ describe('getGlossaryTermDetailPageTabs', () => {
       const tabs = getGlossaryTermDetailPageTabs(mockProps);
 
       expect(tabs.find((t) => t.key === EntityTabs.ASSETS)).toBeDefined();
+    });
+
+    it('passes a status message and disables Add on the ASSETS tab when the term is not Approved', () => {
+      const tabs = getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        glossaryTerm: {
+          ...mockGlossaryTerm,
+          entityStatus: EntityStatus.InReview,
+        },
+      });
+      const assetsTab = tabs.find((t) => t.key === EntityTabs.ASSETS);
+      const resizable = assetsTab?.children as React.ReactElement;
+      const assetsTabsProps = (
+        resizable.props.firstPanel.children as React.ReactElement
+      ).props;
+
+      expect(assetsTabsProps.addDisabledMessage).toBeTruthy();
+    });
+
+    it('does not pass a disabled message on the ASSETS tab when the term is Approved', () => {
+      const tabs = getGlossaryTermDetailPageTabs({
+        ...mockProps,
+        glossaryTerm: {
+          ...mockGlossaryTerm,
+          entityStatus: EntityStatus.Approved,
+        },
+      });
+      const assetsTab = tabs.find((t) => t.key === EntityTabs.ASSETS);
+      const resizable = assetsTab?.children as React.ReactElement;
+      const assetsTabsProps = (
+        resizable.props.firstPanel.children as React.ReactElement
+      ).props;
+
+      expect(assetsTabsProps.addDisabledMessage).toBeUndefined();
     });
 
     it('includes ACTIVITY_FEED tab', () => {

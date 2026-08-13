@@ -3001,6 +3001,7 @@
     "are-you-want-to-restore": "Êtes vous sûr de vouloir restaurer",
     "assess-data-reliability-with-data-profiler-lineage": "Évaluez la fiabilité de vos actifs de données avec le profilage, la traçabilité, l'échantillonnage, et bien plus",
     "asset-relations-select-term": "Sélectionnez un terme de glossaire ou une métrique pour gérer les relations.",
+    "assets-add-disabled-term-status": "Ce terme est {{status}}. Les ressources peuvent être ajoutées une fois qu'il est approuvé.",
     "assigned-you-a-new-task-lowercase": "vous a assigné une nouvelle tâche",
     "assigning-team-entity-description": "Ajoutez un {{entity}} à {{name}}. Ce {{entity}} sera hérité par tous les Utilisateurs de l'Équipe {{name}} ainsi que par toutes les Équipes sous {{name}}",
     "at-least-one-policy": "Au moins une stratégie",

@@ -3001,6 +3001,7 @@
     "are-you-want-to-restore": "您确定要恢复吗？",
     "assess-data-reliability-with-data-profiler-lineage": "通过数据分析工具、血缘关系图、样本数据等评估数据的可靠性",
     "asset-relations-select-term": "选择术语表术语或指标以管理关系。",
+    "assets-add-disabled-term-status": "该术语为{{status}}。审批通过后即可添加资产。",
     "assigned-you-a-new-task-lowercase": "分配了一个新任务给您",
     "assigning-team-entity-description": "添加{{entity}}到{{name}}, 该{{entity}}将会被{{name}}团队中的所有人及其子团队继承",
     "at-least-one-policy": "至少一个策略",

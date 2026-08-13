@@ -3001,6 +3001,7 @@
     "are-you-want-to-restore": "Är du säker på att du vill återställa {{entity}}?",
     "assess-data-reliability-with-data-profiler-lineage": "Skaffa dig en konkurrensfördel i den datadrivna världen med rätt strategi för datastyrning. Säkra dina data och ge ditt företag möjlighet att driva innovation och tillväxt.",
     "asset-relations-select-term": "Välj en ordlisteterm eller ett mätvärde för att hantera relationer.",
+    "assets-add-disabled-term-status": "Den här termen är {{status}}. Tillgångar kan läggas till när den har godkänts.",
     "assigned-you-a-new-task-lowercase": "en ny uppgift har tilldelats dig",
     "assigning-team-entity-description": "Lägg till en {{entity}} i {{name}}. Denna {{entity}} ärvs av alla användare i teamet {{name}} samt alla team under {{name}}",
     "at-least-one-policy": "Ange minst en policy",
