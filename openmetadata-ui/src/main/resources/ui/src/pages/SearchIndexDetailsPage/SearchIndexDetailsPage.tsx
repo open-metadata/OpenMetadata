@@ -691,6 +691,7 @@ function SearchIndexDetailsPage() {
         </Col>
 
         <GenericProvider<SearchIndex>
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={searchIndexDetails}
           isTabExpanded={isTabExpanded}

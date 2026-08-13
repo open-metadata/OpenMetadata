@@ -318,6 +318,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           />
         </Col>
         <GenericProvider<APIEndpoint>
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={apiEndpointDetails}
           isTabExpanded={isTabExpanded}

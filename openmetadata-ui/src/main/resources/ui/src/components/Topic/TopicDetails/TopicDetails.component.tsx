@@ -539,6 +539,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Topic>
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={topicDetails}
           isTabExpanded={isTabExpanded}

@@ -362,6 +362,7 @@ const DashboardDetails = ({
           />
         </Col>
         <GenericProvider<Dashboard>
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={dashboardDetails}
           isTabExpanded={isTabExpanded}

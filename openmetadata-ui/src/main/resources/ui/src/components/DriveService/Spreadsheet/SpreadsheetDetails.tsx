@@ -445,6 +445,7 @@ function SpreadsheetDetails({
           />
         </Col>
         <GenericProvider<Spreadsheet>
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={spreadsheetDetails}
           isTabExpanded={isTabExpanded}

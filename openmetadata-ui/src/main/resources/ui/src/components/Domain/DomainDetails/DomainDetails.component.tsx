@@ -1109,6 +1109,7 @@ const DomainDetails = ({
 
         <GenericProvider<Domain>
           newTagsUI
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}

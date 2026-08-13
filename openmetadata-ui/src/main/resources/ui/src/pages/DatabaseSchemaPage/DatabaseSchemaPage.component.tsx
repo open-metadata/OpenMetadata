@@ -842,6 +842,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             )}
           </Col>
           <GenericProvider<DatabaseSchema>
+            activeTab={activeTab}
             customizedPage={customizedPage}
             data={databaseSchema ?? ({} as DatabaseSchema)}
             isTabExpanded={isTabExpanded}

@@ -945,6 +945,7 @@ const TagPage = () => {
         </Col>
 
         <GenericProvider<Tag>
+          activeTab={activeTab as EntityTabs}
           customizedPage={customizedPage}
           data={tagItem}
           isVersionView={false}

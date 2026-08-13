@@ -150,6 +150,9 @@ const DataProductsDetailsPage = ({
     tab: string;
     version: string;
   }>();
+  // `/dataProduct/:fqn` carries no tab segment, so the URL alone cannot tell the widget
+  // layout which tab is on screen.
+  const currentTab = (activeTab ?? DomainTabs.DOCUMENTATION) as EntityTabs;
   const { fqn: dataProductFqn } = useFqn();
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -810,6 +813,7 @@ const DataProductsDetailsPage = ({
         />
         <GenericProvider<DataProduct>
           newTagsUI
+          activeTab={currentTab}
           currentVersionData={dataProduct}
           customizedPage={customizedPage}
           data={dataProduct}
@@ -937,7 +941,7 @@ const DataProductsDetailsPage = ({
             <div className="tw:p-5">
               <Tabs
                 destroyInactiveTabPane
-                activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+                activeKey={currentTab}
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}

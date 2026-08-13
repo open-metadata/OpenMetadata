@@ -331,6 +331,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Metric>
+          activeTab={activeTab}
           customizedPage={customizedPage}
           data={metricDetails}
           isTabExpanded={isTabExpanded}
