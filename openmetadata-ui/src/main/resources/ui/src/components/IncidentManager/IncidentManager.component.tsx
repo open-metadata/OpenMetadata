@@ -13,6 +13,7 @@
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
 import { isString } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
@@ -33,12 +34,15 @@ const IncidentManager = ({
   isDateRangePickerVisible = true,
 }: IncidentManagerProps) => {
   const { t } = useTranslation();
-  const breadcrumbData = [
-    {
-      name: t('label.incident-manager'),
-      url: observabilityRouterClassBase.getIncidentManagerPath(),
-    },
-  ];
+  const breadcrumbData = useMemo(
+    () => [
+      {
+        name: t('label.incident-manager'),
+        url: observabilityRouterClassBase.getIncidentManagerPath(),
+      },
+    ],
+    [t]
+  );
   const {
     commonTestCasePermission,
     filters,

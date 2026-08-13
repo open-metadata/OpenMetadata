@@ -15,9 +15,11 @@ import { MemoryRouter } from 'react-router-dom';
 import Sidebar from './Sidebar.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  NavList: jest.fn().mockImplementation(({ activeUrl }) => (
-    <div data-active-url={activeUrl} data-testid="nav-list" />
-  )),
+  NavList: jest
+    .fn()
+    .mockImplementation(({ activeUrl }) => (
+      <div data-active-url={activeUrl} data-testid="nav-list" />
+    )),
 }));
 
 jest.mock('../../constants/CustomSidebar.constants', () => ({
