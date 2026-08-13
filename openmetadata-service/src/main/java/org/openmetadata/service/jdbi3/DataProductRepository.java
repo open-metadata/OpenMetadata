@@ -1026,6 +1026,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           List<UUID> assetIds =
               allRecords.stream().map(CollectionDAO.EntityRelationshipRecord::getId).toList();
           searchRepository.updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
+          List<EntityReference> assetRefs =
+              allRecords.stream()
+                  .map(
+                      record ->
+                          new EntityReference().withId(record.getId()).withType(record.getType()))
+                  .toList();
+          searchRepository.propagateInheritedDomainsToChildren(assetRefs, updatedDomains);
         }
       }
     }
