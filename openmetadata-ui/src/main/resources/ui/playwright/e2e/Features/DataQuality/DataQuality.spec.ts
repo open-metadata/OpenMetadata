@@ -790,7 +790,7 @@ test.describe(
             'This test has not run yet. Add it to a pipeline to start collecting results.'
           );
           await expect(banner.getByTestId('test-case-next-run')).toHaveText(
-            'Next · Not Scheduled'
+            /^Next · Not scheduled$/i
           );
         });
 
