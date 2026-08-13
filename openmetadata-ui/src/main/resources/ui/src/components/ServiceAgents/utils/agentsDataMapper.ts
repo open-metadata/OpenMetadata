@@ -277,6 +277,7 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     warnings,
     schedule: pipeline.airflowConfig?.scheduleInterval,
     recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
+    currentRunId: pipeline.pipelineStatuses?.[0]?.runId,
     ...progressFields,
   };
 };

@@ -34,7 +34,6 @@ export interface ActivityFeedProviderContextType {
   // For activity events (entity changes)
   activityEvents: ActivityEvent[];
   selectedActivity: ActivityEvent | undefined;
-  activityThread: Thread | undefined;
   // For regular feeds (conversations, announcements)
   entityThread: Thread[];
   selectedThread: Thread | undefined;
@@ -85,10 +84,6 @@ export interface ActivityFeedProviderContextType {
   showTaskDrawer: (task: Task) => void;
   showActivityDrawer: (activity: ActivityEvent) => void;
   hideDrawer: () => void;
-  postActivityComment: (
-    message: string,
-    activity: ActivityEvent
-  ) => Promise<void>;
   updateEditorFocus: (isFocused: boolean) => void;
   updateReactions: (
     post: Post,
