@@ -702,7 +702,20 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     assertEquals(newParentName, renamedParent.getName());
     assertEquals(newParentName, renamedParent.getFullyQualifiedName());
 
-    // Verify child domains' FQNs are updated
+    // Verify child domains' FQNs are updated. Descendant FQN rewrite runs after the parent
+    // PATCH commits, so poll until both children reflect the new parent prefix.
+    Awaitility.await("Child domain FQNs must propagate after parent rename")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Domain probe1 = getEntity(child1.getId().toString());
+              Domain probe2 = getEntity(child2.getId().toString());
+              assertTrue(probe1.getFullyQualifiedName().startsWith(newParentName + "."));
+              assertTrue(probe2.getFullyQualifiedName().startsWith(newParentName + "."));
+            });
     Domain updatedChild1 = getEntity(child1.getId().toString());
     Domain updatedChild2 = getEntity(child2.getId().toString());
 
