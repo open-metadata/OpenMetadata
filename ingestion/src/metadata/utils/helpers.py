@@ -15,6 +15,7 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import itertools
 import pprint
@@ -456,6 +457,68 @@ def is_safe_sql_query(sql_query: str) -> bool:
         if any(token.normalized.upper().split("(")[0] in forbiden_token for token in parsed_query.tokens):
             return False
     return True
+
+
+def is_safe_pandas_query(query_expression: Optional[str]) -> bool:  # noqa: UP045
+    """Validate a pandas ``DataFrame.query()`` expression.
+
+    ``DataFrame.query()`` evaluates a Python expression in-process, so a filter must
+    not reach any function call, attribute access, or calling-frame variable (those
+    allow arbitrary execution, e.g. ``col.to_csv(...)`` or ``@local``). The expression
+    is parsed and every node is required to be a comparison, boolean, or arithmetic
+    operation over bare column names and literals. Backtick-quoted column identifiers
+    are blanked first so unusual column names do not fail the parse, and a ``@name``
+    frame reference is rejected because it is not valid Python.
+
+    Args:
+        query_expression (str): pandas filter expression
+    Returns:
+        bool
+    """
+    if query_expression is None:
+        return True
+
+    # Only comparisons, boolean and arithmetic operators over bare column names and
+    # literals are allowed. Any Call or Attribute node is rejected, so no Series method
+    # (to_csv, values.tofile, .str...) and no @frame variable can be reached. Operators
+    # are listed explicitly to exclude MatMult: pandas reserves `@` for calling-frame
+    # variable references, so `a @ b` must not be treated as a safe filter.
+    allowed_nodes = (
+        ast.Expression,
+        ast.BoolOp,
+        ast.BinOp,
+        ast.UnaryOp,
+        ast.Compare,
+        ast.Name,
+        ast.Constant,
+        ast.List,
+        ast.Tuple,
+        ast.Set,
+        ast.Load,
+        ast.boolop,
+        ast.unaryop,
+        ast.cmpop,
+        ast.Add,
+        ast.Sub,
+        ast.Mult,
+        ast.Div,
+        ast.Mod,
+        ast.Pow,
+        ast.FloorDiv,
+        ast.BitAnd,
+        ast.BitOr,
+        ast.BitXor,
+        ast.LShift,
+        ast.RShift,
+    )
+
+    # Blank backtick-quoted column identifiers so unusual names do not fail the parse.
+    sanitized = re.sub(r"`[^`]*`", "col", query_expression)
+    try:
+        tree = ast.parse(sanitized, mode="eval")
+    except SyntaxError:
+        return False
+    return all(isinstance(node, allowed_nodes) for node in ast.walk(tree))
 
 
 def get_database_name_for_lineage(db_service_entity: DatabaseService, default_db_name: Optional[str]) -> Optional[str]:  # noqa: UP045
