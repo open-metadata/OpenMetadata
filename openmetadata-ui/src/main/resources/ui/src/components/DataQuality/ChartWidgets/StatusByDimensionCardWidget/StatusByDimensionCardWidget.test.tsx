@@ -125,6 +125,8 @@ const chartFilter: DataQualityDashboardChartFilters = {
   ownerFqn: 'ownerFqn',
   tags: ['tag1', 'tag2'],
   tier: ['tier1', 'tier2'],
+  startTs: 100,
+  endTs: 200,
 };
 
 describe('StatusByDimensionCardWidget', () => {
@@ -211,6 +213,14 @@ describe('StatusByDimensionCardWidget', () => {
     expect(firstDimension).toHaveAttribute(
       'data-redirect-search',
       expect.stringContaining('dataQualityDimension=Accuracy')
+    );
+    expect(firstDimension).toHaveAttribute(
+      'data-redirect-search',
+      expect.stringContaining('lastRunRange%5BstartTs%5D=100')
+    );
+    expect(firstDimension).toHaveAttribute(
+      'data-redirect-search',
+      expect.stringContaining('lastRunRange%5BendTs%5D=200')
     );
   });
 

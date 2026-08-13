@@ -57,6 +57,8 @@ import {
   type DataQualityDashboardChartFilters,
 } from '../../pages/DataQuality/DataQualityPage.interface';
 import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { formatDate } from '../date-time/DateTimeUtils';
+import { CUSTOM_DATE_RANGE_KEY } from '../DatePickerMenuUtils';
 import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityPureUtils';
 import { getEntityFQN } from '../FeedUtilsPure';
@@ -291,6 +293,11 @@ export const buildMustEsFilterForDataProducts = (
   };
 };
 
+/**
+ * Builds only filters backed by fields in the table index. Test-case filters
+ * must stay out of this query so values such as Column do not exclude all
+ * table documents while calculating total asset coverage.
+ */
 export const buildDataQualityTableFilters = (
   filters?: DataQualityDashboardChartFilters
 ) => {
@@ -351,6 +358,21 @@ export const buildDataQualityTableFilters = (
   return mustFilter;
 };
 
+const buildDataQualityDimensionFilter = (dimension: string) => {
+  // No Dimension is represented by an absent field in the search document,
+  // matching the Test Cases listing endpoint's filter semantics.
+  if (dimension === DataQualityDimensions.NoDimension) {
+    return {
+      bool: {
+        must_not: [{ exists: { field: 'dataQualityDimension' } }],
+      },
+    };
+  }
+
+  return { term: { dataQualityDimension: dimension } };
+};
+
+/** Builds the complete filter set supported by the testCase index. */
 export const buildDataQualityDashboardFilters = (data: {
   filters?: DataQualityDashboardChartFilters;
   unhealthy?: boolean;
@@ -361,7 +383,9 @@ export const buildDataQualityDashboardFilters = (data: {
   if (unhealthy) {
     mustFilter.push({
       terms: {
-        'testCaseStatus.keyword': ['Failed', 'Aborted'],
+        // The latest status is stored under testCaseResult in the testCase
+        // index; the top-level testCaseStatus field belongs to result documents.
+        'testCaseResult.testCaseStatus': ['Failed', 'Aborted'],
       },
     });
   }
@@ -415,11 +439,9 @@ export const buildDataQualityDashboardFilters = (data: {
   }
 
   if (filters?.dataQualityDimension) {
-    mustFilter.push({
-      term: {
-        dataQualityDimension: filters.dataQualityDimension,
-      },
-    });
+    mustFilter.push(
+      buildDataQualityDimensionFilter(filters.dataQualityDimension)
+    );
   }
 
   if (filters?.testCaseStatus) {
@@ -708,7 +730,8 @@ export function getColumnNameFromColumnFilterKey(
 
 /**
  * Builds a test-case list link that preserves the dashboard slice represented
- * by the clicked card or chart segment.
+ * by the clicked card or chart segment. Dashboard timestamps are serialized as
+ * lastRunRange because that is the date-filter shape consumed by the list page.
  */
 export const getTestCaseListPath = (
   filters?: DataQualityDashboardChartFilters,
@@ -720,7 +743,17 @@ export const getTestCaseListPath = (
       testCaseStatus: filters?.testCaseStatus,
       lastRunRange:
         filters?.startTs && filters.endTs
-          ? { startTs: filters.startTs, endTs: filters.endTs }
+          ? {
+              startTs: filters.startTs,
+              endTs: filters.endTs,
+              // Mark redirected timestamps as a custom range so the Test Cases
+              // Last Run control displays the exact dashboard selection.
+              key: CUSTOM_DATE_RANGE_KEY,
+              title: `${formatDate(filters.startTs, true)} -> ${formatDate(
+                filters.endTs,
+                true
+              )}`,
+            }
           : undefined,
       tags: filters?.tags,
       tier: filters?.tier?.[0],

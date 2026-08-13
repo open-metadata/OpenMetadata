@@ -18,6 +18,7 @@ import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import {
+  DataQualityDimensions,
   TestDataType,
   TestDefinition,
   TestPlatform,
@@ -61,6 +62,8 @@ jest.mock('../../constants/profiler.constant', () => ({
     tier: 'tier',
     tags: 'tags',
     service: 'serviceName',
+    dimension: 'dataQualityDimension',
+    dataProduct: 'dataProductFqn',
   },
   DEFAULT_SELECTED_RANGE: {
     key: 'last7Days',
@@ -71,6 +74,7 @@ jest.mock('../../constants/profiler.constant', () => ({
 }));
 
 jest.mock('../date-time/DateTimeUtils', () => ({
+  formatDate: jest.fn((timestamp: number) => String(timestamp)),
   formatDateTimeLong: jest.fn(),
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
   getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
@@ -117,6 +121,12 @@ describe('DataQualityUtils', () => {
       expect(path.search).toContain('testCaseStatus=Failed');
       expect(path.search).toContain('lastRunRange%5BstartTs%5D=100');
       expect(path.search).toContain('lastRunRange%5BendTs%5D=200');
+      expect(path.search).toContain(
+        'lastRunRange%5Bkey%5D=customRange'
+      );
+      expect(path.search).toContain(
+        'lastRunRange%5Btitle%5D=100%20-%3E%20200'
+      );
       expect(path.search).toContain('tags%5B%5D=PII.Sensitive');
       expect(path.search).toContain('tier=Tier.Tier1');
       expect(path.search).toContain('dataProductFqn=marketing');
@@ -289,6 +299,8 @@ describe('DataQualityUtils', () => {
       tags: ['PII.None'],
       tier: 'Tier.Tier1',
       serviceName: 'sample_data',
+      dataQualityDimension: 'Accuracy',
+      dataProductFqn: 'Marketing',
       tableFqn: 'sample_data.ecommerce_db.shopify.fact_sale',
     } as unknown as TestCaseSearchParams;
 
@@ -302,6 +314,8 @@ describe('DataQualityUtils', () => {
         'tags',
         'tier',
         'serviceName',
+        'dataQualityDimension',
+        'dataProductFqn',
         'tableFqn',
       ];
 
@@ -315,6 +329,8 @@ describe('DataQualityUtils', () => {
         tags: ['PII.None'],
         tier: 'Tier.Tier1',
         serviceName: 'sample_data',
+        dataQualityDimension: 'Accuracy',
+        dataProductFqn: 'Marketing',
       };
 
       const result = getTestCaseFiltersValue(
@@ -798,6 +814,59 @@ describe('DataQualityUtils', () => {
       expect(tierFilter).toBeDefined();
     });
 
+    it('includes every test-case filter in the report query', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          ownerFqn: 'owner',
+          certification: ['Certification.Gold'],
+          tags: ['PII.Sensitive'],
+          tier: ['Tier.Tier1'],
+          dataProductFqns: ['Marketing'],
+          entityFQN: 'service.db.schema.table',
+          serviceName: 'service',
+          testPlatforms: [TestPlatform.Dbt],
+          dataQualityDimension: 'Accuracy',
+          testCaseStatus: TestCaseStatus.Success,
+          testCaseType: TestCaseType.column,
+          startTs: 100,
+          endTs: 200,
+        },
+      });
+      const query = JSON.stringify(result);
+
+      [
+        'owners.name',
+        'certification.tagLabel.tagFQN',
+        'tags.tagFQN',
+        'tier.tagFQN',
+        'dataProducts.fullyQualifiedName',
+        'originEntityFQN',
+        'service.name.keyword',
+        'testPlatforms',
+        'dataQualityDimension',
+        'testCaseResult.testCaseStatus',
+        'entityLink',
+        'testCaseResult.timestamp',
+      ].forEach((field) => expect(query).toContain(field));
+    });
+
+    it('matches test cases with a missing dimension for No Dimension', () => {
+      const result = buildDataQualityDashboardFilters({
+        filters: {
+          dataQualityDimension: DataQualityDimensions.NoDimension,
+        },
+      });
+
+      expect(result).toContainEqual({
+        bool: {
+          must_not: [{ exists: { field: 'dataQualityDimension' } }],
+        },
+      });
+      expect(result).not.toContainEqual({
+        term: { dataQualityDimension: DataQualityDimensions.NoDimension },
+      });
+    });
+
     it('should not add tier filter when tier array is empty', () => {
       const result = buildDataQualityDashboardFilters({
         filters: {
@@ -824,12 +893,17 @@ describe('DataQualityUtils', () => {
   describe('buildDataQualityTableFilters', () => {
     it('includes table fields and excludes test-case-only filters', () => {
       const result = buildDataQualityTableFilters({
+        ownerFqn: 'owner',
+        tags: ['PII.Sensitive'],
+        tier: ['Tier.Tier1'],
+        certification: ['Certification.Gold'],
+        dataProductFqns: ['Marketing'],
         serviceName: 'service',
         entityFQN: 'service.db.schema.table',
         testPlatforms: [TestPlatform.Dbt],
         dataQualityDimension: 'Accuracy',
         testCaseStatus: TestCaseStatus.Success,
-        testCaseType: TestCaseType.table,
+        testCaseType: TestCaseType.column,
         startTs: 100,
         endTs: 200,
       });
@@ -841,9 +915,16 @@ describe('DataQualityUtils', () => {
       expect(result).toContainEqual({
         term: { 'fullyQualifiedName.keyword': 'service.db.schema.table' },
       });
+      expect(query).toContain('owners.name');
+      expect(query).toContain('tags.tagFQN');
+      expect(query).toContain('tier.tagFQN');
+      expect(query).toContain('certification.tagLabel.tagFQN');
+      expect(query).toContain('dataProducts.fullyQualifiedName');
       expect(query).not.toContain('testPlatforms');
       expect(query).not.toContain('dataQualityDimension');
       expect(query).not.toContain('testCaseStatus');
+      expect(query).not.toContain('testCaseType');
+      expect(query).not.toContain('entityLink');
       expect(query).not.toContain('testCaseResult.timestamp');
     });
   });

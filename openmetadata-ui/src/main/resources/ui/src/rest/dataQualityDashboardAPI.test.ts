@@ -53,12 +53,12 @@ jest.mock('../utils/DataQuality/DataQualityPureUtils', () => ({
 
 describe('dataQualityDashboardAPI', () => {
   describe('fetchTotalEntityCount', () => {
-    it('should exclude test case filters from the table count query', async () => {
+    it('should exclude column-only test case filters from the table count query', async () => {
       const filters = {
         dataQualityDimension: 'Completeness',
         serviceName: 'sample_service',
         testCaseStatus: TestCaseStatus.Success,
-        testCaseType: TestCaseType.table,
+        testCaseType: TestCaseType.column,
         testPlatforms: ['OpenMetadata'],
       };
       const { buildDataQualityTableFilters: actualBuildFilters } =
@@ -514,7 +514,7 @@ describe('dataQualityDashboardAPI', () => {
               must: [
                 {
                   terms: {
-                    'testCaseStatus.keyword': ['Failed', 'Aborted'],
+                    'testCaseResult.testCaseStatus': ['Failed', 'Aborted'],
                   },
                 },
                 {

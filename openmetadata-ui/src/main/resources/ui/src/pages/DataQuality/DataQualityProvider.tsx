@@ -149,6 +149,8 @@ const DataQualityProvider = ({
         totalEntityCount = total;
       }
 
+      // A newer filter request can finish first; do not let this older response
+      // replace the summary that belongs to the current URL filters.
       if (!shouldIgnore()) {
         const updatedData = transformToTestCaseStatusObject(data);
         setTestCaseSummary({
@@ -173,9 +175,9 @@ const DataQualityProvider = ({
   useEffect(() => {
     let ignore = false;
 
-    // Backgrounded: hold the last loaded summary rather than refetching against
-    // a query string that now belongs to another route. Re-running on
-    // re-activation is intentional — it revalidates against the real filters.
+    // The dashboard owns its chart requests. When this provider is backgrounded
+    // or the dashboard is active, retain the last summary instead of issuing
+    // duplicate requests with query parameters owned by another view.
     if (!isActive || activeTab === DataQualityPageTabs.DASHBOARD) {
       setIsTestCaseSummaryLoading(false);
 

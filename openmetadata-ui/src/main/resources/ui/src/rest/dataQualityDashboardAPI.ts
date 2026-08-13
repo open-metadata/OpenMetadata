@@ -31,6 +31,8 @@ export const fetchEntityCoveredWithDQ = (
   filters?: DataQualityDashboardChartFilters,
   unhealthy = false
 ) => {
+  // The selected status filters test-case charts, but must not redefine the
+  // Healthy (Success + Queued) and Unhealthy (Failed + Aborted) asset groups.
   const assetFilters = filters ? omit(filters, 'testCaseStatus') : undefined;
   const mustFilter = buildDataQualityDashboardFilters({
     filters: assetFilters,
@@ -54,6 +56,8 @@ export const fetchEntityCoveredWithDQ = (
 export const fetchTotalEntityCount = (
   filters?: DataQualityDashboardChartFilters
 ) => {
+  // The table index does not contain test-case-only fields such as entityLink,
+  // result status, dimension, platform, or last-run timestamp.
   const mustFilter = buildDataQualityTableFilters(filters);
 
   return batchedDataQualityReport({
@@ -113,6 +117,8 @@ export const fetchTestCaseSummaryByDimension = (
 export const fetchTestCaseSummaryByNoDimension = (
   filters?: DataQualityDashboardChartFilters
 ) => {
+  // Apply every active test-case filter except dimension, then select documents
+  // where the dimension field is absent for the dedicated No Dimension card.
   const mustFilter = buildDataQualityDashboardFilters({
     filters: filters ? omit(filters, 'dataQualityDimension') : undefined,
   });

@@ -57,6 +57,8 @@ const StatusByDimensionCardWidget = ({
     const getStatusByDimension = async () => {
       setIsDqByDimensionLoading(true);
       try {
+        // Dimensioned and unclassified test cases are separate aggregations;
+        // fetch them together and merge them into one set of status cards.
         const [{ data }, { data: noDimensionData }] = await Promise.all([
           fetchTestCaseSummaryByDimension(chartFilter),
           fetchTestCaseSummaryByNoDimension(chartFilter),
@@ -98,6 +100,8 @@ const StatusByDimensionCardWidget = ({
             isLoading={isDqByDimensionLoading}
             key={dimension.title}
             redirectPath={{
+              // Preserve the complete dashboard slice, including its date range,
+              // and narrow only the clicked card to this dimension.
               ...getTestCaseListPath({
                 ...chartFilter,
                 dataQualityDimension: dimension.title,

@@ -144,9 +144,13 @@ describe('DataQualityProvider', () => {
     expect(fetchTotalEntityCount).toHaveBeenCalledTimes(1);
   });
 
-  it('should call fetchTestCaseSummary, fetchEntityCoveredWithDQ & fetchTotalEntityCount based on prams change', async () => {
+  it('should pass every supported test-case filter to the summary requests', async () => {
     mockLocation.search =
-      '?testCaseType=table&testCaseStatus=Success&tier=Tier.Tier1';
+      '?testCaseType=column&testCaseStatus=Success&tier=Tier.Tier1' +
+      '&tags%5B%5D=PII.Sensitive&testPlatforms%5B%5D=Dbt' +
+      '&serviceName=sample_service&dataQualityDimension=Accuracy' +
+      '&dataProductFqn=Marketing&tableFqn=sample_service.db.schema.table' +
+      '&lastRunRange%5BstartTs%5D=100&lastRunRange%5BendTs%5D=200';
 
     render(
       <DataQualityProvider>
@@ -156,27 +160,48 @@ describe('DataQualityProvider', () => {
 
     expect(await screen.findByText('test-cases component')).toBeInTheDocument();
     expect(fetchTestCaseSummary).toHaveBeenCalledWith({
-      entityFQN: undefined,
+      dataProductFqns: ['Marketing'],
+      dataQualityDimension: 'Accuracy',
+      endTs: '200',
+      entityFQN: 'sample_service.db.schema.table',
       ownerFqn: undefined,
+      serviceName: 'sample_service',
+      startTs: '100',
+      tags: ['PII.Sensitive'],
       testCaseStatus: 'Success',
-      testCaseType: 'table',
+      testCaseType: 'column',
+      testPlatforms: ['Dbt'],
       tier: ['Tier.Tier1'],
     });
     expect(fetchEntityCoveredWithDQ).toHaveBeenCalledWith(
       {
-        entityFQN: undefined,
+        dataProductFqns: ['Marketing'],
+        dataQualityDimension: 'Accuracy',
+        endTs: '200',
+        entityFQN: 'sample_service.db.schema.table',
         ownerFqn: undefined,
+        serviceName: 'sample_service',
+        startTs: '100',
+        tags: ['PII.Sensitive'],
         testCaseStatus: 'Success',
-        testCaseType: 'table',
+        testCaseType: 'column',
+        testPlatforms: ['Dbt'],
         tier: ['Tier.Tier1'],
       },
       true
     );
     expect(fetchTotalEntityCount).toHaveBeenCalledWith({
-      entityFQN: undefined,
+      dataProductFqns: ['Marketing'],
+      dataQualityDimension: 'Accuracy',
+      endTs: '200',
+      entityFQN: 'sample_service.db.schema.table',
       ownerFqn: undefined,
+      serviceName: 'sample_service',
+      startTs: '100',
+      tags: ['PII.Sensitive'],
       testCaseStatus: 'Success',
-      testCaseType: 'table',
+      testCaseType: 'column',
+      testPlatforms: ['Dbt'],
       tier: ['Tier.Tier1'],
     });
   });
