@@ -278,27 +278,3 @@ export const waitForActivityFeedLoad = async (page: Page, timeout = 10000) => {
     // Neither appeared within timeout, which may be acceptable
   });
 };
-
-/**
- * Post a comment on an activity event
- */
-export const postActivityComment = async (page: Page, commentText: string) => {
-  const commentInput = page.locator('[data-testid="comments-input-field"]');
-
-  await expect(commentInput).toBeVisible();
-  await commentInput.click();
-
-  const editorField = page.locator('[data-testid="editor-wrapper"] .ql-editor');
-  await editorField.fill(commentText);
-
-  const sendButton = page.getByTestId('send-button');
-
-  await expect(sendButton).toBeEnabled();
-
-  const postResponse = page.waitForResponse('/api/v1/feed/*/posts');
-  await sendButton.click();
-  await postResponse;
-
-  // Verify comment appears
-  await expect(page.getByText(commentText)).toBeVisible({ timeout: 10000 });
-};
