@@ -79,6 +79,9 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Slf4j
 public class TaskWorkflowHandler {
 
+  /** Suggestion payload {@code source} marking a suggestion an agent produced. */
+  private static final String AGENT_SUGGESTION_SOURCE = "Agent";
+
   private static TaskWorkflowHandler instance;
 
   private TaskWorkflowHandler() {}
@@ -1015,6 +1018,24 @@ public class TaskWorkflowHandler {
     }
   }
 
+  /**
+   * Whether the text being applied is what the agent actually proposed.
+   *
+   * <p>The payload here is the reviewer's resolution merged over the task's, and the merge keeps the
+   * original {@code source} — so a reviewer who rewrote the text still arrives labelled
+   * {@code Agent}. Comparing against the task's own suggestion separates the two.
+   */
+  private boolean isAgentAuthored(Task task, JsonNode payloadNode, String appliedValue) {
+    boolean agentSourced =
+        AGENT_SUGGESTION_SOURCE.equalsIgnoreCase(payloadNode.path("source").asText(null));
+    String proposed =
+        Optional.ofNullable(task)
+            .map(Task::getPayload)
+            .map(payload -> JsonUtils.valueToTree(payload).path("suggestedValue").asText(null))
+            .orElse(null);
+    return agentSourced && (proposed == null || proposed.equals(appliedValue));
+  }
+
   private void applySuggestion(
       Task task,
       Object payload,
@@ -1038,7 +1059,7 @@ public class TaskWorkflowHandler {
         Optional<String> currentDescription = FieldPathUtils.getFieldDescription(entity, fieldPath);
         if (currentDescription.isPresent() && suggestedValue.equals(currentDescription.get())) {
           String changeSummaryField = resolveSuggestionChangeSummaryField(fieldPath);
-          if (changeSummaryField != null) {
+          if (changeSummaryField != null && isAgentAuthored(task, payloadNode, suggestedValue)) {
             repository.patchChangeSummary(
                 entity.getId(), changeSummaryField, ChangeSource.SUGGESTED, user);
           }
@@ -1049,7 +1070,12 @@ public class TaskWorkflowHandler {
         }
         boolean success =
             FieldPathUtils.updateFieldDescription(
-                entity, repository, user, fieldPath, suggestedValue);
+                entity,
+                repository,
+                user,
+                fieldPath,
+                suggestedValue,
+                isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
         if (success) {
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
