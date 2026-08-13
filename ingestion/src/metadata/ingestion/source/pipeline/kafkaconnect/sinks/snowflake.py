@@ -32,8 +32,10 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-# Snowflake unquoted identifiers: letter or underscore first, then alphanumerics, _ or $.
-VALID_SNOWFLAKE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
+# The connector's own isValidSnowflakeObjectIdentifier, reproduced character for character:
+# ^([_a-zA-Z]{1}[_$a-zA-Z0-9]+)$. The trailing + rather than * is deliberate -- it makes a
+# one-character topic invalid upstream, so it takes the sanitise-and-hash path here too.
+VALID_SNOWFLAKE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]+$")
 
 
 def java_string_hashcode(value: str) -> int:
@@ -66,6 +68,22 @@ def snowflake_table_name(topic: str) -> str:
     return f"{sanitized.upper()}_{abs(java_string_hashcode(topic))}"
 
 
+def snowflake_mapped_table_name(table: str) -> str:
+    """
+    Fold a topic2table.map value the way Snowflake stores it.
+
+    The connector puts the configured value straight into CREATE TABLE. Unquoted, Snowflake
+    uppercases it, so `order_events:orders` lands in ORDERS and is ingested into
+    OpenMetadata as ORDERS -- while the derived branch of the same expression already
+    uppercases. Leaving the two to fold differently would hand Priority 1 an exact FQN that
+    misses, on the path this resolver exists to make deterministic. A double-quoted value is
+    the one way to keep case, and the quotes are delimiters rather than part of the name.
+    """
+    if len(table) > 1 and table.startswith('"') and table.endswith('"'):
+        return table[1:-1]
+    return table.upper()
+
+
 class SnowflakeSinkResolver(SinkDatasetResolver):
     """
     Resolve the Snowflake tables a sink connector writes to.
@@ -85,11 +103,12 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         topics: Optional[List[KafkaConnectTopics]] = None,  # noqa: UP006, UP045
     ) -> List[KafkaConnectDatasetDetails]:  # noqa: UP006
         topic_names = self._topic_names(config, topics)
-        if not topic_names:
+        mapping = self._topic2table_map(config)
+        if not topic_names and not mapping:
             # A connector can subscribe by topics.regex, and get_connector_topics answers
             # None on any transport failure, so an empty topic list is not proof that the
-            # connector writes nothing: topic2table.map still names its tables. Deferring
-            # keeps self-managed sinks at the lineage they had before this resolver existed.
+            # connector writes nothing. With nothing left naming a topic, defer: that keeps
+            # self-managed sinks at the lineage they had before this resolver existed.
             logger.info(
                 f"Snowflake sink '{config.get('name')}' declares no topics; "
                 f"resolving its target from the connector config keys instead"
@@ -102,11 +121,12 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         database = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_DATABASE_KEYS)
         schema = self._first_configured(config, ConnectorConfigKeys.SNOWFLAKE_SCHEMA_KEYS)
         self._warn_on_partial_qualification(config, database, schema)
-        mapping = self._topic2table_map(config)
 
         return [
             KafkaConnectDatasetDetails(
-                table=mapping.get(topic) or snowflake_table_name(topic),
+                table=(
+                    snowflake_mapped_table_name(mapping[topic]) if topic in mapping else snowflake_table_name(topic)
+                ),
                 database=database,
                 schema=schema,
                 source_topic=topic,
@@ -238,7 +258,8 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         A topics.regex subscription whose concrete topics were not all discovered leaves the
         rest named solely in the map -- explicit user configuration pairing a topic with a
         table, so dropping it loses lineage the config plainly asked for. Discovered topics
-        keep their position; recovered ones are appended.
+        keep their position; recovered ones are appended. `topic_names` may be empty, which
+        is that same subscription with nothing discovered at all.
         """
         discovered = set(topic_names)
         mapped_only = [topic for topic in mapping if topic not in discovered]

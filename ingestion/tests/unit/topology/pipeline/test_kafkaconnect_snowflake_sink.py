@@ -111,6 +111,35 @@ class TestSnowflakeTableName:
         result = snowflake_table_name("prod.orders.v1")
         assert result.startswith("PROD_ORDERS_V1_")
 
+    def test_single_character_topic_is_not_a_valid_identifier(self):
+        """The connector's isValidSnowflakeObjectIdentifier is ^([_a-zA-Z]{1}[_$a-zA-Z0-9]+)$:
+        the trailing + requires a second character, so a one-character topic takes the
+        sanitise-and-hash path. Reproducing that exactly is the whole point of computing
+        the hash rather than guessing the table name."""
+        assert snowflake_table_name("a") == f"A_{abs(java_string_hashcode('a'))}"
+        assert snowflake_table_name("a") == "A_97"
+
+
+class TestMappedTableNameIsFoldedLikeADerivedOne:
+    """A topic2table.map value is written into CREATE TABLE as an unquoted identifier, so
+    Snowflake stores it uppercased and OpenMetadata ingests it uppercased. Passing the
+    configured value through verbatim made the two branches of the table-name expression
+    fold case differently, and Priority 1 builds an exact FQN from it -- so a lowercase
+    map value produced an FQN that only the ES pre-search inside fqn.build could rescue,
+    on the very path this resolver exists to make deterministic."""
+
+    def test_a_lowercase_map_value_is_uppercased(self):
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "order_events_flat:orders"})
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert {d.source_topic: d.table for d in datasets}["order_events_flat"] == "ORDERS"
+
+    def test_a_quoted_map_value_keeps_its_case_and_loses_the_quotes(self):
+        """A double-quoted identifier is the one way to make Snowflake preserve case, and
+        the stored name has no quotes in it -- that is the form OpenMetadata ingests."""
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": 'order_events_flat:"orders"'})
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert {d.source_topic: d.table for d in datasets}["order_events_flat"] == "orders"
+
 
 class TestDatasetDetailsNewFields:
     def test_defaults_preserve_existing_behaviour(self):
@@ -357,6 +386,50 @@ class TestMappedTopicsAreNeverDropped:
         assert [d.source_topic for d in datasets] == ["order_events_flat", "om-lineage-test"]
 
 
+# A topics.regex subscription whose concrete topics were never discovered: no `topics` key,
+# and get_connector_topics answered nothing. The map is then the only thing naming the tables.
+REGEX_SUBSCRIPTION_CONFIG = {
+    **{k: v for k, v in BASE_SNOWFLAKE_CONFIG.items() if k != "topics"},
+    "topics.regex": "prod\\..*",
+    "snowflake.topic2table.map": "prod.orders:ORDERS,prod.items:ITEMS",
+}
+
+
+class TestMappedTopicsSurviveAnEmptyTopicList:
+    """The near-miss of the case above: with *no* topic discovered at all, resolution took the
+    early-return branch and handed the config to DefaultResolver, which reads the map only for
+    its table names and cannot pair them back to a topic. The datasets it returns carry no
+    source_topic, so match_topic can only succeed where a topic happens to be named after its
+    table -- which is exactly what topic2table.map exists to say is not the case."""
+
+    def test_datasets_are_built_from_the_map_alone(self):
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(REGEX_SUBSCRIPTION_CONFIG, [])
+        assert {d.source_topic: d.table for d in datasets} == {"prod.orders": "ORDERS", "prod.items": "ITEMS"}
+
+    def test_the_topic_pairing_survives(self):
+        """Without source_topic the dataset is dropped before an edge is built, so recovering
+        the table name alone would buy no lineage."""
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(REGEX_SUBSCRIPTION_CONFIG, [])
+        topic_entity = object()
+        matched = get_resolver("SnowflakeSink").match_topic(
+            datasets[0], {"prod.orders": topic_entity}, REGEX_SUBSCRIPTION_CONFIG
+        )
+        assert matched is topic_entity
+
+    def test_datasets_stay_qualified(self):
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(REGEX_SUBSCRIPTION_CONFIG, [])
+        assert all(d.fully_qualified for d in datasets)
+        assert {(d.database, d.schema) for d in datasets} == {("EVENT_LANDING", "PUBLIC")}
+
+    def test_no_topics_and_no_map_still_falls_back_to_the_key_list(self):
+        """The fallback must stay reachable: a self-managed sink naming its target through the
+        generic config keys had lineage before this resolver existed and must keep it."""
+        config = {k: v for k, v in REGEX_SUBSCRIPTION_CONFIG.items() if k != "snowflake.topic2table.map"}
+        with patch.object(DefaultResolver, "resolve_datasets", return_value=[]) as delegated:
+            get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        delegated.assert_called_once()
+
+
 SELF_MANAGED_SNOWFLAKE_CLASS = "com.snowflake.kafka.connector.SnowflakeSinkConnector"
 
 # A self-managed sink using the shorter key variations (both are listed in
@@ -411,17 +484,23 @@ class TestSnowflakeResolverIsASupersetOfTheDefault:
 
         datasets = get_resolver(SELF_MANAGED_SNOWFLAKE_CLASS).resolve_datasets(SELF_MANAGED_REGEX_CONFIG, [])
         assert [(d.table, d.database, d.schema) for d in datasets] == [("ORDERS", "DB", "SCH")]
+        # The map pairs the table back to its topic, which DefaultResolver's key-list read
+        # cannot do -- and without that pairing match_topic has nothing exact to match on.
+        assert datasets[0].source_topic == "prod.orders"
 
     def test_match_topic_falls_back_for_a_dataset_without_a_source_topic(self):
-        """Recovering the dataset is not enough on its own: the resolver's match_topic returns
-        None without a source_topic, and a dataset whose topic never matches yields no edge."""
+        """A config naming its table through the generic keys, with no topic list and no map,
+        still takes the DefaultResolver fallback, so its datasets carry no source_topic. The
+        resolver's match_topic must fall back too, or those datasets yield no edge at all."""
+        config = {k: v for k, v in SELF_MANAGED_REGEX_CONFIG.items() if k != "snowflake.topic2table.map"}
+        config["table.name.format"] = "ORDERS"
         resolver = get_resolver(SELF_MANAGED_SNOWFLAKE_CLASS)
-        dataset = resolver.resolve_datasets(SELF_MANAGED_REGEX_CONFIG, [])[0]
+        dataset = resolver.resolve_datasets(config, [])[0]
         assert dataset.source_topic is None
         topic_map = {"ORDERS": "<topic>"}
-        assert resolver.match_topic(dataset, topic_map, SELF_MANAGED_REGEX_CONFIG) == "<topic>"
-        assert resolver.match_topic(dataset, topic_map, SELF_MANAGED_REGEX_CONFIG) == DefaultResolver().match_topic(
-            dataset, topic_map, SELF_MANAGED_REGEX_CONFIG
+        assert resolver.match_topic(dataset, topic_map, config) == "<topic>"
+        assert resolver.match_topic(dataset, topic_map, config) == DefaultResolver().match_topic(
+            dataset, topic_map, config
         )
 
     def test_a_config_naming_neither_topics_nor_tables_still_yields_nothing(self):
