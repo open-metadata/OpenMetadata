@@ -105,7 +105,7 @@ const data = {
 };
 
 let webhookEndpoint = '';
-let webhookAlertDetails: AlertDetails;
+let webhookAlertDetails: AlertDetails | undefined;
 let webhookTableFqn = '';
 
 test.beforeAll(async ({ browser }) => {
@@ -221,18 +221,22 @@ test.afterAll(async ({ browser }) => {
   const { afterAction, apiContext, page } = await performAdminLogin(browser, {
     navigate: true,
   });
-  await deleteAlert(page, webhookAlertDetails, false);
-  await commonCleanup({
-    apiContext,
-    table: table2,
-    user1,
-    user2,
-    domain,
-  });
-  await table1.delete(apiContext);
-  await pipeline.delete(apiContext);
-  await afterAction();
-  await stopWebhookReceiver();
+  try {
+    if (webhookAlertDetails) {
+      await deleteAlert(page, webhookAlertDetails, false);
+    }
+    await commonCleanup({
+      apiContext,
+      table: table2,
+      user1,
+      user2,
+      domain,
+    });
+    await table1.delete(apiContext);
+    await pipeline.delete(apiContext);
+  } finally {
+    await Promise.allSettled([afterAction(), stopWebhookReceiver()]);
+  }
 });
 
 test.beforeEach(async ({ page }) => {
