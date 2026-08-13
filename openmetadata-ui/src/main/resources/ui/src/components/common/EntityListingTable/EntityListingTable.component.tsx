@@ -28,6 +28,7 @@ const EntityListingTable = <T extends { id: string; name: string }>({
   onEntityClick,
   ariaLabel,
   emptyMessage,
+  containerClassName,
 }: EntityListingTableProps<T>) => {
   const selectedKeys: Selection = useMemo(
     () => new Set(selectedEntities),
@@ -65,6 +66,7 @@ const EntityListingTable = <T extends { id: string; name: string }>({
   return (
     <Table
       aria-label={ariaLabel}
+      containerClassName={containerClassName}
       data-testid="table-view-container"
       selectedKeys={selectedKeys}
       selectionBehavior="toggle"

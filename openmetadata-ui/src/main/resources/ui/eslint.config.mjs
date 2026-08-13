@@ -405,6 +405,54 @@ export default [
       '@typescript-eslint/no-unused-expressions': 'warn',
       'prefer-const': 'off',
 
+      // Playwright must not import application code from `src/`.
+      //
+      // Playwright runs in plain Node with no bundler, no CSS pipeline and no
+      // i18n bootstrap. A single import of an app util drags the whole app
+      // dependency graph into the test process, e.g.:
+      //
+      //   IncidentManager.spec.ts
+      //     -> playwright/utils/incidentManager        (playwright util)
+      //       -> src/utils/StringUtils                 (app util)
+      //         -> src/utils/i18next/LocalUtil         (app i18n bootstrap)
+      //           -> @openmetadata/ui-core-components  (the whole component library)
+      //
+      // Two exceptions, both dependency-free by construction:
+      //   • src/generated/**  — code-generated schema types/enums; they are the
+      //     API contract the tests build request payloads from, and generated
+      //     files only ever reference other generated files.
+      //   • src/enums/**      — leaf enum modules with no imports of their own.
+      //
+      // Anything else (utils, context, components, rest, hooks, pages) must be
+      // duplicated under playwright/ instead — see playwright/utils/dateTime.ts
+      // and playwright/support/entity/Entity.interface.ts for the pattern.
+      // Type-only imports are restricted too: an `import type` that later loses
+      // its `type` keyword silently reintroduces the runtime dependency.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              // A `group` of ['**/src/**', '!**/src/generated/**'] does NOT
+              // work here: `group` uses gitignore semantics, which cannot
+              // re-include a path whose parent directory is already excluded.
+              // The negative lookahead is what actually carves out the two
+              // allowed subtrees.
+              regex: '(^|/)src/(?!generated/|enums/)',
+              message:
+                'Playwright tests must not import app code from src/ — it pulls the app dependency graph (i18n, @openmetadata/ui-core-components) into the test process. Only src/generated/** and src/enums/** are allowed; duplicate anything else under playwright/.',
+            },
+          ],
+          paths: [
+            {
+              name: '@openmetadata/ui-core-components',
+              message:
+                'The component library must never be imported by Playwright tests — it is browser-only React code with no place in a Node test process.',
+            },
+          ],
+        },
+      ],
+
       // Playwright rules — blocking (error): zero existing violations, prevent regressions
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',

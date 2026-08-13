@@ -1,0 +1,26 @@
+{
+  "label": {
+    "close": "Sluiten",
+    "close-navigation-menu": "Navigatiemenu sluiten",
+    "copy-link": "Link kopiëren",
+    "current-page": "Huidige pagina",
+    "date-range-picker": "Datumbereikkiezer",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "expand-navigation-menu": "Navigatiemenu uitvouwen",
+    "field-documentation": "Velddocumentatie",
+    "hidden-breadcrumbs": "Verborgen kruimelpad",
+    "loading": "Laden…",
+    "next-page": "Naar volgende pagina",
+    "open-menu": "Menu openen",
+    "page": "Pagina",
+    "pagination": "Paginering",
+    "pagination-navigation": "Pagineringsnavigatie",
+    "previous-page": "Naar vorige pagina",
+    "records": "Records",
+    "remove-filter": "Filter verwijderen",
+    "select-dates": "Datums selecteren",
+    "show-hidden-breadcrumbs": "Verborgen kruimelpad weergeven",
+    "today": "Vandaag"
+  }
+}

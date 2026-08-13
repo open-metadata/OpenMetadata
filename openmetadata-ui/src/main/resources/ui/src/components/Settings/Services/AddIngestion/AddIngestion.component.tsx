@@ -204,7 +204,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     };
 
     const handleSubmit = (data: IngestionWorkflowData) => {
-      setWorkflowData({ ...data, displayName: workflowData?.displayName });
+      setWorkflowData((prev) => ({ ...data, displayName: prev?.displayName }));
       handleNext(2);
     };
 
@@ -385,7 +385,6 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
               <IngestionWorkflowForm
                 hideFooter={hideFooter}
                 okText={t('label.next')}
-                operationType={status}
                 pipeLineType={pipelineType}
                 ref={workflowFormRef}
                 serviceCategory={serviceCategory}

@@ -151,6 +151,7 @@ const SectionHeader = ({
   description,
   index,
   open,
+  sectionKey,
   title,
   onToggle,
 }: {
@@ -158,11 +159,13 @@ const SectionHeader = ({
   description: string;
   index?: number;
   open: boolean;
+  sectionKey: string;
   title: string;
   onToggle: () => void;
 }) => (
   <button
     className="tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
+    data-testid={`ingestion-section-${sectionKey}-toggle`}
     type="button"
     onClick={() => {
       if (collapsible) {
@@ -201,9 +204,11 @@ type FieldGroup =
   | { property: ObjectFieldTemplatePropertyType; type: 'wide' };
 
 const SectionFields = ({
+  isCompact,
   properties,
   schemaProperties,
 }: {
+  isCompact?: boolean;
   properties: ObjectFieldTemplatePropertyType[];
   schemaProperties: Record<string, SchemaProperty>;
 }) => {
@@ -255,7 +260,12 @@ const SectionFields = ({
       {orderedFieldGroups.map((group) =>
         group.type === 'grid' ? (
           <div
-            className="tw:grid tw:grid-flow-row-dense tw:gap-3 tw:[grid-template-columns:repeat(3,minmax(0,1fr))]"
+            className={classNames(
+              'tw:grid tw:grid-flow-row-dense tw:gap-3',
+              isCompact
+                ? 'tw:[grid-template-columns:repeat(2,minmax(0,1fr))]'
+                : 'tw:[grid-template-columns:repeat(3,minmax(0,1fr))]'
+            )}
             key={group.properties[0].name}>
             {group.properties.map((element) => renderProperty(element))}
           </div>
@@ -275,7 +285,13 @@ const SectionFields = ({
   );
 };
 
-const SectionCard = ({ section }: { section: IngestionSectionConfig }) => {
+const SectionCard = ({
+  isCompact,
+  section,
+}: {
+  isCompact?: boolean;
+  section: IngestionSectionConfig;
+}) => {
   const [open, setOpen] = useState(section.defaultOpen);
   const [active, setActive] = useState(false);
   const showBody = !section.collapsible || open;
@@ -308,6 +324,7 @@ const SectionCard = ({ section }: { section: IngestionSectionConfig }) => {
         description={section.description}
         index={section.index}
         open={showBody}
+        sectionKey={section.key}
         title={section.title}
         onToggle={() => setOpen((prev) => !prev)}
       />
@@ -315,6 +332,7 @@ const SectionCard = ({ section }: { section: IngestionSectionConfig }) => {
         <>
           <Divider className="tw:my-3" />
           <SectionFields
+            isCompact={isCompact}
             properties={section.properties}
             schemaProperties={section.schemaProperties}
           />
@@ -326,6 +344,16 @@ const SectionCard = ({ section }: { section: IngestionSectionConfig }) => {
   );
 };
 
+const getCompactAdvancedSection = (
+  isRootLevel: boolean,
+  uiSchema: ObjectFieldTemplateProps['uiSchema']
+): boolean =>
+  isRootLevel &&
+  Boolean(
+    (uiSchema?.['ui:options'] as Record<string, unknown> | undefined)
+      ?.compactAdvancedSection
+  );
+
 export const IngestionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = ({
@@ -333,9 +361,14 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
   onAddClick,
   properties,
   schema,
+  uiSchema,
 }: ObjectFieldTemplateProps) => {
   const { t } = useTranslation();
   const isRootLevel = idSchema.$id === 'root';
+  const compactAdvancedSection = getCompactAdvancedSection(
+    isRootLevel,
+    uiSchema
+  );
 
   if (!isRootLevel) {
     const nonRootSchemaProperties = (schema.properties ?? {}) as Record<
@@ -470,7 +503,11 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
   return (
     <div className="tw:flex tw:flex-col tw:gap-3">
       {sections.map((section) => (
-        <SectionCard key={section.key} section={section} />
+        <SectionCard
+          isCompact={compactAdvancedSection && section.key === 'advanced'}
+          key={section.key}
+          section={section}
+        />
       ))}
     </div>
   );

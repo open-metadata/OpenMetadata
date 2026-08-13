@@ -147,7 +147,7 @@ const storedProcedureDetails = {
   glossary: glossaryDetails,
 };
 
-test.describe('Bulk Import Export', () => {
+test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
@@ -1087,10 +1087,30 @@ test.describe('Bulk Import Export', () => {
           await expect(cell).toBeFocused();
         };
 
+        const isFocused = (cell: Locator) =>
+          cell.evaluate((el) => el === document.activeElement);
+
         // Principle 1: press a bare Arrow key and wait for destination focus.
+        //
+        // RDG drops the press outright while the grid is still settling after a
+        // click or re-render — focus simply stays on the origin cell and the
+        // grid's own keydown handler never runs. Re-press until focus lands,
+        // checking the destination first so a press that did register is never
+        // doubled.
         const move = async (key: string, destination: Locator) => {
-          await page.keyboard.press(key);
-          await expect(destination).toBeFocused();
+          await expect
+            .poll(
+              async () => {
+                if (await isFocused(destination)) {
+                  return true;
+                }
+                await page.keyboard.press(key);
+
+                return isFocused(destination);
+              },
+              { timeout: 15_000, intervals: [200, 400, 800] }
+            )
+            .toBe(true);
         };
 
         // Principle 5 & 9: press Shift+Arrow and assert the expected selection
