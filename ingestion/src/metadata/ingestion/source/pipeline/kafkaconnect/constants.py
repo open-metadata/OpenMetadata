@@ -12,6 +12,9 @@
 Constants for Kafka Connect connector configuration keys and mappings
 """
 
+# Re-exported so existing kafkaconnect imports keep working
+from metadata.ingestion.lineage.topic_lineage import CDC_ENVELOPE_FIELDS  # noqa: F401
+
 
 class ConnectorConfigKeys:
     """Configuration keys for various Kafka Connect connectors"""
@@ -147,6 +150,3 @@ STORAGE_ENDPOINT_KEYS = {
     "gcs": ["gcs.credentials.path"],
     "azure": ["azure.storage.account.name", "azblob.account.name"],
 }
-
-# CDC envelope field names used for Debezium detection and parsing
-CDC_ENVELOPE_FIELDS = {"after", "before", "op"}
