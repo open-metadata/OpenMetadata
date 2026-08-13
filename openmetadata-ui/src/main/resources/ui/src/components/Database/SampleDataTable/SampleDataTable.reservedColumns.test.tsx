@@ -117,6 +117,7 @@ describe('SampleDataTable with reserved column names', () => {
       container.querySelectorAll('tbody tr.ant-table-row')
     ).map((row) => row.getAttribute('data-row-key'));
 
+    expect(rowKeys.length).toBeGreaterThan(1);
     expect(rowKeys).not.toContain(null);
     expect(new Set(rowKeys).size).toBe(rowKeys.length);
   });
