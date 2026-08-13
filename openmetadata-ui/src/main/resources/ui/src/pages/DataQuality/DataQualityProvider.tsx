@@ -104,7 +104,10 @@ const DataQualityProvider = ({
     };
   }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 
-  const fetchTestSummary = async (params?: DataQualityPageParams) => {
+  const fetchTestSummary = async (
+    params?: DataQualityPageParams,
+    shouldIgnore = () => false
+  ) => {
     const filters = {
       ...pick(params, [
         'tags',
@@ -146,35 +149,49 @@ const DataQualityProvider = ({
         totalEntityCount = total;
       }
 
-      const updatedData = transformToTestCaseStatusObject(data);
-      setTestCaseSummary({
-        ...updatedData,
-        unhealthy,
-        healthy: total - unhealthy,
-        totalDQEntities: total,
-        totalEntityCount,
-      });
+      if (!shouldIgnore()) {
+        const updatedData = transformToTestCaseStatusObject(data);
+        setTestCaseSummary({
+          ...updatedData,
+          unhealthy,
+          healthy: total - unhealthy,
+          totalDQEntities: total,
+          totalEntityCount,
+        });
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (!shouldIgnore()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsTestCaseSummaryLoading(false);
+      if (!shouldIgnore()) {
+        setIsTestCaseSummaryLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    let ignore = false;
+
     // Backgrounded: hold the last loaded summary rather than refetching against
     // a query string that now belongs to another route. Re-running on
     // re-activation is intentional — it revalidates against the real filters.
-    if (!isActive) {
+    if (!isActive || activeTab === DataQualityPageTabs.DASHBOARD) {
+      setIsTestCaseSummaryLoading(false);
+
       return;
     }
 
     if (getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic)) {
-      fetchTestSummary(filterParams);
+      fetchTestSummary(filterParams, () => ignore);
     } else {
       setIsTestCaseSummaryLoading(false);
     }
-  }, [filterKey, isActive]);
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeTab, filterKey, isActive]);
 
   return (
     <DataQualityContext.Provider value={dataQualityContextValue}>

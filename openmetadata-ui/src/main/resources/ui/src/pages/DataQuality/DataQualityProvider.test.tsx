@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import {
   fetchEntityCoveredWithDQ,
   fetchTestCaseSummary,
@@ -91,6 +91,12 @@ const MockComponent = () => {
   ) : (
     <div>{activeTab} component</div>
   );
+};
+
+const SummaryComponent = () => {
+  const { testCaseSummary } = useDataQualityProvider();
+
+  return <div data-testid="healthy-count">{testCaseSummary.healthy}</div>;
 };
 
 describe('DataQualityProvider', () => {
@@ -200,6 +206,85 @@ describe('DataQualityProvider', () => {
     expect(fetchTotalEntityCount).toHaveBeenCalledTimes(1);
   });
 
+  it('ignores an older summary response after filters change', async () => {
+    const deferred = <T,>() => {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((promiseResolve) => {
+        resolve = promiseResolve;
+      });
+
+      return { promise, resolve };
+    };
+    const oldSummary = deferred<{ data: [] }>();
+    const newSummary = deferred<{ data: [] }>();
+    const oldUnhealthy = deferred<{
+      data: Array<{ originEntityFQN: string }>;
+    }>();
+    const oldCoverage = deferred<{
+      data: Array<{ originEntityFQN: string }>;
+    }>();
+    const newUnhealthy = deferred<{
+      data: Array<{ originEntityFQN: string }>;
+    }>();
+    const newCoverage = deferred<{
+      data: Array<{ originEntityFQN: string }>;
+    }>();
+    const oldEntityCount = deferred<{
+      data: Array<{ fullyQualifiedName: string }>;
+    }>();
+    const newEntityCount = deferred<{
+      data: Array<{ fullyQualifiedName: string }>;
+    }>();
+
+    (fetchTestCaseSummary as jest.Mock)
+      .mockReturnValueOnce(oldSummary.promise)
+      .mockReturnValueOnce(newSummary.promise);
+    (fetchEntityCoveredWithDQ as jest.Mock)
+      .mockReturnValueOnce(oldUnhealthy.promise)
+      .mockReturnValueOnce(oldCoverage.promise)
+      .mockReturnValueOnce(newUnhealthy.promise)
+      .mockReturnValueOnce(newCoverage.promise);
+    (fetchTotalEntityCount as jest.Mock)
+      .mockReturnValueOnce(oldEntityCount.promise)
+      .mockReturnValueOnce(newEntityCount.promise);
+
+    mockLocation.search = '?testCaseStatus=Failed';
+    const { rerender } = render(
+      <DataQualityProvider>
+        <SummaryComponent />
+      </DataQualityProvider>
+    );
+
+    mockLocation.search = '?testCaseStatus=Success';
+    rerender(
+      <DataQualityProvider>
+        <SummaryComponent />
+      </DataQualityProvider>
+    );
+
+    await act(async () => {
+      newSummary.resolve({ data: [] });
+      newUnhealthy.resolve({ data: [{ originEntityFQN: '3' }] });
+      newCoverage.resolve({ data: [{ originEntityFQN: '20' }] });
+      newEntityCount.resolve({ data: [{ fullyQualifiedName: '25' }] });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('healthy-count')).toHaveTextContent('17')
+    );
+
+    await act(async () => {
+      oldSummary.resolve({ data: [] });
+      oldUnhealthy.resolve({ data: [{ originEntityFQN: '8' }] });
+      oldCoverage.resolve({ data: [{ originEntityFQN: '10' }] });
+      oldEntityCount.resolve({ data: [{ fullyQualifiedName: '12' }] });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('healthy-count')).toHaveTextContent('17')
+    );
+  });
+
   it('should handle different tab values correctly', async () => {
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
 
@@ -238,5 +323,8 @@ describe('DataQualityProvider', () => {
     expect(
       await screen.findByText('dashboard tab component')
     ).toBeInTheDocument();
+    expect(fetchTestCaseSummary).not.toHaveBeenCalled();
+    expect(fetchEntityCoveredWithDQ).not.toHaveBeenCalled();
+    expect(fetchTotalEntityCount).not.toHaveBeenCalled();
   });
 });

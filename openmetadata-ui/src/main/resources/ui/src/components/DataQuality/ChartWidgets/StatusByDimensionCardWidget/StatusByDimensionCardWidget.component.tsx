@@ -12,7 +12,6 @@
  */
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { DIMENSIONS_DATA } from '../../../../constants/DataQuality.constants';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
@@ -24,6 +23,7 @@ import {
 } from '../../../../rest/dataQualityDashboardAPI';
 import {
   getDimensionIcon,
+  getTestCaseListPath,
   transformToTestCaseStatusByDimension,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -57,9 +57,10 @@ const StatusByDimensionCardWidget = ({
     const getStatusByDimension = async () => {
       setIsDqByDimensionLoading(true);
       try {
-        const { data } = await fetchTestCaseSummaryByDimension(chartFilter);
-        const { data: noDimensionData } =
-          await fetchTestCaseSummaryByNoDimension(chartFilter);
+        const [{ data }, { data: noDimensionData }] = await Promise.all([
+          fetchTestCaseSummaryByDimension(chartFilter),
+          fetchTestCaseSummaryByNoDimension(chartFilter),
+        ]);
 
         if (!ignore) {
           setDqByDimensionData([...data, ...noDimensionData]);
@@ -97,12 +98,13 @@ const StatusByDimensionCardWidget = ({
             isLoading={isDqByDimensionLoading}
             key={dimension.title}
             redirectPath={{
+              ...getTestCaseListPath({
+                ...chartFilter,
+                dataQualityDimension: dimension.title,
+              }),
               pathname: observabilityRouterClassBase.getDataQualityPagePath(
                 DataQualityPageTabs.TEST_CASES
               ),
-              search: QueryString.stringify({
-                dataQualityDimension: dimension.title,
-              }),
             }}
             statusData={dimension}
           />

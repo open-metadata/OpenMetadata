@@ -35,8 +35,9 @@ jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
 jest.mock('../StatusCardWidget/StatusCardWidget.component', () =>
   jest
     .fn()
-    .mockImplementation(({ statusData }) => (
+    .mockImplementation(({ redirectPath, statusData }) => (
       <div
+        data-redirect-search={redirectPath.search}
         data-testid={mockStatusByDimensionWidgetTestId}
         data-total={statusData.total}
       />
@@ -159,6 +160,58 @@ describe('StatusByDimensionCardWidget', () => {
     expect(
       await screen.findAllByTestId(mockStatusByDimensionWidgetTestId)
     ).toHaveLength(8);
+  });
+
+  it('starts dimension and no-dimension requests together', async () => {
+    let resolveDimension!: (value: { data: [] }) => void;
+    (fetchTestCaseSummaryByDimension as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        resolveDimension = resolve;
+      })
+    );
+    (fetchTestCaseSummaryByNoDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+
+    render(<StatusByDimensionCardWidget chartFilter={chartFilter} />);
+
+    await waitFor(() =>
+      expect(fetchTestCaseSummaryByNoDimension).toHaveBeenCalledWith(
+        chartFilter
+      )
+    );
+
+    await act(async () => {
+      resolveDimension({ data: [] });
+    });
+  });
+
+  it('preserves active chart filters in dimension links', async () => {
+    (fetchTestCaseSummaryByDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+    (fetchTestCaseSummaryByNoDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
+
+    render(<StatusByDimensionCardWidget chartFilter={chartFilter} />);
+
+    const firstDimension = (
+      await screen.findAllByTestId(mockStatusByDimensionWidgetTestId)
+    )[0];
+
+    expect(firstDimension).toHaveAttribute(
+      'data-redirect-search',
+      expect.stringContaining('tags%5B%5D=tag1')
+    );
+    expect(firstDimension).toHaveAttribute(
+      'data-redirect-search',
+      expect.stringContaining('tier=tier1')
+    );
+    expect(firstDimension).toHaveAttribute(
+      'data-redirect-search',
+      expect.stringContaining('dataQualityDimension=Accuracy')
+    );
   });
 
   it('handles API error gracefully', async () => {

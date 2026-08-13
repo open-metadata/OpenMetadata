@@ -13,6 +13,7 @@
 
 import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
@@ -30,6 +31,7 @@ import {
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import {
   buildDataQualityDashboardFilters,
+  buildDataQualityTableFilters,
   buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
@@ -816,6 +818,33 @@ describe('DataQualityUtils', () => {
           minimum_should_match: 1,
         },
       });
+    });
+  });
+
+  describe('buildDataQualityTableFilters', () => {
+    it('includes table fields and excludes test-case-only filters', () => {
+      const result = buildDataQualityTableFilters({
+        serviceName: 'service',
+        entityFQN: 'service.db.schema.table',
+        testPlatforms: [TestPlatform.Dbt],
+        dataQualityDimension: 'Accuracy',
+        testCaseStatus: TestCaseStatus.Success,
+        testCaseType: TestCaseType.table,
+        startTs: 100,
+        endTs: 200,
+      });
+      const query = JSON.stringify(result);
+
+      expect(result).toContainEqual({
+        term: { 'service.name.keyword': 'service' },
+      });
+      expect(result).toContainEqual({
+        term: { 'fullyQualifiedName.keyword': 'service.db.schema.table' },
+      });
+      expect(query).not.toContain('testPlatforms');
+      expect(query).not.toContain('dataQualityDimension');
+      expect(query).not.toContain('testCaseStatus');
+      expect(query).not.toContain('testCaseResult.timestamp');
     });
   });
 

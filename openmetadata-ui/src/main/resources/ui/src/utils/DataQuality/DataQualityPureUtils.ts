@@ -291,12 +291,71 @@ export const buildMustEsFilterForDataProducts = (
   };
 };
 
+export const buildDataQualityTableFilters = (
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+
+  if (filters?.tags?.length) {
+    mustFilter.push({
+      bool: {
+        should: filters.tags.map((tag) => ({
+          term: { 'tags.tagFQN': tag },
+        })),
+      },
+    });
+  }
+
+  if (filters?.tier?.length) {
+    mustFilter.push({
+      bool: {
+        should: filters.tier.map((tier) => ({
+          term: { 'tier.tagFQN': tier },
+        })),
+      },
+    });
+  }
+
+  if (filters?.certification?.length) {
+    mustFilter.push({
+      bool: {
+        should: filters.certification.map((fqn) => ({
+          term: { 'certification.tagLabel.tagFQN': fqn },
+        })),
+      },
+    });
+  }
+
+  if (filters?.dataProductFqns?.length) {
+    mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
+  }
+
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: { 'fullyQualifiedName.keyword': filters.entityFQN },
+    });
+  }
+
+  if (filters?.serviceName) {
+    mustFilter.push({
+      term: { 'service.name.keyword': filters.serviceName },
+    });
+  }
+
+  mustFilter.push({ term: { deleted: false } });
+
+  return mustFilter;
+};
+
 export const buildDataQualityDashboardFilters = (data: {
   filters?: DataQualityDashboardChartFilters;
   unhealthy?: boolean;
-  isTableApi?: boolean;
 }) => {
-  const { filters, unhealthy = false, isTableApi = false } = data;
+  const { filters, unhealthy = false } = data;
   const mustFilter = [];
 
   if (unhealthy) {
@@ -311,30 +370,6 @@ export const buildDataQualityDashboardFilters = (data: {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
   }
 
-  if (filters?.tags && isTableApi) {
-    mustFilter.push({
-      bool: {
-        should: filters.tags.map((tag) => ({
-          term: {
-            'tags.tagFQN': tag,
-          },
-        })),
-      },
-    });
-  }
-
-  if (filters?.tier && isTableApi) {
-    mustFilter.push({
-      bool: {
-        should: filters.tier.map((tag) => ({
-          term: {
-            'tier.tagFQN': tag,
-          },
-        })),
-      },
-    });
-  }
-
   if (filters?.certification) {
     mustFilter.push({
       bool: {
@@ -345,11 +380,11 @@ export const buildDataQualityDashboardFilters = (data: {
     });
   }
 
-  if (filters?.tags && filters.tags.length > 0 && !isTableApi) {
+  if (filters?.tags && filters.tags.length > 0) {
     mustFilter.push(buildMustEsFilterForTags(filters.tags));
   }
 
-  if (filters?.tier && filters.tier.length > 0 && !isTableApi) {
+  if (filters?.tier && filters.tier.length > 0) {
     mustFilter.push(buildMustEsFilterForTier(filters.tier));
   }
 
@@ -359,10 +394,7 @@ export const buildDataQualityDashboardFilters = (data: {
 
   if (filters?.entityFQN) {
     mustFilter.push({
-      term: {
-        [isTableApi ? 'fullyQualifiedName.keyword' : 'originEntityFQN']:
-          filters.entityFQN,
-      },
+      term: { originEntityFQN: filters.entityFQN },
     });
   }
 
@@ -410,7 +442,7 @@ export const buildDataQualityDashboardFilters = (data: {
     }
   }
 
-  if (filters?.startTs && filters?.endTs && !isTableApi) {
+  if (filters?.startTs && filters?.endTs) {
     mustFilter.push({
       range: {
         'testCaseResult.timestamp': {
@@ -678,14 +710,14 @@ export function getColumnNameFromColumnFilterKey(
  * Builds a test-case list link that preserves the dashboard slice represented
  * by the clicked card or chart segment.
  */
-export const getTestCaseTabPath = (
-  testCaseStatus: TestCaseStatus,
-  filters?: DataQualityDashboardChartFilters
+export const getTestCaseListPath = (
+  filters?: DataQualityDashboardChartFilters,
+  overrides?: Partial<TestCaseSearchParams>
 ) => ({
   pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
   search: QueryString.stringify(
     {
-      testCaseStatus,
+      testCaseStatus: filters?.testCaseStatus,
       lastRunRange:
         filters?.startTs && filters.endTs
           ? { startTs: filters.startTs, endTs: filters.endTs }
@@ -698,10 +730,16 @@ export const getTestCaseTabPath = (
       testPlatforms: filters?.testPlatforms,
       dataQualityDimension: filters?.dataQualityDimension,
       testCaseType: filters?.testCaseType,
+      ...overrides,
     },
     { arrayFormat: 'brackets' }
   ),
 });
+
+export const getTestCaseTabPath = (
+  testCaseStatus: TestCaseStatus,
+  filters?: DataQualityDashboardChartFilters
+) => getTestCaseListPath(filters, { testCaseStatus });
 
 export const transformToTestCaseStatusByDimension = (
   inputData: DataQualityReport['data']
