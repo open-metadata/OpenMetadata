@@ -84,6 +84,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
   const deleteEntity = new EntityClass();
 
   test.describe(key, () => {
+    test.describe.configure({ mode: 'default' });
+
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 

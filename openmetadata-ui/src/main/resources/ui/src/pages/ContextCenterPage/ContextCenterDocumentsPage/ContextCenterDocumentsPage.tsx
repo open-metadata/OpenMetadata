@@ -41,6 +41,7 @@ import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { BulkOperationResult } from '../../../generated/type/bulkOperationResult';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { queryClient } from '../../../queryClient';
 import {
   bulkDeleteDriveFiles,
   bulkMoveFilesToFolder,
@@ -56,6 +57,10 @@ import {
   downloadBlob,
   handleAssetDownload,
 } from '../../../utils/ContextCenterPureUtils';
+import {
+  CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -87,22 +92,66 @@ const ContextCenterDocumentsPage: FC = () => {
   const [selectedFolderId, setSelectedFolderId] = useState<string>();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isFoldersLoading, setIsFoldersLoading] = useState(true);
+  const [isLoadingMoreFolders, setIsLoadingMoreFolders] = useState(false);
+  const [foldersAfter, setFoldersAfter] = useState<string>();
+  const [totalFolderCount, setTotalFolderCount] = useState(0);
   const [totalFileCount, setTotalFileCount] = useState(0);
   const [globalFileCount, setGlobalFileCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fetchGenerationRef = useRef(0);
+  const folderFetchGenerationRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
+  const isLoadingMoreFoldersRef = useRef(false);
   const folderViewRef = useRef<DocumentFolderViewHandle>(null);
 
-  const fetchFolders = useCallback(async () => {
+  const fetchGlobalFileCount = useCallback(async () => {
     try {
-      const data = await listFolders();
-      setFolders(data);
+      const response = await listContextFiles({ limit: 0 });
+      setGlobalFileCount(response.paging.total ?? 0);
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
   }, []);
+
+  const fetchFolders = useCallback(async () => {
+    folderFetchGenerationRef.current += 1;
+    const generation = folderFetchGenerationRef.current;
+    try {
+      const response = await listFolders();
+      if (generation !== folderFetchGenerationRef.current) {
+        return;
+      }
+      setFolders(response.data);
+      setFoldersAfter(response.paging.after);
+      setTotalFolderCount(response.paging.total ?? response.data.length);
+      fetchGlobalFileCount();
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [fetchGlobalFileCount]);
+
+  const fetchMoreFolders = useCallback(async () => {
+    if (!foldersAfter || isLoadingMoreFoldersRef.current) {
+      return;
+    }
+    isLoadingMoreFoldersRef.current = true;
+    setIsLoadingMoreFolders(true);
+    const generation = folderFetchGenerationRef.current;
+    try {
+      const response = await listFolders({ after: foldersAfter });
+      if (generation !== folderFetchGenerationRef.current) {
+        return;
+      }
+      setFolders((prev) => [...prev, ...response.data]);
+      setFoldersAfter(response.paging.after);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      isLoadingMoreFoldersRef.current = false;
+      setIsLoadingMoreFolders(false);
+    }
+  }, [foldersAfter]);
 
   useEffect(() => {
     setIsFoldersLoading(true);
@@ -296,6 +345,19 @@ const ContextCenterDocumentsPage: FC = () => {
     setSearchParams,
   ]);
 
+  useEffect(() => {
+    const folderId = searchParams.get('folder');
+    if (!folderId || isFoldersLoading || selectedFolderId) {
+      return;
+    }
+    setSelectedFolderId(folderId);
+    setSearchParams((prev) => {
+      prev.delete('folder');
+
+      return prev;
+    });
+  }, [isFoldersLoading, selectedFolderId, searchParams, setSearchParams]);
+
   const handleDeleteFile = useCallback((file: ContextFile) => {
     setFileToDelete(file);
   }, []);
@@ -312,6 +374,12 @@ const ContextCenterDocumentsPage: FC = () => {
     try {
       setIsDeletingFile(true);
       await deleteDriveFile(fileToDelete.id, false);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+      });
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+      });
       setAllDocuments((prev) =>
         prev.filter((document) => document.id !== fileToDelete.id)
       );
@@ -412,6 +480,14 @@ const ContextCenterDocumentsPage: FC = () => {
       const failedCount = result.numberOfRowsFailed ?? 0;
       const deletedDocuments = allDocuments.filter((d) => deletedIds.has(d.id));
 
+      if (deletedIds.size > 0) {
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+        });
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+        });
+      }
       setAllDocuments((prev) => prev.filter((d) => !deletedIds.has(d.id)));
       setTotalFileCount((prev) => prev - deletedIds.size);
       setGlobalFileCount((prev) => prev - deletedIds.size);
@@ -544,6 +620,9 @@ const ContextCenterDocumentsPage: FC = () => {
 
   const handleUploaded = useCallback(
     (newFiles: ContextFile[]) => {
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+      });
       setAllDocuments((prev) => [...newFiles, ...prev]);
       setTotalFileCount((prev) => prev + newFiles.length);
       setGlobalFileCount((prev) => prev + newFiles.length);
@@ -649,11 +728,15 @@ const ContextCenterDocumentsPage: FC = () => {
                 canCreate={hasCreatePermission}
                 canDelete={hasDeletePermission}
                 folders={folders}
+                hasMoreFolders={Boolean(foldersAfter)}
                 isLoading={isFoldersLoading}
+                isLoadingMoreFolders={isLoadingMoreFolders}
                 ref={folderViewRef}
                 selectedFolderId={selectedFolderId}
                 totalFileCount={globalFileCount}
+                totalFolderCount={totalFolderCount}
                 onFoldersChanged={fetchFolders}
+                onLoadMoreFolders={fetchMoreFolders}
                 onSelectFolder={setSelectedFolderId}
                 onUploadToFolder={
                   hasCreatePermission ? handleUploadToFolder : undefined
@@ -676,8 +759,10 @@ const ContextCenterDocumentsPage: FC = () => {
                   canEdit={hasEditPermission}
                   data={allDocuments}
                   folders={folderOptions}
+                  hasMoreFolders={Boolean(foldersAfter)}
                   isLoading={isDocumentsLoading}
                   isLoadingMore={isLoadingMore}
+                  isLoadingMoreFolders={isLoadingMoreFolders}
                   previewFileId={previewFile?.id}
                   selectedFolderName={selectedFolderName}
                   selectedIds={selectedIds}
@@ -688,6 +773,7 @@ const ContextCenterDocumentsPage: FC = () => {
                   onDeleteFile={handleDeleteFile}
                   onDownload={handleAssetDownload}
                   onFileMoved={handleFileMoved}
+                  onLoadMoreFolders={fetchMoreFolders}
                   onPreview={handlePreview}
                   onScrollEnd={handleLoadMore}
                   onSelectFile={handleSelectFile}

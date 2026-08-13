@@ -457,6 +457,9 @@
           }
         }
       },
+      "testSuitesRevision": {
+        "type": "long"
+      },
       "testSuites": {
         "type": "nested",
         "properties": {

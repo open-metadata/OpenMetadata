@@ -22,7 +22,6 @@ from urllib.parse import parse_qs, quote, urlparse
 
 from google.api_core.exceptions import Forbidden, NotFound
 from google.auth.exceptions import DefaultCredentialsError, RefreshError
-from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine import Engine
 
 from metadata.core.connections.test_connection import (
@@ -38,6 +37,7 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection as BigQueryConnectionConfig,
@@ -58,6 +58,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.bigquery.helper import (
     get_impersonate_client_kwargs,
+    get_policy_tag_client,
 )
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
 from metadata.utils.bigquery_utils import get_bigquery_client
@@ -74,6 +75,17 @@ if TYPE_CHECKING:
 
 logger = ingestion_logger()
 
+
+class PolicyTagAccessError(Exception):
+    """Data Catalog rejected a taxonomy/policy-tag read.
+
+    A dedicated type because the classifier matches on exception type, not on the
+    step that raised: a bare ``Forbidden`` from Data Catalog would otherwise be
+    diagnosed as a missing *BigQuery* role and send users to grant permissions on
+    the wrong API - and, under impersonation, to the wrong identity.
+    """
+
+
 # BigQuery authenticates through Google credentials + a project id; there is no
 # host:port to preflight, so CheckAccess skips the shared TCP probe and folds in
 # NETWORK_ERRORS only for genuine socket/DNS failures reaching the Google
@@ -81,6 +93,15 @@ logger = ingestion_logger()
 # type and stable message token below (customer project ids never appear in a
 # rule).
 BIGQUERY_ERRORS = ErrorPack(
+    when(Matchers.exception(PolicyTagAccessError)).diagnose(
+        "Cannot read BigQuery policy tags",
+        fix="Data Catalog denied reading taxonomies or their policy tags. Grant the Data Catalog "
+        "Viewer role (datacatalog.taxonomies.list to enumerate taxonomies, "
+        "datacatalog.taxonomies.get to read a taxonomy and its policy tags) on the taxonomy "
+        "project. If service account impersonation is configured, grant it to the impersonated "
+        "service account, not the source one. Also verify 'taxonomyProjectID' and "
+        "'taxonomyLocation' point at the project and region where the taxonomies actually live.",
+    ),
     when(Matchers.exception(InvalidPrivateKeyException)).diagnose(
         "Malformed service account private key",
         fix="The private key in the GCP credentials could not be parsed as a PEM key. Paste the "
@@ -250,10 +271,6 @@ def _get_first_project_id(connection: BigQueryConnectionConfig) -> Optional[str]
 _OBJECT_TYPES = ("TABLE", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW")
 
 
-def _enumerated(count: int, noun: str) -> str:
-    return f"{count} {noun if count == 1 else noun + 's'} enumerated"
-
-
 def probe_table_view_enumeration(connection: Engine) -> Evidence:
     """Probe that datasets and their objects can be enumerated.
 
@@ -272,7 +289,7 @@ def probe_table_view_enumeration(connection: Engine) -> Evidence:
                         break
             except NotFound:
                 continue
-    return Evidence(summary=_enumerated(dataset_count, "dataset"))
+    return Evidence(summary=enumerated(dataset_count, "dataset"))
 
 
 class BigQueryChecks:
@@ -347,13 +364,20 @@ class BigQueryChecks:
             logger.info("'taxonomyLocation' is not set, so skipping this test.")
             return None
 
-        client = PolicyTagManagerClient()
+        client = get_policy_tag_client(self.service_connection)
         tag_count = 0
-        for project_id in project_ids:
-            parent = f"projects/{project_id}/locations/{location}"
-            for taxonomy in client.list_taxonomies(parent=parent):
-                tag_count += sum(1 for _ in client.list_policy_tags(parent=taxonomy.name))
-        return Evidence(summary=_enumerated(tag_count, "policy tag"))
+        try:
+            for project_id in project_ids:
+                parent = f"projects/{project_id}/locations/{location}"
+                try:
+                    for taxonomy in client.list_taxonomies(parent=parent):
+                        tag_count += sum(1 for _ in client.list_policy_tags(parent=taxonomy.name))
+                # PermissionDenied (the gRPC 403 Data Catalog raises) subclasses Forbidden
+                except Forbidden as exc:
+                    raise PolicyTagAccessError(f"Cannot list Data Catalog taxonomies under {parent}") from exc
+        finally:
+            client.transport.close()
+        return Evidence(summary=enumerated(tag_count, "policy tag"))
 
 
 class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):

@@ -189,7 +189,7 @@ export const visitCreateTestCasePanelFromEntityPage = async (
       table.entityResponseData?.['fullyQualifiedName'] ?? ''
     )}/tableProfile/latest?includeColumnProfile=false`
   );
-  await page.getByText('Data Observability').click();
+  await page.getByTestId('profiler').getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
@@ -285,9 +285,11 @@ export const addTestSuitePipeline = async (page: Page) => {
       res.url().includes('fields=owners') &&
       res.status() === 200
   );
-  const addPlaceholderButton = page.getByTestId('add-placeholder-button');
+  const emptyStateAddButton = page
+    .getByTestId('empty-placeholder')
+    .getByRole('button', { name: /add pipeline/i });
   const addPipelineButton = page.getByTestId('add-pipeline-button');
-  const addButton = addPlaceholderButton.or(addPipelineButton);
+  const addButton = emptyStateAddButton.or(addPipelineButton);
   await expect(addButton).toBeVisible();
   await addButton.click();
   await testSuiteByNameResponse;
@@ -432,29 +434,17 @@ export const verifyBundleSuitePageLoaded = async (
 ) => {
   await expect(page).toHaveURL(new RegExp(`.*test-suites.*${suiteName}.*`));
 
-  await expect
-    .poll(
-      async () => {
-        const listTestCasesResponse = page.waitForResponse(
-          '/api/v1/dataQuality/testCases/search/list?*'
-        );
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-        await listTestCasesResponse;
+  await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
-        const rows = await page
-          .locator('[data-testid="test-case-table"] tbody tr[data-key]')
-          .count();
+  const testCaseRows = page
+    .getByTestId('test-case-table')
+    .locator('[role="rowgroup"]')
+    .last()
+    .getByRole('row');
 
-        return rows;
-      },
-      {
-        timeout: 15000,
-        intervals: [3000],
-      }
-    )
-    .toBe(expectedTestCaseCount);
+  await expect(testCaseRows).toHaveCount(expectedTestCaseCount, {
+    timeout: 30000,
+  });
 };
 
 /** A `dataQualityReport` call captured for assertion in tests. */

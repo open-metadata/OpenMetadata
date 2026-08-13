@@ -195,6 +195,11 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
+              description = "Filter tables by database service name",
+              schema = @Schema(type = "string", example = "snowflakeWestCoast"))
+          @QueryParam("service")
+          String serviceParam,
+      @Parameter(
               description = "Filter tables by database fully qualified name",
               schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
           @QueryParam("database")
@@ -264,6 +269,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @DefaultValue("include")
           RegexMode regexMode) {
     ListFilter filter = new ListFilter(include);
+    if (serviceParam != null) {
+      filter.addQueryParam("service", serviceParam);
+    }
     if (databaseParam != null) {
       filter.addQueryParam("database", databaseParam);
     }

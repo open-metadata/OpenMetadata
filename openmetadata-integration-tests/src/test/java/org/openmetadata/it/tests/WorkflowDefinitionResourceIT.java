@@ -3037,25 +3037,29 @@ public class WorkflowDefinitionResourceIT {
     Glossary glossary = client.glossaries().create(createGlossary);
     LOG.debug("Created glossary: {}", glossary.getName());
 
-    // Create glossary term that SHOULD trigger workflow (has description)
+    // Trigger filter is an EXCLUSION filter: a matching JsonLogic tells the workflow to
+    // NOT trigger for that entity. A term whose description contains "workflow" therefore
+    // matches the filter and is EXCLUDED; a term without "workflow" in its description does
+    // not match, so the workflow runs and rewrites its displayName.
     CreateGlossaryTerm createTermToMatch =
         new CreateGlossaryTerm()
             .withName("createTermToMatch")
-            .withDisplayName("Complete Term")
-            .withDescription("This term has a description and should trigger workflow")
+            .withDisplayName("Excluded Term")
+            .withDescription("This term description contains workflow so it is excluded")
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm termToMatch = client.glossaryTerms().create(createTermToMatch);
-    LOG.debug("Created glossary term that should match filter: {}", termToMatch.getName());
+    LOG.debug("Created glossary term that matches filter (excluded): {}", termToMatch.getName());
 
-    // Create glossary term that should NOT trigger workflow (will not match filter)
     CreateGlossaryTerm createTermNotToMatch =
         new CreateGlossaryTerm()
             .withName("createTermNotToMatch")
-            .withDisplayName("Incomplete Term")
+            .withDisplayName("Triggering Term")
             .withDescription("Simple description without the magic word")
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm termNotToMatch = client.glossaryTerms().create(createTermNotToMatch);
-    LOG.debug("Created glossary term that should NOT match filter: {}", termNotToMatch.getName());
+    LOG.debug(
+        "Created glossary term that does not match filter (triggers): {}",
+        termNotToMatch.getName());
 
     // Ensure WorkflowEventConsumer is active
     ensureWorkflowEventConsumerIsActive(client);
@@ -3086,31 +3090,32 @@ public class WorkflowDefinitionResourceIT {
             .withDatabase(database.getFullyQualifiedName());
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
 
-    // Create table that SHOULD trigger workflow (production table)
+    // Same exclusion semantics for the table entity: names containing "production" match the
+    // table filter and are EXCLUDED; names without "production" do not match, so the workflow
+    // triggers and rewrites the displayName.
     CreateTable createProdTable =
         new CreateTable()
             .withName("production_customer_data")
             .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Production table that should trigger workflow")
+            .withDescription("Production table (matches filter -> excluded)")
             .withColumns(
                 List.of(
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("data").withDataType(ColumnDataType.STRING)));
     Table prodTable = client.tables().create(createProdTable);
-    LOG.debug("Created production table that should match filter: {}", prodTable.getName());
+    LOG.debug("Created production table that matches filter (excluded): {}", prodTable.getName());
 
-    // Create table that should NOT trigger workflow (dev/test table)
     CreateTable createDevTable =
         new CreateTable()
             .withName("dev_test_table")
             .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Dev table that should NOT trigger workflow")
+            .withDescription("Dev table (does not match filter -> triggers)")
             .withColumns(
                 List.of(
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("test_data").withDataType(ColumnDataType.STRING)));
     Table devTable = client.tables().create(createDevTable);
-    LOG.debug("Created dev table that should NOT match filter: {}", devTable.getName());
+    LOG.debug("Created dev table that does not match filter (triggers): {}", devTable.getName());
 
     // Create workflow with entity-specific filters - using raw JSON like reference test
     String workflowJson =
@@ -3229,8 +3234,9 @@ public class WorkflowDefinitionResourceIT {
     JsonNode devTablePatch = MAPPER.readTree(devTablePatchStr);
     client.tables().patch(devTableId, devTablePatch);
 
-    // Wait for workflow processing using Awaitility
-    LOG.info("Waiting for workflow to process entities...");
+    // Wait for the non-matching entities to be processed by the workflow. Matching entities are
+    // silently excluded by the trigger filter, so we cannot wait on them — they never change.
+    LOG.info("Waiting for workflow to process non-matching entities...");
     await()
         .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
@@ -3238,19 +3244,18 @@ public class WorkflowDefinitionResourceIT {
         .until(
             () -> {
               try {
-                // Check if entities that match filters got processed
-                GlossaryTerm updatedTermToMatch = client.glossaryTerms().get(termToMatchId);
-                Table updatedProdTable = client.tables().get(prodTableId);
+                GlossaryTerm updatedTermNotToMatch = client.glossaryTerms().get(termNotToMatchId);
+                Table updatedDevTable = client.tables().get(devTableId);
 
                 boolean termProcessed =
-                    updatedTermToMatch.getDisplayName() != null
-                        && updatedTermToMatch.getDisplayName().startsWith("[FILTERED]");
+                    updatedTermNotToMatch.getDisplayName() != null
+                        && updatedTermNotToMatch.getDisplayName().startsWith("[FILTERED]");
                 boolean tableProcessed =
-                    updatedProdTable.getDisplayName() != null
-                        && updatedProdTable.getDisplayName().startsWith("[FILTERED]");
+                    updatedDevTable.getDisplayName() != null
+                        && updatedDevTable.getDisplayName().startsWith("[FILTERED]");
 
                 if (termProcessed && tableProcessed) {
-                  LOG.debug("Both matching entities have been processed by workflow");
+                  LOG.debug("Both non-matching entities have been processed by workflow");
                   return true;
                 }
 
@@ -3268,35 +3273,34 @@ public class WorkflowDefinitionResourceIT {
     // Verify results
     LOG.info("Verifying workflow results");
 
-    // Entities that match filter should be processed
-    GlossaryTerm finalTermToMatch = client.glossaryTerms().get(termToMatchId);
-    assertTrue(
-        finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
-        "GlossaryTerm with description should have been processed by workflow");
-    LOG.info(
-        "✓ GlossaryTerm with description was correctly processed using glossaryterm-specific filter");
-
-    Table finalProdTable = client.tables().get(prodTableId);
-    assertTrue(
-        finalProdTable.getDisplayName().startsWith("[FILTERED]"),
-        "Production table should have been processed by workflow");
-    LOG.info(
-        "✓ Table with 'production' in name was correctly processed using table-specific filter");
-
-    // Entities that don't match filter should NOT be processed
+    // Entities that do NOT match filter should be processed (exclusion filter fell through).
     GlossaryTerm finalTermNotToMatch = client.glossaryTerms().get(termNotToMatchId);
-    assertFalse(
-        finalTermNotToMatch.getDisplayName() != null
-            && finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
-        "GlossaryTerm without description should NOT have been processed by workflow");
-    LOG.info("✓ GlossaryTerm without description was correctly filtered out");
+    assertTrue(
+        finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm without the excluded keyword should have been processed by workflow");
+    LOG.info(
+        "✓ GlossaryTerm without 'workflow' in description was processed (exclusion filter did not match)");
 
     Table finalDevTable = client.tables().get(devTableId);
+    assertTrue(
+        finalDevTable.getDisplayName().startsWith("[FILTERED]"),
+        "Table without 'production' in name should have been processed by workflow");
+    LOG.info("✓ Table without 'production' in name was processed (exclusion filter did not match)");
+
+    // Entities that MATCH the filter must be excluded — the workflow must not touch them.
+    GlossaryTerm finalTermToMatch = client.glossaryTerms().get(termToMatchId);
     assertFalse(
-        finalDevTable.getDisplayName() != null
-            && finalDevTable.getDisplayName().startsWith("[FILTERED]"),
-        "Dev table should NOT have been processed by workflow");
-    LOG.info("✓ Table without 'production' in name was correctly filtered out");
+        finalTermToMatch.getDisplayName() != null
+            && finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm matching the exclusion filter should NOT have been processed by workflow");
+    LOG.info("✓ GlossaryTerm with 'workflow' in description was correctly excluded");
+
+    Table finalProdTable = client.tables().get(prodTableId);
+    assertFalse(
+        finalProdTable.getDisplayName() != null
+            && finalProdTable.getDisplayName().startsWith("[FILTERED]"),
+        "Production table matching the exclusion filter should NOT have been processed");
+    LOG.info("✓ Table with 'production' in name was correctly excluded");
 
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
@@ -3466,12 +3470,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveEntity",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveEntity",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -3578,12 +3582,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveEntity",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveEntity",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -3975,12 +3979,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "approval",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "approval",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ]
             }
@@ -4058,12 +4062,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "userApproval",
                   "to": "setTask",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "userApproval",
                   "to": "setTask",
-                  "condition": "false"
+                  "condition": "reject"
                 },
                 {
                   "from": "setTask",
@@ -4701,7 +4705,7 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "approvalTask",
                   "to": "end",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ]
             }
@@ -4715,8 +4719,8 @@ public class WorkflowDefinitionResourceIT {
           assertThrows(
               OpenMetadataException.class,
               () -> client.workflowDefinitions().validate(missingTrueConditionWorkflow));
-      assertTrue(missingTrueEx.getMessage().contains("must have both TRUE and FALSE"));
-      LOG.debug("UserApprovalTask missing TRUE condition correctly rejected");
+      assertTrue(missingTrueEx.getMessage().contains("must have both approve and reject"));
+      LOG.debug("UserApprovalTask missing approve condition correctly rejected");
 
       // Test 16 (Test 10 in original): Valid conditional task with both TRUE and FALSE
       String validConditionalJson =
@@ -5341,9 +5345,9 @@ public class WorkflowDefinitionResourceIT {
                       ],
                       "edges": [
                         {"from": "StartNode", "to": "UserApproval"},
-                        {"from": "UserApproval", "to": "SetDescription", "condition": "true"},
+                        {"from": "UserApproval", "to": "SetDescription", "condition": "approve"},
                         {"from": "SetDescription", "to": "EndNode"},
-                        {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                        {"from": "UserApproval", "to": "EndNode", "condition": "reject"}
                       ],
                       "config": {"storeStageStatus": true}
                     }
@@ -5844,9 +5848,9 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "StartNode", "to": "UserApproval"},
-                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "true"},
+                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "approve"},
                 {"from": "SetStatusApproved", "to": "EndNode"},
-                {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                {"from": "UserApproval", "to": "EndNode", "condition": "reject"}
               ],
               "config": {"storeStageStatus": false}
             }
@@ -6131,8 +6135,8 @@ public class WorkflowDefinitionResourceIT {
                   ],
                   "edges": [
                     {"from": "Start", "to": "UserApproval"},
-                    {"from": "UserApproval", "to": "End", "condition": "true"},
-                    {"from": "UserApproval", "to": "End", "condition": "false"}
+                    {"from": "UserApproval", "to": "End", "condition": "approve"},
+                    {"from": "UserApproval", "to": "End", "condition": "reject"}
                   ],
                   "config": {"storeStageStatus": true}
                 }
@@ -6363,12 +6367,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveTag",
                   "to": "end",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveTag",
                   "to": "end",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -7720,8 +7724,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ],
               "config": {"storeStageStatus": false}
             }
@@ -8046,8 +8050,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ]
             }
             """
@@ -8334,8 +8338,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ]
             }
             """
@@ -9887,12 +9891,12 @@ public class WorkflowDefinitionResourceIT {
             {
               "from": "userApproval",
               "to": "setApproved",
-              "condition": "true"
+              "condition": "approve"
             },
             {
               "from": "userApproval",
               "to": "setRejected",
-              "condition": "false"
+              "condition": "reject"
             },
             {
               "from": "setApproved",
@@ -10314,8 +10318,8 @@ public class WorkflowDefinitionResourceIT {
           "edges": [
             {"from": "start", "to": "setStatusInReview"},
             {"from": "setStatusInReview", "to": "ApprovalTask"},
-            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "true"},
-            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "false"},
+            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "approve"},
+            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "reject"},
             {"from": "setStatusApproved", "to": "endApproved"},
             {"from": "setStatusRejected", "to": "endRejected"}
           ],
@@ -10752,8 +10756,8 @@ public class WorkflowDefinitionResourceIT {
             { "from": "start", "to": "checkChangeDesc" },
             { "from": "checkChangeDesc", "to": "userApproval", "condition": "true" },
             { "from": "checkChangeDesc", "to": "setDraft", "condition": "false" },
-            { "from": "userApproval", "to": "setApproved", "condition": "true" },
-            { "from": "userApproval", "to": "setRejected", "condition": "false" },
+            { "from": "userApproval", "to": "setApproved", "condition": "approve" },
+            { "from": "userApproval", "to": "setRejected", "condition": "reject" },
             { "from": "setApproved", "to": "end" },
             { "from": "setRejected", "to": "end" },
             { "from": "setDraft", "to": "end" }
@@ -10818,5 +10822,161 @@ public class WorkflowDefinitionResourceIT {
     } catch (Exception e) {
       LOG.warn("Cleanup error: {}", e.getMessage());
     }
+  }
+
+  /**
+   * Trigger filter is an EXCLUSION filter: if the JsonLogic evaluates to TRUE for the entity, the
+   * workflow does NOT trigger; if it evaluates to FALSE, or the filter is unparseable garbage
+   * (returns false from RuleEngine on any exception), the workflow triggers normally.
+   *
+   * <p>Original design: PR #22437 (return {@code !jsonFilter}, comment: "if jsonLogic evaluates
+   * to true, then don't trigger the workflow"). Task Redesign (PR #25894) accidentally dropped
+   * the {@code !} inversion and flipped this to inclusion, breaking every customer with a real
+   * JsonLogic filter or a legacy poisoned filter value like {@code "\"\""}.
+   *
+   * <p>Test exercises three cases end to end against the real trigger BPMN + FilterEntityImpl:
+   * a valid filter that does NOT match (triggers), a valid filter that matches (excludes), and
+   * a poisoned filter that fails to parse (falls open, triggers).
+   */
+  @Test
+  @Order(200)
+  void test_EventTriggerFilterIsExclusionAndFailsOpen(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = ns.prefix("exclusionFilterWorkflow").substring(0, 30);
+    String glossaryName = ns.prefix("exclusionGlossary").substring(0, 30);
+    String triggerMarker = "trigger";
+    String excludeMarker = "skipme";
+
+    createExclusionFilterWorkflow(client, workflowName, excludeMarker);
+    Glossary glossary = createExclusionGlossary(client, glossaryName);
+
+    GlossaryTerm triggeringTerm =
+        createTerm(client, glossary, "triggering_term", triggerMarker + " content");
+    GlossaryTerm excludedTerm =
+        createTerm(client, glossary, "excluded_term", excludeMarker + " content");
+
+    awaitDisplayNamePrefixedWith(client, triggeringTerm.getId(), "[TRIGGERED]");
+    assertDisplayNameUnchangedAfterQuietPeriod(client, excludedTerm.getId());
+
+    patchFilterOn(client, workflowName, "\"\\\"\\\"\"");
+    GlossaryTerm poisonedTerm =
+        createTerm(client, glossary, "poisoned_term", "any content, filter is broken");
+    awaitDisplayNamePrefixedWith(client, poisonedTerm.getId(), "[TRIGGERED]");
+  }
+
+  private void createExclusionFilterWorkflow(
+      OpenMetadataClient client, String workflowName, String excludeMarker) throws Exception {
+    // JsonLogic: description contains excludeMarker → excludes term from workflow trigger.
+    String filterLogic =
+        String.format(
+            "{\\\"in\\\": [\\\"%s\\\", {\\\"var\\\": \\\"description\\\"}]}", excludeMarker);
+    String workflowJson =
+        String.format(
+            """
+            {
+              "name": "%s",
+              "displayName": "Exclusion Filter Test Workflow",
+              "description": "Verifies the trigger filter behaves as an exclusion filter",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["glossaryTerm"],
+                  "events": ["Created", "Updated"],
+                  "exclude": ["reviewers"],
+                  "filter": {"glossaryTerm": "%s"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "Start"},
+                {
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "name": "MarkTriggered",
+                  "displayName": "Mark Triggered",
+                  "config": {"fieldName": "displayName", "fieldValue": "[TRIGGERED]"},
+                  "input": ["relatedEntity", "updatedBy"],
+                  "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+                  "output": []
+                },
+                {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "End"}
+              ],
+              "edges": [
+                {"from": "start", "to": "MarkTriggered"},
+                {"from": "MarkTriggered", "to": "end"}
+              ],
+              "config": {"storeStageStatus": false}
+            }
+            """,
+            workflowName, filterLogic);
+    CreateWorkflowDefinition workflow =
+        MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    trackWorkflowFromJson(MAPPER.readTree(response));
+    waitForWorkflowDeployment(client, workflowName);
+  }
+
+  private Glossary createExclusionGlossary(OpenMetadataClient client, String name)
+      throws Exception {
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(name)
+            .withDisplayName(name)
+            .withDescription("Glossary for exclusion filter test");
+    return client.glossaries().create(create);
+  }
+
+  private GlossaryTerm createTerm(
+      OpenMetadataClient client, Glossary glossary, String name, String description)
+      throws Exception {
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withDisplayName(name)
+            .withDescription(description)
+            .withGlossary(glossary.getFullyQualifiedName());
+    return client.glossaryTerms().create(create);
+  }
+
+  private void patchFilterOn(
+      OpenMetadataClient client, String workflowName, String filterMapJsonValue) throws Exception {
+    WorkflowDefinition workflow = client.workflowDefinitions().getByName(workflowName, null);
+    String patchStr =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryTerm\":%s}}]",
+            filterMapJsonValue);
+    client.workflowDefinitions().patch(workflow.getId(), MAPPER.readTree(patchStr));
+  }
+
+  private void awaitDisplayNamePrefixedWith(
+      OpenMetadataClient client, UUID termId, String expectedPrefix) {
+    await("glossary term " + termId + " displayName starts with " + expectedPrefix)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              GlossaryTerm current = client.glossaryTerms().get(termId);
+              return current.getDisplayName() != null
+                  && current.getDisplayName().startsWith(expectedPrefix);
+            });
+  }
+
+  private void assertDisplayNameUnchangedAfterQuietPeriod(OpenMetadataClient client, UUID termId)
+      throws Exception {
+    String originalDisplayName = client.glossaryTerms().get(termId).getDisplayName();
+    simulateWork(Duration.ofSeconds(20).toMillis());
+    GlossaryTerm current = client.glossaryTerms().get(termId);
+    assertEquals(
+        originalDisplayName,
+        current.getDisplayName(),
+        "Excluded term must not be touched by workflow, but displayName changed to "
+            + current.getDisplayName());
   }
 }

@@ -15,20 +15,68 @@
 @import (reference) 'antd/dist/antd.less';
 
 .page-layout-v1-vertical-scroll {
-  height: calc(100vh - @om-navbar-height);
+  height: var(--om-page-height);
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+// Base page container. Overrides come through the `className` prop as
+// important Tailwind utilities (e.g. tw:!h-auto) — unlayered less rules
+// beat plain tw utilities, so the `!` is required.
+.page-layout-v1 {
+  margin: 0;
+  overflow: hidden;
+}
+
+// fullHeight mode: the page container is pinned to --om-page-height (the
+// viewport minus the shell chrome), and PageLayoutV1's own centre column +
+// its single `<Row><Col>` wrapper become a flex chain so the page's root
+// child absorbs the remaining height and scrolls internally.
+//
+// Selectors use the direct-child combinator and stop at that wrapper Col —
+// never reaching antd Row/Col the page renders inside its own content.
+.page-layout-v1-full-height {
+  height: var(--om-page-height);
+
+  > .page-layout-v1-center {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  > .page-layout-v1-center > .ant-row {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  > .page-layout-v1-center > .ant-row > .ant-col {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
 }
 
 #page-alert {
   position: sticky;
   top: 0px;
-  z-index: 20;
+  z-index: var(--om-z-20);
   background-color: var(--tw-color-utility-gray-blue-50);
 }
 
+// The sticky alert consumes @page-alert-height inside the page scroll;
+// expose it as an offset so fixed-height panels
+// (content-height-with-resizable-panel) shrink to fit instead of each page
+// re-deriving its own calc.
+.page-layout-v1-center:has(#page-alert) {
+  --page-alert-offset: @page-alert-height;
+}
+
 .page-layout-v1-center:has(.ontology-slideout-open) #page-alert {
-  z-index: 0;
+  z-index: var(--om-z-0);
 }
 
 .page-layout-v1-left-panel {
@@ -49,7 +97,7 @@
 
 .header-center {
   width: 700px;
-  margin: 16px auto 0 auto;
+  margin: var(--om-space-16) auto 0 auto;
   padding: 0;
 }
 

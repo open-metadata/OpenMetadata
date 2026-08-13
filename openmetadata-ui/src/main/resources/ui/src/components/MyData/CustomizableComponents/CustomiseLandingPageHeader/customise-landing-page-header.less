@@ -35,10 +35,10 @@
     .slick-arrow {
       color: var(--tw-color-text-white);
       font-size: @size-lg;
-      z-index: 10;
+      z-index: var(--om-z-10);
       width: 32px;
       height: 32px;
-      background-color: rgba(0, 0, 0, 0.3);
+      background-color: var(--om-legacy-color-0-0-0-0-3);
       border-radius: 50%;
       display: flex !important;
       align-items: center;
@@ -46,7 +46,7 @@
 
       &:hover {
         color: var(--tw-color-text-white);
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: var(--om-legacy-color-0-0-0-0-5);
       }
 
       &.slick-prev {
@@ -102,7 +102,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1;
+  z-index: var(--om-z-1);
   opacity: 0.15;
   pointer-events: none;
 
@@ -128,7 +128,7 @@
   flex-direction: column;
   flex: 3.5;
   min-width: 0;
-  padding: 1.75rem 4.375rem 1.25rem 2.75rem;
+  padding: var(--om-space-28) var(--om-space-70) var(--om-space-20) var(--om-space-44);
 
   .welcome-user {
     font-size: @size-xl;
@@ -157,8 +157,8 @@
   flex-shrink: 0;
   white-space: nowrap;
   cursor: pointer;
-  padding-top: 17px;
-  padding-bottom: 17px;
+  padding-top: var(--om-space-17);
+  padding-bottom: var(--om-space-17);
 
   .domain-icon,
   .dropdown-icon {
@@ -216,7 +216,7 @@
 
     &:hover {
       cursor: pointer;
-      background-color: #ffffff4d;
+      background-color: var(--om-legacy-color-255-255-255-0-302);
     }
   }
 

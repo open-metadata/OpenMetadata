@@ -42,7 +42,7 @@
         "openLineageSettings",
         "mcpConfiguration",
         "glossaryTermRelationSettings",
-        "searchIndexMappings"
+        "appConfiguration"
       ]
     }
   },
@@ -120,7 +120,7 @@
           "$ref": "../configuration/glossaryTermRelationSettings.json"
         },
         {
-          "$ref": "../configuration/searchIndexMappings.json"
+          "$ref": "../api/configuration/appConfiguration.json"
         }
       ]
     }

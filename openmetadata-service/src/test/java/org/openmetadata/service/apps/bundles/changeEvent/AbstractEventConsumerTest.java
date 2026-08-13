@@ -34,9 +34,11 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -140,6 +142,35 @@ class AbstractEventConsumerTest {
     assertNotNull(testEventConsumer.dependencies);
   }
 
+  /**
+   * Quartz worker threads are pooled and shared with every other scheduled job, and never pass
+   * through the JAX-RS response filter that clears these ThreadLocals for HTTP requests. Whatever
+   * runs next on the thread inherits anything left behind, so a tick must leave it clean however it
+   * exits — including an early return when the subscription cannot be loaded.
+   *
+   * <p>Scope of this test: it pins the end-to-end invariant and fails if the cleanup is removed
+   * altogether. It does <b>not</b> isolate the exit-side clear from the entry-side one, because the
+   * only paths that previously skipped cleanup run inside the private {@code init}, which offers no
+   * seam for a test to populate the ThreadLocals mid-tick. That the exit clear is unconditional is
+   * enforced structurally, by the try/finally in {@code execute}.
+   */
+  @Test
+  void execute_leavesThreadCleanForTheNextJob() {
+    ImpersonationContext.setImpersonatedBy("someone");
+
+    try {
+      testEventConsumer.execute(jobExecutionContext);
+    } catch (RuntimeException expectedInThisHarness) {
+      // The subscription cannot be resolved here, so the tick either returns early or throws.
+      // Either way the cleanup guarantee below must hold.
+    }
+
+    assertNull(
+        ImpersonationContext.getImpersonatedBy(),
+        "A tick must leave the thread clean, or the next job scheduled onto it reads stale "
+            + "per-request state");
+  }
+
   @Test
   void testSendAlertMethod() {
     UUID receiverId = UUID.randomUUID();
@@ -212,6 +243,7 @@ class AbstractEventConsumerTest {
   void testConstants() {
     assertEquals("SubscriptionMapKey", AbstractEventConsumer.DESTINATION_MAP_KEY);
     assertEquals("alertOffsetKey", AbstractEventConsumer.ALERT_OFFSET_KEY);
+    assertEquals("alertPendingGapSinceKey", AbstractEventConsumer.ALERT_PENDING_GAP_SINCE_KEY);
     assertEquals("alertInfoKey", AbstractEventConsumer.ALERT_INFO_KEY);
     assertEquals("eventSubscription.Offset", AbstractEventConsumer.OFFSET_EXTENSION);
     assertEquals("eventSubscription.metrics", AbstractEventConsumer.METRICS_EXTENSION);
@@ -223,6 +255,80 @@ class AbstractEventConsumerTest {
     assertEquals(2, AbstractEventConsumer.FailureTowards.values().length);
     assertEquals("SUBSCRIBER", AbstractEventConsumer.FailureTowards.SUBSCRIBER.name());
     assertEquals("PUBLISHER", AbstractEventConsumer.FailureTowards.PUBLISHER.name());
+  }
+
+  @Test
+  void testCursorPlanAdvancesAcrossContiguousOffsets() {
+    List<ChangeEventRecord> records =
+        List.of(new ChangeEventRecord(11, "{}"), new ChangeEventRecord(12, "{}"));
+
+    AbstractEventConsumer.CursorPlan plan =
+        AbstractEventConsumer.planCursor(10, 0L, records, 1_000L);
+
+    assertEquals(12, plan.offset());
+    assertEquals(0L, plan.pendingGapSince());
+    assertEquals(2, plan.recordCount());
+    assertFalse(plan.skippedGap());
+  }
+
+  @Test
+  void testCursorPlanWaitsAtNewHeadGap() {
+    List<ChangeEventRecord> records =
+        List.of(new ChangeEventRecord(12, "{}"), new ChangeEventRecord(13, "{}"));
+
+    AbstractEventConsumer.CursorPlan plan =
+        AbstractEventConsumer.planCursor(10, 0L, records, 1_000L);
+
+    assertEquals(10, plan.offset());
+    assertEquals(1_000L, plan.pendingGapSince());
+    assertEquals(0, plan.recordCount());
+    assertFalse(plan.skippedGap());
+  }
+
+  @Test
+  void testCursorPlanConsumesGapWhenLowerOffsetCommits() {
+    List<ChangeEventRecord> records =
+        List.of(
+            new ChangeEventRecord(11, "{}"),
+            new ChangeEventRecord(12, "{}"),
+            new ChangeEventRecord(13, "{}"));
+
+    AbstractEventConsumer.CursorPlan plan =
+        AbstractEventConsumer.planCursor(10, 500L, records, 1_000L);
+
+    assertEquals(13, plan.offset());
+    assertEquals(0L, plan.pendingGapSince());
+    assertEquals(3, plan.recordCount());
+    assertFalse(plan.skippedGap());
+  }
+
+  @Test
+  void testCursorPlanSkipsGapOnlyAfterTimeout() {
+    List<ChangeEventRecord> records =
+        List.of(new ChangeEventRecord(12, "{}"), new ChangeEventRecord(13, "{}"));
+    long now = AbstractEventConsumer.GAP_RESOLVE_TIMEOUT_MS + 1_000L;
+
+    AbstractEventConsumer.CursorPlan plan =
+        AbstractEventConsumer.planCursor(10, 1_000L, records, now);
+
+    assertEquals(11, plan.offset());
+    assertEquals(0L, plan.pendingGapSince());
+    assertEquals(0, plan.recordCount());
+    assertTrue(plan.skippedGap());
+  }
+
+  @Test
+  void testCursorPlanStopsAtGapAfterContiguousPrefix() {
+    List<ChangeEventRecord> records =
+        List.of(new ChangeEventRecord(11, "{}"), new ChangeEventRecord(13, "{}"));
+
+    AbstractEventConsumer.CursorPlan plan =
+        AbstractEventConsumer.planCursor(10, 500L, records, 1_000L);
+
+    assertEquals(11, plan.offset());
+    assertEquals(0L, plan.pendingGapSince());
+    assertEquals(1, plan.recordCount());
+    assertFalse(plan.skippedGap());
   }
 
   @Test

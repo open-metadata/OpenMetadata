@@ -625,7 +625,7 @@ final class EntityRankingSeeders {
               .withFields(
                   List.of(
                       new SearchIndexField()
-                          .withName(RankingSupport.uniqueTerm(ns))
+                          .withName(EntitySeeder.tokenFreeValue(ns))
                           .withDataType(SearchIndexDataType.TEXT)));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {

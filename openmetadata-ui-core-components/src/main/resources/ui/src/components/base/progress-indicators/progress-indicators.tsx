@@ -135,7 +135,7 @@ export const ProgressBar = ({
         <div className="tw:relative tw:flex tw:flex-col tw:items-end tw:gap-2">
           {baseProgressBar}
           <div
-            className="tw:absolute tw:-top-2 tw:-translate-x-1/2 tw:-translate-y-full tw:rounded-lg tw:bg-primary_alt tw:px-3 tw:py-2 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt"
+            className="tw:absolute tw:-top-2 tw:-translate-x-1/2 tw:-translate-y-full tw:rounded-lg tw:bg-primary_alt tw:px-3 tw:py-2 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt"
             style={{ left: `${percentage}%` }}>
             <div className="tw:text-xs tw:font-semibold tw:text-secondary tw:tabular-nums">
               {formattedValue}
@@ -148,7 +148,7 @@ export const ProgressBar = ({
         <div className="tw:relative tw:flex tw:flex-col tw:items-end tw:gap-2">
           {baseProgressBar}
           <div
-            className="tw:absolute tw:-bottom-2 tw:-translate-x-1/2 tw:translate-y-full tw:rounded-lg tw:bg-primary_alt tw:px-3 tw:py-2 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt"
+            className="tw:absolute tw:-bottom-2 tw:-translate-x-1/2 tw:translate-y-full tw:rounded-lg tw:bg-primary_alt tw:px-3 tw:py-2 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt"
             style={{ left: `${percentage}%` }}>
             <div className="tw:text-xs tw:font-semibold tw:text-secondary">
               {formattedValue}

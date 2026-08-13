@@ -13,9 +13,9 @@
 @import (reference) '../../../../../styles/variables.less';
 
 .widget-header {
-  padding: 12px 20px 12px 20px;
-  box-shadow: 0px 4px 8px -4px rgba(10, 13, 18, 0.08);
-  z-index: 1;
+  padding: var(--om-space-12) var(--om-space-20) var(--om-space-12) var(--om-space-20);
+  box-shadow: 0px 4px 8px -4px var(--om-legacy-color-10-13-18-0-08);
+  z-index: var(--om-z-1);
   height: 60px;
 
   .header-title-icon {
@@ -30,8 +30,8 @@
 
   .widget-title {
     margin: 0;
-    font-weight: 500;
-    font-size: 16px;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-md);
     line-height: 24px;
     color: @grey-700;
     overflow: hidden;
@@ -42,7 +42,7 @@
   }
 
   .widget-header-options {
-    transition: color 0.3s ease;
+    transition: color var(--om-duration-300) ease;
 
     &:hover {
       color: @primary-color;
@@ -56,21 +56,21 @@
 
   .widget-header-menu {
     .ant-dropdown-menu-item {
-      padding: 8px 16px;
-      font-size: 14px;
+      padding: var(--om-space-8) var(--om-space-16);
+      font-size: var(--om-font-size-sm);
       line-height: 20px;
 
       &:hover {
         color: @blue-34;
         background-color: @blue-33;
-        font-weight: 500;
+        font-weight: var(--om-font-weight-medium);
       }
     }
 
     .ant-dropdown-menu-item-active {
       color: @blue-34;
       background-color: @blue-33;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
     }
   }
 

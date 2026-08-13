@@ -36,9 +36,22 @@ jobs:
       pull-requests: write
 
     steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          filters: |
+            python:
+              - 'ingestion/**'
+              - 'openmetadata-spec/**'
+
+      - name: Resolve Python check scope
+        id: scope
+        run: echo "python=${{ github.event_name != 'pull_request_target' && 'true' || steps.filter.outputs.python }}" >> "$GITHUB_OUTPUT"
+
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' && steps.scope.outputs.python == 'true' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -47,7 +60,7 @@ jobs:
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' && steps.scope.outputs.python == 'true' }}
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           valid-labels: 'safe to test'
@@ -55,20 +68,25 @@ jobs:
           disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v4
+        if: ${{ steps.scope.outputs.python == 'true' }}
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        if: ${{ steps.scope.outputs.python == 'true' }}
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
       - name: Install Ubuntu related dependencies
+        if: ${{ steps.scope.outputs.python == 'true' }}
         run: |
           sudo apt-get update  && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
 
       - name: Install Python & Openmetadata related dependencies
+        if: ${{ steps.scope.outputs.python == 'true' }}
         run: |
           python3 -m venv env
           source env/bin/activate
@@ -78,6 +96,7 @@ jobs:
       # Add back linting once we have 10/10 on main
       - name: Code style check
         id: style
+        if: ${{ steps.scope.outputs.python == 'true' }}
         continue-on-error: true
         run: |
           source env/bin/activate
@@ -85,8 +104,8 @@ jobs:
           make py_format_check
 
       - name: Create a comment in the PR with the instructions
-        if: ${{ steps.style.outcome != 'success' && github.event_name == 'pull_request_target' }}
-        uses: peter-evans/create-or-update-comment@v1
+        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' && github.event_name == 'pull_request_target' }}
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
@@ -98,6 +117,6 @@ jobs:
             You can install the pre-commit hooks with `make install_test precommit_install`.
 
       - name: Python checkstyle failed, check the comment in the PR
-        if: steps.style.outcome != 'success'
+        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' }}
         run: |
           exit 1

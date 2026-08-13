@@ -70,7 +70,9 @@ export const Dialog = (props: DialogProps) => (
     role="dialog"
     {...props}
     className={cx(
-      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-primary tw:ring-1 tw:ring-secondary_alt tw:outline-hidden',
+      // `outline-hidden` removed: the outline now draws this panel's border (it replaced a
+      // ring, which WebKit does not pixel-snap), so suppressing it would erase the border.
+      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-primary tw:outline-1 tw:outline-secondary_alt',
       props.className
     )}
   />

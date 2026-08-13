@@ -41,6 +41,7 @@ from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
+    close_on_failure,
     create_connection,
     run_test_connection,
     test_connection_common,
@@ -87,11 +88,8 @@ class UnitycatalogLineageSource(Source):
         self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
         self.column_lineage_map: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
         self.external_location_map: dict[str, str] = {}
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     def close(self):
         if self._connection is not None:

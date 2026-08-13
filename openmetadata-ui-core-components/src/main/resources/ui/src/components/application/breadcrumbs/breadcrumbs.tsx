@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx, sortCx } from '@/utils/cx';
 import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
 import type { FC, HTMLAttributes, Key, ReactNode } from 'react';
@@ -104,7 +105,7 @@ const styles = sortCx({
   'button-white': {
     link: 'tw:rounded-md tw:text-quaternary tw:hover:bg-primary_hover tw:hover:text-secondary',
     current:
-      'tw:rounded-md tw:bg-primary tw:font-medium tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset',
+      'tw:rounded-md tw:bg-primary tw:font-medium tw:text-secondary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
   },
   'button-gray': {
     link: 'tw:rounded-md tw:text-quaternary tw:hover:bg-secondary tw:hover:text-secondary',
@@ -216,28 +217,36 @@ const EllipsisMenu = ({
   size,
   padding,
   onAction,
-}: EllipsisMenuProps) => (
-  <Dropdown.Root>
-    <AriaButton
-      aria-label="Show hidden breadcrumbs"
-      className={cx(linkClassName, styles[type].link, padding)}>
-      <DotsHorizontal className={cx('tw:shrink-0', sizes[size].dots)} />
-    </AriaButton>
-    <Dropdown.Popover>
-      <Dropdown.Menu aria-label="Hidden breadcrumbs">
-        {hidden.map((item, index) => (
-          <Dropdown.Item
-            href={onAction ? undefined : item.href}
-            icon={item.icon}
-            key={item.id}
-            label={toText(item.label, `Item ${index + 1}`)}
-            onAction={() => onAction?.(item.id)}
-          />
-        ))}
-      </Dropdown.Menu>
-    </Dropdown.Popover>
-  </Dropdown.Root>
-);
+}: EllipsisMenuProps) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <Dropdown.Root>
+      <AriaButton
+        aria-label={t(
+          'label.show-hidden-breadcrumbs',
+          'Show hidden breadcrumbs'
+        )}
+        className={cx(linkClassName, styles[type].link, padding)}>
+        <DotsHorizontal className={cx('tw:shrink-0', sizes[size].dots)} />
+      </AriaButton>
+      <Dropdown.Popover>
+        <Dropdown.Menu
+          aria-label={t('label.hidden-breadcrumbs', 'Hidden breadcrumbs')}>
+          {hidden.map((item, index) => (
+            <Dropdown.Item
+              href={onAction ? undefined : item.href}
+              icon={item.icon}
+              key={item.id}
+              label={toText(item.label, `Item ${index + 1}`)}
+              onAction={() => onAction?.(item.id)}
+            />
+          ))}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
 
 export const Breadcrumbs = ({
   items,

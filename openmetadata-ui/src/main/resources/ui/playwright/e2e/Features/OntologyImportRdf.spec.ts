@@ -67,7 +67,9 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   test('imports an OWL/SKOS ontology from the manage menu and round-trips through the RDF backend', async ({
     browser,
   }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await glossary.visitPage(page);
 
     await page.getByTestId('manage-button').click();
@@ -117,7 +119,9 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   test('reports a validation summary and blocks import for an ontology with no terms', async ({
     browser,
   }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await glossary.visitPage(page);
 
     await page.getByTestId('manage-button').click();

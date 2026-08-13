@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
+import {
+  useLogStream,
+  UseLogStreamResult,
+} from '../components/common/LogViewerModal/useLogStream';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
 import {
   getApplicationByName,
   getExternalApplicationRuns,
@@ -65,18 +70,51 @@ jest.mock('../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../components/common/LogViewerModal/useLogStream', () => ({
+  useLogStream: jest.fn(),
+}));
+
+const mockUseLogStream = useLogStream as jest.Mock;
+
+const IDLE_STREAM: UseLogStreamResult = {
+  logs: '',
+  loading: false,
+  streamDone: false,
+  endReason: undefined,
+  truncated: false,
+  error: null,
+  health: 'connecting',
+};
+
+const streamState = (
+  overrides: Partial<UseLogStreamResult> = {}
+): UseLogStreamResult => ({
+  ...IDLE_STREAM,
+  ...overrides,
+});
+
+const RUNNING_PIPELINE = {
+  id: 'pid',
+  fullyQualifiedName: 'svc.pipeline',
+  name: 'My Pipeline',
+  pipelineType: 'Metadata',
+  pipelineStatuses: [{ pipelineState: PipelineState.Running, runId: 'run-1' }],
+};
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockUseLogStream.mockReturnValue(IDLE_STREAM);
+});
+
 describe('useEntityLogs', () => {
   beforeAll(() => {
     global.URL.createObjectURL = jest.fn().mockReturnValue('blob:url');
   });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('loads ingestion pipeline logs and derives pagination', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
     });
@@ -98,9 +136,31 @@ describe('useEntityLogs', () => {
     expect(result.current.hasMore).toBe(true);
   });
 
+  it('does not fetch logs until the fqn is known', async () => {
+    // Logs are fetched by fqn; a pipeline with an id but no fqn yet must not
+    // fire a request for `/logs//last`.
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
+      id: 'pid',
+      name: 'My Pipeline',
+      pipelineType: 'Metadata',
+    });
+
+    renderHook(() =>
+      useEntityLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(getIngestionPipelineByFqn).toHaveBeenCalled());
+
+    expect(getIngestionPipelineLogById).not.toHaveBeenCalled();
+  });
+
   it('appends the next page when loadMore is called', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
     });
@@ -196,6 +256,7 @@ describe('useEntityLogs', () => {
   it('downloads ingestion logs and resets the progress store', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
     });
@@ -216,7 +277,8 @@ describe('useEntityLogs', () => {
       await result.current.download();
     });
 
-    expect(downloadIngestionLog).toHaveBeenCalledWith('pid');
+    // Logs are fetched/downloaded by fqn (not id) so the backend needs no id -> fqn lookup.
+    expect(downloadIngestionLog).toHaveBeenCalledWith('svc.pipeline');
     expect(mockUpdateProgress).toHaveBeenCalled();
     expect(mockReset).toHaveBeenCalled();
   });
@@ -226,6 +288,7 @@ describe('useEntityLogs — live (polling) state', () => {
   it('is live while the ingestion run is running', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
       pipelineStatuses: [{ pipelineState: PipelineState.Running }],
@@ -247,6 +310,7 @@ describe('useEntityLogs — live (polling) state', () => {
   it('is not live once the ingestion run reaches a terminal state', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
       pipelineStatuses: [{ pipelineState: PipelineState.Success }],
@@ -267,6 +331,30 @@ describe('useEntityLogs — live (polling) state', () => {
     expect(result.current.isLive).toBe(false);
   });
 
+  it('does not stream a run whose id is unknown, and keeps polling instead', async () => {
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
+      ...RUNNING_PIPELINE,
+      pipelineStatuses: [{ pipelineState: PipelineState.Running }],
+    });
+    (getIngestionPipelineLogById as jest.Mock).mockResolvedValue({
+      data: { ingestion_task: 'polled', after: '4', total: '4' },
+    });
+
+    const { result } = renderHook(() =>
+      useEntityLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('polled'));
+
+    expect(result.current.isStreaming).toBe(false);
+    expect(mockUseLogStream).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false })
+    );
+  });
+
   it('is live while an application run is in progress', async () => {
     (getApplicationByName as jest.Mock).mockResolvedValue({ name: 'My App' });
     (getExternalApplicationRuns as jest.Mock).mockResolvedValue({ data: [] });
@@ -284,5 +372,142 @@ describe('useEntityLogs — live (polling) state', () => {
     );
 
     await waitFor(() => expect(result.current.isLive).toBe(true));
+  });
+});
+
+describe('useEntityLogs — SSE tail', () => {
+  it('serves the stream and leaves the paginated endpoint alone while live', async () => {
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue(
+      RUNNING_PIPELINE
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockResolvedValue({
+      data: { ingestion_task: 'polled', after: '4', total: '4' },
+    });
+    mockUseLogStream.mockReturnValue(
+      streamState({ logs: 'streamed line\n', health: 'live' })
+    );
+
+    const { result } = renderHook(() =>
+      useEntityLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(result.current.isStreaming).toBe(true));
+
+    expect(result.current.logs).toBe('streamed line\n');
+    expect(result.current.isLive).toBe(true);
+    expect(result.current.streamHealth).toBe('live');
+    expect(result.current.hasMore).toBe(false);
+    expect(getIngestionPipelineLogById).not.toHaveBeenCalled();
+    expect(mockUseLogStream).toHaveBeenCalledWith({
+      fqn: 'svc.pipeline',
+      runId: 'run-1',
+      enabled: true,
+    });
+  });
+
+  it('hands back to the paginated endpoint once the stream says the run finished', async () => {
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue(
+      RUNNING_PIPELINE
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockResolvedValue({
+      data: { ingestion_task: 'final log' },
+    });
+    mockUseLogStream.mockReturnValue(
+      streamState({
+        logs: 'streamed line\n',
+        streamDone: true,
+        endReason: LogStreamEndReason.RunFinished,
+      })
+    );
+
+    const { result } = renderHook(() =>
+      useEntityLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('final log'));
+
+    expect(result.current.isLive).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
+    expect(getIngestionPipelineLogById).toHaveBeenCalled();
+  });
+
+  it('falls back to the paginated path when the stream gives up mid-run', async () => {
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue(
+      RUNNING_PIPELINE
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockResolvedValue({
+      data: { ingestion_task: 'polled', after: '4', total: '4' },
+    });
+    mockUseLogStream.mockReturnValue(
+      streamState({
+        streamDone: true,
+        error: 'No log backend is configured on this deployment.',
+        health: 'unavailable',
+      })
+    );
+
+    const { result } = renderHook(() =>
+      useEntityLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('polled'));
+
+    // The run is still going, so the live indicator stays on and the
+    // paginated + polling path takes over.
+    expect(result.current.isLive).toBe(true);
+    expect(result.current.isStreaming).toBe(false);
+    expect(result.current.streamError).toBe(
+      'No log backend is configured on this deployment.'
+    );
+  });
+
+  it('reports a truncated backlog to the viewer', async () => {
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue(
+      RUNNING_PIPELINE
+    );
+    mockUseLogStream.mockReturnValue(
+      streamState({ logs: 'tail only\n', truncated: true, health: 'live' })
+    );
+
+    const { result } = renderHook(() =>
+      useEntityLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(result.current.streamTruncated).toBe(true));
+  });
+
+  it('never streams for an application run', async () => {
+    (getApplicationByName as jest.Mock).mockResolvedValue({ name: 'My App' });
+    (getExternalApplicationRuns as jest.Mock).mockResolvedValue({ data: [] });
+    (getLatestApplicationRuns as jest.Mock).mockResolvedValue({
+      application_task: 'app log',
+      pipelineStatus: { pipelineState: PipelineState.Running },
+    });
+
+    const { result } = renderHook(() =>
+      useEntityLogs({
+        logEntityType: GlobalSettingOptions.APPLICATIONS,
+        fqn: 'my-app',
+      })
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('app log'));
+
+    expect(result.current.isStreaming).toBe(false);
+    expect(mockUseLogStream).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false })
+    );
   });
 });

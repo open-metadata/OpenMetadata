@@ -83,7 +83,7 @@
           },
           "queryFilter": {
             "type": "string",
-            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested, owners IS nested (wrap owners queries in {\"nested\": {\"path\": \"owners\", \"query\": ...}})."
+            "description": "Advanced: Direct OpenSearch JSON query string for precise control. Only use if you can generate valid OpenSearch DSL. When provided, this overrides the 'query' parameter. Must include entityType filter. Example: '{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"nested\": {\"path\": \"owners\", \"query\": {\"term\": {\"owners.name\": \"marketing\"}}}}]}}'. Key rules: Use singular entityType, 'owners.name' (plural), tier format is 'Tier.Tier1', columns are NOT nested, owners IS nested (wrap owners queries in {\"nested\": {\"path\": \"owners\", \"query\": ...}}). 'fullyQualifiedName' is indexed with a lowercase normalizer, so values in 'term'/'terms' clauses must be lowercased — {\"terms\": {\"fullyQualifiedName\": [\"dailyactiveusers\"]}} matches, the original casing silently matches nothing. Combining a 'terms' clause on 'fullyQualifiedName' with 'fields' is the way to hydrate many known entities in one call."
           },
           "from": {
             "type": "integer",
@@ -197,7 +197,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
+      "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Metric results additionally carry 'metricExpression', 'metricType', 'granularity' and 'unitOfMeasurement' — enough to tell similarly named metrics apart (e.g. daily vs monthly active users) and shortlist the right one without fetching each candidate. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information, including custom properties ('extension'), which summaries never include. One result is returned per entity: the best-matching passage represents it.",
       "parameters": {
         "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags.",
         "type": "object",
@@ -208,7 +208,7 @@
           },
           "filters": {
             "type": "object",
-            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard'], also data quality types ['testCase', 'testSuite']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'tags' (e.g., ['PII.Sensitive']). Example: {\"entityType\": [\"table\"], \"service\": [\"BigQuery\"]}.",
+            "description": "Optional filters to narrow results. Keys are field names and values are arrays of allowed values. Supported filter fields: 'entityType' (e.g., ['table', 'dashboard'], also data quality types ['testCase', 'testSuite']), 'service' (e.g., ['BigQuery', 'Snowflake']), 'serviceType', 'tags' (e.g., ['PII.Sensitive']), 'owners', 'domains', 'tier', 'certification', 'database', 'databaseSchema', and for metrics 'metricType', 'granularity' (e.g., ['MONTH']) and 'unitOfMeasurement' — the same metric facets returned on every metric result, so you can filter by what you see. Custom properties are filterable as 'customProperties.<name>'. Example: {\"entityType\": [\"metric\"], \"granularity\": [\"MONTH\"]}. These belong here and nowhere else — passing a filter field at the top level of the call, or naming a field that is not in this list, is rejected with an error rather than silently ignored.",
             "additionalProperties": {
               "type": "array",
               "items": {
@@ -380,6 +380,57 @@
             "description": "One-based document part to return. Start at 1 and continue while hasMore is true.",
             "minimum": 1,
             "default": 1
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "get_user_context",
+      "title": "Get User Context",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Get context about the CURRENT authenticated user: identity (id, name, displayName, email, isAdmin, isBot), team memberships, roles (direct and team-inherited), domains, active persona, and lightweight summaries of owned and followed entities. Use this to answer identity questions such as 'what is my role?', 'which teams am I on?', 'what do I own?', or 'what do I follow?' before asking the user for their email. The user is resolved from the authenticated request; there is no user parameter and the tool cannot read another user's context.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "includeOwnedSummary": {
+            "type": "boolean",
+            "description": "Include a summary of entities owned by the user and their teams. Defaults to true.",
+            "default": true
+          },
+          "includeFollowedSummary": {
+            "type": "boolean",
+            "description": "Include a summary of entities the user follows. Defaults to true.",
+            "default": true
+          },
+          "ownedLimit": {
+            "type": "integer",
+            "description": "Max owned entities to return in the recent list (1-100). Defaults to 20.",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "followedLimit": {
+            "type": "integer",
+            "description": "Max followed entities to return (1-100). Defaults to 20.",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "ownedFilter": {
+            "type": "string",
+            "description": "Narrow owned entities to ones worth surfacing: NONE (default, all owned), MISSING_DESCRIPTION (description not complete), MISSING_TIER (no tier assigned), ANY_GAP (missing description or tier). Gap filters apply to data-asset entity types only. Results are sorted by updatedAt descending.",
+            "enum": [
+              "NONE",
+              "MISSING_DESCRIPTION",
+              "MISSING_TIER",
+              "ANY_GAP"
+            ],
+            "default": "NONE"
           }
         },
         "required": []
@@ -579,7 +630,7 @@
         "destructiveHint": true,
         "openWorldHint": false
       },
-      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching.",
+      "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching. Do not guess field names from prior knowledge, schema fields have been renamed over time. Call get_entity_details on the target first and use ONLY field names present in that response. If a patch is rejected with \"Invalid field 'X'\", the error lists the valid names and suggests the closest match: use it and retry.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -651,7 +702,7 @@
       "title": "Create Lineage",
       "annotations": {
         "readOnlyHint": false,
-        "destructiveHint": false,
+        "destructiveHint": true,
         "openWorldHint": false
       },
       "description": "This tool can be used to create lineage between two assets. It takes the source and target asset details and creates a lineage relationship between them.",
@@ -717,7 +768,9 @@
         "properties": {
           "entityType": {
             "type": "string",
-            "description": "Entity Type can be 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE."
+            "description": "Entity Type (case-insensitive). Use 'TABLE' for table asset/entity or 'COLUMN' for column level tests. Default is TABLE.",
+            "default": "TABLE",
+            "examples": ["TABLE", "COLUMN"]
           },
           "testPlatform": {
             "type": "string",

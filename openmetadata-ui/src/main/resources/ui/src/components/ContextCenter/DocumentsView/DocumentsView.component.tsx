@@ -58,12 +58,28 @@ import {
    dropdown from the bulk Move button in ListHeader.
 --------------------------------------------------------------- */
 
+const FOLDER_PICKER_SCROLL_THRESHOLD = 24;
+
 const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
   folders,
   currentFolderId,
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
   onPick,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
+
+  const handleMenuScroll = (e: UIEvent<HTMLDivElement>) => {
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (
+      hasMoreFolders &&
+      !isLoadingMoreFolders &&
+      scrollHeight - scrollTop - clientHeight < FOLDER_PICKER_SCROLL_THRESHOLD
+    ) {
+      onLoadMoreFolders?.();
+    }
+  };
 
   if (folders.length === 0) {
     return (
@@ -76,7 +92,8 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
   return (
     <Dropdown.Menu
       className="tw:max-h-48 tw:overflow-y-auto"
-      onAction={(key) => onPick(key as string)}>
+      onAction={(key) => onPick(key as string)}
+      onScroll={handleMenuScroll}>
       {folders.map((folder) => {
         const isCurrent = folder.id === currentFolderId;
 
@@ -112,6 +129,17 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
           </Dropdown.Item>
         );
       })}
+      {isLoadingMoreFolders && (
+        <Box
+          align="center"
+          className="tw:px-3 tw:py-2"
+          data-testid="folder-picker-loading-more"
+          justify="center">
+          <Typography className="tw:text-quaternary" size="text-xs">
+            {t('label.loading')}
+          </Typography>
+        </Box>
+      )}
     </Dropdown.Menu>
   );
 };
@@ -125,8 +153,11 @@ const FileActions: FC<FileActionsProps> = ({
   canEdit,
   file,
   folders = [],
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
   onDeleteFile,
   onFileMoved,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
@@ -212,6 +243,9 @@ const FileActions: FC<FileActionsProps> = ({
                 <FolderPickerMenu
                   currentFolderId={file.folder?.id}
                   folders={folders}
+                  hasMoreFolders={hasMoreFolders}
+                  isLoadingMoreFolders={isLoadingMoreFolders}
+                  onLoadMoreFolders={onLoadMoreFolders}
                   onPick={handleMoveToFolder}
                 />
               </Dropdown.Popover>
@@ -287,12 +321,15 @@ const ListHeader: FC<ListHeaderProps> = ({
   canDelete,
   canEdit,
   folders = [],
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
   selectedCount,
   totalFileCount,
   onClear,
   onBulkDelete,
   onBulkMove,
   onBulkDownload,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
 
@@ -345,6 +382,9 @@ const ListHeader: FC<ListHeaderProps> = ({
             <Dropdown.Popover className="tw:w-52" placement="bottom end">
               <FolderPickerMenu
                 folders={folders}
+                hasMoreFolders={hasMoreFolders}
+                isLoadingMoreFolders={isLoadingMoreFolders}
+                onLoadMoreFolders={onLoadMoreFolders}
                 onPick={(folderId) => onBulkMove?.(folderId)}
               />
             </Dropdown.Popover>
@@ -396,13 +436,16 @@ const FileRow: FC<FileRowProps> = ({
   canEdit,
   file,
   folders,
+  hasMoreFolders,
   isActive,
+  isLoadingMoreFolders,
   isSelected,
   onDeleteFile,
   onDownload,
   onFileMoved,
   onPreview,
   onSelectFile,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
 
@@ -529,8 +572,11 @@ const FileRow: FC<FileRowProps> = ({
           canEdit={canEdit}
           file={file}
           folders={folders}
+          hasMoreFolders={hasMoreFolders}
+          isLoadingMoreFolders={isLoadingMoreFolders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
+          onLoadMoreFolders={onLoadMoreFolders}
         />
       </Box>
     </Box>
@@ -553,6 +599,8 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   canEdit,
   data,
   folders,
+  hasMoreFolders,
+  isLoadingMoreFolders,
   totalFileCount,
   isLoading,
   isLoadingMore,
@@ -569,6 +617,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onSelectFile,
   onScrollEnd,
   onUploadFile,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
   const selectedCount = selectedIds?.size ?? 0;
@@ -604,12 +653,15 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               canDelete={canDelete}
               canEdit={canEdit}
               folders={folders}
+              hasMoreFolders={hasMoreFolders}
+              isLoadingMoreFolders={isLoadingMoreFolders}
               selectedCount={selectedCount}
               totalFileCount={totalFileCount}
               onBulkDelete={onBulkDelete}
               onBulkDownload={onBulkDownload}
               onBulkMove={onBulkMove}
               onClear={handleClear}
+              onLoadMoreFolders={onLoadMoreFolders}
             />
           )}
           <Box
@@ -626,12 +678,15 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     canEdit={canEdit}
                     file={file}
                     folders={folders}
+                    hasMoreFolders={hasMoreFolders}
                     isActive={previewFileId === file.id}
+                    isLoadingMoreFolders={isLoadingMoreFolders}
                     isSelected={selectedIds?.has(file.id)}
                     key={file.id}
                     onDeleteFile={onDeleteFile}
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
+                    onLoadMoreFolders={onLoadMoreFolders}
                     onPreview={onPreview}
                     onSelectFile={onSelectFile}
                   />

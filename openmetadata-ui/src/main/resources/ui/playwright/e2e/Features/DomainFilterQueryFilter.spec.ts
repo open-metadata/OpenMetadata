@@ -41,9 +41,11 @@ import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
 });
 
@@ -342,7 +344,12 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByText(domainTable.entityResponseData.fullyQualifiedName ?? '')
+        page
+          .getByTestId('group-table')
+          .getByTestId('data-name')
+          .filter({
+            hasText: domainTable.entityResponseData.fullyQualifiedName ?? '',
+          })
       ).toBeVisible();
 
       const nonDomainTableName = get(

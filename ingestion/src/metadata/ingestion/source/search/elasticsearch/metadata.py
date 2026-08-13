@@ -12,9 +12,7 @@
 Elasticsearch source to extract metadata
 """
 
-import shutil
 import traceback
-from pathlib import Path
 from typing import Any, Iterable, Optional  # noqa: UP035
 
 from elasticsearch8 import Elasticsearch  # noqa: TC002
@@ -199,11 +197,3 @@ class ElasticsearchSource(SearchServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Could not include index templates due to {exc}")
-
-    def close(self):
-        try:
-            if Path(self.service_connection.sslConfig.certificates.stagingDir).exists():
-                shutil.rmtree(self.service_connection.sslConfig.certificates.stagingDir)
-        except AttributeError:
-            pass
-        return super().close()
