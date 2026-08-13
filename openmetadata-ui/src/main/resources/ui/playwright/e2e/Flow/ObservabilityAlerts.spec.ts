@@ -109,6 +109,9 @@ let webhookAlertDetails: AlertDetails | undefined;
 let webhookTableFqn = '';
 
 test.beforeAll(async ({ browser }) => {
+  // The suite setup now includes a complete alert creation flow in addition to
+  // entity prerequisites, so it needs a hook-specific budget under CI load.
+  test.setTimeout(120_000);
   webhookEndpoint = await startWebhookReceiver();
   table1 = new TableClass();
   table2 = new TableClass();
@@ -203,6 +206,7 @@ test.beforeAll(async ({ browser }) => {
       },
     ],
   };
+  await visitObservabilityAlertPage(page);
   await createCommonObservabilityAlert({
     page,
     alertName: generateAlertName(),
