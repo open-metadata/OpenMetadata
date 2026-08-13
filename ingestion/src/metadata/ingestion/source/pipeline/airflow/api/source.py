@@ -106,7 +106,7 @@ class AirflowApiSource(PipelineServiceSource):
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=Pipeline,
-                        service_name=self.context.get().pipeline_service,
+                        service_name=self.context.get().pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
                         pipeline_name=dag_id,
                     )
                     self.pipeline_source_state.add(pipeline_fqn)
