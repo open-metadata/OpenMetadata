@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getLogTaskFieldForType } from '../components/ServiceAgents/utils/agentsDataMapper';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { App } from '../generated/entity/applications/app';
@@ -28,10 +27,7 @@ import {
   getExternalApplicationRuns,
   getLatestApplicationRuns,
 } from '../rest/applicationAPI';
-import {
-  getIngestionPipelineByFqn,
-  getIngestionPipelineLogById,
-} from '../rest/ingestionPipelineAPI';
+import { getIngestionPipelineByFqn } from '../rest/ingestionPipelineAPI';
 import { downloadBlob } from '../utils/ContextCenterPureUtils';
 import { getEpochMillisForPastDays } from '../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
@@ -41,9 +37,10 @@ import {
   downloadIngestionLog,
 } from '../utils/IngestionLogs/LogsUtils';
 import { isPipelineRunActive } from '../utils/logsPolling';
+import { StreamHealth } from '../utils/SseStreamUtils';
 import { showErrorToast } from '../utils/ToastUtils';
 import { useDownloadProgressStore } from './useDownloadProgressStore';
-import { usePaginatedLiveLog } from './usePaginatedLiveLog';
+import { useIngestionLogSource } from './useIngestionLogSource';
 import { usePollingEffect } from './usePollingEffect';
 
 export interface UseEntityLogsParams {
@@ -61,8 +58,16 @@ export interface UseEntityLogsResult {
   title: string;
   downloading: boolean;
   // True while the underlying run is still active (running/queued) — drives the
-  // modal's live indicator + tail polling.
+  // modal's live indicator.
   isLive: boolean;
+  // True while the log content is coming from the SSE tail rather than the
+  // paginated REST endpoint.
+  isStreaming: boolean;
+  streamHealth: StreamHealth;
+  // The stream could not replay the whole backlog; earlier history lives in the
+  // paginated endpoint / download.
+  streamTruncated: boolean;
+  streamError: string | null;
   loadMore: () => void;
   download: () => void;
 }
@@ -89,37 +94,21 @@ export const useEntityLogs = ({
     [logEntityType]
   );
 
-  const isLive = useMemo(() => {
-    const state = isApplicationType
-      ? appRunState
-      : ingestionDetails?.pipelineStatuses?.[0]?.pipelineState;
+  const appRunActive = isApplicationType && isPipelineRunActive(appRunState);
 
-    return isPipelineRunActive(state);
-  }, [isApplicationType, appRunState, ingestionDetails]);
-
-  // --- Ingestion logs: paginated (infinite scroll) + tail polling ---
+  // --- Ingestion logs: SSE tail while live, paginated REST otherwise ---
   // Fetch logs by fqn so the backend serves them without a prior id -> fqn lookup.
-  const ingestionFqn = ingestionDetails?.fullyQualifiedName ?? '';
-  const ingestionType = ingestionDetails?.pipelineType;
-
-  const fetchIngestionPage = useCallback(
-    (cursor?: string) =>
-      getIngestionPipelineLogById(ingestionFqn, cursor).then((res) => ({
-        content: ingestionType
-          ? getLogTaskFieldForType(res.data, ingestionType)
-          : '',
-        after: res.data.after,
-        total: res.data.total,
-      })),
-    [ingestionFqn, ingestionType]
-  );
-
-  const paginated = usePaginatedLiveLog({
-    fetchPage: fetchIngestionPage,
-    resetKey: ingestionFqn,
-    enabled: !isApplicationType && Boolean(ingestionFqn),
-    isLive: !isApplicationType && isLive,
+  const latestRun = ingestionDetails?.pipelineStatuses?.[0];
+  const ingestion = useIngestionLogSource({
+    enabled: !isApplicationType,
+    ingestionFqn: ingestionDetails?.fullyQualifiedName ?? '',
+    ingestionType: ingestionDetails?.pipelineType,
+    runId: runId ?? latestRun?.runId,
+    runActive:
+      !isApplicationType && isPipelineRunActive(latestRun?.pipelineState),
   });
+
+  const isLive = isApplicationType ? appRunActive : ingestion.isLive;
 
   // Ingestion logs don't carry run status, so poll it separately to stop.
   const refreshIngestionStatus = useCallback(async () => {
@@ -133,9 +122,18 @@ export const useEntityLogs = ({
     }
   }, [fqn]);
 
+  // While the stream is up it reports the run's end itself, so the status poll
+  // is redundant — one read once the stream says the run finished is enough to
+  // refresh the footer badge.
   usePollingEffect(refreshIngestionStatus, {
-    enabled: !isApplicationType && isLive,
+    enabled: !isApplicationType && isLive && !ingestion.isStreaming,
   });
+
+  useEffect(() => {
+    if (ingestion.runFinishedOnStream) {
+      refreshIngestionStatus();
+    }
+  }, [ingestion.runFinishedOnStream, refreshIngestionStatus]);
 
   // --- Application logs: one-shot snapshot (replace) ---
   const fetchAppLogs = useCallback(async () => {
@@ -237,7 +235,7 @@ export const useEntityLogs = ({
     [ingestionDetails, appData]
   );
 
-  const logs = isApplicationType ? appLogs : paginated.logs;
+  const logs = isApplicationType ? appLogs : ingestion.logs;
   const totalLines = useMemo(
     () => (logs ? logs.split('\n').length : 0),
     [logs]
@@ -247,14 +245,18 @@ export const useEntityLogs = ({
     logs,
     loading: isApplicationType
       ? appLoading
-      : detailsLoading || paginated.loading,
-    loadingMore: isApplicationType ? false : paginated.loadingMore,
-    hasMore: isApplicationType ? false : paginated.hasMore,
+      : detailsLoading || ingestion.loading,
+    loadingMore: isApplicationType ? false : ingestion.loadingMore,
+    hasMore: isApplicationType ? false : ingestion.hasMore,
     totalLines,
     title,
     downloading: Boolean(progress),
     isLive,
-    loadMore: isApplicationType ? noop : paginated.loadMore,
+    isStreaming: ingestion.isStreaming,
+    streamHealth: ingestion.streamHealth,
+    streamTruncated: ingestion.streamTruncated,
+    streamError: ingestion.streamError,
+    loadMore: isApplicationType ? noop : ingestion.loadMore,
     download,
   };
 };

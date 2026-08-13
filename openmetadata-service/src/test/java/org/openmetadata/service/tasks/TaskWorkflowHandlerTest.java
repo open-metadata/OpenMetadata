@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
@@ -342,5 +343,46 @@ class TaskWorkflowHandlerTest {
     assertEquals("Customer profile block", resultProfile.getDescription());
     assertEquals(
         "Phone", resultProfile.getChildren().getLast().getChildren().getFirst().getDescription());
+  }
+
+  @Test
+  void testApplySuggestion_columnTag_appliesToColumnNotParent() throws Exception {
+    Column customerId = new Column().withName("customer_id");
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withColumns(List.of(customerId));
+
+    Task task = new Task().withId(UUID.randomUUID());
+    Map<String, String> payload =
+        Map.of(
+            "suggestionType", "Tag",
+            "fieldPath", "columns.customer_id.tags",
+            "suggestedValue",
+                "[{\"tagFQN\":\"PII.Sensitive\",\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Suggested\"}]");
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    Method applySuggestion =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "applySuggestion",
+            Task.class,
+            Object.class,
+            EntityInterface.class,
+            EntityRepository.class,
+            String.class);
+    applySuggestion.setAccessible(true);
+    applySuggestion.invoke(
+        TaskWorkflowHandler.getInstance(), task, payload, table, repository, "admin");
+
+    Column resultColumn = table.getColumns().getFirst();
+    assertNotNull(resultColumn.getTags(), "Column tags should be set");
+    assertEquals(1, resultColumn.getTags().size());
+    assertEquals("PII.Sensitive", resultColumn.getTags().getFirst().getTagFQN());
+    List<TagLabel> parentTags = table.getTags();
+    assertTrue(
+        parentTags == null || parentTags.isEmpty(),
+        "Column tag suggestion must not tag the parent table");
   }
 }

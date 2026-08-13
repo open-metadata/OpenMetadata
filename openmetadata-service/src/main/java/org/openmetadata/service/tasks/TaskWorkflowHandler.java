@@ -1068,21 +1068,12 @@ public class TaskWorkflowHandler {
         List<TagLabel> tags =
             JsonUtils.readValue(suggestedValue, new TypeReference<List<TagLabel>>() {});
         if (tags != null && !tags.isEmpty()) {
-          boolean isEntityLevel =
-              fieldPath == null
-                  || fieldPath.isEmpty()
-                  || fieldPath.equals("description")
-                  || !fieldPath.contains("::");
-
-          if (isEntityLevel) {
+          // Reuse the same field-path resolution as applyTagUpdate so both "::" and dot-form
+          // paths (e.g. columns.customer_id.tags) land on the suggested field, not the parent.
+          if (isEntityLevelTagPath(fieldPath)) {
             applyEntityLevelTags(entity, repository, user, tags);
-          } else {
-            String[] parts = fieldPath.split("::");
-            String targetFqn = entity.getFullyQualifiedName();
-            if (parts.length >= 2) {
-              targetFqn = entity.getFullyQualifiedName() + "." + parts[1];
-            }
-            repository.applyTags(tags, targetFqn);
+          } else if (!patchFieldTags(entity, repository, user, fieldPath, tags, null)) {
+            repository.applyTags(tags, resolveTagTargetFqn(entity, fieldPath));
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",
