@@ -19,7 +19,9 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.2.2",  # CVE-2026-42252 BashOperator Jinja2 injection
+    # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0)
+    "airflow": "apache-airflow==3.3.0",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -182,7 +184,7 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.11",
+    "collate-data-diff>=0.11.15",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -384,6 +386,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
+    "prefect": {},  # uses requests
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
@@ -410,6 +413,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
+    "sftp": {"paramiko>=3.5,<6"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
@@ -435,7 +439,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.25.6",
+    "datamodel-code-generator==0.64.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
@@ -459,6 +463,7 @@ test_unit = {
     "pytest-cov",
     "pytest-order",
     "pytest-rerunfailures",
+    "pytest-timeout~=2.4",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
@@ -486,6 +491,7 @@ test = {
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",
+    "pytest-timeout~=2.4",
     "dirty-equals",
     # install dbt dependency
     "collate-dbt-artifacts-parser",
@@ -530,6 +536,7 @@ test = {
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
+    *plugins["sftp"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
     "python-liquid",

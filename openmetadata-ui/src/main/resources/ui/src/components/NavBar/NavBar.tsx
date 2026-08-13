@@ -108,7 +108,7 @@ const NavBar = () => {
     handleDeleteEntityWebsocketResponse
   );
   handleDeleteEntityResponseRef.current = handleDeleteEntityWebsocketResponse;
-  const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
+  const Logo = brandClassBase.getMonogram().src;
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();

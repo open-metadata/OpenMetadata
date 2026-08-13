@@ -76,7 +76,8 @@ class SQAInterfaceMixin(Root):
             and hasattr(self.service_connection_config, "queryTag")
             and self.service_connection_config.queryTag
         ):
-            session.execute(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=self.service_connection_config.queryTag))
+            query_tag = self.service_connection_config.queryTag  # pyright: ignore[reportAttributeAccessIssue]
+            session.execute(text(SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag)))
 
     def set_catalog(self, session) -> None:
         """Set the catalog or database for the session.

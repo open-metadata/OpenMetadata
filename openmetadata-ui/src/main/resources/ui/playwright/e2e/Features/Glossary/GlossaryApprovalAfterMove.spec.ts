@@ -19,6 +19,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, toastNotification } from '../../../utils/common';
 import {
+  getGlossaryApprovalWorkflowSnapshot,
   performExpandAll,
   selectActiveGlossary,
   verifyTaskCreated,
@@ -45,36 +46,24 @@ const queryOpenApprovalTasks = async (
   return { count: data.length, taskId: data[0]?.id?.toString() ?? null };
 };
 
-// Returns the latest stage displayName of the GlossaryTermApprovalWorkflow
-// instance anchored to the given term FQN, or null if no instance is found.
+// Returns every stage of the newest GlossaryTermApprovalWorkflow instance anchored to the given
+// term FQN, newest first, or null when no instance has recorded a stage yet.
 // Used both to gate the move on workflow readiness (waitForApprovalWorkflowReady)
 // and as diagnostics when the term fails to reach its expected status.
-const queryApprovalWorkflowStage = async (
+const queryApprovalWorkflowStages = async (
   apiContext: APIRequestContext,
   termFqn: string
 ): Promise<string | null> => {
-  const entityLink = encodeURIComponent(`<#E::glossaryTerm::${termFqn}>`);
-  const startTs = Date.now() - 24 * 60 * 60 * 1000;
-  const endTs = Date.now();
+  const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+    apiContext,
+    termFqn
+  );
+  const stages = snapshot.instances[0]?.stages ?? [];
 
-  const instances = await apiContext
-    .get(
-      `/api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
-    )
-    .then((r) => r.json());
-
-  const instanceId = instances?.data?.[0]?.id;
-  if (!instanceId) {
-    return null;
-  }
-
-  const states = await apiContext
-    .get(
-      `/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${instanceId}?startTs=${startTs}&endTs=${endTs}`
-    )
-    .then((r) => r.json());
-
-  return states?.data?.[0]?.stage?.displayName ?? null;
+  // Stage rows are ordered by timestamp DESC with no tie-break, so report all of them rather than
+  // whichever won the millisecond. Empty stays null so the readiness gate below keeps treating
+  // "instance exists but recorded nothing" as not-ready.
+  return stages.length > 0 ? stages.join(' | ') : null;
 };
 const waitForApprovalWorkflowReady = async (
   apiContext: APIRequestContext,
@@ -83,12 +72,12 @@ const waitForApprovalWorkflowReady = async (
   await expect
     .poll(
       async () => {
-        const [stage, { count }] = await Promise.all([
-          queryApprovalWorkflowStage(apiContext, termFqn),
+        const [stages, { count }] = await Promise.all([
+          queryApprovalWorkflowStages(apiContext, termFqn),
           queryOpenApprovalTasks(apiContext, termFqn),
         ]);
 
-        return stage !== null && count === 1;
+        return stages !== null && count === 1;
       },
       {
         message: `approval workflow for ${termFqn} to be parked at the review task before moving`,
@@ -123,14 +112,16 @@ const waitForTermStatus = async (
       )
       .toBe(expectedStatus);
   } catch (error) {
-    const [stage, { count }] = await Promise.all([
-      queryApprovalWorkflowStage(apiContext, termFqn),
+    const [stages, { count }] = await Promise.all([
+      queryApprovalWorkflowStages(apiContext, termFqn),
       queryOpenApprovalTasks(apiContext, termFqn),
     ]);
 
     throw new Error(
       `Term ${termId} never reached "${expectedStatus}". ` +
-        `Last GlossaryTermApprovalWorkflow stage: ${stage ?? 'none found'}; ` +
+        `GlossaryTermApprovalWorkflow stages (newest first): ${
+          stages ?? 'none recorded'
+        }; ` +
         `open approval tasks remaining at ${termFqn}: ${count}. ` +
         `If the workflow is still at "Review" with 0 open tasks, the approval did not ` +
         `resume after the move (backend issue), not test slowness.\n` +

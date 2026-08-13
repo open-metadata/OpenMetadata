@@ -271,6 +271,9 @@ class TestPartialQualificationNeverMisplacesTheDatabase:
         kwargs = _priority_one_fqn_kwargs(
             dataset,
             KafkaConnectPipelineDetails(name="s", type="sink", config=DATABASE_ONLY_CONFIG),
+            # Snowflake is a multi-database service; the point is that the slot survives
+            # even so, since the shared rule drops it whenever the schema is absent.
+            supports_database=True,
         )
         assert kwargs["database_name"] == "EVENT_LANDING"
         assert kwargs["schema_name"] is None
@@ -596,26 +599,40 @@ CDC_PIPELINE_DETAILS = KafkaConnectPipelineDetails(
 )
 
 
-def _priority_one_fqn_kwargs(dataset, pipeline_details) -> dict:
-    """The keyword arguments Priority 1 of ``get_dataset_entity`` passes to ``fqn.build``."""
+def _priority_one_fqn_kwargs(dataset, pipeline_details, supports_database=None) -> dict:
+    """The keyword arguments Priority 1 of ``_get_table_entity`` passes to ``fqn.build``.
+
+    ``supports_database`` stands in for the target service's class as
+    ``_service_supports_database`` reports it: None when the service cannot be resolved
+    (the wildcard case), True for a multi-database service, False for a single-database
+    one. It is stubbed rather than derived so each test states the class it is about.
+    """
     captured = []
-    source = MagicMock(spec=KafkaconnectSource)
+    source = _new_source()
     source.metadata = MagicMock()
     # A miss on every lookup keeps all three priorities reachable, so captured[0]
     # is unambiguously the Priority 1 call.
     source.metadata.get_by_name.return_value = None
-    source.get_service_from_connector_config.return_value = MagicMock(database_service_name="matched_service")
-    source.get_db_service_names.return_value = []
+    source.metadata.search_in_any_service.return_value = None
 
     def fake_fqn_build(metadata=None, entity_type=None, **kwargs):
         captured.append(kwargs)
         return
 
-    with patch(
-        "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
-        side_effect=fake_fqn_build,
+    with (
+        patch.object(
+            KafkaconnectSource,
+            "get_service_from_connector_config",
+            return_value=MagicMock(database_service_name="matched_service"),
+        ),
+        patch.object(KafkaconnectSource, "get_db_service_names", return_value=[]),
+        patch.object(KafkaconnectSource, "_service_supports_database", return_value=supports_database),
+        patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
+            side_effect=fake_fqn_build,
+        ),
     ):
-        KafkaconnectSource.get_dataset_entity(source, pipeline_details, dataset)
+        source._get_table_entity(pipeline_details, dataset)
 
     assert captured, "expected at least one fqn.build call"
     return captured[0]
@@ -649,9 +666,29 @@ class TestDatasetFqnConstruction:
         assert kwargs["schema_name"] == "PUBLIC"
         assert kwargs["table_name"] == "ORDER_EVENTS_FLAT"
 
+    def test_qualified_dataset_with_no_schema_keeps_the_database_slot(self):
+        """A Snowflake sink that names only snowflake.database.name is still qualified:
+        the database slot must hold the database and the schema slot must stay empty for
+        fqn.build to resolve it by search. This is the case the shared CDC rule gets
+        wrong -- with `fully_qualified` ignored, `schema or database` slides the database
+        into the schema slot and builds an FQN that names a database as a schema."""
+        kwargs = _priority_one_fqn_kwargs(
+            KafkaConnectDatasetDetails(
+                table="ORDER_EVENTS_FLAT",
+                database="EVENT_LANDING",
+                source_topic="order_events_flat",
+                fully_qualified=True,
+            ),
+            KafkaConnectPipelineDetails(name="s", type="sink", config=BASE_SNOWFLAKE_CONFIG),
+        )
+        assert kwargs["database_name"] == "EVENT_LANDING"
+        assert kwargs["schema_name"] is None
+        assert kwargs["table_name"] == "ORDER_EVENTS_FLAT"
+
     def test_unqualified_cdc_dataset_keeps_three_part_fqn(self):
         """Debezium's 'database' is the logical server name (topic.prefix), not a real
-        database, so it belongs in the schema slot with the database slot left empty."""
+        database, so with no schema parsed it belongs in the schema slot with the
+        database slot left empty."""
         kwargs = _priority_one_fqn_kwargs(
             KafkaConnectDatasetDetails(table="orders", database="inventory", fully_qualified=False),
             CDC_PIPELINE_DETAILS,
@@ -660,10 +697,10 @@ class TestDatasetFqnConstruction:
         assert kwargs["schema_name"] == "inventory"
         assert kwargs["table_name"] == "orders"
 
-    def test_unqualified_cdc_dataset_with_schema_keeps_three_part_fqn(self):
-        """table.include.list = "inventory.orders" populates `schema` while the dataset
-        stays unqualified: the logical server name must still win the schema slot.
-        Gating on `schema` instead of `fully_qualified` breaks exactly here."""
+    def test_unqualified_cdc_dataset_on_single_database_service_drops_the_database(self):
+        """MySQL/ClickHouse ingest under a synthetic 'default' database, so a Debezium
+        "database" there is only ever topic.prefix and constraining by it guarantees a
+        miss. table.include.list is what reliably reports the schema."""
         kwargs = _priority_one_fqn_kwargs(
             KafkaConnectDatasetDetails(
                 table="orders",
@@ -672,20 +709,37 @@ class TestDatasetFqnConstruction:
                 fully_qualified=False,
             ),
             CDC_PIPELINE_DETAILS,
+            supports_database=False,
         )
         assert kwargs["database_name"] is None
-        assert kwargs["schema_name"] == "inventory"
+        assert kwargs["schema_name"] == "public"
+        assert kwargs["table_name"] == "orders"
+
+    def test_unqualified_cdc_dataset_on_multi_database_service_tries_the_database_first(self):
+        """On Postgres and friends `database` may be a real database.dbname, and a schema
+        name like 'public' repeats across databases in one service -- so the qualified
+        shape is tried first rather than assumed to be a topic.prefix."""
+        kwargs = _priority_one_fqn_kwargs(
+            KafkaConnectDatasetDetails(
+                table="orders",
+                database="inventory",
+                schema="public",
+                fully_qualified=False,
+            ),
+            CDC_PIPELINE_DETAILS,
+            supports_database=True,
+        )
+        assert kwargs["database_name"] == "inventory"
+        assert kwargs["schema_name"] == "public"
         assert kwargs["table_name"] == "orders"
 
 
 class TestUnresolvableTableDiagnostics:
     def test_warning_names_db_service_names_setting(self, caplog):
-        source = MagicMock(spec=KafkaconnectSource)
+        source = _new_source()
         source.metadata = MagicMock()
         source.metadata.get_by_name.return_value = None
         source.metadata.search_in_any_service.return_value = None
-        source.get_service_from_connector_config.return_value = MagicMock(database_service_name=None)
-        source.get_db_service_names.return_value = []
 
         dataset = KafkaConnectDatasetDetails(
             table="ORDER_EVENTS_FLAT",
@@ -694,9 +748,17 @@ class TestUnresolvableTableDiagnostics:
             source_topic="order_events_flat",
             fully_qualified=True,
         )
-        with caplog.at_level(logging.WARNING):
-            KafkaconnectSource.get_dataset_entity(
-                source,
+        with (
+            patch.object(
+                KafkaconnectSource,
+                "get_service_from_connector_config",
+                return_value=MagicMock(database_service_name=None),
+            ),
+            patch.object(KafkaconnectSource, "get_db_service_names", return_value=[]),
+            patch.object(KafkaconnectSource, "_service_supports_database", return_value=None),
+            caplog.at_level(logging.WARNING),
+        ):
+            source.get_dataset_entity(
                 KafkaConnectPipelineDetails(name="s", type="sink", config=BASE_SNOWFLAKE_CONFIG),
                 dataset,
             )

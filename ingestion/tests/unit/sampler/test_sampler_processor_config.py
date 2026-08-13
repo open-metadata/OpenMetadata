@@ -67,3 +67,29 @@ def test_processor_block_is_optional(processor) -> None:
     sampler_processor = SamplerProcessor.create(config, MagicMock())
 
     assert sampler_processor.profiler_config is not None
+
+
+@pytest.mark.parametrize(
+    "processor",
+    [
+        pytest.param(None, id="no-processor-block"),
+        pytest.param({"type": "orm-profiler"}, id="processor-without-config"),
+    ],
+)
+def test_profiler_source_accepts_an_absent_processor(processor) -> None:
+    """The auto-classification fetcher builds a ProfilerSource, so it sees the same config."""
+    from metadata.ingestion.api.parser import parse_workflow_config_gracefully
+    from metadata.profiler.source.database.base.profiler_source import ProfilerSource
+
+    config = deepcopy(BASE_CONFIG)
+    if processor is not None:
+        config["processor"] = processor
+
+    source = ProfilerSource(
+        config=parse_workflow_config_gracefully(config),
+        database=MagicMock(),
+        ometa_client=MagicMock(),
+        global_profiler_configuration=MagicMock(),
+    )
+
+    assert source.profiler_config is not None
