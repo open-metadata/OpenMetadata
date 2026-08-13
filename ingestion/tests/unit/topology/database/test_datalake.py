@@ -17,7 +17,9 @@ Unit tests for datalake source
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column
@@ -478,6 +480,19 @@ class DatalakeUnitTest(TestCase):
     def test_s3_schema_filer(self):
         self.datalake_source.client._client.list_buckets = lambda: MOCK_S3_SCHEMA
         assert list(self.datalake_source.get_database_schema_names()) == EXPECTED_SCHEMA
+
+    def test_get_database_schema_names_propagates_discovery_error(self):
+        """A permission/discovery error must raise (so the topology producer
+        wrapper records a clean StackTraceError) instead of yielding an
+        Either(left=...) that downstream code mis-reads as a schema name and
+        turns into a masked TypeError."""
+        self.datalake_source.client = MagicMock()
+        self.datalake_source.client.get_database_schema_names.side_effect = PermissionError(
+            "This request is not authorized to perform this operation."
+        )
+
+        with pytest.raises(PermissionError):
+            list(self.datalake_source.get_database_schema_names())
 
     def test_json_file_parse(self):
         import tempfile

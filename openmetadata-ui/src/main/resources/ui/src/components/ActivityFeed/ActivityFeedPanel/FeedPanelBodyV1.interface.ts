@@ -25,10 +25,6 @@ export interface FeedPanelBodyPropV1 {
   onActivityClick?: (activity: ActivityEvent) => void;
   isActive?: boolean;
   isForFeedTab?: boolean;
-  componentsVisibility?: {
-    showThreadIcon?: boolean;
-    showRepliesContainer?: boolean;
-  };
   hidePopover?: boolean;
   showActivityFeedEditor?: boolean;
   onAfterClose?: () => void;

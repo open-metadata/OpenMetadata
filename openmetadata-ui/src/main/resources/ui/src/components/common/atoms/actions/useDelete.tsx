@@ -121,20 +121,24 @@ export const useDelete = <
 
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
-    const errors: string[] = [];
 
-    for (const entity of selectedEntities) {
-      try {
-        await deleteEntity(
+    const results = await Promise.allSettled(
+      selectedEntities.map((entity) =>
+        deleteEntity(
           entityType,
           entity.id,
           false, // recursive: false (safe default)
           true // hardDelete: true (permanent)
-        );
-      } catch {
-        errors.push(getEntityName(entity));
+        )
+      )
+    );
+    const errors = results.reduce<string[]>((acc, result, index) => {
+      if (result.status === 'rejected') {
+        acc.push(getEntityName(selectedEntities[index]));
       }
-    }
+
+      return acc;
+    }, []);
 
     if (errors.length === 0) {
       showSuccessToast(

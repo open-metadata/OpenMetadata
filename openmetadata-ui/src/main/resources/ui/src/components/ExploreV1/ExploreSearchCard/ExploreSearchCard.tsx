@@ -27,7 +27,7 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
-import { Constraint, Table } from '../../../generated/entity/data/table';
+import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
@@ -256,20 +256,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 } as SourceType)}>
                 {getEntityName(columnSource.table)}
               </Link>
-            ),
-          });
-        }
-
-        if (
-          columnSource.constraint &&
-          columnSource.constraint !== Constraint.Null
-        ) {
-          columnDetails.push({
-            key: t('label.constraint'),
-            value: (
-              <Typography.Text className="font-medium">
-                {columnSource.constraint}
-              </Typography.Text>
             ),
           });
         }

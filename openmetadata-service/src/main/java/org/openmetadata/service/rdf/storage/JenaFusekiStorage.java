@@ -52,6 +52,7 @@ import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
@@ -763,9 +764,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   static String buildEntityUpsertUpdate(String entityUri, Model entityModel) {
+    return buildEntityUpsertUpdate(entityUri, entityModel, RdfWriteMode.RECONCILE);
+  }
+
+  static String buildEntityUpsertUpdate(
+      String entityUri, Model entityModel, RdfWriteMode writeMode) {
+    String triples = serializeModel(entityModel);
+    if (writeMode == RdfWriteMode.INSERT_ONLY) {
+      return triples.isBlank() ? "" : buildInsertData(triples);
+    }
     Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, entityModel);
     String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
-    String triples = serializeModel(entityModel);
     if (triples.isBlank()) {
       return deleteQuery;
     }
@@ -799,6 +808,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    */
   @Override
   public void bulkStoreEntities(List<EntityWriteRequest> requests) {
+    bulkStoreEntities(requests, RdfWriteMode.RECONCILE);
+  }
+
+  @Override
+  public void bulkStoreEntities(List<EntityWriteRequest> requests, RdfWriteMode writeMode) {
     if (requests == null || requests.isEmpty()) {
       return;
     }
@@ -808,14 +822,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     Model combinedModel = ModelFactory.createDefaultModel();
     boolean first = true;
     for (EntityWriteRequest req : requests) {
-      String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
-      Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, req.model());
-      String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
-      if (!first) {
-        combinedDelete.append(";\n");
+      if (writeMode != RdfWriteMode.INSERT_ONLY) {
+        String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
+        Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, req.model());
+        String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
+        if (!first) {
+          combinedDelete.append(";\n");
+        }
+        first = false;
+        combinedDelete.append(deleteQuery);
       }
-      first = false;
-      combinedDelete.append(deleteQuery);
       combinedModel.add(req.model());
     }
 
@@ -826,6 +842,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         combined.append(";\n");
       }
       combined.append(buildInsertData(triples));
+    }
+
+    if (combined.isEmpty()) {
+      return;
     }
 
     try {

@@ -153,6 +153,12 @@ export const ContextRuleEditor = ({
     useWatch({ control: form.control, name: 'fullyRendered' }) ?? false;
   const maxAssets = useWatch({ control: form.control, name: 'maxAssets' });
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
+  const [filterIncomplete, setFilterIncomplete] = useState(false);
+  const [filterErrorShown, setFilterErrorShown] = useState(false);
+  const clearFilterState = useCallback(() => {
+    setFilterIncomplete(false);
+    setFilterErrorShown(false);
+  }, []);
   const closeDrawerRef = useRef<() => void>(() => undefined);
   const lastResetRuleIdRef = useRef<string>();
   const ruleForResetRef = useRef(rule);
@@ -238,6 +244,14 @@ export const ContextRuleEditor = ({
 
   const handleSubmit = useCallback(
     async (data: ContextRule) => {
+      // An unfinished condition contributes nothing to the emitted filter, so saving it would
+      // silently widen the rule to match everything. Make the user finish or remove it. The message
+      // only appears once they try to save — flagging a row the moment it is added is just noise.
+      if (filterIncomplete) {
+        setFilterErrorShown(true);
+
+        return;
+      }
       await onSubmit({
         ...data,
         description: data.description || undefined,
@@ -249,16 +263,17 @@ export const ContextRuleEditor = ({
       });
       closeDrawerRef.current();
     },
-    [onSubmit]
+    [filterIncomplete, onSubmit]
   );
 
   const handleDismiss = useCallback(() => {
     previewRequestRef.current++;
     setPreview(undefined);
     setMaxAssetsDraft(undefined);
+    clearFilterState();
     form.reset(getDefaultRule(rule));
     onClose();
-  }, [form, onClose, rule]);
+  }, [clearFilterState, form, onClose, rule]);
 
   const renderPreviewContent = () => {
     if (previewLoading) {
@@ -368,6 +383,10 @@ export const ContextRuleEditor = ({
                   shouldDirty: true,
                 });
                 form.setValue('queryFilter', '', { shouldDirty: true });
+                // Switching the entity type remounts the query builder with an empty filter, and
+                // the remount emits no change event — so clear the flag by hand or the save stays
+                // blocked on a condition that no longer exists.
+                clearFilterState();
                 const nextIsKnowledge =
                   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(value as EntityType);
                 form.setValue(
@@ -404,7 +423,21 @@ export const ContextRuleEditor = ({
               shouldDirty: true,
             });
           }}
+          onValidityChange={(isValid) => {
+            setFilterIncomplete(!isValid);
+            if (isValid) {
+              setFilterErrorShown(false);
+            }
+          }}
         />
+        {filterErrorShown && filterIncomplete && (
+          <Typography
+            className="tw:mt-1.5 tw:text-error-primary"
+            data-testid="context-rule-filter-error"
+            size="text-sm">
+            {t('message.persona-context-rule-filter-incomplete')}
+          </Typography>
+        )}
         <Alert
           className="tw:mt-3 tw:items-center! tw:gap-2.5 tw:px-3.5 tw:py-2.75 tw:**:data-[testid=alert-icon]:self-center"
           data-testid="context-rule-match-preview"
@@ -656,6 +689,7 @@ export const ContextRuleEditor = ({
       if (!isOpen || lastResetRuleIdRef.current !== ruleId) {
         form.reset(getDefaultRule(ruleForResetRef.current));
         setMaxAssetsDraft(undefined);
+        clearFilterState();
         lastResetRuleIdRef.current = ruleId;
       }
       openDrawer();
@@ -663,7 +697,15 @@ export const ContextRuleEditor = ({
       closeDrawer();
       lastResetRuleIdRef.current = undefined;
     }
-  }, [activeRuleId, closeDrawer, form, isOpen, open, openDrawer]);
+  }, [
+    activeRuleId,
+    clearFilterState,
+    closeDrawer,
+    form,
+    isOpen,
+    open,
+    openDrawer,
+  ]);
 
   return formDrawer;
 };

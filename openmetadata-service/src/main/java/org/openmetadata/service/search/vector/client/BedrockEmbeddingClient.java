@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.List;
 import java.util.Locale;
 import java.util.OptionalInt;
@@ -277,6 +278,18 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       cut--;
     }
     return input.substring(0, cut);
+  }
+
+  @Override
+  protected boolean isPermanentFailure(RuntimeException failure) {
+    return failure.getCause() instanceof AwsServiceException awsError
+        && isNonRetryableStatus(awsError.statusCode());
+  }
+
+  private static boolean isNonRetryableStatus(int statusCode) {
+    return statusCode == HttpURLConnection.HTTP_UNAUTHORIZED
+        || statusCode == HttpURLConnection.HTTP_FORBIDDEN
+        || statusCode == HttpURLConnection.HTTP_NOT_FOUND;
   }
 
   @Override

@@ -43,10 +43,9 @@ from metadata.generated.schema.entity.services.connections.storage.s3Connection 
 from metadata.ingestion.connections.connection import BaseConnection
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from botocore.client import BaseClient
 
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.records import Evidence
 
@@ -95,29 +94,25 @@ def get_connection(connection: S3ConnectionConfig) -> S3ObjectStoreClient:
 class S3Checks:
     """Test-connection checks for S3.
 
-    The client is built lazily inside the checks: an assume-role configuration
-    calls STS while the boto3 session is created, so building it while the
-    provider is constructed would touch the network before the runner's gate
-    (and outside its per-step timeout). ``connect`` is ``BaseConnection.client``
-    underneath, so both steps share the one cached client.
+    Reading the borrowed store is what builds it, so an assume-role config's STS
+    handshake stays behind the runner's gate.
     """
 
     errors = S3_ERRORS
 
-    def __init__(self, connect: Callable[[], S3ObjectStoreClient], bucket_names: list[str] | None) -> None:
-        self._connect = connect
+    def __init__(self, store: Borrowed[S3ObjectStoreClient], bucket_names: list[str] | None) -> None:
+        self._store = store
         self.bucket_names = bucket_names
 
     @check(StorageStep.ListBuckets)
     def check_buckets(self) -> Evidence:
-        client = self._connect()
         if self.bucket_names:
-            return probe_buckets(client.s3_client, self.bucket_names)
-        return list_buckets(client.s3_client)
+            return probe_buckets(self._store.client.s3_client, self.bucket_names)
+        return list_buckets(self._store.client.s3_client)
 
     @check(StorageStep.GetMetrics)
     def get_metrics(self) -> Evidence:
-        return list_metrics(self._connect().cloudwatch_client, "AWS/S3")
+        return list_metrics(self._store.client.cloudwatch_client, "AWS/S3")
 
 
 class S3Connection(BaseConnection[S3ConnectionConfig, S3ObjectStoreClient]):
@@ -126,6 +121,6 @@ class S3Connection(BaseConnection[S3ConnectionConfig, S3ObjectStoreClient]):
 
     def checks(self) -> ChecksProvider:
         return S3Checks(
-            connect=lambda: self.client,
+            store=self.borrow(),
             bucket_names=self.service_connection.bucketNames,
         )

@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { SERVICE_INGESTION_PIPELINE_TYPES } from '../../../constants/Services.constant';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -144,7 +145,15 @@ export const useMetadataAgents = (
       if (!known) {
         // A DISCOVERY event carries the pipeline entity so a newly created
         // agent (e.g. autopilot) becomes visible straight from the stream.
-        if (!event.ingestionPipeline) {
+        // Only surface the pipeline types this view fetches over
+        // /ingestionPipelines; service-scoped app pipelines (e.g. Collate AI
+        // automations) also ride this stream but belong to the Collate AI tab.
+        if (
+          !event.ingestionPipeline ||
+          !SERVICE_INGESTION_PIPELINE_TYPES.includes(
+            event.ingestionPipeline.pipelineType
+          )
+        ) {
           return;
         }
         discoveredPipelinesRef.current.set(

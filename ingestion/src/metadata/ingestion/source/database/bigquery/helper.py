@@ -18,6 +18,7 @@ import traceback
 from copy import deepcopy
 from typing import Any, List, Tuple  # noqa: UP035
 
+from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from pydantic import BaseModel
 from sqlalchemy import inspect, text
 
@@ -31,6 +32,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_CONSTRAINTS
 from metadata.utils.bigquery_utils import get_bigquery_client
+from metadata.utils.credentials import get_gcp_impersonate_credentials
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -92,6 +94,37 @@ def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dic
     return kwargs
 
 
+def get_policy_tag_client(service_connection: BigQueryConnection) -> PolicyTagManagerClient:
+    """
+    Build the Data Catalog client used to read policy tags and taxonomies.
+
+    ``PolicyTagManagerClient()`` with no credentials falls back to
+    ``google.auth.default()``, i.e. the source service account, so a connection
+    configured with ``gcpImpersonateServiceAccount`` would read policy tags under
+    the wrong identity while every other BigQuery call impersonates correctly.
+    Without impersonation the credential-less client is returned unchanged so the
+    ADC / JSON-key / external-account paths keep their existing behaviour.
+    """
+    kwargs = get_impersonate_client_kwargs(service_connection)
+    if not kwargs:
+        return PolicyTagManagerClient()
+    credentials = get_gcp_impersonate_credentials(
+        impersonate_service_account=kwargs["impersonate_service_account"],
+        lifetime=kwargs["lifetime"],
+    )
+    return PolicyTagManagerClient(credentials=credentials)
+
+
+def get_bigquery_client_for_project(database_name: str, service_connection: BigQueryConnection):
+    """Build a project-scoped ``bigquery.Client`` (no engine/inspector), shared by
+    the inspector setup and the progress-totals dataset listing."""
+    new_service_connection = clone_connection_for_project(database_name, service_connection)
+    kwargs = get_impersonate_client_kwargs(new_service_connection)
+    if new_service_connection.usageLocation:
+        kwargs["location"] = new_service_connection.usageLocation
+    return get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
+
+
 def get_inspector_details(database_name: str, service_connection: BigQueryConnection) -> InspectorWrapper:
     """
     Method to get the bigquery inspector details
@@ -99,12 +132,7 @@ def get_inspector_details(database_name: str, service_connection: BigQueryConnec
     # TODO support location property in JSON Schema
     # TODO support OAuth 2.0 scopes
     new_service_connection = clone_connection_for_project(database_name, service_connection)
-    kwargs = get_impersonate_client_kwargs(new_service_connection)
-
-    if new_service_connection.usageLocation:
-        kwargs["location"] = new_service_connection.usageLocation
-
-    client = get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
+    client = get_bigquery_client_for_project(database_name, service_connection)
     engine = get_connection(new_service_connection)
     inspector = inspect(engine)
 

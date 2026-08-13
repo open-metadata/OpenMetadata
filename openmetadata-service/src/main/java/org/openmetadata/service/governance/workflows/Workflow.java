@@ -31,6 +31,10 @@ public class Workflow {
   // Whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays silent for supersede.
   public static final String SUPERSEDED_BY_NEWER_RUN =
       "Superseded by a newer approval workflow run for the same entity";
+  public static final String APPROVE_CONDITION = "approve";
+  public static final String REJECT_CONDITION = "reject";
+  public static final String LEGACY_APPROVE_CONDITION = "true";
+  public static final String LEGACY_REJECT_CONDITION = "false";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
   private final WorkflowDefinition workflowDefinition;

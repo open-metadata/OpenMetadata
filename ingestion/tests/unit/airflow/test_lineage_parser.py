@@ -298,6 +298,40 @@ def test_get_dict_xlets_from_dag():
         )
 
 
+def test_unknown_entity_type_is_skipped_not_crashing():
+    """
+    A dict xlet with an unknown `entity` type (typo / custom / future type) must
+    be skipped with a warning instead of raising KeyError. The KeyError would be
+    swallowed by the per-task handler in get_xlets_from_dag and silently drop ALL
+    of the task's lineage - here the valid GOOD -> T edge must still survive.
+    """
+    with DAG("test_dag_unknown_entity", start_date=datetime(2021, 1, 1)) as dag:
+        BashOperator(
+            task_id="print_date",
+            bash_command="date",
+            inlets=[
+                {"entity": "table", "fqn": "GOOD", "key": "test"},
+                {"entity": "not_a_real_entity", "fqn": "BAD", "key": "test"},
+            ],
+        )
+
+        BashOperator(
+            task_id="sleep",
+            bash_command=SLEEP,
+            outlets=[{"entity": "table", "fqn": "T", "key": "test"}],
+        )
+
+        assert_xlets_equals(
+            get_xlets_from_dag(dag),
+            [
+                XLets(
+                    inlets=[OMEntity(entity=Table, fqn="GOOD", key="test")],
+                    outlets=[OMEntity(entity=Table, fqn="T", key="test")],
+                ),
+            ],
+        )
+
+
 def test_get_attrs_xlets_from_dag():
     """
     Check that we can properly join the xlet information from

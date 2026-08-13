@@ -13,12 +13,12 @@
 @import (reference) '../../../../../styles/variables.less';
 .widget-wrapper-container {
   height: 100%;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.3s ease;
+  border-radius: var(--om-radius-lg);
+  box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-1);
+  transition: box-shadow var(--om-duration-300) ease;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-15);
   }
 
   .ant-card-body {
@@ -73,12 +73,12 @@
     position: absolute;
     top: 16px;
     right: 16px;
-    z-index: 10;
+    z-index: var(--om-z-10);
 
     .widget-wrapper-more-button {
       border: none;
       background: transparent;
-      transition: color 0.3s ease;
+      transition: color var(--om-duration-300) ease;
 
       &:hover {
         color: @primary-color;
@@ -87,8 +87,8 @@
 
     .widget-wrapper-more-menu {
       .ant-dropdown-menu-item {
-        padding: 8px 16px;
-        font-size: 14px;
+        padding: var(--om-space-8) var(--om-space-16);
+        font-size: var(--om-font-size-sm);
         line-height: 20px;
       }
     }

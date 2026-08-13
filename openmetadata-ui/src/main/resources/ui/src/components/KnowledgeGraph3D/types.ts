@@ -59,6 +59,9 @@ export interface GraphNode3D {
   name: string;
   type: NodeType;
   levels: Level[];
+  x?: number;
+  y?: number;
+  z?: number;
   fullyQualifiedName?: string;
   description?: string;
   /** Tables only: true when at least one ontology (glossary) mapping exists. */

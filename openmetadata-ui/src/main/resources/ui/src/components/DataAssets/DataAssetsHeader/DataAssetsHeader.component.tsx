@@ -98,6 +98,7 @@ import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
@@ -686,8 +687,12 @@ export const DataAssetsHeader = ({
           <div className="tw:min-w-0 tw:flex-1">
             <TitleBreadcrumbSkeleton loading={isBreadcrumbLoading}>
               <HeaderBreadcrumb
+                autoCollapse
                 className="tw:mb-0"
                 items={[
+                  ...(entityType === EntityType.METRIC
+                    ? [getGlossaryHomeCrumb(t)]
+                    : []),
                   ...breadcrumbs.map((link) => ({
                     label: link.name,
                     href:
@@ -698,7 +703,7 @@ export const DataAssetsHeader = ({
                   { label: entityName },
                 ]}
                 showHome={false}
-                size="sm"
+                size="xs"
               />
             </TitleBreadcrumbSkeleton>
           </div>

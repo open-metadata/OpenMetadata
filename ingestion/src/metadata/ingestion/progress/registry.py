@@ -114,6 +114,14 @@ class ProgressRegistry:
             node.processed_by_type[key] = node.processed_by_type.get(key, 0) + 1
             self._total_ingested += 1
 
+    def record_asset(self, n: int = 1) -> None:
+        """Count ``n`` leaf entities toward the run-total assets ingested, for
+        flat MANUAL sources that have no topology tree to ``advance()``. Keeps
+        ``assets_ingested`` in step with the connector's own completion count."""
+        with self._lock:
+            self._mark_started()
+            self._total_ingested += n
+
     def assets_ingested(self) -> int:
         """Monotonic run-total of leaf entities processed. Independent of the
         tree — pruning a completed scope never decreases it."""

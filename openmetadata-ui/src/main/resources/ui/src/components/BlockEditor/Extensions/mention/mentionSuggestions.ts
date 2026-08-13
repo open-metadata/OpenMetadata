@@ -21,6 +21,7 @@ import {
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { buildMentionLink } from '../../../../utils/FeedUtilsPure';
 import { ExtensionRef } from '../../BlockEditor.interface';
+import { getDialogContainer } from '../getDialogContainer';
 import MentionList from './MentionList';
 
 export const mentionSuggestion = () => ({
@@ -60,7 +61,7 @@ export const mentionSuggestion = () => ({
         popup = tippy('body', {
           getReferenceClientRect:
             props.clientRect as Props['getReferenceClientRect'],
-          appendTo: () => document.body,
+          appendTo: () => getDialogContainer(props.editor.view),
           content: component.element,
           showOnCreate: true,
           interactive: true,

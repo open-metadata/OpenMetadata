@@ -1053,19 +1053,28 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify no default persona tag exists
+    // A system-wide default persona may still appear as a fallback, so scope the
+    // assertions to the user's own personas instead of the whole dropdown list.
     const finalPersonaLabels = adminPage.locator(
       '[data-testid="persona-label"]'
     );
 
-    await expect(
-      finalPersonaLabels.locator('[data-testid="default-persona-tag"]')
-    ).not.toBeVisible();
+    for (const personaName of [
+      persona1.responseData.displayName,
+      persona2.responseData.displayName,
+    ]) {
+      const userPersonaLabel = finalPersonaLabels.filter({
+        hasText: personaName,
+      });
 
-    // Verify there are no selected nor a default persona
-    const checkedRadios = adminPage.locator('input[type="radio"]:checked');
+      await expect(
+        userPersonaLabel.locator('[data-testid="default-persona-tag"]')
+      ).not.toBeVisible();
 
-    await expect(checkedRadios).toHaveCount(0);
+      await expect(
+        userPersonaLabel.locator('input[type="radio"]')
+      ).not.toBeChecked();
+    }
   });
 });
 
@@ -1157,14 +1166,20 @@ test.describe('User Profile Persona Interactions', () => {
         .locator('[data-testid="persona-select-list"] .ant-select-clear')
         .click();
 
+      const updateUserPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/') &&
+          response.request().method() === 'PATCH'
+      );
+
       // Save the changes
       await adminPage
         .locator('[data-testid="user-profile-persona-edit-save"]')
         .click();
 
       // Wait for the API call to complete and verify no personas are shown
-      await adminPage.waitForResponse('/api/v1/users/*');
-
+      const updateUserResponse = await updateUserPromise;
+      expect(updateUserResponse.status()).toBe(200);
       await expect(
         adminPage
           .getByTestId('persona-details-card')

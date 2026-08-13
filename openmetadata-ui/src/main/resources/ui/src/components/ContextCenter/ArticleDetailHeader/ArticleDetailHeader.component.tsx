@@ -65,8 +65,10 @@ import {
   ContentChangeState,
   RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import EntityLink from '../../../utils/EntityLink';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
@@ -78,6 +80,8 @@ import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
+
+const TOOLTIP_TRIGGER_CLASS = 'tw:leading-0';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   knowledgePage,
@@ -123,7 +127,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         label: getKnowledgePageName(knowledgePage, t),
       },
     ],
-    [knowledgePage?.id, knowledgePage?.name, knowledgePage?.displayName, t]
+    [knowledgePage, t]
   );
 
   const voteStatus = useMemo(() => {
@@ -174,6 +178,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     setIsDeleting(true);
     try {
       await deleteKnowledgePage(knowledgePage.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+      });
       removeDraft(knowledgePage.id);
       updateKnowledgeCenterRecentViewed(
         recentlyViewed.filter((page) => page.id !== knowledgePage.id)
@@ -186,7 +193,13 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } finally {
       setIsDeleting(false);
     }
-  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy, removeDraft]);
+  }, [
+    knowledgePage,
+    recentlyViewed,
+    fetchKnowledgePageHierarchy,
+    removeDraft,
+    navigate,
+  ]);
 
   const handleVersionClick = () => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
@@ -261,7 +274,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return (
         <div data-testid="content-change-state">
           <Badge
-            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            className="tw:flex tw:items-center tw:gap-2 tw:outline-0"
             color="success"
             size="lg"
             type="color">
@@ -278,7 +291,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return (
         <div data-testid="content-change-state">
           <Badge
-            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            className="tw:flex tw:items-center tw:gap-2 tw:outline-0"
             color="gray"
             size="lg"
             type="color">
@@ -290,12 +303,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } else {
       return null;
     }
-  }, [contentChangeState]);
+  }, [contentChangeState, t]);
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   if (!knowledgePage && !tabs) {
@@ -320,10 +333,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   }
 
   const metaEl = (
-    <Box align="center" className="tw:text-sm" gap={3} wrap="wrap">
+    <Box align="center" className="tw:text-sm tw:mt-2" gap={3} wrap="wrap">
       <Box align="center" gap={1}>
         <Tooltip title={t('label.domain')}>
-          <TooltipTrigger className="tw:leading-0">
+          <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
             <GlobeIcon
               className="tw:shrink-0 tw:text-quaternary"
               height={16}
@@ -369,7 +382,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
       <Box align="center" gap={1}>
         <Tooltip title={t('label.owner-plural')}>
-          <TooltipTrigger className="tw:leading-0">
+          <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
             <UserIcon
               className="tw:shrink-0 tw:text-quaternary"
               height={16}
@@ -423,9 +436,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           <Dot className="tw:text-fg-quaternary" size="xs" />
           <Box align="center" gap={1}>
             <Tooltip title={t('label.editor')}>
-              <TooltipTrigger className="tw:leading-0">
+              <TooltipTrigger className={TOOLTIP_TRIGGER_CLASS}>
                 <EditorIcon
-                  className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                  className="tw:shrink-0 tw:text-quaternary"
                   height={16}
                   width={16}
                 />
@@ -632,8 +645,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   );
 
   return (
-    <div className="tw:flex tw:flex-col" data-testid="article-detail-header">
-      {!breadcrumbInsideCard && breadcrumbEl}
+    <div
+      className="tw:flex tw:flex-col tw:mb-5"
+      data-testid="article-detail-header">
+      {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
       <HeaderShell
         actions={actionsEl}
         badge={entityStatusBadge}

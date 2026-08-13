@@ -76,6 +76,7 @@ const EditIngestionPage = () => {
     {} as IngestionPipeline
   );
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
+  const [isStepReady, setIsStepReady] = useState(false);
   const [isLoading, setIsloading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | JSX.Element>('');
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -271,7 +272,7 @@ const EditIngestionPage = () => {
   };
 
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
       <div className="tw:flex-1">
         <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
         <div className="tw:mt-4">
@@ -298,6 +299,7 @@ const EditIngestionPage = () => {
             status={FormSubmitType.EDIT}
             onFocus={handleFieldFocus}
             onIngestionDeploy={onIngestionDeploy}
+            onStepReadyChange={setIsStepReady}
             onSuccessSave={goToService}
             onUpdateIngestion={onEditIngestionSave}
           />
@@ -316,6 +318,7 @@ const EditIngestionPage = () => {
           <Button
             color="primary"
             data-testid="next-button"
+            isDisabled={!isStepReady}
             size="sm"
             type="button"
             onPress={handleFooterNext}>
@@ -352,7 +355,7 @@ const EditIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel tw:bg-transparent"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,

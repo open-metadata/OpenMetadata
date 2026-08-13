@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -30,6 +31,18 @@ const buildSearchResponse = (metrics: Array<Record<string, unknown>>) => ({
   },
 });
 
+const renderPage = () =>
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }>
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: jest
     .fn()
@@ -37,6 +50,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Button: jest
     .fn()
     .mockImplementation(
@@ -58,6 +72,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+  EmptyPlaceholder: jest
+    .fn()
+    .mockImplementation(({ title }: { title?: string }) => (
+      <div data-testid="metric-empty-placeholder">{title}</div>
+    )),
   FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
   Input: jest
     .fn()
@@ -101,7 +120,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 const mockLocationPathname = '/mock-path';
-// Mocking react-router-dom hooks
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useLocation: jest.fn().mockImplementation(() => ({
@@ -110,7 +128,6 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(() => mockNavigate),
 }));
 
-// Mock permission provider to simulate access rights
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
@@ -131,13 +148,10 @@ jest.mock('../../../rest/metricsAPI', () => ({
   deleteMetricAsync: jest.fn().mockResolvedValue({}),
 }));
 
-// Metrics list is driven by the search API (server-side filter + pagination).
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-// Return stable paging handlers so the debounced-search identity stays fixed;
-// this isolates the debounce-cancel behaviour from usePaging's internal churn.
 jest.mock('../../../hooks/paging/usePaging', () => {
   const handlePageChange = jest.fn();
   const handlePagingChange = jest.fn();
@@ -163,7 +177,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showWarningToast: jest.fn(),
 }));
 
-// Mock the empty state placeholder to render a docs link
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => ({
@@ -208,7 +221,6 @@ jest.mock('../../../components/common/Table/TableV2', () => ({
   ),
 }));
 
-// Mock PageLayoutV1 to simply render children without layout logic
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => (
@@ -228,6 +240,16 @@ jest.mock('../../../hoc/LimitWrapper', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
+  __esModule: true,
+  default: ({ open, onDelete }: { open: boolean; onDelete: () => void }) =>
+    open ? (
+      <button data-testid="confirm-button" onClick={onDelete}>
+        Delete
+      </button>
+    ) : null,
+}));
+
 describe('MetricListPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -236,11 +258,18 @@ describe('MetricListPage', () => {
   });
 
   it('renders the docs link with correct URL when empty state is shown', async () => {
-    render(
-      <MemoryRouter>
-        <MetricListPage />
-      </MemoryRouter>
-    );
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery
+      .mockResolvedValueOnce(
+        buildSearchResponse([{ id: 'p', name: 'p_metric' }])
+      )
+      .mockResolvedValue(buildSearchResponse([]));
+
+    renderPage();
+
+    await screen.findByText('p_metric');
+
+    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
 
     const link = await screen.findByText('docs');
 
@@ -251,11 +280,12 @@ describe('MetricListPage', () => {
   });
 
   it('passes filtered metric scope when bulk edit is clicked without selection', async () => {
-    render(
-      <MemoryRouter>
-        <MetricListPage />
-      </MemoryRouter>
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockResolvedValue(
+      buildSearchResponse([{ id: 'p', name: 'p_metric' }])
     );
+
+    renderPage();
 
     const searchInput = await screen.findByPlaceholderText(
       'label.search-entity'
@@ -288,11 +318,7 @@ describe('MetricListPage', () => {
       ])
     );
 
-    render(
-      <MemoryRouter>
-        <MetricListPage />
-      </MemoryRouter>
-    );
+    renderPage();
 
     fireEvent.click(await screen.findByTestId('select-first-metric'));
     fireEvent.click(screen.getByTestId('bulk-edit-metric'));
@@ -321,11 +347,7 @@ describe('MetricListPage', () => {
     const { exportMetricDetailsInCSV } = require('../../../rest/metricsAPI');
     const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
 
-    render(
-      <MemoryRouter>
-        <MetricListPage />
-      </MemoryRouter>
-    );
+    renderPage();
 
     fireEvent.click(await screen.findByText('label.export'));
 
@@ -358,11 +380,7 @@ describe('MetricListPage', () => {
       );
     });
 
-    render(
-      <MemoryRouter>
-        <MetricListPage />
-      </MemoryRouter>
-    );
+    renderPage();
 
     expect(await screen.findByText('approved_metric')).toBeInTheDocument();
     expect(screen.getByText('draft_metric')).toBeInTheDocument();
@@ -381,34 +399,76 @@ describe('MetricListPage', () => {
     );
   });
 
-  it('cancels a pending debounced search when the status filter changes mid-typing', async () => {
+  it('applies both the debounced search text and the status filter to the query', async () => {
     const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery.mockResolvedValue(buildSearchResponse([]));
-
-    render(
-      <MemoryRouter>
-        <MetricListPage />
-      </MemoryRouter>
+    searchQuery.mockResolvedValue(
+      buildSearchResponse([{ id: 'p', name: 'p_metric' }])
     );
+
+    renderPage();
 
     const searchInput = await screen.findByPlaceholderText(
       'label.search-entity'
     );
 
-    jest.useFakeTimers();
     fireEvent.change(searchInput, { target: { value: 'sales' } });
     fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
-    jest.advanceTimersByTime(2000);
-    jest.useRealTimers();
 
-    // The stale debounced search (captured with no status) is cancelled, so the
-    // last query still carries the Draft filter instead of resetting it.
-    await waitFor(() =>
-      expect(searchQuery).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
-        })
+    await waitFor(
+      () =>
+        expect(searchQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            query: 'sales',
+            queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
+          })
+        ),
+      { timeout: 2000 }
+    );
+  });
+
+  it('does not flash the create placeholder while a cleared search is still pending', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockImplementation((req: { query?: string }) =>
+      Promise.resolve(
+        buildSearchResponse(
+          req.query === 'zzz' ? [] : [{ id: 'a', name: 'a_metric' }]
+        )
       )
     );
+
+    renderPage();
+
+    const searchInput = await screen.findByPlaceholderText(
+      'label.search-entity'
+    );
+
+    fireEvent.change(searchInput, { target: { value: 'zzz' } });
+
+    await screen.findByTestId('error-placeholder', {}, { timeout: 2000 });
+
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('metric-empty-placeholder')
+    ).not.toBeInTheDocument();
+  });
+
+  it('surfaces an error when the permission fetch fails', async () => {
+    const {
+      usePermissionProvider,
+    } = require('../../../context/PermissionProvider/PermissionProvider');
+    usePermissionProvider.mockReturnValue({
+      getResourcePermission: jest
+        .fn()
+        .mockRejectedValue(new Error('permission boom')),
+    });
+    const { showErrorToast } = require('../../../utils/ToastUtils');
+
+    renderPage();
+
+    expect(await screen.findByTestId('error-placeholder')).toBeInTheDocument();
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
   });
 });

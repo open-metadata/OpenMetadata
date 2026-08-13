@@ -14,7 +14,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
-import '../../../test/unit/mocks/mui.mock';
 import KnowledgeCard, { KnowledgeCardProps } from './KnowledgeCard';
 import {
   KNOWLEDGE_PAGE_MOCK_DATA,

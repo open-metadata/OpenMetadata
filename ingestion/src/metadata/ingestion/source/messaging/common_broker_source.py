@@ -20,13 +20,9 @@ from abc import ABC
 from typing import Any, Iterable, Optional  # noqa: UP035
 
 import confluent_kafka
+from cachetools import LRUCache
 from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import ConfigResource
-from confluent_kafka.error import (
-    ConsumeError,
-    KeyDeserializationError,
-    ValueDeserializationError,
-)
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
@@ -58,6 +54,19 @@ from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 logger = ingestion_logger()
 
+# Confluent wire format: a zero magic byte followed by a 4-byte schema id.
+CONFLUENT_MAGIC_BYTE = 0
+CONFLUENT_HEADER_LENGTH = 5
+
+AVRO_DESERIALIZER_CACHE_SIZE = 100
+
+
+def strip_confluent_framing(record: bytes) -> bytes:
+    """Drop the Confluent wire-format header from a payload that carries one."""
+    if len(record) >= CONFLUENT_HEADER_LENGTH and record[0] == CONFLUENT_MAGIC_BYTE:
+        return record[CONFLUENT_HEADER_LENGTH:]
+    return record
+
 
 def on_partitions_assignment_to_consumer(consumer, partitions):
     # get offset tuple from the first partition
@@ -80,13 +89,17 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData  # pyright: ignore[reportAttributeAccessIssue]
+        source_config = self.config.sourceConfig.config
+        self.generate_sample_data = getattr(source_config, "storeSampleData", None) or getattr(
+            source_config, "generateSampleData", False
+        )  # pyright: ignore[reportAttributeAccessIssue]
         if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
         self.service_connection = self.config.serviceConnection.root.config
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
+        self._avro_deserializers = LRUCache(maxsize=AVRO_DESERIALIZER_CACHE_SIZE)
         if self.generate_sample_data:
             self.consumer_client = self.connection.consumer_client
 
@@ -244,7 +257,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 if self.consumer_client:
                     self.consumer_client.subscribe([topic_name], on_assign=on_partitions_assignment_to_consumer)
                     logger.info(f"Broker consumer polling for sample messages in topic {topic_name}")
-                    # DeserializingConsumer does not implement consume(), use poll() in a loop instead.
                     messages = []
                     n_poll = 10
                     total_timeout = 10
@@ -256,17 +268,16 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             if remaining <= 0:
                                 break
                             msg = self.consumer_client.poll(timeout=remaining)
-                        except ConsumeError as exc:
+                        except KafkaException as exc:
                             logger.warning(f"Consumer error polling topic {topic_name}: {exc}")
-                            continue
-                        except (
-                            KeyDeserializationError,
-                            ValueDeserializationError,
-                        ) as exc:
-                            logger.warning(f"Failed to deserialize message from topic {topic_name}: {exc}")
                             continue
                         if msg is None:
                             break
+                        if msg.error():
+                            # End of a partition is not a failure; other partitions may still have data.
+                            if msg.error().code() != KafkaError._PARTITION_EOF:
+                                logger.warning(f"Consumer error polling topic {topic_name}: {msg.error()}")
+                            continue
                         messages.append(msg)
             except Exception as exc:
                 yield Either(
@@ -300,19 +311,22 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             )
 
     def decode_message(self, record: Any, schema: str, schema_type: SchemaType):
+        if not isinstance(record, (bytes, bytearray, memoryview)):
+            return str(record)
         if schema_type == SchemaType.Avro:
-            # DeserializingConsumer may already return decoded dict/object values.
-            if not isinstance(record, (bytes, bytearray, memoryview)):
-                return str(record)
-            deserializer = AvroDeserializer(schema_str=schema, schema_registry_client=self.schema_registry_client)
-            return str(deserializer(record, None))
+            # One deserializer per schema: this runs once per sampled message.
+            deserializer = self._avro_deserializers.get(schema)
+            if deserializer is None:
+                deserializer = AvroDeserializer(schema_str=schema, schema_registry_client=self.schema_registry_client)
+                self._avro_deserializers[schema] = deserializer
+            return str(deserializer(bytes(record), None))
         if schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
-        if isinstance(record, (bytes, bytearray, memoryview)):
-            return bytes(record).decode("utf-8")
-        return str(record)
+        # Strict: a binary payload we cannot type (Avro with no registry configured)
+        # must be skipped by the caller, not stored as mojibake.
+        return strip_confluent_framing(bytes(record)).decode("utf-8")
 
     def close(self):
-        if self.generate_sample_data and self.consumer_client:
-            self.consumer_client.close()
+        # The consumer belongs to the connection, which closes it on teardown.
+        super().close()

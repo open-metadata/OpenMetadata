@@ -109,6 +109,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
 )
 from metadata.ingestion.source.database.snowflake.utils import (
     _current_database_schema,
+    _get_schema_unique_constraints,
     get_columns,
     get_foreign_keys,
     get_pk_constraint,
@@ -130,7 +131,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database, filter_by_schema
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -178,6 +179,7 @@ SnowflakeDialect.get_table_comment = get_table_comment
 SnowflakeDialect.get_all_view_definitions = get_all_view_definitions
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
+SnowflakeDialect._get_schema_unique_constraints = _get_schema_unique_constraints
 SnowflakeDialect._get_schema_columns = get_schema_columns
 Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
@@ -466,20 +468,6 @@ class SnowflakeSource(
             if database_name in by_database and schema_name is not None:
                 by_database[database_name].append(str(schema_name))
         return by_database
-
-    def _is_schema_filtered(self, database_name: str, schema_name: str) -> bool:
-        """Whether a schema fails the schema filter pattern, matched the same way
-        as the lazy producer (FQN or bare name per ``useFqnForFiltering``).
-        Context-free: the FQN is built with the explicit database name."""
-        schema_fqn = fqn.build(
-            self.metadata,
-            entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-            database_name=database_name,
-            schema_name=schema_name,
-        )
-        filter_name = schema_fqn if self.source_config.useFqnForFiltering and schema_fqn else schema_name
-        return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
         """Seed the run-level ``Database`` and ``DatabaseSchema`` global counters

@@ -439,7 +439,7 @@ describe('CustomControls', () => {
     );
     fireEvent.click(nodeDepthButton);
 
-    // The menu items would be rendered by Material-UI Menu component
+    // The menu items would be rendered by the component library's Menu component
     // This test verifies the click handler is set up correctly
     expect(nodeDepthButton).toBeInTheDocument();
   });

@@ -83,6 +83,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+      </div>
+    )),
     Popover: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),

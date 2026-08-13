@@ -31,6 +31,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   type,
   divider,
   size = 'xs',
+  autoCollapse,
   maxItems,
   className,
   noMargin = false,
@@ -72,6 +73,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
 
   return (
     <Breadcrumbs
+      autoCollapse={autoCollapse}
       className={classNames(
         // Default icon size 16px per Figma (the core couples icon size to the
         // `size` prop — 14px at xs — which we keep for the 12px text). The tail

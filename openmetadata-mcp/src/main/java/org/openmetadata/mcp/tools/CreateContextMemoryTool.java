@@ -57,6 +57,9 @@ public class CreateContextMemoryTool implements McpTool {
     repo.prepareInternal(entity, false);
 
     final String userName = CommonUtils.principal(securityContext);
+    // createOrUpdate overwrites an existing memory with this name (the tool description
+    // documents this as intentional reuse) — tools.json still marks this tool
+    // destructiveHint:true since the prior content is discarded.
     final RestUtil.PutResponse<ContextMemory> response =
         repo.createOrUpdate(null, entity, userName, ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);

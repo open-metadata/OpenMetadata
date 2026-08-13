@@ -8,7 +8,8 @@
             "description": "Validate that the API is accessible with the given credentials",
             "errorMessage": "Failed to connect to looker, please validate the credentials",
             "shortCircuit": true,
-            "mandatory": true
+            "mandatory": true,
+            "category": "ConnectionGate"
         },
         {
             "name": "ValidateVersion",

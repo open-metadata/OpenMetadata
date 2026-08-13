@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.storage import list_buckets
 from metadata.ingestion.connections.connection import BaseConnection
@@ -34,7 +35,7 @@ _SEED = (
 
 
 def _checks(client=None, bucket_names=None):
-    return S3Checks(connect=lambda: client, bucket_names=bucket_names)
+    return S3Checks(store=Borrowed.of(client), bucket_names=bucket_names)
 
 
 def _check_names():

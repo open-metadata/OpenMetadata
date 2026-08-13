@@ -35,9 +35,9 @@ This document outlines the standards and best practices that must be followed wh
 
 ## Styling and UI Components
 
-### MUI Migration
-- [ ] **Prefer MUI v7.3.1**: New features use Material-UI components, not Ant Design
-- [ ] **Theme tokens**: Uses theme colors and design tokens from MUI theme, not hardcoded values
+### Component Library
+- [ ] **Prefer `openmetadata-ui-core-components`**: New features use `openmetadata-ui-core-components`, not Ant Design
+- [ ] **Theme tokens**: Uses design tokens from `openmetadata-ui-core-components`, not hardcoded values — see [`src/main/resources/ui/docs/colors.md`](src/main/resources/ui/docs/colors.md) for the full token reference
 - [ ] **Theme reference**: Styles reference `openmetadata-ui-core-components` theme data
 - [ ] **Legacy components**: Ant Design components only acceptable in existing code, flag for future refactoring
 
@@ -50,7 +50,7 @@ This document outlines the standards and best practices that must be followed wh
 
 ### Import Organization
 - [ ] **Correct order**: Imports organized as:
-  1. External libraries (React, MUI, etc.)
+  1. External libraries (React, etc.)
   2. Internal absolute imports (`generated/`, `constants/`, `hooks/`)
   3. Relative imports (utilities, components)
   4. Asset imports (SVGs, styles)
@@ -108,7 +108,7 @@ This document outlines the standards and best practices that must be followed wh
 - [ ] **Semantic HTML**: Uses appropriate semantic elements
 - [ ] **ARIA labels**: Proper ARIA attributes for interactive elements
 - [ ] **Keyboard navigation**: Interactive elements accessible via keyboard
-- [ ] **MUI accessibility**: MUI components used correctly with accessibility in mind
+- [ ] **Component accessibility**: `openmetadata-ui-core-components` components used correctly with accessibility in mind
 
 ## Security
 
@@ -165,7 +165,7 @@ yarn playwright:run    # Run E2E tests (if applicable)
 
 1. **Hardcoded strings** instead of translation keys
 2. **`any` type usage** anywhere in TypeScript
-3. **Ant Design components** in new features (should use MUI)
+3. **Ant Design components** in new features (should use `openmetadata-ui-core-components`)
 4. **Hardcoded colors** instead of theme tokens
 5. **Missing error handling** in async operations
 6. **Console.log** statements left in code

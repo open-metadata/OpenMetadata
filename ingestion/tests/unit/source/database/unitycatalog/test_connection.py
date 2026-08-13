@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from databricks.sdk.errors import PermissionDenied, ResourceDoesNotExist, Unauthenticated
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
@@ -27,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.unitycatalog.connection import (
+    LINEAGE_PROBE_COMMAND,
     UNITY_CATALOG_ERRORS,
     UnityCatalogChecks,
     UnityCatalogConnection,
@@ -62,8 +64,17 @@ def _named(name: str, **attributes) -> MagicMock:
     return mock
 
 
-def _checks(client: MagicMock, **config_overrides) -> UnityCatalogChecks:
-    return UnityCatalogChecks(client=client, service_connection=_config(**config_overrides))
+WAREHOUSE = {"httpPath": "/sql/1.0/warehouses/abc123"}
+
+
+def _checks(client: MagicMock, sql: MagicMock | None = None, **config_overrides) -> UnityCatalogChecks:
+    """A provider over two borrowed clients: the workspace client and the
+    SQL-warehouse engine, each owned by its own connection."""
+    return UnityCatalogChecks(
+        workspace=Borrowed.of(client),
+        sql=Borrowed.of(sql if sql is not None else MagicMock()),
+        service_connection=_config(**config_overrides),
+    )
 
 
 def test_unitycatalog_connection_is_base_connection():
@@ -79,12 +90,59 @@ def test_get_client_delegates_to_the_workspace_client_builder():
 
 
 def test_checks_exposes_the_provider_without_touching_the_network():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get_connection:
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection") as mock_get_connection,
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
+    ):
         provider = UnityCatalogConnection(_config()).checks()
 
     assert isinstance(provider, UnityCatalogChecks)
-    assert provider.client is mock_get_connection.return_value
-    mock_get_connection.return_value.catalogs.list.assert_not_called()
+    # Neither client is built while the provider is assembled: both are borrowed.
+    mock_get_connection.assert_not_called()
+    mock_engine.assert_not_called()
+
+
+def test_checks_borrow_the_clients_their_connections_own():
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection") as mock_get_connection,
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
+    ):
+        connection = UnityCatalogConnection(_config())
+        provider = connection.checks()
+
+        assert provider._workspace.client is connection.client
+        assert provider._sql.client is connection.sql.client
+
+    # One workspace client, one engine - each built once, by its owner.
+    assert mock_get_connection.call_count == 1
+    assert mock_engine.call_count == 1
+
+
+def test_sql_engine_is_never_built_when_no_warehouse_step_runs():
+    # The lineage and tag steps need a SQL warehouse; a workspace configured
+    # without an httpPath must never pay for an engine it does not use.
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection"),
+        patch("metadata.core.connections.test_connection.network.tcp_probe"),
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
+    ):
+        provider = UnityCatalogConnection(_config()).checks()
+        provider.check_access()
+
+    mock_engine.assert_not_called()
+
+
+def test_closing_the_connection_disposes_the_sql_engine():
+    engine = MagicMock()
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection"),
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection", return_value=engine),
+    ):
+        connection = UnityCatalogConnection(_config())
+        _ = connection.sql.client
+        connection.close()
+
+    engine.dispose.assert_called_once_with()
 
 
 def test_connection_timeout_drives_the_per_step_budget():
@@ -128,7 +186,7 @@ class TestHostNormalization:
 class TestCheckAccess:
     def test_probes_the_host_before_listing_catalogs(self):
         client = MagicMock()
-        with patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe:
+        with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
             evidence = _checks(client).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
@@ -136,7 +194,7 @@ class TestCheckAccess:
         assert evidence.command == "catalogs.list()"
 
     def test_defaults_to_port_443_when_host_port_omits_the_port(self):
-        with patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe:
+        with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
             _checks(MagicMock(), hostPort="my-workspace.cloud.databricks.com").check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
@@ -150,7 +208,7 @@ class TestCheckAccess:
         ],
     )
     def test_normalizes_a_pasted_workspace_url_before_probing(self, host_port):
-        with patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe:
+        with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
             _checks(MagicMock(), hostPort=host_port).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
@@ -158,7 +216,10 @@ class TestCheckAccess:
     def test_unreachable_host_fails_before_the_client_is_used(self):
         client = MagicMock()
         with (
-            patch(f"{CONNECTION_MODULE}.tcp_probe", side_effect=NetworkUnreachableError("down")),
+            patch(
+                "metadata.core.connections.test_connection.network.tcp_probe",
+                side_effect=NetworkUnreachableError("down"),
+            ),
             pytest.raises(CheckError) as failure,
         ):
             _checks(client).check_access()
@@ -169,7 +230,7 @@ class TestCheckAccess:
     def test_rejected_credentials_surface_as_a_check_error_with_the_command(self):
         client = MagicMock()
         client.catalogs.list.side_effect = Unauthenticated("invalid access token")
-        with patch(f"{CONNECTION_MODULE}.tcp_probe"), pytest.raises(CheckError) as failure:
+        with patch("metadata.core.connections.test_connection.network.tcp_probe"), pytest.raises(CheckError) as failure:
             _checks(client).check_access()
 
         assert failure.value.evidence.command == "catalogs.list()"
@@ -234,37 +295,34 @@ class TestMetadataSteps:
 
 
 class TestWarehouseSteps:
-    def test_get_queries_builds_the_engine_inside_the_check_and_disposes_it(self):
+    def test_get_queries_reads_the_borrowed_engine(self):
         engine = MagicMock()
-        with (
-            patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection", return_value=engine) as mock_engine,
-            patch(f"{CONNECTION_MODULE}.test_lineage_tables") as mock_lineage,
-        ):
-            checks = _checks(MagicMock())
-            mock_engine.assert_not_called()
+        with patch(f"{CONNECTION_MODULE}.read_lineage_tables") as mock_lineage:
+            checks = _checks(MagicMock(), sql=engine, **WAREHOUSE)
             evidence = checks.check_queries()
 
         mock_lineage.assert_called_once_with(engine)
-        engine.dispose.assert_called_once_with()
+        # The engine belongs to UnityCatalogSqlConnection: the check never disposes it.
+        engine.dispose.assert_not_called()
         assert evidence.summary == "lineage tables accessible"
 
-    def test_get_queries_disposes_the_engine_when_the_probe_fails(self):
+    def test_get_queries_wraps_a_probe_failure_as_check_error(self):
         engine = MagicMock()
         with (
-            patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection", return_value=engine),
-            patch(f"{CONNECTION_MODULE}.test_lineage_tables", side_effect=PermissionDenied("PERMISSION_DENIED")),
+            patch(f"{CONNECTION_MODULE}.read_lineage_tables", side_effect=PermissionDenied("PERMISSION_DENIED")),
             pytest.raises(CheckError),
         ):
-            _checks(MagicMock()).check_queries()
+            _checks(MagicMock(), sql=engine, **WAREHOUSE).check_queries()
 
-        engine.dispose.assert_called_once_with()
+        engine.dispose.assert_not_called()
 
     def test_get_tags_probes_the_information_schema_tag_tables(self):
-        with patch(f"{CONNECTION_MODULE}.get_tags") as mock_tags:
-            checks = _checks(MagicMock())
+        engine = MagicMock()
+        with patch(f"{CONNECTION_MODULE}.read_tag_tables") as mock_tags:
+            checks = _checks(MagicMock(), sql=engine, **WAREHOUSE)
             evidence = checks.check_tags()
 
-        mock_tags.assert_called_once_with(checks.service_connection, checks.table_obj)
+        mock_tags.assert_called_once_with(engine, checks.table_obj)
         assert evidence.summary == "tag tables accessible"
 
 
@@ -312,3 +370,52 @@ class TestErrorPack:
 
     def test_an_unmatched_error_is_left_unclassified(self):
         assert UNITY_CATALOG_ERRORS.classify(RuntimeError("something else entirely")) is None
+
+
+def test_closing_disposes_the_sql_engine_on_every_reuse_cycle():
+    # close() resets the teardown registry, so a sub-owner registered once in
+    # __init__ would leak its engine on the second cycle.
+    engines = [MagicMock(), MagicMock()]
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection"),
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection", side_effect=engines),
+    ):
+        connection = UnityCatalogConnection(_config())
+        _ = connection.sql.client
+        connection.close()
+        _ = connection.sql.client
+        connection.close()
+
+    for engine in engines:
+        engine.dispose.assert_called_once_with()
+
+
+class TestNoWarehouseConfigured:
+    def test_get_queries_fails_without_building_an_engine(self):
+        with patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine:
+            checks = _checks(MagicMock(), httpPath=None)
+
+            with pytest.raises(CheckError) as exc_info:
+                checks.check_queries()
+
+        mock_engine.assert_not_called()
+        assert exc_info.value.evidence.command == LINEAGE_PROBE_COMMAND
+
+    def test_get_tags_fails_without_building_an_engine(self):
+        with patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine:
+            checks = _checks(MagicMock(), httpPath=None)
+
+            with pytest.raises(CheckError):
+                checks.check_tags()
+
+        mock_engine.assert_not_called()
+
+    def test_the_missing_warehouse_is_still_diagnosed(self):
+        checks = _checks(MagicMock(), httpPath=None)
+
+        with pytest.raises(CheckError) as exc_info:
+            checks.check_queries()
+
+        diagnosis = UNITY_CATALOG_ERRORS.classify(exc_info.value.cause)
+        assert diagnosis is not None
+        assert diagnosis.title == "SQL warehouse not configured"

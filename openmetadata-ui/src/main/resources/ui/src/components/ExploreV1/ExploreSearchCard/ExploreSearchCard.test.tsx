@@ -327,14 +327,14 @@ describe('ExploreSearchCard - Entity type tags', () => {
     expect(screen.queryByText(Constraint.Null)).not.toBeInTheDocument();
   });
 
-  it('renders real constraint metadata for column cards', () => {
+  it('does not render constraint metadata for column cards', () => {
     renderCard({
       entityType: 'tableColumn',
       constraint: Constraint.PrimaryKey,
     } as Partial<ExploreSearchCardProps['source']>);
 
-    expect(screen.getByTestId('label.constraint')).toBeInTheDocument();
-    expect(screen.getByText(Constraint.PrimaryKey)).toBeInTheDocument();
+    expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
+    expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
   });
 });
 

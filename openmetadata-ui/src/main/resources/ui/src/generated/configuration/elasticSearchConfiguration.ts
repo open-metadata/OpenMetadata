@@ -141,6 +141,12 @@ export interface NaturalLanguageSearch {
      */
     keywordWeight?: number;
     /**
+     * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
+     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
+     * cost of latency. Defaults to 2.
+     */
+    knnNumCandidatesMultiplier?: number;
+    /**
      * Fully qualified class name of the NLQService implementation to use
      */
     providerClass?: string;

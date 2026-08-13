@@ -33,7 +33,8 @@
         "MicroStrategyDataset",
         "ThoughtSpotDataModel",
         "SapS4HanaCdsView",
-        "SsrsDataModel"
+        "SsrsDataModel",
+        "OmniDataModel"
       ],
       "javaEnums": [
         {
@@ -86,6 +87,9 @@
         },
         {
           "name": "SsrsDataModel"
+        },
+        {
+          "name": "OmniDataModel"
         }
       ]
     }

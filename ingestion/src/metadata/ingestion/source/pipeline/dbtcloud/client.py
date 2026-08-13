@@ -12,8 +12,10 @@
 Client to interact with DBT Cloud REST APIs
 """
 
+import json
 import traceback
-from typing import Iterable, List, Optional, Tuple  # noqa: UP035
+from datetime import datetime, timedelta, timezone
+from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
@@ -37,6 +39,39 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 API_VERSION = "api/v2"
+
+# Bounds the error body kept in the step's error log.
+ERROR_DETAIL_LIMIT = 200
+
+# Between-retry sleep for the test calls; the client default (30s) would blow a step budget.
+TEST_RETRY_WAIT_SECONDS = 2
+
+# Timestamp format accepted by the dbt Cloud run range filters.
+RUN_FILTER_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+# dbt Cloud rejects an open-ended range (`created_at__gte` answers HTTP 400), so the
+# lookback window has to be closed with a bound that sits past the newest run.
+RUN_WINDOW_END_PADDING_DAYS = 1
+
+
+def build_created_at_range(lookback_days: int) -> str:
+    """
+    Serialise a lookback window into the two-element JSON array that the dbt
+    Cloud ``created_at__range`` filter expects.
+    """
+    now = datetime.now(timezone.utc)
+    window_start = (now - timedelta(days=lookback_days)).strftime(RUN_FILTER_DATE_FORMAT)
+    window_end = (now + timedelta(days=RUN_WINDOW_END_PADDING_DAYS)).strftime(RUN_FILTER_DATE_FORMAT)
+    return json.dumps([window_start, window_end])
+
+
+class DBTCloudApiError(Exception):
+    """A dbt Cloud API call answered with a non-success HTTP status."""
+
+    def __init__(self, status_code: int, path: str, detail: str) -> None:
+        super().__init__(f"dbt Cloud API returned HTTP {status_code} for {path}: {detail}")
+        self.status_code = status_code
+        self.path = path
 
 
 class DBTCloudClient:
@@ -125,20 +160,37 @@ class DBTCloudClient:
                 f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
             )
 
-    def test_get_jobs(self) -> List[DBTJob]:  # noqa: UP006
+    def _test_get(self, path: str, params: dict | None = None) -> Any:
+        """
+        Authenticated GET that raises DBTCloudApiError on a non-success status.
+
+        Uses get_raw: dbt Cloud nests the error `code` under `status`, which get does
+        not recognise, so it would drop the status and return None.
+        """
+        response = self.client.get_raw(path, data=params, retry_wait=TEST_RETRY_WAIT_SECONDS)
+        if not response.ok:
+            raise DBTCloudApiError(response.status_code, path, response.text[:ERROR_DETAIL_LIMIT])
+        return response.json()
+
+    def test_check_access(self) -> None:
+        """
+        Read one job: the smallest authenticated call proving host, token and account id.
+        """
+        self._test_get(f"/accounts/{self.config.accountId}/jobs/", params={"limit": 1, "offset": 0})
+
+    def test_get_jobs(self) -> list[DBTJob]:
         """
         test fetch jobs for an account in dbt cloud
         """
-        job_list = self.client.get(f"/accounts/{self.config.accountId}/jobs/")
+        job_list = self._test_get(f"/accounts/{self.config.accountId}/jobs/")
         return DBTJobList.model_validate(job_list).Jobs
 
-    def test_get_runs(self) -> List[DBTRun]:  # noqa: UP006
+    def test_get_runs(self) -> list[DBTRun]:
         """
         test fetch runs for a job in dbt cloud
         """
-        result = self.client.get(f"/accounts/{self.config.accountId}/runs/")
-        run_list = DBTRunList.model_validate(result).Runs
-        return run_list  # noqa: RET504
+        result = self._test_get(f"/accounts/{self.config.accountId}/runs/")
+        return DBTRunList.model_validate(result).Runs or []
 
     def get_jobs(self) -> Iterable[DBTJob]:
         """
@@ -252,10 +304,39 @@ class DBTCloudClient:
             logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
             return None
 
-    def get_runs(self, job_id: int) -> Iterable[DBTRun]:
+    def get_latest_run(self, job_id: int) -> Optional[DBTRun]:  # noqa: UP045
+        """
+        Most recent run of a job, ignoring any lookback window.
+
+        A job that has not run inside the configured window would otherwise have
+        no execution history at all, so the caller falls back to this.
+        """
+        latest_run = None
+        try:
+            query_params = {
+                "job_definition_id": job_id,
+                "offset": 0,
+                "limit": 1,
+                "order_by": "-created_at",
+            }
+
+            result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
+            runs = DBTRunList.model_validate(result).Runs
+            if runs:
+                latest_run = runs[0]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get latest run for job {job_id}: {exc}")
+        return latest_run
+
+    def get_runs(self, job_id: int, lookback_days: Optional[int] = None) -> Iterable[DBTRun]:  # noqa: UP045
         """
         List runs for a job in dbt cloud using generator pattern.
         yields run one at a time for memory efficiency.
+
+        ``lookback_days`` restricts the result to runs created within the last N
+        days. The filter is applied server side, so runs older than the window
+        are never transferred or paginated over.
         """
         try:
             number_of_runs = self.config.numberOfRuns
@@ -267,6 +348,8 @@ class DBTCloudClient:
                 "limit": min(100, number_of_runs) if number_of_runs else 100,
                 "order_by": "-created_at",
             }
+            if lookback_days:
+                query_params["created_at__range"] = build_created_at_range(lookback_days)
 
             result = self.client.get(f"/accounts/{self.config.accountId}/runs/", data=query_params)
             run_list_response = DBTRunList.model_validate(result)

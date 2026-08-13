@@ -77,6 +77,7 @@ import org.openmetadata.service.aicontext.AIContextBuilder;
 import org.openmetadata.service.aicontext.AIContextMarkdown;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.csv.BulkImportVersioning;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.BadRequestException;
@@ -742,6 +743,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                     jobId, securityContext, deleteResponse.entity());
               } catch (Exception e) {
+                // Log before notifying. The WebSocket notification is the ONLY report this path
+                // had, so a failed async delete was invisible to anyone not holding a live socket
+                // — no stack trace, no error line, nothing. A 100k-table service delete that dies
+                // here looks exactly like one still grinding, which is precisely the ambiguity
+                // that made the nightly scale failures undiagnosable.
+                LOG.error(
+                    "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
+                    entityType,
+                    id,
+                    jobId,
+                    recursive,
+                    hardDelete,
+                    e);
                 WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
                     jobId,
                     securityContext,
@@ -1172,15 +1186,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext,
       String name,
       CsvImportResult result) {
-    versioningRepo.createChangeEventForBulkOperation(
-        versioningRepo.getByName(
-            uriInfo,
-            name,
-            new Fields(versioningRepo.getAllowedFields(), ""),
-            Include.NON_DELETED,
-            false),
-        result,
-        securityContext.getUserPrincipal().getName());
+    BulkImportVersioning.recordVersion(
+        versioningRepo, uriInfo, name, securityContext.getUserPrincipal().getName(), result);
   }
 
   protected ResourceContext<T> getResourceContext() {
