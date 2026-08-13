@@ -12,9 +12,25 @@
  */
 
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { Column, DataType } from '../../src/generated/entity/data/table';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+
+/**
+ * `children` is Ant Design's reserved nested-rows field and `name` was the
+ * table's former row key, so a table carrying both is the regression case for
+ * a sample data payload that used to crash the tab.
+ */
+export const RESERVED_SAMPLE_COLUMN_NAMES = ['children', 'name', 'label'];
+
+export const buildReservedNameColumns = (): Column[] =>
+  RESERVED_SAMPLE_COLUMN_NAMES.map((name) => ({
+    name,
+    dataType: DataType.Varchar,
+    dataLength: 100,
+    dataTypeDisplay: 'varchar',
+  }));
 
 export const navigateToSampleDataTab = async (
   page: Page,
@@ -39,11 +55,14 @@ export const navigateToSampleDataTab = async (
 
 export const addSampleDataViaApi = async (
   apiContext: APIRequestContext,
-  table: TableClass
+  table: TableClass,
+  columnNames?: string[]
 ) => {
-  const columns = (table.entityResponseData.columns ?? [])
-    .map((col) => col.name ?? '')
-    .filter(Boolean);
+  const columns =
+    columnNames ??
+    (table.entityResponseData.columns ?? [])
+      .map((col) => col.name ?? '')
+      .filter(Boolean);
 
   const rows = Array.from({ length: 3 }, (_, rowIdx) =>
     columns.map((_, colIdx) => `sample_value_${colIdx}_${rowIdx}`)
