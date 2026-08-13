@@ -4298,6 +4298,7 @@
     "to-add-new-line": "yeni bir satır eklemek için",
     "token-has-no-expiry": "Bu anahtarın son kullanma tarihi yok.",
     "token-security-description": "JWT Anahtarınıza sahip olan herkes {{brandName}} Sunucusuna REST API istekleri gönderebilir. JWT Anahtarını uygulama kodunuzda ifşa etmeyin. GitHub'da veya başka bir çevrimiçi ortamda paylaşmayın.",
+    "total-data-assets-description": "Servis bağlantısında bulunan toplam varlık sayısı.",
     "total-data-assets-widget-description": "Servis içindeki tüm veri varlıklarına genel bakış. <0>daha fazla bilgi edinin.</0>",
     "total-entity-insight": "Türe göre en son veri varlığı sayısını gösterir.",
     "tour-follow-step": "Değişikliklerinden haberdar olmak için bir veri varlığını takip edin. Aktivite akışınızda takip ettiğiniz veri varlığındaki tüm değişiklikler gösterilir. Bu veri varlığında veri kalitesi sorunları varsa uyarılar da alırsınız.",
