@@ -4298,6 +4298,7 @@
     "to-add-new-line": "to add a new line",
     "token-has-no-expiry": "This token has no expiration date.",
     "token-security-description": "Anyone who has your JWT Token will be able to send REST API requests to the {{brandName}} Server. Do not expose the JWT Token in your application code. Do not share it on GitHub or anywhere else online.",
+    "total-data-assets-description": "Total assets present in the service connection.",
     "total-data-assets-widget-description": "Overview of all the data assets inside the service. <0>learn more.</0>",
     "total-entity-insight": "Display the latest number of data assets by type.",
     "tour-follow-step": "Follow a data asset to stay informed about the changes to it. In your activity feed all the changes to the data asset you are following are shown. You will also get alerts if this data asset has data quality issues.",
