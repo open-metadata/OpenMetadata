@@ -626,7 +626,9 @@ test.describe('Task Resolution - Close by Creator', () => {
       const closedTask = await getTaskResponse.json();
 
       // Task should be in a closed/completed state
-      expect(['Completed', 'Cancelled', 'Rejected']).toContain(closedTask.status);
+      expect(['Completed', 'Cancelled', 'Rejected']).toContain(
+        closedTask.status
+      );
     } finally {
       await afterAction();
     }
