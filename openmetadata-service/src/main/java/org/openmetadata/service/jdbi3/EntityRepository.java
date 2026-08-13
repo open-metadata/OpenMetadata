@@ -4406,8 +4406,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public void patchChangeSummary(
       UUID entityId, String fieldName, ChangeSource changeSource, String user) {
-    // find(), not get(): this re-persists the whole entity, and get() runs clearFields, which
-    // nulls fields outside the requested set — for a Table, tableConstraints and schemaDefinition.
+    // We rewrite the whole entity below, so we need all of it. get() returns only the fields
+    // asked for and nulls the rest, which would drop data like a Table's tableConstraints.
     T entity = find(entityId, NON_DELETED);
     ChangeDescription cd = entity.getChangeDescription();
     if (cd == null) {
