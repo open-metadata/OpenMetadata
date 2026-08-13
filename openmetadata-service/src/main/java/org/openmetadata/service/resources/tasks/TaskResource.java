@@ -1787,14 +1787,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   /**
-   * Enforces the workflow's {@code requiresComment=true} contract at the API boundary. Workflow
-   * definitions (e.g. DataAccessRequestTaskWorkflow) mark reject / revoke transitions as
-   * comment-required so the requester learns why their access was declined; before this check the
-   * backend accepted resolve requests with an empty comment and silently stored the resolution
-   * without a reason.
+   * Enforces the workflow's {@code requiresComment=true} contract at the API boundary — scoped to
+   * DataAccessRequest tasks only. DAR reject / revoke without a reason strands the requester with
+   * no feedback loop (see the DAR QA report), so the backend rejects those with a 400. Other task
+   * families (Description / Owner / Tier / Glossary / Custom / Suggestion / IncidentResolution)
+   * declare {@code requiresComment=true} in their workflow JSON as a UI hint only — their reject
+   * paths remain callable with an empty comment. Enforcing globally regressed every non-DAR reject
+   * spec on OSS + Collate; keep the guard narrow to the flow whose UX actually needs it.
    */
   private void validateTransitionComment(
       final Task task, final String transitionId, final String comment) {
+    if (task.getType() != TaskEntityType.DataAccessRequest) {
+      return;
+    }
     final TaskAvailableTransition transition =
         TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
     if (transition != null

@@ -598,7 +598,13 @@ test.describe('Task Resolution - Close by Creator', () => {
       );
 
       if (!resolveResponse.ok()) {
-        // Try PATCH as fallback
+        // Try PATCH as fallback. `Closed` is NOT a valid `TaskEntityStatus` — the
+        // enum is Open / InProgress / Pending / Approved / Granted / ManualRevoke /
+        // Rejected / Completed / Cancelled / Failed / Revoked / Expired. Pre-H4-diff
+        // guard, the invalid value was silently tolerated by the lenient JsonPatch
+        // application path; the refactor to `JsonUtils.applyPatch(..., Task.class)`
+        // made Jackson's enum validation visible, so this fallback started 400ing.
+        // The creator-closes-their-own-task intent maps to `Cancelled`.
         const closeResponse = await apiContext.patch(
           `/api/v1/tasks/${task.id}`,
           {
@@ -606,7 +612,7 @@ test.describe('Task Resolution - Close by Creator', () => {
               {
                 op: 'replace',
                 path: '/status',
-                value: 'Closed',
+                value: 'Cancelled',
               },
             ],
             headers: { 'Content-Type': 'application/json-patch+json' },
@@ -620,7 +626,7 @@ test.describe('Task Resolution - Close by Creator', () => {
       const closedTask = await getTaskResponse.json();
 
       // Task should be in a closed/completed state
-      expect(['Completed', 'Closed', 'Rejected']).toContain(closedTask.status);
+      expect(['Completed', 'Cancelled', 'Rejected']).toContain(closedTask.status);
     } finally {
       await afterAction();
     }
