@@ -286,13 +286,6 @@ SET json = jsonb_set(
 WHERE json->>'name' = 'AutoClassificationBotPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'AutoClassificationBotRule-Allow-Topic'));
 
--- Drop data product ports pointing at a column ('tableColumn' has no repository, so it 500s
--- portsView). relation 23 = INPUT_PORT, 24 = OUTPUT_PORT.
-DELETE FROM entity_relationship
-WHERE fromEntity = 'dataProduct'
-  AND toEntity = 'tableColumn'
-  AND relation IN (23, 24);
-
 -- MCP configuration lives solely in the mcpConfiguration setting. Drop the app-level copy, which
 -- no code reads, and hide the now empty configure step.
 UPDATE installed_apps
