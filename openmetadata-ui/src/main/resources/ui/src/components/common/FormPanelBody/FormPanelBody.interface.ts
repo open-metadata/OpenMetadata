@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,25 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../styles/variables.less';
+import { ReactNode } from 'react';
 
-.entity-popover-card {
-  max-width: 500px;
-  min-width: 300px;
-  background-color: @white !important;
-  border: none;
-  .explore-search-card {
-    padding: 0;
-    border-radius: 0;
-    border: none;
-  }
-
-  .explore-card-actions {
-    top: 0;
-    right: 0;
-  }
-  &.ant-popover-placement-top {
-    padding-top: 0;
-    padding-bottom: 0;
-  }
+export interface FormPanelBodyProps {
+  children: ReactNode;
+  footer?: ReactNode;
 }
