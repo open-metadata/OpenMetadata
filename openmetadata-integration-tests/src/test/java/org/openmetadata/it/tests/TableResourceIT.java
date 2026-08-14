@@ -81,6 +81,7 @@ import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -90,6 +91,7 @@ import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.StaticSamplingConfig;
+import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -111,6 +113,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for Table entity operations.
@@ -141,6 +144,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     supportsBulkAPI = true;
     supportsDataContract = true;
   }
+
+  // Physical extension values persisted in profiler_data_time_series. Kept as literals rather than
+  // referencing the production constants so the tests pin the on-disk contract.
+  private static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+  private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
+  private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
   private DatabaseSchema lastCreatedSchema;
   private Table lastCreatedTable;
@@ -1968,6 +1977,201 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table updated = client.tables().updateTableProfile(table.getId(), profileRequest);
     assertNotNull(updated.getProfile());
     assertNotNull(updated.getProfile().getRowCount());
+  }
+
+  // ===================================================================
+  // PROFILER DATA LIFECYCLE ON DELETE (issue #27041)
+  // ===================================================================
+
+  @Test
+  void delete_hardDeletePurgesProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_purge_table"), ns);
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    assertTrue(
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION) >= 1,
+        "Table profile row must exist before the delete");
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the delete");
+    assertTrue(
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION) >= 1,
+        "System profile row must exist before the delete");
+
+    hardDeleteEntity(table.getId().toString());
+
+    assertEquals(
+        0,
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
+        "Hard delete must purge table profile rows");
+    assertEquals(
+        0,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Hard delete must purge column profile rows");
+    assertEquals(
+        0,
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
+        "Hard delete must purge system profile rows");
+
+    Table recreated = createEntity(createRequest);
+    assertEquals(
+        tableFqn, recreated.getFullyQualifiedName(), "Re-created table must reuse the same FQN");
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNull(
+        latestProfile.getProfile(),
+        "Re-created table must not resurface the deleted table's profile");
+    assertTrue(
+        latestProfile.getColumns().stream().allMatch(column -> column.getProfile() == null),
+        "Re-created table must not resurface the deleted table's column profiles");
+    assertTrue(
+        listSystemProfiles(client, tableFqn).isEmpty(),
+        "Re-created table must not resurface the deleted table's system profiles");
+  }
+
+  @Test
+  void delete_softDeletePreservesProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_soft_delete_table"), ns);
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    deleteEntity(table.getId().toString());
+
+    assertTrue(
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve table profile rows");
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve column profile rows");
+    assertTrue(
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve system profile rows");
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNotNull(
+        latestProfile.getProfile(), "Soft-deleted table must still serve its latest profile");
+    assertTrue(
+        latestProfile.getColumns().stream().anyMatch(column -> column.getProfile() != null),
+        "Soft-deleted table must still serve its column profiles");
+    assertFalse(
+        listSystemProfiles(client, tableFqn).isEmpty(),
+        "Soft-deleted table must still serve its system profiles");
+  }
+
+  @Test
+  void delete_hardDeleteOfSchemaPurgesTableProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("profile_cascade_table"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the cascade delete");
+
+    Map<String, String> params = Map.of("hardDelete", "true", "recursive", "true");
+    client.databaseSchemas().delete(schema.getId().toString(), params);
+
+    assertEquals(
+        0,
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
+        "Recursive schema hard delete must purge the table's table profile rows");
+    assertEquals(
+        0,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Recursive schema hard delete must purge the table's column profile rows");
+    assertEquals(
+        0,
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
+        "Recursive schema hard delete must purge the table's system profile rows");
+  }
+
+  private void writeFullProfile(OpenMetadataClient client, Table table) {
+    long timestamp = System.currentTimeMillis();
+    TableProfile tableProfile =
+        new TableProfile().withRowCount(42.0).withColumnCount(2.0).withTimestamp(timestamp);
+    ColumnProfile columnProfile =
+        new ColumnProfile()
+            .withName(table.getColumns().get(0).getName())
+            .withUniqueCount(42.0)
+            .withUniqueProportion(1.0)
+            .withTimestamp(timestamp);
+    SystemProfile systemProfile =
+        new SystemProfile()
+            .withTimestamp(timestamp)
+            .withOperation(DmlOperationType.INSERT)
+            .withRowsAffected(42);
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(tableProfile)
+                .withColumnProfile(List.of(columnProfile))
+                .withSystemProfile(List.of(systemProfile)));
+  }
+
+  private Table getLatestTableProfile(OpenMetadataClient client, String tableFqn) {
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/" + encodedFqn + "/tableProfile/latest?includeColumnProfile=true",
+                null);
+    return JsonUtils.readValue(response, Table.class);
+  }
+
+  private List<SystemProfile> listSystemProfiles(OpenMetadataClient client, String tableFqn) {
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/"
+                    + encodedFqn
+                    + "/systemProfile?startTs=0&endTs="
+                    + System.currentTimeMillis(),
+                null);
+    JsonNode data = JsonUtils.readTree(response).get("data");
+    List<SystemProfile> systemProfiles = new ArrayList<>();
+    if (data != null) {
+      data.forEach(
+          node -> systemProfiles.add(JsonUtils.readValue(node.toString(), SystemProfile.class)));
+    }
+    return systemProfiles;
+  }
+
+  private int countProfilerRows(String entityFqn, String extension) {
+    String fqnHash = FullyQualifiedName.buildHash(entityFqn);
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM profiler_data_time_series "
+                            + "WHERE entityFQNHash = :fqnHash AND extension = :extension")
+                    .bind("fqnHash", fqnHash)
+                    .bind("extension", extension)
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   @Test

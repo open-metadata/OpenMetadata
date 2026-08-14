@@ -1721,6 +1721,29 @@ public class TableRepository extends EntityRepository<Table> {
     return entity.getDatabaseSchema();
   }
 
+  /** Only reached on hard delete, so soft-deleted tables keep serving their satellite data. */
+  @Override
+  protected void entitySpecificCleanup(String deletedBy, Table table) {
+    deleteResidualTestCases(table, deletedBy);
+    deleteResidualExecutableTestSuite(table, deletedBy);
+    deleteProfilerData(table);
+  }
+
+  /**
+   * profiler_data_time_series is keyed by FQN hash rather than by table id, so rows left behind by
+   * a hard delete are silently adopted by the next table created with the same FQN. Table and
+   * system profiles are stored under the table FQN; column profiles under each (possibly nested)
+   * column FQN, which is why those need a descendant purge.
+   */
+  private void deleteProfilerData(Table table) {
+    String tableFqn = table.getFullyQualifiedName();
+    EntityTimeSeriesDAO profilerDao = daoCollection.profilerDataTimeSeriesDao();
+    profilerDao.delete(tableFqn, TABLE_PROFILE_EXTENSION);
+    profilerDao.delete(tableFqn, SYSTEM_PROFILE_EXTENSION);
+    int columnRowsDeleted = profilerDao.deleteDescendants(tableFqn, TABLE_COLUMN_PROFILE_EXTENSION);
+    LOG.debug("Purged {} column profile row(s) for deleted table {}", columnRowsDeleted, tableFqn);
+  }
+
   /**
    * Safety net for the table hard-delete cascade. The normal flow goes
    * {@code table -> executable test suite -> test cases} via CONTAINS relationships, but if that
@@ -1730,12 +1753,6 @@ public class TableRepository extends EntityRepository<Table> {
    * whose {@code entityFQN} resolves under the table being deleted, going through the standard
    * delete path so test case results, resolution status, and search docs are also cleaned up.
    */
-  @Override
-  protected void entitySpecificCleanup(String deletedBy, Table table) {
-    deleteResidualTestCases(table, deletedBy);
-    deleteResidualExecutableTestSuite(table, deletedBy);
-  }
-
   private void deleteResidualTestCases(Table table, String deletedBy) {
     String tableFqn = table.getFullyQualifiedName();
     String likePrefix = LikeEscape.escape(tableFqn) + Entity.SEPARATOR + "%";
