@@ -78,7 +78,15 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
-SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
+SNOWFLAKE_SESSION_TAG_QUERY = "ALTER SESSION SET QUERY_TAG='{query_tag}'"
+
+
+def set_session_tag_query(query_tag: str) -> str:
+    """Return the ALTER SESSION statement setting QUERY_TAG to the given value."""
+    # ALTER SESSION SET takes several space-separated pairs, so an unescaped quote
+    # in the tag does not just truncate the value, it starts a new assignment.
+    return SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=query_tag.replace("'", "''"))
+
 
 SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     """
