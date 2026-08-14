@@ -140,6 +140,9 @@ def _unique_count_dimensional_cte(col: Column, table, dimension_col: Column, dia
         select(
             dimension_col.label("dim_value"),
             group_by_expr.label("col_value"),
+            # Deliberately independent of UNIQUE_COUNT_GROUP_ALIAS: this CTE is read back by
+            # attribute (value_counts.c.occurrence_count below), never by the profiled column's
+            # name, so it never had the dotted-STRUCT-path clash that alias exists to solve.
             func.count(count_expr).label("occurrence_count"),
             func.count().label("row_count"),  # Total rows for this (dimension, value) pair
         )

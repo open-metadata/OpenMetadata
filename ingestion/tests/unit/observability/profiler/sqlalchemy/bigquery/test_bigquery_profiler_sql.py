@@ -15,7 +15,6 @@ Validate the SQL the profiler emits for BigQuery against the real BigQuery diale
 import re
 from types import SimpleNamespace
 
-import pytest
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
@@ -132,14 +131,18 @@ def test_flat_column_countif_references_the_grouped_subquery_alias():
     assert f"count(`{FLAT_COLUMN}`)" in sql, sql
 
 
-@pytest.mark.parametrize("column_type", [sa.TIMESTAMP, sa.DATE, sa.String, sa.LargeBinary])
-def test_countif_compares_against_an_int64_bind(column_type):
-    """The literal `1` must bind as INT64 whatever the profiled column's type is.
+def test_countif_bind_renders_as_int64_smoke():
+    """Smoke check that the emitted comparison binds `1` as INT64, not as the column type.
 
     Binding it as the column type made BigQuery reject the profile with
     `Unparseable query parameter ... Invalid timestamp: '1'`.
+
+    This does NOT pin our code: SQLAlchemy's `coerce_compared_value` maps the Python `1` to
+    `Integer` before the dialect sees it, so the bind renders INT64 even for a typed column.
+    It only guards against a dependency bump that reintroduces column-typed binds.
+    `test_countif_column_is_untyped` is what actually guards the fix.
     """
-    sql = _profiler_unique_count_sql(NESTED_COLUMN, column_type=column_type, literal_binds=False)
+    sql = _profiler_unique_count_sql(NESTED_COLUMN, column_type=sa.TIMESTAMP, literal_binds=False)
 
     assert re.search(r"countif\(.+ = %\(\w+:INT64\)s\)", sql), sql
 
@@ -147,9 +150,9 @@ def test_countif_compares_against_an_int64_bind(column_type):
 def test_countif_column_is_untyped():
     """The COUNTIF operand must stay untyped so no column type reaches the comparison.
 
-    This pins metrics/static/unique_count.py building the reference with an untyped
-    `column(...)`; the compiled-SQL guard above cannot, because SQLAlchemy's own coercion
-    happens to yield an INT64 bind either way on the current pin.
+    This is the only assertion that fails if the reference is rebuilt as
+    `column(UNIQUE_COUNT_GROUP_ALIAS, col.type)`: the compiled SQL is identical either way
+    because SQLAlchemy coerces the bind to `Integer` regardless of the column's type.
     """
     session = _BigQuerySession()
     metric_query = UniqueCount(sa.Column(NESTED_COLUMN, sa.String)).query(sample=None, session=session)
