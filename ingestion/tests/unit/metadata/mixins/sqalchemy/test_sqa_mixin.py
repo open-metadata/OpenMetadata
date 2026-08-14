@@ -55,3 +55,13 @@ def test_set_session_tag_is_skipped_without_a_query_tag():
     snowflake_interface().set_session_tag(session)
 
     assert session.statements == []
+
+
+def test_set_session_tag_escapes_embedded_double_quotes():
+    session = RecordingSession()
+
+    snowflake_interface(query_tag='{"department": "Data Analytics"}').set_session_tag(session)
+
+    assert [str(statement) for statement in session.statements] == [
+        'ALTER SESSION SET QUERY_TAG="{""department"": ""Data Analytics""}"'
+    ]

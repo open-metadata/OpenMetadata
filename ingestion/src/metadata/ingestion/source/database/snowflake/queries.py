@@ -80,6 +80,20 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
 
 SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
 
+
+def get_snowflake_session_tag_query(query_tag: str) -> str:
+    """
+    Build the ALTER SESSION SET QUERY_TAG statement.
+
+    QUERY_TAG values that contain double quotes (e.g. JSON-shaped tags like
+    '{"department": "Data Analytics"}') would otherwise close the quoted value
+    early and break the statement, so embedded double quotes are escaped by
+    doubling them per Snowflake's quoted-value escaping rules.
+    """
+    escaped_query_tag = query_tag.replace('"', '""')
+    return SNOWFLAKE_SESSION_TAG_QUERY.format(query_tag=escaped_query_tag)
+
+
 SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
