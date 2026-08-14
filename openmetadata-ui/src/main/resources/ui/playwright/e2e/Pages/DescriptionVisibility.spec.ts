@@ -418,7 +418,8 @@ test.describe(
       const descriptionTab = userPage.getByRole('tab', { name: 'Description Tab' });
       await expect(descriptionTab).toBeVisible();
       await descriptionTab.focus();
-       await userPage.keyboard.press('Enter');
+      await userPage.keyboard.press('Enter');
+      await userPage.waitForTimeout(5000); // Wait for the tab content to load
       await waitForAllLoadersToDisappear(userPage);
       await userPage.waitForLoadState('domcontentloaded');
 

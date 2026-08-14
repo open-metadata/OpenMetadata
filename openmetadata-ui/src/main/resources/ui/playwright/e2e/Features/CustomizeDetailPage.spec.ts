@@ -518,6 +518,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await customTab.focus();
         await userPage.keyboard.press('Enter');
+        await userPage.waitForTimeout(5000); // Wait for the tab content to load
         await waitForAllLoadersToDisappear(userPage);
         await userPage.waitForLoadState('domcontentloaded');
           
@@ -691,6 +692,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await customTab.focus();
         await userPage.keyboard.press('Enter');
+        await userPage.waitForTimeout(5000); // Wait for the tab content to load
         await waitForAllLoadersToDisappear(userPage);
         await userPage.waitForLoadState('domcontentloaded');
         
