@@ -75,6 +75,10 @@ public class OrphanedTimeSeriesCleanupIT {
 
   private static final int BATCH = 10_000;
   private static final String MCP_SERVICE_NAME = "mcp-orphan-cleanup-svc";
+  private static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+  private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
+  private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+  private static final String PROFILER_TABLE = "profiler_data_time_series";
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -180,35 +184,51 @@ public class OrphanedTimeSeriesCleanupIT {
         countRowsById("test_case_resolution_status_time_series", validStatus.getId().toString()));
   }
 
+  /**
+   * Covers all three profiler extensions. Column profiles are keyed by the <i>column</i> FQN, whose
+   * hash carries one more segment than {@code table_entity.fqnHash}, so a predicate that compares
+   * the raw hash treats every column profile of a live table as an orphan (issue #27041).
+   */
   @Test
   void profilerDataOrphans(TestNamespace ns) throws Exception {
     Table table = createTable(ns, "prof");
-    String validFqn = table.getFullyQualifiedName();
-    String orphanFqn = "orphanTbl_" + ns.uniqueShortId() + ".profile";
+    String validTableFqn = table.getFullyQualifiedName();
+    String validColumnFqn = table.getColumns().get(0).getFullyQualifiedName();
+    String validNestedColumnFqn = validColumnFqn + ".child";
+    String orphanTableFqn = "orphanSvc_" + ns.uniqueShortId() + ".db.sch.tbl";
+    String orphanColumnFqn = orphanTableFqn + ".id";
 
-    String validJson =
-        String.format("{\"timestamp\":%d,\"rowCount\":42}", System.currentTimeMillis());
-    String orphanJson =
-        String.format("{\"timestamp\":%d,\"rowCount\":7}", System.currentTimeMillis());
-
-    Entity.getCollectionDAO()
-        .profilerDataTimeSeriesDao()
-        .insert(validFqn, "table.tableProfile", "tableProfile", validJson);
-    Entity.getCollectionDAO()
-        .profilerDataTimeSeriesDao()
-        .insert(orphanFqn, "table.tableProfile", "tableProfile", orphanJson);
+    insertProfilerRow(validTableFqn, TABLE_PROFILE_EXTENSION, 42);
+    insertProfilerRow(validTableFqn, SYSTEM_PROFILE_EXTENSION, 43);
+    insertProfilerRow(validColumnFqn, COLUMN_PROFILE_EXTENSION, 44);
+    insertProfilerRow(validNestedColumnFqn, COLUMN_PROFILE_EXTENSION, 45);
+    insertProfilerRow(orphanTableFqn, TABLE_PROFILE_EXTENSION, 7);
+    insertProfilerRow(orphanColumnFqn, COLUMN_PROFILE_EXTENSION, 8);
 
     int deleted =
         Entity.getCollectionDAO().profilerDataTimeSeriesDao().deleteOrphanedRecords(BATCH);
 
-    assertTrue(deleted >= 1, "Expected at least the inserted orphan row to be deleted");
+    assertTrue(deleted >= 2, "Expected at least the two inserted orphan rows to be deleted");
     assertEquals(
         0,
-        countRowsByFqnHash("profiler_data_time_series", FullyQualifiedName.buildHash(orphanFqn)));
+        countProfilerRows(orphanTableFqn, TABLE_PROFILE_EXTENSION),
+        "Table profile of a non-existent table must be swept");
+    assertEquals(
+        0,
+        countProfilerRows(orphanColumnFqn, COLUMN_PROFILE_EXTENSION),
+        "Column profile of a non-existent table must be swept");
     assertTrue(
-        countRowsByFqnHash("profiler_data_time_series", FullyQualifiedName.buildHash(validFqn))
-            >= 1,
-        "Valid profiler row must be preserved");
+        countProfilerRows(validTableFqn, TABLE_PROFILE_EXTENSION) >= 1,
+        "Table profile of a live table must be preserved");
+    assertTrue(
+        countProfilerRows(validTableFqn, SYSTEM_PROFILE_EXTENSION) >= 1,
+        "System profile of a live table must be preserved");
+    assertTrue(
+        countProfilerRows(validColumnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile of a live table must be preserved");
+    assertTrue(
+        countProfilerRows(validNestedColumnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Nested column profile of a live table must be preserved");
   }
 
   @Test
@@ -345,6 +365,30 @@ public class OrphanedTimeSeriesCleanupIT {
                 handle
                     .createQuery("SELECT COUNT(*) FROM " + table + " WHERE id = :id")
                     .bind("id", id)
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  private void insertProfilerRow(String entityFqn, String extension, int rowCount) {
+    String json =
+        String.format("{\"timestamp\":%d,\"rowCount\":%d}", System.currentTimeMillis(), rowCount);
+    Entity.getCollectionDAO()
+        .profilerDataTimeSeriesDao()
+        .insert(entityFqn, extension, "profileData", json);
+  }
+
+  private int countProfilerRows(String entityFqn, String extension) {
+    String fqnHash = FullyQualifiedName.buildHash(entityFqn);
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM "
+                            + PROFILER_TABLE
+                            + " WHERE entityFQNHash = :h AND extension = :e")
+                    .bind("h", fqnHash)
+                    .bind("e", extension)
                     .mapTo(Integer.class)
                     .one());
   }

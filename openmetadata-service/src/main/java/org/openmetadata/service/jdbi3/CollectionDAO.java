@@ -10242,6 +10242,19 @@ public interface CollectionDAO {
           getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), timestamp);
     }
 
+    // A table FQN is always service.database.schema.table, so table_entity.fqnHash is always four
+    // '.'-joined MD5 segments. Column profile rows are keyed by the column FQN, whose hash carries
+    // at least one extra segment (more for nested columns), so a column row only resolves to its
+    // parent table after the trailing segments are dropped. Comparing the raw hash never matched,
+    // which silently purged every column profile of every live table on each run (issue #27041).
+    String MYSQL_PARENT_TABLE_HASH =
+        "SUBSTRING_INDEX(profiler_data_time_series.entityFQNHash, '.', 4)";
+    String POSTGRES_PARENT_TABLE_HASH =
+        "split_part(pdts.entityFQNHash, '.', 1) || '.' "
+            + "|| split_part(pdts.entityFQNHash, '.', 2) || '.' "
+            + "|| split_part(pdts.entityFQNHash, '.', 3) || '.' "
+            + "|| split_part(pdts.entityFQNHash, '.', 4)";
+
     // profiler_data_time_series has no id column (unique key is
     // entityFQNHash + extension + operation + timestamp), so we limit by
     // row count using single-table DELETE+LIMIT on MySQL and ctid IN (...) on Postgres.
@@ -10251,7 +10264,11 @@ public interface CollectionDAO {
             "DELETE FROM profiler_data_time_series "
                 + "WHERE NOT EXISTS ("
                 + "  SELECT 1 FROM table_entity te "
-                + "  WHERE te.fqnHash = profiler_data_time_series.entityFQNHash"
+                + "  WHERE te.fqnHash = CASE WHEN profiler_data_time_series.extension = '"
+                + TableRepository.TABLE_COLUMN_PROFILE_EXTENSION
+                + "' THEN "
+                + MYSQL_PARENT_TABLE_HASH
+                + " ELSE profiler_data_time_series.entityFQNHash END"
                 + ") "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -10262,7 +10279,11 @@ public interface CollectionDAO {
                 + "  SELECT pdts.ctid FROM profiler_data_time_series pdts "
                 + "  WHERE NOT EXISTS ("
                 + "    SELECT 1 FROM table_entity te "
-                + "    WHERE te.fqnHash = pdts.entityFQNHash"
+                + "    WHERE te.fqnHash = CASE WHEN pdts.extension = '"
+                + TableRepository.TABLE_COLUMN_PROFILE_EXTENSION
+                + "' THEN "
+                + POSTGRES_PARENT_TABLE_HASH
+                + " ELSE pdts.entityFQNHash END"
                 + "  ) "
                 + "  LIMIT :limit"
                 + ")",
