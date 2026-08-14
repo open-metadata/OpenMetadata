@@ -56,7 +56,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import {
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
+} from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
@@ -337,7 +340,10 @@ const MetricListPage = () => {
     try {
       setIsMetricActionsOpen(false);
       setIsExporting(true);
-      await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      const exportJob = await exportMetricDetailsInCSV(WILD_CARD_CHAR);
+      // Claim the just-started job so the tray always surfaces it, even if it
+      // finishes before the tray's first fetch.
+      markCsvJobOwned((exportJob as { jobId?: string })?.jobId);
       window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
     } catch (error) {
       showErrorToast(error as AxiosError);

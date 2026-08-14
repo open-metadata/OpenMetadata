@@ -54,7 +54,10 @@ import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUti
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { CSV_JOBS_REFRESH_EVENT } from '../../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import {
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
+} from '../../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import {
   CSVExportJob,
   CSVExportWebsocketResponse,
@@ -582,6 +585,9 @@ export const EntityExportModalProvider = ({
       if (isString(result)) {
         downloadFile(result, `${data.name}_${getCurrentISODate()}.csv`);
       } else {
+        // Claim the just-started job so the tray always surfaces it, even if it
+        // finishes before the tray's first fetch.
+        markCsvJobOwned((result as { jobId?: string })?.jobId);
         window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
       }
     } catch (error) {
