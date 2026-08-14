@@ -74,6 +74,15 @@ describe('getSidebarActiveKeys', () => {
     ).toEqual(['/observability/alerts']);
   });
 
+  it('should keep Incident Manager active for a direct test case detail route', () => {
+    expect(
+      getSidebarActiveKeys(
+        '/test-case/service.database.schema.table.test/results',
+        SIDEBAR_NESTED_KEYS
+      )
+    ).toEqual(['/incident-manager']);
+  });
+
   it('should keep the plural observability alerts list/add pages active', () => {
     expect(
       getSidebarActiveKeys('/observability/alerts', SIDEBAR_NESTED_KEYS)

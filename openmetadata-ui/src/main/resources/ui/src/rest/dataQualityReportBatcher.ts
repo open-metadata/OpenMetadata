@@ -19,8 +19,10 @@ import {
 
 interface PendingReport {
   params: DataQualityReportParamsType;
-  resolve: (value: DataQualityReport) => void;
-  reject: (reason?: unknown) => void;
+  subscribers: Array<{
+    resolve: (value: DataQualityReport) => void;
+    reject: (reason?: unknown) => void;
+  }>;
 }
 
 let pendingReports: PendingReport[] = [];
@@ -40,6 +42,8 @@ const flushChunk = async (chunk: PendingReport[]): Promise<void> => {
 
   try {
     const { results } = await getDataQualityReportBatch({ requests });
+    // Match by the generated key because the batch response is not required to
+    // preserve request order.
     const resultByKey = new Map(
       results.map((result) => [result.key, result] as const)
     );
@@ -48,15 +52,20 @@ const flushChunk = async (chunk: PendingReport[]): Promise<void> => {
       const result = resultByKey.get(String(index));
 
       if (result?.report) {
-        pending.resolve(result.report);
-      } else {
-        pending.reject(
-          new Error(result?.error ?? 'Data quality report request failed')
+        pending.subscribers.forEach(({ resolve }) =>
+          resolve(result.report as DataQualityReport)
         );
+      } else {
+        const error = new Error(
+          result?.error ?? 'Data quality report request failed'
+        );
+        pending.subscribers.forEach(({ reject }) => reject(error));
       }
     });
   } catch (error) {
-    chunk.forEach((pending) => pending.reject(error));
+    chunk.forEach((pending) =>
+      pending.subscribers.forEach(({ reject }) => reject(error))
+    );
   }
 };
 
@@ -81,7 +90,17 @@ export const batchedDataQualityReport = (
   params: DataQualityReportParamsType
 ): Promise<DataQualityReport> => {
   return new Promise<DataQualityReport>((resolve, reject) => {
-    pendingReports.push({ params, resolve, reject });
+    // Identical requests in the same microtask share one batch entry while each
+    // caller still receives an independently settled promise.
+    const matchingReport = pendingReports.find(
+      (pending) => JSON.stringify(pending.params) === JSON.stringify(params)
+    );
+
+    if (matchingReport) {
+      matchingReport.subscribers.push({ resolve, reject });
+    } else {
+      pendingReports.push({ params, subscribers: [{ resolve, reject }] });
+    }
 
     if (!isFlushScheduled) {
       isFlushScheduled = true;

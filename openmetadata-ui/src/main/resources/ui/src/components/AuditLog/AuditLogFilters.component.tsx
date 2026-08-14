@@ -111,7 +111,7 @@ const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
     icon:
       searchClassBase.getEntityIcon(
         getCanonicalEntityType(o.value),
-        'tw:text-quaternary',
+        '',
         {},
         EntityIconSize.Size16
       ) ?? undefined,
