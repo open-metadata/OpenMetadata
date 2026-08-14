@@ -450,11 +450,9 @@ export const verifyGlossaryDetails = async (
 
   await checkName(page, glossaryDetails.name);
 
-  const viewerContainerText = await page.textContent(
-    '[data-testid="viewer-container"]'
-  );
-
-  expect(viewerContainerText).toContain(glossaryDetails.description);
+  await expect(
+    page.locator('[data-testid="viewer-container"]')
+  ).toContainText(glossaryDetails.description);
 
   // Owner
   if (glossaryDetails.owners.length > 0) {
