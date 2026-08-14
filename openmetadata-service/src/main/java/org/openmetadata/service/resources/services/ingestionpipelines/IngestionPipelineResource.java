@@ -86,6 +86,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository.KeysetPageParams;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
@@ -252,25 +253,15 @@ public class IngestionPipelineResource
       SecurityContext securityContext,
       String fieldsParam,
       ListFilter filter,
-      int limitParam,
-      String before,
-      String after,
-      String sortField,
-      String sortOrder) {
-    validateSortField(sortField);
-    boolean ascending = isAscending(sortOrder);
+      KeysetPageParams page) {
     Fields fields = getFields(fieldsParam);
-    RestUtil.validateCursors(before, after);
+    RestUtil.validateCursors(page.before(), page.after());
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, getViewOperations(fields)),
         filter.getResourceContext(entityType));
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
-
-    return addHref(
-        uriInfo,
-        repository.listByDisplayName(
-            uriInfo, fields, filter, limitParam, before, after, ascending));
+    return addHref(uriInfo, repository.listByDisplayName(uriInfo, fields, filter, page));
   }
 
   private void validateSortField(String sortField) {
@@ -400,20 +391,18 @@ public class IngestionPipelineResource
             .addQueryParam("testSuite", testSuiteParam)
             .addQueryParam("applicationType", applicationType)
             .addQueryParam("provider", provider == null ? null : provider.value());
-    ResultList<IngestionPipeline> ingestionPipelines =
-        nullOrEmpty(sortField)
-            ? super.listInternal(
-                uriInfo, securityContext, fieldsParam, filter, limitParam, before, after)
-            : listSortedByDisplayName(
-                uriInfo,
-                securityContext,
-                fieldsParam,
-                filter,
-                limitParam,
-                before,
-                after,
-                sortField,
-                sortOrder);
+    ResultList<IngestionPipeline> ingestionPipelines;
+    if (nullOrEmpty(sortField)) {
+      ingestionPipelines =
+          super.listInternal(
+              uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    } else {
+      validateSortField(sortField);
+      KeysetPageParams page =
+          new KeysetPageParams(limitParam, before, after, isAscending(sortOrder));
+      ingestionPipelines =
+          listSortedByDisplayName(uriInfo, securityContext, fieldsParam, filter, page);
+    }
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {
       decryptOrNullify(securityContext, ingestionPipeline, false);

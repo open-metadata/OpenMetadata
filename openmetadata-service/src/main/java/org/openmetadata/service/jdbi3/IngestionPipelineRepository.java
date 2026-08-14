@@ -138,6 +138,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     this.openMetadataApplicationConfig = config;
   }
 
+  /** Keyset page request for the displayName-ordered listing: cursor pair plus scan direction. */
+  public record KeysetPageParams(int limit, String before, String after, boolean ascending) {}
+
+  /** SQL tokens for one scan direction, so the keyset queries never assemble them ad hoc. */
+  private record SortDirection(String order, String reverseOrder, String forward, String backward) {
+    static SortDirection of(boolean ascending) {
+      return ascending
+          ? new SortDirection("ASC", "DESC", ">", "<")
+          : new SortDirection("DESC", "ASC", "<", ">");
+    }
+  }
+
   /**
    * List pipelines ordered by the value the UI's Name column renders ({@code displayName ?? name}),
    * rather than the raw {@code name} the default cursor pagination orders by.
@@ -152,87 +164,105 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
    * index range scan. Modelled on {@link ContextFileRepository#listByUpdatedAt}.
    */
   public ResultList<IngestionPipeline> listByDisplayName(
-      UriInfo uriInfo,
-      Fields fields,
-      ListFilter filter,
-      int limitParam,
-      String before,
-      String after,
-      boolean ascending) {
-    CollectionDAO.IngestionPipelineDAO pipelineDAO =
-        Entity.getCollectionDAO().ingestionPipelineDAO();
+      UriInfo uriInfo, Fields fields, ListFilter filter, KeysetPageParams page) {
     int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
-    List<IngestionPipeline> entities = new ArrayList<>();
-    if (limitParam <= 0) {
-      return getResultList(entities, null, null, total);
-    }
-
-    String order = ascending ? "ASC" : "DESC";
-    String reverseOrder = ascending ? "DESC" : "ASC";
-    String forward = ascending ? ">" : "<";
-    String backward = ascending ? "<" : ">";
-    // Resolve once: getCondition registers derived bind params on the filter, and the serviceType
-    // variant is a join the plain ListFilter condition cannot express.
-    String condition = pipelineDAO.displayNameSortCondition(filter);
-
-    if (!nullOrEmpty(before)) {
-      DisplayNameCursor cursor = parseDisplayNameCursor(before);
-      entities =
-          hydrateByDisplayName(
-              pipelineDAO.listBeforeByDisplayName(
-                  filter.getQueryParams(),
-                  condition,
-                  order,
-                  reverseOrder,
-                  backward,
-                  limitParam + 1,
-                  cursor.displayName(),
-                  cursor.id()),
-              fields,
-              uriInfo,
-              filter);
-      String beforeCursor = null;
-      if (entities.size() > limitParam) {
-        entities.remove(0);
-        beforeCursor = displayNameCursorValue(entities.get(0));
-      }
-      // An empty page means the cursor was valid but every earlier row was deleted concurrently.
-      // Echo the caller's cursor rather than returning null, which reads as end-of-pagination and
-      // dead-ends forward navigation. Mirrors EntityRepository#listBefore.
-      String afterCursor =
-          entities.isEmpty()
-              ? RestUtil.decodeCursor(before)
-              : displayNameCursorValue(entities.get(entities.size() - 1));
-      return getResultList(entities, beforeCursor, afterCursor, total);
-    }
-
-    List<String> jsons;
-    if (nullOrEmpty(after)) {
-      jsons =
-          pipelineDAO.listByDisplayName(filter.getQueryParams(), condition, order, limitParam + 1);
+    ResultList<IngestionPipeline> result;
+    if (page.limit() <= 0) {
+      result = getResultList(new ArrayList<>(), null, null, total);
+    } else if (!nullOrEmpty(page.before())) {
+      result = beforeDisplayNamePage(uriInfo, fields, filter, page, total);
     } else {
-      DisplayNameCursor cursor = parseDisplayNameCursor(after);
-      jsons =
-          pipelineDAO.listAfterByDisplayName(
-              filter.getQueryParams(),
-              condition,
-              order,
-              forward,
-              limitParam + 1,
-              cursor.displayName(),
-              cursor.id());
+      result = forwardDisplayNamePage(uriInfo, fields, filter, page, total);
     }
+    return result;
+  }
 
-    entities = hydrateByDisplayName(jsons, fields, uriInfo, filter);
-    // Same concurrent-deletion guard in the forward direction: a null before reads as "first page"
-    // and dead-ends backward navigation, so echo the caller's cursor instead.
-    String beforeCursor = forwardBeforeCursor(after, entities);
+  /** First page (no {@code after}) or a forward page from an {@code after} cursor. */
+  private ResultList<IngestionPipeline> forwardDisplayNamePage(
+      UriInfo uriInfo, Fields fields, ListFilter filter, KeysetPageParams page, int total) {
+    SortDirection direction = SortDirection.of(page.ascending());
+    // getCondition registers derived bind params on the filter and the serviceType variant is a
+    // join the plain ListFilter condition cannot express, so resolve the scope once.
+    String condition = ingestionPipelineDAO().displayNameSortCondition(filter);
+    String displayExpr = ingestionPipelineDAO().displayNameSortExpression();
+    List<String> jsons =
+        nullOrEmpty(page.after())
+            ? ingestionPipelineDAO()
+                .listByDisplayName(
+                    filter.getQueryParams(),
+                    condition,
+                    displayExpr,
+                    direction.order(),
+                    page.limit() + 1)
+            : listAfterByDisplayName(filter, condition, displayExpr, direction, page);
+    List<IngestionPipeline> entities = hydrateByDisplayName(jsons, fields, uriInfo, filter);
+    String beforeCursor = forwardBeforeCursor(page.after(), entities);
     String afterCursor = null;
-    if (entities.size() > limitParam) {
-      entities.remove(limitParam);
-      afterCursor = displayNameCursorValue(entities.get(limitParam - 1));
+    if (entities.size() > page.limit()) {
+      entities.remove(page.limit());
+      afterCursor = displayNameCursorValue(entities.get(page.limit() - 1));
     }
     return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private List<String> listAfterByDisplayName(
+      ListFilter filter,
+      String condition,
+      String displayExpr,
+      SortDirection direction,
+      KeysetPageParams page) {
+    DisplayNameCursor cursor = parseDisplayNameCursor(page.after());
+    return ingestionPipelineDAO()
+        .listAfterByDisplayName(
+            filter.getQueryParams(),
+            condition,
+            displayExpr,
+            direction.order(),
+            direction.forward(),
+            page.limit() + 1,
+            cursor.displayName(),
+            cursor.id());
+  }
+
+  /** Backward page from a {@code before} cursor; the DAO walks reverse then re-sorts the page. */
+  private ResultList<IngestionPipeline> beforeDisplayNamePage(
+      UriInfo uriInfo, Fields fields, ListFilter filter, KeysetPageParams page, int total) {
+    SortDirection direction = SortDirection.of(page.ascending());
+    String condition = ingestionPipelineDAO().displayNameSortCondition(filter);
+    String displayExpr = ingestionPipelineDAO().displayNameSortExpression();
+    DisplayNameCursor cursor = parseDisplayNameCursor(page.before());
+    List<IngestionPipeline> entities =
+        hydrateByDisplayName(
+            ingestionPipelineDAO()
+                .listBeforeByDisplayName(
+                    filter.getQueryParams(),
+                    condition,
+                    displayExpr,
+                    direction.order(),
+                    direction.reverseOrder(),
+                    direction.backward(),
+                    page.limit() + 1,
+                    cursor.displayName(),
+                    cursor.id()),
+            fields,
+            uriInfo,
+            filter);
+    String beforeCursor = null;
+    if (entities.size() > page.limit()) {
+      entities.remove(0);
+      beforeCursor = displayNameCursorValue(entities.get(0));
+    }
+    // Empty page = cursor was valid but every earlier row was deleted concurrently. Echo the
+    // caller's cursor rather than null, which reads as end-of-pagination. Mirrors listBefore.
+    String afterCursor =
+        entities.isEmpty()
+            ? RestUtil.decodeCursor(page.before())
+            : displayNameCursorValue(entities.get(entities.size() - 1));
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private CollectionDAO.IngestionPipelineDAO ingestionPipelineDAO() {
+    return Entity.getCollectionDAO().ingestionPipelineDAO();
   }
 
   /**

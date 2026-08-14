@@ -6151,31 +6151,40 @@ public interface CollectionDAO {
           : serviceTypeJoinCondition(filter);
     }
 
-    // Ordering by displayNameSort (a generated column: LEFT(COALESCE(NULLIF(displayName,''),
-    // name), 256)) rather than `name`, so the list can be ordered by the value the Name column
-    // renders. Cursor is the (displayNameSort, id) tuple, mirroring ContextFileDAO's updatedAt
-    // cursor; `deleted, displayNameSort, id` is indexed to keep this a range scan. The column is
-    // not case-folded, so ORDER BY and the cursor comparison share the column's own collation.
+    /**
+     * The SQL for the value the Name column renders — {@code displayName} falling back to {@code
+     * name} — sorted inline. No generated column: the pipeline table is small enough (bounded by
+     * services × pipeline types plus automations) that an unindexed sort is instant, and an
+     * expression index can be added later without a schema change if a deployment ever grows.
+     * ORDER BY and the keyset comparison share this same expression, so its collation governs both
+     * and the cursor value is carried verbatim from Java.
+     */
+    default String displayNameSortExpression() {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? "COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.displayName')), ''), ingestion_pipeline_entity.name)"
+          : "COALESCE(NULLIF(ingestion_pipeline_entity.json ->> 'displayName', ''), ingestion_pipeline_entity.name)";
+    }
+
     @SqlQuery(
         "SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
-            + "ORDER BY ingestion_pipeline_entity.displayNameSort <order>, "
-            + "ingestion_pipeline_entity.id <order> LIMIT :limit")
+            + "ORDER BY <displayExpr> <order>, ingestion_pipeline_entity.id <order> LIMIT :limit")
     List<String> listByDisplayName(
         @BindMap Map<String, ?> params,
         @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
         @Define("order") String order,
         @Bind("limit") int limit);
 
     @SqlQuery(
         "SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
-            + "AND (ingestion_pipeline_entity.displayNameSort <op> :afterDisplayName "
-            + "OR (ingestion_pipeline_entity.displayNameSort = :afterDisplayName "
+            + "AND (<displayExpr> <op> :afterDisplayName "
+            + "OR (<displayExpr> = :afterDisplayName "
             + "AND ingestion_pipeline_entity.id <op> :afterId)) "
-            + "ORDER BY ingestion_pipeline_entity.displayNameSort <order>, "
-            + "ingestion_pipeline_entity.id <order> LIMIT :limit")
+            + "ORDER BY <displayExpr> <order>, ingestion_pipeline_entity.id <order> LIMIT :limit")
     List<String> listAfterByDisplayName(
         @BindMap Map<String, ?> params,
         @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
         @Define("order") String order,
         @Define("op") String op,
         @Bind("limit") int limit,
@@ -6185,17 +6194,18 @@ public interface CollectionDAO {
     // Walks backwards in the reverse direction, then re-sorts the page into the requested order.
     @SqlQuery(
         "SELECT json FROM ("
-            + "SELECT ingestion_pipeline_entity.displayNameSort, ingestion_pipeline_entity.id, "
+            + "SELECT <displayExpr> AS sort_key, ingestion_pipeline_entity.id, "
             + "ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond> "
-            + "AND (ingestion_pipeline_entity.displayNameSort <op> :beforeDisplayName "
-            + "OR (ingestion_pipeline_entity.displayNameSort = :beforeDisplayName "
+            + "AND (<displayExpr> <op> :beforeDisplayName "
+            + "OR (<displayExpr> = :beforeDisplayName "
             + "AND ingestion_pipeline_entity.id <op> :beforeId)) "
-            + "ORDER BY ingestion_pipeline_entity.displayNameSort <reverseOrder>, "
+            + "ORDER BY <displayExpr> <reverseOrder>, "
             + "ingestion_pipeline_entity.id <reverseOrder> LIMIT :limit"
-            + ") last_rows_subquery ORDER BY displayNameSort <order>, id <order>")
+            + ") last_rows_subquery ORDER BY sort_key <order>, id <order>")
     List<String> listBeforeByDisplayName(
         @BindMap Map<String, ?> params,
         @Define("cond") String cond,
+        @Define("displayExpr") String displayExpr,
         @Define("order") String order,
         @Define("reverseOrder") String reverseOrder,
         @Define("op") String op,
