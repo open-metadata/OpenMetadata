@@ -328,6 +328,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "extension": {
+            "type": "object",
+            "description": "Custom properties to set on the glossary term, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
+            "additionalProperties": true
           }
         },
         "required": [
@@ -874,6 +879,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "extension": {
+            "type": "object",
+            "description": "Custom properties to set on the domain, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
+            "additionalProperties": true
           }
         },
         "required": ["name", "description"]
@@ -937,6 +947,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "extension": {
+            "type": "object",
+            "description": "Custom properties to set on the data product, as an object mapping each custom property name to its value (e.g. {\"costCenter\": \"CC-1234\"}). Each property must already be defined for this entity type. A property the organisation's intake form marks as required must be supplied here, or creation is rejected.",
+            "additionalProperties": true
           }
         },
         "required": ["name", "description", "domains"]
