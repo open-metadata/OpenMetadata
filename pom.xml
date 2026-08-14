@@ -756,10 +756,20 @@
         <artifactId>flyway-mysql</artifactId>
         <version>${flyway.version}</version>
       </dependency>
+      <!-- CVE-2026-54399 — HTTP/1.1 parser DoS via excessive headers / header length.
+           Affects httpcore5 <= 5.4.2 and 5.5-alpha..5.5-beta1. h2 pin alone leaves the
+           core artifact unmanaged; calcite-core -> avatica -> httpclient5 5.5 pulls
+           httpcore5 5.3.5, and elasticsearch-java / opensearch-java shading picks up
+           httpcore5 5.3.4 the same way. Pin both artifacts on the 5.4.3 line. -->
+      <dependency>
+        <groupId>org.apache.httpcomponents.core5</groupId>
+        <artifactId>httpcore5</artifactId>
+        <version>5.4.3</version>
+      </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents.core5</groupId>
         <artifactId>httpcore5-h2</artifactId>
-        <version>5.3.5</version>
+        <version>5.4.3</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
