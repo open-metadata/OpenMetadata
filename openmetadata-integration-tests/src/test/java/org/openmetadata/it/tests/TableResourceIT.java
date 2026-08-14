@@ -113,6 +113,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -150,6 +151,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   private static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
   private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
   private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+  // One more than EntityTimeSeriesDAO.DESCENDANT_DELETE_BATCH_SIZE, so a single-batch purge leaves
+  // a row behind.
+  private static final int PROFILE_ROWS_OVER_ONE_BATCH = 1001;
 
   private DatabaseSchema lastCreatedSchema;
   private Table lastCreatedTable;
@@ -2099,6 +2103,46 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         0,
         countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
         "Recursive schema hard delete must purge the table's system profile rows");
+  }
+
+  /**
+   * The column-profile purge deletes in 1000-row batches, so a table with more history than one
+   * batch is the only thing that exercises the loop. It also pins the pre-purge existence probe:
+   * no table-level profile is written here, so the purge only runs if the probe finds the seeded
+   * column rows through the entity's own column FQNs.
+   */
+  @Test
+  void delete_hardDeletePurgesColumnProfilesBeyondOneBatch(TestNamespace ns) {
+    CreateTable createRequest = createRequest(ns.prefix("profile_batch_table"), ns);
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    long baseTimestamp = System.currentTimeMillis() - PROFILE_ROWS_OVER_ONE_BATCH;
+    for (int offset = 0; offset < PROFILE_ROWS_OVER_ONE_BATCH; offset++) {
+      Entity.getCollectionDAO()
+          .profilerDataTimeSeriesDao()
+          .insert(
+              columnFqn,
+              COLUMN_PROFILE_EXTENSION,
+              "columnProfile",
+              String.format("{\"timestamp\":%d,\"uniqueCount\":1}", baseTimestamp + (long) offset));
+    }
+    assertEquals(
+        PROFILE_ROWS_OVER_ONE_BATCH,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Seeding must produce more column profile rows than one delete batch");
+    assertEquals(
+        0,
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
+        "No table-level profile is written, so only the column probe can trigger the purge");
+
+    hardDeleteEntity(table.getId().toString());
+
+    assertEquals(
+        0,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Purge must keep batching until the column profile history is drained");
   }
 
   private void writeFullProfile(OpenMetadataClient client, Table table) {

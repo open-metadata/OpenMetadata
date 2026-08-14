@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -29,6 +30,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJson;
+import org.openmetadata.service.util.jdbi.BindListFQN;
 
 public interface EntityTimeSeriesDAO {
   /** Rows removed per statement by {@link #deleteDescendants(String, String)}. */
@@ -36,6 +38,9 @@ public interface EntityTimeSeriesDAO {
 
   /** Ceiling on batches per call so one delete cannot hold a connection indefinitely. */
   int DESCENDANT_DELETE_MAX_BATCHES = 1000;
+
+  /** Rows a single {@link #deleteDescendants(String, String)} call will remove at most. */
+  int DESCENDANT_DELETE_ROW_CAP = DESCENDANT_DELETE_BATCH_SIZE * DESCENDANT_DELETE_MAX_BATCHES;
 
   String getTimeSeriesTableName();
 
@@ -612,13 +617,13 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlUpdate("DELETE FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
-  void delete(
+  int delete(
       @Define("table") String table,
       @BindFQN("entityFQNHash") String entityFQNHash,
       @Bind("extension") String extension);
 
-  default void delete(String entityFQNHash, String extension) {
-    delete(getTimeSeriesTableName(), entityFQNHash, extension);
+  default int delete(String entityFQNHash, String extension) {
+    return delete(getTimeSeriesTableName(), entityFQNHash, extension);
   }
 
   @SqlUpdate(
@@ -664,28 +669,55 @@ public interface EntityTimeSeriesDAO {
       @Bind("limit") int limit);
 
   /**
+   * Outcome of {@link #deleteDescendants(String, String)}. {@code capReached} means the per-call
+   * row cap stopped the purge before the subtree was drained, so rows were left behind.
+   */
+  record DescendantPurge(int rowsDeleted, boolean capReached) {}
+
+  /**
    * Purge every row whose entity FQN is a descendant of {@code entityFQN} (e.g. the column-level
    * rows of a table). Runs as bounded batches so a single call can never issue an unbounded
-   * {@code DELETE}; a subtree larger than {@link #DESCENDANT_DELETE_BATCH_SIZE} times
-   * {@link #DESCENDANT_DELETE_MAX_BATCHES} rows is left to the offline orphan sweep.
-   *
-   * @return number of rows deleted
+   * {@code DELETE}; a subtree larger than {@link #DESCENDANT_DELETE_ROW_CAP} rows leaves the
+   * remainder in place and reports {@code capReached}.
    */
-  default int deleteDescendants(String entityFQN, String extension) {
+  default DescendantPurge deleteDescendants(String entityFQN, String extension) {
     // Hash segments are hex MD5 and the separator is a dot, so the pattern carries no LIKE
     // wildcard that would need escaping.
     String hashPrefix = FullyQualifiedName.buildHash(entityFQN) + Entity.SEPARATOR + "%";
     int totalDeleted = 0;
-    for (int batch = 0; batch < DESCENDANT_DELETE_MAX_BATCHES; batch++) {
+    boolean drained = false;
+    for (int batch = 0; batch < DESCENDANT_DELETE_MAX_BATCHES && !drained; batch++) {
       int deleted =
           deleteByFqnHashPrefixBatch(
               getTimeSeriesTableName(), hashPrefix, extension, DESCENDANT_DELETE_BATCH_SIZE);
       totalDeleted += deleted;
-      if (deleted < DESCENDANT_DELETE_BATCH_SIZE) {
-        break;
-      }
+      drained = deleted < DESCENDANT_DELETE_BATCH_SIZE;
     }
-    return totalDeleted;
+    return new DescendantPurge(totalDeleted, !drained);
+  }
+
+  @SqlQuery(
+      "SELECT 1 FROM <table> WHERE entityFQNHash IN (<entityFQNHashes>) "
+          + "AND extension = :extension LIMIT 1")
+  List<Integer> findAnyExtension(
+      @Define("table") String table,
+      @BindListFQN("entityFQNHashes") List<String> entityFQNs,
+      @Bind("extension") String extension);
+
+  /**
+   * Indexed existence probe, used to decide whether the unindexed prefix scan behind
+   * {@link #deleteDescendants(String, String)} is worth issuing at all.
+   */
+  default boolean hasAnyExtension(List<String> entityFQNs, String extension) {
+    boolean found = false;
+    if (!nullOrEmpty(entityFQNs)) {
+      found =
+          !EntityDAO.queryInChunks(
+                  entityFQNs.stream().distinct().toList(),
+                  chunk -> findAnyExtension(getTimeSeriesTableName(), chunk, extension))
+              .isEmpty();
+    }
+    return found;
   }
 
   @ConnectionAwareSqlUpdate(
