@@ -1458,20 +1458,17 @@ test.describe(
         });
 
         await test.step('Test page size dropdown', async () => {
-          await expect(
-            page.locator('[data-testid="page-size-selection-dropdown"]')
-          ).toBeVisible();
+          const pageSizeDropdown = page.getByTestId(
+            'page-size-selection-dropdown'
+          );
+          const pageSizeMenu = page.locator(
+            '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu'
+          );
 
-          await page.click('[data-testid="page-size-selection-dropdown"]');
-
-          // Wait for dropdown menu to be visible
-          await page.locator('.ant-dropdown-menu').waitFor({
-            state: 'visible',
-            timeout: 5000,
-          });
-
-          // Verify dropdown options are visible
-          await expect(page.locator('.ant-dropdown-menu-item')).toHaveCount(3);
+          await expect(pageSizeDropdown).toBeVisible();
+          await pageSizeDropdown.hover();
+          await expect(pageSizeMenu).toBeVisible();
+          await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);
         });
       } finally {
         await paginationTable.delete(apiContext);
