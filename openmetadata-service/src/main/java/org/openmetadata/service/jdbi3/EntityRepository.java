@@ -8616,7 +8616,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
     // user-curated metadata that PUT-as-bot would otherwise preserve (description, displayName).
-    @Setter private boolean overrideMetadata;
+    // Protected so ColumnEntityUpdater can honour it for column-level description/displayName too.
+    @Setter protected boolean overrideMetadata;
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
@@ -10762,7 +10763,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDescription(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      if (operation.isPut() && !nullOrEmpty(origColumn.getDescription()) && updatedByBot()) {
+      // Mirrors updateDescription() for the entity itself: a bot PUT preserves a non-empty
+      // description, but a bulk force-sync (overrideMetadata=true) is allowed through so a
+      // re-ingestion can carry an updated source comment onto the column.
+      if (operation.isPut()
+          && !nullOrEmpty(origColumn.getDescription())
+          && updatedByBot()
+          && !overrideMetadata) {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
@@ -10774,7 +10781,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDisplayName(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      if (operation.isPut() && !nullOrEmpty(origColumn.getDisplayName()) && updatedByBot()) {
+      if (operation.isPut()
+          && !nullOrEmpty(origColumn.getDisplayName())
+          && updatedByBot()
+          && !overrideMetadata) {
         updatedColumn.setDisplayName(origColumn.getDisplayName());
         return;
       }
