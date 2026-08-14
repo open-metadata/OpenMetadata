@@ -57,7 +57,7 @@ test('Edit a user classification from the manage button', async ({ page }) => {
     'Edit Classification'
   );
 
-  const nameField = page.getByTestId('name').getByRole('textbox');
+  const nameField = page.getByTestId('name');
 
   await expect(nameField).toHaveValue(userClassification.responseData.name);
   // Name is editable for a user (non-system) classification
@@ -96,7 +96,7 @@ test('System classification name is disabled in the edit drawer', async ({
 
   await expect(page.getByTestId('tags-form')).toBeVisible();
   // System-provided classification name must not be editable
-  await expect(page.getByTestId('name').getByRole('textbox')).toBeDisabled();
+  await expect(page.getByTestId('name')).toBeDisabled();
 
   await page.click('[data-testid="cancel-button"]');
 
