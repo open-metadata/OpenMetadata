@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Button, Card } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ReloadIcon } from '../../../assets/svg/reload.svg';
+import Loader from '../../common/Loader/Loader';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
@@ -28,9 +36,13 @@ interface AgentGroupProps {
   descKey: string;
   emptyPlaceholder?: ReactNode;
   icon: ReactNode;
+  /** Disables the refresh button and swaps its icon for a spinner while a refetch is in flight. */
+  isRefreshing?: boolean;
   titleKey: string;
   onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
+  /** Refetches this list only. Omit to leave the group without a refresh control. */
+  onRefresh?: () => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
 }
@@ -45,8 +57,10 @@ const AgentGroup: FC<AgentGroupProps> = ({
   descKey,
   emptyPlaceholder,
   icon,
+  isRefreshing,
   onAction,
   onLogs,
+  onRefresh,
   onRun,
   onRunDetails,
   titleKey,
@@ -81,6 +95,30 @@ const AgentGroup: FC<AgentGroupProps> = ({
             <span className="tw:size-1.5 tw:animate-pulse tw:rounded-full tw:bg-utility-brand-500" />
             {t('label.count-running', { count: runningCount })}
           </Badge>
+        )}
+        {/* Immediately before the add-agent slot, so it reads as the secondary action left of Add
+            Agent on the metadata list and takes that same top-right spot on the Collate AI list,
+            whose header carries no add button. */}
+        {onRefresh && (
+          <Tooltip
+            title={t('label.refresh-entity', {
+              entity: t('label.agent-plural'),
+            })}>
+            <Button
+              color="secondary"
+              data-testid="agent-group-refresh"
+              iconLeading={
+                isRefreshing ? (
+                  <Loader size="x-small" />
+                ) : (
+                  <ReloadIcon width={14} />
+                )
+              }
+              isDisabled={isRefreshing}
+              size="md"
+              onClick={onRefresh}
+            />
+          </Tooltip>
         )}
         {addAgentSlot ??
           (canCreateAgent && (

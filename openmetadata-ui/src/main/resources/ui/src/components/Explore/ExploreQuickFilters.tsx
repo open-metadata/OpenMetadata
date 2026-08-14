@@ -75,7 +75,7 @@ const addEntityTypeIcons = (
     icon:
       searchClassBase.getEntityIcon(
         getCanonicalEntityType(opt.key),
-        'tw:text-quaternary',
+        '',
         {},
         EntityIconSize.Size16
       ) ?? undefined,
