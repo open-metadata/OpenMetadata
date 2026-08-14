@@ -54,6 +54,8 @@ interface MetadataAgentsViewProps {
   serviceDetails: ServicesType;
   serviceName: string;
   showAddAgent: boolean;
+  /** True while the agents list is being refetched, so the refresh control can show it. */
+  isRefreshing?: boolean;
   onRefresh: () => void;
 }
 
@@ -61,6 +63,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   addAgentSlot: addAgentSlotProp,
   agents,
   ingestionPipelineList,
+  isRefreshing,
   serviceCategory,
   serviceDetails,
   serviceName,
@@ -101,11 +104,19 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     [agents, runsFor]
   );
 
-  const { rawText, isLoading: isLogsLoading } = useAgentLogs(
+  const {
+    rawText,
+    isLoading: isLogsLoading,
+    isLive: isLogsRunLive,
+    streamHealth,
+    streamTruncated,
+    streamError,
+  } = useAgentLogs(
     logsFor?.fqn ?? '',
     logsFor?.pipelineType ?? PipelineType.Metadata,
     Boolean(logsFor),
-    isLogsAgentActive
+    isLogsAgentActive,
+    liveLogsAgent?.currentRunId
   );
 
   const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
@@ -247,9 +258,11 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         descKey="message.metadata-agents-description"
         emptyPlaceholder={emptyPlaceholder}
         icon={<Code01 size={18} />}
+        isRefreshing={isRefreshing}
         titleKey="label.metadata-agent-plural"
         onAction={onAction}
         onLogs={onLogs}
+        onRefresh={onRefresh}
         onRun={onRun}
         onRunDetails={onRunDetails}
       />
@@ -272,9 +285,12 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           lastRun={logsFor.finishedAt}
           loading={isLogsLoading}
           logs={rawText}
-          mode={isLogsAgentActive ? 'stream' : 'static'}
+          mode={isLogsRunLive ? 'stream' : 'static'}
           runId={getEntityName(logsFor)}
           status={getLogViewerStatusFromAgentStatus(logsFor.status)}
+          streamError={streamError}
+          streamHealth={streamHealth}
+          streamTruncated={streamTruncated}
           title={`${logsFor.name} · ${t('label.log-plural')}`}
           totalLines={rawText.split('\n').length}
           onClose={() => setLogsFor(null)}

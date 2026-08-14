@@ -477,6 +477,41 @@ describe('TestCases component', () => {
       });
     });
 
+    it('should pass every URL filter, including redirected dates, to the list API', async () => {
+      mockLocation.search =
+        '?tableFqn=sample_service.db.schema.table' +
+        '&testPlatforms%5B%5D=dbt&testPlatforms%5B%5D=Deequ' +
+        '&testCaseType=column&testCaseStatus=Success' +
+        '&lastRunRange%5BstartTs%5D=100&lastRunRange%5BendTs%5D=200' +
+        '&lastRunRange%5Bkey%5D=customRange' +
+        '&lastRunRange%5Btitle%5D=Jul%2014%2C%202026%20-%3E%20Aug%2013%2C%202026' +
+        '&tier=Tier.Tier1&tags%5B%5D=PII.Sensitive' +
+        '&serviceName=sample_service&dataQualityDimension=NoDimension' +
+        '&dataProductFqn=Marketing';
+
+      render(<TestCases />);
+
+      await waitFor(() => {
+        expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entityLink: '<#E::table::sample_service.db.schema.table>',
+            testPlatforms: ['dbt', 'Deequ'],
+            testCaseType: 'column',
+            testCaseStatus: 'Success',
+            startTimestamp: '100',
+            endTimestamp: '200',
+            tier: 'Tier.Tier1',
+            tags: ['PII.Sensitive'],
+            serviceName: 'sample_service',
+            dataQualityDimension: 'NoDimension',
+            dataProductFqn: 'Marketing',
+          })
+        );
+      });
+
+      expect(await screen.findByTestId('date-picker-menu')).toBeInTheDocument();
+    });
+
     it('should handle empty URL params', async () => {
       mockLocation.search = '';
       const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
