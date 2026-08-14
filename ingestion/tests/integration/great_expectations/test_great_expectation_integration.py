@@ -95,8 +95,6 @@ class Order(Base):
 class TestGreatExpectationIntegration(TestCase):
     """Test great expectation integration"""
 
-    skip_test = True
-
     engine = create_engine(
         f"sqlite+pysqlite:///{SQLLITE_SHARD}",
     )

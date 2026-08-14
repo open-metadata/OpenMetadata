@@ -223,11 +223,27 @@ class OpenMetadataValidationAction(ValidationAction):
            Optional[Table]
 
         Raises:
-             ValueError: if 2 entities with the same
-                         `database`.`schema`.`table` are found
+             ValueError: if any part of the table name is missing, or if 2 entities
+                         with the same `database`.`schema`.`table` are found
         """
-        if not all([schema_name, table_name]):
-            raise ValueError("No Schema or Table name provided. Can't fetch table entity from OpenMetadata.")
+        # Every part has to be resolved before we build an FQN out of them: a missing
+        # one would otherwise be interpolated as the string `None` and looked up as
+        # `service.None.schema.table`, which fails as a confusing "no entity found".
+        missing = [
+            part_name
+            for part_name, part in (
+                ("database_name", database),
+                ("schema_name", schema_name),
+                ("table_name", table_name),
+            )
+            if not part
+        ]
+        if missing:
+            raise ValueError(
+                f"Can't fetch the table entity from OpenMetadata, {', '.join(missing)} could not be resolved."
+                " Set it on the action, or map the expectation suite to a table through"
+                " `expectation_suite_table_config_map`.",
+            )
 
         if self.database_service_name:
             return self.ometa_conn.get_by_name(

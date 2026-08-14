@@ -80,15 +80,21 @@ def test_get_table_entity(input, expected, mocked_ometa):
 
 
 @skip_gx
-def test_get_table_entity_requires_schema_and_table(mocked_ometa):
-    """Test that an incomplete table name is rejected rather than silently mis-resolved"""
+@mark.parametrize(
+    "database,schema_name,table_name,expected",
+    [
+        (None, "schema", "table", "database_name"),
+        ("database", None, "table", "schema_name"),
+        ("database", "schema", None, "table_name"),
+        (None, None, None, "database_name, schema_name, table_name"),
+    ],
+)
+def test_get_table_entity_requires_every_name_part(database, schema_name, table_name, expected, mocked_ometa):
+    """Test an incomplete table name is rejected rather than resolved to a `None` FQN part"""
     action = build_action(mocked_ometa, database_service_name="service_name")
 
-    with pytest.raises(ValueError):
-        action._get_table_entity("database", None, "table")
-
-    with pytest.raises(ValueError):
-        action._get_table_entity("database", "schema", None)
+    with pytest.raises(ValueError, match=expected):
+        action._get_table_entity(database, schema_name, table_name)
 
 
 @skip_gx
