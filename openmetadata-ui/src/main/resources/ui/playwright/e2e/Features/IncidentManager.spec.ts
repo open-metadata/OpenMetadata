@@ -1082,7 +1082,56 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*assignee=${assigneeTestCase.username}*`
     );
     await assigneeOption.click();
-    await assigneeFilterRes;
+    const assigneeFilterResponse = await assigneeFilterRes;
+    const assignedIncident = page.getByTestId(
+      `test-case-${assigneeTestCase.testCaseName}`
+    );
+
+    if (!(await assignedIncident.isVisible().catch(() => false))) {
+      await expect
+        .poll(
+          async () => {
+            const retryResponse = await page.request.get(
+              assigneeFilterResponse.url()
+            );
+
+            if (!retryResponse.ok()) {
+              return false;
+            }
+
+            const searchData = (await retryResponse.json()) as {
+              data?: Array<{
+                testCaseReference?: { name?: string };
+                testCaseResolutionStatusDetails?: {
+                  assignee?: { name?: string };
+                };
+              }>;
+            };
+
+            return Boolean(
+              searchData.data?.some(
+                (incident) =>
+                  incident.testCaseReference?.name ===
+                    assigneeTestCase.testCaseName &&
+                  incident.testCaseResolutionStatusDetails?.assignee?.name ===
+                    assigneeTestCase.username
+              )
+            );
+          },
+          {
+            message: `Wait for ${assigneeTestCase.testCaseName} assignee to be indexed`,
+            timeout: 60_000,
+            intervals: [1_000, 2_000, 5_000],
+          }
+        )
+        .toBe(true);
+
+      const indexedAssigneeFilterRes = page.waitForResponse(
+        `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*assignee=${assigneeTestCase.username}*`
+      );
+      await page.reload();
+      await indexedAssigneeFilterRes;
+    }
 
     await expectIncidentTableRowsToContain(
       page,
