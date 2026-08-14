@@ -132,6 +132,10 @@ public class TypeRepository extends EntityRepository<Type> {
     TypeRegistry.instance().addType(entity);
   }
 
+  public Long getUpdatedAt(String name) {
+    return daoCollection.typeEntityDAO().findUpdatedAtByName(name);
+  }
+
   @Override
   protected void postDelete(Type entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
