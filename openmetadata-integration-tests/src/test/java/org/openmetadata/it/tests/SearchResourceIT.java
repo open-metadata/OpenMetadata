@@ -444,12 +444,17 @@ public class SearchResourceIT {
                     .withDataLength(255)));
     String indexedName = table.getName();
 
-    // Wait for the table to appear in the table-only index using a real search call.
-    // Query by the first alphanumeric segment of the indexed name — it's short (3-5 chars,
-    // one alnum sub-token), so it won't itself trigger the clause-explosion path we're
-    // about to stress in the matrix below. We still verify the specific seeded table is the
-    // hit, so accidental matches on other docs with "lhr" in their name don't fool us.
-    String waitQuery = indexedName.split("_+")[0];
+    // Every scenario below is scoped to this method's schema, so a scenario asserts which
+    // queries reach the seeded table rather than where it lands in a window shared with the
+    // whole lane. Several queries here are deliberately generic -- "flights", "schedule_v1",
+    // and the camelCase chunk, which now analyzes into six ordinary words -- so without the
+    // scope they compete against every other document in the run carrying those tokens.
+    String schemaFilter = sharedSchemaFilter();
+
+    // Wait on the alias and the filter the matrix itself uses, so the scenarios below start from
+    // a state they have already observed. Waiting on table_search_index left the gap between the
+    // index and the dataAsset alias becoming visible unguarded. The exact name is the narrowest
+    // query available and is scenario 1 of the matrix, so this warms up exactly what follows.
     // 90s timeout: search indexing is async via change events and can lag noticeably under
     // CI load, especially the first time the index is warmed in a fresh test container.
     Awaitility.await()
@@ -458,7 +463,14 @@ public class SearchResourceIT {
         .until(
             () -> {
               String r =
-                  client.search().query(waitQuery).index("table_search_index").size(25).execute();
+                  client
+                      .search()
+                      .query(indexedName)
+                      .index("dataAsset")
+                      .queryFilter(schemaFilter)
+                      .deleted(false)
+                      .size(25)
+                      .execute();
               JsonNode root = OBJECT_MAPPER.readTree(r);
               for (JsonNode hit : root.path("hits").path("hits")) {
                 if (indexedName.equals(hit.path("_source").path("name").asText())) {
@@ -526,7 +538,7 @@ public class SearchResourceIT {
 
     List<String> failures = new ArrayList<>();
     for (Scenario s : scenarios) {
-      evaluateScenario(client, s, indexedName, failures);
+      evaluateScenario(client, s, indexedName, schemaFilter, failures);
     }
 
     assertTrue(
@@ -536,11 +548,22 @@ public class SearchResourceIT {
   private record Scenario(String description, String query, boolean shouldFind) {}
 
   private void evaluateScenario(
-      OpenMetadataClient client, Scenario s, String seededName, List<String> failures) {
+      OpenMetadataClient client,
+      Scenario s,
+      String seededName,
+      String schemaFilter,
+      List<String> failures) {
     JsonNode root;
     try {
       String response =
-          client.search().query(s.query()).index("dataAsset").deleted(false).size(50).execute();
+          client
+              .search()
+              .query(s.query())
+              .index("dataAsset")
+              .queryFilter(schemaFilter)
+              .deleted(false)
+              .size(50)
+              .execute();
       root = OBJECT_MAPPER.readTree(response);
     } catch (Exception e) {
       // A thrown exception means the whole search was rejected (e.g. ES 9 "too many clauses"
@@ -602,17 +625,12 @@ public class SearchResourceIT {
 
     // "custmer" is a 1-char typo of "customer", 1 alnum sub-token → fuzziness path is active.
     String typoQuery = "custmer";
-    // Scoped to the schema this method just created. initializeSharedDbEntities runs per test
-    // instance and shortPrefix() ends in a random fragment, so the schema holds exactly the table
-    // seeded above. Without it the assertion read "inside the first 25 hits of the whole dataAsset
-    // alias", which is a ranking claim: every other table in the run whose name contains "customer"
-    // competes for that window, and this is a long name -- ns.prefix appends the run id, the class
-    // and the method -- so BM25's length normalisation legitimately ranks it below shorter ones. A
-    // filter clause does not score, so the fuzzy retrieval being tested is unchanged.
-    String schemaFilter =
-        "{\"query\":{\"term\":{\"databaseSchema.fullyQualifiedName.keyword\":\""
-            + sharedSchema.getFullyQualifiedName().toLowerCase(Locale.ROOT)
-            + "\"}}}";
+    // Without the scope the assertion read "inside the first 25 hits of the whole dataAsset
+    // alias", which is a ranking claim: every other table in the run whose name contains
+    // "customer" competes for that window, and this is a long name -- ns.prefix appends the run
+    // id, the class and the method -- so BM25's length normalisation legitimately ranks it below
+    // shorter ones.
+    String schemaFilter = sharedSchemaFilter();
 
     // Poll the query under test rather than a warm-up query on table_search_index. The assertion
     // is about the dataAsset alias, so waiting on a different index left the gap between the two
@@ -906,6 +924,22 @@ public class SearchResourceIT {
     tableRequest.setColumns(columns);
 
     return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  /**
+   * Query filter scoping a search to the calling method's schema.
+   *
+   * <p>{@code initializeSharedDbEntities} runs per test instance and {@code shortPrefix()} ends in
+   * a random fragment, so the schema holds only the tables that method seeded. A filter clause does
+   * not score, so what a test asserts -- which queries reach its own table -- is unchanged; the
+   * scope only stops the assertion from doubling as a claim about a result window shared with
+   * everything else the lane indexed. Filters can only remove documents, so a scenario expecting
+   * *not* to find its table keeps that meaning too.
+   */
+  private String sharedSchemaFilter() {
+    return "{\"query\":{\"term\":{\"databaseSchema.fullyQualifiedName.keyword\":\""
+        + sharedSchema.getFullyQualifiedName().toLowerCase(Locale.ROOT)
+        + "\"}}}";
   }
 
   private Topic createTestTopic(TestNamespace ns, String baseName) {
