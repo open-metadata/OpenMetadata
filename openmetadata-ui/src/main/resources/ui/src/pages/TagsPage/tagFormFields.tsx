@@ -70,7 +70,7 @@ export const getNameField = (disabled: boolean): FieldProp => ({
     inputProps: {
       'data-testid': 'name',
     },
-    isDisabled: disabled,
+    disabled,
   },
   formItemProps: {
     validateTrigger: ['onChange', 'onBlur'],
