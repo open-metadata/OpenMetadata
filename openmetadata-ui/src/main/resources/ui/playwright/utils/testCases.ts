@@ -301,17 +301,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
       res.request().method() === 'GET' &&
       res.status() === 200
   );
-  await breadcrumb.getByRole('link', { name: tableName }).click();
-  await tableResponsePromise;
-
-  // The crumb opens the table's default tab; return to the Data Quality
-  // tab the flow started from so follow-up steps find the test case list.
-  await page.getByTestId('profiler').click();
-  const testCaseResponse = page.waitForResponse(
+  const testCaseResponsePromise = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
   );
-  await page.getByRole('tab', { name: 'Data Quality' }).click();
-  await testCaseResponse;
+  await breadcrumb.getByRole('link', { name: tableName }).click();
+  await Promise.all([tableResponsePromise, testCaseResponsePromise]);
 };
 
 export const findSystemTestDefinition = async (page: Page) => {

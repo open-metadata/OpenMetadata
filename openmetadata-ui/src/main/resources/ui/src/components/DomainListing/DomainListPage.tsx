@@ -17,10 +17,9 @@ import {
   Input,
   PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
 import classNames from 'classnames';
-import { debounce, isEmpty } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { ROUTES } from '../../constants/constants';
@@ -30,10 +29,12 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
+import { LIST_EMPTY_STATE_CLASS } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableColumns';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
+import { useListSearchInput } from '../common/atoms/navigation/useListSearchInput';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
@@ -99,35 +100,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   const showHeaderSearch = isAiMode;
 
-  const [searchInputValue, setSearchInputValue] = useState(
-    domainListing.urlState.searchQuery ?? ''
-  );
-
-  const debouncedSearch = useMemo(
-    () => debounce(domainListing.handleSearchChange, 300),
-    [domainListing.handleSearchChange]
-  );
-
-  useEffect(() => {
-    debouncedSearch.cancel();
-    setSearchInputValue(domainListing.urlState.searchQuery ?? '');
-  }, [domainListing.urlState.searchQuery, debouncedSearch]);
-
-  useEffect(() => {
-    return () => {
-      debouncedSearch.cancel();
-    };
-  }, [debouncedSearch]);
-
-  const searchInputProps = {
-    icon: SearchLg,
-    placeholder: t('label.search'),
-    value: searchInputValue,
-    onChange: (value: string) => {
-      setSearchInputValue(value);
-      debouncedSearch(value);
-    },
-  };
+  const { searchInputProps } = useListSearchInput({
+    searchQuery: domainListing.urlState.searchQuery,
+    onSearchChange: domainListing.handleSearchChange,
+  });
 
   const headerSearch = showHeaderSearch ? (
     <Input className="tw:w-72" {...searchInputProps} />
@@ -155,12 +131,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const isTreeView = view === ViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
-
-  useEffect(() => {
-    if (isTreeView && !isEmpty(domainListing.urlState.filters)) {
-      domainListing.handleFilterChange([]);
-    }
-  }, [isTreeView]);
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
     useDomainTableColumns();
@@ -206,7 +176,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       if (isSearchOrFilterActive()) {
         return (
           <ErrorPlaceHolder
-            className="border-none"
+            className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
         );
@@ -218,7 +188,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           buttonTitle={t('label.add-entity', {
             entity: t('label.domain'),
           })}
-          className="border-none"
+          className={classNames('border-none', LIST_EMPTY_STATE_CLASS)}
           heading={t('message.no-data-message', {
             entity: t('label.domain-lowercase-plural'),
           })}
@@ -325,7 +295,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             {!showHeaderSearch && (
               <Input className="tw:max-w-86" {...searchInputProps} />
             )}
-            {!isTreeView && quickFilters}
+            {quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle
               value={view}
@@ -334,7 +304,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             />
             {deleteIconButton}
           </Box>
-          {!isTreeView && filterSelectionDisplay}
+          {filterSelectionDisplay}
         </Box>
         {content}
       </Card>

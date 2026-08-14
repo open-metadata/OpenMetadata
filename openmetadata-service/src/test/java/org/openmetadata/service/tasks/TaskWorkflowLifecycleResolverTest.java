@@ -499,7 +499,7 @@ class TaskWorkflowLifecycleResolverTest {
     Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
 
     assertEquals(true, v.get(WorkflowStartVariables.TASK_WORKFLOW_MANAGED));
-    // Priority carries the schema default (Medium) even on a bare task — assert that, not null.
+    // Priority carries the schema default (Medium) even on a bare task.
     assertEquals(TaskPriority.Medium.value(), v.get(WorkflowStartVariables.TASK_PRIORITY));
     for (String key :
         List.of(
@@ -512,5 +512,196 @@ class TaskWorkflowLifecycleResolverTest {
       assertTrue(v.containsKey(key), "missing key: " + key);
       assertEquals(null, v.get(key), "expected null for: " + key);
     }
+    // A payload without an expirationDate must not surface the derived variable — the boundary
+    // timer only arms when a real date is known.
+    assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSurfacePayloadExpirationDateWhenPresent() {
+    // Regression: TaskReview needed a boundary timer that fires while a DAR sits awaiting
+    // approval past its expiration. That timer reads ${taskPayloadExpirationDate}, which must be
+    // seeded at workflow start (before any PolicyAgent promote step runs). Any payload shaped
+    // like {"expirationDate": <epoch-millis>, ...} — DAR is the current caller, but the
+    // extraction is intentionally generic — surfaces the ISO instant here.
+    long expiration = 1_800_000_000_000L; // ~2027
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withPayload(
+                java.util.Map.of("expirationDate", expiration, "accessType", "FullAccess"));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertEquals(
+        java.time.Instant.ofEpochMilli(expiration).toString(),
+        v.get(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSurfacePayloadExpirationDateFromJsonString() {
+    // Payload arrives as a raw JSON string when the caller hasn't Jackson-typed it (e.g. the
+    // request came through the generic /tasks endpoint before entity-specific hydration). The
+    // extractor round-trips through JsonUtils so both shapes work.
+    long expiration = 1_900_000_000_000L;
+    String payload = "{\"expirationDate\":" + expiration + ",\"accessType\":\"FullAccess\"}";
+    Task task = new Task().withId(UUID.randomUUID()).withPayload(payload);
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertEquals(
+        java.time.Instant.ofEpochMilli(expiration).toString(),
+        v.get(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesTolerateNonMapPayload() {
+    // A payload that's a bare string / list / number must not blow up start — extractor is
+    // best-effort. Absence of the derived variable is the correct signal to downstream timers.
+    Task task = new Task().withId(UUID.randomUUID()).withPayload("plain string payload");
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSkipPayloadExpirationWhenNotANumber() {
+    // Defensive: an expirationDate that's a string ("2027-01-01") or otherwise not a Number is
+    // not something Flowable's timeDate can consume. Skip rather than propagate garbage.
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withPayload(java.util.Map.of("expirationDate", "not-a-number"));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSurfacePastExpirationDate() {
+    // The extractor is data-only; timer semantics decide what "past" means. A DAR that was
+    // created and never approved before its expiration must still surface the date so the
+    // TaskReview boundary timer can arm and fire immediately (closing the never-approved task).
+    long pastExpiration = 1_500_000_000_000L; // ~2017
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withPayload(java.util.Map.of("expirationDate", pastExpiration));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertEquals(
+        java.time.Instant.ofEpochMilli(pastExpiration).toString(),
+        v.get(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesAcceptIntegerExpirationDate() {
+    // Jackson deserializes numeric JSON without a schema hint to Integer when the value fits.
+    // Extractor reads via Number.longValue() so Integer / Long / Double all convert cleanly.
+    int expirationInt = 1_600_000_000; // ~2020 in seconds; irrelevant unit — extractor doesn't
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withPayload(java.util.Map.of("expirationDate", expirationInt));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertEquals(
+        java.time.Instant.ofEpochMilli(expirationInt).toString(),
+        v.get(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesAcceptLongMaxExpirationDate() {
+    // Upper edge: schema-bound clamp is ~year 2200, but the extractor itself must not overflow.
+    long farFuture = 7_258_118_400_000L; // ~2200 (H7 schema cap)
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withPayload(java.util.Map.of("expirationDate", farFuture));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertEquals(
+        java.time.Instant.ofEpochMilli(farFuture).toString(),
+        v.get(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSkipPayloadExpirationWhenValueIsNull() {
+    // A Map with expirationDate=null (e.g. a caller cleared it) must be treated as absent, not
+    // NPE. Map.of rejects null values, so build via HashMap to allow the explicit null.
+    java.util.Map<String, Object> payload = new java.util.HashMap<>();
+    payload.put("expirationDate", null);
+    payload.put("accessType", "FullAccess");
+    Task task = new Task().withId(UUID.randomUUID()).withPayload(payload);
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSkipPayloadExpirationWhenValueIsBoolean() {
+    // Any non-Number Object (Boolean, List, nested Map, ...) is nonsensical for a timer date.
+    // Skip rather than propagate as-is.
+    Task task =
+        new Task().withId(UUID.randomUUID()).withPayload(java.util.Map.of("expirationDate", true));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSkipPayloadExpirationOnListPayload() {
+    // Payload shaped as a list, not a map — JsonUtils.convertValue throws
+    // IllegalArgumentException that the extractor swallows to a null result.
+    Task task =
+        new Task().withId(UUID.randomUUID()).withPayload(List.of("not-a-map", "still-not-a-map"));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSurfacePayloadExpirationEvenWithOnlyThatKey() {
+    // Minimal payload — only expirationDate present. Verifies the extractor doesn't require
+    // sibling keys (accessType etc.) to be sane. Boundary-timer semantics don't care about the
+    // rest of the payload.
+    long expiration = 1_950_000_000_000L;
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withPayload(java.util.Map.of("expirationDate", expiration));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertEquals(
+        java.time.Instant.ofEpochMilli(expiration).toString(),
+        v.get(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void workflowStartVariablesSurfacePayloadExpirationFromNestedShapes() {
+    // Extractor only looks at the top-level "expirationDate" key. A nested {inner:{expirationDate}}
+    // shape must NOT be pulled up — that would surface an unrelated value as the top-level date.
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withPayload(
+                java.util.Map.of(
+                    "accessType",
+                    "FullAccess",
+                    "inner",
+                    java.util.Map.of("expirationDate", 1_800_000_000_000L)));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
   }
 }

@@ -920,6 +920,18 @@ def get_dbt_model_name(manifest_node) -> str:
     return manifest_node.alias if hasattr(manifest_node, "alias") and manifest_node.alias else manifest_node.name
 
 
+def get_source_physical_name(manifest_node) -> str:
+    """
+    Get the warehouse table name of a dbt source node.
+
+    Sources carry no ``alias``; they name the physical table through ``identifier``, which
+    dbt lets you set independently of the logical ``name`` used in ``source()`` calls.
+    https://docs.getdbt.com/reference/resource-properties/identifier
+    """
+    identifier = getattr(manifest_node, "identifier", None)
+    return identifier or get_dbt_model_name(manifest_node)
+
+
 def get_corrected_name(name: Optional[str]):  # noqa: UP045
     """
     Method to fetch correct name
