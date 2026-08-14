@@ -44,6 +44,8 @@ import {
   getDataProductByName,
 } from '../../../rest/dataProductAPI';
 import { addAssetsToDomain, getDomainByName } from '../../../rest/domainAPI';
+import { domainAssetsCountQueryKey } from '../../../rest/queries/domainQuery';
+import { queryClient } from '../../../queryClient';
 import {
   addAssetsToGlossaryTerm,
   getGlossaryTermByFQN,
@@ -361,6 +363,7 @@ export const useAssetSelectionState = ({
             return;
           }
           res = await addAssetsToDomain(domainFqn, entities);
+          queryClient.invalidateQueries({ queryKey: domainAssetsCountQueryKey });
 
           break;
         }
@@ -390,6 +393,7 @@ export const useAssetSelectionState = ({
         activeEntity.fullyQualifiedName ?? '',
         pendingDomainEntities
       );
+      queryClient.invalidateQueries({ queryKey: domainAssetsCountQueryKey });
       setDryRunWarnings(undefined);
       setPendingDomainEntities(undefined);
       await processSaveResponse(res);

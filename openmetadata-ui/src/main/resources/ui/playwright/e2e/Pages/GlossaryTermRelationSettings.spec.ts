@@ -15,6 +15,8 @@ import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { authenticateAdminPage } from '../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../utils/common';
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 const PAGE_SIZE_BASE = 15;
 const RELATION_SETTINGS_ROUTE = '/settings/governance/glossary-term-relations';
 const RELATION_TYPES_API =
@@ -48,6 +50,13 @@ const createRelationTypeViaApi = async (
 
       return;
     }
+
+    // Exponential backoff: 100 ms → 200 ms → 400 ms → 800 ms → 1 600 ms.
+    // A bare spin-loop gives other workers no time to release the settings
+    // singleton lock, so all retries collide and exhaust before one lands.
+    if (attempt < CONFLICT_RETRY_LIMIT - 1) {
+      await sleep(100 * Math.pow(2, attempt));
+    }
   }
 
   throw new Error(
@@ -65,19 +74,21 @@ const deleteRelationTypeViaApi = async (
     if (response.status() !== CONFLICT_STATUS) {
       return;
     }
+
+    if (attempt < CONFLICT_RETRY_LIMIT - 1) {
+      await sleep(100 * Math.pow(2, attempt));
+    }
   }
 };
 
 const goToRelationSettings = async (page: Page) => {
-  const listResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/glossaryTermRelationSettings/relationTypes') &&
-      response.request().method() === 'GET'
-  );
   await page.goto(RELATION_SETTINGS_ROUTE);
-  await listResponse;
-
-  await expect(page.getByTestId('relation-types-table')).toBeVisible();
+  // Wait for at least one row rather than intercepting the API response.
+  // React Query may serve data from cache without a network request, so
+  // page.waitForResponse would hang forever on repeat navigations.
+  await expect(
+    page.locator('[data-testid="relation-types-table"] tbody tr').first()
+  ).toBeVisible();
 };
 
 const fillInput = async (page: Page, testId: string, value: string) => {
@@ -122,6 +133,11 @@ const deleteRelationInUi = async (page: Page, name: string) => {
 
     expect((await mutation).status()).toBeLessThan(300);
   }).toPass();
+
+  // Wait for React to remove the row from the DOM — the API response arrives
+  // before the re-render, so asserting immediately after toPass() can still
+  // see count=1 from the stale DOM.
+  await expect(page.getByTestId(`relation-name-${name}`)).toHaveCount(0);
 };
 
 // Parallel test workers can push the table past PAGE_SIZE_BASE, putting the
@@ -163,6 +179,14 @@ const findRowAcrossPages = async (
     );
     await nextBtn.click();
     await nextPageResponse;
+
+    // The GET response arrives before React renders the new page's rows.
+    // Wait for at least one row to be visible so the next loop iteration
+    // reads the correct DOM instead of the stale previous page.
+    await page
+      .locator('[data-testid="relation-types-table"] tbody tr')
+      .first()
+      .waitFor({ state: 'visible', timeout: 5_000 });
   }
 };
 
