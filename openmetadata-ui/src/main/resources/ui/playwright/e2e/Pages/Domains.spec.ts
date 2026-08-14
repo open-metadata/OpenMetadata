@@ -20,8 +20,8 @@ import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import {
-    EntityTypeEndpoint,
-    ENTITY_PATH
+  EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -34,58 +34,58 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    runDrawerQuickFilterMatrix,
-    toDrawerAsset
+  runDrawerQuickFilterMatrix,
+  toDrawerAsset,
 } from '../../utils/assetDrawerQuickFilter';
 import {
-    clickOutside,
-    descriptionBox,
-    getApiContext,
-    redirectToHomePage,
-    toastNotification,
-    uuid,
-    visitGlossaryPage
+  clickOutside,
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+  visitGlossaryPage,
 } from '../../utils/common';
 import {
-    addAssetsToDataProduct,
-    addAssetsToDomain,
-    addAssetToDomainViaApi,
-    addTagsAndGlossaryToDomain,
-    checkAssetsCount,
-    createDataProduct,
-    createDataProductForSubDomain,
-    createDomain,
-    createSubDomain,
-    fillDomainForm,
-    goToAssetsTab,
-    navigateToSubDomain,
-    removeAssetsFromDataProduct,
-    renameDomain,
-    selectDataProduct,
-    selectDataProductFromTab,
-    selectDomain,
-    setupAssetsForDomain,
-    setupDomainHasDomainTest,
-    setupDomainOwnershipTest,
-    setupNoDomainRule,
-    verifyDataProductAssetsAfterDelete,
-    verifyDataProductsCount,
-    verifyDomain,
-    verifyDomainOnAssetPages,
-    waitForDomainAssetsAddCommit,
-    waitForDomainAssetsAddDryRun
+  addAssetsToDataProduct,
+  addAssetsToDomain,
+  addAssetToDomainViaApi,
+  addTagsAndGlossaryToDomain,
+  checkAssetsCount,
+  createDataProduct,
+  createDataProductForSubDomain,
+  createDomain,
+  createSubDomain,
+  fillDomainForm,
+  goToAssetsTab,
+  navigateToSubDomain,
+  removeAssetsFromDataProduct,
+  renameDomain,
+  selectDataProduct,
+  selectDataProductFromTab,
+  selectDomain,
+  setupAssetsForDomain,
+  setupDomainHasDomainTest,
+  setupDomainOwnershipTest,
+  setupNoDomainRule,
+  verifyDataProductAssetsAfterDelete,
+  verifyDataProductsCount,
+  verifyDomain,
+  verifyDomainOnAssetPages,
+  waitForDomainAssetsAddCommit,
+  waitForDomainAssetsAddDryRun,
 } from '../../utils/domain';
 import { assignDomainOnlyAccess } from '../../utils/domainIsolationUtils';
 import {
-    assignGlossaryTerm,
-    createAnnouncement,
-    deleteAnnouncement,
-    editAnnouncement,
-    followEntity,
-    getEncodedFqn,
-    unFollowEntity,
-    validateFollowedEntityToWidget,
-    waitForAllLoadersToDisappear
+  assignGlossaryTerm,
+  createAnnouncement,
+  deleteAnnouncement,
+  editAnnouncement,
+  followEntity,
+  getEncodedFqn,
+  unFollowEntity,
+  validateFollowedEntityToWidget,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
