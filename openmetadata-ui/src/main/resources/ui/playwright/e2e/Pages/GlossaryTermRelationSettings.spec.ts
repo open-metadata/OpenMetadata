@@ -402,14 +402,17 @@ test.describe('Glossary Term Relation Settings', () => {
       expect(resA).toBeUndefined();
       expect(resB).toBeUndefined();
 
-      const listRes = await ctxA.get(`${RELATION_TYPES_API}?limit=100&offset=0`);
-      const list = await listRes.json();
-      const names: string[] = (list.data ?? []).map(
-        (r: { name: string }) => r.name
-      );
+      // Verify each name by fetching it directly rather than scanning a
+      // fixed-limit list page. A limit=100 scan can miss names pushed past
+      // offset 100 by other parallel workers — exactly the flakiness class
+      // this PR aims to eliminate.
+      const [fetchA, fetchB] = await Promise.all([
+        ctxA.get(`${RELATION_TYPES_API}/${nameA}`),
+        ctxB.get(`${RELATION_TYPES_API}/${nameB}`),
+      ]);
 
-      expect(names).toContain(nameA);
-      expect(names).toContain(nameB);
+      expect(fetchA.status(), `${nameA} must exist after parallel create`).toBe(200);
+      expect(fetchB.status(), `${nameB} must exist after parallel create`).toBe(200);
     } finally {
       await deleteRelationTypeViaApi(ctxA, nameA);
       await deleteRelationTypeViaApi(ctxB, nameB);
