@@ -26,7 +26,11 @@ import {
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
 import { CsvJobsTray } from './CsvJobsTray.component';
-import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
+import {
+  CSV_JOBS_POST_ACTION_REFRESH_MS,
+  CSV_JOBS_REFRESH_EVENT,
+  markCsvJobOwned,
+} from './CsvJobsTray.constants';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
@@ -130,6 +134,163 @@ describe('CsvJobsTray', () => {
 
     expect(
       screen.queryByText('label.background-job-plural')
+    ).not.toBeInTheDocument();
+  });
+
+  // A fast export can finish before the tray's first fetch resolves, so the job
+  // is already terminal on that fetch and would otherwise be hidden as "stale".
+  // Because the user just started it (it is marked owned), it must be surfaced
+  // and the tray must auto-open for the download.
+  it('surfaces an owned job that is already terminal on the initial fetch', async () => {
+    markCsvJobOwned('owned-fast-job');
+
+    mockGetCsvAsyncJobs.mockResolvedValue([
+      createJob({ jobId: 'owned-fast-job', status: 'COMPLETED' }),
+    ]);
+
+    await renderComponent();
+
+    await waitFor(() => expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(1));
+
+    expect(
+      await screen.findByText('label.background-job-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('label.exported-entity-plural')
+    ).toBeInTheDocument();
+  });
+
+  // Regression: after Clear completed the tray must collapse, a freshly started
+  // job must not reuse the old open state and pop the popover while still
+  // running, and the tray must auto-open again once that job finishes — instead
+  // of leaving the user stuck on the "N running" launcher.
+  it('collapses on clear and re-opens only when the next job finishes', async () => {
+    mockGetCsvAsyncJobs
+      .mockResolvedValueOnce([
+        createJob({
+          jobId: 'job-a',
+          progress: 20,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ])
+      .mockResolvedValueOnce([
+        createJob({ jobId: 'job-a', status: 'COMPLETED' }),
+      ])
+      .mockResolvedValueOnce([
+        createJob({ jobId: 'job-a', status: 'COMPLETED' }),
+        createJob({
+          jobId: 'job-b',
+          progress: 10,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ])
+      .mockResolvedValue([
+        createJob({ jobId: 'job-a', status: 'COMPLETED' }),
+        createJob({ jobId: 'job-b', status: 'COMPLETED' }),
+      ]);
+
+    await renderComponent();
+
+    // Job A finishes -> tray auto-opens.
+    await act(async () => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    expect(
+      await screen.findByText('label.background-job-plural')
+    ).toBeInTheDocument();
+
+    // Clear completed empties the tray -> it collapses.
+    fireEvent.click(screen.getByText('label.clear-completed'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('label.background-job-plural')
+      ).not.toBeInTheDocument()
+    );
+
+    // A newly started job must surface as the launcher, not reopen the popover.
+    await act(async () => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    expect(
+      await screen.findByText('label.count-jobs-running')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.background-job-plural')
+    ).not.toBeInTheDocument();
+
+    // Once it finishes, the tray auto-opens even though it was minimised.
+    await act(async () => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    expect(
+      await screen.findByText('label.background-job-plural')
+    ).toBeInTheDocument();
+  });
+
+  // Many sources fetch concurrently (mount, refresh event, sockets, poll). A
+  // slow older fetch resolving after a newer one must not overwrite the fresher
+  // state and flip a completed job back to running.
+  it('ignores a stale fetch that resolves after a newer one', async () => {
+    let resolveSlow: (jobs: CsvAsyncJob[]) => void = () => undefined;
+    let resolveFast: (jobs: CsvAsyncJob[]) => void = () => undefined;
+
+    mockGetCsvAsyncJobs
+      .mockResolvedValueOnce([
+        createJob({
+          jobId: 'job-1',
+          progress: 20,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ])
+      .mockImplementationOnce(
+        () =>
+          new Promise<CsvAsyncJob[]>((resolve) => {
+            resolveSlow = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<CsvAsyncJob[]>((resolve) => {
+            resolveFast = resolve;
+          })
+      );
+
+    await renderComponent();
+
+    // Two concurrent refreshes: the second (newer) fetch is the one that wins.
+    await act(async () => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    await act(async () => {
+      resolveFast([createJob({ jobId: 'job-1', status: 'COMPLETED' })]);
+    });
+
+    // Older fetch resolves later with the stale RUNNING snapshot — ignored.
+    await act(async () => {
+      resolveSlow([
+        createJob({
+          jobId: 'job-1',
+          progress: 20,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ]);
+    });
+
+    expect(
+      await screen.findByText('label.exported-entity-plural')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.count-jobs-running')
     ).not.toBeInTheDocument();
   });
 
@@ -294,6 +455,131 @@ describe('CsvJobsTray', () => {
     });
 
     expect(mockGetCsvAsyncJobs).toHaveBeenCalledTimes(callsAfterCompletion);
+  });
+
+  it('auto-opens an owned export for download via polling alone on multi-pod', async () => {
+    const multipodExportJobId = 'multipod-export-job';
+    markCsvJobOwned(multipodExportJobId);
+
+    mockGetCsvAsyncJobs
+      .mockResolvedValueOnce([
+        createJob({
+          jobId: multipodExportJobId,
+          progress: 20,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ])
+      .mockResolvedValue([
+        createJob({ jobId: multipodExportJobId, status: 'COMPLETED' }),
+      ]);
+
+    await act(async () => {
+      render(<CsvJobsTray />);
+    });
+
+    expect(
+      await screen.findByText('label.count-jobs-running')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.download' })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'label.download' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('label.exported-entity-plural')
+    ).toBeInTheDocument();
+  });
+
+  it('fires a follow-up fetch after a refresh event to catch a late-registering job', async () => {
+    mockGetCsvAsyncJobs
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([
+        createJob({
+          jobId: 'late-job',
+          progress: 10,
+          result: undefined,
+          status: 'RUNNING',
+        }),
+      ]);
+
+    await renderComponent();
+
+    await act(async () => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    expect(
+      screen.queryByText('label.count-jobs-running')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(CSV_JOBS_POST_ACTION_REFRESH_MS);
+    });
+
+    expect(
+      await screen.findByText('label.count-jobs-running')
+    ).toBeInTheDocument();
+  });
+
+  it('stays closed after the user minimises an auto-opened job', async () => {
+    markCsvJobOwned('minimise-job');
+    mockGetCsvAsyncJobs.mockResolvedValue([
+      createJob({ jobId: 'minimise-job', status: 'COMPLETED' }),
+    ]);
+
+    await renderComponent();
+
+    expect(
+      await screen.findByRole('button', { name: 'label.download' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      document.querySelector('.csv-jobs-tray-close') as HTMLElement
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'label.download' })
+      ).not.toBeInTheDocument()
+    );
+
+    await act(async () => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'label.download' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('auto-opens for a failed job discovered after the initial fetch', async () => {
+    mockGetCsvAsyncJobs.mockResolvedValueOnce([]).mockResolvedValue([
+      createJob({
+        error: 'Boom',
+        jobId: 'failed-job',
+        operation: 'IMPORT',
+        result: undefined,
+        status: 'FAILED',
+      }),
+    ]);
+
+    await renderComponent();
+
+    await act(async () => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    expect(
+      await screen.findByText('label.clear-completed')
+    ).toBeInTheDocument();
   });
 
   // The poll is self-scheduling rather than a fixed interval, so a response
