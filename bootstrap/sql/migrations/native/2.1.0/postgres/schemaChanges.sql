@@ -35,3 +35,9 @@ CREATE INDEX IF NOT EXISTS idx_tci_status_fqn ON test_case_incident (testCaseRes
 CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
 CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
 CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
+
+-- Switch Oracle services to python-oracledb's native SQLAlchemy dialect.
+UPDATE dbservice_entity
+SET json = jsonb_set(json::jsonb, '{connection,config,scheme}', '"oracle+oracledb"')
+WHERE serviceType = 'Oracle'
+  AND json #>> '{connection,config,scheme}' = 'oracle+cx_oracle';
