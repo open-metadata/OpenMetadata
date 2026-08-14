@@ -4424,6 +4424,7 @@
     "create-entity-success": "{{entity}} 建立成功。",
     "delete-entity-error": "刪除 \"{{entity}}\" 時發生錯誤。",
     "deploy-entity-error": "部署 {{entity}} 時發生錯誤！",
+    "deploy-entity-success": "{{entity}} 部署成功。",
     "email-already-exist": "名稱為 \"{{name}}\" 的 {{entity}} 已存在。請選擇其他電子郵件。",
     "email-confirmation": "請確認您的電子郵件，確認信已傳送到您的電子郵件信箱",
     "email-found": "具有該電子郵件地址的使用者已存在！",

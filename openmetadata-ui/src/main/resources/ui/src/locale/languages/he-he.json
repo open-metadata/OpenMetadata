@@ -4424,6 +4424,7 @@
     "create-entity-success": "{{entity}} נוצר בהצלחה.",
     "delete-entity-error": "שגיאה במהלך מחיקת {{entity}}.",
     "deploy-entity-error": "שגיאה במהלך העלאת {{entity}}!",
+    "deploy-entity-success": "{{entity}} הועלה בהצלחה.",
     "email-already-exist": "קיימת כבר {{entity}} בשם \"{{name}}\". יש לבחור כתובת אימייל אחרת.",
     "email-confirmation": "יש לאמת את האימייל שלך, אישור נשלח לתיבת האימייל שלך",
     "email-found": "משתמש עם כתובת האימייל שסופקה כבר קיים!",

@@ -4424,6 +4424,7 @@
     "create-entity-success": "{{entity}} skapades.",
     "delete-entity-error": "Fel vid borttagning av \"{{entity}}\".",
     "deploy-entity-error": "Fel vid driftsättning av {{entity}}!",
+    "deploy-entity-success": "{{entity}} har driftsatts.",
     "email-already-exist": " En {{entity}} med namnet \"{{name}}\" finns redan. Välj en annan e-postadress.",
     "email-confirmation": "Bekräfta din e-postadress. En bekräftelse har skickats till din e-post",
     "email-found": "Det finns redan en användare med den angivna e-postadressen!",

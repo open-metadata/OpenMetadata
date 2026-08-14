@@ -24,6 +24,8 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
+import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
 
 export default [
   // Base recommended configs
@@ -100,6 +102,8 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      'openmetadata-imports': openMetadataImports,
+      'openmetadata-performance': openMetadataPerformance,
       sonarjs,
       'jsx-a11y': jsxA11y,
     },
@@ -292,7 +296,7 @@ export default [
 
       // --- warn tier: on, visible, not yet blocking. Counts are the measured
       // backlog at the time of writing; they only go down.
-      'react-hooks/exhaustive-deps': 'warn', // 1694 across 595 files
+      'react-hooks/exhaustive-deps': 'warn', // 1693 across 596 files
       'jsx-a11y/control-has-associated-label': 'warn', // 146
       'jsx-a11y/click-events-have-key-events': 'warn', // 89
       'jsx-a11y/no-static-element-interactions': 'warn', // 87
@@ -334,16 +338,45 @@ export default [
 
       // React correctness and re-render cost — the enforceable slice of
       // frontend-performance.md.
-      'react/no-array-index-key': 'warn', // 23
-      'react/jsx-no-constructed-context-values': 'warn', // 1
-      'react/no-unstable-nested-components': 'warn', // 1
+      'react/no-array-index-key': 'warn', // 93 across 59 files
+      'react/jsx-no-constructed-context-values': 'warn', // 8 across 7 files
+      'react/no-unstable-nested-components': 'warn', // 25 across 23 files
       'react/no-danger': 'warn', // 0 in sample
       '@typescript-eslint/no-non-null-assertion': 'warn',
+
+      // Import architecture and request fan-out. These are warnings while the
+      // measured legacy backlog is worked down; they are reporting-only and do
+      // not rewrite source under --fix.
+      'openmetadata-imports/no-api-calls-in-iteration': 'warn',
+      'openmetadata-imports/no-circular-imports': 'warn',
+      'openmetadata-imports/no-cross-page-imports': 'warn',
+      'openmetadata-imports/no-hook-ui-imports': 'warn',
+      'openmetadata-imports/no-impure-pure-utils': 'warn',
+      'openmetadata-imports/no-internal-barrel-imports': 'warn',
+      'openmetadata-imports/no-lodash-default-import': 'warn',
+      'openmetadata-imports/no-lower-layer-page-imports': 'warn',
+      'openmetadata-imports/no-rest-ui-imports': 'warn',
+      'openmetadata-imports/review-sequential-api-calls': 'warn',
+
+      // Repository-specific performance invariants. These rules have no
+      // existing backlog and are reporting-only, so they can block without
+      // rewriting files under --fix.
+      'openmetadata-performance/require-suspense-fallback': 'error',
+      'openmetadata-performance/no-unbounded-module-cache': 'error',
 
       // NOT enabled: react/jsx-no-useless-fragment. It auto-fixes, so at any
       // severity `eslint --fix` would rewrite files and hard-fail the
       // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
       // commit first, then add it here at error.
+    },
+  },
+
+  // Route modules must preserve page-level code splitting. Type-only imports
+  // remain allowed because they do not create a runtime bundle edge.
+  {
+    files: ['src/components/AppRouter/**/*.{ts,tsx}'],
+    rules: {
+      'openmetadata-performance/no-eager-page-imports': 'error',
     },
   },
 

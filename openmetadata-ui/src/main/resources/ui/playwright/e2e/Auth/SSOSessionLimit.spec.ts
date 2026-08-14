@@ -16,6 +16,7 @@ import { withMaxActiveSessions } from '../../utils/sessionRenewal';
 import { getProviderHelper, ProviderHelper } from '../../utils/sso-providers';
 import { swapSecurityConfig } from '../../utils/ssoAuth';
 import { loginViaSso, SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
+import { getToken } from '../../utils/tokenStorage';
 
 // maxActiveSessionsPerUser is enforced server-side (SessionService.applySessionLimit)
 // only when OpenMetadata mints its own session, i.e. a session-bound JWT carrying a
@@ -43,7 +44,7 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
   );
 
   let helper: ProviderHelper;
-  let restoreSecurity: (() => Promise<void>) | undefined;
+  let restoreSecurity: ((ssoToken?: string) => Promise<void>) | undefined;
   const sessions: { context: BrowserContext; page: Page }[] = [];
 
   test.beforeAll(
@@ -63,11 +64,19 @@ test.describe('SSO Session Limit', { tag: SESSION_LIMIT_TAGS }, () => {
   );
 
   test.afterAll('Restore original security configuration', async () => {
+    // The survivor (last) session is still authenticated — capture its token
+    // before closing so we have a valid SSO token for the restore PUT.
+    const survivor = sessions.at(-1);
+    const ssoToken = survivor
+      ? await getToken(survivor.page).catch(() => undefined)
+      : undefined;
+
     for (const { page, context } of sessions) {
       await page.close();
       await context.close();
     }
-    await restoreSecurity?.();
+
+    await restoreSecurity?.(ssoToken);
   });
 
   test('should evict the least-recently-used session once the cap is exceeded', async ({

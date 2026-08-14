@@ -4424,6 +4424,7 @@
     "create-entity-success": "{{entity}} creado exitosamente.",
     "delete-entity-error": "Error al eliminar {{entity}}.",
     "deploy-entity-error": "¡Error al implementar {{entity}}!",
+    "deploy-entity-success": "{{entity}} implementado con éxito.",
     "email-already-exist": "Un {{entity}} con el nombre \"{{name}}\" ya existe. Por favor elige otro correo electrónico.",
     "email-confirmation": "Confirma tu correo electrónico. Se ha enviado una confirmación a la dirección proporcionada.",
     "email-found": "¡Ya existe un usuario con la dirección de correo electrónico proporcionada!",

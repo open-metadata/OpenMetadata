@@ -736,7 +736,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 if owner_ref and owner_ref.root:
                     return owner_ref
 
-            if self.source_config.includeOwners and hasattr(self.inspector, "get_table_owner"):
+            # The Postgres source patches `get_table_owner` onto SQLAlchemy's global
+            # `Inspector` class, so probing the inspector reports True on every
+            # connector. Only the dialect carries a real implementation.
+            if self.source_config.includeOwners and hasattr(self.inspector.dialect, "get_table_owner"):
                 owner_name = self.inspector.get_table_owner(
                     connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
