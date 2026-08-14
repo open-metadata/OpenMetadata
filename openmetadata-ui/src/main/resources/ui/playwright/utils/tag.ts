@@ -524,7 +524,10 @@ export const LIMITED_USER_RULES: PolicyRulesType[] = [
 
 export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
-  await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+  await adminPage
+    .getByTestId('displayName')
+    .getByRole('textbox')
+    .fill(NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
   await adminPage.getByTestId('icon-picker-btn').click();
   await adminPage
