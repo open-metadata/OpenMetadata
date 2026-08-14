@@ -81,6 +81,12 @@ test.describe('Domains widget — asset count regression', () => {
   }) => {
     test.slow();
 
+    // Navigate to the app before interacting. The page fixture starts at
+    // about:blank even with storageState — the sidebar is not present
+    // until the app loads.
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+
     // Add one asset to the domain via the full UI flow. This exercises the
     // mutation path that must call invalidateQueries (Bug 1 fix).
     await sidebarClick(page, SidebarItem.DOMAIN);
