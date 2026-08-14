@@ -52,7 +52,17 @@ def test_set_session_tag_statement_is_accepted_by_sqlalchemy_2x():
     snowflake_interface(query_tag="my_tag").set_session_tag(session)
 
     assert [str(statement) for statement in session.statements] == [
-        'ALTER SESSION SET QUERY_TAG="my_tag"'
+        "ALTER SESSION SET QUERY_TAG='my_tag'"
+    ]
+
+
+def test_set_session_tag_does_not_break_on_a_json_query_tag():
+    session = RecordingSession()
+
+    snowflake_interface(query_tag='{"app":"OpenMetadata"}').set_session_tag(session)
+
+    assert [str(statement) for statement in session.statements] == [
+        'ALTER SESSION SET QUERY_TAG=\'{"app":"OpenMetadata"}\''
     ]
 
 
