@@ -229,6 +229,91 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
+  /**
+   * Heals seeded Tags: system recognizers the Tag lost - or that a later release added - are put
+   * back by name, and a provider knocked off the seeded value is restored. A recognizer that is
+   * still there is never touched, so user edits to it survive.
+   */
+  public void reconcileSeededTags(List<Tag> seedTags) {
+    for (Tag seedTag : listOrEmpty(seedTags)) {
+      try {
+        reconcileSeededTag(seedTag);
+      } catch (Exception e) {
+        LOG.warn("Failed to reconcile seeded tag {}", seedTag.getFullyQualifiedName(), e);
+      }
+    }
+  }
+
+  private void reconcileSeededTag(Tag seedTag) {
+    // A Tag missing altogether was just created from this same seed by initializeEntity()
+    Tag stored = findByNameOrNull(seedTag.getFullyQualifiedName(), ALL);
+    if (stored == null) {
+      return;
+    }
+
+    List<Recognizer> seeded = systemRecognizers(seedTag);
+    List<Recognizer> missing = missingSystemRecognizers(stored.getRecognizers(), seeded);
+    // CreateTag defaults provider to user, so any PUT that omits it downgrades a seeded Tag - and a
+    // Tag that is no longer system provided is no longer protected from deletion
+    boolean providerDrifted =
+        seedTag.getProvider() != null && !seedTag.getProvider().equals(stored.getProvider());
+    if (missing.isEmpty() && !providerDrifted) {
+      return;
+    }
+
+    if (!missing.isEmpty()) {
+      appendRecognizers(stored, seedTag, missing, seeded.size());
+    }
+    if (providerDrifted) {
+      stored.setProvider(seedTag.getProvider());
+    }
+    store(stored, true);
+    LOG.info(
+        "Reconciled seeded tag {}: provider={}, recognizers re-added={}",
+        stored.getFullyQualifiedName(),
+        stored.getProvider(),
+        missing.stream().map(Recognizer::getName).toList());
+  }
+
+  private List<Recognizer> systemRecognizers(Tag seedTag) {
+    return listOrEmpty(seedTag.getRecognizers()).stream()
+        .filter(recognizer -> Boolean.TRUE.equals(recognizer.getIsSystemDefault()))
+        .toList();
+  }
+
+  private void appendRecognizers(
+      Tag stored, Tag seedTag, List<Recognizer> missing, int seededCount) {
+    List<Recognizer> merged = new ArrayList<>(listOrEmpty(stored.getRecognizers()));
+    merged.addAll(missing);
+    stored.setRecognizers(merged);
+    restoreAutoClassification(stored, seedTag, missing.size() == seededCount);
+  }
+
+  /** Seeded recognizers absent from {@code stored}, copied so the seed list stays reusable. */
+  protected List<Recognizer> missingSystemRecognizers(
+      List<Recognizer> stored, List<Recognizer> seeded) {
+    Set<String> storedNames =
+        listOrEmpty(stored).stream().map(Recognizer::getName).collect(Collectors.toSet());
+    return seeded.stream()
+        .filter(recognizer -> !storedNames.contains(recognizer.getName()))
+        .map(recognizer -> JsonUtils.deepCopy(recognizer, Recognizer.class))
+        .map(recognizer -> recognizer.withId(UUID.randomUUID()))
+        .toList();
+  }
+
+  /**
+   * Recognizers are inert while autoClassificationEnabled is false, so a Tag that lost every seeded
+   * recognizer - the signature of a wipe - gets its flags back too. One merely short a newly shipped
+   * recognizer keeps whatever the user configured.
+   */
+  private void restoreAutoClassification(Tag stored, Tag seedTag, boolean lostEverySeeded) {
+    if (!lostEverySeeded || !Boolean.TRUE.equals(seedTag.getAutoClassificationEnabled())) {
+      return;
+    }
+    stored.setAutoClassificationEnabled(true);
+    stored.setAutoClassificationPriority(seedTag.getAutoClassificationPriority());
+  }
+
   @Override
   public void setInheritedFields(Tag tag, Fields fields) {
     if (tag.getClassification() == null || tag.getClassification().getId() == null) {
