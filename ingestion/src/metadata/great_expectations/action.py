@@ -334,6 +334,9 @@ class OpenMetadataValidationAction(ValidationAction):
             Optional[str]
         """
         datasource_name = (meta or {}).get("active_batch_definition", {}).get("datasource_name")
+        if not datasource_name:
+            return None
+
         execution_engine_url = execution_engine_urls.get(datasource_name)
         return execution_engine_url.database if execution_engine_url else None
 
@@ -383,10 +386,8 @@ class OpenMetadataValidationAction(ValidationAction):
     def _get_test_case_description(self, result: dict) -> str:
         """Get test case description from GE test result"""
         expectation = self._get_expectation_config(result)
-        if expectation:
-            meta: Optional[Dict] = expectation.get("meta")  # noqa: UP006, UP045
-            if meta:
-                return meta.get("description", "")
+        if expectation and expectation.meta:
+            return expectation.meta.get("description", "")
         return ""
 
     def _get_test_case_params_value(self, result: dict) -> List[TestCaseParameterValue]:  # noqa: UP006

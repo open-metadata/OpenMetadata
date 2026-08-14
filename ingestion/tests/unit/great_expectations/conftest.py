@@ -50,12 +50,16 @@ class MockedExpectationConfiguration(dict):
     """Stands in for a GX `ExpectationConfiguration`.
 
     GX exposes it as a dict-like object whose keys are also reachable as attributes,
-    which is how the action reads `kwargs` off it.
+    which is how the action reads `kwargs` and `meta` off it.
     """
 
     @property
     def kwargs(self):
         return self["kwargs"]
+
+    @property
+    def meta(self):
+        return self["meta"]
 
 
 @fixture(scope="module")
