@@ -1124,29 +1124,41 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     return SearchRankingHelper.searchWithIdentifierPrecision(
         request.getQuery(),
         searchSettings,
-        request.getFrom() == null ? 0 : request.getFrom(),
-        request.getSize() == null ? 0 : request.getSize(),
-        (settings, from, size) ->
-            executeSearchRequest(
-                windowed(request, from, size), subjectContext, settings, clusterAlias),
+        new SearchRankingHelper.SearchWindow(
+            request.getFrom() == null ? 0 : request.getFrom(),
+            request.getSize() == null ? 0 : request.getSize(),
+            !nullOrEmpty(request.getSearchAfter())),
+        (settings, window) ->
+            executeSearchRequest(windowed(request, window), subjectContext, settings, clusterAlias),
         OpenSearchSearchManager::hitIdentifiers);
   }
 
   /**
    * The same request restricted to a different window, so the identity probe can read the top of
-   * the ranking whichever page was asked for. Returns the original when the window already matches,
-   * which is the common case and avoids copying on the hot path.
+   * the ranking whichever page was asked for. The probe window is not cursor paged, so it drops any
+   * {@code search_after}: leaving the cursor on would scroll the probe to wherever the caller had
+   * got to and it would judge the same window the caller asked for, which is the tear it exists to
+   * prevent. Returns the original when nothing needs changing, which is the common case.
    */
   private static org.openmetadata.schema.search.SearchRequest windowed(
-      org.openmetadata.schema.search.SearchRequest request, int from, int size) {
+      org.openmetadata.schema.search.SearchRequest request,
+      SearchRankingHelper.SearchWindow window) {
     Integer currentFrom = request.getFrom();
     Integer currentSize = request.getSize();
-    if (currentFrom != null && currentFrom == from && currentSize != null && currentSize == size) {
+    boolean sameWindow =
+        currentFrom != null
+            && currentFrom == window.from()
+            && currentSize != null
+            && currentSize == window.size();
+    boolean keepsCursor = window.cursorPaged() || nullOrEmpty(request.getSearchAfter());
+    if (sameWindow && keepsCursor) {
       return request;
     }
-    return JsonUtils.deepCopy(request, org.openmetadata.schema.search.SearchRequest.class)
-        .withFrom(from)
-        .withSize(size);
+    org.openmetadata.schema.search.SearchRequest copy =
+        JsonUtils.deepCopy(request, org.openmetadata.schema.search.SearchRequest.class)
+            .withFrom(window.from())
+            .withSize(window.size());
+    return window.cursorPaged() ? copy : copy.withSearchAfter(List.of());
   }
 
   /**

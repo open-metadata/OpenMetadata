@@ -523,19 +523,23 @@ class SearchRankingHelperTest {
     for (int from : List.of(0, 15, 300)) {
       prunedWindows.clear();
       SearchRankingHelper.SearchPass<List<String>> pass =
-          (used, passFrom, passSize) -> {
+          (used, window) -> {
             boolean pruned =
                 used.getDefaultConfiguration().getRanking().getStages().stream()
                     .noneMatch(stage -> "fuzzyName".equals(stage.getName()));
             if (pruned) {
-              prunedWindows.add(passFrom + ":" + passSize);
+              prunedWindows.add(window.from() + ":" + window.size());
             }
             // Only the top of the ranking holds the exactly-named document, as the exact band does.
-            return passFrom == 0 ? List.of("orders") : List.of("orders_archive");
+            return window.from() == 0 ? List.of("orders") : List.of("orders_archive");
           };
 
       SearchRankingHelper.searchWithIdentifierPrecision(
-          "orders", settings, from, 15, pass, List::stream);
+          "orders",
+          settings,
+          new SearchRankingHelper.SearchWindow(from, 15, false),
+          pass,
+          List::stream);
 
       assertEquals(
           List.of(from + ":15"),
@@ -551,15 +555,58 @@ class SearchRankingHelperTest {
     for (int from : List.of(0, 15)) {
       List<String> windows = new ArrayList<>();
       SearchRankingHelper.SearchPass<List<String>> pass =
-          (used, passFrom, passSize) -> {
-            windows.add(passFrom + ":" + passSize);
+          (used, window) -> {
+            windows.add(window.from() + ":" + window.size());
             return List.of("something_else");
           };
       SearchRankingHelper.searchWithIdentifierPrecision(
-          "orders", settings, from, 15, pass, List::stream);
+          "orders",
+          settings,
+          new SearchRankingHelper.SearchWindow(from, 15, false),
+          pass,
+          List::stream);
       assertFalse(
           windows.contains(from + ":15") && windows.size() > 2,
           "no more than a probe and the page itself: " + windows);
     }
+  }
+
+  /**
+   * A search_after cursor request also carries from=0, but the cursor has scrolled it away from the
+   * top. Treating its window as the top-of-ranking check would let the pruned/widened decision flip
+   * between cursor pages exactly as it did between offset pages, and would judge on whatever the
+   * caller had scrolled to. The probe must therefore run without the cursor.
+   */
+  @Test
+  void aCursorPageIsNotMistakenForTheTopOfTheRanking() throws IOException {
+    SearchSettings settings = settingsWithStages("exactName", "fuzzyName");
+    List<String> prunedWindows = new ArrayList<>();
+    List<Boolean> probeCursors = new ArrayList<>();
+
+    SearchRankingHelper.SearchPass<List<String>> pass =
+        (used, window) -> {
+          boolean pruned =
+              used.getDefaultConfiguration().getRanking().getStages().stream()
+                  .noneMatch(stage -> "fuzzyName".equals(stage.getName()));
+          if (pruned) {
+            prunedWindows.add(window.from() + ":" + window.size());
+          } else {
+            probeCursors.add(window.cursorPaged());
+          }
+          // The cursor has scrolled past the exactly-named document; only an uncursored read of the
+          // top can still see it.
+          return window.cursorPaged() ? List.of("orders_archive") : List.of("orders");
+        };
+
+    SearchRankingHelper.searchWithIdentifierPrecision(
+        "orders", settings, new SearchRankingHelper.SearchWindow(0, 15, true), pass, List::stream);
+
+    assertEquals(
+        List.of("0:15"),
+        prunedWindows,
+        "a cursor page must be served from the same pruned result set as page one");
+    assertTrue(
+        probeCursors.contains(false),
+        "the probe must drop the cursor so it reads the actual top: " + probeCursors);
   }
 }

@@ -715,40 +715,57 @@ public final class SearchRankingHelper {
    * exactly, runs it again without the fuzzy stages. Shared by the Elasticsearch and OpenSearch
    * managers, whose response and request-builder types differ but whose control flow does not.
    *
-   * <p>The widened query runs first, so an ordinary search costs one round-trip and keeps the
-   * results it has today; only an exact identifier lookup pays a second.
+   * <p>A first page costs one round-trip unless the query turns out to name an entity, which pays a
+   * second. Deeper pages and cursor pages cannot judge from what they return, so they pay a probe
+   * plus the page itself.
    */
   public static <R> R searchWithIdentifierPrecision(
       String query,
       SearchSettings searchSettings,
-      int from,
-      int size,
+      SearchWindow window,
       SearchPass<R> pass,
       Function<R, Stream<String>> identifiersOf)
       throws IOException {
     if (!hasPrunableFuzzyStage(searchSettings)) {
-      return pass.run(searchSettings, from, size);
+      return pass.run(searchSettings, window);
     }
-    boolean requestedWindowIsTheProbe = from == 0 && size >= IDENTITY_PROBE_SIZE;
-    R requestedWindow = requestedWindowIsTheProbe ? pass.run(searchSettings, from, size) : null;
+    // A cursor request also arrives with from=0, but search_after has scrolled it away from the
+    // top,
+    // so its window is no more the top of the ranking than a from=15 window is.
+    boolean requestedWindowIsTheProbe =
+        !window.cursorPaged() && window.from() == 0 && window.size() >= IDENTITY_PROBE_SIZE;
+    R requestedWindow = requestedWindowIsTheProbe ? pass.run(searchSettings, window) : null;
     R probe =
         requestedWindowIsTheProbe
             ? requestedWindow
-            : pass.run(searchSettings, 0, IDENTITY_PROBE_SIZE);
+            : pass.run(searchSettings, SearchWindow.probe());
     if (isExactIdentifierLookup(query, identifiersOf.apply(probe))) {
-      return pass.run(withoutFuzzyStages(searchSettings), from, size);
+      return pass.run(withoutFuzzyStages(searchSettings), window);
     }
-    return requestedWindowIsTheProbe ? requestedWindow : pass.run(searchSettings, from, size);
+    return requestedWindowIsTheProbe ? requestedWindow : pass.run(searchSettings, window);
+  }
+
+  /**
+   * The slice of the ranking a pass should return.
+   *
+   * @param cursorPaged whether the caller supplied a {@code search_after} cursor. Such a request
+   *     carries {@code from=0} while pointing anywhere in the ranking, so it must never be mistaken
+   *     for the top, and the probe must run without the cursor to read the actual top.
+   */
+  public record SearchWindow(int from, int size, boolean cursorPaged) {
+    public static SearchWindow probe() {
+      return new SearchWindow(0, IDENTITY_PROBE_SIZE, false);
+    }
   }
 
   /**
    * One execution of a search, parameterised by the settings it should be built from and the window
    * it should return. The window is a parameter because the identity probe has to read the top of
-   * the ranking regardless of which page the caller asked for.
+   * the ranking regardless of which page, or which cursor position, the caller asked for.
    */
   @FunctionalInterface
   public interface SearchPass<R> {
-    R run(SearchSettings searchSettings, int from, int size) throws IOException;
+    R run(SearchSettings searchSettings, SearchWindow window) throws IOException;
   }
 
   /**
