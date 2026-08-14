@@ -21,10 +21,7 @@ import {
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { fullUuid, uuid } from '../../utils/common';
-import {
-  visitEntityPage,
-  visitEntityPageByFqn,
-} from '../../utils/entity';
+import { visitEntityPage, visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
