@@ -24,6 +24,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForIncidentToBeIndexed } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
@@ -1050,6 +1051,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       username: user1.data.email.split('@')[0].toLocaleLowerCase(),
       userDisplayName: user1.getUserDisplayName(),
       testCaseName: table1.testCasesResponseData[2]?.['name'],
+      testCaseFqn: table1.testCasesResponseData[2]?.['fullyQualifiedName'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
     const incidentDetailsRes = page.waitForResponse(
@@ -1058,6 +1060,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
     await incidentDetailsRes;
 
+    const assignmentStartedAt = Date.now();
     await assignIncident({
       page,
       testCaseName: assigneeTestCase.testCaseName,
@@ -1067,6 +1070,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       },
       direct: true,
     });
+    await waitForIncidentToBeIndexed(
+      page.request,
+      assigneeTestCase.testCaseFqn,
+      assignmentStartedAt,
+      'Assigned',
+      assigneeTestCase.username
+    );
 
     await page.click('[data-testid="select-assignee"]');
     const assigneeOption = page.locator(
@@ -1082,60 +1092,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*assignee=${assigneeTestCase.username}*`
     );
     await assigneeOption.click();
-    const assigneeFilterResponse = await assigneeFilterRes;
-    const assignedIncident = page.getByTestId(
-      `test-case-${assigneeTestCase.testCaseName}`
-    );
-
-    // The resolve API confirms the write before the search index necessarily
-    // exposes it, so wait on the exact filtered request the UI already issued.
-    if (!(await assignedIncident.isVisible().catch(() => false))) {
-      await expect
-        .poll(
-          async () => {
-            const retryResponse = await page.request.get(
-              assigneeFilterResponse.url()
-            );
-
-            if (!retryResponse.ok()) {
-              return false;
-            }
-
-            const searchData = (await retryResponse.json()) as {
-              data?: Array<{
-                testCaseReference?: { name?: string };
-                testCaseResolutionStatusDetails?: {
-                  assignee?: { name?: string };
-                };
-              }>;
-            };
-
-            return Boolean(
-              searchData.data?.some(
-                (incident) =>
-                  incident.testCaseReference?.name ===
-                    assigneeTestCase.testCaseName &&
-                  incident.testCaseResolutionStatusDetails?.assignee?.name ===
-                    assigneeTestCase.username
-              )
-            );
-          },
-          {
-            message: `Wait for ${assigneeTestCase.testCaseName} assignee to be indexed`,
-            timeout: 60_000,
-            intervals: [1_000, 2_000, 5_000],
-          }
-        )
-        .toBe(true);
-
-      const indexedAssigneeFilterRes = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*assignee=${assigneeTestCase.username}*`
-      );
-      // The assignee lives in the URL query, so reload preserves the filter and
-      // renders the indexed response without rebuilding UI state in the test.
-      await page.reload();
-      await indexedAssigneeFilterRes;
-    }
+    await assigneeFilterRes;
 
     await expectIncidentTableRowsToContain(
       page,
