@@ -4420,6 +4420,7 @@
     "create-entity-success": "{{entity}} با موفقیت ایجاد شد.",
     "delete-entity-error": "خطا در حذف \"{{entity}}\".",
     "deploy-entity-error": "خطا در استقرار {{entity}}!",
+    "deploy-entity-success": "{{entity}} با موفقیت مستقر شد.",
     "email-already-exist": "یک {{entity}} با نام \"{{name}}\" وجود دارد. لطفاً ایمیل دیگری انتخاب کنید.",
     "email-confirmation": "لطفاً ایمیل خود را تأیید کنید، تأییدیه به ایمیل شما ارسال شده است.",
     "email-found": "کاربر با آدرس ایمیل داده شده وجود دارد!",

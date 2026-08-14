@@ -4420,6 +4420,7 @@
     "create-entity-success": "{{entity}} यशस्वीरित्या तयार केले.",
     "delete-entity-error": "\"{{entity}}\" मिटवताना त्रुटी.",
     "deploy-entity-error": "{{entity}} उपयोजित करताना त्रुटी!",
+    "deploy-entity-success": "{{entity}} यशस्वीरित्या उपयोजित केले.",
     "email-already-exist": " नावाने \"{{name}}\" असलेले {{entity}} आधीच अस्तित्वात आहे. कृपया दुसरा ईमेल निवडा.",
     "email-confirmation": "कृपया तुमचा ईमेल पुष्टी करा, पुष्टीकरण तुमच्या ईमेलवर पाठवले गेले आहे",
     "email-found": "दिलेल्या ईमेल पत्त्यासह वापरकर्ता आधीच अस्तित्वात आहे!",
