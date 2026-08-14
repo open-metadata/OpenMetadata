@@ -45,11 +45,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
 
     await addSampleDataViaApi(apiContext, tableWithData);
     await addSampleDataViaApi(apiContext, tableForDelete);
-    await addSampleDataViaApi(
-      apiContext,
-      tableWithReservedColumns,
-      RESERVED_SAMPLE_COLUMN_NAMES
-    );
+    await addSampleDataViaApi(apiContext, tableWithReservedColumns);
 
     await afterAction();
   });
@@ -102,29 +98,28 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('sample-data-table')).toBeVisible();
     });
 
-    await test.step('Verify every reserved column header is rendered', async () => {
-      for (const columnName of RESERVED_SAMPLE_COLUMN_NAMES) {
-        await expect(
-          page.getByTestId('sample-data-table').getByRole('columnheader', {
-            name: columnName,
-            exact: false,
-          })
-        ).toBeVisible();
+    await test.step('Verify every reserved column header is rendered in order', async () => {
+      const headers = page.getByTestId('sample-data-table').locator('thead th');
+
+      for (const [
+        index,
+        columnName,
+      ] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
+        await expect(headers.nth(index)).toContainText(columnName);
       }
     });
 
-    await test.step('Verify every reserved column shows its own cell values', async () => {
-      for (const [index] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
-        await expect(
-          page
-            .getByTestId('sample-data-table')
-            .getByText(`sample_value_${index}_0`)
-        ).toBeVisible();
-        await expect(
-          page
-            .getByTestId('sample-data-table')
-            .getByText(`sample_value_${index}_2`)
-        ).toBeVisible();
+    await test.step('Verify each cell value sits under its own column', async () => {
+      const rows = page
+        .getByTestId('sample-data-table')
+        .locator('tbody tr.ant-table-row');
+
+      for (const [columnIndex] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
+        for (const rowIndex of [0, 2]) {
+          await expect(
+            rows.nth(rowIndex).locator('td').nth(columnIndex)
+          ).toContainText(`sample_value_${columnIndex}_${rowIndex}`);
+        }
       }
     });
   });

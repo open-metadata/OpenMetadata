@@ -55,14 +55,11 @@ export const navigateToSampleDataTab = async (
 
 export const addSampleDataViaApi = async (
   apiContext: APIRequestContext,
-  table: TableClass,
-  columnNames?: string[]
+  table: TableClass
 ) => {
-  const columns =
-    columnNames ??
-    (table.entityResponseData.columns ?? [])
-      .map((col) => col.name ?? '')
-      .filter(Boolean);
+  const columns = (table.entityResponseData.columns ?? [])
+    .map((col) => col.name ?? '')
+    .filter(Boolean);
 
   const rows = Array.from({ length: 3 }, (_, rowIdx) =>
     columns.map((_, colIdx) => `sample_value_${colIdx}_${rowIdx}`)
