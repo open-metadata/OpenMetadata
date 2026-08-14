@@ -100,8 +100,8 @@ but the code is wrong?" — if the answer is "nothing", rewrite it. Assert on ob
 (API responses, DB state), not internal `verify()` calls.
 
 **License headers are per-module — copy one from a sibling file, never assume Apache.** UI TS/TSX:
-Apache-2.0 (`yarn license-header-fix`). Python under `ingestion/` and `openmetadata-airflow-apis/`:
-**Collate Community License 1.0** (`ingestion/LICENSE`). Java: Apache-2.0, most files carry none.
+Apache-2.0 (`yarn license-header-fix`). Python: `ingestion/` is **Collate Community License 1.0** (`ingestion/LICENSE`); `openmetadata-airflow-apis/` Python files use the same Collate header template.
+Java: Apache-2.0, most files carry none.
 Only the UI is enforced — the `ui-license-header` pre-commit hook and CI `ui-checkstyle`; spotless
 and `py_format_check` never look at headers, so a wrong Python or Java header ships silently.
 
