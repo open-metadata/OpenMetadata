@@ -35,6 +35,7 @@ import {
   performInitialStepForRules,
   saveAndTriggerDataContractValidation,
   triggerContractValidation,
+  waitForTableIndexing,
 } from '../../utils/dataContracts';
 import {
   customFormatDateTime,
@@ -669,30 +670,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       // Wait for the table to be indexed in Elasticsearch before validation runs,
       // since the "contains" text-search rule queries ES.
-      const tableName = table.entity.name;
-      const searchUrl = `/api/v1/search/query?q=${encodeURIComponent(
-        tableName
-      )}&index=table_search_index&from=0&size=10`;
-      await expect
-        .poll(
-          async () => {
-            const response = await page.request.get(searchUrl);
-            if (!response.ok()) return 'not_indexed';
-            const data = await response.json();
-            return data?.hits?.hits?.some(
-              (hit: { _source?: { name?: string } }) =>
-                hit._source?.name === tableName
-            )
-              ? 'indexed'
-              : 'not_indexed';
-          },
-          {
-            message: `Wait for table "${tableName}" to be indexed in Elasticsearch`,
-            timeout: 30_000,
-            intervals: [1_000, 2_000, 3_000],
-          }
-        )
-        .toBe('indexed');
+      await waitForTableIndexing(page, table.entity.name);
 
       // save and trigger contract validation (now the table is indexed)
       contractId = (
@@ -782,30 +760,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       // Wait for the table to be indexed in Elasticsearch before validation runs,
       // since the "not_contains" text-search rule queries ES.
-      const tableName = table.entity.name;
-      const searchUrl = `/api/v1/search/query?q=${encodeURIComponent(
-        tableName
-      )}&index=table_search_index&from=0&size=10`;
-      await expect
-        .poll(
-          async () => {
-            const response = await page.request.get(searchUrl);
-            if (!response.ok()) return 'not_indexed';
-            const data = await response.json();
-            return data?.hits?.hits?.some(
-              (hit: { _source?: { name?: string } }) =>
-                hit._source?.name === tableName
-            )
-              ? 'indexed'
-              : 'not_indexed';
-          },
-          {
-            message: `Wait for table "${tableName}" to be indexed in Elasticsearch`,
-            timeout: 30_000,
-            intervals: [1_000, 2_000, 3_000],
-          }
-        )
-        .toBe('indexed');
+      await waitForTableIndexing(page, table.entity.name);
 
       // save and trigger contract validation
       contractId = (
