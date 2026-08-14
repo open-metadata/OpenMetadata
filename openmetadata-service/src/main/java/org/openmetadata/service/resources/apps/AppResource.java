@@ -668,7 +668,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         Object logs = lastLogs.remove("logs");
         if (logs != null) {
           lastLogs.put(
-              PipelineServiceClientInterface.TYPE_TO_TASK.get(
+              PipelineServiceClientInterface.taskKeyOf(
                   ingestionPipeline.getPipelineType().toString()),
               logs.toString());
         }

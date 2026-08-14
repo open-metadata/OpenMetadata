@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -552,10 +554,13 @@ public class MigrationUtil {
         ObjectNode payload = JsonUtils.getObjectNode();
         payload.put("suggestionType", mappedSuggestionType);
 
-        String fieldPath =
-            "Tag".equals(mappedSuggestionType)
-                ? Entity.FIELD_TAGS
-                : extractFieldPathFromEntityLink(entityLink);
+        // Keep the field path the entityLink points at (e.g. columns.<col>.tags) so a tag
+        // suggestion lands on the suggested column, not the parent entity; fall back to
+        // entity-level tags only when the link carries no tags field.
+        String fieldPath = extractFieldPathFromEntityLink(entityLink);
+        if ("Tag".equals(mappedSuggestionType) && !fieldPath.endsWith(Entity.FIELD_TAGS)) {
+          fieldPath = Entity.FIELD_TAGS;
+        }
         payload.put("fieldPath", fieldPath);
 
         if ("Tag".equals(mappedSuggestionType)) {
@@ -1925,6 +1930,9 @@ public class MigrationUtil {
     private static final String MENTION_FILTER_NAME = "filterByMentionedName";
     private static final String CONVERSATION_RESOURCE = "conversation";
     private static final String TASK_RESOURCE = "task";
+    private static final String TEST_CASE_TABLE = "test_case";
+    private static final String INCIDENT_TIME_SERIES_TABLE =
+        "test_case_resolution_status_time_series";
     private static final String UPDATE_SUBSCRIPTION_MYSQL =
         "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
     private static final String UPDATE_SUBSCRIPTION_POSTGRES =
@@ -1950,10 +1958,11 @@ public class MigrationUtil {
       int redeployedWorkflows = redeployUserApprovalWorkflows();
       MigrationStats stats = migrateLegacyThreadTasks();
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+      int adoptedIncidents = adoptOrphanIncidentChains();
       int backfilledOpenTasks = backfillOpenTasksToWorkflowInstances();
 
       LOG.info(
-          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, backfilledOpenTasks={}",
+          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, adoptedIncidents={}, backfilledOpenTasks={}",
           seededDefaults,
           redeployedWorkflows,
           stats.migrated,
@@ -1961,6 +1970,7 @@ public class MigrationUtil {
           stats.skipped,
           stats.failed,
           rewrittenRecognizerFeedbackTasks,
+          adoptedIncidents,
           backfilledOpenTasks);
     }
 
@@ -2237,6 +2247,159 @@ public class MigrationUtil {
       }
 
       return stats;
+    }
+
+    /**
+     * Create a Task for every ongoing incident chain that never had a legacy thread to migrate.
+     * The task reuses the chain's stateId as its id, so the stateId-to-task identity the
+     * task-first model assumes holds for these chains too. Workflow start and status replay are
+     * left to {@link #backfillOpenTasksToWorkflowInstances()}, which runs after this.
+     */
+    private int adoptOrphanIncidentChains() {
+      int adopted = 0;
+      if (tableExists(INCIDENT_TIME_SERIES_TABLE) && tableExists(TEST_CASE_TABLE)) {
+        try {
+          for (OrphanIncidentCandidate candidate : listLatestIncidentPerTestCase()) {
+            if (isAdoptableChain(candidate.latest())) {
+              adopted += adoptIncidentChain(candidate);
+            }
+          }
+        } catch (Exception e) {
+          LOG.error("[v200] Failed to adopt orphan incident chains", e);
+        }
+      }
+      return adopted;
+    }
+
+    private boolean isAdoptableChain(TestCaseResolutionStatus latest) {
+      return latest.getStateId() != null
+          && latest.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved
+          && !incidentChainHasTask(latest.getStateId());
+    }
+
+    private int adoptIncidentChain(OrphanIncidentCandidate candidate) {
+      int adopted = 0;
+      UUID stateId = candidate.latest().getStateId();
+      Task task = buildTaskFromIncidentChain(candidate.latest(), candidate.testCaseId());
+      if (task != null) {
+        try {
+          taskRepository.create(null, task);
+          adopted = 1;
+          LOG.info("[v200] Adopted orphan incident chain {} as a task", stateId);
+        } catch (Exception e) {
+          LOG.warn("[v200] Could not adopt incident chain {}: {}", stateId, e.getMessage());
+        }
+      }
+      return adopted;
+    }
+
+    /**
+     * Latest record of each test case's most recent incident chain, paired with the owning test
+     * case id. Stored records drop {@code testCaseReference}, so the test case is recovered by
+     * joining the indexed entityFQNHash.
+     */
+    private List<OrphanIncidentCandidate> listLatestIncidentPerTestCase() {
+      List<OrphanIncidentCandidate> candidates =
+          handle
+              .createQuery(
+                  "SELECT ts.json AS record, tc.id AS testCaseId "
+                      + "FROM "
+                      + INCIDENT_TIME_SERIES_TABLE
+                      + " ts INNER JOIN (SELECT entityFQNHash AS fqnHash, MAX(timestamp) AS maxTs "
+                      + "FROM "
+                      + INCIDENT_TIME_SERIES_TABLE
+                      + " WHERE entityFQNHash IS NOT NULL GROUP BY entityFQNHash) latest "
+                      + "ON ts.entityFQNHash = latest.fqnHash AND ts.timestamp = latest.maxTs "
+                      + "INNER JOIN "
+                      + TEST_CASE_TABLE
+                      + " tc ON tc.fqnHash = ts.entityFQNHash")
+              .map((rs, ctx) -> readCandidate(rs.getString("record"), rs.getString("testCaseId")))
+              .list()
+              .stream()
+              .filter(Objects::nonNull)
+              .toList();
+
+      Map<UUID, OrphanIncidentCandidate> latestPerTestCase = new LinkedHashMap<>();
+      for (OrphanIncidentCandidate candidate : candidates) {
+        latestPerTestCase.merge(candidate.testCaseId(), candidate, TaskWorkflow::preferStableChain);
+      }
+      return List.copyOf(latestPerTestCase.values());
+    }
+
+    private OrphanIncidentCandidate readCandidate(String record, String testCaseId) {
+      OrphanIncidentCandidate candidate = null;
+      try {
+        TestCaseResolutionStatus latest =
+            JsonUtils.readValue(record, TestCaseResolutionStatus.class);
+        if (latest.getStateId() != null) {
+          candidate = new OrphanIncidentCandidate(latest, UUID.fromString(testCaseId));
+        }
+      } catch (Exception e) {
+        LOG.warn("[v200] Skipping unreadable incident record: {}", e.getMessage());
+      }
+      return candidate;
+    }
+
+    /**
+     * Records written in the same millisecond leave more than one chain tied for latest; pick by
+     * stateId so a re-run adopts the same one instead of a second task for the test case.
+     */
+    private static OrphanIncidentCandidate preferStableChain(
+        OrphanIncidentCandidate current, OrphanIncidentCandidate candidate) {
+      String currentId = current.latest().getStateId().toString();
+      String candidateId = candidate.latest().getStateId().toString();
+      return candidateId.compareTo(currentId) > 0 ? candidate : current;
+    }
+
+    private record OrphanIncidentCandidate(TestCaseResolutionStatus latest, UUID testCaseId) {}
+
+    /** True when the chain already drives a task, either as its id or through a migrated thread. */
+    private boolean incidentChainHasTask(UUID stateId) {
+      try {
+        if (taskRepository.find(stateId, Include.ALL) != null) {
+          return true;
+        }
+      } catch (Exception e) {
+        // find() throws when absent; fall through to the legacy payload lookup
+      }
+      return collectionDAO.taskDAO().fetchTaskByTestCaseResolutionStatusId(stateId.toString())
+          != null;
+    }
+
+    private Task buildTaskFromIncidentChain(TestCaseResolutionStatus latest, UUID testCaseId) {
+      EntityReference aboutRef;
+      try {
+        aboutRef = Entity.getEntityReferenceById(Entity.TEST_CASE, testCaseId, Include.NON_DELETED);
+      } catch (Exception e) {
+        LOG.warn(
+            "[v200] Incident chain {} has no resolvable test case; skipping", latest.getStateId());
+        return null;
+      }
+
+      long updatedAt =
+          latest.getTimestamp() != null ? latest.getTimestamp() : System.currentTimeMillis();
+      // Flows into the workflow's updatedBy variable, so it must never be null.
+      String actorName =
+          latest.getUpdatedBy() != null && !nullOrEmpty(latest.getUpdatedBy().getName())
+              ? latest.getUpdatedBy().getName()
+              : ADMIN_USER_NAME;
+      EntityReference actorRef = resolveUserReference(actorName);
+      Map<String, Object> payload = new HashMap<>();
+      payload.put("testCaseResolutionStatusId", latest.getStateId().toString());
+
+      return new Task()
+          .withId(latest.getStateId())
+          .withCategory(TaskCategory.Incident)
+          .withType(TaskEntityType.TestCaseResolution)
+          .withStatus(TaskEntityStatus.Open)
+          .withPriority(TaskPriority.Medium)
+          .withDescription("Incident on " + aboutRef.getFullyQualifiedName())
+          .withAbout(aboutRef)
+          .withCreatedBy(actorRef)
+          .withCreatedAt(updatedAt)
+          .withUpdatedAt(updatedAt)
+          .withUpdatedBy(actorName)
+          .withPayload(payload);
     }
 
     private int backfillOpenTasksToWorkflowInstances() {
