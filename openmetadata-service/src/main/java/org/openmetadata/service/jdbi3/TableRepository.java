@@ -1738,42 +1738,23 @@ public class TableRepository extends EntityRepository<Table> {
   private void deleteProfilerData(Table table) {
     String tableFqn = table.getFullyQualifiedName();
     EntityTimeSeriesDAO profilerDao = daoCollection.profilerDataTimeSeriesDao();
-    int tableLevelRows =
-        profilerDao.delete(tableFqn, TABLE_PROFILE_EXTENSION)
-            + profilerDao.delete(tableFqn, SYSTEM_PROFILE_EXTENSION);
-    if (tableLevelRows > 0 || hasColumnProfile(table)) {
-      logColumnProfilePurge(
-          tableFqn, profilerDao.deleteDescendants(tableFqn, TABLE_COLUMN_PROFILE_EXTENSION));
-    }
-  }
-
-  /**
-   * The descendant purge matches an FQN-hash prefix, which PostgreSQL cannot serve from the b-tree
-   * index under the default collation and therefore answers with a full scan of
-   * profiler_data_time_series. Probing the indexed exact hashes of the current columns first keeps
-   * a never-profiled table — and so every table of a recursive service delete — from paying it.
-   */
-  private boolean hasColumnProfile(Table table) {
-    List<String> columnFqns =
-        EntityUtil.getFlattenedEntityField(table.getColumns()).stream()
-            .map(Column::getFullyQualifiedName)
-            .filter(columnFqn -> !nullOrEmpty(columnFqn))
-            .toList();
-    return daoCollection
-        .profilerDataTimeSeriesDao()
-        .hasAnyExtension(columnFqns, TABLE_COLUMN_PROFILE_EXTENSION);
+    profilerDao.delete(tableFqn, TABLE_PROFILE_EXTENSION);
+    profilerDao.delete(tableFqn, SYSTEM_PROFILE_EXTENSION);
+    logColumnProfilePurge(
+        tableFqn, profilerDao.deleteDescendants(tableFqn, TABLE_COLUMN_PROFILE_EXTENSION));
   }
 
   private void logColumnProfilePurge(String tableFqn, EntityTimeSeriesDAO.DescendantPurge purge) {
     if (purge.capReached()) {
       LOG.warn(
-          "Purged {} column profile row(s) for hard-deleted table {} but stopped at the {}-row "
-              + "per-delete cap. The remainder survives: a table re-created at this FQN adopts it, "
-              + "and the orphan sweep cannot reclaim it because the parent table is live again. "
-              + "Only age-based profiler retention will remove it.",
+          "Purged {} column profile row(s) for hard-deleted table {} but stopped at the per-delete "
+              + "cap of {} batches of {} rows, so rows remain. If a table is re-created at this FQN "
+              + "it adopts them, and the orphan sweep cannot reclaim them because the parent table "
+              + "is live again — only age-based profiler retention will.",
           purge.rowsDeleted(),
           tableFqn,
-          EntityTimeSeriesDAO.DESCENDANT_DELETE_ROW_CAP);
+          EntityTimeSeriesDAO.DESCENDANT_DELETE_MAX_BATCHES,
+          EntityTimeSeriesDAO.DESCENDANT_DELETE_BATCH_SIZE);
     } else if (purge.rowsDeleted() > 0) {
       LOG.info(
           "Purged {} column profile row(s) for hard-deleted table {}",

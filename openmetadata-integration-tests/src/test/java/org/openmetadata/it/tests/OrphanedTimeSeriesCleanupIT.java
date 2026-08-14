@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,9 @@ public class OrphanedTimeSeriesCleanupIT {
   private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
   private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
   private static final String PROFILER_TABLE = "profiler_data_time_series";
+  private static final String PROFILER_PATTERN_INDEX =
+      "idx_profiler_data_time_series_fqnhash_pattern";
+  private static final String POSTGRES_PRODUCT_NAME = "PostgreSQL";
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -367,6 +371,77 @@ public class OrphanedTimeSeriesCleanupIT {
                     .bind("id", id)
                     .mapTo(Integer.class)
                     .one());
+  }
+
+  /**
+   * The hard-delete profiler purge matches an entityFQNHash prefix, and the 2.1.1 migration is what
+   * keeps that off a sequential scan. PostgreSQL needs a dedicated text_pattern_ops index because
+   * the column's default collation disqualifies the unique index for LIKE-prefix; MySQL needs no
+   * migration precisely because entityFQNHash is ascii_bin and leads that unique index. This pins
+   * both halves — including the premise that makes the MySQL script legitimately statement-free.
+   */
+  @Test
+  void profilerPrefixIndexIsAvailable() throws Exception {
+    String databaseProduct =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(handle -> handle.getConnection().getMetaData().getDatabaseProductName());
+    if (POSTGRES_PRODUCT_NAME.equalsIgnoreCase(databaseProduct)) {
+      assertEquals(
+          Optional.of(Boolean.TRUE),
+          postgresPatternIndexValidity(),
+          "Migration 2.1.1 must leave a valid " + PROFILER_PATTERN_INDEX);
+    } else {
+      assertEquals(
+          Optional.of("entityFQNHash"),
+          mysqlUniqueIndexLeadingColumn(),
+          "MySQL relies on entityFQNHash leading the unique index instead of a new index");
+      assertEquals(
+          Optional.of("ascii_bin"),
+          mysqlEntityFqnHashCollation(),
+          "MySQL prefix scans depend on the binary collation of entityFQNHash");
+    }
+  }
+
+  private Optional<Boolean> postgresPatternIndexValidity() {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT i.indisvalid FROM pg_class c "
+                            + "JOIN pg_index i ON i.indexrelid = c.oid WHERE c.relname = :name")
+                    .bind("name", PROFILER_PATTERN_INDEX)
+                    .mapTo(Boolean.class)
+                    .findOne());
+  }
+
+  private Optional<String> mysqlUniqueIndexLeadingColumn() {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COLUMN_NAME FROM information_schema.STATISTICS "
+                            + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table "
+                            + "AND INDEX_NAME = :index AND SEQ_IN_INDEX = 1")
+                    .bind("table", PROFILER_TABLE)
+                    .bind("index", "profiler_data_time_series_unique_hash_extension_ts")
+                    .mapTo(String.class)
+                    .findOne());
+  }
+
+  private Optional<String> mysqlEntityFqnHashCollation() {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COLLATION_NAME FROM information_schema.COLUMNS "
+                            + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table "
+                            + "AND COLUMN_NAME = 'entityFQNHash'")
+                    .bind("table", PROFILER_TABLE)
+                    .mapTo(String.class)
+                    .findOne());
   }
 
   private void insertProfilerRow(String entityFqn, String extension, int rowCount) {

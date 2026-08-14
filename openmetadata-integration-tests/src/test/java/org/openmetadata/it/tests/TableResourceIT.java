@@ -45,6 +45,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -122,7 +123,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * <p>Extends BaseEntityIT to inherit all 8 common entity tests. Adds table-specific tests for
  * columns, constraints, partitions, and complex column types.
  *
- * <p>Total coverage: 8 (common) + 81 (table-specific) = 89 tests
+ * <p>Total coverage: 130 declared test methods (8 inherited from BaseEntityIT plus table-specific
+ * tests for columns, constraints, partitions, profiles and CSV import/export); the executed count is
+ * higher because several are parameterized.
  *
  * <p>Migrated from: org.openmetadata.service.resources.databases.TableResourceTest Migration date:
  * 2025-10-11
@@ -132,6 +135,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
+
+  // Physical extension values persisted in profiler_data_time_series. Kept as literals rather than
+  // referencing the production constants so the tests pin the on-disk contract.
+  private static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+  private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
+  private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+  // One more than EntityTimeSeriesDAO.DESCENDANT_DELETE_BATCH_SIZE, so a single-batch purge leaves
+  // a row behind.
+  private static final int PROFILE_ROWS_OVER_ONE_BATCH = 1001;
 
   {
     // Table CSV export exports columns from a specific table, not tables from a schema
@@ -145,15 +157,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     supportsBulkAPI = true;
     supportsDataContract = true;
   }
-
-  // Physical extension values persisted in profiler_data_time_series. Kept as literals rather than
-  // referencing the production constants so the tests pin the on-disk contract.
-  private static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
-  private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
-  private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
-  // One more than EntityTimeSeriesDAO.DESCENDANT_DELETE_BATCH_SIZE, so a single-batch purge leaves
-  // a row behind.
-  private static final int PROFILE_ROWS_OVER_ONE_BATCH = 1001;
 
   private DatabaseSchema lastCreatedSchema;
   private Table lastCreatedTable;
@@ -2145,6 +2148,101 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         "Purge must keep batching until the column profile history is drained");
   }
 
+  /**
+   * Dropping a column does not remove its profiler rows — {@code detectRemovedColumns} only reworks
+   * constraints and lineage — so those rows are reachable only through the table-FQN prefix, never
+   * through the table's current column list. A table re-created at this FQN with the column present
+   * again would otherwise adopt the dead table's profile for it.
+   */
+  @Test
+  void delete_hardDeletePurgesProfilesOfDroppedColumns(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_dropped_col_table"), ns);
+    Table table = createEntity(createRequest);
+    Column droppedColumn = table.getColumns().get(1);
+    String droppedColumnFqn = droppedColumn.getFullyQualifiedName();
+
+    writeColumnOnlyProfile(client, table.getFullyQualifiedName(), droppedColumn.getName());
+    assertTrue(
+        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the column is dropped");
+    assertEquals(
+        0,
+        countProfilerRows(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
+        "Only a column profile is written, so no table-level row can stand in for it");
+
+    createRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    Table shrunkTable = client.tables().createOrUpdate(createRequest);
+    assertTrue(
+        shrunkTable.getColumns().stream()
+            .noneMatch(column -> droppedColumn.getName().equals(column.getName())),
+        "Column must be gone from the table before the delete");
+    assertTrue(
+        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Dropping a column leaves its profiler rows behind — the precondition for this test");
+
+    hardDeleteEntity(shrunkTable.getId().toString());
+
+    assertEquals(
+        0,
+        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION),
+        "Hard delete must purge column profiles of columns dropped before the delete");
+  }
+
+  @Test
+  void put_profileConfig_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest = createRequest(ns.prefix("profiler_config_table"), ns);
+    Table table = createEntity(createRequest);
+
+    // Create profiler config
+    TableProfilerConfig config =
+        new TableProfilerConfig()
+            .withProfileSampleConfig(
+                new ProfileSampleConfig()
+                    .withSampleConfigType(ProfileSampleConfig.SampleConfigType.STATIC)
+                    .withConfig(
+                        new StaticSamplingConfig()
+                            .withProfileSample(50.0)
+                            .withProfileSampleType(
+                                org.openmetadata.schema.type.TableProfile.ProfileSampleType
+                                    .PERCENTAGE)));
+
+    // Update profiler config
+    Table updated = client.tables().updateProfilerConfig(table.getId(), config);
+    assertNotNull(updated.getTableProfilerConfig());
+    assertNotNull(updated.getTableProfilerConfig().getProfileSampleConfig());
+    StaticSamplingConfig staticConfig =
+        JsonUtils.convertValue(
+            updated.getTableProfilerConfig().getProfileSampleConfig().getConfig(),
+            StaticSamplingConfig.class);
+    assertEquals(50.0, staticConfig.getProfileSample());
+  }
+
+  private void writeColumnOnlyProfile(
+      OpenMetadataClient client, String tableFqn, String columnName) {
+    long timestamp = System.currentTimeMillis();
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withEntityType(Entity.TABLE)
+            .withTimestamp(timestamp)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN)
+            .withProfileData(
+                new ColumnProfile()
+                    .withName(columnName)
+                    .withUniqueCount(7.0)
+                    .withTimestamp(timestamp));
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/entity/profiles/name/" + Entity.TABLE + "/" + encodedFqn,
+            createProfile);
+  }
+
   private void writeFullProfile(OpenMetadataClient client, Table table) {
     long timestamp = System.currentTimeMillis();
     TableProfile tableProfile =
@@ -2216,37 +2314,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                     .bind("extension", extension)
                     .mapTo(Integer.class)
                     .one());
-  }
-
-  @Test
-  void put_profileConfig_200(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    CreateTable createRequest = createRequest(ns.prefix("profiler_config_table"), ns);
-    Table table = createEntity(createRequest);
-
-    // Create profiler config
-    TableProfilerConfig config =
-        new TableProfilerConfig()
-            .withProfileSampleConfig(
-                new ProfileSampleConfig()
-                    .withSampleConfigType(ProfileSampleConfig.SampleConfigType.STATIC)
-                    .withConfig(
-                        new StaticSamplingConfig()
-                            .withProfileSample(50.0)
-                            .withProfileSampleType(
-                                org.openmetadata.schema.type.TableProfile.ProfileSampleType
-                                    .PERCENTAGE)));
-
-    // Update profiler config
-    Table updated = client.tables().updateProfilerConfig(table.getId(), config);
-    assertNotNull(updated.getTableProfilerConfig());
-    assertNotNull(updated.getTableProfilerConfig().getProfileSampleConfig());
-    StaticSamplingConfig staticConfig =
-        JsonUtils.convertValue(
-            updated.getTableProfilerConfig().getProfileSampleConfig().getConfig(),
-            StaticSamplingConfig.class);
-    assertEquals(50.0, staticConfig.getProfileSample());
   }
 
   // ===================================================================
