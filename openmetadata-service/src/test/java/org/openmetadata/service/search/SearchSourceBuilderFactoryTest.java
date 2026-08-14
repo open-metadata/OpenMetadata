@@ -478,6 +478,11 @@ public class SearchSourceBuilderFactoryTest {
 
     assertTrue(esQuery.contains("name.substring"), esQuery);
     assertTrue(esQuery.contains("displayName.substring"), esQuery);
+    // The ngram fields are only precise because every gram of the query must match. Under the
+    // default OR a 3-gram overlap would be enough, so "orders" would surface "border_check".
+    assertTrue(
+        esQuery.contains("\"operator\":\"and\""),
+        "ngram matching must require all grams, or substring search becomes noisy: " + esQuery);
   }
 
   @Test

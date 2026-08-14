@@ -1118,8 +1118,7 @@ test.describe(
         // A pasted URL is full of Lucene reserved characters. The server parses `q` as literal
         // text, so it must answer 200 where a query_string returned a 500 query_shard_exception.
         // This is the only test covering the UI and the server composing on a real stack.
-        // Matches on the unescaped host so that a UI escaping regression fails on the explicit
-        // assertion below rather than as an opaque waitForResponse timeout.
+        const pastedUrl = 'https://localhost:8585/table/orders';
         const reservedCharSearchResponse = page.waitForResponse(
           (response) =>
             response
@@ -1130,11 +1129,13 @@ test.describe(
         await page
           .getByTestId('searchbar-component')
           .locator('input')
-          .fill('https://localhost:8585/table/orders');
+          .fill(pastedUrl);
         const reservedCharSearch = await reservedCharSearchResponse;
 
+        // The term must reach the API verbatim: the UI no longer escapes or wraps it, so any
+        // reintroduced client-side escaping fails here rather than silently changing the query.
         expect(decodeURIComponent(reservedCharSearch.url())).toContain(
-          String.raw`*https\:\/\/localhost\:8585\/table\/orders*`
+          pastedUrl
         );
         expect(reservedCharSearch.status()).toBe(200);
 

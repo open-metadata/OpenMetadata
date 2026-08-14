@@ -2568,7 +2568,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> {
-              List<String> scoped = searchTestCasesForSuite("*", entityLink);
+              List<String> scoped = searchTestCasesForSuite(null, entityLink);
               assertTrue(
                   scoped.contains(tableTest), "table-level test must be listed, got: " + scoped);
               assertTrue(
@@ -2634,20 +2634,25 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             RequestOptions.builder().queryParam("q", query).queryParam("limit", "10").build());
   }
 
+  /**
+   * The picker's request shape. A null {@code query} omits {@code q} entirely rather than sending
+   * {@code *}: with {@code q} parsed as literal text a lone asterisk matches nothing, so passing it
+   * as a stand-in for "no search term" would silently assert against an empty list.
+   */
   private List<String> searchTestCasesForSuite(String query, String entityLink) {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("entityLink", entityLink)
+            .queryParam("includeAllTests", "true")
+            .queryParam("limit", "50");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
     String response =
         SdkClients.adminClient()
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET,
-                "/v1/dataQuality/testCases/search/list",
-                null,
-                RequestOptions.builder()
-                    .queryParam("q", query)
-                    .queryParam("entityLink", entityLink)
-                    .queryParam("includeAllTests", "true")
-                    .queryParam("limit", "50")
-                    .build());
+                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options.build());
     return namesUnder(JsonUtils.readTree(response).path("data"));
   }
 

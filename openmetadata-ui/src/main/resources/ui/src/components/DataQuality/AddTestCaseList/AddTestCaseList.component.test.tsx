@@ -386,7 +386,7 @@ describe('AddTestCaseList', () => {
       });
     });
 
-    it('escapes Lucene reserved characters typed into the search bar', async () => {
+    it('sends a reserved-character term verbatim, since the endpoint parses q as literal text', async () => {
       await act(async () => {
         renderWithRouter(mockProps);
       });

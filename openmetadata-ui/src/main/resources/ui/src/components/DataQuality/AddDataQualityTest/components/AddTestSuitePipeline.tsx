@@ -78,9 +78,9 @@ const AddTestSuitePipeline = ({
     return undefined;
   }, [testSuite?.basic, testSuite?.basicEntityReference]);
 
-  // The picker's `q` is free text (the endpoint escapes Lucene syntax in it, #31077), so the suite
-  // scope travels as first-class filter params. A basic suite owns exactly its table's test cases,
-  // so scoping by the table's entityLink is equivalent and needs no query syntax.
+  // The picker's `q` is free text: the endpoint parses it as a literal term rather than as a
+  // Lucene expression, so the suite scope travels as first-class filter params. A basic suite owns
+  // exactly its table's test cases, so scoping by the table's entityLink is equivalent.
   const testCasePickerScope = useMemo<ListTestCaseParamsBySearch>(
     () => ({
       testSuiteId,
