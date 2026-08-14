@@ -213,7 +213,9 @@ class LineageParser:
         :return: clean table names
         """
         clean_tables = []
-        for table in self.involved_tables or []:
+        # basedpyright resolves the cached_property to the descriptor itself, as the
+        # collate_sqllineage models it is annotated with are untyped
+        for table in self.involved_tables or []:  # pyright: ignore[reportGeneralTypeIssues]
             table_name = get_formatted_entity_name(str(table))
             if not has_table_name(table_name):
                 logger.debug(f"[{self.query_hash}] Skipping table reference without a table name [{table_name}]")
