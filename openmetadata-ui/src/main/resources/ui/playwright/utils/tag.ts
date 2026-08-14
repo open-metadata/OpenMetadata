@@ -277,8 +277,11 @@ export async function validateForm(page: Page) {
 
   // min length validation
   await page.locator('[data-testid="name"]').scrollIntoViewIfNeeded();
-  await page.locator('[data-testid="name"]').clear();
-  await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MIN_LENGTH);
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MIN_LENGTH);
   await page.waitForLoadState('domcontentloaded');
 
   await expect(
@@ -286,8 +289,11 @@ export async function validateForm(page: Page) {
   ).toBeVisible();
 
   // max length validation
-  await page.locator('[data-testid="name"]').clear();
-  await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MAX_LENGTH);
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MAX_LENGTH);
   await page.waitForLoadState('domcontentloaded');
 
   await expect(
@@ -295,9 +301,10 @@ export async function validateForm(page: Page) {
   ).toBeVisible();
 
   // with special char validation
-  await page.locator('[data-testid="name"]').clear();
+  await page.getByTestId('name').getByRole('textbox').clear();
   await page
-    .locator('[data-testid="name"]')
+    .getByTestId('name')
+    .getByRole('textbox')
     .fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
   await page.waitForLoadState('domcontentloaded');
 
@@ -516,7 +523,7 @@ export const LIMITED_USER_RULES: PolicyRulesType[] = [
 ];
 
 export const fillTagForm = async (adminPage: Page, domain: Domain) => {
-  await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
+  await adminPage.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
   await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
   await adminPage.getByTestId('icon-picker-btn').click();
