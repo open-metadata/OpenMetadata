@@ -137,3 +137,47 @@ export const importGlossaryTermInCSVFormat = async ({
 
   return response.data;
 };
+
+export interface OntologyImportResult {
+  dryRun: boolean;
+  glossariesCreated: number;
+  termsCreated: number;
+  termsUpdated: number;
+  relationsAdded: number;
+  conceptMappingsAdded: number;
+  customPropertiesCreated: number;
+  relationTypesRegistered: number;
+  messages: string[];
+}
+
+// JSON-LD is intentionally excluded — the backend rejects it (remote @context
+// resolution is an SSRF risk). Keep in sync with GlossaryRdfImporter.jenaLang().
+export type OntologyImportFormat = 'turtle' | 'rdfxml' | 'ntriples';
+
+export const importGlossaryOntology = async ({
+  name,
+  data,
+  dryRun = true,
+  format = 'turtle',
+}: {
+  name: string;
+  data: string;
+  dryRun?: boolean;
+  format?: OntologyImportFormat;
+}) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<OntologyImportResult>
+  >(
+    `/glossaries/name/${getEncodedFqn(
+      name
+    )}/importRdf?dryRun=${dryRun}&format=${encodeURIComponent(format)}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
+};

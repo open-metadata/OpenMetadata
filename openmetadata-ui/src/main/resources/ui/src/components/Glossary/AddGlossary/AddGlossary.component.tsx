@@ -14,29 +14,25 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
+import { isArray } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   CreateGlossary,
   EntityReference,
 } from '../../../generated/api/data/createGlossary';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import {
-  generateFormFields,
-  getField,
-  getPopupContainer,
-} from '../../../utils/formUtils';
-
-import { isArray } from 'lodash';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useDomainStore } from '../../../hooks/useDomainStore';
-import { useEntityRules } from '../../../hooks/useEntityRules';
+import { getPopupContainer } from '../../../utils/formPureUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';

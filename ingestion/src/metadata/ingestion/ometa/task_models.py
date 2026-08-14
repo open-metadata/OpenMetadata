@@ -51,6 +51,7 @@ class TaskEntityType(str, Enum):
     IncidentResolution = "IncidentResolution"
     PipelineReview = "PipelineReview"
     DataQualityReview = "DataQualityReview"
+    RecognizerFeedbackApproval = "RecognizerFeedbackApproval"
     CustomTask = "CustomTask"
 
 

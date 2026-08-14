@@ -128,6 +128,34 @@ class RdfPropertyMapperTest {
   }
 
   @Nested
+  @DisplayName("Test result time-series exclusion")
+  class TestCaseResultTests {
+
+    @Test
+    @DisplayName("Embedded testCaseResult is ignored (time-series data, not knowledge graph)")
+    void testTestCaseResultIsIgnored() throws Exception {
+      ObjectNode testCaseResult = objectMapper.createObjectNode();
+      testCaseResult.put("timestamp", 1700000000000L);
+      testCaseResult.put("testCaseStatus", "Failed");
+
+      ObjectNode entityJson = objectMapper.createObjectNode();
+      entityJson.set("testCaseResult", testCaseResult);
+
+      invokePrivate(
+          "processContextMappings",
+          new Class[] {Map.class, JsonNode.class, Resource.class, Model.class},
+          Map.of("testCaseResult", Map.of("@id", "om:hasTestCaseResult", "@type", "@json")),
+          entityJson,
+          entityResource,
+          model);
+
+      assertFalse(
+          model.contains(entityResource, model.createProperty(OM_NS, "hasTestCaseResult")),
+          "Embedded testCaseResult time-series data should not be emitted into RDF");
+    }
+  }
+
+  @Nested
   @DisplayName("P0-1: LifeCycle Tests")
   class LifeCycleTests {
 

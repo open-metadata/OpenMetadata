@@ -33,6 +33,7 @@ import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
 import { t } from './i18next/LocalUtil';
 import { oidcTokenStorage } from './OidcTokenStorage';
+import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
 
 const cookieStorage = new CookieStorage();
@@ -73,6 +74,35 @@ export const getUserManagerConfig = (
     scope,
     userStore: oidcTokenStorage,
     stateStore: oidcTokenStorage,
+  };
+};
+
+/**
+ * Build an isolated UserManager config used ONLY for the SSO "Test Login" popup.
+ * Tokens land in a dedicated prefixed store (never the app's oidcTokenStorage),
+ * but the popup uses the SAME configured callback URL the real login uses — so
+ * the test exercises the actual registered redirect URI and never requires the
+ * admin to register an extra one. Isolation is achieved by diverting the popup
+ * at the callback (see isSsoTestLoginPopup), not by using a separate route.
+ */
+export const getCandidateUserManagerConfig = (
+  authClient: AuthenticationConfigurationWithScope
+): Record<string, string | boolean | WebStorageStateStore> => {
+  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const testStore = new WebStorageStateStore({
+    store: globalThis.localStorage,
+    prefix: SSO_TEST_LOGIN_STORE_PREFIX,
+  });
+
+  return {
+    authority,
+    client_id: clientId,
+    redirect_uri: getRedirectUri(callbackUrl),
+    response_type: 'id_token',
+    scope: scope || 'openid email profile',
+    loadUserInfo: false,
+    userStore: testStore,
+    stateStore: testStore,
   };
 };
 

@@ -17,13 +17,12 @@ import time
 import traceback
 from datetime import datetime
 from multiprocessing import Queue
-from typing import Dict, Iterable, List, Optional, Union  # noqa: UP035
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 import networkx as nx
 from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
@@ -36,7 +35,11 @@ from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import (
+    LineageRequest,
+    OMetaFQNLineageRequest,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
@@ -117,7 +120,7 @@ def _yield_procedure_lineage(
     procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],  # noqa: UP006
     enableTempTableLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Iterable[Either[LineageRequest]]:
     """Add procedure lineage from its query"""
     graph = None
     if enableTempTableLineage:
@@ -150,11 +153,18 @@ def _yield_procedure_lineage(
             graph=graph,
             parser_type=parser_type,
         ):
-            if either_lineage.left is None and either_lineage.right.edge.lineageDetails:
-                either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
-                    id=procedure.id,
-                    type="storedProcedure",
-                )
+            if either_lineage.left is None and either_lineage.right:
+                if isinstance(either_lineage.right, OMetaFQNLineageRequest):
+                    lineage_details = either_lineage.right.lineage_details
+                else:
+                    lineage_details = either_lineage.right.edge.lineageDetails
+                if lineage_details:
+                    lineage_details.pipeline = EntityReference.model_validate(
+                        {
+                            "id": procedure.id,
+                            "type": "storedProcedure",
+                        }
+                    )
 
             yield either_lineage
 
@@ -171,7 +181,7 @@ def procedure_lineage_processor(
     procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],  # noqa: UP006
     enableTempTableLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+) -> None:
     """
     Process the procedure and its queries to add lineage
     """
@@ -293,7 +303,7 @@ def query_lineage_processor(
     parsingTimeoutLimit: int,  # noqa: N803
     serviceName: str,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+) -> None:
     """
     Generate lineage for a list of table queries
     """
@@ -305,7 +315,7 @@ def query_lineage_processor(
             if processCrossDatabaseLineage and crossDatabaseServiceNames:
                 service_names.extend(crossDatabaseServiceNames)
 
-            lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
+            lineages: Iterable[Either[LineageRequest]] = get_lineage_by_query(
                 metadata,
                 query=table_query.query,
                 service_names=service_names,
@@ -346,7 +356,7 @@ def view_lineage_processor(
     parsingTimeoutLimit: int,  # noqa: N803
     overrideViewLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> None:
     """
     Generate lineage for a list of views
     """

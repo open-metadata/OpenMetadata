@@ -45,10 +45,10 @@ jest.mock(
   }
 );
 
-jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () => {
+jest.mock('../../../components/common/DeleteWidget/DeleteEntityModal', () => {
   return jest
     .fn()
-    .mockImplementation(() => <div>DeleteWidgetModal.component</div>);
+    .mockImplementation(() => <div>DeleteEntityModal.component</div>);
 });
 
 jest.mock(

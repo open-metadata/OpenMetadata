@@ -15,15 +15,6 @@ import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
 import * as ToastUtils from '../../utils/ToastUtils';
 import AlertBar from './AlertBar';
 
-const mockResetAlert = jest.fn();
-
-jest.mock('../../hooks/useAlertStore', () => ({
-  useAlertStore: jest.fn().mockImplementation(() => ({
-    resetAlert: mockResetAlert,
-    animationClass: 'test-animation-class',
-  })),
-}));
-
 jest.mock('../../utils/ToastUtils', () => ({
   getIconAndClassName: jest.fn(),
 }));
@@ -43,9 +34,7 @@ describe('AlertBar', () => {
     const alertElement = screen.getByTestId('alert-bar');
 
     expect(alertElement).toBeInTheDocument();
-    expect(alertElement).toHaveClass(
-      'alert-container test-class test-animation-class'
-    );
+    expect(alertElement).toHaveClass('alert-container test-class');
     expect(screen.getByTestId('alert-icon')).toBeInTheDocument();
     expect(screen.getByText(message)).toBeInTheDocument();
   });
@@ -59,16 +48,5 @@ describe('AlertBar', () => {
     const closeIcon = screen.getByTestId('alert-icon-close');
 
     expect(closeIcon).toBeInTheDocument();
-  });
-
-  it('should apply the correct animation class', () => {
-    const message = 'Test message';
-    const type = 'warning';
-
-    render(<AlertBar message={message} type={type} />);
-
-    const alertElement = screen.getByTestId('alert-bar');
-
-    expect(alertElement).toHaveClass('test-animation-class');
   });
 });

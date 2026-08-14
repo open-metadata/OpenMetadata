@@ -10,27 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Skeleton } from 'antd';
+import { Skeleton } from 'antd';
 
 const KnowledgePageDetailSkeleton = () => {
   return (
-    <Row className="knowledge-page-layout-grid">
-      <Col span={24}>
-        <Row wrap={false}>
-          <Col className="knowledge-page-layout-content" flex="auto">
-            <div className="content-container m-b-md">
-              <Skeleton.Input active block className="rounded-4" size="large" />
-              <Skeleton
-                active
-                className="m-t-sm"
-                paragraph={{ rows: 10 }}
-                title={false}
-              />
-            </div>
-          </Col>
-        </Row>
-      </Col>
-    </Row>
+    <div className="tw:h-full tw:overflow-y-auto">
+      <div className="content-container m-b-md">
+        <Skeleton.Input active block className="rounded-4" size="large" />
+        <Skeleton
+          active
+          className="m-t-sm"
+          paragraph={{ rows: 10 }}
+          title={false}
+        />
+      </div>
+    </div>
   );
 };
 

@@ -128,6 +128,7 @@ class Dialect(Enum):
     SOQL = "soql"
     SPARKSQL = "sparksql"
     SQLITE = "sqlite"
+    STARROCKS = "starrocks"
     TERADATA = "teradata"
     TSQL = "tsql"
     MARIADB = "mariadb"
@@ -161,7 +162,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {  # noqa: UP006
     str(VerticaType.Vertica.value): Dialect.VERTICA,
     str(GreenplumType.Greenplum.value): Dialect.POSTGRES,
     str(DorisType.Doris.value): Dialect.MYSQL,
-    str(StarrocksType.StarRocks.value): Dialect.MYSQL,
+    str(StarrocksType.StarRocks.value): Dialect.STARROCKS,
     str(MicrosoftFabricType.MicrosoftFabric.value): Dialect.TSQL,
     str(InformixType.Informix.value): Dialect.ANSI,
 }

@@ -13,6 +13,7 @@
 
 import { Page } from '@playwright/test';
 import { uuid } from '../../../utils/common';
+import { selectOneOfOption } from '../../../utils/serviceFormUtils';
 import { Services } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
@@ -51,14 +52,11 @@ class AirflowIngestionClass extends ServiceBaseClass {
     const airflowHostPort = process.env.PLAYWRIGHT_AIRFLOW_HOST_PORT ?? '';
 
     await page.locator('#root\\/hostPort').fill(airflowHostPort);
-
-    await page
-      .getByTestId('select-widget-root/connection__oneof_select')
-      .getByRole('combobox')
-      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-      .click({ force: true });
-    await page.click(
-      '.ant-select-dropdown:visible [title="BackendConnection"]'
+    await selectOneOfOption(
+      page,
+      'root/connection',
+      'select-widget-root/connection__oneof_select',
+      'BackendConnection'
     );
   }
 

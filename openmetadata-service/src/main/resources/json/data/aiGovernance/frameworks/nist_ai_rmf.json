@@ -1,0 +1,64 @@
+{
+  "framework": {
+    "name": "nist_ai_rmf",
+    "displayName": "NIST AI RMF",
+    "description": "NIST AI Risk Management Framework (AI 100-1). Voluntary US framework organized around four functions: Govern, Map, Measure, Manage.",
+    "reference": "AI 100-1",
+    "region": "United States",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "SemiAnnual",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel", "mcpServer"],
+      "regions": [],
+      "riskClasses": [],
+      "deploymentStages": []
+    }
+  },
+  "controls": [
+    {
+      "code": "govern",
+      "name": "govern",
+      "displayName": "Govern — Cultivate a culture of risk management",
+      "category": "Governance",
+      "description": "Policies, processes, accountability structures and culture related to mapping, measuring, and managing AI risks.",
+      "evidenceRequirements": [
+        "AI governance policy",
+        "Accountability matrix"
+      ]
+    },
+    {
+      "code": "map",
+      "name": "map",
+      "displayName": "Map — Recognize context and identify risks",
+      "category": "Risk",
+      "description": "Recognize the context in which the AI system operates and frame the risks related to that context.",
+      "evidenceRequirements": [
+        "Context documentation",
+        "Risk register"
+      ]
+    },
+    {
+      "code": "measure",
+      "name": "measure",
+      "displayName": "Measure — Assess risks identified in Map",
+      "category": "Quality",
+      "description": "Analyze, assess, benchmark, and monitor AI risk and related impacts.",
+      "evidenceRequirements": [
+        "Risk assessment report",
+        "Performance benchmark"
+      ]
+    },
+    {
+      "code": "manage",
+      "name": "manage",
+      "displayName": "Manage — Allocate resources, prioritize, respond",
+      "category": "Process",
+      "description": "Allocate risk resources to mapped and measured risks regularly. Risks should be prioritized, responded to, and managed.",
+      "evidenceRequirements": [
+        "Risk response plan",
+        "Incident-response playbook"
+      ]
+    }
+  ]
+}

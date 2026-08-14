@@ -1,0 +1,26 @@
+{
+  "name": "BotNonAdminImpersonationPolicy",
+  "displayName": "Bot Non Admin Impersonation Policy",
+  "fullyQualifiedName": "BotNonAdminImpersonationPolicy",
+  "description": "Policy for bots that are allowed to impersonate users except admins. Admins cannot be restricted via RBAC, so impersonating them would allow privilege escalation. Attach this (or BotNonAdminImpersonationRole) to a bot instead of BotImpersonationPolicy to deny admin impersonation.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "BotNonAdminImpersonationPolicy-Allow",
+      "description": "Allow the bot to impersonate users.",
+      "resources": ["user"],
+      "operations": ["Impersonate"],
+      "effect": "allow"
+    },
+    {
+      "name": "BotNonAdminImpersonationPolicy-DenyAdminUsers",
+      "description": "Deny impersonating admin users.",
+      "resources": ["user"],
+      "operations": ["Impersonate"],
+      "effect": "deny",
+      "condition": "isAdminUser()"
+    }
+  ]
+}

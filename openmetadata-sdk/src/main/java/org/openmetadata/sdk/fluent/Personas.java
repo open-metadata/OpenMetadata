@@ -68,4 +68,14 @@ public final class Personas {
       org.openmetadata.sdk.models.ListParams params) {
     return getClient().personas().list(params);
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().personas().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().personas().getContextByName(fqn);
+  }
 }

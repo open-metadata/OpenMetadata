@@ -14,6 +14,8 @@ Test OpenAPI schema parser for both JSON and YAML formats
 """
 
 import json
+import tempfile
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -21,7 +23,9 @@ import yaml
 
 from metadata.ingestion.source.api.rest.parser import (
     OpenAPIParseError,
+    _ensure_mapping,
     parse_openapi_schema,
+    parse_openapi_schema_from_file,
     validate_openapi_schema,
 )
 
@@ -198,3 +202,60 @@ tags:
 
         self.assertEqual(result["openapi"], "3.0.3")
         self.assertEqual(result["info"]["title"], "Test")
+
+    def test_ensure_mapping_passes_dict(self):
+        """_ensure_mapping returns the dict unchanged"""
+        d = {"openapi": "3.0.0"}
+        self.assertIs(_ensure_mapping(d, "JSON"), d)
+
+    def test_ensure_mapping_rejects_list(self):
+        """_ensure_mapping rejects JSON arrays with a typed error message"""
+        with self.assertRaises(OpenAPIParseError) as ctx:
+            _ensure_mapping([1, 2], "JSON")
+        self.assertIn("list", str(ctx.exception))
+
+    def test_ensure_mapping_rejects_string(self):
+        """_ensure_mapping rejects bare strings (yaml.safe_load on HTML/text)"""
+        with self.assertRaises(OpenAPIParseError) as ctx:
+            _ensure_mapping("oops", "YAML")
+        self.assertIn("str", str(ctx.exception))
+
+    def test_ensure_mapping_rejects_none(self):
+        """_ensure_mapping rejects None (yaml.safe_load on empty input)"""
+        with self.assertRaises(OpenAPIParseError):
+            _ensure_mapping(None, "YAML")
+
+    def test_parse_http_rejects_json_array(self):
+        """JSON array body is rejected up front with OpenAPIParseError"""
+        mock_response = Mock()
+        mock_response.text = "[1, 2, 3]"
+        mock_response.headers = {"content-type": "application/json"}
+        with self.assertRaises(OpenAPIParseError):
+            parse_openapi_schema(mock_response)
+
+    def test_parse_http_rejects_html_body(self):
+        """HTML body falls through to the descriptive final error"""
+        mock_response = Mock()
+        mock_response.text = "<html><body>503 Service Unavailable</body></html>"
+        mock_response.headers = {"content-type": "text/html"}
+        with self.assertRaises(OpenAPIParseError) as ctx:
+            parse_openapi_schema(mock_response)
+        self.assertIn("as either JSON or YAML", str(ctx.exception))
+
+    def test_parse_file_json_array_includes_path_in_error(self):
+        """A .json file containing an array reports the file path in the error"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "schema.json"
+            path.write_text("[1, 2, 3]", encoding="utf-8")
+            with self.assertRaises(OpenAPIParseError) as ctx:
+                parse_openapi_schema_from_file(path)
+            self.assertIn(str(path), str(ctx.exception))
+
+    def test_parse_file_yaml_scalar_includes_path_in_error(self):
+        """A .yaml file with a bare scalar reports the file path in the error"""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "schema.yaml"
+            path.write_text("just a string", encoding="utf-8")
+            with self.assertRaises(OpenAPIParseError) as ctx:
+                parse_openapi_schema_from_file(path)
+            self.assertIn(str(path), str(ctx.exception))

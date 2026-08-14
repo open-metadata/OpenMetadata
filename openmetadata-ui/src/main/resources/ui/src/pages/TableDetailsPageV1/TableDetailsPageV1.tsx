@@ -19,16 +19,19 @@ import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import {
+  DataAssetsHeaderProps,
+  DataAssetWithDomains,
+} from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -76,16 +79,16 @@ import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
-} from '../../utils/FeedUtils';
+} from '../../utils/FeedUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -100,24 +103,36 @@ import {
   getTagsWithoutTier,
   getTierTags,
   updateColumnInNestedStructure,
-} from '../../utils/TableUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+} from '../../utils/TablePureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-
+import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
 const TableDetailsPageV1: React.FC = () => {
-  const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
-    useTourProvider();
+  const {
+    isTourOpen,
+    activeTabForTourDatasetPage,
+    isTourPage,
+    tourMockDatasetData,
+  } = useTourProvider();
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const queryClient = useQueryClient();
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const breadcrumbData = (
+    location.state as {
+      breadcrumbData?: DataAssetsHeaderProps['breadcrumbData'];
+    } | null
+  )?.breadcrumbData;
   const USERId = currentUser?.id ?? '';
-  const { getEntityPermissionByFqn, permissions: resourcePermissions } =
-    usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -447,10 +462,6 @@ const TableDetailsPageV1: React.FC = () => {
     };
   }, [tableFqn]);
 
-  const canCreateTask = Boolean(
-    resourcePermissions?.[ResourceEntity.TASK]?.Create
-  );
-
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
@@ -479,6 +490,7 @@ const TableDetailsPageV1: React.FC = () => {
       if (!isTourOpen) {
         navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
           replace: true,
+          state: location.state,
         });
       }
     }
@@ -915,15 +927,10 @@ const TableDetailsPageV1: React.FC = () => {
 
   useEffect(() => {
     if (isTourOpen || isTourPage) {
-      // Seed the cache with the tour mock so the rest of the page reads through the same
-      // useQuery slot. The {@link useQuery} hook is {@code enabled: false} in tour mode, so
-      // this manual write is the only thing that populates the slot. The tour mock data is
-      // ~113 KB so we lazy-load it only when actually in tour mode.
-      import('../../constants/mockTourData.constants').then(
-        ({ mockDatasetData }) => {
-          setTableDetails(mockDatasetData.tableDetails as unknown as Table);
-        }
-      );
+      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
+      if (mock?.tableDetails) {
+        setTableDetails(mock.tableDetails as Table);
+      }
     } else if (viewBasicPermission) {
       // Don't manually clear the cache to {@code undefined} here — that would flash a Loader
       // on every navigation between tables even when the destination is already cached.
@@ -932,7 +939,13 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [tableFqn, isTourOpen, isTourPage, viewBasicPermission]);
+  }, [
+    tableFqn,
+    isTourOpen,
+    isTourPage,
+    viewBasicPermission,
+    tourMockDatasetData,
+  ]);
 
   // P1.2: getTestCaseFailureCount drives the global red-alert badge in the page chrome,
   // so it must run as soon as tableDetails resolves — deferring would mean the user could
@@ -991,7 +1004,7 @@ const TableDetailsPageV1: React.FC = () => {
   // a "no permission" placeholder during the brief window before the permissions endpoint
   // returns. Once permissions are in, this gate falls through naturally.
   if (permissionsLoading) {
-    return <Loader />;
+    return <TableDetailsPageSkeleton />;
   }
 
   if (!(isTourOpen || isTourPage) && !viewBasicPermission) {
@@ -1010,7 +1023,7 @@ const TableDetailsPageV1: React.FC = () => {
   // FQN just changed and the new cache slot is empty). Distinct from the permission gate
   // above so we keep the loader spinning instead of flashing the missing-entity placeholder.
   if (tableLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   // Fetch completed but no entity body — typically a 404 (invalid FQN) or a network error
@@ -1041,7 +1054,7 @@ const TableDetailsPageV1: React.FC = () => {
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={updateTableDetailsState}
               badge={alertBadge}
-              canCreateTask={canCreateTask}
+              breadcrumbData={breadcrumbData}
               dataAsset={tableDetails}
               entityType={EntityType.TABLE}
               extraDropdownContent={extraDropdownContent}

@@ -11,47 +11,156 @@
  *  limitations under the License.
  */
 
-import test, { expect } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../utils/common';
 import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 
-interface GraphApiNode {
-  id: string;
-  label: string;
-  type: string;
-  fullyQualifiedName?: string;
-}
-
-interface GraphApiEdge {
-  from: string;
-  to: string;
-  label: string;
-}
-
-interface GraphFilterOption {
-  id: string;
-  label: string;
-  count: number;
-}
-
-interface GraphApiResponse {
-  nodes: GraphApiNode[];
-  edges: GraphApiEdge[];
-  filterOptions?: {
-    entityTypes: GraphFilterOption[];
-    relationshipTypes: GraphFilterOption[];
-  };
-}
-
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   let table: TableClass;
+
+  const renderedPixelCount = async (page: Page): Promise<number> => {
+    const canvas = page.getByTestId('knowledge-graph-3d').locator('canvas');
+
+    return canvas.evaluate((element) => {
+      if (!(element instanceof HTMLCanvasElement)) {
+        return 0;
+      }
+
+      const context =
+        element.getContext('webgl2') ?? element.getContext('webgl');
+      if (!context || context.isContextLost()) {
+        return 0;
+      }
+
+      const pixels = new Uint8Array(
+        context.drawingBufferWidth * context.drawingBufferHeight * 4
+      );
+      context.readPixels(
+        0,
+        0,
+        context.drawingBufferWidth,
+        context.drawingBufferHeight,
+        context.RGBA,
+        context.UNSIGNED_BYTE,
+        pixels
+      );
+
+      let count = 0;
+      for (let offset = 3; offset < pixels.length; offset += 4) {
+        if (pixels[offset] > 0) {
+          count += 1;
+        }
+      }
+
+      return count;
+    });
+  };
+
+  const expectRendererHealthy = async (
+    page: Page,
+    pageErrors: string[]
+  ): Promise<void> => {
+    const canvas = page.getByTestId('knowledge-graph-3d').locator('canvas');
+
+    await expect(canvas).toBeVisible();
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        )
+    );
+
+    expect(
+      pageErrors,
+      `Knowledge Graph emitted page errors:\n${pageErrors.join('\n')}`
+    ).toEqual([]);
+    await expect
+      .poll(() => renderedPixelCount(page), {
+        message: 'Knowledge Graph should render non-transparent pixels',
+        timeout: 15_000,
+      })
+      .toBeGreaterThan(0);
+
+    expect(
+      pageErrors,
+      `Knowledge Graph emitted page errors:\n${pageErrors.join('\n')}`
+    ).toEqual([]);
+  };
+
+  const openKnowledgeGraph = async (
+    page: Page,
+    focusTable = table
+  ): Promise<string[]> => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) =>
+      pageErrors.push(error.stack ?? error.message)
+    );
+
+    const graphResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/rdf/graph/explore') &&
+        response
+          .url()
+          .includes(`entityId=${focusTable.entityResponseData.id}`) &&
+        response.url().includes('depth=1')
+    );
+
+    await page.goto(
+      `/table/${getEncodedFqn(
+        focusTable.entityResponseData.fullyQualifiedName ?? ''
+      )}/knowledge_graph`
+    );
+
+    const response = await graphResponse;
+
+    expect(response.status()).toBe(200);
+
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('knowledge-graph-3d-controls')).toBeVisible();
+    await expect(page.getByTestId('knowledge-graph-3d-node-count')).toHaveText(
+      /[1-9]\d* nodes/
+    );
+    await expectRendererHealthy(page, pageErrors);
+
+    return pageErrors;
+  };
+
+  const selectDepth = async (
+    page: Page,
+    depth: number,
+    focusTable = table
+  ): Promise<void> => {
+    const depthResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/rdf/graph/explore') &&
+        response
+          .url()
+          .includes(`entityId=${focusTable.entityResponseData.id}`) &&
+        response.url().includes(`depth=${depth}`)
+    );
+
+    await page.getByTestId('kg3d-depth-control').getByRole('button').click();
+    await page
+      .getByRole('option', { name: String(depth), exact: true })
+      .click();
+
+    const response = await depthResponse;
+
+    expect(response.url()).toContain(`depth=${depth}`);
+    expect(response.status()).toBe(200);
+
+    await waitForAllLoadersToDisappear(page);
+  };
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
@@ -92,728 +201,156 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await afterAction();
   });
 
-  test('Verify that the knowledge graph displays the correct relationships for a table entity', async ({
+  test('Verify the knowledge graph tab loads and fetches depth-1 graph data', async ({
     page,
   }) => {
-    const graphDataResponse = page.waitForResponse(
-      `/api/v1/rdf/graph/explore?entityId=${table.entityResponseData.id}&entityType=table&depth=1`
+    await openKnowledgeGraph(page);
+
+    await expect(page.getByTestId('knowledge-graph-3d')).toBeVisible();
+    await expect(page.getByTestId('knowledge-graph-3d-controls')).toBeVisible();
+    await expect(page.getByTestId('knowledge-graph-3d-node-count')).toHaveText(
+      /\d+ nodes/
     );
-
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
-
-    const graphResponse = await graphDataResponse;
-    const graphData = (await graphResponse.json()) as GraphApiResponse;
-
-    await waitForAllLoadersToDisappear(page);
-
-    const graphLoader = page.locator(
-      `[data-testid="knowledge-graph-container"] [data-testid="loader"]`
-    );
-    await expect(graphLoader).not.toBeAttached();
-
-    const nodeLabelById = new Map<string, string>(
-      graphData.nodes.map((n) => [n.id, n.label])
-    );
-
-    await test.step('Verify all graph nodes are rendered in the DOM', async () => {
-      for (const node of graphData.nodes) {
-        await expect(
-          page.locator(`[data-testid="node-${node.label}"]`)
-        ).toBeAttached();
-      }
-    });
-
-    await test.step('Verify the table node is present', async () => {
-      const tableNodes = graphData.nodes.filter((n) => n.type === 'table');
-
-      expect(tableNodes.length).toBeGreaterThan(0);
-
-      for (const tableNode of tableNodes) {
-        await expect(
-          page.locator(`[data-testid="node-${tableNode.label}"]`)
-        ).toBeAttached();
-      }
-    });
-
-    await test.step('Verify at least one user node is present (owner)', async () => {
-      const userNodes = graphData.nodes.filter((n) => n.type === 'user');
-
-      expect(userNodes.length).toBeGreaterThan(0);
-
-      for (const userNode of userNodes) {
-        await expect(
-          page.locator(`[data-testid="node-${userNode.label}"]`)
-        ).toBeAttached();
-      }
-    });
-
-    await test.step('Verify domain nodes are rendered when present', async () => {
-      const domainNodes = graphData.nodes.filter((n) => n.type === 'domain');
-
-      for (const domainNode of domainNodes) {
-        await expect(
-          page.locator(`[data-testid="node-${domainNode.label}"]`)
-        ).toBeAttached();
-      }
-    });
-
-    await test.step('Verify all edges from the API response are in the hidden edges div', async () => {
-      const edgesContainer = page.locator(
-        '[data-testid="knowledge-graph-edges"]'
-      );
-
-      await expect(edgesContainer).toBeAttached();
-
-      for (const edge of graphData.edges) {
-        const srcLabel = nodeLabelById.get(edge.from) ?? edge.from;
-        const tgtLabel = nodeLabelById.get(edge.to) ?? edge.to;
-
-        await expect(
-          edgesContainer.locator(
-            `[data-testid="edge-${srcLabel}-${edge.label}-${tgtLabel}"]`
-          )
-        ).toBeAttached();
-      }
-    });
   });
 
-  test('Verify node highlighting is applied on hover', async ({ page }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
-    const graphResponse = await graphDataResponse;
-    const graphData = (await graphResponse.json()) as GraphApiResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
-
-    // Fit graph so all nodes are positioned inside the viewport
-    await page.locator('[data-testid="fit-screen"]').click();
-    await expect(
-      page.locator('[data-testid="knowledge-graph-canvas"]')
-    ).toBeVisible();
-
-    // Wait for some time to ensure G6 has applied the fit-screen transformation and nodes are in their final positions
-    // eslint-disable-next-line playwright/no-wait-for-timeout
-    await page.waitForTimeout(2000);
-
-    let targetNode = graphData.nodes.find((n) => n.type === 'databaseSchema');
-    let targetBox: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    } | null = await page
-      .locator(`[data-testid="node-${targetNode?.label}"]`)
-      .boundingBox();
-
-    if (!targetNode || !targetBox) {
-      throw new Error('No databaseSchema node found below the controls bar');
-    }
-
-    await expect(
-      page.locator(`[data-testid="node-${targetNode.label}"]`)
-    ).not.toHaveClass(/highlighted/);
-
-    await page.mouse.move(
-      targetBox.x + targetBox.width / 2,
-      targetBox.y + targetBox.height / 2
-    );
-
-    await expect(
-      page.locator(`[data-testid="node-${targetNode.label}"]`)
-    ).toHaveClass(/highlighted/);
-
-    const canvasBox = await page
-      .locator('[data-testid="knowledge-graph-canvas"]')
-      .boundingBox();
-
-    // Move mouse away; G6 fires node:pointerleave → clearAllHighlights()
-    await page.mouse.move(canvasBox?.x ?? 0, canvasBox?.y ?? 0);
-
-    await expect(
-      page.locator(`[data-testid="node-${targetNode.label}"]`)
-    ).not.toHaveClass(/highlighted/);
-  });
-
-  test('Verify entity summary panel opens when a node is clicked', async ({
+  test('Verify changing the depth refetches the graph at the new depth', async ({
     page,
   }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
-    const graphResponse = await graphDataResponse;
-    const graphData = (await graphResponse.json()) as GraphApiResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
+    const pageErrors = await openKnowledgeGraph(page);
 
-    const clickableNode = graphData.nodes.find((n) => n.fullyQualifiedName);
-
-    if (!clickableNode) {
-      throw new Error('Expected at least one node with fullyQualifiedName');
-    }
-
-    await page.locator(`[data-testid="node-${clickableNode.label}"]`).click();
-
-    await expect(
-      page.locator('[data-testid="entity-summary-panel-container"]')
-    ).toBeVisible();
-
-    await page.locator('[data-testid="drawer-close-icon"]').click();
-
-    await expect(
-      page.locator('[data-testid="entity-summary-panel-container"]')
-    ).not.toBeVisible();
+    await selectDepth(page, 2);
+    await expectRendererHealthy(page, pageErrors);
   });
 
-  test('Verify depth slider change fetches and renders depth 2 graph', async ({
+  test('Verify the relationship lens can be switched to Ontology', async ({
+    browser,
     page,
   }) => {
-    const depth1ResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
-    await depth1ResponsePromise;
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const ontologyTable = new TableClass();
+    const relatedTable = new TableClass();
 
-    const depth2ResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes('depth=2')
-    );
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await ontologyTable.create(apiContext);
+      await relatedTable.create(apiContext);
 
-    const sliderInput = page.locator(
-      '[data-testid="depth-slider"] input[type="range"]'
-    );
-    await sliderInput.press('ArrowRight');
-
-    const depth2Response = await depth2ResponsePromise;
-    const depth2Data = (await depth2Response.json()) as GraphApiResponse;
-
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
-
-    for (const node of depth2Data.nodes) {
-      await expect(
-        page.locator(`[data-testid="node-${node.label}"]`)
-      ).toBeAttached();
-    }
-  });
-
-  test('Verify layout toggle switches between Hierarchical and Radial modes', async ({
-    page,
-  }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
-    const graphResponse = await graphDataResponse;
-    const graphData = (await graphResponse.json()) as GraphApiResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
-
-    const layoutTabs = page.locator('[data-testid="layout-tabs"]');
-    const hierarchicalTab = layoutTabs.getByRole('tab', {
-      name: 'Hierarchical',
-    });
-    const radialTab = layoutTabs.getByRole('tab', { name: 'Radial' });
-
-    await expect(hierarchicalTab).toHaveAttribute('aria-selected', 'true');
-    await expect(radialTab).toHaveAttribute('aria-selected', 'false');
-
-    await radialTab.click();
-
-    await expect(radialTab).toHaveAttribute('aria-selected', 'true');
-    await expect(hierarchicalTab).toHaveAttribute('aria-selected', 'false');
-
-    const nodeLabelById = new Map<string, string>(
-      graphData.nodes.map((n) => [n.id, n.label])
-    );
-    const edgesContainer = page.locator(
-      '[data-testid="knowledge-graph-edges"]'
-    );
-    for (const edge of graphData.edges) {
-      const srcLabel = nodeLabelById.get(edge.from) ?? edge.from;
-      const tgtLabel = nodeLabelById.get(edge.to) ?? edge.to;
-      await expect(
-        edgesContainer.locator(
-          `[data-testid="edge-${srcLabel}-${edge.label}-${tgtLabel}"]`
-        )
-      ).toBeAttached();
-    }
-
-    await hierarchicalTab.click();
-    await expect(hierarchicalTab).toHaveAttribute('aria-selected', 'true');
-  });
-
-  test('Verify toolbar buttons function correctly', async ({ page }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
-    await graphDataResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
-
-    await test.step('Verify refresh button triggers a new API call', async () => {
-      const refreshResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/rdf/graph/explore') &&
-          response.url().includes(`entityId=${table.entityResponseData.id}`)
-      );
-      await page.locator('[data-testid="refresh"]').click();
-      const response = await refreshResponse;
-      expect(response.status()).toBe(200);
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Verify full-screen toggle changes URL and button state', async () => {
-      await page.locator('[data-testid="full-screen"]').click();
-
-      await expect(page).toHaveURL(/fullscreen=true/);
-      await expect(
-        page.locator('[data-testid="exit-full-screen"]')
-      ).toBeVisible();
-      // Scope to the knowledge-graph full-screen wrapper to avoid matching the
-      // page-header breadcrumb which also has data-testid="breadcrumb"
-      await expect(
-        page.locator('.full-screen-knowledge-graph [data-testid="breadcrumb"]')
-      ).toBeVisible();
-
-      await page.locator('[data-testid="exit-full-screen"]').click();
-
-      await expect(page).not.toHaveURL(/fullscreen=true/);
-      await expect(page.locator('[data-testid="full-screen"]')).toBeVisible();
-    });
-
-    await test.step('Verify zoom buttons change node positions', async () => {
-      const referenceNode = page.locator('[data-testid^="node-"]').first();
-      const initialBox = await referenceNode.boundingBox();
-
-      await page.locator('[data-testid="zoom-in"]').click();
-
-      // G6 zoom animation runs ~300ms; poll until the bounding box shifts
-      await expect(async () => {
-        const newBox = await referenceNode.boundingBox();
-        expect(newBox).not.toEqual(initialBox);
-      }).toPass();
-
-      const zoomedInBox = await referenceNode.boundingBox();
-
-      await page.locator('[data-testid="zoom-out"]').click();
+      const glossaryTag = {
+        tagFQN: glossaryTerm.responseData.fullyQualifiedName,
+        labelType: 'Manual',
+        state: 'Confirmed',
+        source: 'Glossary',
+      };
+      await ontologyTable.patch({
+        apiContext,
+        patchData: [{ op: 'add', path: '/tags/-', value: glossaryTag }],
+      });
+      await relatedTable.patch({
+        apiContext,
+        patchData: [{ op: 'add', path: '/tags/-', value: glossaryTag }],
+      });
 
       await expect(async () => {
-        const newBox = await referenceNode.boundingBox();
-        expect(newBox).not.toEqual(zoomedInBox);
-      }).toPass();
-    });
+        const response = await apiContext.post('/api/v1/rdf/sparql', {
+          data: {
+            query: `
+              PREFIX om: <https://open-metadata.org/ontology/>
+              ASK {
+                GRAPH ?g {
+                  <https://open-metadata.org/entity/table/${ontologyTable.entityResponseData.id}> om:hasGlossaryTerm <https://open-metadata.org/entity/glossaryTerm/${glossaryTerm.responseData.id}> .
+                  <https://open-metadata.org/entity/table/${relatedTable.entityResponseData.id}> om:hasGlossaryTerm <https://open-metadata.org/entity/glossaryTerm/${glossaryTerm.responseData.id}> .
+                }
+              }
+            `,
+            format: 'json',
+          },
+        });
+        const result = (await response.json()) as { boolean?: boolean };
 
-    await test.step('Verify fit-screen restores nodes to viewport', async () => {
-      // Zoom in several times so nodes spread outside the visible area
-      for (let i = 0; i < 4; i++) {
-        await page.locator('[data-testid="zoom-in"]').click();
-      }
+        expect(response.ok()).toBe(true);
+        expect(result.boolean).toBe(true);
+      }).toPass({ intervals: [500, 1_000], timeout: 30_000 });
 
-      await page.locator('[data-testid="fit-screen"]').click();
+      const pageErrors = await openKnowledgeGraph(page, ontologyTable);
+      await selectDepth(page, 2, ontologyTable);
 
-      // After fit-screen the graph is scaled to fill the canvas, so at least
-      // the first node must be inside the visible viewport
+      const controls = page.getByTestId('knowledge-graph-3d-controls');
+
+      await controls.getByText('Ontology', { exact: true }).click();
+
       await expect(
-        page.locator('[data-testid^="node-"]').first()
-      ).toBeInViewport();
-    });
-  });
-
-  test('Verify entity type filter dropdown filters graph data and triggers API call', async ({
-    page,
-  }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
-
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
-
-    const graphResponse = await graphDataResponse;
-    const graphData = (await graphResponse.json()) as GraphApiResponse;
-
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
-
-    if (!graphData.filterOptions?.entityTypes.length) {
-      throw new Error('No entity type filter options returned by API');
+        page.getByTestId('knowledge-graph-3d-caption-desc')
+      ).toContainText('blueprint');
+      await expect(
+        page.getByTestId('knowledge-graph-3d-node-count')
+      ).toHaveText(/[1-9]\d* linked assets · [1-9]\d* derived relationships/);
+      await expectRendererHealthy(page, pageErrors);
+    } finally {
+      await Promise.allSettled([
+        ontologyTable.delete(apiContext),
+        relatedTable.delete(apiContext),
+        glossary.delete(apiContext),
+      ]);
+      await afterAction();
     }
-
-    const controls = page.locator('[data-testid="knowledge-graph-controls"]');
-
-    await test.step('Verify entity type dropdown opens and lists all options', async () => {
-      await controls.getByRole('button', { name: 'Entity Type' }).click();
-
-      for (const option of graphData.filterOptions!.entityTypes) {
-        await expect(
-          page.getByRole('menuitemcheckbox', {
-            name: `${option.label} (${option.count})`,
-            exact: true,
-          })
-        ).toBeVisible();
-      }
-
-      await page.keyboard.press('Escape');
-    });
-
-    await test.step('Verify selecting an entity type triggers a filtered API call', async () => {
-      const firstOption = graphData.filterOptions!.entityTypes[0];
-
-      const filteredResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/rdf/graph/explore') &&
-          response.url().includes('entityTypes=')
-      );
-
-      await controls.getByRole('button', { name: 'Entity Type' }).click();
-
-      await page
-        .getByRole('menuitemcheckbox', {
-          name: `${firstOption.label} (${firstOption.count})`,
-          exact: true,
-        })
-        .click();
-
-      await page.keyboard.press('Escape');
-
-      const response = await filteredResponse;
-
-      expect(response.url()).toContain('entityTypes=');
-
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Verify entity type button label shows selection count', async () => {
-      await expect(
-        controls.getByRole('button', { name: 'Entity Type (1)' })
-      ).toBeVisible();
-    });
   });
 
-  test('Verify relationship type filter dropdown filters graph data and triggers API call', async ({
+  test('Verify the graph can be expanded to fullscreen and restored', async ({
     page,
   }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
+    const pageErrors = await openKnowledgeGraph(page);
 
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
+    const container = page.getByTestId('knowledge-graph-3d');
 
-    const graphResponse = await graphDataResponse;
-    const graphData = (await graphResponse.json()) as GraphApiResponse;
+    await expect(container).not.toHaveClass(/full-screen-knowledge-graph-3d/);
 
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
+    await page.getByTestId('full-screen').click();
 
-    if (!graphData.filterOptions?.relationshipTypes.length) {
-      throw new Error('No relationship type filter options returned by API');
-    }
+    await expect(container).toHaveClass(/full-screen-knowledge-graph-3d/);
+    await expect(page.getByTestId('exit-full-screen')).toBeVisible();
 
-    const controls = page.locator('[data-testid="knowledge-graph-controls"]');
+    await page.getByTestId('exit-full-screen').click();
 
-    await test.step('Verify relationship type dropdown opens and lists all options', async () => {
-      await controls.getByRole('button', { name: 'Relationship Type' }).click();
-
-      for (const option of graphData.filterOptions!.relationshipTypes) {
-        await expect(
-          page.getByRole('menuitemcheckbox', {
-            name: `${option.label} (${option.count})`,
-            exact: true,
-          })
-        ).toBeVisible();
-      }
-
-      await page.keyboard.press('Escape');
-    });
-
-    await test.step('Verify selecting a relationship type triggers a filtered API call', async () => {
-      const firstOption = graphData.filterOptions!.relationshipTypes[0];
-
-      const filteredResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/rdf/graph/explore') &&
-          response.url().includes('relationshipTypes=')
-      );
-
-      await controls.getByRole('button', { name: 'Relationship Type' }).click();
-
-      await page
-        .getByRole('menuitemcheckbox', {
-          name: `${firstOption.label} (${firstOption.count})`,
-          exact: true,
-        })
-        .click();
-
-      await page.keyboard.press('Escape');
-
-      const response = await filteredResponse;
-
-      expect(response.url()).toContain('relationshipTypes=');
-
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Verify relationship type button label shows selection count', async () => {
-      await expect(
-        controls.getByRole('button', { name: 'Relationship Type (1)' })
-      ).toBeVisible();
-    });
+    await expect(container).not.toHaveClass(/full-screen-knowledge-graph-3d/);
+    await expect(page.getByTestId('full-screen')).toBeVisible();
+    await expectRendererHealthy(page, pageErrors);
   });
 
-  test('Verify Clear All button resets all active filters', async ({
+  test('Verify reset-view and export controls are available once the graph loads', async ({
     page,
   }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
+    const pageErrors = await openKnowledgeGraph(page);
 
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
+    const controls = page.getByTestId('knowledge-graph-3d-controls');
 
-    await graphDataResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
+    await expect(
+      controls.getByRole('button', { name: 'Reset view' })
+    ).toBeEnabled();
+    await expect(
+      controls.getByRole('button', { name: 'Export' })
+    ).toBeEnabled();
 
-    const controls = page.locator('[data-testid="knowledge-graph-controls"]');
-    const layoutTabs = page.locator('[data-testid="layout-tabs"]');
-
-    await test.step('Verify Clear All is not visible at default filter state', async () => {
-      await expect(
-        controls.getByRole('button', { name: 'Clear All' })
-      ).not.toBeVisible();
-    });
-
-    await test.step('Activate filters by switching to Radial layout and increasing depth', async () => {
-      await layoutTabs.getByRole('tab', { name: 'Radial' }).click();
-
-      await expect(
-        controls.getByRole('button', { name: 'Clear All' })
-      ).toBeVisible();
-
-      const depth2Response = page.waitForResponse(
-        (response) =>
-          response.url().includes('/rdf/graph/explore') &&
-          response.url().includes('depth=2')
-      );
-
-      await page
-        .locator('[data-testid="depth-slider"] input[type="range"]')
-        .press('ArrowRight');
-
-      await depth2Response;
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Verify Clear All resets layout to Hierarchical and hides the button', async () => {
-      const resetResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/rdf/graph/explore') &&
-          response.url().includes(`entityId=${table.entityResponseData.id}`)
-      );
-
-      await controls.getByRole('button', { name: 'Clear All' }).click();
-
-      await resetResponse;
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        layoutTabs.getByRole('tab', { name: 'Hierarchical' })
-      ).toHaveAttribute('aria-selected', 'true');
-
-      await expect(
-        controls.getByRole('button', { name: 'Clear All' })
-      ).not.toBeVisible();
-    });
+    await controls.getByRole('button', { name: 'Reset view' }).click();
+    await expectRendererHealthy(page, pageErrors);
   });
 
-  test('Verify Export Graph panel shows all format options and triggers export API calls', async ({
+  test('Verify switching the level updates the caption to the domain view', async ({
     page,
   }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
+    const pageErrors = await openKnowledgeGraph(page);
 
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
+    const controls = page.getByTestId('knowledge-graph-3d-controls');
 
-    await graphDataResponse;
-    await waitForAllLoadersToDisappear(page);
+    // Changing the level is a client-side roll-up; the caption description swaps
+    // to the domain-level copy. Independent of the WebGL scene.
+    await controls.getByText('Domain', { exact: true }).click();
 
-    await test.step('Verify export button is visible', async () => {
-      await expect(
-        page.locator('[data-testid="knowledge-graph-export"]')
-      ).toBeVisible();
-    });
-
-    await test.step('Verify export dropdown shows only supported export format options', async () => {
-      await page.locator('[data-testid="knowledge-graph-export"]').click();
-
-      await expect(
-        page.getByRole('menuitemradio', { name: 'PNG' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('menuitemradio', { name: 'JSON-LD' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('menuitemradio', { name: 'Turtle (.ttl)' })
-      ).toBeVisible();
-      await expect(
-        page.getByRole('menuitemradio', { name: 'SVG' })
-      ).toHaveCount(0);
-
-      await page.keyboard.press('Escape');
-    });
-
-    await test.step('Verify JSON-LD export sends a request to the export API endpoint', async () => {
-      const exportRequest = page.waitForRequest(
-        (request) =>
-          request.url().includes('/rdf/graph/explore/export') &&
-          request.url().includes('format=jsonld')
-      );
-
-      await page.locator('[data-testid="knowledge-graph-export"]').click();
-      await page.getByRole('menuitemradio', { name: 'JSON-LD' }).click();
-
-      const request = await exportRequest;
-
-      expect(request.url()).toContain('format=jsonld');
-    });
-
-    await test.step('Verify Turtle RDF export sends a request to the export API endpoint', async () => {
-      const exportRequest = page.waitForRequest(
-        (request) =>
-          request.url().includes('/rdf/graph/explore/export') &&
-          request.url().includes('format=turtle')
-      );
-
-      await page.locator('[data-testid="knowledge-graph-export"]').click();
-      await page.getByRole('menuitemradio', { name: 'Turtle (.ttl)' }).click();
-
-      const request = await exportRequest;
-
-      expect(request.url()).toContain('format=turtle');
-    });
-  });
-
-  test('Verify clicking canvas background deselects node and closes entity summary panel', async ({
-    page,
-  }) => {
-    const graphDataResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/rdf/graph/explore') &&
-        response.url().includes(`entityId=${table.entityResponseData.id}`)
-    );
-
-    await page.goto(
-      `/table/${getEncodedFqn(
-        table.entityResponseData.fullyQualifiedName ?? ''
-      )}/knowledge_graph`
-    );
-
-    const graphResponse = await graphDataResponse;
-    const graphData = (await graphResponse.json()) as GraphApiResponse;
-
-    await waitForAllLoadersToDisappear(page);
-    await expect(page.locator('[data-testid^="node-"]').first()).toBeAttached();
-
-    await page.locator('[data-testid="fit-screen"]').click();
-
-    const clickableNode = graphData.nodes.find((n) => n.fullyQualifiedName);
-
-    if (!clickableNode) {
-      throw new Error('Expected at least one node with fullyQualifiedName');
-    }
-
-    await test.step('Click a node to open the entity summary panel', async () => {
-      await page.locator(`[data-testid="node-${clickableNode.label}"]`).click();
-
-      await expect(
-        page.locator('[data-testid="entity-summary-panel-container"]')
-      ).toBeVisible();
-    });
-
-    await test.step('Click canvas background to close the entity summary panel', async () => {
-      const canvasBox = await page
-        .locator('[data-testid="knowledge-graph-canvas"]')
-        .boundingBox();
-
-      expect(canvasBox).not.toBeNull();
-
-      await page.mouse.click(canvasBox!.x + 5, canvasBox!.y + 5);
-
-      await expect(
-        page.locator('[data-testid="entity-summary-panel-container"]')
-      ).not.toBeVisible();
-    });
-
-    await test.step('Verify the entity summary panel can be reopened after deselection', async () => {
-      await page.locator(`[data-testid="node-${clickableNode.label}"]`).click();
-
-      await expect(
-        page.locator('[data-testid="entity-summary-panel-container"]')
-      ).toBeVisible();
-    });
+    await expect(
+      page.getByTestId('knowledge-graph-3d-caption-desc')
+    ).toContainText('Domains and how they relate');
+    await expectRendererHealthy(page, pageErrors);
   });
 });

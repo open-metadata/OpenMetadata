@@ -60,7 +60,7 @@ import org.openmetadata.service.security.Authorizer;
 public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepository> {
   public static final String COLLECTION_PATH = "/v1/llmModels/";
   private final LLMModelMapper mapper = new LLMModelMapper();
-  static final String FIELDS = "owners,followers,tags,extension,domains";
+  static final String FIELDS = "owners,followers,tags,extension,domains,reviewers";
 
   @Override
   public LLMModel addHref(UriInfo uriInfo, LLMModel llmModel) {

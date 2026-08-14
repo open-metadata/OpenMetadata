@@ -15,30 +15,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { DISABLED } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
 import { ingestionProps } from '../../../../mocks/Ingestion.mock';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
-import {
-  deployIngestionPipelineById,
-  enableDisableIngestionPipelineById,
-  triggerIngestionPipelineById,
-} from '../../../../rest/ingestionPipelineAPI';
 import Ingestion from './Ingestion.component';
-
-jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onSearch }) => (
-      <button onClick={onSearch}>Searchbar</button>
-    ));
-});
-
-jest.mock('../../../Modals/EntityDeleteModal/EntityDeleteModal', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onConfirm }) => (
-      <button onClick={onConfirm}>EntityDeleteModal</button>
-    ));
-});
 
 jest.mock(
   '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
@@ -49,70 +29,26 @@ jest.mock(
   }
 );
 
-jest.mock(
-  '../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal',
-  () => {
-    return jest.fn().mockImplementation(() => <div>KillIngestionModal</div>);
-  }
-);
-
 jest.mock('./AddIngestionButton.component', () => {
   return jest.fn().mockImplementation(() => <div>AddIngestionButton</div>);
 });
-
-jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
-  IngestionRecentRuns: jest
-    .fn()
-    .mockImplementation(() => <p>IngestionRecentRuns</p>),
-}));
-
-jest.mock('./IngestionListTable/IngestionListTable', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({ triggerIngestion, deployIngestion, handleEnableDisableIngestion }) => (
-        <div>
-          <p>IngestionListTable</p>
-          <button onClick={() => triggerIngestion('test-id', 'pipeline-name')}>
-            triggerIngestion
-          </button>
-          <button onClick={() => deployIngestion('test-id', 'pipeline-name')}>
-            deployIngestion
-          </button>
-          <button onClick={() => handleEnableDisableIngestion('test-id')}>
-            handleEnableDisableIngestion
-          </button>
-        </div>
-      )
-    )
-);
-
-jest.mock(
-  '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component',
-  () => jest.fn().mockImplementation(() => <div>ButtonSkeleton</div>)
-);
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       ingestionPipeline: ENTITY_PERMISSIONS,
     },
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue(ENTITY_PERMISSIONS),
   })),
 }));
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
-  deleteIngestionPipelineById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({})),
-  deployIngestionPipelineById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({})),
-  enableDisableIngestionPipelineById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({})),
-  triggerIngestionPipelineById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({})),
+  deleteIngestionPipelineById: jest.fn().mockResolvedValue({}),
+  deployIngestionPipelineById: jest.fn().mockResolvedValue({}),
+  enableDisableIngestionPipelineById: jest.fn().mockResolvedValue({}),
+  getIngestionPipelineByFqn: jest.fn().mockResolvedValue({}),
+  postKillIngestionPipelineById: jest.fn().mockResolvedValue({}),
+  triggerIngestionPipelineById: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../../hoc/LimitWrapper', () => {
@@ -122,6 +58,10 @@ jest.mock('../../../../hoc/LimitWrapper', () => {
 });
 
 describe('Ingestion', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render the error placeHolder if airflow is not available', async () => {
     await act(async () => {
       render(
@@ -132,32 +72,19 @@ describe('Ingestion', () => {
             isAirflowAvailable: false,
           }}
         />,
-        {
-          wrapper: MemoryRouter,
-        }
+        { wrapper: MemoryRouter }
       );
     });
 
     expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
   });
 
-  it('should render the ButtonSkeleton if airflow status is being fetched', async () => {
+  it('should render the AddIngestionButton when create permission is granted', async () => {
     await act(async () => {
-      render(
-        <Ingestion
-          {...ingestionProps}
-          airflowInformation={{
-            ...ingestionProps.airflowInformation,
-            isFetchingStatus: true,
-          }}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
+      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
     });
 
-    expect(screen.getByText('ButtonSkeleton')).toBeInTheDocument();
+    expect(screen.getByText('AddIngestionButton')).toBeInTheDocument();
   });
 
   it('should not render the AddIngestionButton if platform is disabled', async () => {
@@ -170,13 +97,34 @@ describe('Ingestion', () => {
             platform: DISABLED,
           }}
         />,
-        {
-          wrapper: MemoryRouter,
-        }
+        { wrapper: MemoryRouter }
       );
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
+  });
+
+  it('should refresh only the visible sub-tab list', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
+    });
+
+    fireEvent.click(screen.getByTestId('agent-group-refresh'));
+
+    expect(ingestionProps.refreshAgentsList).toHaveBeenCalledTimes(1);
+    expect(ingestionProps.refreshAgentsList).toHaveBeenCalledWith(
+      ServiceAgentSubTabs.METADATA
+    );
+  });
+
+  it('should disable the refresh control while the list is loading', async () => {
+    await act(async () => {
+      render(<Ingestion {...ingestionProps} isLoading />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByTestId('agent-group-refresh')).toBeDisabled();
   });
 
   it('should not render the AddIngestionButton if no Create ingestion pipeline permission', async () => {
@@ -187,80 +135,12 @@ describe('Ingestion', () => {
           Create: false,
         },
       },
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue(ENTITY_PERMISSIONS),
     }));
     await act(async () => {
-      render(<Ingestion {...ingestionProps} />, {
-        wrapper: MemoryRouter,
-      });
+      render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
-  });
-
-  it('should call handleSearchChange when searched', async () => {
-    await act(async () => {
-      render(<Ingestion {...ingestionProps} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const searchBar = screen.getByText('Searchbar');
-
-    fireEvent.click(searchBar);
-
-    expect(ingestionProps.handleSearchChange).toHaveBeenCalledTimes(1);
-  });
-
-  it('should call triggerIngestionPipelineById after pipeline triggered', async () => {
-    (triggerIngestionPipelineById as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({})
-    );
-    await act(async () => {
-      render(<Ingestion {...ingestionProps} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const triggerPipeline = screen.getByText('triggerIngestion');
-
-    fireEvent.click(triggerPipeline);
-
-    expect(triggerIngestionPipelineById).toHaveBeenCalledWith('test-id');
-  });
-
-  it('should call deployIngestionPipelineById after pipeline deployed', async () => {
-    (deployIngestionPipelineById as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({})
-    );
-    await act(async () => {
-      render(<Ingestion {...ingestionProps} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const deployIngestion = screen.getByText('deployIngestion');
-
-    fireEvent.click(deployIngestion);
-
-    expect(deployIngestionPipelineById).toHaveBeenCalledWith('test-id');
-  });
-
-  it('should call enableDisableIngestionPipelineById after pipeline deployed', async () => {
-    (enableDisableIngestionPipelineById as jest.Mock).mockImplementationOnce(
-      () => Promise.resolve({ data: { id: 'test-id', enabled: true } })
-    );
-    await act(async () => {
-      render(<Ingestion {...ingestionProps} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const handleEnableDisableIngestion = screen.getByText(
-      'handleEnableDisableIngestion'
-    );
-
-    fireEvent.click(handleEnableDisableIngestion);
-
-    expect(enableDisableIngestionPipelineById).toHaveBeenCalledWith('test-id');
   });
 });

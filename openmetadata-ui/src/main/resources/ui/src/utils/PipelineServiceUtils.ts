@@ -79,9 +79,9 @@ const pipelineSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/pipeline/flinkConnection.json'
     ),
-  [PipelineServiceType.MicrosoftFabricPipeline]: () =>
+  [PipelineServiceType.Prefect]: () =>
     import(
-      '../jsons/connectionSchemas/connections/pipeline/microsoftFabricPipelineConnection.json'
+      '../jsons/connectionSchemas/connections/pipeline/prefectConnection.json'
     ),
 };
 

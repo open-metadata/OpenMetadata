@@ -1,6 +1,9 @@
 from metadata.data_quality.interface.sqlalchemy.databricks.test_suite_interface import (
     DatabricksTestSuiteInterface,
 )
+from metadata.ingestion.source.database.databricks.connection import (
+    DatabricksConnection,
+)
 from metadata.ingestion.source.database.databricks.data_diff.data_diff import (
     DatabricksTableParameter,
 )
@@ -23,4 +26,5 @@ ServiceSpec = DefaultDatabaseSpec(
     test_suite_class=DatabricksTestSuiteInterface,
     sampler_class=DatabricksSamplerInterface,
     data_diff=DatabricksTableParameter,
+    connection_class=DatabricksConnection,  # pyright: ignore[reportArgumentType]
 )

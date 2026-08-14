@@ -16,7 +16,7 @@ import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
-import { MOCK_KNOWLEDGE_PAGE_DATA } from '../../../pages/KnowledgePage/KnowledgePage.mock';
+import { MOCK_KNOWLEDGE_PAGE_DATA } from '../KnowledgePages/KnowledgePages.mock';
 import KnowledgePageSummary from './KnowledgePageSummary';
 
 jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
@@ -46,7 +46,7 @@ jest.mock(
     })
 );
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityPureUtils', () => ({
   DRAWER_NAVIGATION_OPTIONS: {
     explore: 'Explore',
     lineage: 'Lineage',
@@ -61,8 +61,12 @@ describe('KnowledgePageSummary', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.getByText('CommonEntitySummaryInfo')).toBeInTheDocument();
-    expect(screen.getByText('SummaryTagsDescription')).toBeInTheDocument();
+    expect(
+      await screen.findByText('CommonEntitySummaryInfo')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('SummaryTagsDescription')
+    ).toBeInTheDocument();
   });
 
   it('should render correctly with quick link', async () => {
@@ -81,8 +85,12 @@ describe('KnowledgePageSummary', () => {
       }
     );
 
-    expect(screen.getByText('CommonEntitySummaryInfo')).toBeInTheDocument();
-    expect(screen.getByText('SummaryTagsDescription')).toBeInTheDocument();
+    expect(
+      await screen.findByText('CommonEntitySummaryInfo')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('SummaryTagsDescription')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('quick-link-data')).toBeInTheDocument();
   });
 });

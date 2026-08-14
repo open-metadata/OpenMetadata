@@ -35,6 +35,9 @@ export interface GraphData {
   filterOptions?: GraphFilterOptions;
   totalNodes?: number;
   totalEdges?: number;
+  // Set by the server when the BFS traversal hit its per-level row cap or
+  // wall-clock budget, i.e. the returned graph is a partial subset.
+  truncated?: boolean;
   source?: string;
   error?: string;
 }
@@ -51,6 +54,7 @@ export type EntityGraphExportFormat = 'turtle' | 'jsonld';
 
 export interface GlossaryGraphParams {
   glossaryId?: string;
+  glossaryTermId?: string;
   relationTypes?: string;
   limit?: number;
   offset?: number;

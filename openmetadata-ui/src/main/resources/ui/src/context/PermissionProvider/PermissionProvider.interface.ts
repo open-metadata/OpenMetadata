@@ -40,6 +40,7 @@ export enum ResourceEntity {
   DATABASE_SCHEMA = 'databaseSchema',
   DATABASE_SERVICE = 'databaseService',
   SEARCH_SERVICE = 'searchService',
+  SECURITY_SERVICE = 'securityService',
   DATA_INSIGHT_CHART = 'dataInsightChart',
   KPI = 'kpi',
   FEED = 'feed',
@@ -95,6 +96,7 @@ export enum ResourceEntity {
   TABLE_COLUMN = 'tableColumn',
   DATA_CONTRACT = 'dataContract',
   TASK = 'task',
+  CONTEXT_MEMORY = 'contextMemory',
 }
 
 export interface PermissionContextType {

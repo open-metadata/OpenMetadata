@@ -18,8 +18,8 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { Task, TaskEntityStatus } from '../../../rest/tasksAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getTaskDisplayId } from '../../../utils/TasksUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getTaskDisplayId } from '../../../utils/TaskNavigationUtils';
 import './feed-panel-header.less';
 
 interface TaskPanelHeaderProps {

@@ -19,7 +19,9 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==3.2.1",
+    # CVE-2026-42252 BashOperator Jinja2 injection; CVE-2026-48891 /ui/dependencies leaks
+    # Dag IDs the caller cannot read (residual gap in the CVE-2026-28563 fix, needs 3.3.0)
+    "airflow": "apache-airflow==3.3.0",
     "adlfs": "adlfs>=2023.1.0",
     "aiobotocore": "aiobotocore~=2.26.0",
     "avro": "avro>=1.11.4,<1.12",
@@ -36,9 +38,9 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.1.4",
-    "pyarrow": "pyarrow~=16.0",
+    "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
-    "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
+    "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
@@ -151,7 +153,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=46.0.5",  # CVE-2026-26007
+    "cryptography>=48.0.1",  # GHSA-537c-gmf6-5ccf bundled OpenSSL vuln in wheels <48.0.1
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
@@ -163,9 +165,9 @@ base_requirements = {
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
-    "mistune>=3.2.1",  # CVE-2026-33079 ReDoS + CVE-2026-44898/44899 XSS/CSS injection
+    "mistune>=3.3.0",  # CVE-2026-49851 ReDoS in parse_link_text
     "mypy_extensions>=0.4.3",
-    "PyJWT>=2.12.0",  # CVE-2026-32597 unknown crit header acceptance
+    "PyJWT>=2.13.0",  # CVE-2026-48522/48523/48525/48526 SSRF + DoS + algorithm-confusion
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
@@ -175,14 +177,14 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.1.3",
+    "collate-sqllineage>=2.1.4",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
     "setuptools>=78.1.1",
     "shapely",
-    "collate-data-diff>=0.11.11",
+    "collate-data-diff>=0.11.15",
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
@@ -201,18 +203,16 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
-        "tornado>=6.5.5",  # CVE-2026-31958 DoS + CVE-2026-35536 cookie injection
+        "tornado>=6.5.7",  # CVE-2026-49853/49854/49855 header leak + OOB read + gzip bomb + GHSA-pw6j-qg29-8w7f curl credential leak
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
-        "python-multipart>=0.0.27",  # CVE-2026-42561 unbounded headers DoS
+        "python-multipart>=0.0.31",  # CVE-2026-53537/53538/53539 param smuggling + querystring DoS + CVE-2026-53540 negative Content-Length OOM
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {VERSIONS["pyathena"]},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
-    "microsoftfabric": {VERSIONS["pyodbc"], VERSIONS["msal"]},
-    "microsoftfabricpipeline": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "googledrive": {
         "google-api-python-client>=2.0.0",
@@ -251,7 +251,9 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "db2": {"ibm-db-sa~=0.4.1", "ibm-db>=3.2.6"},
     "db2-ibmi": {
-        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict)
+        # sqlalchemy-ibmi is pre-installed with --no-deps (SA<2 metadata conflict).
+        # Its SA-1.x call sites are adapted at runtime by
+        # metadata.ingestion.source.database.db2.utils.patch_ibmi_dialect
     },
     "databricks": {
         VERSIONS["databricks-sqlalchemy"],
@@ -301,8 +303,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
-        "sqlalchemy_exasol>=6,<7",
-        "exasol-integration-test-docker-environment>=6.0.0,<7",
+        "sqlalchemy_exasol>=7.1.1,<8",
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -314,11 +315,15 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "hive": {
         *COMMONS["hive"],
-        "thrift>=0.13,<1",
+        # CVE-2026-66053 (improper certificate validation) + CVE-2026-41608 / CVE-2026-48586
+        # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
+        # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
+        # has to move for this floor to be satisfiable.
+        "thrift>=0.24.0,<1",
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
         "thrift-sasl~=0.4",
-        "impyla~=0.18.0",
+        "impyla~=0.24.0",
     },
     "iomete": {
         "iomete-sqlalchemy>=1.0.22",
@@ -327,8 +332,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "impala": {
         "presto-types-parser>=0.0.2",
-        "impyla[kerberos]~=0.18.0",
-        "thrift>=0.13,<1",
+        # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
+        # thrift below the fixed 0.24.0.
+        "impyla[kerberos]~=0.24.0",
+        "thrift>=0.24.0,<1",
         "pure-sasl",
         "thrift-sasl~=0.4",
     },
@@ -343,8 +350,9 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    # >=3.11.1 closes CVE-2026-4137 (insecure tmp dir permissions).
-    "mlflow": {"mlflow-skinny>=3.11.1,<3.13"},
+    # >=3.13.0 closes CVE-2026-2635 (default creds) + CVE-2026-8147 (missing authz);
+    # retains the CVE-2026-4137 (insecure tmp dir) fix from the prior >=3.11.1 floor.
+    "mlflow": {"mlflow-skinny>=3.13.0,<3.15"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -378,6 +386,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
+    "prefect": {},  # uses requests
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"], DATA_DIFF["presto"]},
     "pymssql": {"pymssql~=2.3.9"},
@@ -404,6 +413,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
+    "sftp": {"paramiko>=3.5,<6"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
@@ -429,7 +439,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
 dev = {
     "ruff~=0.15.12",
     "uvloop==0.21.0",
-    "datamodel-code-generator==0.25.6",
+    "datamodel-code-generator==0.64.0",
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
@@ -440,6 +450,7 @@ dev = {
     "nox",
     "pre-commit",
     "basedpyright==1.39.3",
+    "import-linter~=2.13",
     # For publishing
     "twine",
     "build",
@@ -452,6 +463,7 @@ test_unit = {
     "pytest-cov",
     "pytest-order",
     "pytest-rerunfailures",
+    "pytest-timeout~=2.4",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
@@ -459,6 +471,11 @@ test_unit = {
     VERSIONS["factory-boy"],
     *plugins["exasol"],
     *plugins["teradata"],
+}
+
+exasol_test = {
+    "exasol-integration-test-docker-environment>=6.0.0,<7",
+    "luigi>=2.8.4,<=3.6.0",
 }
 
 test = {
@@ -474,6 +491,7 @@ test = {
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",
+    "pytest-timeout~=2.4",
     "dirty-equals",
     # install dbt dependency
     "collate-dbt-artifacts-parser",
@@ -500,9 +518,11 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
+    *plugins["vertica"],
     "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],
+    "skops",  # mlflow 3.14 switched the mlflow.sklearn serialization default to skops, which mlflow-skinny does not pull in
     *plugins["datalake-s3"],
     *plugins["kafka"],
     "kafka-python==2.0.2",
@@ -516,18 +536,19 @@ test = {
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],
+    *plugins["sftp"],
     VERSIONS["validators"],
     VERSIONS["pyathena"],
     "python-liquid",
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
-    *plugins["exasol"],
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
     "locust~=2.32.0",
     *plugins["exasol"],
+    *exasol_test,
     *plugins["teradata"],
 }
 
@@ -539,6 +560,8 @@ e2e_test = {
     # playwright dependencies
     "pytest-playwright",
     "pytest-base-url",
+    *plugins["exasol"],
+    *exasol_test,
 }
 
 # Define playwright_dependencies as a set of packages required for Playwright tests
@@ -575,6 +598,7 @@ setup(
         "test": list(test),
         "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
+        "exasol-test": list(exasol_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         # FIXME: all-dev-env is a temporary solution to install all dependencies except

@@ -18,7 +18,7 @@ import time
 import traceback
 from functools import singledispatchmethod
 from time import perf_counter
-from typing import Any, Generic, Iterable, List, Optional, TypeVar, cast  # noqa: UP035
+from typing import Any, ClassVar, Generic, Iterable, List, Optional, TypeVar, cast  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -29,6 +29,7 @@ from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -41,10 +42,15 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.progress.modes import ProgressMode, TotalsDeclarer
+from metadata.ingestion.progress.runner_tracker import TopologyProgressTracker
+from metadata.ingestion.progress.tracking import (
+    ProgressTracking,
+    attach_progress_tracking,
+)
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.operation_metrics import OperationMetricsState
-from metadata.utils.progress_tracker import ProgressTrackerState
 from metadata.utils.source_hash import generate_source_hash
 
 logger = ingestion_logger()
@@ -71,15 +77,47 @@ class TopologyRunnerMixin(Generic[C]):
 
     queue = Queue()
 
-    def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:  # noqa: UP045
-        """
-        Get the entity type name for a topology node.
-        Used for progress tracking by entity type.
-        """
+    progress_mode: ClassVar[ProgressMode] = ProgressMode.AUTO
+    """AUTO (default): the topology runner counts processed entities.
+    MANUAL: the runner makes zero progress calls; the source drives
+    ``progress_tracking.manual`` itself. OFF: no progress at all."""
+
+    _SIDE_OUTPUT_STAGE_TYPES: ClassVar[set[str]] = {
+        "OMetaTagAndClassification",
+        "OMetaLifeCycleData",
+        "AddLineageRequest",
+    }
+
+    @property
+    def progress_tracking(self) -> ProgressTracking:
+        """Composed per-source progress state (registry, mode, manual facade).
+        Lazy: a source that never tracks progress never builds a registry."""
+        return attach_progress_tracking(self)
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Optional connector hook: declare denominators (totals) so the run
+        renders % and ETA. Called exactly once by the topology runner, just
+        before the first non-root node is processed. Default: no totals."""
+
+    def _node_primary_stage(self, node: TopologyNode) -> Optional[NodeStage]:  # noqa: UP045
+        """The node's primary, non-side-output stage — the stage whose entity is
+        the node's real entity (Table, Database, ...). Falls back to the first
+        typed stage when every stage is a side output. ``None`` only when the
+        node has no typed stage at all."""
+        fallback = None
         for stage in node.stages:
             if stage.type_:
-                return stage.type_.__name__
-        return None
+                if fallback is None:
+                    fallback = stage
+                if stage.type_.__name__ not in self._SIDE_OUTPUT_STAGE_TYPES:
+                    return stage
+        return fallback
+
+    def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:  # noqa: UP045
+        """The primary entity type name for a topology node, used as the
+        progress-tracking key. Derived from the node's primary stage."""
+        stage = self._node_primary_stage(node)
+        return stage.type_.__name__ if stage is not None else None
 
     def _run_node_producer(self, node: TopologyNode) -> Iterable[Entity]:
         """Run the node producer"""
@@ -95,12 +133,22 @@ class TopologyRunnerMixin(Generic[C]):
                 )
             )
 
+    @property
+    def progress_tracker(self) -> TopologyProgressTracker:
+        """Per-source topology progress policy. Lazy: first access is in
+        ``_iter`` before worker threads spawn."""
+        tracker = self.__dict__.get("_topology_progress_tracker")
+        if tracker is None:
+            tracker = TopologyProgressTracker(self)
+            self.__dict__["_topology_progress_tracker"] = tracker
+        return tracker
+
     def _multithread_process_node(self, node: TopologyNode, threads: int) -> Iterable[Entity]:
         """Multithread Processing of a Node with progress tracking"""
         child_nodes = self._get_child_nodes(node)
         entity_type_name = self._get_entity_type_for_node(node)
-        progress_tracker = ProgressTrackerState()
         operation_metrics = OperationMetricsState()
+        node_progress = self.progress_tracker.for_node(node, is_leaf=not child_nodes)
 
         # Track SOURCE time - fetching entities from producer
         source_start = perf_counter()
@@ -116,8 +164,7 @@ class TopologyRunnerMixin(Generic[C]):
                 entity_type=entity_type_name,
             )
 
-        if entity_type_name and node_entities_length > 0:
-            progress_tracker.set_total(entity_type_name, node_entities_length)
+        node_progress.open(node_entities_length)
 
         if node_entities_length == 0:
             return
@@ -135,7 +182,7 @@ class TopologyRunnerMixin(Generic[C]):
                         chunk,
                         child_nodes,
                         self.context.get_current_thread_id(),
-                        entity_type_name,
+                        node_progress,
                     )
                     for chunk in chunks
                 ]
@@ -156,40 +203,42 @@ class TopologyRunnerMixin(Generic[C]):
                     time.sleep(0.01)
 
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
-        """Processing of a Node in a single thread with progress tracking.
+        """Single-threaded processing of a Node.
 
-        Uses lazy iteration to preserve the producer contract where connectors
-        set up state (e.g., database inspectors, session tags) before each yield.
-        Eager materialization with list() would break 12+ database connectors
-        (Postgres, Snowflake, Redshift, etc.) that rely on this pattern.
-
-        Progress totals are tracked incrementally via add_to_total. For nodes
-        needing upfront totals (e.g., tables), _multithread_process_node is used.
+        Producers are iterated lazily by default so connectors can set up
+        per-yield inspector/session state — and read context a stage of the
+        just-yielded entity populated (e.g. S3 storage's ``get_containers``) —
+        before the next child is produced. A producer is materialized eagerly
+        only when its node's progress handle wants an exact upfront child count,
+        which today is limited to reconcilable container counters (schema totals
+        nudged toward the observed count). Leaf producers are never drained
+        eagerly: their per-leaf ``advance`` already yields an accurate processed
+        count.
         """
         child_nodes = self._get_child_nodes(node)
-        entity_type_name = self._get_entity_type_for_node(node)
-        progress_tracker = ProgressTrackerState()
+        node_progress = self.progress_tracker.for_node(node, is_leaf=not child_nodes)
 
-        for node_entity in self._run_node_producer(node) or []:
-            start_time = perf_counter()
+        if node_progress.wants_eager_count:
+            # Holds the node's whole producer output in memory — safe only for
+            # bounded container nodes; see NodeProgress.wants_eager_count.
+            node_entities = list(self._run_node_producer(node) or [])
+            node_progress.open(len(node_entities))
+        else:
+            node_entities = self._run_node_producer(node) or []
+            node_progress.open(None)
 
-            if entity_type_name:
-                progress_tracker.add_to_total(entity_type_name, 1)
-
+        for node_entity in node_entities:
             for stage in node.stages:
                 yield from self._process_stage(stage=stage, node_entity=node_entity)
 
-            # Once we are done processing all the stages,
             for stage in node.stages:
                 if stage.clear_context:
                     self.context.get().clear_stage(stage=stage)
 
-            if entity_type_name:
-                processing_time = perf_counter() - start_time
-                progress_tracker.increment_processed(entity_type_name, processing_time)
+            node_progress.advance_leaf()
 
-            # process all children from the node being run
-            yield from self.process_nodes(child_nodes)
+            with node_progress.enter_scope():
+                yield from self.process_nodes(child_nodes)
 
     def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
         """
@@ -236,18 +285,15 @@ class TopologyRunnerMixin(Generic[C]):
         node_entities: List[Any],  # noqa: UP006
         child_nodes: List[TopologyNode],  # noqa: UP006
         parent_thread_id: int,
-        entity_type_name: Optional[str] = None,  # noqa: UP045
+        node_progress,
     ):
         """Multithread processing of a Node Entity with progress tracking"""
         # Generates a new context based on the parent thread.
         self.context.copy_from(parent_thread_id)
 
-        progress_tracker = ProgressTrackerState()
         operation_metrics = OperationMetricsState()
 
         for node_entity in node_entities:
-            start_time = perf_counter()
-
             # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
             for stage in node.stages:
                 for stage_result in self._process_stage(stage=stage, node_entity=node_entity):
@@ -258,14 +304,11 @@ class TopologyRunnerMixin(Generic[C]):
                 if stage.clear_context:
                     self.context.get().clear_stage(stage=stage)
 
-            if entity_type_name:
-                processing_time = perf_counter() - start_time
-                progress_tracker.increment_processed(entity_type_name, processing_time)
+            node_progress.advance_leaf()
 
-            # If the Entity has child nodes that need processing we proceed to processing them with the same logic as above.
-
-            for child_result in self.process_nodes(child_nodes):
-                self.queue.put(child_result)
+            with node_progress.enter_scope():
+                for child_result in self.process_nodes(child_nodes):
+                    self.queue.put(child_result)
 
         # Merge thread-local metrics into global state before thread exits
         operation_metrics.merge_thread_metrics()
@@ -347,7 +390,9 @@ class TopologyRunnerMixin(Generic[C]):
         to yield data to the sink
         :return: Iterable of the Entities yielded by all nodes in the topology
         """
-        yield from self.process_nodes(get_topology_root(self.topology))
+        root_nodes = get_topology_root(self.topology)
+        self.progress_tracker.on_walk_start(root_nodes)
+        yield from self.process_nodes(root_nodes)  # pyright: ignore[reportReturnType]
 
     def create_patch_request(self, original_entity: Entity, create_request: C) -> PatchRequest:
         """
@@ -445,6 +490,16 @@ class TopologyRunnerMixin(Generic[C]):
     @yield_and_update_context.register
     def _(
         self,
+        right: OMetaFQNLineageRequest,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[C]]:
+        yield entity_request
+        self.context.get().update_context_value(stage=stage, value=right.from_entity_fqn)
+
+    @yield_and_update_context.register
+    def _(
+        self,
         right: OMetaTagAndClassification,
         stage: NodeStage,
         entity_request: Either[C],
@@ -466,7 +521,7 @@ class TopologyRunnerMixin(Generic[C]):
         right: OMetaCustomProperties,
         stage: NodeStage,
         entity_request: Either[C],
-    ) -> Iterable[Either[Entity]]:
+    ) -> Iterable[Either[C]]:
         """Custom Property implementation for the context information"""
         yield entity_request
 

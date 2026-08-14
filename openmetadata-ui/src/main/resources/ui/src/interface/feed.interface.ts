@@ -31,6 +31,7 @@ export interface EntityFieldThreadCount {
 
 export interface FeedCounts {
   conversationCount: number;
+  activityCount: number;
   totalTasksCount: number;
   openTaskCount: number;
   closedTaskCount: number;

@@ -16,7 +16,7 @@ Google Drive source implementation
 # pylint: disable=too-many-lines
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
@@ -44,11 +44,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.drive.drive_service import DriveServiceSource
-from metadata.ingestion.source.drive.googledrive.connection import (
-    GoogleDriveClient,
-    get_connection,
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
 )
+from metadata.ingestion.source.drive.drive_service import DriveServiceSource
 from metadata.ingestion.source.drive.googledrive.models import (
     GoogleDriveDirectoryInfo,
     GoogleDriveFile,
@@ -62,6 +62,10 @@ from metadata.utils.filters import (
     filter_by_worksheet,
 )
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+    from metadata.ingestion.source.drive.googledrive.connection import GoogleDriveClient
 
 logger = ingestion_logger()
 
@@ -91,7 +95,8 @@ class GoogleDriveSource(DriveServiceSource):
         self.source_config: DriveServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection: GoogleDriveConnection = self.config.serviceConnection.root.config
-        self.client: GoogleDriveClient = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client: GoogleDriveClient = cast("BaseConnection", self._connection).client
         self.connection_obj = self.client
 
         # Cache for storing directory hierarchy
@@ -107,7 +112,8 @@ class GoogleDriveSource(DriveServiceSource):
         # Flag to track if root files have been processed
         self._root_files_processed: bool = False
 
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
     def create(
@@ -630,26 +636,30 @@ class GoogleDriveSource(DriveServiceSource):
         self.directory_source_state.add(directory_fqn)
 
     def register_record_file(self, file_request: CreateFileRequest) -> None:
-        """Build FQN using cached directory FQN for efficiency."""
-        # Build file FQN - use cached directory FQN if available
+        """
+        Record the file FQN exactly as the create request will be stored.
+
+        Stale-entity deletion removes anything absent from this set, so an FQN that does not
+        match the stored one deletes a file that was just ingested.
+        """
+        service_name = self.context.get().drive_service  # pyright: ignore[reportAttributeAccessIssue]
         if file_request.directory:
-            # Directory reference already contains the full FQN path
+            # `directory` holds the parent's full FQN, which already starts with the service
+            # name. fqn.build prepends the service itself, so pass only the path components
+            # below it - otherwise the service name appears twice and quotes the dotted
+            # remainder: svc."svc.data"."f.csv" instead of svc.data."f.csv".
+            directory_path = fqn.split(file_request.directory.root)[1:]
             file_fqn = fqn.build(
                 self.metadata,
                 entity_type=File,
-                service_name=self.context.get().drive_service,
-                directory_path=[file_request.directory.root],  # This is already the full directory FQN
+                service_name=service_name,
+                directory_path=directory_path,
                 file_name=file_request.name.root,
             )
         else:
-            # File without directory (root level)
-            file_fqn = fqn.build(
-                self.metadata,
-                entity_type=File,
-                service_name=self.context.get().drive_service,
-                directory_path=["root"],
-                file_name=file_request.name.root,
-            )
+            # Root-level files are created with `directory=None`, so they are stored directly
+            # under the service. fqn.build rejects an empty directory path.
+            file_fqn = fqn._build(service_name, file_request.name.root)
 
         self.file_source_state.add(file_fqn)
 
@@ -920,6 +930,9 @@ class GoogleDriveSource(DriveServiceSource):
             if hasattr(self.client, "close"):
                 self.client.close()
 
+            if self._connection is not None:
+                self._connection.close()
+
         except Exception as e:
             logger.error(f"Error closing Google Drive source: {e}")
             logger.debug(traceback.format_exc())
@@ -949,9 +962,9 @@ class GoogleDriveSource(DriveServiceSource):
         """
         try:
             # Try pandas-based inference across a capped set of rows to reuse datalake logic.
-            import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            import pandas as pd  # pylint: disable=import-outside-toplevel
 
-            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel
                 DataFrameColumnParser,
             )
 

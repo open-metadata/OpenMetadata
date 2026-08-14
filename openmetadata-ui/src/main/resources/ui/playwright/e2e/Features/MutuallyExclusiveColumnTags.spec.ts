@@ -13,7 +13,11 @@
 import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const table = new TableClass();
@@ -101,13 +105,7 @@ test(
     await page.click('[data-testid="saveAssociatedTag"]');
     await errorResponse;
 
-    // Verify that error alert is displayed
-    await expect(page.getByTestId('alert-bar')).toBeVisible();
-
-    // Verify the error message contains information about mutually exclusive tags
-    await expect(page.getByTestId('alert-message')).toContainText(
-      'mutually exclusive'
-    );
+    await toastNotification(page, /mutually exclusive/i);
 
     // Verify that the dropdown closes after error
     await expect(page.locator('.ant-select-dropdown')).not.toBeVisible();

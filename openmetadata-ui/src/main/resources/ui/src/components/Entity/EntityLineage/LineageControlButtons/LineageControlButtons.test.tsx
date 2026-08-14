@@ -24,16 +24,12 @@ const mockFitView = jest.fn();
 const mockSetCenter = jest.fn();
 const mockGetNodes = jest.fn();
 const mockRedraw = jest.fn();
-const mockZoomTo = jest.fn();
-
 const mockReactFlowInstance = {
   zoomIn: mockZoomIn,
   zoomOut: mockZoomOut,
-  zoomTo: mockZoomTo,
   fitView: mockFitView,
   setCenter: mockSetCenter,
   getNodes: mockGetNodes,
-  getZoom: jest.fn().mockReturnValue(1),
 };
 
 const mockLineageProviderValues = {
@@ -103,7 +99,7 @@ describe('LineageControlButtons', () => {
 
       const miniMapButton = screen.getByTestId('toggle-mind-map');
 
-      expect(miniMapButton).toHaveClass('Mui-selected');
+      expect(miniMapButton).toHaveAttribute('data-selected', 'true');
     });
   });
 
@@ -221,7 +217,7 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.fit-to-screen'));
 
-      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2 });
+      expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2, maxZoom: 1 });
     });
 
     it('should call fitView with selected nodes when "Refocus to selected" is clicked', () => {
@@ -252,7 +248,7 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.refocused-to-selected'));
 
-      expect(mockSetCenter).toHaveBeenCalledWith(15, 38, {
+      expect(mockSetCenter).toHaveBeenCalledWith(10, 38, {
         duration: 800,
         zoom: 0.65,
       });
@@ -293,7 +289,7 @@ describe('LineageControlButtons', () => {
       fireEvent.click(screen.getByTestId('fit-screen'));
       fireEvent.click(screen.getByText('label.refocused-to-home'));
 
-      expect(mockSetCenter).toHaveBeenCalledWith(25, 38, {
+      expect(mockSetCenter).toHaveBeenCalledWith(15, 38, {
         duration: 800,
         zoom: 0.65,
       });

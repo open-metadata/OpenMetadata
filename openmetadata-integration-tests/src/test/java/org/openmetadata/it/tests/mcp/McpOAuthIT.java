@@ -16,8 +16,11 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Execution(ExecutionMode.SAME_THREAD)
 public class McpOAuthIT extends McpTestBase {
 
   private static String registeredClientId;
@@ -75,6 +78,7 @@ public class McpOAuthIT extends McpTestBase {
     JsonNode metadata = OBJECT_MAPPER.readTree(response.body());
     assertThat(metadata.has("resource")).isTrue();
     assertThat(metadata.has("authorization_servers")).isTrue();
+    assertThat(metadata.has("resource_signing_alg_values_supported")).isFalse();
   }
 
   @Test

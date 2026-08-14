@@ -16,6 +16,7 @@ working with OpenMetadata entities.
 """
 
 import traceback
+import types
 from collections import OrderedDict
 from collections.abc import Generator
 from itertools import chain
@@ -145,7 +146,10 @@ class CaseInsensitiveEnvSettingsSource(EnvSettingsSource):
     def _unwrap_annotation(annotation):
         """Unwrap Optional and other Union types to get the actual model class."""
         origin = get_origin(annotation)
-        if origin is Union:
+        # PEP 604 unions (`X | None`) report `types.UnionType`, not `typing.Union`. Generated
+        # models emit that form, so matching only `Union` here silently stops unwrapping and
+        # nested env keys never get case-normalized.
+        if origin in (Union, types.UnionType):
             args = get_args(annotation)
             for arg in args:
                 if arg is not type(None) and hasattr(arg, "model_fields"):
@@ -335,6 +339,9 @@ class OpenMetadata(
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
+            # The OpenMetadata API never answers HTML, so a page here means the
+            # request reached the UI or a proxy instead of the API.
+            raise_on_html=True,
             **(additional_client_config_arguments or {}),
         )
 
@@ -454,6 +461,8 @@ class OpenMetadata(
             .replace("chatconversation", "chatConversation")
             .replace("eventsubscription", "eventSubscription")
             .replace("mcpserver", "mcpServer")
+            .replace("llmmodel", "llmModel")
+            .replace("aiapplication", "aiApplication")
         )
         class_path = ".".join(
             filter(
@@ -557,6 +566,31 @@ class OpenMetadata(
             fields=fields,
             nullable=nullable,
         )
+
+    def get_context(
+        self,
+        entity: Type[T],  # noqa: UP006
+        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
+        query: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
+        """
+        Return the AI Context (Context Profile) for an entity as an OKF-style
+        markdown document: its attached business knowledge (glossary terms,
+        Context Center articles, applied metrics), type-specific structural
+        context, and depth-1 lineage, assembled server-side for LLM use.
+
+        :param entity: entity type, e.g. Table
+        :param fqn: fully qualified name of the entity
+        :param query: optional question; truncated knowledge items are excerpted
+            to the passage most relevant to it instead of the positional lead
+        :return: the markdown document, or None if the entity is not found
+        """
+        path = f"{self.get_suffix(entity)}/name/{quote(fqn)}/context"
+        if query:
+            path += f"?query={quote(query)}"
+        resp = self.client.get(path)
+        text = getattr(resp, "text", resp)
+        return text if isinstance(text, str) else None
 
     def _get(
         self,
@@ -791,8 +825,10 @@ class OpenMetadata(
         }
         url = f"{self.get_suffix(entity)}/deleteStale"
         try:
-            resp = self.client.put(url, json=request)
+            resp = self.client.delete(url, json=request)
         except APIError as err:
+            # A server without the endpoint routes DELETE /<collection>/deleteStale to
+            # `deleteById`, whose UUID path param rejects "deleteStale" with a 404.
             if err.status_code == 404:
                 logger.debug(
                     "deleteStale endpoint unavailable for %s; falling back to legacy delete",
@@ -1016,10 +1052,9 @@ class OpenMetadata(
 
     def health_check(self) -> bool:
         """
-        Run version api call. Return `true` if response is not None
+        Run version api call. Raises with an actionable message if the API is not reachable.
         """
-        raw_version = self.client.get("/system/version")["version"]
-        return raw_version is not None
+        return bool(self.get_server_version())
 
     def close(self):
         """

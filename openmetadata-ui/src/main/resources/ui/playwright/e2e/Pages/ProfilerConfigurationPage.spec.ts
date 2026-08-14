@@ -99,7 +99,7 @@ test.describe('Profiler Configuration Page', () => {
 
       await expect(
         adminPage.locator('#metricConfiguration_0_dataType_help')
-      ).toHaveText('Data Type is required.');
+      ).toHaveText(/Data Type is required/);
 
       await adminPage.click('[data-testid="cancel-button"]');
       await adminPage.waitForURL('**/settings/preferences');
@@ -174,7 +174,7 @@ test.describe('Profiler Configuration Page', () => {
 
       await toastNotification(
         adminPage,
-        /Profiler Configuration updated successfully./
+        /Profiler Configuration updated successfully/
       );
     });
 
@@ -318,7 +318,7 @@ test.describe('Profiler Configuration Page', () => {
 
       await toastNotification(
         adminPage,
-        /Profiler Configuration updated successfully./
+        /Profiler Configuration updated successfully/
       );
     });
   });

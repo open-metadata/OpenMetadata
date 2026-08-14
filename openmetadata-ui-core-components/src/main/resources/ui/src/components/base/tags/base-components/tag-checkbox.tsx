@@ -1,4 +1,5 @@
 import { cx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
 interface TagCheckboxProps {
   size?: 'sm' | 'md' | 'lg';
@@ -18,13 +19,14 @@ export const TagCheckbox = ({
   return (
     <div
       className={cx(
-        'tw:flex tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded tw:bg-primary tw:ring-1 tw:ring-primary tw:ring-inset',
+        // Border on ::after — the element's own outline is reserved for the focus ring below.
+        `tw:relative tw:flex tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded tw:bg-primary ${borderAfter} tw:after:outline-primary`,
         size === 'sm' && 'tw:size-3.5',
         size === 'md' && 'tw:size-4',
         size === 'lg' && 'tw:size-4.5',
-        isSelected && 'tw:bg-brand-solid tw:ring-brand-solid',
+        isSelected && 'tw:bg-brand-solid tw:after:outline-brand-solid',
         isDisabled &&
-          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled',
+          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:after:outline-disabled',
         isFocused && 'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
         className
       )}>

@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -220,6 +221,80 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertNotNull(metric.getMetricExpression());
     assertEquals("sum(revenue)", metric.getMetricExpression().getCode());
     assertEquals(MetricExpressionLanguage.SQL, metric.getMetricExpression().getLanguage());
+  }
+
+  @Test
+  void put_metricCsvImportExport_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String metricName = ns.prefix("metric_csv");
+    String secondMetricName = ns.prefix("metric_csv_second");
+    String header =
+        "name*,displayName,description,metricType,unitOfMeasurement,customUnitOfMeasurement,"
+            + "granularity,expressionLanguage,expressionCode,relatedMetrics,tags,glossaryTerms,"
+            + "tiers,owners,reviewers,domains,dataProducts,entityStatus,extension";
+    String row =
+        String.join(
+            ",",
+            metricName,
+            "CSV Metric",
+            "Metric imported from CSV",
+            "OTHER",
+            "DOLLARS",
+            "",
+            "DAY",
+            "SQL",
+            "SUM(sales.amount)",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Approved",
+            "");
+    String secondRow =
+        String.join(
+            ",",
+            secondMetricName,
+            "Second CSV Metric",
+            "Second metric imported from CSV",
+            "SUM",
+            "DOLLARS",
+            "",
+            "DAY",
+            "SQL",
+            "SUM(sales.net_amount)",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Approved",
+            "");
+    String csv = header + "\n" + row + "\n" + secondRow + "\n";
+
+    CsvImportResult result =
+        new ObjectMapper()
+            .readValue(client.metrics().importCsv("*", csv, false), CsvImportResult.class);
+    assertEquals(2, result.getNumberOfRowsPassed(), result.getImportResultsCsv());
+
+    Metric imported = getEntityByName(metricName);
+    assertNotNull(imported);
+    assertEquals(MetricExpressionLanguage.SQL, imported.getMetricExpression().getLanguage());
+    Metric secondImported = getEntityByName(secondMetricName);
+    assertNotNull(secondImported);
+    assertEquals(MetricExpressionLanguage.SQL, secondImported.getMetricExpression().getLanguage());
+
+    String exportedCsv = client.metrics().exportCsv("*");
+    assertTrue(exportedCsv.contains(metricName));
+    assertTrue(exportedCsv.contains(secondMetricName));
+    assertTrue(exportedCsv.contains("expressionCode"));
+    assertTrue(exportedCsv.contains("tiers"));
   }
 
   @Test

@@ -15,47 +15,34 @@
 .certification-tag {
   display: flex;
   align-items: center;
-  border-radius: 16px;
-  padding: 0 8px 0 6px;
+  border-radius: var(--om-radius-2xl);
+  padding: 0 var(--om-space-8) 0 var(--om-space-6);
   height: 24px;
 
   img {
     width: 16px;
     height: 16px;
-    margin-right: 6px;
+    margin-right: var(--om-space-6);
   }
 }
 
 .certification-img {
-  width: 28px;
-  height: 28px;
+  width: 14px;
+  height: 14px;
 }
 
 .certification-tag-with-name {
   width: fit-content;
-  border-radius: 16px;
-  padding: 4px 10px;
+  border-radius: var(--om-radius-2xl);
+  padding: var(--om-space-4) var(--om-space-10);
 
   .certification-img {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
   }
 
   span.certification-text {
-    color: @grey-700;
-    font-size: 12px;
+    font-size: var(--om-font-size-sm);
     max-width: 120px;
-  }
-
-  span.bronze {
-    color: @red-16;
-  }
-
-  span.silver {
-    color: @grey-700;
-  }
-
-  span.gold {
-    color: @yellow-11;
   }
 }

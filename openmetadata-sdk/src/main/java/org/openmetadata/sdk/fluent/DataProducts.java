@@ -306,4 +306,14 @@ public final class DataProducts {
     // Use the fluent API: client.dataProducts().outputPorts(name).add/remove/list()
     // Use the fluent API: client.dataProducts().portsView(name).get()
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().dataProducts().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().dataProducts().getContextByName(fqn);
+  }
 }

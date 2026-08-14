@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -19,7 +19,7 @@ import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';
 
 async function createOpenTask(
-  apiContext: Awaited<ReturnType<typeof performAdminLogin>>['apiContext'],
+  apiContext: APIRequestContext,
   tableFqn: string,
   assigneeName: string
 ): Promise<{ id: string }> {
@@ -37,10 +37,7 @@ async function createOpenTask(
   return res.json();
 }
 
-async function resolveTask(
-  apiContext: Awaited<ReturnType<typeof performAdminLogin>>['apiContext'],
-  taskId: string
-) {
+async function resolveTask(apiContext: APIRequestContext, taskId: string) {
   const res = await apiContext.post(`/api/v1/tasks/${taskId}/resolve`, {
     data: { resolutionType: 'Approved' },
   });
@@ -99,7 +96,9 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
   test('badge reflects openTaskCount in Open filter and closedTaskCount in Closed filter', async ({
     browser,
   }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       const fqn = table.entityResponseData?.fullyQualifiedName as string;
@@ -135,7 +134,9 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
   test('placeholder shows the correct message per filter state', async ({
     browser,
   }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     const emptyTable = new TableClass();
 
@@ -155,6 +156,76 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
       await expect(page.getByText(/Nothing Closed Yet/i)).not.toBeVisible();
     } finally {
       await emptyTable.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('entity tab count equals the sum of the All and Tasks badges', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+
+    // Own table: the sibling tests resolve tasks on the shared one and chromium
+    // runs fullyParallel, so sharing it would make these exact counts depend on
+    // test order.
+    const countedTable = new TableClass();
+
+    try {
+      await countedTable.create(apiContext);
+
+      const fqn = countedTable.entityResponseData?.fullyQualifiedName as string;
+      const assignee = assigneeUser.responseData.name;
+
+      // One open task and one resolved task. The resolved one is the whole
+      // point: the header counted every task while the Tasks badge counts only
+      // the open ones, so with no closed task the two agree by accident.
+      await createOpenTask(apiContext, fqn, assignee);
+      const resolvedTask = await createOpenTask(apiContext, fqn, assignee);
+      await resolveTask(apiContext, resolvedTask.id);
+
+      await countedTable.visitEntityPage(page);
+
+      const headerCount = page
+        .getByRole('tab', { name: /activity feeds & tasks/i })
+        .getByTestId('count');
+
+      await expect(headerCount).toBeVisible();
+
+      await navigateToTasksPanel(page);
+
+      const allBadge = page
+        .getByTestId('left-panel-all-count')
+        .getByTestId('filter-count');
+
+      await expect(allBadge).toBeVisible();
+      // Open filter is the default, and exactly one task is still open.
+      await expect(badge(page)).toHaveText('1', { timeout: 30_000 });
+
+      // Poll the difference: all three numbers land after first paint, so a
+      // single read races the count request and compares stale values. A
+      // non-zero delta is the defect — the header counting the resolved task
+      // that neither sub-tab badge includes.
+      await expect
+        .poll(
+          async () => {
+            const [header, all, tasks] = await Promise.all([
+              headerCount.innerText(),
+              allBadge.innerText(),
+              badge(page).innerText(),
+            ]);
+
+            return (
+              Number(header.trim()) -
+              (Number(all.trim()) + Number(tasks.trim()))
+            );
+          },
+          { timeout: 30_000 }
+        )
+        .toBe(0);
+    } finally {
+      await countedTable.delete(apiContext);
       await afterAction();
     }
   });

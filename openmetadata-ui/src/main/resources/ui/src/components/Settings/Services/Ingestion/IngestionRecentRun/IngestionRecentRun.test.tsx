@@ -21,7 +21,7 @@ import {
 import { Status } from '../../../../../generated/entity/applications/appRunRecord';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EXECUTION_RUNS, FAILURE } from '../../../../../mocks/Ingestion.mock';
-import { mockDataInsightApplicationRun } from '../../../../../mocks/LogsViewerPage.mock';
+import { mockDataInsightApplicationRun } from '../../../../../mocks/IngestionRecentRun.mock';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import ConnectionStepCard from '../../../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';

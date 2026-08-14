@@ -15,9 +15,10 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
-import org.openmetadata.it.factories.EntityLoader;
+import org.openmetadata.it.factories.SeedData;
 import org.openmetadata.it.search.CpuSampler;
 import org.openmetadata.it.search.DbCountQuerier;
+import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.server.ServerHandle;
@@ -27,6 +28,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.sdk.fluent.Apps;
+import org.openmetadata.service.Entity;
 
 /**
  * Scale test: reindex 100k tables under a prod-shaped JVM. Asserts the reconciliation
@@ -41,15 +43,18 @@ import org.openmetadata.sdk.fluent.Apps;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class Scale100kEntitiesIT {
 
-  private static final String TABLE_ALIAS = "table_search_index";
-  private static final int SEED_TABLES = 100_000;
+  // Cohort size and reindex timeout are tunable so a CI matrix can sweep sizes (e.g. 100k, 500k)
+  // to find the cluster's breaking point. Defaults preserve the original 100k / 45-minute run.
+  private static final int SEED_TABLES = Integer.getInteger("jpw.scale.tables", 100_000);
   private static final int COLUMNS_PER_TABLE = 5;
   private static final int LOAD_WORKERS = 32;
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(45);
+  private static final Duration REINDEX_TIMEOUT =
+      Duration.ofMinutes(Integer.getInteger("jpw.scale.timeoutMin", 45));
 
   private static ServerHandle server;
   private static SearchAssertions search;
   private static DbCountQuerier db;
+  private static String tableAlias;
 
   @BeforeAll
   static void setup() {
@@ -57,18 +62,20 @@ class Scale100kEntitiesIT {
     search = new SearchAssertions(server);
     db = new DbCountQuerier(server);
     Apps.setDefaultClient(SdkClients.adminClient());
+    tableAlias = new IndexAliasInspector(server).indexNameFor(Entity.TABLE);
   }
 
   @Test
   void hundredThousandTableReindexReconciles(final TestNamespace ns) throws Exception {
     final long ingestStart = System.currentTimeMillis();
-    EntityLoader.load(
+    SeedData.provision(
         EntityLoadSpec.builder()
             .count(EntityKind.TABLE, SEED_TABLES)
             .columnsPerTable(COLUMNS_PER_TABLE)
             .parallelWorkers(LOAD_WORKERS)
             .build(),
-        ns);
+        ns,
+        server);
     final long ingestMs = System.currentTimeMillis() - ingestStart;
 
     final CpuSampler cpu = new CpuSampler();
@@ -80,7 +87,7 @@ class Scale100kEntitiesIT {
     assertThat(run.getStatus().value()).isIn("success", "completed");
 
     final long dbTables = db.count("table");
-    final long esTables = search.count(TABLE_ALIAS);
+    final long esTables = search.count(tableAlias);
     assertThat(esTables).as("db_count == es_count over %d tables", SEED_TABLES).isEqualTo(dbTables);
 
     final CpuSampler.Stats cpuStats = cpu.stats();

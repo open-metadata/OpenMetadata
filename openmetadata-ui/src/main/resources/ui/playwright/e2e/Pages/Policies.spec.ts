@@ -320,14 +320,8 @@ test.describe(
         await deleteButton.waitFor({ state: 'visible' });
         await deleteButton.click();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        // Type 'DELETE' in the confirmation text input
-        await page
-          .locator('[data-testid="confirmation-text-input"]')
-          .fill('DELETE');
-
-        // Click on confirm button
         await page.locator('[data-testid="confirm-button"]').click();
 
         // Validate deleted policy
@@ -412,9 +406,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill('DELETE');
       await page.locator('[data-testid="confirm-button"]').click();
 
       await expect(policyLocator).not.toBeVisible();

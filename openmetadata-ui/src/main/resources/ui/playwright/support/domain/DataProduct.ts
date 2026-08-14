@@ -45,6 +45,7 @@ type ResponseDataType = {
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
   experts?: UserTeamRef[];
+  dataProductType?: string;
 };
 
 export class DataProduct extends EntityClass {
@@ -72,6 +73,7 @@ export class DataProduct extends EntityClass {
       domains: [],
       // eslint-disable-next-line no-useless-escape
       fullyQualifiedName: `\"${dataName}\"`,
+      dataProductType: 'DATASET',
     };
   }
 

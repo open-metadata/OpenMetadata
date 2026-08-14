@@ -24,7 +24,6 @@ import {
 import '../../styles/variables.less';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import ssoUtilClassBase from '../../utils/SSOUtilClassBase';
 import { getProviderDisplayName, getProviderIcon } from '../../utils/SSOUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -134,41 +133,27 @@ const SettingsSso = () => {
 
     // Overview tab for all SSO providers
     if (currentProvider && currentProvider !== AuthProvider.Basic) {
-      const renderOverviewContent = () => {
-        // Get the SCIM access token card component - only for Azure and Okta
-        const SCIMAccessTokenCard =
-          (currentProvider === AuthProvider.Azure ||
-            currentProvider === AuthProvider.Okta) &&
-          ssoUtilClassBase.getSCIMAccessTokenCardComponent?.();
-
-        return (
-          <div>
-            {/* Enable SSO section */}
-            <div className="enable-sso-card-container">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col">
-                  <Typography.Title className="enable-self-signup-header m-b-xs">
-                    {t('label.enable-sso')}
-                  </Typography.Title>
-                  <Typography.Text className="enable-self-signup-desc">
-                    {t('message.allow-user-to-login-via-sso')}
-                  </Typography.Text>
-                </div>
-                <Switch
-                  checked={ssoEnabled}
-                  size="default"
-                  onChange={handleSSOToggle}
-                />
+      const renderOverviewContent = () => (
+        <div>
+          <div className="enable-sso-card-container">
+            <div className="flex justify-between items-start">
+              <div className="flex flex-col">
+                <Typography.Title className="enable-self-signup-header m-b-xs">
+                  {t('label.enable-sso')}
+                </Typography.Title>
+                <Typography.Text className="enable-self-signup-desc">
+                  {t('message.allow-user-to-login-via-sso')}
+                </Typography.Text>
               </div>
+              <Switch
+                checked={ssoEnabled}
+                size="default"
+                onChange={handleSSOToggle}
+              />
             </div>
-
-            {/* SCIM Provisioning section - only for Azure and Okta */}
-
-            {/* SCIM Access Token Card - only show if available and for Azure/Okta */}
-            {SCIMAccessTokenCard && <SCIMAccessTokenCard />}
           </div>
-        );
-      };
+        </div>
+      );
 
       items.push({
         key: 'overview',
@@ -192,21 +177,6 @@ const SettingsSso = () => {
         </div>
       ),
     });
-
-    // Group Mapping tab - only for Azure and Okta with SCIM (Collate-specific feature)
-    const ScimGroupMappingComponent =
-      ssoUtilClassBase.getScimGroupMappingComponent?.();
-    if (
-      ScimGroupMappingComponent &&
-      (currentProvider === AuthProvider.Azure ||
-        currentProvider === AuthProvider.Okta)
-    ) {
-      items.push({
-        key: 'group-mapping',
-        label: 'Group Mapping',
-        children: <ScimGroupMappingComponent />,
-      });
-    }
 
     return items;
   }, [

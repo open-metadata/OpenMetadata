@@ -36,7 +36,7 @@ import { useAuth } from '../../hooks/authHooks';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
-import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import { getResourceEntityFromServiceCategory } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-page.less';
 

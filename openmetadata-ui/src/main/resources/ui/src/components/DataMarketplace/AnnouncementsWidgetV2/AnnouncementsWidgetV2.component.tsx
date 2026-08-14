@@ -26,10 +26,9 @@ import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import Loader from '../../common/Loader/Loader';
 import AnnouncementItemV2 from './AnnouncementItemV2.component';
-
 const DISPLAY_COUNT = 4;
 
 const DUMMY_ANNOUNCEMENTS: AnnouncementEntity[] = [

@@ -163,6 +163,32 @@ class OpenSearchRBACConditionEvaluatorTest {
   }
 
   @Test
+  void testHasDomainRestrictsDomainIndexToOwnDomains() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Finance");
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    String generatedQuery = ((OpenSearchQueryBuilder) finalQuery).build().toJsonString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.terms['id.keyword'])]",
+        "a Domain entity must be matchable by its own id so the domain index hides foreign domains");
+    assertTrue(
+        generatedQuery.contains(domain.getId().toString()),
+        "The id terms clause should contain the user's domain id.");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.bool.must_not[?(@.term['entityType'].value=='domain')])]",
+        "the no-domain clause must exclude Domain documents so foreign domains do not leak");
+  }
+
+  @Test
   void testOpenSearchNegationWithDomainAndOwnerChecks() {
     setupMockPolicies("!hasDomain() && isOwner()", "ALLOW");
     when(mockUser.getId()).thenReturn(UUID.randomUUID());

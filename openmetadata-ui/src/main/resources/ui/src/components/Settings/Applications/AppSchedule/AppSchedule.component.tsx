@@ -22,7 +22,7 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getCronDefaultValue } from '../../../../utils/SchedularUtils';
+import { getCronDefaultValue } from '../../../../utils/CronExpressionUtils';
 import Loader from '../../../common/Loader/Loader';
 import ScheduleInterval from '../../Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../Services/AddIngestion/Steps/ScheduleInterval.interface';

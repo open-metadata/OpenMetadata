@@ -21,6 +21,8 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
     MysqlConnection,
 )
 from metadata.ingestion.connections.builders import (
+    _dialect_supports_autocommit,
+    create_generic_db_connection,
     get_connection_args_common,
     get_connection_options_dict,
     init_empty_connection_arguments,
@@ -78,3 +80,50 @@ class ConnectionBuilderTest(TestCase):
 
         self.assertEqual(new_args.root.get("hello"), "world")
         self.assertIsNone(new_args.root.get("not there"))
+
+
+class FakeDialectWithAutocommit:
+    def get_isolation_level_values(self, dbapi_conn):
+        return ("READ COMMITTED", "AUTOCOMMIT")
+
+
+class FakeDialectNoAutocommit:
+    def get_isolation_level_values(self, dbapi_conn):
+        return ("READ COMMITTED",)
+
+
+class FakeDialectRaises:
+    def get_isolation_level_values(self, dbapi_conn):
+        raise NotImplementedError("dialect has no isolation levels")
+
+
+def test_dialect_supports_autocommit_true():
+    assert _dialect_supports_autocommit(FakeDialectWithAutocommit()) is True
+
+
+def test_dialect_supports_autocommit_false_when_absent():
+    assert _dialect_supports_autocommit(FakeDialectNoAutocommit()) is False
+
+
+def test_dialect_supports_autocommit_false_when_raises():
+    assert _dialect_supports_autocommit(FakeDialectRaises()) is False
+
+
+def test_create_generic_db_connection_applies_autocommit():
+    engine = create_generic_db_connection(
+        connection=object(),
+        get_connection_url_fn=lambda _conn: "sqlite://",
+        get_connection_args_fn=lambda _conn: {},
+    )
+    assert engine.get_execution_options().get("isolation_level") == "AUTOCOMMIT"
+
+
+def test_create_generic_db_connection_respects_explicit_isolation_level():
+    engine = create_generic_db_connection(
+        connection=object(),
+        get_connection_url_fn=lambda _conn: "sqlite://",
+        get_connection_args_fn=lambda _conn: {},
+        isolation_level="SERIALIZABLE",
+    )
+    with engine.connect() as conn:
+        assert conn.get_isolation_level() == "SERIALIZABLE"

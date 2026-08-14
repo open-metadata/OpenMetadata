@@ -65,6 +65,14 @@
     "sourceAssistantMessage": {
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
+    "sourceFile": {
+      "description": "Deprecated: use sourceEntity. The Context Center file this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "sourceEntity": {
+      "description": "The Context Center entity (file or page) this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
     "rootMemory": {
       "$ref": "../../type/entityReference.json"
     },

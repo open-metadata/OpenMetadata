@@ -204,7 +204,7 @@ export const getPageHierarchy = async (
 
 export const getPageHierarchyFromES = async (
   parent?: string,
-  pageType: PageType = PageType.ARTICLE,
+  pageType?: PageType,
   offset = 0,
   limit = 100,
   activeFqn?: string

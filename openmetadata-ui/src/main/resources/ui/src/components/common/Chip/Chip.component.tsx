@@ -20,8 +20,8 @@ import {
   USER_DATA_SIZE,
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { ChipProps } from './Chip.interface';
 import './chip.less';
 

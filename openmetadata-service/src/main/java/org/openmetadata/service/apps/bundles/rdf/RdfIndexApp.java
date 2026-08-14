@@ -52,6 +52,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.rdf.RdfExcludedEntities;
+import org.openmetadata.service.rdf.RdfIndexingFields;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -73,9 +75,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
       RdfBatchProcessor.EXCLUDED_RELATIONSHIP_ENTITY_TYPES;
   private static final Set<Integer> EXCLUDED_RELATIONSHIP_TYPES =
       RdfBatchProcessor.EXCLUDED_RELATIONSHIP_TYPES;
+  private static final Set<String> EXCLUDED_ENTITY_TYPES =
+      RdfExcludedEntities.EXCLUDED_ENTITY_TYPES;
 
   private final RdfRepository rdfRepository;
-  private final RdfBatchProcessor batchProcessor;
+  private RdfBatchProcessor batchProcessor;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
 
@@ -167,6 +171,14 @@ public class RdfIndexApp extends AbstractNativeApplication {
         throw new IllegalStateException(
             "No repository-backed entity types configured for RDF indexing");
       }
+      // recreateIndex clears the graph before any indexing work starts, so its
+      // batches can use pure INSERT DATA updates. A concurrent live RdfUpdater
+      // write can leave duplicate literal values until the next recreate run;
+      // that accepted race is no worse than the reverse lost-update race in the
+      // previous clear-and-reconcile implementation.
+      batchProcessor =
+          new RdfBatchProcessor(
+              collectionDAO, rdfRepository, RdfIndexingRunContext.forJob(jobData));
 
       LOG.info(
           "RDF Index Job Started for Entities: {}, RecreateIndex: {}",
@@ -652,7 +664,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
               batchSize,
               cursor,
               true,
-              Entity.getFields(entityType, List.of("*")),
+              Entity.getFields(entityType, RdfIndexingFields.forEntityType(entityType)),
               null);
 
       if (!listOrEmpty(result.getData()).isEmpty() && !stopped) {
@@ -893,17 +905,23 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
     Set<String> resolvedEntities = new LinkedHashSet<>();
     List<String> skippedEntities = new ArrayList<>();
+    List<String> excludedEntities = new ArrayList<>();
     for (String entityType : entitiesToResolve) {
       if (entityType == null || entityType.isBlank() || ALL.equals(entityType)) {
         continue;
       }
-      if (isIndexableEntityType(entityType)) {
+      if (EXCLUDED_ENTITY_TYPES.contains(entityType)) {
+        excludedEntities.add(entityType);
+      } else if (isIndexableEntityType(entityType)) {
         resolvedEntities.add(entityType);
       } else {
         skippedEntities.add(entityType);
       }
     }
 
+    if (!excludedEntities.isEmpty()) {
+      LOG.info("Skipping RDF indexing for entity types excluded from RDF: {}", excludedEntities);
+    }
     if (!skippedEntities.isEmpty()) {
       LOG.info("Skipping RDF indexing for non repository-backed entity types: {}", skippedEntities);
     }

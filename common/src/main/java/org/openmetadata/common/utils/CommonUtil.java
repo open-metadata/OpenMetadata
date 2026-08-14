@@ -207,6 +207,20 @@ public final class CommonUtil {
     return object == null || nullOrEmpty(object.toString());
   }
 
+  /**
+   * Overload for Jackson {@link com.fasterxml.jackson.databind.JsonNode}: true when the node is
+   * null, a JSON {@code null}, a missing tree node, an empty text value, or an empty array /
+   * object. Exists because the {@code (Object)} overload would fall through to {@code toString()},
+   * and {@code NullNode.toString()} returns the 4-char string {@code "null"} — which would be
+   * wrongly classified as non-empty.
+   */
+  public static boolean nullOrEmpty(com.fasterxml.jackson.databind.JsonNode node) {
+    if (node == null || node.isNull() || node.isMissingNode()) return true;
+    if (node.isTextual()) return node.asText().isEmpty();
+    if (node.isArray() || node.isObject()) return node.size() == 0;
+    return false;
+  }
+
   public static List<String> uuidListToStrings(List<UUID> list) {
     return list.stream().map(UUID::toString).toList();
   }

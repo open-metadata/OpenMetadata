@@ -1,0 +1,22 @@
+{
+  "name": "subgroup_fairness",
+  "displayName": "Subgroup fairness — quarterly",
+  "description": "High-risk assets must be assessed against protected subgroup fairness metrics every quarter. Lapsed assessments are flagged for re-evaluation.",
+  "policyType": "BiasThreshold",
+  "enforcementLevel": "Warning",
+  "enabled": true,
+  "rules": [
+    {
+      "name": "fairness-cadence",
+      "ruleType": "Notification",
+      "condition": "highRisk && fairnessAssessmentAgeDays > 90",
+      "action": "Notify",
+      "severity": "Medium",
+      "enabled": true
+    }
+  ],
+  "biasThresholds": {
+    "maxOverallBiasScore": 0.15,
+    "evaluationFrequency": "Monthly"
+  }
+}

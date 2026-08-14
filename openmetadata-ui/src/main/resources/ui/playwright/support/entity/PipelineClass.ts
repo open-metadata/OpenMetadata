@@ -15,7 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityReference,
   EntityTypeEndpoint,
@@ -37,7 +37,7 @@ export class PipelineClass extends EntityClass {
         type: string;
         host: string;
         token: string;
-        timeout: string;
+        timeout: number;
         supportsMetadataExtraction: boolean;
       };
     };
@@ -74,9 +74,9 @@ export class PipelineClass extends EntityClass {
       connection: {
         config: {
           type: 'Dagster',
-          host: 'admin',
+          host: 'http://localhost:3000',
           token: 'admin',
-          timeout: '1000',
+          timeout: 1000,
           supportsMetadataExtraction: true,
         },
       },
@@ -185,12 +185,10 @@ export class PipelineClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

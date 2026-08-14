@@ -10,12 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { getAllAlerts } from '../../rest/alertsAPI';
+import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import ObservabilityAlertsPage from './ObservabilityAlertsPage';
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -85,7 +92,60 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Root: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   };
 
-  return { Table: MockTable, TableCard: MockTableCard };
+  const Passthrough = ({ children }: React.PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  interface MockFeature {
+    key: string;
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+  }
+
+  interface MockAction {
+    key: string;
+    label: React.ReactNode;
+    onPress?: () => void;
+  }
+
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+    features,
+    actions,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    features?: MockFeature[];
+    actions?: MockAction[];
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+      {features?.map((feature) => (
+        <div key={feature.key}>
+          <span>{feature.title}</span>
+          <span>{feature.description}</span>
+        </div>
+      ))}
+      {actions?.map((action) => (
+        <button key={action.key} onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  return {
+    Table: MockTable,
+    TableCard: MockTableCard,
+    Box: Passthrough,
+    Button: Passthrough,
+    EmptyPlaceholder: MockEmptyPlaceholder,
+    Popover: Passthrough,
+    PopoverTrigger: Passthrough,
+    Typography: Passthrough,
+  };
 });
 
 const MOCK_DATA = [
@@ -157,13 +217,28 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () => ({
   default: jest.fn().mockImplementation(() => <div>NextPrevious</div>),
 }));
 
-jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ visible }) =>
-      visible ? <p>DeleteWidgetModal</p> : null
-    );
+jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
+  return jest.fn().mockImplementation(({ open, onDelete }) =>
+    open ? (
+      <div>
+        <p>DeleteModal</p>
+        <button data-testid="confirm-delete" onClick={onDelete}>
+          confirm
+        </button>
+      </div>
+    ) : null
+  );
 });
+
+jest.mock('../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
+  hardDeleteEntity: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockReturnValue({
+    getResourceLimit: jest.fn().mockResolvedValue({}),
+  }),
+}));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
@@ -258,11 +333,12 @@ describe('Observability Alerts Page Tests', () => {
       });
     });
 
-    const alertNameElement = await screen.findByText(
-      'message.adding-new-entity-is-easy-just-give-it-a-spin'
-    );
+    const emptyPlaceholder = await screen.findByTestId('empty-placeholder');
 
-    expect(alertNameElement).toBeInTheDocument();
+    expect(emptyPlaceholder).toBeInTheDocument();
+    expect(
+      screen.getByText('message.observability-alert-empty-heading')
+    ).toBeInTheDocument();
   });
 
   it('should call LimitWrapper with resource as eventsubscription', async () => {
@@ -302,9 +378,71 @@ describe('Observability Alerts Page Tests', () => {
 
     fireEvent.click(deleteButton);
 
-    const deleteModal = await screen.findByText('DeleteWidgetModal');
+    const deleteModal = await screen.findByText('DeleteModal');
 
     expect(deleteModal).toBeInTheDocument();
+  });
+
+  it('should hard delete the alert and refetch the list on confirm', async () => {
+    (hardDeleteEntity as jest.Mock).mockResolvedValueOnce(true);
+
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    (getAllAlerts as jest.Mock).mockClear();
+
+    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+
+    fireEvent.click(deleteButton);
+
+    await screen.findByTestId('confirm-delete');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-delete'));
+    });
+
+    expect(hardDeleteEntity).toHaveBeenCalledWith(
+      'alert-test',
+      '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
+      'subscription'
+    );
+
+    await waitFor(() => expect(getAllAlerts).toHaveBeenCalled());
+
+    expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument();
+  });
+
+  it('should not refetch and should close the modal when hard delete fails', async () => {
+    (hardDeleteEntity as jest.Mock).mockResolvedValueOnce(false);
+
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    (getAllAlerts as jest.Mock).mockClear();
+
+    const deleteButton = await screen.findByTestId('alert-delete-alert-test');
+
+    fireEvent.click(deleteButton);
+
+    await screen.findByTestId('confirm-delete');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-delete'));
+    });
+
+    expect(hardDeleteEntity).toHaveBeenCalled();
+
+    await waitFor(() =>
+      expect(screen.queryByText('DeleteModal')).not.toBeInTheDocument()
+    );
+
+    expect(getAllAlerts).not.toHaveBeenCalled();
   });
 
   it('should navigate to add observability alert page on add button click', async () => {

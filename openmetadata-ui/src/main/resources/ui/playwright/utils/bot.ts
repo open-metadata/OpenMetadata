@@ -32,7 +32,7 @@ export const BOT_DETAILS = {
   updatedDescription: `This is updated bot description for ${botName}`,
   updatedBotName: `updated-${botName}`,
   unlimitedExpiryTime: 'This token has no expiration date.',
-  JWTToken: 'OpenMetadata JWT',
+  JWTToken: /(OpenMetadata|Collate) JWT Token/,
 };
 
 const EXPIRATION_TIME = [1, 7, 30, 60, 90];
@@ -121,7 +121,7 @@ export const createBot = async (page: Page) => {
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 
   await expect(page.getByTestId('center-panel')).toContainText(
-    `${BOT_DETAILS.JWTToken} Token`
+    BOT_DETAILS.JWTToken
   );
 
   await expect(page.getByTestId('token-expiry')).toBeVisible();
@@ -135,9 +135,7 @@ export const deleteBot = async (page: Page) => {
   // Click on delete button
   await page.getByTestId(`bot-delete-${botName}`).click();
 
-  await page.getByTestId('hard-delete-option').click();
-
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
+  await page.getByTestId('hard-delete').click();
 
   const deleteResponse = page.waitForResponse(`/api/v1/bots/*`);
 
@@ -341,26 +339,27 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await page.goto(`/bots/${botName}`);
   await waitForAllLoadersToDisappear(page);
 
-  const isRevokeButtonVisible = await page
-    .getByTestId('revoke-button')
-    .isVisible();
-  const isAuthMechanismVisible = await page
-    .getByTestId('auth-mechanism')
-    .isVisible();
+  await expect(page.getByTestId('left-panel')).toBeVisible();
 
-  if (isRevokeButtonVisible) {
-    await page.getByTestId('revoke-button').click();
+  const revokeButton = page.getByTestId('revoke-button');
+  const authMechanism = page.getByTestId('auth-mechanism');
+
+  // Button render can lag the page loader; wait instead of a one-shot isVisible() check.
+  await expect(revokeButton.or(authMechanism)).toBeVisible({ timeout: 15000 });
+
+  if (await revokeButton.isVisible()) {
+    await revokeButton.click();
 
     await expect(page.getByTestId('save-button')).toBeVisible();
 
     await page.getByTestId('save-button').click();
 
     await waitForAllLoadersToDisappear(page);
-  } else if (isAuthMechanismVisible) {
-    await page.getByTestId('auth-mechanism').click();
+  } else if (await authMechanism.isVisible()) {
+    await authMechanism.click();
   }
 
-  await expect(page.getByTestId('token-expiry').locator('div')).toBeVisible();
+  await expect(page.getByTestId('token-expiry')).toBeVisible();
 
   await page.getByTestId('token-expiry').click();
   await page.getByText('Unlimited').click();

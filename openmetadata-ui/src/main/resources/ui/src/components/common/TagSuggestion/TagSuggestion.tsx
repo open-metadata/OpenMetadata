@@ -19,16 +19,28 @@ import {
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { EntityTags } from 'Models';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagSource } from '../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
 type TagSelectItem = SelectItemType & { labelColor?: string };
+
+const NO_DATA_OPTION_ID = '__no-data__';
 
 export type SelectOption = {
   label: string;
@@ -43,7 +55,29 @@ export interface TagSuggestionProps {
   onChange?: (newTags: TagLabel[]) => void;
   label?: string;
   required?: boolean;
+  tagType?: TagSource;
 }
+
+const TAG_DATA_CACHE_MAX_SIZE = 200;
+
+// Bounded insert for the tag-metadata lookup: refreshes recency and evicts the
+// oldest entry once the cap is reached so a long-lived form with many searches
+// cannot grow the cache without limit.
+const setBoundedTagData = (
+  cache: Map<string, TagLabel>,
+  key: string,
+  data: TagLabel
+): void => {
+  cache.delete(key);
+  cache.set(key, data);
+  while (cache.size > TAG_DATA_CACHE_MAX_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === undefined) {
+      break;
+    }
+    cache.delete(oldestKey);
+  }
+};
 
 const TagSuggestion: FC<TagSuggestionProps> = ({
   onChange,
@@ -52,10 +86,12 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   initialOptions = [],
   label,
   required = false,
+  tagType = TagSource.Classification,
 }) => {
   const { t } = useTranslation();
   const [options, setOptions] = useState<TagSelectItem[]>([]);
   const tagDataMap = useRef<Map<string, TagLabel>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedItems = useMemo<TagSelectItem[]>(
     () =>
@@ -70,10 +106,13 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
 
   const fetchOptions = async (searchText: string) => {
     try {
-      const response = await tagClassBase.getTags(searchText, 1, true);
+      const response =
+        tagType === TagSource.Glossary
+          ? await fetchGlossaryList(searchText, 1)
+          : await tagClassBase.getTags(searchText, 1, true);
       const fetched: SelectOption[] = response?.data || [];
       fetched.forEach((opt) => {
-        tagDataMap.current.set(opt.value, opt.data as TagLabel);
+        setBoundedTagData(tagDataMap.current, opt.value, opt.data as TagLabel);
       });
       setOptions(
         fetched.map((opt) => {
@@ -101,7 +140,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   useEffect(() => {
     if (initialOptions.length > 0) {
       initialOptions.forEach((opt) => {
-        tagDataMap.current.set(opt.value, opt.data as TagLabel);
+        setBoundedTagData(tagDataMap.current, opt.value, opt.data as TagLabel);
       });
       setOptions(
         initialOptions.map((opt) => {
@@ -134,11 +173,18 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
 
   const handleItemInserted = useCallback(
     (key: string | number) => {
+      if (String(key) === NO_DATA_OPTION_ID) {
+        return;
+      }
+      // Ignore re-insertion of an already-selected tag; appending it again
+      // would create a duplicate that flows into the payload.
+      if (value.some((tag) => tag.tagFQN === String(key))) {
+        return;
+      }
       const tagData = tagDataMap.current.get(String(key));
-      const existingTag = value.find((tag) => tag.tagFQN === String(key));
-      const newTag: EntityTags = existingTag ?? {
+      const newTag: EntityTags = {
         tagFQN: String(key),
-        source: TagSource.Classification,
+        source: tagType,
         name: tagData?.name,
         displayName: tagData?.displayName,
         description: tagData?.description,
@@ -148,8 +194,15 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
       onChange?.([...value, newTag]);
       searchDebounced.cancel();
       fetchOptions('');
+      // Keep the menu open after a selection so more tags can be added in a
+      // row. The refetch above re-renders and can close the menu; re-open it
+      // (only while the input is still focused) so a subsequent Escape closes
+      // the menu rather than escaping the surrounding drawer.
+      ensureComboboxMenuOpen(() =>
+        containerRef.current?.querySelector('input')
+      );
     },
-    [value, onChange, searchDebounced]
+    [value, onChange, searchDebounced, tagType]
   );
 
   const handleItemCleared = useCallback(
@@ -159,12 +212,40 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     [value, onChange]
   );
 
+  // Force the menu open on a click of the field itself, but not on a click of
+  // its label. A label click focuses the input (opening it via focus would be
+  // surprising); gating on pointer target keeps click-to-open on the field
+  // while leaving the label inert. Pointer-driven (not onFocus) so it survives
+  // the focus-time re-render that would otherwise cancel the menu.
+  const handleFieldPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if ((event.target as HTMLElement).closest('label')) {
+        return;
+      }
+      ensureComboboxMenuOpen(() =>
+        containerRef.current?.querySelector('input')
+      );
+    },
+    []
+  );
+
+  const displayOptions = useMemo<TagSelectItem[]>(
+    () =>
+      options.length > 0
+        ? options
+        : [{ id: NO_DATA_OPTION_ID, label: t('label.no-data') }],
+    [options, t]
+  );
+
   return (
-    <div data-testid="tag-suggestion">
+    <div
+      data-testid="tag-suggestion"
+      ref={containerRef}
+      onPointerDown={handleFieldPointerDown}>
       <Autocomplete
         filterOption={() => true}
         isRequired={required}
-        items={options}
+        items={displayOptions}
         label={label}
         placeholder={
           placeholder ??
@@ -196,6 +277,23 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         onSearchChange={handleSearchChange}>
         {(item) => {
           const tagItem = item as TagSelectItem;
+
+          if (tagItem.id === NO_DATA_OPTION_ID) {
+            return (
+              <Autocomplete.Item
+                isDisabled
+                data-testid="no-data-option"
+                id={NO_DATA_OPTION_ID}
+                key={NO_DATA_OPTION_ID}
+                label={tagItem.label}>
+                {() => (
+                  <span className="tw:text-sm tw:text-tertiary">
+                    {tagItem.label}
+                  </span>
+                )}
+              </Autocomplete.Item>
+            );
+          }
 
           return (
             <Autocomplete.Item

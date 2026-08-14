@@ -7,7 +7,6 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.limits.Limits;
@@ -72,10 +71,12 @@ public class GlossaryTool implements McpTool {
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
 
     String userName = securityContext.getUserPrincipal().getName();
+    // createOrUpdate silently overwrites an existing glossary at this name — tools.json
+    // marks this tool destructiveHint:true for that reason.
     RestUtil.PutResponse<Glossary> response =
         glossaryRepository.createOrUpdate(null, glossary, userName, impersonatedBy);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
-    return JsonUtils.convertValue(response.getEntity(), Map.class);
+    return McpResponseUtils.compact(response.getEntity(), response.getChangeType());
   }
 
   public static void setReviewers(CreateGlossary entity, Map<String, Object> params) {

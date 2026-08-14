@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
+import type { EntityType } from '../enums/entity.enum';
 import { EntityReference } from '../generated/entity/data/table';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import {
@@ -71,4 +73,47 @@ export const convertEntityReferencesToDataProducts = (
     description: ref.description,
     type: 'dataProduct',
   })) as DataProduct[];
+};
+
+/**
+ * Convert entity to EntityReference
+ * @param entity -- T extends EntityReference
+ * @param type -- EntityType
+ * @returns EntityReference
+ */
+export const getEntityReferenceFromEntity = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  entity: T,
+  type: EntityType
+): EntityReference => {
+  return {
+    id: entity.id,
+    type,
+    deleted: entity.deleted,
+    description: entity.description,
+    displayName: entity.displayName,
+    fullyQualifiedName: entity.fullyQualifiedName,
+    href: entity.href,
+    name: entity.name,
+  };
+};
+
+/**
+ * Convert all the entity list to EntityReferenceList
+ * @param entities -- T extends EntityReference
+ * @param type -- EntityType
+ * @returns EntityReference[]
+ */
+export const getEntityReferenceListFromEntities = <
+  T extends Omit<EntityReference, 'type'>
+>(
+  entities: T[],
+  type: EntityType
+) => {
+  if (isEmpty(entities)) {
+    return [] as EntityReference[];
+  }
+
+  return entities.map((entity) => getEntityReferenceFromEntity(entity, type));
 };

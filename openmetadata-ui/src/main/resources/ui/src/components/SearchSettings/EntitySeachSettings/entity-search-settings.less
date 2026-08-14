@@ -17,20 +17,20 @@
 }
 
 .entity-search-settings-header {
-  margin: 20px;
+  margin: var(--om-space-20);
   border: 1px solid @border-color-1;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
 
   .entity-icon {
     svg {
       fill: transparent;
-      font-size: 55px;
+      font-size: var(--om-font-size-55);
     }
   }
 }
 
 .entity-search-settings-content {
-  margin: 20px;
+  margin: var(--om-space-20);
   height: calc(100vh - 250px);
   overflow: hidden;
 }
@@ -47,7 +47,7 @@
 
 .configuration-container {
   width: 100%;
-  padding: 0 20px 20px 20px;
+  padding: 0 var(--om-space-20) var(--om-space-20) var(--om-space-20);
   max-height: 45vh;
   overflow-y: auto;
 
@@ -70,9 +70,9 @@
   width: 100%;
 
   .ant-collapse-item {
-    margin-bottom: 16px;
+    margin-bottom: var(--om-space-16);
     border: 1px solid @border-color-5;
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
     overflow: hidden;
 
     &:last-child {
@@ -80,8 +80,8 @@
     }
 
     > .ant-collapse-header {
-      background-color: @white;
-      padding: 16px;
+      background-color: var(--tw-color-bg-primary);
+      padding: var(--om-space-16);
       display: flex;
       align-items: center;
 
@@ -100,4 +100,72 @@
 
 .term-boost-card {
   min-width: 100%;
+}
+
+.ranking-configuration-container {
+  .ranking-configuration {
+    display: flex;
+    flex-direction: column;
+    gap: var(--om-space-12);
+  }
+
+  .ranking-settings-card {
+    border: 1px solid @border-color-5;
+    border-radius: var(--om-radius-10);
+    padding: var(--om-space-16) var(--om-space-20);
+    background-color: @white;
+  }
+
+  .ranking-stage-title {
+    color: @text-color;
+    font-size: var(--om-font-size-md);
+    font-weight: var(--om-font-weight-medium);
+    line-height: 24px;
+  }
+
+  .ranking-stage-purpose {
+    color: @text-grey-muted;
+    font-size: var(--om-font-size-sm);
+    line-height: 22px;
+    margin: var(--om-space-8) 0 var(--om-space-14);
+  }
+
+  .ranking-stage-meta {
+    margin-bottom: 0;
+  }
+
+  .ranking-stage-value {
+    color: @text-color;
+    font-size: var(--om-font-size-sm);
+    line-height: 22px;
+    margin: 0;
+  }
+
+  .ranking-number-control,
+  .ranking-enabled-control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--om-space-6);
+  }
+
+  .ranking-enabled-control {
+    align-items: flex-end;
+  }
+
+  .ranking-field-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--om-space-6);
+    margin-top: var(--om-space-4);
+  }
+
+  .ranking-field-tag {
+    max-width: 100%;
+    margin-right: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--om-font-size-sm);
+    line-height: 22px;
+    padding: var(--om-space-2) var(--om-space-8);
+  }
 }

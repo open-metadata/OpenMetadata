@@ -22,11 +22,14 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.generated.schema.entity.services.connections.mcp.mcpConnection import (
     DiscoveryMethod,
-    McpConnection,
+)
+from metadata.generated.schema.entity.services.connections.mcp.mcpConnection import (
+    McpConnection as McpConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
@@ -54,7 +57,7 @@ class McpConnectionManager:
     - Registry: Discover servers from an MCP registry (future)
     """
 
-    def __init__(self, connection: McpConnection):
+    def __init__(self, connection: McpConnectionConfig):
         self.connection = connection
         self._discovered_servers: Optional[List[McpServerInfo]] = None  # noqa: UP006, UP045
 
@@ -143,7 +146,7 @@ class McpConnectionManager:
                 client.close()
 
 
-def get_connection(connection: McpConnection) -> McpConnectionManager:
+def get_connection(connection: McpConnectionConfig) -> McpConnectionManager:
     """
     Create an MCP connection manager.
 
@@ -187,7 +190,7 @@ def _test_connect_to_servers(manager: McpConnectionManager) -> None:
 def test_connection(
     metadata: OpenMetadata,
     client: McpConnectionManager,
-    service_connection: McpConnection,
+    service_connection: McpConnectionConfig,
     automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
     timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
@@ -210,3 +213,22 @@ def test_connection(
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
+
+
+class McpConnection(BaseConnection[McpConnectionConfig, McpConnectionManager]):
+    def _get_client(self) -> McpConnectionManager:
+        return get_connection(self.service_connection)
+
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        return test_connection(
+            metadata,
+            self.client,
+            self.service_connection,
+            automation_workflow,
+            timeout_seconds,
+        )

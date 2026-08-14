@@ -13,6 +13,7 @@
 
 import { EntityType } from '../enums/entity.enum';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
+import { PipelineViewMode } from '../generated/configuration/lineageSettings';
 import APIClient from './index';
 import {
   exportLineageByEntityCountAsync,
@@ -115,6 +116,8 @@ describe('lineageAPI', () => {
       config: {
         upstreamDepth: 0,
         downstreamDepth: 3,
+        nodesPerLayer: 50,
+        pipelineViewMode: PipelineViewMode.Node,
       },
       queryFilter: 'name:orders',
       columnFilter: 'columnName:customer_id',
@@ -129,8 +132,10 @@ describe('lineageAPI', () => {
         query_filter: 'name:orders',
         column_filter: 'columnName:customer_id',
         includeDeleted: false,
-        size: undefined,
+        size: 50,
         from: undefined,
+        startTime: undefined,
+        endTime: undefined,
       },
     });
   });

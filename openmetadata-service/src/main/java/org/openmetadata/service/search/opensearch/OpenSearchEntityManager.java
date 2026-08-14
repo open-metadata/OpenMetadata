@@ -24,7 +24,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +53,7 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
@@ -59,6 +64,7 @@ import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
+import os.org.opensearch.client.opensearch._types.Result;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -69,6 +75,7 @@ import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
+import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
@@ -84,6 +91,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   private final OpenSearchAsyncClient asyncClient;
   private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
+
+  // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
+  // stalled search backend can't hold the thread indefinitely; the async result is still handled.
+  private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
 
   public OpenSearchEntityManager(OpenSearchClient client) {
     this.client = client;
@@ -125,7 +136,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
-    // Async call using OpenSearchAsyncClient
+    // The write is awaited below so realtime column indexing is durable before the caller
+    // returns; failures are routed to the retry queue in the handler.
     CompletableFuture<BulkResponse> future = asyncClient.bulk(bulkRequest);
 
     future.whenComplete(
@@ -169,11 +181,38 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                     });
           } else {
             LOG.info(
-                "Successfully indexed {} entities to OpenSearch (async) for index: {}",
+                "Successfully indexed {} entities to OpenSearch for index: {}",
                 docsAndIds.size(),
                 indexName);
           }
         });
+
+    // Await the bulk so realtime indexing is read-your-write consistent: createEntities runs on
+    // the request thread post-commit (SearchIndexHandler.isAsync() is false), like the synchronous
+    // single-doc createEntity path, so a create-then-search in the same flow must see the docs
+    // (refresh=True above makes them searchable the moment the write lands). The wait is bounded so
+    // a stalled backend cannot hold the request thread; the whenComplete handler routes any failure
+    // to the retry queue independently of this wait.
+    awaitBulkCompletion(future, indexName);
+  }
+
+  private void awaitBulkCompletion(CompletableFuture<BulkResponse> future, String indexName) {
+    try {
+      future.get(BULK_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+    } catch (TimeoutException timedOut) {
+      LOG.warn(
+          "createEntities bulk for index {} did not complete within {}s; its result will be "
+              + "handled asynchronously and any failure retried",
+          indexName,
+          BULK_AWAIT_TIMEOUT_SECONDS);
+    } catch (ExecutionException | CancellationException failuresAlreadyRetried) {
+      LOG.debug(
+          "createEntities bulk for index {} finished exceptionally; retries were enqueued",
+          indexName,
+          failuresAlreadyRetried);
+    }
   }
 
   @Override
@@ -191,11 +230,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     DeleteResponse response =
         client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.True));
-    LOG.info(
-        "Successfully deleted entity from OpenSearch for index: {}, docId: {}, result: {}",
-        indexName,
-        docId,
-        response.result());
+    if (response.result() == Result.NotFound) {
+      LOG.debug("No OpenSearch entity found to delete for index: {}, docId: {}", indexName, docId);
+    } else {
+      LOG.info(
+          "Successfully deleted entity from OpenSearch for index: {}, docId: {}, result: {}",
+          indexName,
+          docId,
+          response.result());
+    }
   }
 
   @Override
@@ -466,29 +509,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     try {
-      Map<String, JsonData> params =
-          convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
-
-      client.updateByQuery(
-          u ->
-              u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                  .query(exactFieldQuery(fieldAndValue))
-                  .conflicts(Conflicts.Proceed)
-                  .script(
-                      s ->
-                          s.inline(
-                              inline ->
-                                  inline
-                                      .lang(
-                                          l ->
-                                              l.builtin(
-                                                  os.org.opensearch.client.opensearch._types
-                                                      .BuiltinScriptLanguage.Painless))
-                                      .source(updates.getKey())
-                                      .params(params)))
-                  .refresh(Refresh.True));
-
-      LOG.info("Successfully updated children in OpenSearch for index: {}", indexName);
+      submitChildUpdate(
+          List.of(Entity.getSearchRepository().getIndexOrAliasName(indexName)),
+          fieldAndValue,
+          updates);
+      LOG.info("Successfully submitted child update in OpenSearch for index: {}", indexName);
     } catch (IOException | OpenSearchException e) {
       SearchIndexRetryQueue.enqueue(
           null, fieldAndValue.getValue(), SearchIndexRetryQueue.failureReason("updateChildren", e));
@@ -506,6 +531,64 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       LOG.error("OpenSearch client is not available. Cannot update children for indices.");
       return;
     }
+    submitChildUpdate(indexNames, fieldAndValue, updates);
+    LOG.info("Successfully submitted child update in OpenSearch for indices: {}", indexNames);
+  }
+
+  private void submitChildUpdate(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    client.updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates));
+  }
+
+  /**
+   * Builds the inherited-field child propagation as an async update-by-query
+   * ({@code wait_for_completion=false}). A synchronous update-by-query over a large child set (for
+   * example a test suite with thousands of test cases) holds one HC5 socket open for the entire
+   * scan and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException};
+   * submitting it as a background task returns immediately and lets the cluster finish the
+   * propagation and the post-task {@code refresh} on its own.
+   */
+  UpdateByQueryRequest buildUpdateChildrenRequest(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    Map<String, JsonData> params =
+        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
+    return UpdateByQueryRequest.of(
+        u ->
+            u.index(indexNames)
+                .query(exactFieldQuery(fieldAndValue))
+                .conflicts(Conflicts.Proceed)
+                .waitForCompletion(false)
+                .script(
+                    s ->
+                        s.inline(
+                            inline ->
+                                inline
+                                    .lang(
+                                        l ->
+                                            l.builtin(
+                                                os.org.opensearch.client.opensearch._types
+                                                    .BuiltinScriptLanguage.Painless))
+                                    .source(updates.getKey())
+                                    .params(params)))
+                .refresh(Refresh.True));
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexNames,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update children for indices.");
+      return;
+    }
 
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
@@ -513,7 +596,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     client.updateByQuery(
         u ->
             u.index(indexNames)
-                .query(exactFieldQuery(fieldAndValue))
+                .query(anyOfFieldQuery(field, values))
                 .conflicts(Conflicts.Proceed)
                 .script(
                     s ->
@@ -532,6 +615,26 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
   }
 
+  private Query anyOfFieldQuery(String field, List<String> values) {
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    Query termsOnField =
+        Query.of(q -> q.terms(t -> t.field(field).terms(tv -> tv.value(fieldValues))));
+    Query result;
+    if (field.endsWith(".keyword")) {
+      result = termsOnField;
+    } else {
+      Query termsOnKeyword =
+          Query.of(
+              q -> q.terms(t -> t.field(field + ".keyword").terms(tv -> tv.value(fieldValues))));
+      result =
+          Query.of(
+              q ->
+                  q.bool(
+                      b -> b.should(termsOnField).should(termsOnKeyword).minimumShouldMatch("1")));
+    }
+    return result;
+  }
+
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
     if (!isClientAvailable) {
@@ -546,7 +649,11 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                   g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName)).id(entityId),
               Map.class);
 
-      if (response != null && response.found()) {
+      // This path runs no query and has no SubjectContext, so it cannot tell whose restricted
+      // memory a document is: a non-org-wide memory reads as not found rather than leaking.
+      if (response != null
+          && response.found()
+          && ContextMemorySearchVisibility.isOrgWideReadable(response.source())) {
         return Response.status(Response.Status.OK).entity(response.source()).build();
       }
     } catch (OpenSearchException e) {

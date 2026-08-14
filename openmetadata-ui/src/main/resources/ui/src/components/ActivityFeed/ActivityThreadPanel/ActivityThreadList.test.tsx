@@ -16,7 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { mockThreadData } from './ActivityThread.mock';
 import ActivityThreadList from './ActivityThreadList';
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedListWithRelativeDays: jest.fn().mockReturnValue({
     updatedFeedList: mockThreadData,
     relativeDays: ['Today', 'Yesterday'],

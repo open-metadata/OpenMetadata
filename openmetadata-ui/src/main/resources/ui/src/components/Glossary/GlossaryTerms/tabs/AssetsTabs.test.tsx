@@ -16,9 +16,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { searchQuery } from '../../../../rest/searchAPI';
-import * as SearchUtils from '../../../../utils/SearchUtils';
+import * as SearchPureUtils from '../../../../utils/SearchPureUtils';
 import * as StringUtils from '../../../../utils/StringUtils';
-import * as TagsUtils from '../../../../utils/TagsUtils';
+import * as TagsPureUtils from '../../../../utils/TagsPureUtils';
 import AssetsTabs from './AssetsTabs.component';
 import { AssetsOfEntity } from './AssetsTabs.interface';
 
@@ -150,13 +150,15 @@ const mockGetEncodedFqn = jest.fn((fqn) => fqn);
 const mockEscapeESReservedCharacters = jest.fn((fqn) => fqn);
 const mockGetTagAssetsQueryFilter = jest.fn();
 
-jest.spyOn(SearchUtils, 'getTermQuery').mockImplementation(mockGetTermQuery);
+jest
+  .spyOn(SearchPureUtils, 'getTermQuery')
+  .mockImplementation(mockGetTermQuery);
 jest.spyOn(StringUtils, 'getEncodedFqn').mockImplementation(mockGetEncodedFqn);
 jest
   .spyOn(StringUtils, 'escapeESReservedCharacters')
   .mockImplementation(mockEscapeESReservedCharacters);
 jest
-  .spyOn(TagsUtils, 'getTagAssetsQueryFilter')
+  .spyOn(TagsPureUtils, 'getTagAssetsQueryFilter')
   .mockImplementation(mockGetTagAssetsQueryFilter);
 
 const mockOnAddAsset = jest.fn();

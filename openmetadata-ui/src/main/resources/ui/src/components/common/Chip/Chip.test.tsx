@@ -29,7 +29,7 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('getEntityName'),
 }));
 

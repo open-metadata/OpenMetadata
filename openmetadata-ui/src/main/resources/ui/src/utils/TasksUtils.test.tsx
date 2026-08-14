@@ -23,21 +23,23 @@ import {
   TaskEntityType,
   TaskPriority,
 } from '../rest/tasksAPI';
+import { fetchOptions } from './TaskAssigneeUtils';
 import {
-  fetchOptions,
   getDescriptionTaskFieldPath,
   getEntityTableName,
   getFormattedTaskFieldValue,
   getNormalizedTaskFieldContainer,
-  getNormalizedTaskPayload,
   getTagTaskFieldPath,
   getTaskAssignee,
-  getTaskDisplayId,
   getTaskEntityFQN,
   getTaskMessage,
+} from './TaskFieldUtils';
+import {
+  getTaskDisplayId,
   isTaskPendingFurtherApproval,
   isTaskTerminalStatus,
-} from './TasksUtils';
+} from './TaskNavigationUtils';
+import { getNormalizedTaskPayload } from './TaskPayloadUtils';
 
 jest.mock('../rest/miscAPI', () => ({
   getUserAndTeamSearch: jest
