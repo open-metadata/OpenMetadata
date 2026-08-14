@@ -1,0 +1,18 @@
+# TEMPORARY test workflow — validates the inline free-disk-space block on the branch.
+# Remove before merge. Runs on plain pull_request so it executes from the branch (not pull_request_target).
+name: zz Test Inline Free Disk Space
+on:
+  pull_request:
+jobs:
+  test-inline-free-disk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disk BEFORE
+        run: df -h
+      - name: Free Disk Space (inline candidate)
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          sudo swapoff -a || true
+          sudo rm -f /mnt/swapfile || true
+      - name: Disk AFTER
+        run: df -h
