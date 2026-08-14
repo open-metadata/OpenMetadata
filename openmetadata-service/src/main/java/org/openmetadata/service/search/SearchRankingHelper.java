@@ -469,13 +469,14 @@ public final class SearchRankingHelper {
   }
 
   /**
-   * Analyzed name fields for the identity stages, with {@code .compound} dropped where the base
-   * field is also configured.
+   * Analyzed name fields for the identity stages, including the {@code .compound} sub-fields.
    *
-   * <p>{@code om_analyzer} and {@code om_compound_analyzer} now emit the same tokens for the same
-   * value, so querying both restates one piece of evidence and only inflates the score of whichever
-   * document happens to match more of them. The sub-field is kept when a config lists it without its
-   * base field, since dropping it there would lose the only name match available.
+   * <p>The base field is stemmed and the compound sub-field is not, which is the point of having
+   * both: kstem takes {@code customer} to {@code custom}, so a typed {@code custmer} is three edits
+   * from the stemmed form and only reaches the document through the compound field's literal
+   * {@code customer}. Dropping the sub-field here, on the grounds that the two restated one piece of
+   * evidence, silently removed typo tolerance for every word kstem shortens. The double counting
+   * that motivated it is handled by {@link #stageTieBreaker} scoring the single best field instead.
    */
   private static List<String> closeNameFields(
       List<String> configuredFields, List<String> fallback) {
@@ -485,8 +486,6 @@ public final class SearchRankingHelper {
         fields.add(field);
       }
     }
-    fields.removeIf(
-        field -> field.endsWith(".compound") && fields.contains(baseSearchField(field)));
     return withFallback(fields, fallback);
   }
 

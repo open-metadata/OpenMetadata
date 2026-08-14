@@ -76,32 +76,34 @@ class IndexAnalyzerMappingTest {
   void nameAnalyzersNormalisePluralsConsistently() {
     // kstem leaves orders, sessions, transactions and regions unstemmed while stemming customers
     // and items, so a singular query silently missed a quarter of the plural names in a catalog.
-    // om_plural_stemmer (minimal_english) closes those cases behind kstem.
+    // om_plural_stemmer (minimal_english) closes those cases behind kstem. Only the base field is
+    // stemmed; the compound sub-field is deliberately left literal, see
+    // compoundSubFieldStaysUnstemmed.
     List<String> offenders = new ArrayList<>();
     forEachEnglishAnalysisBlock(
         (name, analysis) -> {
-          for (String analyzer : List.of("om_analyzer", "om_compound_analyzer")) {
-            List<String> filters = filtersOf(analysis, analyzer);
-            if (filters.isEmpty()) {
-              continue;
-            }
-            if (!filters.contains(STEMMER) || !filters.contains(PLURAL_STEMMER)) {
-              offenders.add(name + ":" + analyzer + " " + filters);
-            } else if (filters.indexOf(PLURAL_STEMMER) < filters.indexOf(STEMMER)) {
-              offenders.add(name + ":" + analyzer + " plural stemmer before kstem " + filters);
-            }
+          List<String> filters = filtersOf(analysis, "om_analyzer");
+          if (filters.isEmpty()) {
+            return;
+          }
+          if (!filters.contains(STEMMER) || !filters.contains(PLURAL_STEMMER)) {
+            offenders.add(name + ":om_analyzer " + filters);
+          } else if (filters.indexOf(PLURAL_STEMMER) < filters.indexOf(STEMMER)) {
+            offenders.add(name + ":om_analyzer plural stemmer before kstem " + filters);
           }
         });
     assertTrue(offenders.isEmpty(), "stemmer chain incomplete: " + offenders);
   }
 
   @Test
-  void compoundSubFieldAnalysesLikeItsBaseField() {
-    // The identity ranking stages query name and name.compound together. While one stemmed and the
-    // other did not they disagreed about the same document, and a document that happened to match
-    // more of those near-duplicate fields outranked a better match. Checked in every language,
-    // because the two analyzers are declared separately and drift between them is invisible until
-    // it shows up as a ranking inversion.
+  void compoundSubFieldStaysUnstemmed() {
+    // The compound sub-field is the un-stemmed, delimiter-split view of a name, and the identity
+    // stages query it alongside the stemmed base field precisely because the two differ. kstem
+    // takes "customer" to "custom", so a typed "custmer" is three edits from the stemmed form and
+    // reaches the document only through the compound field's literal "customer". Stemming it once
+    // looked like a tidy-up -- the two fields disagreeing was inflating scores -- and silently
+    // removed typo tolerance for every word kstem shortens. The inflation is handled by the
+    // identity stages' zero tie breaker instead.
     List<String> offenders = new ArrayList<>();
     for (String language : List.of(ENGLISH, "ru", "jp", "zh")) {
       forEachAnalysisBlock(
@@ -112,15 +114,12 @@ class IndexAnalyzerMappingTest {
             if (base.isEmpty() || compound.isEmpty()) {
               return;
             }
-            boolean sameStemming =
-                base.contains(STEMMER) == compound.contains(STEMMER)
-                    && base.contains(PLURAL_STEMMER) == compound.contains(PLURAL_STEMMER);
-            if (!sameStemming) {
-              offenders.add(language + "/" + name + " base=" + base + " compound=" + compound);
+            if (compound.contains(STEMMER) || compound.contains(PLURAL_STEMMER)) {
+              offenders.add(language + "/" + name + " compound=" + compound);
             }
           });
     }
-    assertTrue(offenders.isEmpty(), "compound must stem like its base field: " + offenders);
+    assertTrue(offenders.isEmpty(), "compound sub-field must not be stemmed: " + offenders);
   }
 
   @Test

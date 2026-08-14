@@ -33,9 +33,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
-            "flatten_graph",
-            "om_stemmer",
-            "om_plural_stemmer"
+            "flatten_graph"
           ]
         }
       },

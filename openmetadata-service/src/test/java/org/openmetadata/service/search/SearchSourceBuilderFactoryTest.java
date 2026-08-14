@@ -524,16 +524,18 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
-  public void testIdentityStagesDropTheRedundantCompoundSubField() {
-    // name.compound tokenises identically to name once both stem, so querying both only inflates
-    // whichever document happens to match more of them.
+  public void testIdentityStagesKeepTheUnstemmedCompoundSubField() {
+    // The base field is stemmed and the compound sub-field is not, and the fuzzy stage needs both:
+    // kstem takes "customer" to "custom", so a typed "custmer" is three edits from the stemmed form
+    // and reaches the document only through the compound field's literal "customer". Dropping the
+    // sub-field as redundant removed typo tolerance for every word kstem shortens.
     String fuzzyStage =
         clauseContaining(rankedTableOpenSearchQuery("customers"), FUZZY_STAGE_QUERY_NAME + ":text");
 
-    assertTrue(fuzzyStage.contains("\"name\""), fuzzyStage);
-    assertTrue(fuzzyStage.contains("\"displayName\""), fuzzyStage);
-    assertFalse(fuzzyStage.contains("name.compound"), fuzzyStage);
-    assertFalse(fuzzyStage.contains("displayName.compound"), fuzzyStage);
+    assertTrue(fuzzyStage.contains("name.compound"), fuzzyStage);
+    assertTrue(fuzzyStage.contains("displayName.compound"), fuzzyStage);
+    // The double counting that motivated dropping them is handled by the zero tie breaker.
+    assertTrue(fuzzyStage.contains("\"tie_breaker\":0.0"), fuzzyStage);
   }
 
   @Test
