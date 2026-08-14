@@ -25,12 +25,21 @@ from metadata.ingestion.source.database.snowflake.queries import set_session_tag
             'ALTER SESSION SET QUERY_TAG=\'{"app":"OpenMetadata"}\'',
         ),
         ("it's a tag", "ALTER SESSION SET QUERY_TAG='it''s a tag'"),
+        ("C:\\temp", "ALTER SESSION SET QUERY_TAG='C:\\\\temp'"),
+        ("tag\\", "ALTER SESSION SET QUERY_TAG='tag\\\\'"),
         (
             "x' STATEMENT_TIMEOUT_IN_SECONDS=1 Y='",
             "ALTER SESSION SET QUERY_TAG='x'' STATEMENT_TIMEOUT_IN_SECONDS=1 Y='''",
         ),
     ],
-    ids=["plain", "json", "apostrophe", "parameter-injection"],
+    ids=[
+        "plain",
+        "json",
+        "apostrophe",
+        "backslash-escape",
+        "trailing-backslash",
+        "parameter-injection",
+    ],
 )
 def test_set_session_tag_query_keeps_the_tag_inside_one_string_literal(query_tag, expected):
     assert set_session_tag_query(query_tag) == expected
