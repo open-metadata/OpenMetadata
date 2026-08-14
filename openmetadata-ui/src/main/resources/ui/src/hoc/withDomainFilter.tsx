@@ -20,11 +20,16 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
+// Global domain sent to the server so it can scope every REST list centrally (read in the auth
+// filters, applied in EntityUtil.addDomainQueryParam) -- mirrors the active-persona header. Carries
+// the domain id so the backend can intersect it with the user's accessible domains.
+export const ACTIVE_DOMAIN_HEADER = 'X-OpenMetadata-Domain';
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
   const isGetRequest = config.method === 'get';
-  const activeDomain = useDomainStore.getState().activeDomain;
+  const { activeDomain, activeDomainEntityRef } = useDomainStore.getState();
   const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
   const currentPath = getPathNameFromWindowLocation();
 
@@ -102,11 +107,9 @@ export const withDomainFilter = (
         ...config.params,
         query_filter: JSON.stringify(filter),
       };
-    } else {
-      config.params = {
-        ...config.params,
-        domain: activeDomain,
-      };
+    } else if (activeDomainEntityRef?.id) {
+      // REST list endpoints: scope centrally on the server via the header (no per-API ?domain param).
+      config.headers[ACTIVE_DOMAIN_HEADER] = activeDomainEntityRef.id;
     }
   }
 
