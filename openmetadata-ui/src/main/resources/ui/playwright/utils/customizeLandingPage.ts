@@ -56,8 +56,13 @@ const getLandingPageWidgetSlot = (page: Page, widgetKey: string) =>
 const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
   const slot = getLandingPageWidgetSlot(page, widgetKey);
 
+  // Scroll failures are tolerated on both branches: `isLandingPageWidgetVisible` runs inside
+  // `expect.poll` callbacks, and Playwright's `pollMatcher` invokes the callback outside its
+  // try/catch — a throw here aborts the poll with no retry instead of riding out a transient
+  // detach. The `count()` guards are what prevent a stall; the caller's visibility assertion,
+  // not the scroll, is what decides whether the widget is really there.
   if ((await slot.count()) > 0) {
-    await slot.scrollIntoViewIfNeeded();
+    await slot.scrollIntoViewIfNeeded().catch(() => undefined);
 
     return;
   }
@@ -68,7 +73,7 @@ const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
   const widget = page.getByTestId(widgetKey);
 
   if ((await widget.count()) > 0) {
-    await widget.scrollIntoViewIfNeeded();
+    await widget.scrollIntoViewIfNeeded().catch(() => undefined);
   }
 };
 
