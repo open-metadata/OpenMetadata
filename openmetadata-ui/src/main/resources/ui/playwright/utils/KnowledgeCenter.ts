@@ -21,8 +21,9 @@ import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const ARTICLE_PAGE_ROUTE = '/context-center/articles/:fqn';
+const ARTICLE_PATH_PREFIX = '/context-center/articles/';
 const FQN_PLACEHOLDER = ':fqn';
+const ARTICLE_PAGE_ROUTE = `${ARTICLE_PATH_PREFIX}${FQN_PLACEHOLDER}`;
 
 export const deletePage = async (
   page: Page,
@@ -487,7 +488,9 @@ export const getKnowledgePageCardEntityIdentifier = async (
 ): Promise<string> => {
   const href =
     (await card.getByTestId('knowledge-page-link').getAttribute('href')) ?? '';
-  const fqn = href.split('/knowledge-center/').pop() ?? '';
+  // getArticlePath builds this href from the Context Center route; splitting on the old
+  // /knowledge-center/ prefix never matched, so the fallback returned the whole URL.
+  const fqn = href.split(ARTICLE_PATH_PREFIX).pop() ?? '';
   const displayText = (
     await card.getByTestId('knowledge-card-title').textContent()
   )?.trim();
