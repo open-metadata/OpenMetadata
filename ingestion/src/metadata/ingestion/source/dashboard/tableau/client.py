@@ -319,6 +319,22 @@ class TableauClient:
             "#enable-the-tableau-metadata-api-for-tableau-server\n"
         )
 
+    def _withheld_source_tables(self, workbook_id: str) -> List[str]:  # noqa: UP006
+        """
+        Names of the data sources on a workbook whose upstream tables came back unnamed.
+        """
+        datasources = self._query_datasources(
+            dashboard_id=workbook_id,
+            entities_per_page=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+            offset=0,
+        )
+        withheld = []
+        for datasource in (datasources.nodes if datasources else None) or []:
+            withheld.extend(
+                datasource.name or datasource.id for table in datasource.upstreamTables or [] if not table.name
+            )
+        return withheld
+
     def test_get_source_tables(self):
         """
         Check that the Metadata API returns usable source tables.
@@ -334,7 +350,6 @@ class TableauClient:
         Passes when there is nothing to judge, meaning no sampled workbook declares a
         source table at all, which is normal for file backed data sources.
         """
-        withheld = []
         sampled = 0
 
         for workbook in Pager(self.tableau_server.workbooks):
@@ -344,16 +359,7 @@ class TableauClient:
                 continue
             sampled += 1
 
-            datasources = self._query_datasources(
-                dashboard_id=workbook.id,
-                entities_per_page=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
-                offset=0,
-            )
-            for datasource in (datasources.nodes if datasources else None) or []:
-                withheld.extend(
-                    datasource.name or datasource.id for table in datasource.upstreamTables or [] if not table.name
-                )
-
+            withheld = self._withheld_source_tables(workbook.id)
             if withheld:
                 raise TableauUpstreamTablesRedacted(
                     f"Tableau returned {len(withheld)} source table(s) with no name in workbook "

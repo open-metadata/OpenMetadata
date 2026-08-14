@@ -73,7 +73,7 @@ SPREADSHEET_TABLE = {
 @contextmanager
 def fake_site(workbooks):
     """A TableauClient over a fake site. `workbooks` is [(name, datasources)] in Pager order."""
-    with patch.object(TableauClient, "__init__", lambda self, *a, **kw: None):
+    with patch.object(TableauClient, "__init__", return_value=None):
         client = TableauClient()
     client.tableau_server = MagicMock()
     client._query_datasources = MagicMock(side_effect=[datasources for _, datasources in workbooks])
