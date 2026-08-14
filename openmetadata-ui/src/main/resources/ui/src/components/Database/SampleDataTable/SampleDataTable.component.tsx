@@ -137,7 +137,6 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
       return {
         name: column,
-        dataType: matchedColumn?.dataType ?? '',
         title: (
           <div className="d-flex flex-column">
             <Typography.Text> {column}</Typography.Text>

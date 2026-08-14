@@ -31,7 +31,6 @@ type RecordProps = Record<string, SampleDataType>;
  */
 export type SampleDataColumn = ColumnsType<RecordProps>[number] & {
   name: string;
-  dataType?: string;
 };
 
 export interface SampleData {
