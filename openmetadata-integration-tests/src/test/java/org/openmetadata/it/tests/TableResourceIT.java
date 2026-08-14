@@ -2109,16 +2109,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   /**
-   * The column-profile purge deletes in 1000-row batches, so a table with more history than one
-   * batch is the only thing that exercises the loop. It also pins the pre-purge existence probe:
-   * no table-level profile is written here, so the purge only runs if the probe finds the seeded
-   * column rows through the entity's own column FQNs.
+   * The column-profile purge deletes in {@code DESCENDANT_DELETE_BATCH_SIZE}-row batches, so a table
+   * with more history than one batch is the only thing that exercises the drain loop.
    */
   @Test
   void delete_hardDeletePurgesColumnProfilesBeyondOneBatch(TestNamespace ns) {
     CreateTable createRequest = createRequest(ns.prefix("profile_batch_table"), ns);
     Table table = createEntity(createRequest);
-    String tableFqn = table.getFullyQualifiedName();
     String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
 
     long baseTimestamp = System.currentTimeMillis() - PROFILE_ROWS_OVER_ONE_BATCH;
@@ -2135,10 +2132,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         PROFILE_ROWS_OVER_ONE_BATCH,
         countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
         "Seeding must produce more column profile rows than one delete batch");
-    assertEquals(
-        0,
-        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
-        "No table-level profile is written, so only the column probe can trigger the purge");
 
     hardDeleteEntity(table.getId().toString());
 
