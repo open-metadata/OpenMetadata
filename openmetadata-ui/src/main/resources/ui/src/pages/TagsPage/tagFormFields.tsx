@@ -67,9 +67,7 @@ export const getNameField = (disabled: boolean): FieldProp => ({
   placeholder: 'label.name',
   type: FieldTypes.TEXT_MUI,
   props: {
-    inputProps: {
-      'data-testid': 'name',
-    },
+    'data-testid': 'name',
     disabled,
   },
   formItemProps: {
@@ -86,9 +84,7 @@ export const getDisplayNameField = (disabled: boolean): FieldProp => ({
   placeholder: 'label.display-name',
   type: FieldTypes.TEXT_MUI,
   props: {
-    inputProps: {
-      'data-testid': 'displayName',
-    },
+    'data-testid': 'displayName',
     disabled,
   },
 });
