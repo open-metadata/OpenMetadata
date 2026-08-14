@@ -58,21 +58,27 @@ test.describe('Domains widget — asset count regression', () => {
   const topic = new TopicClass();
 
   test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await getApiContext(
-      await browser.newPage()
-    );
+    const context = await browser.newContext({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    const apiPage = await context.newPage();
+    const { apiContext, afterAction } = await getApiContext(apiPage);
     await domain.create(apiContext);
     await topic.create(apiContext);
     await afterAction();
+    await context.close();
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await getApiContext(
-      await browser.newPage()
-    );
+    const context = await browser.newContext({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    const apiPage = await context.newPage();
+    const { apiContext, afterAction } = await getApiContext(apiPage);
     await topic.delete(apiContext);
     await domain.delete(apiContext);
     await afterAction();
+    await context.close();
   });
 
   test('widget count updates immediately after assets are added — no stale cache', async ({

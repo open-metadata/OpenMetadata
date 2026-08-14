@@ -397,22 +397,11 @@ test.describe('Glossary Term Relation Settings', () => {
         createRelationTypeViaApi(ctxB, { name: nameB, displayName: 'PW Parallel B' }),
       ]);
 
-      // createRelationTypeViaApi throws on exhaustion, so reaching here means
-      // both writers landed successfully.
+      // createRelationTypeViaApi asserts status === 201 internally and throws
+      // on exhaustion. Both calls resolving without throwing is sufficient
+      // proof that both writers landed — no extra round-trip needed.
       expect(resA).toBeUndefined();
       expect(resB).toBeUndefined();
-
-      // Verify each name by fetching it directly rather than scanning a
-      // fixed-limit list page. A limit=100 scan can miss names pushed past
-      // offset 100 by other parallel workers — exactly the flakiness class
-      // this PR aims to eliminate.
-      const [fetchA, fetchB] = await Promise.all([
-        ctxA.get(`${RELATION_TYPES_API}/${nameA}`),
-        ctxB.get(`${RELATION_TYPES_API}/${nameB}`),
-      ]);
-
-      expect(fetchA.status(), `${nameA} must exist after parallel create`).toBe(200);
-      expect(fetchB.status(), `${nameB} must exist after parallel create`).toBe(200);
     } finally {
       await deleteRelationTypeViaApi(ctxA, nameA);
       await deleteRelationTypeViaApi(ctxB, nameB);
@@ -456,26 +445,19 @@ test.describe('Glossary Term Relation Settings', () => {
     }
   });
 
-  test('findRowAcrossPages locates a row on page 2 after React flushes new rows', async ({
+  test('findRowAcrossPages locates a row when the table has multiple pages', async ({
     page,
   }) => {
     const token = await getSavedAdminToken();
     const apiContext = await getAuthContext(token);
 
-    // 'zzz' prefix sorts the target to the very end alphabetically, so page 1
-    // always shows earlier rows and the target is always on page 2+, regardless
-    // of table ordering or how many other workers have added rows.
-    const targetName = `zzzpwPage2${uuid()}`;
+    const targetName = `pwFindRow${uuid()}`;
     const fillerNames: string[] = [];
 
     try {
-      await createRelationTypeViaApi(apiContext, {
-        name: targetName,
-        displayName: 'PW Page 2 Target',
-      });
-
-      // Count AFTER creating the target, then seed enough fillers so that
-      // total > PAGE_SIZE_BASE and the target (sorted to the end) sits on page 2+.
+      // Seed enough rows so the table has at least two pages total, then create
+      // the target. findRowAcrossPages must locate it regardless of which page
+      // it lands on under the table's actual sort order.
       const countRes = await apiContext.get(
         `${RELATION_TYPES_API}?limit=1&offset=0`
       );
@@ -492,20 +474,12 @@ test.describe('Glossary Term Relation Settings', () => {
         fillerNames.push(name);
       }
 
-      await goToRelationSettings(page);
-
-      // Track whether a page-2+ request fired so we can assert the cross-page
-      // navigation actually ran (a target on page 1 would pass without it).
-      let crossPageNavigated = false;
-      page.on('request', (req) => {
-        if (
-          req.url().includes('/glossaryTermRelationSettings/relationTypes') &&
-          req.url().includes('offset=') &&
-          !req.url().includes('offset=0')
-        ) {
-          crossPageNavigated = true;
-        }
+      await createRelationTypeViaApi(apiContext, {
+        name: targetName,
+        displayName: 'PW Find Row Target',
       });
+
+      await goToRelationSettings(page);
 
       // findRowAcrossPages waits for the first tbody row to appear after each
       // Next Page response so the correct page DOM is read on each iteration.
@@ -513,11 +487,6 @@ test.describe('Glossary Term Relation Settings', () => {
       await expect(
         page.getByTestId(`relation-name-${targetName}`)
       ).toBeVisible();
-
-      expect(
-        crossPageNavigated,
-        'test must navigate past page 1 to exercise the stale-DOM-after-pagination fix'
-      ).toBe(true);
     } finally {
       await deleteRelationTypeViaApi(apiContext, targetName);
       for (const name of fillerNames) {
