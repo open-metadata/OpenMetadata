@@ -49,9 +49,11 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -1080,19 +1082,21 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         ElasticSearchSearchManager::hitIdentifiers);
   }
 
-  /** {@code name} and {@code fullyQualifiedName} of every returned hit. */
-  private static List<String> hitIdentifiers(SearchResponse<JsonData> response) {
+  /**
+   * {@code name} and {@code fullyQualifiedName} of the returned hits, deserialised lazily.
+   *
+   * <p>This runs on every search response, so materialising every hit's source here would add a
+   * full parse per request that the response serialisation then repeats. The stream stops at the
+   * first hit whose identifier matches the query.
+   */
+  private static Stream<String> hitIdentifiers(SearchResponse<JsonData> response) {
     if (response.hits() == null || response.hits().hits() == null) {
-      return List.of();
+      return Stream.empty();
     }
-    List<JsonObject> sources = new ArrayList<>();
-    for (var hit : response.hits().hits()) {
-      JsonData source = hit.source();
-      if (source != null) {
-        sources.add(source.toJson().asJsonObject());
-      }
-    }
-    return SearchRankingHelper.identifiersFrom(sources);
+    return response.hits().hits().stream()
+        .map(Hit::source)
+        .filter(Objects::nonNull)
+        .flatMap(source -> SearchRankingHelper.identifiersFrom(source.toJson().asJsonObject()));
   }
 
   private SearchResponse<JsonData> executeSearchRequest(

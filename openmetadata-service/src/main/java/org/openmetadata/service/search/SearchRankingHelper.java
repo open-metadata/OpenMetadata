@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.RankingConfiguration;
@@ -65,8 +66,6 @@ public final class SearchRankingHelper {
    * for BM25 to order results within the stage.
    */
   private static final double STAGE_SATURATION_PIVOT = 6.0D;
-
-  private static volatile PrunedSettings prunedSettings;
 
   private SearchRankingHelper() {}
 
@@ -623,15 +622,20 @@ public final class SearchRankingHelper {
    * <p>Re-running rather than filtering hits keeps {@code hits.total} consistent with the list that
    * is returned; dropping hits client-side would recreate the count/results mismatch #31106 fixed.
    *
-   * @param identifiers name and fullyQualifiedName of each returned hit
+   * <p>Takes a stream rather than a materialised list because {@link #hasPrunableFuzzyStage} is true
+   * for the shipped ranking, so this runs on every search response and not only on identifier
+   * lookups. Consuming lazily bounds the work to the hits scanned before the first match instead of
+   * deserialising every hit's source on the hot path — work the response serialisation then repeats.
+   *
+   * @param identifiers name and fullyQualifiedName of each returned hit, consumed lazily
    */
-  public static boolean isExactIdentifierLookup(String query, List<String> identifiers) {
+  public static boolean isExactIdentifierLookup(String query, Stream<String> identifiers) {
     if (nullOrEmpty(query)) {
       return false;
     }
     String target = query.trim();
-    return listOrEmpty(identifiers).stream()
-        .anyMatch(identifier -> identifier != null && identifier.equalsIgnoreCase(target));
+    return identifiers.anyMatch(
+        identifier -> identifier != null && identifier.equalsIgnoreCase(target));
   }
 
   /**
@@ -670,20 +674,18 @@ public final class SearchRankingHelper {
    * "typo-tolerant identity <b>fallback</b>".
    */
   public static SearchSettings withoutFuzzyStages(SearchSettings searchSettings) {
-    // Memoised on the source instance: pruning is a full JSON round-trip of every asset config, and
-    // this runs on the search hot path for each identifier lookup. SettingsCache hands out one
-    // SearchSettings per settings version, so identity both hits for repeated queries and misses
-    // the moment an admin saves new settings. One entry, so it cannot grow.
-    PrunedSettings memo = prunedSettings;
-    if (memo != null && memo.source() == searchSettings) {
-      return memo.precise();
-    }
+    // Not memoised. An earlier version cached the pruned copy keyed on the source instance, on the
+    // assumption that SettingsCache hands out one SearchSettings per settings version. It does not:
+    // SettingsCache.getSetting runs JsonUtils.convertValue on every retrieval and the search
+    // managers retrieve once per request, so a reference-identity key could never hit and the cache
+    // only held a strong reference to a dead object. Keying it on content would cost as much as the
+    // copy it saves, and this runs at most once per request and only for an exact identifier
+    // lookup.
     SearchSettings precise = JsonUtils.deepCopy(searchSettings, SearchSettings.class);
     dropFuzzyStages(defaultRanking(precise));
     listOrEmpty(precise.getAssetTypeConfigurations()).stream()
         .map(AssetTypeConfiguration::getRanking)
         .forEach(SearchRankingHelper::dropFuzzyStages);
-    prunedSettings = new PrunedSettings(searchSettings, precise);
     return precise;
   }
 
@@ -699,7 +701,7 @@ public final class SearchRankingHelper {
       String query,
       SearchSettings searchSettings,
       SearchPass<R> pass,
-      Function<R, List<String>> identifiersOf)
+      Function<R, Stream<String>> identifiersOf)
       throws IOException {
     R response = pass.run(searchSettings);
     if (hasPrunableFuzzyStage(searchSettings)
@@ -715,21 +717,25 @@ public final class SearchRankingHelper {
     R run(SearchSettings searchSettings) throws IOException;
   }
 
-  /** {@code name} and {@code fullyQualifiedName} of every hit source. */
-  public static List<String> identifiersFrom(List<JsonObject> hitSources) {
-    List<String> identifiers = new ArrayList<>();
-    for (JsonObject source : listOrEmpty(hitSources)) {
-      for (String field : IDENTITY_FIELDS) {
-        JsonValue value = source.get(field);
-        if (value != null && value.getValueType() == JsonValue.ValueType.STRING) {
-          identifiers.add(source.getString(field));
-        }
+  /**
+   * {@code name} and {@code fullyQualifiedName} of one hit source.
+   *
+   * <p>Callers map this over their hits lazily so a source is only deserialised until the first
+   * identifier matches — see {@link #searchWithIdentifierPrecision}.
+   */
+  public static Stream<String> identifiersFrom(JsonObject hitSource) {
+    if (hitSource == null) {
+      return Stream.empty();
+    }
+    List<String> identifiers = new ArrayList<>(IDENTITY_FIELDS.size());
+    for (String field : IDENTITY_FIELDS) {
+      JsonValue value = hitSource.get(field);
+      if (value != null && value.getValueType() == JsonValue.ValueType.STRING) {
+        identifiers.add(hitSource.getString(field));
       }
     }
-    return identifiers;
+    return identifiers.stream();
   }
-
-  private record PrunedSettings(SearchSettings source, SearchSettings precise) {}
 
   private static boolean rankingHasPrunableFuzzyStage(RankingConfiguration ranking) {
     boolean prunable = false;

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -345,22 +344,30 @@ class SearchRankingHelperTest {
   }
 
   /**
-   * Pruning is a full JSON round-trip of every asset config and runs on the search hot path, so the
-   * result is memoised on the source instance. SettingsCache hands out one SearchSettings per
-   * settings version, so identity hits for repeated queries and misses as soon as settings change.
+   * Pruning must not reach back into the settings it was given. An earlier version memoised the
+   * pruned copy on the source instance, which could never hit — SettingsCache.getSetting runs
+   * JsonUtils.convertValue on every retrieval, so each request holds a fresh instance — and only
+   * kept a strong reference to a dead object. What has to hold is that the source is untouched, so
+   * the widened first pass still has its fuzzy stage on the next request.
    */
   @Test
-  void withoutFuzzyStagesReusesThePrunedCopyPerSettingsInstance() {
+  void withoutFuzzyStagesLeavesTheSourceSettingsIntact() {
     SearchSettings settings = settingsWithStages("exactName", "fuzzyName");
 
-    assertSame(
-        SearchRankingHelper.withoutFuzzyStages(settings),
-        SearchRankingHelper.withoutFuzzyStages(settings),
-        "Repeated lookups against one settings version must not re-serialize");
-    assertNotSame(
-        SearchRankingHelper.withoutFuzzyStages(settings),
-        SearchRankingHelper.withoutFuzzyStages(settingsWithStages("exactName", "fuzzyName")),
-        "A new settings instance must be pruned afresh, never served a stale copy");
+    SearchSettings precise = SearchRankingHelper.withoutFuzzyStages(settings);
+
+    assertNotSame(settings, precise, "the pruned settings must be an independent copy");
+    assertEquals(
+        List.of("exactName", "fuzzyName"),
+        settings.getDefaultConfiguration().getRanking().getStages().stream()
+            .map(RankingStage::getName)
+            .toList(),
+        "pruning must not mutate the settings the widened pass still uses");
+    assertEquals(
+        List.of("exactName"),
+        precise.getDefaultConfiguration().getRanking().getStages().stream()
+            .map(RankingStage::getName)
+            .toList());
   }
 
   /**
@@ -462,12 +469,13 @@ class SearchRankingHelperTest {
     String fqn = "svc.db.schema.table.user_id";
     assertTrue(
         SearchRankingHelper.isExactIdentifierLookup(
-            fqn, List.of("user_id", fqn, "user_email", "svc.db.schema.table.user_email")));
+            fqn, List.of("user_id", fqn, "user_email", "svc.db.schema.table.user_email").stream()));
   }
 
   @Test
   void identifiesAnExactNameLookupCaseInsensitivelyAndTrimmed() {
-    assertTrue(SearchRankingHelper.isExactIdentifierLookup("  Orders ", List.of("orders")));
+    assertTrue(
+        SearchRankingHelper.isExactIdentifierLookup("  Orders ", List.of("orders").stream()));
   }
 
   /**
@@ -480,18 +488,18 @@ class SearchRankingHelperTest {
     assertFalse(
         SearchRankingHelper.isExactIdentifierLookup(
             "xqz_lhr__i",
-            List.of("xqz_lhr__incoming_flights", "svc.db.xqz_lhr__incoming_flights")));
+            List.of("xqz_lhr__incoming_flights", "svc.db.xqz_lhr__incoming_flights").stream()));
   }
 
   @Test
   void doesNotIdentifyAMisspelledQuery() {
     assertFalse(
         SearchRankingHelper.isExactIdentifierLookup(
-            "xqz_lhr__incaming_flights", List.of("xqz_lhr__incoming_flights")));
+            "xqz_lhr__incaming_flights", List.of("xqz_lhr__incoming_flights").stream()));
   }
 
   @Test
   void doesNotIdentifyABlankQuery() {
-    assertFalse(SearchRankingHelper.isExactIdentifierLookup("  ", List.of("orders")));
+    assertFalse(SearchRankingHelper.isExactIdentifierLookup("  ", List.of("orders").stream()));
   }
 }
