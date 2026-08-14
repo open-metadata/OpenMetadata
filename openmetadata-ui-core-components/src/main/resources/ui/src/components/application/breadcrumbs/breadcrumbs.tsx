@@ -27,6 +27,7 @@ import {
   Breadcrumbs as AriaBreadcrumbs,
   Button as AriaButton,
   Link as AriaLink,
+  LinkContext,
 } from 'react-aria-components';
 
 export type BreadcrumbsType = 'text' | 'button-white' | 'button-gray';
@@ -49,8 +50,10 @@ export interface BreadcrumbItemType {
 }
 
 export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
-  /** Ordered list of crumbs; the last item is treated as the current page. */
+  /** Ordered list of crumbs. */
   items: BreadcrumbItemType[];
+  /** Whether the last item represents the current page or another destination. */
+  currentItem?: 'last' | 'none';
   /** Visual style of the crumbs. */
   type?: BreadcrumbsType;
   /** Separator rendered between crumbs. */
@@ -250,6 +253,7 @@ const EllipsisMenu = ({
 
 export const Breadcrumbs = ({
   items,
+  currentItem = 'last',
   type = 'text',
   divider = 'chevron',
   size = 'xs',
@@ -328,46 +332,61 @@ export const Breadcrumbs = ({
             'tw:flex tw:shrink-0 tw:items-center',
             sizes[size].gap
           )}>
-          {({ isCurrent }) => (
-            <>
-              {isEllipsis(item) ? (
-                <EllipsisMenu
-                  hidden={item.hidden}
-                  padding={padding}
+          {({ isCurrent }) => {
+            const isCurrentItem = currentItem === 'last' && isCurrent;
+            const link = !isEllipsis(item) && (item.href || onAction) && (
+              <AriaLink
+                aria-label={item.ariaLabel}
+                className={cx(linkClassName, styles[type].link, padding)}
+                href={onAction ? undefined : item.href}
+                onPress={() => onAction?.(item.id)}>
+                <CrumbLabel
+                  item={item}
+                  maxItemWidth={maxItemWidth}
                   size={size}
-                  type={type}
-                  onAction={onAction}
                 />
-              ) : !isCurrent && (item.href || onAction) ? (
-                <AriaLink
-                  aria-label={item.ariaLabel}
-                  className={cx(linkClassName, styles[type].link, padding)}
-                  href={onAction ? undefined : item.href}
-                  onPress={() => onAction?.(item.id)}>
-                  <CrumbLabel
-                    item={item}
-                    maxItemWidth={maxItemWidth}
+              </AriaLink>
+            );
+
+            return (
+              <>
+                {isEllipsis(item) ? (
+                  <EllipsisMenu
+                    hidden={item.hidden}
+                    padding={padding}
                     size={size}
+                    type={type}
+                    onAction={onAction}
                   />
-                </AriaLink>
-              ) : (
-                <span
-                  aria-current={isCurrent ? 'page' : undefined}
-                  className={cx(
-                    'tw:flex tw:min-w-0 tw:items-center',
-                    padding,
-                    isCurrent ? styles[type].current : 'tw:text-quaternary'
-                  )}>
-                  <CrumbLabel
-                    item={item}
-                    maxItemWidth={maxItemWidth}
-                    size={size}
-                  />
-                </span>
-              )}
-              {!isCurrent && <Divider divider={divider} size={size} />}
-            </>
-          )}
+                ) : !isCurrentItem && link ? (
+                  isCurrent ? (
+                    <LinkContext.Provider value={{}}>
+                      {link}
+                    </LinkContext.Provider>
+                  ) : (
+                    link
+                  )
+                ) : (
+                  <span
+                    aria-current={isCurrentItem ? 'page' : undefined}
+                    className={cx(
+                      'tw:flex tw:min-w-0 tw:items-center',
+                      padding,
+                      isCurrentItem
+                        ? styles[type].current
+                        : 'tw:text-quaternary'
+                    )}>
+                    <CrumbLabel
+                      item={item}
+                      maxItemWidth={maxItemWidth}
+                      size={size}
+                    />
+                  </span>
+                )}
+                {!isCurrent && <Divider divider={divider} size={size} />}
+              </>
+            );
+          }}
         </AriaBreadcrumb>
       )}
     </AriaBreadcrumbs>

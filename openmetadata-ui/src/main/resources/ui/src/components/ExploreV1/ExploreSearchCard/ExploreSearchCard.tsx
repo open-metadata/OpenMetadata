@@ -425,7 +425,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   'explore-search-card-breadcrumbs tw:min-w-0',
                   classNameForBreadcrumb
                 )}
+                currentItem="none"
                 items={breadcrumbItems}
+                onClick={(event) => event.stopPropagation()}
               />
               {score !== undefined && (
                 <div className="flex items-center gap-1 score-container">
