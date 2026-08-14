@@ -28,8 +28,6 @@ const DEFAULT_LANDING_PAGE_WIDGETS = [
   'KnowledgePanel.Following',
 ];
 
-const LANDING_PAGE_WIDGET_SCROLL_ATTEMPTS = 8;
-const LANDING_PAGE_WIDGET_SCROLL_OFFSET = 600;
 export const CURATED_ASSETS_WIDGET_KEY = 'KnowledgePanel.CuratedAssets';
 
 export type NameableEntityResponse = {
@@ -37,30 +35,41 @@ export type NameableEntityResponse = {
   displayName?: string;
 };
 
-const waitForNextAnimationFrame = async (page: Page) =>
-  page.evaluate(
-    () =>
-      new Promise((resolve) => {
-        requestAnimationFrame(resolve);
-      })
-  );
+// Landing-page widgets render inside `DeferredWidget`
+// (src/components/common/DeferredWidget): the slot div mounts eagerly carrying a
+// `deferred-widget-<layoutKey>` testid, while the widget itself mounts only once that slot
+// intersects the viewport. A below-the-fold widget therefore has no DOM node at all.
+//
+// The slot is keyed by the *layout* key, which is not always the widget key: widgets added
+// through the "Add widget" modal get a lodash `uniqueId` suffix (`getAddWidgetHandler` in
+// CustomizableLandingPagePureUtils), e.g. `KnowledgePanel.MyData-211`, whereas the widget
+// always renders the un-suffixed key as its own testid. So the slot has to be matched by
+// prefix — the trailing `-` keeps it unambiguous, as no widget key is a `-`-suffixed
+// extension of another.
+const getLandingPageWidgetSlot = (page: Page, widgetKey: string) =>
+  page
+    .locator(
+      `[data-testid="deferred-widget-${widgetKey}"], [data-testid^="deferred-widget-${widgetKey}-"]`
+    )
+    .first();
 
-const scrollLandingPageContent = async (page: Page) => {
-  await page
-    .getByTestId('page-layout-v1')
-    .hover()
-    .catch(() => undefined);
-  await page.mouse.wheel(0, LANDING_PAGE_WIDGET_SCROLL_OFFSET);
-  await page.evaluate((scrollOffset) => {
-    const scrollContainer = document.querySelector(
-      '.page-layout-v1-center.page-layout-v1-vertical-scroll'
-    );
+const revealLandingPageWidget = async (page: Page, widgetKey: string) => {
+  const slot = getLandingPageWidgetSlot(page, widgetKey);
 
-    scrollContainer?.scrollBy({
-      top: scrollOffset,
-    });
-  }, LANDING_PAGE_WIDGET_SCROLL_OFFSET);
-  await waitForNextAnimationFrame(page);
+  if ((await slot.count()) > 0) {
+    await slot.scrollIntoViewIfNeeded();
+
+    return;
+  }
+
+  // The customize-page edit view renders widgets without a deferred slot. Only scroll a
+  // widget that is already attached — scrolling a locator that resolves to nothing stalls
+  // for the full action timeout and starves the caller's own waiting.
+  const widget = page.getByTestId(widgetKey);
+
+  if ((await widget.count()) > 0) {
+    await widget.scrollIntoViewIfNeeded();
+  }
 };
 
 // Entity types mapping from CURATED_ASSETS_LIST
@@ -213,29 +222,19 @@ export const removeAndCheckWidget = async (
   await expect(page.getByTestId(`${widgetKey}`)).not.toBeVisible();
 };
 
+// Callers poll this across navigations, and each iteration starts from a fresh page load, so
+// the widget needs a chance to mount inside the iteration — an instant `isVisible()` would
+// never observe it. The assertion inherits the project's expect timeout.
 const isLandingPageWidgetVisible = async (
   page: Page,
   widgetKey: string
 ): Promise<boolean> => {
-  const widget = page.getByTestId(widgetKey);
+  await revealLandingPageWidget(page, widgetKey);
 
-  for (let index = 0; index < LANDING_PAGE_WIDGET_SCROLL_ATTEMPTS; index++) {
-    if (await widget.isVisible().catch(() => false)) {
-      return true;
-    }
-
-    if ((await widget.count()) > 0) {
-      await widget.scrollIntoViewIfNeeded().catch(() => undefined);
-
-      if (await widget.isVisible().catch(() => false)) {
-        return true;
-      }
-    }
-
-    await scrollLandingPageContent(page);
-  }
-
-  return false;
+  return expect(page.getByTestId(widgetKey))
+    .toBeVisible()
+    .then(() => true)
+    .catch(() => false);
 };
 
 const isLandingPageWidgetLoading = async (widget: Locator) =>
@@ -244,18 +243,22 @@ const isLandingPageWidgetLoading = async (widget: Locator) =>
     .isVisible()
     .catch(() => false);
 
+// Single gate every widget assertion goes through: reveal the deferred slot, prove the
+// widget mounted, and let its own fetch settle. The skeleton wait belongs here rather than
+// in the callers because a widget only starts loading once the slot reveals it — a caller
+// that ran `waitForAllLoadersToDisappear(page, 'entity-list-skeleton')` beforehand saw no
+// skeleton at all and then raced the fetch.
 export const waitForLandingPageWidget = async (
   page: Page,
   widgetKey: string
 ): Promise<Locator> => {
   const widget = page.getByTestId(widgetKey);
-  const isVisible = await isLandingPageWidgetVisible(page, widgetKey);
 
-  if (isVisible) {
-    return widget;
-  }
+  await revealLandingPageWidget(page, widgetKey);
 
   await expect(widget).toBeVisible();
+
+  await expect(widget.getByTestId('entity-list-skeleton')).toBeHidden();
 
   return widget;
 };
@@ -366,7 +369,10 @@ export const removeAndVerifyWidget = async (
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId(widgetKey)).not.toBeVisible();
+  // Assert on the deferred slot rather than the widget: the slot renders for every layout
+  // entry, whereas the widget stays unmounted while below the fold — so
+  // `not.toBeVisible()` on the widget would pass whether it was removed or merely deferred.
+  await expect(getLandingPageWidgetSlot(page, widgetKey)).toHaveCount(0);
 };
 
 export const addAndVerifyWidget = async (
@@ -402,18 +408,10 @@ export const addAndVerifyWidget = async (
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
   await removeLandingBanner(page);
 
-  await expect
-    .poll(
-      async () => {
-        await redirectToHomePage(page, false);
-        await removeLandingBanner(page);
-        await waitForAllLoadersToDisappear(page).catch(() => undefined);
-
-        return isLandingPageWidgetVisible(page, widgetKey);
-      },
-      { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toBe(true);
+  // The save response is awaited and its toast asserted above, and `redirectToHomePage`
+  // disables ETag conditional reads, so the first read-back is authoritative — the widget
+  // helper's own web-first assertions do the waiting from here.
+  await waitForLandingPageWidget(page, widgetKey);
 };
 
 export const addCuratedAssetPlaceholder = async ({
