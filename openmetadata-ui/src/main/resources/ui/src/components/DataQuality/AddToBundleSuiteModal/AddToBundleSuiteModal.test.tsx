@@ -192,7 +192,7 @@ describe('AddToBundleSuiteModal', () => {
     render(<AddToBundleSuiteModal {...mockProps} />);
 
     expect(getListTestSuitesBySearch).toHaveBeenCalledWith({
-      q: '*',
+      q: undefined,
       limit: 15,
       testSuiteType: 'logical',
       includeEmptyTestSuites: true,
@@ -309,7 +309,7 @@ describe('AddToBundleSuiteModal', () => {
 
     expect(getListTestSuitesBySearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        q: '*bundle*',
+        q: 'bundle',
       })
     );
 

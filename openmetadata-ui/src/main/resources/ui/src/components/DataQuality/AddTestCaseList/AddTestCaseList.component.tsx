@@ -78,7 +78,6 @@ export const AddTestCaseList = ({
   onSubmit,
   cancelText,
   submitText,
-  testCaseFilters,
   columnFilters,
   selectedTest,
   existingTest,
@@ -269,10 +268,11 @@ export const AddTestCaseList = ({
     }) => {
       try {
         setIsLoading(true);
-        const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
-        const q = testCaseFilters
-          ? `${globalSearch} && ${testCaseFilters}`
-          : globalSearch;
+        // `q` must stay free text: /v1/dataQuality/testCases/search/list parses it as a literal
+        // term, so scoping filters travel as first-class params via `testCaseParams`. With no
+        // search text `q` is omitted rather than sent as `*` — a lone asterisk is no longer a
+        // match-all wildcard, it is a literal asterisk that matches nothing.
+        const q = searchText || undefined;
 
         const columnNamesFromKeys =
           filterColumns.length > 0
@@ -334,7 +334,6 @@ export const AddTestCaseList = ({
     },
     [
       items,
-      testCaseFilters,
       selectedTestNames,
       testCaseParams,
       filterStatus,
@@ -583,7 +582,6 @@ export const AddTestCaseList = ({
     filterTestType,
     filterTables,
     filterColumns,
-    testCaseFilters,
     testCaseParams,
   ]);
 

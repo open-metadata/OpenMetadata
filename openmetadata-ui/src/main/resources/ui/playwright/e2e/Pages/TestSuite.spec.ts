@@ -41,7 +41,6 @@ import {
 } from '../../utils/dataQuality';
 import {
   addMultiOwner,
-  escapeESReservedCharacters,
   removeOwnersFromList,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -159,8 +158,7 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
         '/api/v1/dataQuality/testSuites/search/list'
       ) &&
       responseUrl.searchParams.get('testSuiteType') === 'logical' &&
-      responseUrl.searchParams.get('q') ===
-        `*${escapeESReservedCharacters(bundleSuiteName)}*`
+      responseUrl.searchParams.get('q') === bundleSuiteName
     );
   });
 
