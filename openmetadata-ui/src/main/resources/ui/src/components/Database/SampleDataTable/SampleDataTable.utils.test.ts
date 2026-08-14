@@ -94,6 +94,22 @@ describe('buildSampleDataCSVContent', () => {
     expect(lines[1]).toBe('child-value,label-value');
   });
 
+  it('keeps one column per occurrence when column names repeat', () => {
+    const csv = buildSampleDataCSVContent(
+      [
+        { key: '0-dup', name: 'dup' },
+        { key: '1-dup', name: 'dup' },
+        { key: '2-x', name: 'x' },
+      ],
+      [{ '0-dup': 'A', '1-dup': 'B', '2-x': 'C' }],
+      10
+    );
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe('dup,dup,x');
+    expect(lines[1]).toBe('A,B,C');
+  });
+
   it('handles null cell values as empty strings', () => {
     const csv = buildSampleDataCSVContent(
       toColumns(['a', 'b']),

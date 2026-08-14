@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isObject, toString as lodashToString } from 'lodash';
+import { isEmpty, isObject, toString as lodashToString } from 'lodash';
 import { unparse } from 'papaparse';
 import { SampleDataColumn, SampleDataType } from './SampleData.interface';
 
@@ -26,20 +26,25 @@ export const buildSampleDataCSVContent = (
   rowLimit: number
 ): string => {
   const limitedRows = rows.slice(0, rowLimit);
-  const columnNames = columns.map(({ name }) => name);
 
-  const data = limitedRows.map((row) =>
-    Object.fromEntries(
-      columns.map(({ key, name }) => [
-        name,
-        stringifySampleDataValue(row[String(key ?? '')]),
-      ])
-    )
+  // papaparse emits a header-only document when handed fields with no data,
+  // whereas exporting nothing has always produced an empty file.
+  if (isEmpty(limitedRows)) {
+    return '';
+  }
+
+  // Rows are emitted positionally rather than as name-keyed records: sample
+  // columns can repeat a name, and a keyed record would collapse them to one
+  // value while the table still renders each occurrence separately.
+  return unparse(
+    {
+      fields: columns.map(({ name }) => name),
+      data: limitedRows.map((row) =>
+        columns.map(({ key }) =>
+          stringifySampleDataValue(row[String(key ?? '')])
+        )
+      ),
+    },
+    { newline: '\n' }
   );
-
-  return unparse(data, {
-    columns: columnNames,
-    header: true,
-    newline: '\n',
-  });
 };
