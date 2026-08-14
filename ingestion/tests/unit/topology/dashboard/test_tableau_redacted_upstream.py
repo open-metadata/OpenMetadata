@@ -14,26 +14,29 @@ Tableau withholds source table metadata from accounts without Catalog permission
 
 The Metadata API still returns the `upstreamTables` objects and keeps `id` and `luid`, but
 nulls `name`, `fullName`, `schema` and `database.name`. Nothing can be resolved from that,
-so lineage is empty for the entire run while the run itself reports complete success.
+so lineage is empty for those tables while the run itself reports complete success.
 
 The payloads below were captured from Tableau for one workbook and table, queried once as a
 site admin and once as an Explorer.
 """
 
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from metadata.ingestion.source.dashboard.tableau.client import (
-    MAX_SOURCE_TABLE_SAMPLE_PAGES,
-    SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+    MAX_SAMPLED_WORKBOOKS,
     TableauClient,
     TableauUpstreamTablesRedacted,
+    TableauWorkBookException,
 )
 from metadata.ingestion.source.dashboard.tableau.models import (
     DataSource,
     TableauDatasources,
 )
+
+CLIENT_MODULE = "metadata.ingestion.source.dashboard.tableau.client"
 
 # Captured live: what a site admin sees.
 VISIBLE_TABLE = {
@@ -55,34 +58,34 @@ REDACTED_TABLE = {
     "database": {"id": "0f9b1efd-b968-d24c-f5e1-b3788b993cbe", "name": None},
 }
 
+# Captured live: a sample workbook over a spreadsheet. An Explorer reads these names even
+# when every database asset on the same site is withheld.
+SPREADSHEET_TABLE = {
+    "id": "5c9d2e77-1f4a-4a55-9a41-2a6f0b8d3c11",
+    "luid": "7a1c3f90-6d2b-4e88-b0f4-95c7e2a41d63",
+    "name": "Orders",
+    "fullName": "[Sample - Superstore.xlsx].[Orders]",
+    "schema": None,
+    "database": {"id": "c41a7f65-3b2e-4d19-8f7a-1e5b9c0d2a48", "name": "Sample - Superstore.xlsx"},
+}
 
-def build_client(datasources):
-    """A TableauClient whose only live behaviour is the upstream table check."""
+
+@contextmanager
+def fake_site(workbooks):
+    """A TableauClient over a fake site. `workbooks` is [(name, datasources)] in Pager order."""
     with patch.object(TableauClient, "__init__", lambda self, *a, **kw: None):
         client = TableauClient()
-    client.test_get_workbooks = MagicMock(return_value=MagicMock(id="wb-1"))
-    client._query_datasources = MagicMock(return_value=datasources)
-    return client
+    client.tableau_server = MagicMock()
+    client._query_datasources = MagicMock(side_effect=[datasources for _, datasources in workbooks])
 
+    items = []
+    for index, (workbook_name, _) in enumerate(workbooks):
+        item = MagicMock(id=f"wb-{index}")
+        item.name = workbook_name
+        items.append(item)
 
-def build_paging_client(pages):
-    """A client whose data sources span more than one page."""
-    with patch.object(TableauClient, "__init__", lambda self, *a, **kw: None):
-        client = TableauClient()
-    client.test_get_workbooks = MagicMock(return_value=MagicMock(id="wb-1"))
-    client._query_datasources = MagicMock(side_effect=pages)
-    return client
-
-
-def full_page(tables, prefix):
-    """A page Tableau would not mark as the last one, so the check reads on."""
-    return TableauDatasources(
-        nodes=[
-            DataSource(id=f"{prefix}-{index}", name=f"{prefix}-{index}", upstreamTables=tables)
-            for index in range(SOURCE_TABLE_SAMPLE_PAGE_SIZE)
-        ],
-        totalCount=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
-    )
+    with patch(f"{CLIENT_MODULE}.Pager", return_value=items):
+        yield client
 
 
 def datasources_with(tables, name="rpt_repro_transfer_out_mv (reporting_prod.finance)"):
@@ -93,92 +96,83 @@ def datasources_with(tables, name="rpt_repro_transfer_out_mv (reporting_prod.fin
 
 
 class TestGetSourceTablesCheck:
-    def test_redacted_names_fail_the_check(self):
+    def test_withheld_name_fails_the_check(self):
         """
-        The whole point: a run that produces no lineage at all must not look healthy.
-        The message has to name the data source, because the table has nothing left to
+        The whole point: lineage that cannot be built must not look healthy. The message
+        has to name the data source and workbook, because the table has nothing left to
         identify it by.
         """
-        client = build_client(datasources_with([REDACTED_TABLE]))
-
-        with pytest.raises(TableauUpstreamTablesRedacted) as excinfo:
+        with (
+            fake_site([("Repro Databricks Lineage", datasources_with([REDACTED_TABLE]))]) as client,
+            pytest.raises(TableauUpstreamTablesRedacted) as excinfo,
+        ):
             client.test_get_source_tables()
 
         message = str(excinfo.value)
         assert "no name" in message
+        assert "Repro Databricks Lineage" in message
         assert "rpt_repro_transfer_out_mv (reporting_prod.finance)" in message, (
             "an operator needs to know which data source is affected"
         )
 
     def test_named_tables_pass(self):
-        client = build_client(datasources_with([VISIBLE_TABLE]))
-
-        assert client.test_get_source_tables() is True
-        assert client._query_datasources.call_count == 1, (
-            "a healthy connection must not cost more than the single query it used to"
-        )
+        with fake_site([("Repro", datasources_with([VISIBLE_TABLE]))]) as client:
+            assert client.test_get_source_tables() is True
 
     def test_no_upstream_tables_passes(self):
         """
-        A workbook over a spreadsheet or an extract declares no source tables. There is
-        nothing to judge, so this must not be reported as a permissions problem.
+        A workbook over an extract declares no source tables. There is nothing to judge,
+        so this must not be reported as a permissions problem.
         """
-        client = build_client(datasources_with([]))
+        with fake_site([("Extract only", datasources_with([]))]) as client:
+            assert client.test_get_source_tables() is True
 
-        assert client.test_get_source_tables() is True
-
-    def test_partially_named_tables_pass(self):
+    def test_a_readable_name_does_not_excuse_a_withheld_one(self):
         """
-        If any name came through, the account can read Catalog assets and the missing one
-        is a different problem. Only a total blackout indicates the permission gap.
+        View is granted per external asset, so a readable table proves nothing about the
+        one next to it. The withheld table is lost lineage either way.
         """
-        client = build_client(datasources_with([VISIBLE_TABLE, REDACTED_TABLE]))
-
-        assert client.test_get_source_tables() is True
-
-    def test_no_datasources_passes(self):
-        client = build_client(None)
-
-        assert client.test_get_source_tables() is True
-
-    def test_named_table_on_a_later_page_passes(self):
-        """
-        Permissions on external assets are granted per asset, so a blackout only counts
-        as one if it holds past the first page. Judging from one page alone would report
-        a permissions problem that is not there.
-        """
-        client = build_paging_client(
-            [
-                full_page([REDACTED_TABLE], prefix="ds-page-1"),
-                datasources_with([VISIBLE_TABLE], name="ds-page-2"),
-            ]
-        )
-
-        assert client.test_get_source_tables() is True
-
-    def test_blackout_across_every_page_fails(self):
-        client = build_paging_client(
-            [
-                full_page([REDACTED_TABLE], prefix="ds-page-1"),
-                datasources_with([REDACTED_TABLE], name="ds-page-2"),
-            ]
-        )
-
-        with pytest.raises(TableauUpstreamTablesRedacted) as excinfo:
+        with (
+            fake_site([("Mixed", datasources_with([VISIBLE_TABLE, REDACTED_TABLE]))]) as client,
+            pytest.raises(TableauUpstreamTablesRedacted),
+        ):
             client.test_get_source_tables()
 
-        assert f"{SOURCE_TABLE_SAMPLE_PAGE_SIZE + 1} source table(s)" in str(excinfo.value), (
-            "both pages should have been counted"
-        )
+    def test_a_spreadsheet_workbook_does_not_hide_a_later_blackout(self):
+        """
+        Observed live: an Explorer passed this check because the first workbook the API
+        returned was a sample one over a spreadsheet, whose names it could read, while the
+        Databricks backed workbook behind it was fully withheld. Sampling only the first
+        workbook reported a healthy connection for an account that builds no lineage.
+        """
+        with (
+            fake_site(
+                [
+                    ("Superstore", datasources_with([SPREADSHEET_TABLE], name="Sample - Superstore")),
+                    ("Repro Databricks Lineage", datasources_with([REDACTED_TABLE])),
+                ]
+            ) as client,
+            pytest.raises(TableauUpstreamTablesRedacted) as excinfo,
+        ):
+            client.test_get_source_tables()
+
+        assert "Repro Databricks Lineage" in str(excinfo.value)
 
     def test_the_sample_is_capped(self):
         """
-        Every test connection step shares one timeout, so a workbook with thousands of
-        data sources must not be read to the end just to report a blackout.
+        Every test connection step shares one timeout, so a large site must not be read to
+        the end just to confirm a healthy connection.
         """
-        client = build_paging_client([full_page([REDACTED_TABLE], prefix=f"ds-{n}") for n in range(50)])
+        healthy = [(f"wb-{n}", datasources_with([VISIBLE_TABLE])) for n in range(50)]
 
-        with pytest.raises(TableauUpstreamTablesRedacted):
+        with fake_site(healthy) as client:
+            assert client.test_get_source_tables() is True
+            assert client._query_datasources.call_count == MAX_SAMPLED_WORKBOOKS
+
+    def test_no_datasources_passes(self):
+        with fake_site([("Empty", None)]) as client:
+            assert client.test_get_source_tables() is True
+
+    def test_no_workbooks_raises(self):
+        with fake_site([]) as client, pytest.raises(TableauWorkBookException):
             client.test_get_source_tables()
-
-        assert client._query_datasources.call_count == MAX_SOURCE_TABLE_SAMPLE_PAGES

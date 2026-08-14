@@ -132,11 +132,11 @@ TABLEAU_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(TableauUpstreamTablesRedacted)).diagnose(
         "Source table names are hidden from this account",
-        fix="Tableau returned the source tables without their names, which happens when the "
-        "account cannot see database and table details in Tableau Catalog. Data sources and "
-        "dashboards will still be ingested, but lineage from tables to data models cannot be "
-        "built. In Tableau, grant this account access to external assets, or use an account "
-        "that already has it.",
+        fix="Tableau returned one or more source tables without their names, which happens "
+        "when the account cannot see those database and table details in Tableau Catalog. "
+        "Data sources and dashboards will still be ingested, but lineage cannot be built "
+        "for the tables it cannot see. In Tableau, grant this account the View capability "
+        "on those external assets, or use an account that already has it.",
     ),
     when(Matchers.exception(TableauDataModelsException)).diagnose(
         "Data sources could not be read",

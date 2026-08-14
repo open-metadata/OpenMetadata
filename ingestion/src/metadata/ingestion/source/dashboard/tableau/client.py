@@ -46,10 +46,12 @@ from metadata.utils.ssl_manager import SSLManager
 
 logger = ometa_logger()
 
-# GetSourceTables samples a workbook rather than reading all of it. Every test connection
-# step shares one timeout, so the sample is capped instead of following totalCount.
+# GetSourceTables samples a few workbooks rather than reading the whole site. Every test
+# connection step shares one timeout, so the sample is capped. Breadth matters more than
+# depth here: the first workbook is often a sample one over a spreadsheet, whose names are
+# readable even when every database asset is withheld.
 SOURCE_TABLE_SAMPLE_PAGE_SIZE = 50
-MAX_SOURCE_TABLE_SAMPLE_PAGES = 3
+MAX_SAMPLED_WORKBOOKS = 3
 
 
 class TableauWorkBookException(Exception):  # noqa: N818
@@ -78,11 +80,11 @@ class TableauDataModelsException(Exception):  # noqa: N818
 
 class TableauUpstreamTablesRedacted(Exception):  # noqa: N818
     """
-    Raise when the Metadata API returns source tables with every name withheld.
+    Raise when the Metadata API returns a source table with its name withheld.
 
     Tableau does not omit assets the account may not read. It returns them with the table
-    and database names nulled and only the identifiers left, so no table can be resolved
-    and lineage is silently empty for the whole run.
+    and database names nulled and only the identifiers left, so the table cannot be
+    resolved and its lineage is silently dropped for the whole run.
     """
 
 
@@ -323,40 +325,45 @@ class TableauClient:
 
         Tableau withholds table and database names from accounts without Catalog
         permissions on external assets, returning the table objects with only their
-        identifiers. Table lineage then cannot be built for anything, so this is worth
-        catching at connection time instead of after a run that looks successful.
+        identifiers. Lineage to those tables cannot be built, so this is worth catching at
+        connection time instead of after a run that looks successful.
 
-        Passes when there is nothing to judge, meaning the sampled workbook declares no
-        source tables at all, which is normal for file backed data sources.
+        View is granted per external asset, so one withheld table is already lost lineage
+        even when others are readable. Reports the first sampled workbook that has one.
+
+        Passes when there is nothing to judge, meaning no sampled workbook declares a
+        source table at all, which is normal for file backed data sources.
         """
-        workbook = self.test_get_workbooks()
+        withheld = []
+        sampled = 0
 
-        if workbook.id is None:
-            raise TableauDataModelsException("Unable to get any workbooks to fetch tableau data sources")
+        for workbook in Pager(self.tableau_server.workbooks):
+            if sampled >= MAX_SAMPLED_WORKBOOKS:
+                break
+            if workbook.id is None:
+                continue
+            sampled += 1
 
-        # Permissions on external assets are granted per asset, so one workbook can mix
-        # readable and withheld tables and a single page can be misleading. One readable
-        # name is enough to stop, so a healthy connection still costs one query.
-        redacted = []
-        for index in range(MAX_SOURCE_TABLE_SAMPLE_PAGES):
             datasources = self._query_datasources(
                 dashboard_id=workbook.id,
                 entities_per_page=SOURCE_TABLE_SAMPLE_PAGE_SIZE,
-                offset=index * SOURCE_TABLE_SAMPLE_PAGE_SIZE,
+                offset=0,
             )
-            nodes = (datasources.nodes if datasources else None) or []
-            for datasource in nodes:
-                for table in datasource.upstreamTables or []:
-                    if table.name:
-                        return True
-                    redacted.append(datasource.name or datasource.id)
-            if len(nodes) < SOURCE_TABLE_SAMPLE_PAGE_SIZE:
-                break
+            for datasource in (datasources.nodes if datasources else None) or []:
+                withheld.extend(
+                    datasource.name or datasource.id for table in datasource.upstreamTables or [] if not table.name
+                )
 
-        if redacted:
-            raise TableauUpstreamTablesRedacted(
-                f"Tableau returned {len(redacted)} source table(s) with no name, "
-                f"for data source(s): {', '.join(sorted(set(redacted))[:5])}"
+            if withheld:
+                raise TableauUpstreamTablesRedacted(
+                    f"Tableau returned {len(withheld)} source table(s) with no name in workbook "
+                    f"[{workbook.name}], for data source(s): {', '.join(sorted(set(withheld))[:5])}"
+                )
+
+        if not sampled:
+            raise TableauWorkBookException(
+                "Unable to fetch Dashboards from tableau\n"
+                "Please check if the user has permissions to access the Dashboards information"
             )
         return True
 

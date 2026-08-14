@@ -49,8 +49,8 @@
     },
     {
       "name": "GetSourceTables",
-      "description": "Validate if the source tables behind a Data Source are named. Tableau hides table and database names from accounts without Tableau Catalog permissions, which leaves lineage empty.",
-      "errorMessage": "Failed to read the names of the source tables, please validate if user has access to external assets in Tableau Catalog. Data Sources and Dashboards are still ingested, but lineage from tables to Data Models cannot be built",
+      "description": "Validate if the source tables behind a Data Source are named. Tableau hides table and database names from accounts without Tableau Catalog permissions, which drops the lineage for those tables.",
+      "errorMessage": "Failed to read the names of one or more source tables, please validate if user has the View capability on those external assets in Tableau Catalog. Data Sources and Dashboards are still ingested, but lineage cannot be built for the tables the account cannot see",
       "mandatory": false
     }
   ]
