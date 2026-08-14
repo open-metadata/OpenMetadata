@@ -34,6 +34,7 @@ import {
   clickEditContractButton,
   performInitialStepForRules,
   saveAndTriggerDataContractValidation,
+  triggerContractValidation,
 } from '../../utils/dataContracts';
 import {
   customFormatDateTime,
@@ -64,6 +65,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -118,7 +121,12 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -137,17 +145,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -164,6 +162,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Is_Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -215,7 +215,12 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -241,17 +246,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -268,6 +263,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Any_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -319,7 +316,11 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -346,17 +347,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -372,6 +363,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Not_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -423,7 +416,12 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -449,17 +447,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -476,6 +464,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -513,7 +503,11 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -533,17 +527,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -559,6 +543,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
   });
 
   test('Validate Owner Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -596,7 +582,12 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -615,17 +606,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         dataTestId: 'data-assets-header',
       });
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -644,6 +625,8 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
 test.describe('Data Contracts Semantics Rule Description', () => {
   test('Validate Description Rule Contains', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -684,8 +667,40 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       );
       await inputElement.fill('description');
 
-      // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      // Wait for the table to be indexed in Elasticsearch before validation runs,
+      // since the "contains" text-search rule queries ES.
+      const tableName = table.entity.name;
+      const searchUrl = `/api/v1/search/query?q=${encodeURIComponent(
+        tableName
+      )}&index=table_search_index&from=0&size=10`;
+      await expect
+        .poll(
+          async () => {
+            const response = await page.request.get(searchUrl);
+            if (!response.ok()) return 'not_indexed';
+            const data = await response.json();
+            return data?.hits?.hits?.some(
+              (hit: { _source?: { name?: string } }) =>
+                hit._source?.name === tableName
+            )
+              ? 'indexed'
+              : 'not_indexed';
+          },
+          {
+            message: `Wait for table "${tableName}" to be indexed in Elasticsearch`,
+            timeout: 30_000,
+            intervals: [1_000, 2_000, 3_000],
+          }
+        )
+        .toBe('indexed');
+
+      // save and trigger contract validation (now the table is indexed)
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -706,17 +721,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -733,6 +738,8 @@ test.describe('Data Contracts Semantics Rule Description', () => {
   });
 
   test('Validate Description Rule Not Contains', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -773,8 +780,40 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       );
       await inputElement.fill('description');
 
+      // Wait for the table to be indexed in Elasticsearch before validation runs,
+      // since the "not_contains" text-search rule queries ES.
+      const tableName = table.entity.name;
+      const searchUrl = `/api/v1/search/query?q=${encodeURIComponent(
+        tableName
+      )}&index=table_search_index&from=0&size=10`;
+      await expect
+        .poll(
+          async () => {
+            const response = await page.request.get(searchUrl);
+            if (!response.ok()) return 'not_indexed';
+            const data = await response.json();
+            return data?.hits?.hits?.some(
+              (hit: { _source?: { name?: string } }) =>
+                hit._source?.name === tableName
+            )
+              ? 'indexed'
+              : 'not_indexed';
+          },
+          {
+            message: `Wait for table "${tableName}" to be indexed in Elasticsearch`,
+            timeout: 30_000,
+            intervals: [1_000, 2_000, 3_000],
+          }
+        )
+        .toBe('indexed');
+
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -795,17 +834,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -821,6 +850,8 @@ test.describe('Data Contracts Semantics Rule Description', () => {
   });
 
   test('Validate Description Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -858,7 +889,11 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(async () => {
         await page.reload();
@@ -883,25 +918,14 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('manage-contract-actions').click();
+      await triggerContractValidation(page, contractId);
 
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      const response = await runNowResponse;
-      expect(response.ok()).toBe(true);
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
       ).toContainText('Failed');
-
-      await page.reload();
-      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
@@ -910,6 +934,8 @@ test.describe('Data Contracts Semantics Rule Description', () => {
   });
 
   test('Validate Description Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -947,7 +973,11 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -969,17 +999,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -1041,6 +1061,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1086,7 +1108,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1100,17 +1127,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await removeSingleSelectDomain(page, domain1.responseData);
       await assignSingleSelectDomain(page, domain2.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -1127,6 +1144,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Is Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1171,7 +1190,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1185,17 +1209,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await removeSingleSelectDomain(page, domain1.responseData);
       await assignSingleSelectDomain(page, domain2.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -1212,6 +1226,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Any_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1257,7 +1273,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1271,17 +1292,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await removeSingleSelectDomain(page, domain1.responseData);
       await assignSingleSelectDomain(page, domain2.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -1298,6 +1309,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Not_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1341,7 +1354,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1355,17 +1373,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       await removeSingleSelectDomain(page, domain2.responseData);
       await assignSingleSelectDomain(page, domain1.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -1382,6 +1390,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1419,7 +1429,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1432,17 +1447,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Domain with IsSet condition should failed', async () => {
       await removeSingleSelectDomain(page, domain1.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -1459,6 +1464,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
   });
 
   test('Validate Domain Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1495,7 +1502,12 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -1508,17 +1520,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     await test.step('Domain with IsNotSet condition should failed', async () => {
       await assignSingleSelectDomain(page, domain1.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -1539,6 +1541,8 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 // deterministic regardless of how many background version bumps CI introduces.
 test.describe('Data Contracts Semantics Rule Version', () => {
   test('Validate Entity Version Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1588,7 +1592,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
         .fill('99.9');
 
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       // After the reload inside saveAndTriggerDataContractValidation, the
       // version button in the header reflects the entity's current version.
@@ -1629,17 +1637,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step('Non-Correct entity version should failed', async () => {
       await assignSingleSelectDomain(page, domain.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -1656,6 +1654,8 @@ test.describe('Data Contracts Semantics Rule Version', () => {
   });
 
   test('Validate Entity Version Is Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1705,7 +1705,11 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
         .fill('99.9');
 
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       // After the reload inside saveAndTriggerDataContractValidation, the
       // version button in the header reflects the entity's current version.
@@ -1751,17 +1755,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     await test.step('Contract with is_not condition for version should failed', async () => {
       await assignSingleSelectDomain(page, domain.responseData);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2113,6 +2107,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2160,7 +2156,12 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2184,17 +2185,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2211,6 +2202,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Is Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2258,7 +2251,12 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2282,17 +2280,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2309,6 +2297,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Any_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2355,7 +2345,11 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2380,17 +2374,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2406,6 +2390,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Not_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2452,7 +2438,12 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2476,17 +2467,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2520,17 +2501,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2547,6 +2518,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2587,7 +2560,12 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2608,17 +2586,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2635,6 +2603,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
   });
 
   test('Validate DataProduct Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2671,7 +2641,12 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2696,17 +2671,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2725,6 +2690,8 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
 test.describe('Data Contracts Semantics Rule DisplayName', () => {
   test('Validate DisplayName Rule Is', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2768,7 +2735,12 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2788,17 +2760,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2815,6 +2777,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Is Not', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2858,7 +2822,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2879,17 +2847,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2905,6 +2863,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Any_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2947,7 +2907,12 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -2967,17 +2932,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -2994,6 +2949,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Not_In', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -3036,7 +2993,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3057,17 +3018,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -3083,6 +3034,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Is_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -3119,7 +3072,12 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
+      expect(contractId).toBeTruthy();
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3140,17 +3098,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
@@ -3167,6 +3115,8 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
   });
 
   test('Validate DisplayName Rule Is_Not_Set', async ({ page, browser }) => {
+    let contractId: string | undefined;
+
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -3203,7 +3153,11 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       );
 
       // save and trigger contract validation
-      await saveAndTriggerDataContractValidation(page, true);
+      contractId = (
+        (await saveAndTriggerDataContractValidation(page, true)) as {
+          id?: string;
+        }
+      )?.id;
 
       await expect(
         page.getByTestId('contract-status-card-item-semantics-status')
@@ -3225,17 +3179,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
       await page.click('[data-testid="contract"]');
       await waitForAllLoadersToDisappear(page);
 
-      await page.getByTestId('manage-contract-actions').click();
-
-      await page.getByTestId('contract-action-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      const runNowResponse = page.waitForResponse(
-        '/api/v1/dataContracts/*/validate'
-      );
-      await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      await triggerContractValidation(page, contractId);
 
       await page.reload();
 
