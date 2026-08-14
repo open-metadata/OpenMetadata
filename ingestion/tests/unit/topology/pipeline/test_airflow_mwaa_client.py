@@ -18,6 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
+from metadata.ingestion.source.pipeline.airflow.api.exceptions import AirflowApiResponseError
 from metadata.ingestion.source.pipeline.airflow.api.models import (
     AirflowApiDagDetails,
     AirflowApiDagRun,
@@ -454,6 +455,28 @@ class TestMWAAClientPagination:
         ] == ["0", "50", "100"]
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
+    def test_server_cap_without_total_entries_still_paginates(self, mock_aws_client_cls):
+        mock_aws_client = MagicMock()
+        mock_mwaa_client = MagicMock()
+        mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
+        mock_aws_client_cls.return_value = mock_aws_client
+        mock_mwaa_client.invoke_rest_api.side_effect = [
+            {"RestApiResponse": {"dags": [{"dag_id": f"dag{i}"} for i in range(50)]}},
+            {"RestApiResponse": {"dags": [{"dag_id": f"dag{i}"} for i in range(50, 100)]}},
+            {"RestApiResponse": {"dags": []}},
+        ]
+
+        client = MWAAClient(
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
+            "test-env",
+        )
+
+        result = client._paginate("/dags", "dags", limit=100)
+
+        assert [dag["dag_id"] for dag in result] == [f"dag{i}" for i in range(100)]
+        assert mock_mwaa_client.invoke_rest_api.call_count == 3
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
     def test_paginate_without_total_entries_fetches_until_short_page(self, mock_aws_client_cls):
         mock_aws_client = MagicMock()
         mock_mwaa_client = MagicMock()
@@ -466,6 +489,7 @@ class TestMWAAClientPagination:
         mock_mwaa_client.invoke_rest_api.side_effect = [
             {"RestApiResponse": page1},
             {"RestApiResponse": page2},
+            {"RestApiResponse": {"dags": []}},
         ]
 
         client = MWAAClient(
@@ -477,7 +501,7 @@ class TestMWAAClientPagination:
 
         assert len(result) == 120
         assert result[-1]["dag_id"] == "dag119"
-        assert mock_mwaa_client.invoke_rest_api.call_count == 2
+        assert mock_mwaa_client.invoke_rest_api.call_count == 3
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
     def test_paginate_empty_response(self, mock_aws_client_cls):
@@ -493,9 +517,32 @@ class TestMWAAClientPagination:
             "test-env",
         )
 
-        result = client._paginate("/dags", "dags", limit=100)
+        with pytest.raises(AirflowApiResponseError, match="offset=0"):
+            client._paginate("/dags", "dags", limit=100)
 
-        assert result == []
+    @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
+    def test_unreadable_page_does_not_truncate_the_dag_list(self, mock_aws_client_cls):
+        mock_aws_client = MagicMock()
+        mock_mwaa_client = MagicMock()
+        mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
+        mock_aws_client_cls.return_value = mock_aws_client
+        mock_mwaa_client.invoke_rest_api.side_effect = [
+            {
+                "RestApiResponse": {
+                    "dags": [{"dag_id": f"dag{i}"} for i in range(50)],
+                    "total_entries": 150,
+                }
+            },
+            {"RestApiResponse": "<html>upstream error</html>"},
+        ]
+
+        client = MWAAClient(
+            AWSCredentials(awsAccessKeyId="key", awsSecretAccessKey="secret", awsRegion="us-east-1"),
+            "test-env",
+        )
+
+        with pytest.raises(AirflowApiResponseError, match="offset=50"):
+            client._paginate("/dags", "dags", limit=100)
 
     @patch("metadata.ingestion.source.pipeline.airflow.api.mwaa.AWSClient")
     def test_paginate_empty_page_key(self, mock_aws_client_cls):
@@ -703,7 +750,7 @@ class TestMWAAClientBuildDagDetails:
             "test-env",
         )
 
-        with pytest.raises(TypeError, match="Invalid tasks response"):
+        with pytest.raises(AirflowApiResponseError, match="Invalid tasks response"):
             client.build_dag_details({"dag_id": "test_dag"})
 
 
@@ -824,7 +871,8 @@ class TestMWAAClientGetTaskInstancesForRun:
                     "start_date": "2025-01-01T00:02:00+00:00",
                     "end_date": "2025-01-01T00:03:00+00:00",
                 },
-            ]
+            ],
+            "total_entries": 2,
         }
         mock_mwaa_client.invoke_rest_api.side_effect = [{"RestApiResponse": instances_response}]
 
@@ -993,7 +1041,10 @@ class TestMWAAClientEdgeCases:
         mock_aws_client.get_mwaa_client.return_value = mock_mwaa_client
         mock_aws_client_cls.return_value = mock_aws_client
 
-        instances_response = {"task_instances": [{"state": "success", "start_date": "2025-01-01T00:01:00+00:00"}]}
+        instances_response = {
+            "task_instances": [{"state": "success", "start_date": "2025-01-01T00:01:00+00:00"}],
+            "total_entries": 1,
+        }
         mock_mwaa_client.invoke_rest_api.side_effect = [{"RestApiResponse": instances_response}]
 
         client = MWAAClient(

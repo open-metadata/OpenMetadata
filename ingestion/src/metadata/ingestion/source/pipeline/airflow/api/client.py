@@ -38,6 +38,7 @@ from metadata.ingestion.source.pipeline.airflow.api.auth import (
     build_basic_auth_callback,
     build_gcp_token_callback,
 )
+from metadata.ingestion.source.pipeline.airflow.api.exceptions import AirflowApiResponseError
 from metadata.ingestion.source.pipeline.airflow.api.models import (
     AirflowApiDagDetails,
     AirflowApiDagRun,
@@ -254,21 +255,21 @@ class AirflowApiClient:
             response = self.client.get(f"{path}{separator}limit={limit}&offset={offset}")
 
             response = self._parse_response(response)
-            if not response:
-                break
+            if not isinstance(response, dict) or not isinstance(response.get(key), list):
+                raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
 
-            page = response.get(key, [])
+            page = response[key]
+            total_entries = response.get("total_entries")
+            if total_entries is not None and type(total_entries) is not int:
+                raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
             if not page:
+                if total_entries is not None and offset < total_entries:
+                    raise AirflowApiResponseError(f"Invalid paginated response for {path} at offset={offset}")
                 break
             result.extend(page)
-            returned_page_size = len(page)
-            offset += returned_page_size
+            offset += len(page)
 
-            total_entries = response.get("total_entries")
-            if total_entries is not None:
-                if offset >= total_entries:
-                    break
-            elif returned_page_size < limit:
+            if total_entries is not None and offset >= total_entries:
                 break
         return result
 
@@ -307,7 +308,7 @@ class AirflowApiClient:
 
         task_response = self.get_dag_tasks(dag_id)
         if not isinstance(task_response, dict) or not isinstance(task_response.get("tasks"), list):
-            raise TypeError(f"Invalid tasks response for DAG {dag_id}")
+            raise AirflowApiResponseError(f"Invalid tasks response for DAG {dag_id}")
         tasks_data = task_response["tasks"]
 
         tasks = [
