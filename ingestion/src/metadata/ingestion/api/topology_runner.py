@@ -86,6 +86,10 @@ class TopologyRunnerMixin(Generic[C]):
         "OMetaTagAndClassification",
         "OMetaLifeCycleData",
         "AddLineageRequest",
+        # Metrics a table declares (semantic views/metric views) ride along on the
+        # table node; the node's entity is still the Table. dbt's dedicated metrics
+        # node types its stage as CreateMetricRequest, so it keeps its own primary.
+        "Metric",
     }
 
     @property
