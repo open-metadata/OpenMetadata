@@ -75,9 +75,10 @@ export const getUserManagerConfig = (
   return {
     authority,
     client_id: clientId,
-    // Honor the server-configured response type; the oidc-client UserManager
-    // otherwise defaults to the implicit 'id_token' flow (#29597).
-    response_type: responseType ?? 'code',
+    // Forward the server-configured response type; without it the oidc-client
+    // UserManager silently drops the field and every provider requests the
+    // implicit 'id_token' flow regardless of configuration (#29597).
+    response_type: responseType ?? 'id_token',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -113,7 +114,7 @@ export const getCandidateUserManagerConfig = (
     authority,
     client_id: clientId,
     redirect_uri: getRedirectUri(callbackUrl),
-    response_type: responseType ?? 'code',
+    response_type: responseType ?? 'id_token',
     scope: scope || 'openid email profile',
     loadUserInfo: false,
     userStore: testStore,
@@ -133,7 +134,7 @@ export const getAuthConfig = (
     enableSelfSignup,
     enableAutoRedirect,
     samlConfiguration,
-    responseType,
+    responseType = 'id_token',
     clientType = 'public',
   } = authClient;
   let config = {};
@@ -161,7 +162,7 @@ export const getAuthConfig = (
         provider,
         providerName,
         scope: 'openid email profile',
-        responseType: responseType ?? 'id_token',
+        responseType,
         clientType,
         enableSelfSignup,
         enableAutoRedirect,
@@ -175,7 +176,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         scope: 'openid email profile',
-        responseType: responseType ?? 'id_token',
+        responseType,
         clientType,
         enableSelfSignup,
         enableAutoRedirect,
@@ -199,7 +200,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         scope: 'openid email profile',
-        responseType: responseType ?? 'code',
+        responseType,
         clientType,
         enableSelfSignup,
         enableAutoRedirect,

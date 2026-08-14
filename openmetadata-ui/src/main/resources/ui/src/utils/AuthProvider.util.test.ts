@@ -63,10 +63,10 @@ describe('getUserManagerConfig — forwards responseType to the OIDC UserManager
     expect(config.response_type).toBe('id_token');
   });
 
-  it('should default to the authorization-code flow when responseType is absent', () => {
+  it('should fall back to the schema default when responseType is absent', () => {
     const config = getUserManagerConfig(withScope({ responseType: undefined }));
 
-    expect(config.response_type).toBe('code');
+    expect(config.response_type).toBe('id_token');
   });
 });
 
@@ -93,7 +93,7 @@ describe('getAuthConfig — every OIDC provider respects the server-provided res
     expect(config.responseType).toBe('id_token');
   });
 
-  it('should fall back to "code" for AWS Cognito when the server omits responseType', () => {
+  it('should fall back to the schema default for AWS Cognito when the server omits responseType', () => {
     const config = getAuthConfig(
       baseAuthConfig({
         provider: AuthProvider.AwsCognito,
@@ -101,7 +101,7 @@ describe('getAuthConfig — every OIDC provider respects the server-provided res
       })
     );
 
-    expect(config.responseType).toBe('code');
+    expect(config.responseType).toBe('id_token');
   });
 
   it('should respect a server responseType of "code" for Google', () => {
