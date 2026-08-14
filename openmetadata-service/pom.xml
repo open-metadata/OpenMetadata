@@ -26,8 +26,8 @@
     <socket.io-client.version>2.1.2</socket.io-client.version>
     <json-smart.version>2.6.0</json-smart.version>
     <jetty.version>12.1.12</jetty.version>
-    <logback-core.version>1.6.1</logback-core.version>
-    <logback-classic.version>1.6.1</logback-classic.version>
+    <logback-core.version>1.5.36</logback-core.version>
+    <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.4.0</resilience4j-ratelimiter.version>
     <tika.version>3.3.2</tika.version>
   </properties>
