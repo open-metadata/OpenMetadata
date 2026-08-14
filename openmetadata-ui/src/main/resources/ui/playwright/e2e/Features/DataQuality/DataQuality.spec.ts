@@ -1466,6 +1466,8 @@ test.describe(
           );
 
           await expect(pageSizeDropdown).toBeVisible();
+          // NextPrevious inherits Ant Dropdown's hover trigger; clicking this
+          // button only runs its preventDefault handler and may not open the menu.
           await pageSizeDropdown.hover();
           await expect(pageSizeMenu).toBeVisible();
           await expect(pageSizeMenu.getByRole('menuitem')).toHaveCount(3);

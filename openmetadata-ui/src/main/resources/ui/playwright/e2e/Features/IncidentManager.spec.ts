@@ -1087,6 +1087,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       `test-case-${assigneeTestCase.testCaseName}`
     );
 
+    // The resolve API confirms the write before the search index necessarily
+    // exposes it, so wait on the exact filtered request the UI already issued.
     if (!(await assignedIncident.isVisible().catch(() => false))) {
       await expect
         .poll(
@@ -1129,6 +1131,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const indexedAssigneeFilterRes = page.waitForResponse(
         `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*assignee=${assigneeTestCase.username}*`
       );
+      // The assignee lives in the URL query, so reload preserves the filter and
+      // renders the indexed response without rebuilding UI state in the test.
       await page.reload();
       await indexedAssigneeFilterRes;
     }
