@@ -925,7 +925,7 @@ export const deleteCreatedProperty = async (
   // the modal mask is gone before the next sidebar click in callers' loops.
   await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
   await expect(
-    page.locator('tr').filter({ hasText: propertyName })
+    page.locator(`[data-row-key="${propertyName}"]`)
   ).not.toBeVisible();
 };
 
