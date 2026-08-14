@@ -118,6 +118,6 @@ test.describe('Domains widget — asset count regression', () => {
           intervals: [1_000, 2_000, 5_000],
         }
       )
-      .toContain('1');
+      .toBe('1');
   });
 });

@@ -459,28 +459,50 @@ test.describe('Glossary Term Relation Settings', () => {
     const token = await getSavedAdminToken();
     const apiContext = await getAuthContext(token);
 
-    const countRes = await apiContext.get(`${RELATION_TYPES_API}?limit=1&offset=0`);
-    const countData = await countRes.json();
-    const currentTotal: number = countData.paging?.total ?? 0;
-    const needed = Math.max(0, PAGE_SIZE_BASE + 1 - currentTotal);
-    const createdNames: string[] = [];
-
-    for (let i = 0; i < needed; i++) {
-      const name = `pwPage2${uuid()}`;
-      await createRelationTypeViaApi(apiContext, { name, displayName: `PW P2 ${i}` });
-      createdNames.push(name);
-    }
-
-    const targetName = createdNames[createdNames.length - 1] ?? '';
+    // 'zzz' prefix sorts the target to the very end alphabetically, so page 1
+    // always shows earlier rows and the target is always on page 2+, regardless
+    // of table ordering or how many other workers have added rows.
+    const targetName = `zzzpwPage2${uuid()}`;
+    const fillerNames: string[] = [];
 
     try {
-      if (!targetName) {
-        test.skip();
+      await createRelationTypeViaApi(apiContext, {
+        name: targetName,
+        displayName: 'PW Page 2 Target',
+      });
 
-        return;
+      // Count AFTER creating the target, then seed enough fillers so that
+      // total > PAGE_SIZE_BASE and the target (sorted to the end) sits on page 2+.
+      const countRes = await apiContext.get(
+        `${RELATION_TYPES_API}?limit=1&offset=0`
+      );
+      const currentTotal: number =
+        (await countRes.json()).paging?.total ?? 0;
+      const fillerCount = Math.max(0, PAGE_SIZE_BASE + 1 - currentTotal);
+
+      for (let i = 0; i < fillerCount; i++) {
+        const name = `pwFiller${uuid()}`;
+        await createRelationTypeViaApi(apiContext, {
+          name,
+          displayName: `PW Filler ${i}`,
+        });
+        fillerNames.push(name);
       }
 
       await goToRelationSettings(page);
+
+      // Track whether a page-2+ request fired so we can assert the cross-page
+      // navigation actually ran (a target on page 1 would pass without it).
+      let crossPageNavigated = false;
+      page.on('request', (req) => {
+        if (
+          req.url().includes('/glossaryTermRelationSettings/relationTypes') &&
+          req.url().includes('offset=') &&
+          !req.url().includes('offset=0')
+        ) {
+          crossPageNavigated = true;
+        }
+      });
 
       // findRowAcrossPages waits for the first tbody row to appear after each
       // Next Page response so the correct page DOM is read on each iteration.
@@ -488,8 +510,14 @@ test.describe('Glossary Term Relation Settings', () => {
       await expect(
         page.getByTestId(`relation-name-${targetName}`)
       ).toBeVisible();
+
+      expect(
+        crossPageNavigated,
+        'test must navigate past page 1 to exercise the stale-DOM-after-pagination fix'
+      ).toBe(true);
     } finally {
-      for (const name of createdNames) {
+      await deleteRelationTypeViaApi(apiContext, targetName);
+      for (const name of fillerNames) {
         await deleteRelationTypeViaApi(apiContext, name);
       }
       await apiContext.dispose();
