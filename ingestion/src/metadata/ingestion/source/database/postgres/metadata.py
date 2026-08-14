@@ -232,12 +232,11 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(
-                    text(
-                        POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
-                        )
-                    )
+                    text(POSTGRES_GET_ALL_TABLE_PG_POLICY),
+                    {
+                        "schema_name": schema_name,
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    },
                 ).all()
             for res in result:
                 row = list(res)

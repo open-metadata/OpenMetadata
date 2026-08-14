@@ -86,6 +86,7 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/entity/context/contextMemory';
+import { queryClient } from '../../../queryClient';
 import {
   createContextMemory,
   deleteContextMemory,
@@ -93,6 +94,7 @@ import {
 } from '../../../rest/contextMemoryAPI';
 import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getErrorText } from '../../../utils/StringUtils';
@@ -113,6 +115,8 @@ const TagSelectForm = withSuspenseFallback(
 );
 
 // ─── Form types ───────────────────────────────────────────────────────────────
+
+const MEMORY_LABEL_KEY = 'label.memory';
 
 const DEFAULT_FORM_VALUES: MemoryFormValues = {
   title: '',
@@ -198,6 +202,16 @@ const EmptyLinkedAssets: FC = () => {
   );
 };
 
+const EmptyTags: FC = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Typography className="tw:text-utility-gray-400" size="text-xs">
+      {t('label.no-tags-added')}
+    </Typography>
+  );
+};
+
 const LinkedAssetsReadOnly: FC<{ assets: DataAssetOption[] }> = ({
   assets,
 }) => {
@@ -244,13 +258,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [isViewOnly, setIsViewOnly] = useState(viewOnly);
   const isEditMode = Boolean(memoryToEdit) && !isViewOnly;
 
-  let modalTitle = t('label.add-entity', { entity: t('label.memory') });
+  let modalTitle = t('label.add-entity', { entity: t(MEMORY_LABEL_KEY) });
   if (isEditMode) {
-    modalTitle = t('label.edit-entity', { entity: t('label.memory') });
+    modalTitle = t('label.edit-entity', { entity: t(MEMORY_LABEL_KEY) });
   } else if (isViewOnly) {
     modalTitle =
       memoryToEdit?.title ||
-      t('label.edit-entity', { entity: t('label.memory') });
+      t('label.edit-entity', { entity: t(MEMORY_LABEL_KEY) });
   }
 
   const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
@@ -269,7 +283,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
   const submitLabel = isEditMode
     ? t('label.save-entity', { entity: t('label.change-plural') })
-    : t('label.create-entity', { entity: t('label.memory') });
+    : t('label.create-entity', { entity: t(MEMORY_LABEL_KEY) });
 
   // ── RHF form state ──────────────────────────────────────────────────────────
   const form = useForm<MemoryFormValues>({
@@ -351,7 +365,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setShowTagForm(false);
     setModalError('');
     setIsEditingVisibility(false);
-  }, [memoryToEdit]);
+  }, [memoryToEdit, form, t]);
 
   const handleClose = () => {
     form.reset(DEFAULT_FORM_VALUES);
@@ -412,11 +426,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       const memoryTypeValue = (memoryType?.id as MemoryType) || undefined;
 
       const validAssets = linkedAssets.filter(
-        (a) => a.reference?.id && a.reference?.type
+        (a): a is DataAssetOption & { reference: EntityReference } =>
+          Boolean(a.reference?.id && a.reference?.type)
       );
       const toRef = (a: DataAssetOption): EntityReference => ({
-        id: a.reference!.id,
-        type: a.reference!.type,
+        id: a.reference.id,
+        type: a.reference.type,
         name: a.reference?.name,
         displayName: a.reference?.displayName,
         fullyQualifiedName: a.reference?.fullyQualifiedName,
@@ -466,7 +481,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         const patch = compare(original, updated);
         await updateContextMemory(memoryToEdit.id, patch);
         showSuccessToast(
-          t('server.entity-updated-success', { entity: t('label.memory') })
+          t('server.entity-updated-success', { entity: t(MEMORY_LABEL_KEY) })
         );
         onUpdated?.();
       } else {
@@ -486,9 +501,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           ...(relatedEntities.length > 0 ? { relatedEntities } : {}),
           shareConfig: { visibility },
         });
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+        });
 
         showSuccessToast(
-          t('server.create-entity-success', { entity: t('label.memory') })
+          t('server.create-entity-success', { entity: t(MEMORY_LABEL_KEY) })
         );
         onCreated();
       }
@@ -508,8 +526,11 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     setModalError('');
     try {
       await deleteContextMemory(memoryToEdit.id);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.memory') })
+        t('server.entity-deleted-successfully', { entity: t(MEMORY_LABEL_KEY) })
       );
       onDeleted?.();
       handleClose();
@@ -729,7 +750,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       name="memory"
                       rules={{
                         required: t('label.field-required', {
-                          field: t('label.memory'),
+                          field: t(MEMORY_LABEL_KEY),
                         }),
                       }}>
                       {({ field, fieldState }) => (
@@ -737,7 +758,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           <div className="tw:flex tw:items-center tw:justify-between">
                             <div className="tw:flex tw:items-center tw:gap-1">
                               <FormItemLabel
-                                label={t('label.memory')}
+                                label={t(MEMORY_LABEL_KEY)}
                                 required={!isViewOnly}
                               />
                               <Tooltip
@@ -966,6 +987,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               </Typography>
                             </div>
                             <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
+                              {isViewOnly && selectedTags.length === 0 && (
+                                <EmptyTags />
+                              )}
                               {selectedTags.map((tag) =>
                                 isViewOnly ? (
                                   <Badge

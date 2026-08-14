@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
 
@@ -36,6 +35,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -84,13 +84,15 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository.ForcedDeleteResult;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository.KeysetPageParams;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.logstorage.stream.IngestionLogStreamFactory;
+import org.openmetadata.service.logstorage.stream.IngestionLogStreamManager;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.MicrometerBundle;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
@@ -125,9 +127,15 @@ public class IngestionPipelineResource
   static final String SORT_FIELD_DISPLAY_NAME = "displayName";
   private static final String SORT_ORDER_ASC = "asc";
   private static final String SORT_ORDER_DESC = "desc";
+  static final String RUNNER_CLEANUP_HEADER = "X-OpenMetadata-Runner-Cleanup";
+  static final String RUNNER_CLEANUP_SKIPPED = "skipped-unavailable";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private IngestionLogStreamFactory logStreamFactory;
   static final String FIELDS = "owners,followers";
+  private static final String NO_LOG_BACKEND =
+      "No log backend is configured on this deployment, so ingestion logs cannot be streamed.";
+  private static final String LOG_STREAM_FIELDS = "pipelineStatuses,ingestionRunner";
 
   @Inject private StreamableLogsMetrics streamableLogsMetrics;
   @Inject private IngestionProgressTracker progressTracker;
@@ -151,6 +159,7 @@ public class IngestionPipelineResource
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
     repository.setPipelineServiceClient(pipelineServiceClient);
+    this.logStreamFactory = new IngestionLogStreamFactory(repository, pipelineServiceClient);
 
     // Initialize log storage - always initialize with at least DefaultLogStorage
     LogStorageConfiguration logStorageConfig =
@@ -961,6 +970,8 @@ public class IngestionPipelineResource
       description = "Delete an ingestion pipeline by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "400", description = "Force requires hardDelete=true"),
+        @ApiResponse(responseCode = "403", description = "Force requires administrator access"),
         @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} is not found")
       })
   public Response delete(
@@ -970,10 +981,57 @@ public class IngestionPipelineResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description =
+                  "Allow an administrator to hard-delete metadata when the ingestion runner is unavailable. "
+                      + "The external workflow might require manual cleanup. (Default = `false`)")
+          @QueryParam("force")
+          @DefaultValue("false")
+          boolean force,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    Response response =
+        force
+            ? forceDelete(uriInfo, securityContext, id, hardDelete)
+            : delete(uriInfo, securityContext, id, false, hardDelete);
+    return response;
+  }
+
+  private Response forceDelete(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean hardDelete) {
+    authorizeForceDelete(securityContext, id);
+    validateForceDelete(hardDelete);
+    String userName = securityContext.getUserPrincipal().getName();
+    ForcedDeleteResult result = repository.forceDelete(userName, id);
+    limits.invalidateCache(entityType);
+    addHref(uriInfo, result.response().entity());
+    return toForceDeleteResponse(result);
+  }
+
+  private void authorizeForceDelete(SecurityContext securityContext, UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContext.Operation.DELETE));
+    authorizer.authorizeAdmin(securityContext);
+  }
+
+  static void validateForceDelete(boolean hardDelete) {
+    if (!hardDelete) {
+      throw new BadRequestException(
+          "Force deleting an ingestion pipeline requires hardDelete=true");
+    }
+  }
+
+  private Response toForceDeleteResponse(ForcedDeleteResult result) {
+    RestUtil.DeleteResponse<IngestionPipeline> deleteResponse = result.response();
+    Response.ResponseBuilder responseBuilder = Response.fromResponse(deleteResponse.toResponse());
+    if (result.wasRunnerCleanupSkipped()) {
+      responseBuilder.header(RUNNER_CLEANUP_HEADER, RUNNER_CLEANUP_SKIPPED);
+    }
+    return responseBuilder.build();
   }
 
   @DELETE
@@ -1105,8 +1163,7 @@ public class IngestionPipelineResource
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
     IngestionPipeline ingestionPipeline =
-        getIngestionPipelineByIdOrName(
-            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
+        getIngestionPipelineByIdOrName(uriInfo, securityContext, id, LOG_STREAM_FIELDS);
     Map<String, String> lastIngestionLogs;
     boolean useStreamableLogs =
         ingestionPipeline.getEnableStreamableLogs()
@@ -1129,7 +1186,9 @@ public class IngestionPipelineResource
         Object logs = lastIngestionLogs.remove("logs");
         if (logs != null) {
           lastIngestionLogs.put(
-              TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()), logs.toString());
+              PipelineServiceClientInterface.taskKeyOf(
+                  ingestionPipeline.getPipelineType().toString()),
+              logs.toString());
         }
       } else {
         throw new PipelineServiceClientException(
@@ -1175,8 +1234,7 @@ public class IngestionPipelineResource
     // like getLastIngestionLogs. The streaming body below runs after this method returns, so its
     // failures were never caught here anyway.
     IngestionPipeline ingestionPipeline =
-        getIngestionPipelineByIdOrName(
-            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
+        getIngestionPipelineByIdOrName(uriInfo, securityContext, id, LOG_STREAM_FIELDS);
 
     String filename =
         String.format(
@@ -1221,7 +1279,8 @@ public class IngestionPipelineResource
               Object logs = logChunk.remove("logs");
               if (logs != null) {
                 logChunk.put(
-                    TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
+                    PipelineServiceClientInterface.taskKeyOf(
+                        ingestionPipeline.getPipelineType().toString()),
                     logs.toString());
               }
             } else {
@@ -1741,46 +1800,57 @@ public class IngestionPipelineResource
 
   @GET
   @Path("/logs/{fqn}/stream/{runId}")
-  @Produces("text/event-stream")
+  @Produces(MediaType.SERVER_SENT_EVENTS)
   @Operation(
       operationId = "streamPipelineLogs",
       summary = "Stream logs for a pipeline run",
-      description = "Stream logs in real-time for a specific pipeline run using Server-Sent Events",
+      description =
+          "Tail a pipeline run's logs over Server-Sent Events so a client renders them as they are "
+              + "produced instead of polling. Reads from whichever backend holds the run's log — "
+              + "object storage when streamable logs are enabled for the pipeline, the pipeline "
+              + "service otherwise. Every event carries an `after` cursor; reconnect with "
+              + "`?after=<cursor>` to resume without re-reading what was already delivered. The "
+              + "server closes the stream with a `complete` event once the run finishes, and all "
+              + "viewers of the same run share a single reader against the log backend.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Log stream",
-            content = @Content(mediaType = "text/event-stream")),
-        @ApiResponse(responseCode = "404", description = "Pipeline or logs not found")
+            description =
+                "Log stream of `logs`, `complete` and `error` events. A deployment with no log "
+                    + "backend, or a server at its stream capacity, answers on the stream itself "
+                    + "with a single `error` event.",
+            content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS)),
+        @ApiResponse(responseCode = "404", description = "Ingestion pipeline not found")
       })
-  public Response streamPipelineLogs(
+  public void streamPipelineLogs(
+      @Context SseEventSink eventSink,
+      @Context Sse sse,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Fully qualified name of the ingestion pipeline",
+              description = "Id (UUID) or fullyQualifiedName of the ingestion pipeline",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
-      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
-          UUID runId) {
-    try {
-      // Validate that the pipeline exists first
-      IngestionPipeline pipeline =
-          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
-
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-      // Stream logs using the repository's log storage
-      return repository.streamLogs(fqn, runId);
-    } catch (Exception e) {
-      LOG.error("Failed to stream logs for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity(Map.of("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
+      @Parameter(
+              description =
+                  "Run to stream. A UUID for a run whose logs are in object storage, or the "
+                      + "pipeline service's own run identifier.",
+              schema = @Schema(type = "string"))
+          @PathParam("runId")
+          String runId,
+      @Parameter(
+              description = "Resume the stream after this cursor, as returned by a previous event",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+    IngestionPipeline pipeline =
+        getIngestionPipelineByIdOrName(uriInfo, securityContext, fqn, LOG_STREAM_FIELDS);
+    IngestionLogStreamManager streams = IngestionLogStreamManager.getInstance();
+    if (logStreamFactory.hasLogBackend()) {
+      streams.stream(logStreamFactory.request(pipeline, runId, after), eventSink, sse);
+    } else {
+      streams.refuse(eventSink, sse, runId, NO_LOG_BACKEND);
     }
   }
 

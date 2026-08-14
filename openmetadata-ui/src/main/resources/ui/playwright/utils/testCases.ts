@@ -13,6 +13,10 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  TEST_CASE_LAST_RUN_BANNER_TEST_IDS,
+  type TestCaseLastRunBannerStatus,
+} from '../constant/dataQuality';
 import { TableClass } from '../support/entity/TableClass';
 import {
   fetchCompletedCsvAsyncJobResult,
@@ -45,6 +49,17 @@ export const getFailedRowsData = (table: TableClass) => {
       return row.slice(0, columnCount);
     }),
   };
+};
+
+export const verifyTestCaseLastRunBanner = async (
+  page: Page,
+  status: TestCaseLastRunBannerStatus
+) => {
+  const banner = page.getByTestId(TEST_CASE_LAST_RUN_BANNER_TEST_IDS[status]);
+
+  await expect(banner).toBeVisible();
+
+  return banner;
 };
 
 type CsvExportResponse = {
@@ -286,17 +301,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
       res.request().method() === 'GET' &&
       res.status() === 200
   );
-  await breadcrumb.getByRole('link', { name: tableName }).click();
-  await tableResponsePromise;
-
-  // The crumb opens the table's default tab; return to the Data Quality
-  // tab the flow started from so follow-up steps find the test case list.
-  await page.getByTestId('profiler').click();
-  const testCaseResponse = page.waitForResponse(
+  const testCaseResponsePromise = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
   );
-  await page.getByRole('tab', { name: 'Data Quality' }).click();
-  await testCaseResponse;
+  await breadcrumb.getByRole('link', { name: tableName }).click();
+  await Promise.all([tableResponsePromise, testCaseResponsePromise]);
 };
 
 export const findSystemTestDefinition = async (page: Page) => {

@@ -14,7 +14,6 @@ Mixin class containing PATCH specific methods
 To be used by OpenMetadata class
 """
 
-import hashlib
 import json
 import traceback
 from copy import deepcopy
@@ -78,21 +77,38 @@ def _is_precondition_failed(exc: Exception) -> bool:
 
 
 def _entity_etag(entity: BaseModel) -> Optional[str]:  # noqa: UP045
-    """Strong ETag the server derives for an entity, for optimistic-concurrency writes.
+    """Weak ``If-Match`` validator for optimistic-concurrency writes: ``W/"<version>"``.
 
-    Mirrors the server's ``EntityETag.generateETag``: SHA-256 of ``"<version>-<updatedAt>"``,
-    first 16 hex chars, quoted. Computing it from the already-fetched instance lets the column
-    patch helpers send ``If-Match`` without a second GET, and ties the precondition to the exact
-    instance the patch is built from. Returns ``None`` when version/updatedAt are absent so the
-    caller falls back to a non-conditional write. (Jetty strips any inbound ``--gzip`` suffix from
-    ``If-Match``, so the bare value matches the server's stored ETag.)
+    Mirrors the server's ``EntityETag.generateWeakETag`` — the form ``validateETag`` accepts via
+    ``isWeakMatch`` — and deliberately NOT the strong ``generateETag``. The strong ETag hashes the
+    serialized entity, and a PATCH validates it against the repository's own ``patchFields``
+    projection while the GET that publishes it serializes the caller's ``fields``. Those two
+    projections differ, so a strong ETag can never match on a conditional write and every patch
+    would 412 into a non-conditional fallback.
+
+    The version is projection-independent, is bumped on every update, and is what the server's own
+    row-level compare-and-swap keys on — exactly the optimistic-lock semantics wanted here: reject
+    the write if the entity moved between our read and our write. Weak-match support predates every
+    server release that honours ``If-Match`` at all, so older servers either accept this or ignore
+    the header entirely.
+
+    The rendering must byte-match Java's ``Double.toString``, and does so *without* depending on
+    the ``multipleOf: 0.1`` invariant on ``entityVersion``: both sides emit the shortest string that
+    round-trips to the same double (Python since 3.1, Java since JDK 19), so they agree for any
+    number of decimal places. Do not reformat this with a fixed precision — ``:.1f`` would render a
+    hypothetical ``1.25`` as ``1.2`` and silently degrade every conditional write to the
+    non-conditional fallback. The one divergence left is unreachable: Java switches to scientific
+    notation at ``1e7`` (``1.0E7``) where Python does not, which an entity would need ~10^8 updates
+    to reach.
+
+    Returns ``None`` when ``version`` is absent so the caller falls back to a non-conditional
+    write. (Jetty strips any inbound ``--gzip`` suffix from ``If-Match``, so the bare value
+    matches the server's validator.)
     """
     version = getattr(entity, "version", None)
-    updated_at = getattr(entity, "updatedAt", None)
-    if version is None or updated_at is None:
+    if version is None:
         return None
-    raw = f"{model_str(version)}-{model_str(updated_at)}"
-    return '"' + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16] + '"'
+    return f'W/"{model_str(version)}"'
 
 
 def _summarize_patch(patch: Any) -> str:
@@ -567,8 +583,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             falling_back = instance_etag is not None and instance_etag == last_rejected_etag
             if falling_back:
                 logger.warning(
-                    "If-Match was rejected for an unchanged [%s] (client/server ETag mismatch); "
-                    "writing without optimistic locking so the column tag change is not dropped.",
+                    "If-Match [%s] was rejected for [%s] even though its version did not move, so the "
+                    "precondition cannot be satisfied (client/server validator mismatch); writing "
+                    "without optimistic locking so the column tag change is not dropped.",
+                    instance_etag,
                     entity_label,
                 )
             try:
@@ -584,8 +602,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                     last_rejected_etag = instance_etag
                     if attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
                         logger.info(
-                            "Concurrent modification while patching column tags on [%s]; "
-                            "refetching and retrying (attempt %d/%d)",
+                            "If-Match [%s] rejected while patching column tags on [%s]; refetching "
+                            "against the current version and retrying (attempt %d/%d)",
+                            instance_etag,
                             entity_label,
                             attempt + 1,
                             MAX_OPTIMISTIC_LOCK_RETRIES,
@@ -694,8 +713,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             falling_back = instance_etag is not None and instance_etag == last_rejected_etag
             if falling_back:
                 logger.warning(
-                    "If-Match was rejected for an unchanged [%s] (client/server ETag mismatch); "
-                    "writing without optimistic locking so the column description change is not dropped.",
+                    "If-Match [%s] was rejected for [%s] even though its version did not move, so the "
+                    "precondition cannot be satisfied (client/server validator mismatch); writing "
+                    "without optimistic locking so the column description change is not dropped.",
+                    instance_etag,
                     table_label,
                 )
             try:
@@ -711,8 +732,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
                     last_rejected_etag = instance_etag
                     if attempt < MAX_OPTIMISTIC_LOCK_RETRIES - 1:
                         logger.info(
-                            "Concurrent modification while patching column descriptions on [%s]; "
-                            "refetching and retrying (attempt %d/%d)",
+                            "If-Match [%s] rejected while patching column descriptions on [%s]; "
+                            "refetching against the current version and retrying (attempt %d/%d)",
+                            instance_etag,
                             table_label,
                             attempt + 1,
                             MAX_OPTIMISTIC_LOCK_RETRIES,

@@ -240,8 +240,10 @@ export default defineConfig({
       name: 'sso-auth',
       testMatch: [
         '**/OktaSelfSignupClaims.spec.ts',
+        '**/OktaSessionRenewalPublic.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/SSORenewal.spec.ts',
+        '**/SSOSessionLimit.spec.ts',
       ],
       use: { ...devices['Desktop Chrome'] },
       fullyParallel: false,
@@ -270,7 +272,7 @@ export default defineConfig({
       name: 'Data Insight',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
-      grep: /data-insight/,
+      grep: combineGrep(/@data-insight/),
       teardown: 'entity-data-teardown',
     },
     {
