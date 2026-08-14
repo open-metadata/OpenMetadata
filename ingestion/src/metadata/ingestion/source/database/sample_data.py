@@ -2373,6 +2373,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 right=OMetaTestSuiteSample(
                     test_suite=CreateTestSuiteRequest(
                         name=test_suite["testSuiteName"],
+                        displayName=test_suite.get("testSuiteDisplayName"),
                         description=test_suite["testSuiteDescription"],
                         basicEntityReference=test_suite["executableEntityReference"],
                     )
@@ -2386,6 +2387,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         for logical_test_suite in self.logical_test_suites["tests"]:
             test_suite = CreateTestSuiteRequest(
                 name=logical_test_suite["testSuiteName"],
+                displayName=logical_test_suite.get("testSuiteDisplayName"),
                 description=logical_test_suite["testSuiteDescription"],
             )  # type: ignore
             test_cases: List[TestCase] = []  # noqa: UP006
@@ -2418,6 +2420,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 test_case_req = OMetaTestCaseSample(
                     test_case=CreateTestCaseRequest(
                         name=test_case["name"],
+                        displayName=test_case.get("displayName"),
                         description=test_case["description"],
                         testDefinition=test_case["testDefinitionName"],
                         entityLink=test_case["entityLink"],
