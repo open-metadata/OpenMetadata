@@ -42,6 +42,28 @@ public final class SearchRankingHelper {
   private static final List<String> IDENTITY_FIELDS = List.of("name", "fullyQualifiedName");
 
   /**
+   * Hits inspected when deciding whether the query names an entity exactly.
+   *
+   * <p>The decision has to be a property of the query and the corpus, never of the page being
+   * asked for, or pagination tears: the exactly-named document sits in the top band, so a
+   * {@code from=0} request sees it and returns the pruned result set while a {@code from=15}
+   * request looks at hits 16-30, does not see it, and returns the widened one. The two pages then
+   * disagree about {@code hits.total} and about which document is 16th, and rows can repeat or
+   * disappear across the boundary. Always judging the same top-of-ranking window keeps every page
+   * of one query on the same result set.
+   */
+  private static final int IDENTITY_PROBE_SIZE = 10;
+
+  /**
+   * Hits a caller should read identifiers from. Callers that reuse an already-fetched page must cut
+   * it to this many, or a large first page would judge on more hits than the probe issued for a
+   * later page and the two could reach opposite conclusions.
+   */
+  public static int identityProbeSize() {
+    return IDENTITY_PROBE_SIZE;
+  }
+
+  /**
    * Saturation applied to the text ranking stages so a stage can never score above its configured
    * weight.
    *
@@ -700,21 +722,34 @@ public final class SearchRankingHelper {
   public static <R> R searchWithIdentifierPrecision(
       String query,
       SearchSettings searchSettings,
+      int from,
+      int size,
       SearchPass<R> pass,
       Function<R, Stream<String>> identifiersOf)
       throws IOException {
-    R response = pass.run(searchSettings);
-    if (hasPrunableFuzzyStage(searchSettings)
-        && isExactIdentifierLookup(query, identifiersOf.apply(response))) {
-      response = pass.run(withoutFuzzyStages(searchSettings));
+    if (!hasPrunableFuzzyStage(searchSettings)) {
+      return pass.run(searchSettings, from, size);
     }
-    return response;
+    boolean requestedWindowIsTheProbe = from == 0 && size >= IDENTITY_PROBE_SIZE;
+    R requestedWindow = requestedWindowIsTheProbe ? pass.run(searchSettings, from, size) : null;
+    R probe =
+        requestedWindowIsTheProbe
+            ? requestedWindow
+            : pass.run(searchSettings, 0, IDENTITY_PROBE_SIZE);
+    if (isExactIdentifierLookup(query, identifiersOf.apply(probe))) {
+      return pass.run(withoutFuzzyStages(searchSettings), from, size);
+    }
+    return requestedWindowIsTheProbe ? requestedWindow : pass.run(searchSettings, from, size);
   }
 
-  /** One execution of a search, parameterised by the settings it should be built from. */
+  /**
+   * One execution of a search, parameterised by the settings it should be built from and the window
+   * it should return. The window is a parameter because the identity probe has to read the top of
+   * the ranking regardless of which page the caller asked for.
+   */
   @FunctionalInterface
   public interface SearchPass<R> {
-    R run(SearchSettings searchSettings) throws IOException;
+    R run(SearchSettings searchSettings, int from, int size) throws IOException;
   }
 
   /**

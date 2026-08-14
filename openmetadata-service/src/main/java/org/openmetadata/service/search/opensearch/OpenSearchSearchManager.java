@@ -1124,8 +1124,29 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     return SearchRankingHelper.searchWithIdentifierPrecision(
         request.getQuery(),
         searchSettings,
-        settings -> executeSearchRequest(request, subjectContext, settings, clusterAlias),
+        request.getFrom() == null ? 0 : request.getFrom(),
+        request.getSize() == null ? 0 : request.getSize(),
+        (settings, from, size) ->
+            executeSearchRequest(
+                windowed(request, from, size), subjectContext, settings, clusterAlias),
         OpenSearchSearchManager::hitIdentifiers);
+  }
+
+  /**
+   * The same request restricted to a different window, so the identity probe can read the top of
+   * the ranking whichever page was asked for. Returns the original when the window already matches,
+   * which is the common case and avoids copying on the hot path.
+   */
+  private static org.openmetadata.schema.search.SearchRequest windowed(
+      org.openmetadata.schema.search.SearchRequest request, int from, int size) {
+    Integer currentFrom = request.getFrom();
+    Integer currentSize = request.getSize();
+    if (currentFrom != null && currentFrom == from && currentSize != null && currentSize == size) {
+      return request;
+    }
+    return JsonUtils.deepCopy(request, org.openmetadata.schema.search.SearchRequest.class)
+        .withFrom(from)
+        .withSize(size);
   }
 
   /**
@@ -1140,6 +1161,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       return Stream.empty();
     }
     return response.hits().hits().stream()
+        .limit(SearchRankingHelper.identityProbeSize())
         .map(Hit::source)
         .filter(Objects::nonNull)
         .flatMap(source -> SearchRankingHelper.identifiersFrom(source.toJson().asJsonObject()));

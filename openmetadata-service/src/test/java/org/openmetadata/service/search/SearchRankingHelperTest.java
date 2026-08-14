@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -501,5 +503,63 @@ class SearchRankingHelperTest {
   @Test
   void doesNotIdentifyABlankQuery() {
     assertFalse(SearchRankingHelper.isExactIdentifierLookup("  ", List.of("orders").stream()));
+  }
+
+  /**
+   * Every page of one query must come from one result set.
+   *
+   * <p>The exactly-named document sits in the top band, so judging "is this an identifier lookup"
+   * from the page that was asked for gives different answers per page: {@code from=0} sees it and
+   * returns the pruned set, {@code from=15} looks at hits 16-30, does not see it, and returns the
+   * widened one. The pages then disagree about hits.total and about which document is 16th, and
+   * rows repeat or vanish across the boundary. This fake pass reproduces exactly that corpus --
+   * the identifier is only ever in the top window -- and both pages must still be pruned.
+   */
+  @Test
+  void everyPageOfOneQueryUsesTheSameResultSet() throws IOException {
+    SearchSettings settings = settingsWithStages("exactName", "fuzzyName");
+    List<String> prunedWindows = new ArrayList<>();
+
+    for (int from : List.of(0, 15, 300)) {
+      prunedWindows.clear();
+      SearchRankingHelper.SearchPass<List<String>> pass =
+          (used, passFrom, passSize) -> {
+            boolean pruned =
+                used.getDefaultConfiguration().getRanking().getStages().stream()
+                    .noneMatch(stage -> "fuzzyName".equals(stage.getName()));
+            if (pruned) {
+              prunedWindows.add(passFrom + ":" + passSize);
+            }
+            // Only the top of the ranking holds the exactly-named document, as the exact band does.
+            return passFrom == 0 ? List.of("orders") : List.of("orders_archive");
+          };
+
+      SearchRankingHelper.searchWithIdentifierPrecision(
+          "orders", settings, from, 15, pass, List::stream);
+
+      assertEquals(
+          List.of(from + ":15"),
+          prunedWindows,
+          "page at from=" + from + " must be served from the pruned result set");
+    }
+  }
+
+  /** A query that names nothing must never pay for a second pass, on any page. */
+  @Test
+  void anOrdinaryQueryIsNotRerunOnAnyPage() throws IOException {
+    SearchSettings settings = settingsWithStages("exactName", "fuzzyName");
+    for (int from : List.of(0, 15)) {
+      List<String> windows = new ArrayList<>();
+      SearchRankingHelper.SearchPass<List<String>> pass =
+          (used, passFrom, passSize) -> {
+            windows.add(passFrom + ":" + passSize);
+            return List.of("something_else");
+          };
+      SearchRankingHelper.searchWithIdentifierPrecision(
+          "orders", settings, from, 15, pass, List::stream);
+      assertFalse(
+          windows.contains(from + ":15") && windows.size() > 2,
+          "no more than a probe and the page itself: " + windows);
+    }
   }
 }
