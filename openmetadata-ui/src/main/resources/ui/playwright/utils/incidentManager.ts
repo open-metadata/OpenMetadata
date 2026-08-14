@@ -259,6 +259,8 @@ export const addAssigneeFromPopoverWidget = async (data: {
   const taskHeaderAssignee = page.getByTestId(
     'incident-manager-task-header-container'
   );
+  // List pages can contain several incidents, so a generic first() may assert
+  // against an unrelated unassigned row instead of the incident just updated.
   const incidentAssignee = testCaseName
     ? page
         .locator('tr')
