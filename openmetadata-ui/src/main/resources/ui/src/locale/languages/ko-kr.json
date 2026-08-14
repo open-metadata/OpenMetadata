@@ -4420,6 +4420,7 @@
     "create-entity-success": "{{entity}}가 성공적으로 생성되었습니다.",
     "delete-entity-error": "\"{{entity}}\" 삭제 중 오류가 발생했습니다.",
     "deploy-entity-error": "{{entity}} 배포 중 오류가 발생했습니다!",
+    "deploy-entity-success": "{{entity}}이(가) 성공적으로 배포되었습니다.",
     "email-already-exist": "\"{{name}}\" 이름의 {{entity}}가 이미 존재합니다. 다른 이메일을 선택해주세요.",
     "email-confirmation": "이메일을 확인해주세요. 확인 메일이 귀하의 이메일로 전송되었습니다",
     "email-found": "해당 이메일 주소를 가진 사용자가 이미 존재합니다!",

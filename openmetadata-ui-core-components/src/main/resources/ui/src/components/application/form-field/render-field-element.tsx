@@ -203,7 +203,7 @@ export const renderFieldElement = (
           }}
           onChange={(value) => {
             field.onChange(value);
-            onChange?.(value);
+            onChange?.(value.trim());
           }}
           onFocus={onFocus}
         />
@@ -227,7 +227,7 @@ export const renderFieldElement = (
           }}
           onChange={(value) => {
             field.onChange(value);
-            onChange?.(value);
+            onChange?.(value.trim());
           }}
           onFocus={onFocus}
         />
@@ -250,7 +250,7 @@ export const renderFieldElement = (
           }}
           onChange={(value) => {
             field.onChange(value);
-            onChange?.(value);
+            onChange?.(value.trim());
           }}
           onFocus={onFocus}
         />
@@ -274,7 +274,7 @@ export const renderFieldElement = (
           }}
           onChange={(value) => {
             field.onChange(value);
-            onChange?.(value);
+            onChange?.(value.trim());
           }}
           onFocus={onFocus}
         />

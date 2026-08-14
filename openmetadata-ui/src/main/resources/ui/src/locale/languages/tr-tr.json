@@ -4420,6 +4420,7 @@
     "create-entity-success": "{{entity}} başarıyla oluşturuldu.",
     "delete-entity-error": "\"{{entity}}\" silinirken hata oluştu.",
     "deploy-entity-error": "{{entity}} dağıtılırken hata oluştu!",
+    "deploy-entity-success": "{{entity}} başarıyla dağıtıldı.",
     "email-already-exist": "\"{{name}}\" adında bir {{entity}} zaten mevcut. Lütfen başka bir e-posta seçin.",
     "email-confirmation": "Lütfen e-postanızı onaylayın, onay e-postanıza gönderildi",
     "email-found": "Verilen e-posta adresine sahip kullanıcı zaten mevcut!",
