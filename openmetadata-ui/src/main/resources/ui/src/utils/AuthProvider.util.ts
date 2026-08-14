@@ -64,11 +64,20 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
 
   return {
     authority,
     client_id: clientId,
+    // Honor the server-configured response type; the oidc-client UserManager
+    // otherwise defaults to the implicit 'id_token' flow (#29597).
+    response_type: responseType ?? 'code',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -88,7 +97,13 @@ export const getUserManagerConfig = (
 export const getCandidateUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
   const testStore = new WebStorageStateStore({
     store: globalThis.localStorage,
     prefix: SSO_TEST_LOGIN_STORE_PREFIX,
@@ -98,7 +113,7 @@ export const getCandidateUserManagerConfig = (
     authority,
     client_id: clientId,
     redirect_uri: getRedirectUri(callbackUrl),
-    response_type: 'id_token',
+    response_type: responseType ?? 'code',
     scope: scope || 'openid email profile',
     loadUserInfo: false,
     userStore: testStore,
@@ -118,7 +133,7 @@ export const getAuthConfig = (
     enableSelfSignup,
     enableAutoRedirect,
     samlConfiguration,
-    responseType = 'id_token',
+    responseType,
     clientType = 'public',
   } = authClient;
   let config = {};
@@ -146,7 +161,7 @@ export const getAuthConfig = (
         provider,
         providerName,
         scope: 'openid email profile',
-        responseType,
+        responseType: responseType ?? 'id_token',
         clientType,
         enableSelfSignup,
         enableAutoRedirect,
@@ -160,7 +175,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         scope: 'openid email profile',
-        responseType,
+        responseType: responseType ?? 'id_token',
         clientType,
         enableSelfSignup,
         enableAutoRedirect,
@@ -184,7 +199,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         scope: 'openid email profile',
-        responseType: 'code',
+        responseType: responseType ?? 'code',
         clientType,
         enableSelfSignup,
         enableAutoRedirect,
