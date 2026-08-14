@@ -245,6 +245,18 @@ const extractSourceValue = (
     }
   }
 
+  // Terminal value may be a string[] (e.g. ownerDisplayName: ["Aaron Johnson"])
+  if (Array.isArray(val)) {
+    const strings = (val as unknown[]).filter(
+      (item): item is string => typeof item === 'string'
+    );
+    const match = strings.find(
+      (s) => s.toLowerCase() === bucketKey.toLowerCase()
+    );
+
+    return match ?? strings[0];
+  }
+
   return typeof val === 'string' ? val : undefined;
 };
 

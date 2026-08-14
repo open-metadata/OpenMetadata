@@ -159,5 +159,53 @@ describe('getOptionsFromAggregationBucket', () => {
       expect(option.key).toBe('my domain');
       expect(option.label).toBe('my domain');
     });
+
+    it('reads label from string-array _source field (ownerDisplayName pattern)', () => {
+      const bucket = {
+        key: 'aaron johnson',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [{ _source: { ownerDisplayName: ['Aaron Johnson'] } }],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.key).toBe('aaron johnson');
+      expect(option.label).toBe('Aaron Johnson');
+    });
+
+    it('picks the matching entry from a multi-value string-array by bucket key', () => {
+      const bucket = {
+        key: 'aaron johnson',
+        doc_count: 1,
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  ownerDisplayName: ['Bob Smith', 'Aaron Johnson'],
+                },
+              },
+            ],
+          },
+        },
+      } as unknown as Bucket;
+
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
+
+      expect(option.key).toBe('aaron johnson');
+      expect(option.label).toBe('Aaron Johnson');
+    });
   });
 });
