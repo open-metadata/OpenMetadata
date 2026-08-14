@@ -4420,6 +4420,7 @@
     "create-entity-success": "{{entity}} succesvol aangemaakt.",
     "delete-entity-error": "Fout bij het verwijderen van {{entity}}.",
     "deploy-entity-error": "Fout bij het deployen van {{entity}}!",
+    "deploy-entity-success": "{{entity}} succesvol gedeployed.",
     "email-already-exist": " Een {{entity}} met de naam \"{{name}}\" bestaat al. Kies alstublieft een ander e-mailadres.",
     "email-confirmation": "Bevestig alstublieft uw e-mail, de bevestiging is verzonden naar uw e-mail",
     "email-found": "Gebruiker met het opgegeven e-mailadres bestaat al!",

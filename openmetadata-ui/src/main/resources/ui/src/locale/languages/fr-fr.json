@@ -4420,6 +4420,7 @@
     "create-entity-success": "{{entity}} créé avec succès.",
     "delete-entity-error": "Erreur lors de la suppression de {{entity}}.",
     "deploy-entity-error": "Erreur lors du déploiement de {{entity}} !",
+    "deploy-entity-success": "{{entity}} déployé avec succès.",
     "email-already-exist": "Un(e) {{entity}} avec le nom \"{{name}}\" existe déjà. Veuillez choisir une autre adresse e-mail.",
     "email-confirmation": "Veuillez confirmer votre adresse e-mail. La confirmation a été envoyée à votre adresse e-mail.",
     "email-found": "Un utilisateur avec l'adresse e-mail fournie existe déjà !",

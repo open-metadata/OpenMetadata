@@ -226,6 +226,46 @@ describe('EdgeStyleUtils', () => {
       expect(style1).toBe(style2);
     });
 
+    it('evicts the oldest edge style when the cache reaches its limit', () => {
+      const tracedNodes = new Set<string>();
+      const tracedColumns = new Set<string>();
+      const dqHighlightedEdges = new Set<string>();
+      const firstEdge = createMockEdge('first-edge', 'entity1', 'entity2');
+      const firstStyle = computeEdgeStyle(
+        firstEdge,
+        tracedNodes,
+        tracedColumns,
+        dqHighlightedEdges,
+        undefined,
+        colors,
+        false
+      );
+
+      for (let index = 0; index < 1_000; index++) {
+        computeEdgeStyle(
+          createMockEdge(`edge-${index}`, 'entity1', 'entity2'),
+          tracedNodes,
+          tracedColumns,
+          dqHighlightedEdges,
+          undefined,
+          colors,
+          false
+        );
+      }
+
+      const recomputedStyle = computeEdgeStyle(
+        firstEdge,
+        tracedNodes,
+        tracedColumns,
+        dqHighlightedEdges,
+        undefined,
+        colors,
+        false
+      );
+
+      expect(recomputedStyle).not.toBe(firstStyle);
+    });
+
     it('recomputes cached styles when colors change', () => {
       const edge = createMockEdge('edge1', 'entity1', 'entity2');
       const tracedNodes = new Set(['entity1', 'entity2']);
