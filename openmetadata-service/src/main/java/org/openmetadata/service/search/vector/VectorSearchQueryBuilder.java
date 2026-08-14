@@ -314,6 +314,19 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlat(sb, "parentId", values);
           }
+            // Context memory facets: the Company Context tools scope their search to
+            // file-extracted,
+            // shared knowledge pills, and an unrecognised key here is dropped silently — which
+            // would
+            // widen those searches to every memory the caller can see.
+          case "sourceType" -> {
+            sb.append(',');
+            appendFlat(sb, "sourceType", values);
+          }
+          case "visibility" -> {
+            sb.append(',');
+            appendFlat(sb, ContextMemorySearchVisibility.FIELD_VISIBILITY, values);
+          }
             // Metric facets: semantic_search returns these on every metric result, so a caller
             // that sees "granularity": "MONTH" will reasonably filter by it.
           case "metricType" -> {
