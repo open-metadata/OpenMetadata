@@ -419,16 +419,21 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              <Breadcrumbs
-                autoCollapse
-                className={classNames(
-                  'explore-search-card-breadcrumbs tw:min-w-0',
-                  classNameForBreadcrumb
-                )}
-                currentItem="none"
-                items={breadcrumbItems}
+              <div
+                className="tw:min-w-0 tw:flex-1"
+                role="presentation"
                 onClick={(event) => event.stopPropagation()}
-              />
+                onKeyDown={(event) => event.stopPropagation()}>
+                <Breadcrumbs
+                  autoCollapse
+                  className={classNames(
+                    'explore-search-card-breadcrumbs tw:min-w-0',
+                    classNameForBreadcrumb
+                  )}
+                  currentItem="none"
+                  items={breadcrumbItems}
+                />
+              </div>
               {score !== undefined && (
                 <div className="flex items-center gap-1 score-container">
                   <ScoreIcon />

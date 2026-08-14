@@ -12,7 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
-import type { MouseEventHandler, ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Constraint, DataType } from '../../../generated/entity/data/table';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
@@ -99,7 +99,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ({
       items = [],
       currentItem = 'last',
-      onClick,
     }: {
       items: Array<{
         id: string;
@@ -108,7 +107,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         icon?: (props: { className?: string }) => ReactElement;
       }>;
       currentItem?: 'last' | 'none';
-      onClick?: MouseEventHandler<HTMLElement>;
     }) => (
       <nav data-testid="breadcrumbs">
         {items.map(
@@ -134,11 +132,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
             );
 
             return currentItem === 'none' || index < items.length - 1 ? (
-              <a
-                data-testid="breadcrumb-item"
-                href={item.href}
-                key={item.id}
-                onClick={onClick}>
+              <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
                 {label}
               </a>
             ) : (
