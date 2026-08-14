@@ -1,6 +1,8 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_SUBSTRING;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_SUBSTRING;
 
 import java.util.List;
 import java.util.Map;
@@ -148,6 +150,13 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
     fields.put("testSuite.description", 1.0f);
     fields.put("entityLink", 3.0f);
     fields.put("entityFQN", 10.0f);
+    // The DQ list endpoints treat q as literal text, so a user's mid-token substring
+    // ("alues" in column_values_to_be_between) has no wildcard to fall back on. The
+    // *.ngram fields are edge_ngram, which only matches token prefixes; these are the
+    // only fields backing true substring matching, so they are scoped to the DQ
+    // indexes rather than added to SearchIndex.getDefaultFields().
+    fields.put(FIELD_NAME_SUBSTRING, 1.0f);
+    fields.put(FIELD_DISPLAY_NAME_SUBSTRING, 1.0f);
     return fields;
   }
 }

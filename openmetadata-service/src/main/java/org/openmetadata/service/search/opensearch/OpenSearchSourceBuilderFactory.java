@@ -244,6 +244,11 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public Query buildSearchQueryBuilderV2(String query, Map<String, Float> fields) {
+    return buildSearchQueryBuilderV2(query, fields, false);
+  }
+
+  public Query buildSearchQueryBuilderV2(
+      String query, Map<String, Float> fields, boolean freeText) {
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -254,16 +259,22 @@ public class OpenSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+    // The non-fuzzy branch is a multi_match, which never parses Lucene syntax; only this
+    // fuzzy branch can throw on user input. Endpoints that document `q` as free text swap
+    // it for simple_query_string, whose parser discards malformed syntax instead of
+    // raising a query_shard_exception.
     Query fuzzyQuery =
-        OpenSearchQueryBuilder.queryStringQuery(
-            query,
-            fuzzyFields,
-            Operator.And,
-            "1",
-            10,
-            3,
-            DEFAULT_TIE_BREAKER,
-            TextQueryType.MostFields);
+        freeText
+            ? OpenSearchQueryBuilder.simpleQueryStringQuery(query, fuzzyFields, Operator.And)
+            : OpenSearchQueryBuilder.queryStringQuery(
+                query,
+                fuzzyFields,
+                Operator.And,
+                "1",
+                10,
+                3,
+                DEFAULT_TIE_BREAKER,
+                TextQueryType.MostFields);
 
     Query nonFuzzyQuery =
         OpenSearchQueryBuilder.multiMatchQuery(
@@ -310,10 +321,22 @@ public class OpenSearchSourceBuilderFactory
       int size,
       boolean includeExplain,
       boolean includeAggregations) {
+    return getSearchSourceBuilderV2(
+        indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations, false);
+  }
+
+  public OpenSearchRequestBuilder getSearchSourceBuilderV2(
+      String indexName,
+      String searchQuery,
+      int fromOffset,
+      int size,
+      boolean includeExplain,
+      boolean includeAggregations,
+      boolean freeText) {
     indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {
-      return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size);
+      return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
     if (isColumnIndex(indexName)) {
@@ -330,7 +353,7 @@ public class OpenSearchSourceBuilderFactory
     }
 
     if (isDataQualityIndex(indexName)) {
-      return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size);
+      return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
     if (isDataAssetIndex(indexName)) {
@@ -355,7 +378,12 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public OpenSearchRequestBuilder buildTestCaseSearchV2(String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseIndex.getFields());
+    return buildTestCaseSearchV2(query, from, size, false);
+  }
+
+  public OpenSearchRequestBuilder buildTestCaseSearchV2(
+      String query, int from, int size, boolean freeText) {
+    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseIndex.getFields(), freeText);
     Highlight highlighter = buildHighlightsV2(List.of("testSuite.name", "testSuite.description"));
     return searchBuilderV2(queryBuilder, highlighter, from, size);
   }
@@ -375,7 +403,13 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public OpenSearchRequestBuilder buildTestCaseResultSearchV2(String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
+    return buildTestCaseResultSearchV2(query, from, size, false);
+  }
+
+  public OpenSearchRequestBuilder buildTestCaseResultSearchV2(
+      String query, int from, int size, boolean freeText) {
+    Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields(), freeText);
     Highlight highlighter = buildHighlightsV2(new ArrayList<>());
     return searchBuilderV2(queryBuilder, highlighter, from, size);
   }
@@ -767,24 +801,19 @@ public class OpenSearchSourceBuilderFactory
 
   public OpenSearchRequestBuilder buildTimeSeriesSearchBuilderV2(
       String indexName, String query, int from, int size) {
+    return buildTimeSeriesSearchBuilderV2(indexName, query, from, size, false);
+  }
+
+  public OpenSearchRequestBuilder buildTimeSeriesSearchBuilderV2(
+      String indexName, String query, int from, int size, boolean freeText) {
     return switch (indexName) {
-      case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
+      case "test_case_result_search_index" -> buildTestCaseResultSearchV2(
+          query, from, size, freeText);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
           query, from, size);
       case "raw_cost_analysis_report_data_index",
           "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
           query, from, size);
-      default -> buildAggregateSearchBuilderV2(query, from, size);
-    };
-  }
-
-  public OpenSearchRequestBuilder buildDataQualitySearchBuilderV2(
-      String indexName, String query, int from, int size) {
-    return switch (indexName) {
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
