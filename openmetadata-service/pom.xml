@@ -713,14 +713,14 @@
     <dependency>
       <groupId>io.socket</groupId>
       <artifactId>socket.io-server</artifactId>
-      <version>4.1.2</version>
+      <version>4.0.1</version>
     </dependency>
     <!-- Note: engine.io-server-jetty removed - not compatible with Jetty 12.
          Using custom Jetty12WebSocketHandler instead. -->
     <dependency>
       <groupId>io.socket</groupId>
       <artifactId>engine.io-server</artifactId>
-      <version>6.3.2</version>
+      <version>6.2.1</version>
     </dependency>
     <!-- Jetty EE10 WebSocket dependencies for Jetty 12 / Dropwizard 5.0 -->
     <dependency>
@@ -955,7 +955,7 @@
     <dependency>
       <groupId>io.github.jamsesso</groupId>
       <artifactId>json-logic-java</artifactId>
-      <version>1.1.0</version>
+      <version>1.0.7</version>
     </dependency>
     <!-- ################ -->
     <dependency>
