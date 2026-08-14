@@ -13686,24 +13686,6 @@
                 }
             }
         ],
-        "./src/metadata/ingestion/ometa/mixins/server_mixin.py": [
-            {
-                "code": "reportIndexIssue",
-                "range": {
-                    "startColumn": 26,
-                    "endColumn": 60,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportOptionalSubscript",
-                "range": {
-                    "startColumn": 26,
-                    "endColumn": 60,
-                    "lineCount": 1
-                }
-            }
-        ],
         "./src/metadata/ingestion/ometa/mixins/service_mixin.py": [
             {
                 "code": "reportInvalidTypeVarUse",
@@ -15206,22 +15188,6 @@
                 "range": {
                     "startColumn": 61,
                     "endColumn": 65,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportIndexIssue",
-                "range": {
-                    "startColumn": 22,
-                    "endColumn": 56,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportOptionalSubscript",
-                "range": {
-                    "startColumn": 22,
-                    "endColumn": 56,
                     "lineCount": 1
                 }
             }
@@ -71320,14 +71286,6 @@
                 "range": {
                     "startColumn": 21,
                     "endColumn": 46,
-                    "lineCount": 1
-                }
-            },
-            {
-                "code": "reportAttributeAccessIssue",
-                "range": {
-                    "startColumn": 78,
-                    "endColumn": 103,
                     "lineCount": 1
                 }
             },
