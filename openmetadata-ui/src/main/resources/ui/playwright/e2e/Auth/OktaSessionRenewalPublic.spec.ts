@@ -48,7 +48,7 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
   );
 
   let helper: ProviderHelper;
-  let restoreSecurity: (() => Promise<void>) | undefined;
+  let restoreSecurity: ((ssoToken?: string) => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
 
@@ -69,11 +69,32 @@ test.describe('Okta Public Session Renewal', { tag: OKTA_PUBLIC_TAGS }, () => {
     }
   );
 
-  test.afterAll('Restore original security configuration', async () => {
-    await userPage?.close();
-    await userContext?.close();
-    await restoreSecurity?.();
-  });
+  test.afterAll(
+    'Restore original security configuration',
+    async ({ browser }) => {
+      test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+
+      await userPage?.close();
+      await userContext?.close();
+
+      // The last test leaves the page in an uncertain navigation state after
+      // unrouting Okta endpoints.  Do a fresh SSO login so the restore PUT uses
+      // a token valid under the current provider.
+      let ssoToken: string | undefined;
+      const tempCtx = await browser.newContext();
+      const tempPage = await tempCtx.newPage();
+
+      try {
+        await loginViaSso(tempPage, helper, { username, password });
+        ssoToken = await getToken(tempPage);
+      } finally {
+        await tempPage.close();
+        await tempCtx.close();
+      }
+
+      await restoreSecurity?.(ssoToken);
+    }
+  );
 
   test('should silently renew the token once the stored token has expired', async () => {
     const page = userPage!;
