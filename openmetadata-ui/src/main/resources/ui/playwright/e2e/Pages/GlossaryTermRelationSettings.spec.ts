@@ -13,7 +13,13 @@
 
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { authenticateAdminPage } from '../../utils/admin';
-import { getApiContext, toastNotification, uuid } from '../../utils/common';
+import {
+  getApiContext,
+  getAuthContext,
+  getSavedAdminToken,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -363,6 +369,130 @@ test.describe('Glossary Term Relation Settings', () => {
         await deleteRelationTypeViaApi(apiContext, name);
       }
       await afterAction();
+    }
+  });
+
+  // ── Parallel-execution regression tests ────────────────────────────────────
+  //
+  // These three tests explicitly exercise the race conditions that made the
+  // suite flaky under --workers=2 CI runs. They are kept in the same file so
+  // all relation-settings coverage is co-located.
+
+  test('parallel API writers both succeed when exponential backoff is applied', async () => {
+    // Two independent request contexts simulate two CI workers writing the
+    // settings singleton simultaneously. A single context serialises requests
+    // in the JS event loop and can never trigger a real 412.
+    const token = await getSavedAdminToken();
+    const [ctxA, ctxB] = await Promise.all([
+      getAuthContext(token),
+      getAuthContext(token),
+    ]);
+
+    const nameA = `pwParallelA${uuid()}`;
+    const nameB = `pwParallelB${uuid()}`;
+
+    try {
+      const [resA, resB] = await Promise.all([
+        createRelationTypeViaApi(ctxA, { name: nameA, displayName: 'PW Parallel A' }),
+        createRelationTypeViaApi(ctxB, { name: nameB, displayName: 'PW Parallel B' }),
+      ]);
+
+      // createRelationTypeViaApi throws on exhaustion, so reaching here means
+      // both writers landed successfully.
+      expect(resA).toBeUndefined();
+      expect(resB).toBeUndefined();
+
+      const listRes = await ctxA.get(`${RELATION_TYPES_API}?limit=100&offset=0`);
+      const list = await listRes.json();
+      const names: string[] = (list.data ?? []).map(
+        (r: { name: string }) => r.name
+      );
+
+      expect(names).toContain(nameA);
+      expect(names).toContain(nameB);
+    } finally {
+      await deleteRelationTypeViaApi(ctxA, nameA);
+      await deleteRelationTypeViaApi(ctxB, nameB);
+      await ctxA.dispose();
+      await ctxB.dispose();
+    }
+  });
+
+  test('delete removes the row from the DOM before the caller proceeds', async ({
+    page,
+  }) => {
+    const token = await getSavedAdminToken();
+    const apiContext = await getAuthContext(token);
+    const relationName = `pwDeleteDOM${uuid()}`;
+
+    try {
+      await createRelationTypeViaApi(apiContext, {
+        name: relationName,
+        displayName: 'PW Delete DOM',
+      });
+
+      await goToRelationSettings(page);
+      await findRowAcrossPages(page, `relation-name-${relationName}`);
+
+      const deleteRes = page.waitForResponse(
+        (r) =>
+          r.url().includes(`/relationTypes/${relationName}`) &&
+          r.request().method() === 'DELETE'
+      );
+      await page.getByTestId(`delete-${relationName}-btn`).click();
+      expect((await deleteRes).status()).toBeLessThan(300);
+
+      // The HTTP response arrives before React re-renders. Assert toHaveCount(0)
+      // to confirm the row is gone from the DOM, not just from the API.
+      await expect(
+        page.getByTestId(`relation-name-${relationName}`)
+      ).toHaveCount(0, { timeout: 10_000 });
+    } finally {
+      await deleteRelationTypeViaApi(apiContext, relationName);
+      await apiContext.dispose();
+    }
+  });
+
+  test('findRowAcrossPages locates a row on page 2 after React flushes new rows', async ({
+    page,
+  }) => {
+    const token = await getSavedAdminToken();
+    const apiContext = await getAuthContext(token);
+
+    const countRes = await apiContext.get(`${RELATION_TYPES_API}?limit=1&offset=0`);
+    const countData = await countRes.json();
+    const currentTotal: number = countData.paging?.total ?? 0;
+    const needed = Math.max(0, PAGE_SIZE_BASE + 1 - currentTotal);
+    const createdNames: string[] = [];
+
+    for (let i = 0; i < needed; i++) {
+      const name = `pwPage2${uuid()}`;
+      await createRelationTypeViaApi(apiContext, { name, displayName: `PW P2 ${i}` });
+      createdNames.push(name);
+    }
+
+    const targetName = createdNames[createdNames.length - 1] ?? '';
+
+    try {
+      if (!targetName) {
+        test.skip();
+
+        return;
+      }
+
+      await goToRelationSettings(page);
+
+      // findRowAcrossPages waits for the first tbody row to appear after each
+      // Next Page response so the correct page DOM is read on each iteration.
+      await findRowAcrossPages(page, `relation-name-${targetName}`);
+      await expect(
+        page.getByTestId(`relation-name-${targetName}`)
+      ).toBeVisible();
+    } finally {
+      for (const name of createdNames) {
+        await deleteRelationTypeViaApi(apiContext, name);
+      }
+      await apiContext.dispose();
     }
   });
 });

@@ -270,8 +270,7 @@
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
-        "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts",
-        "playwright/e2e/Pages/GlossaryTermRelationSettingsRegression.spec.ts"
+        "playwright/e2e/Pages/GlossaryTermRelationSettings.spec.ts"
       ]
     },
     {
