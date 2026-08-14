@@ -16,6 +16,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -484,7 +485,9 @@ public class SearchResourceIT {
     String mixedSeparators = indexedName.replace("__", "-").replace("_", ".");
     String withTrailingWhitespace = "  " + indexedName + "  ";
     String withInternalWhitespace = indexedName.replace("__", " ");
-    String camelCaseChunk = "LhrIncomingFlightsArrivalsScheduleV1"; // single alnum sub-token, long
+    // One 36-char alnum sub-token spelling the same segments in camelCase. om_analyzer splits it on
+    // case change, so this now reaches the underscore-separated name it describes.
+    String camelCaseChunk = "LhrIncomingFlightsArrivalsScheduleV1";
     String slashSeparated = indexedName.replace("_", "/");
 
     List<Scenario> scenarios =
@@ -513,7 +516,11 @@ public class SearchResourceIT {
             new Scenario("leading/trailing whitespace", withTrailingWhitespace, true),
             new Scenario("whitespace-separated segments", withInternalWhitespace, true),
             // --- single-alnum-token stress: long camelCase that is one 36-char sub-token ---
-            new Scenario("long camelCase single token", camelCaseChunk, false),
+            // Expected false while om_analyzer lowercased before word_delimiter ran, which left
+            // split_on_case_change nothing to split and made the query one opaque token. That was
+            // the defect, not a property worth keeping: a user typing a snake_case table's name in
+            // camelCase means the same table.
+            new Scenario("long camelCase single token", camelCaseChunk, true),
             // --- edge-case query shape that must never throw or blow shards ---
             new Scenario("only separators", "___", false));
 
@@ -612,8 +619,26 @@ public class SearchResourceIT {
 
     // "custmer" is a 1-char typo of "customer", 1 alnum sub-token → fuzziness path is active.
     String typoQuery = "custmer";
+    // Scoped to this class's schema. What is under test is whether the fuzzy path still retrieves
+    // the seeded table, but the assertion was written as "inside the first 25 hits of the whole
+    // dataAsset alias", which is a ranking claim: every other table in the run whose name contains
+    // "customer" competes for that window. It is a long name -- ns.prefix appends the run id, the
+    // class and the method -- so BM25's length normalisation legitimately ranks it below shorter
+    // ones, and it drops out of the window as soon as the suite seeds enough of them. A filter
+    // clause does not score, so the fuzzy retrieval being tested is unchanged.
+    String schemaFilter =
+        "{\"query\":{\"term\":{\"databaseSchema.fullyQualifiedName.keyword\":\""
+            + sharedSchema.getFullyQualifiedName().toLowerCase(Locale.ROOT)
+            + "\"}}}";
     String response =
-        client.search().query(typoQuery).index("dataAsset").deleted(false).size(25).execute();
+        client
+            .search()
+            .query(typoQuery)
+            .index("dataAsset")
+            .queryFilter(schemaFilter)
+            .deleted(false)
+            .size(25)
+            .execute();
     JsonNode root = OBJECT_MAPPER.readTree(response);
 
     assertEquals(
