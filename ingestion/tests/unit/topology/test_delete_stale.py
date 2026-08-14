@@ -280,7 +280,7 @@ class TestServiceScopeIsSentAsFqn:
         """End to end through the real client: the request body carries the service FQN."""
         metadata = MagicMock()
         metadata.get_suffix.return_value = "/dashboards"
-        metadata.client.put.return_value = {
+        metadata.client.delete.return_value = {
             "status": "success",
             "numberOfRowsProcessed": 3,
             "numberOfRowsPassed": 3,
@@ -298,6 +298,6 @@ class TestServiceScopeIsSentAsFqn:
             )
         )
 
-        body = metadata.client.put.call_args.kwargs["json"]
+        body = metadata.client.delete.call_args.kwargs["json"]
         assert body["scopeFqn"] == '"Looker- 2.0 Test"'
         assert body["scopeEntityType"] == "service"

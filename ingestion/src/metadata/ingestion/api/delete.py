@@ -55,7 +55,7 @@ def _scope_params_as_fqn(params: Optional[Dict[str, str]]) -> Optional[Dict[str,
     try:
         return {**params, SERVICE_SCOPE_KEY: quote_name(service)}
     except ValueError:
-        logger.warning(f"Cannot build the FQN of service '{service}'; sending the delete scope unchanged")
+        logger.warning("Cannot build the FQN of service '%s'; sending the delete scope unchanged", service)
         return params
 
 
