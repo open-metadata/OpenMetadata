@@ -67,6 +67,8 @@ import {
   getDomainByName,
   removeAssetsFromDomain,
 } from '../../../../rest/domainAPI';
+import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
+import { queryClient } from '../../../../queryClient';
 import {
   getGlossaryTermByFQN,
   removeAssetsFromGlossaryTerm,
@@ -584,6 +586,9 @@ const AssetsTabs = forwardRef(
                 activeEntity.fullyQualifiedName ?? '',
                 entities
               );
+              queryClient.invalidateQueries({
+                queryKey: domainAssetsCountQueryKey,
+              });
 
               break;
             default:
@@ -624,6 +629,7 @@ const AssetsTabs = forwardRef(
           activeEntity.fullyQualifiedName ?? '',
           pendingRemoveEntities
         );
+        queryClient.invalidateQueries({ queryKey: domainAssetsCountQueryKey });
         setRemoveDryRunWarnings(undefined);
         setPendingRemoveEntities(undefined);
         await new Promise((resolve) => {
