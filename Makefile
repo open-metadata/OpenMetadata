@@ -104,9 +104,12 @@ ANTLR_VERSION_RE := $(subst .,\.,$(ANTLR_VERSION))
 # runtimes will reject.
 #
 # For step 3, override ANTLR_MAVEN_BASE to pull from an internal Maven mirror
-# instead of Central. The fallback base is tried if the primary is unreachable,
-# so the default (both = Central) stays correct everywhere else.
-ANTLR_MAVEN_BASE ?= https://repo1.maven.org/maven2
+# instead of Central. The default primary is Google's Central mirror, which is
+# CDN-backed and not subject to repo1's per-IP 429 throttling that breaks
+# multi-arch Docker publishes; repo1 stays as the fallback if the mirror is
+# unreachable. The pinned SHA-256 below verifies whatever is fetched, so the
+# source is swappable without lowering trust.
+ANTLR_MAVEN_BASE ?= https://maven-central.storage-download.googleapis.com/maven2
 ANTLR_MAVEN_FALLBACK_BASE ?= https://repo1.maven.org/maven2
 ANTLR_COMPLETE_JAR_PATH := org/antlr/antlr4/$(ANTLR_VERSION)/antlr4-$(ANTLR_VERSION)-complete.jar
 ANTLR_COMPLETE_JAR_URL := $(ANTLR_MAVEN_BASE)/$(ANTLR_COMPLETE_JAR_PATH)

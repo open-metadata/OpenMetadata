@@ -4298,6 +4298,7 @@
     "to-add-new-line": "pour ajouter une nouvelle ligne",
     "token-has-no-expiry": "Ce jeton n'a pas de date d'expiration.",
     "token-security-description": "Toute personne en possession de votre Jeton JWT pourra envoyer des requêtes à l'API REST d'{{brandName}}. Ne surtout pas rendre public le Jeton JWT dans le code de votre application. Ne le partagez pas sur GitHub ou ailleurs en ligne.",
+    "total-data-assets-description": "Nombre total d’actifs présents dans la connexion du service.",
     "total-data-assets-widget-description": "Aperçu de tous les actifs de données dans le service. <0>en savoir plus.</0>",
     "total-entity-insight": "Montre le nombre le plus récent d'actifs de données par type.",
     "tour-follow-step": "Suivre un actif de données pour rester informé des modifications qui lui sont apportées. Dans votre flux d'activité, toutes les modifications apportées à l'actif de données que vous suivez sont affichées. Vous recevrez également des alertes si cet actif de données présente des problèmes de qualité des données.",
