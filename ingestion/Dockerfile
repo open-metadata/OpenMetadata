@@ -111,10 +111,8 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
-# cx-Oracle's setup.py still uses pkg_resources
+# mysqlclient's setup.py still uses pkg_resources
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
-# Pre-install cx-Oracle without build isolation to use the pinned setuptools
-RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.0/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
@@ -153,8 +151,8 @@ RUN mkdir -p /opt/airflow/dag_generated_configs
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db
 
 # Every step that needs pkg_resources is done, so the setuptools<81 pin above can be lifted.
-# That pin is build-time only: cx_Oracle and mysqlclient import pkg_resources from their
-# setup.py and 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x
+# That pin is build-time only: mysqlclient imports pkg_resources from its setup.py and
+# 81.0.0 removed it, but once built it imports fine against 83+. Leaving 80.x
 # on disk is what keeps scanners reporting CVE-2026-59890.
 # This must remain the final layer in the file -- after `airflow db migrate` as well as after
 # the last pip install. Anything that compiles a package needing pkg_resources, or that runs

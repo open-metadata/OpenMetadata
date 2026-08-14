@@ -85,7 +85,8 @@ RUN echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgre
 # Oracle Instant Client 19.x is linked against libaio.so.1, but Debian 13's
 # 64-bit time_t transition ships that library as libaio.so.1t64 (package
 # libaio1t64). Installing the package satisfies apt but not the linker, so
-# cx_Oracle fails at runtime with DPI-1047. Provide the legacy soname. The
+# python-oracledb thick mode fails at runtime with DPI-1047. Provide the legacy
+# soname. The
 # path is derived rather than hard-coded because the multiarch directory
 # differs between amd64 and arm64 builds.
 RUN set -eu; \
@@ -161,10 +162,8 @@ ENV PIP_QUIET=1
 ENV CFLAGS="-Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion"
 
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
-# cx-Oracle's setup.py still uses pkg_resources
+# mysqlclient's setup.py still uses pkg_resources
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools<81"
-# Pre-install cx-Oracle without build isolation to use the pinned setuptools
-RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 ARG INGESTION_DEPENDENCY="all"
 ARG RI_VERSION="2.0.0.0.dev0"
@@ -204,8 +203,8 @@ RUN apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8 \
 USER openmetadata
 
 # Every source build is done, so the setuptools<81 pin above can be lifted. That pin is
-# build-time only: cx_Oracle and mysqlclient import pkg_resources from their setup.py and
-# 81.0.0 removed it, but once built both import fine against 83+. Leaving 80.x on disk is
+# build-time only: mysqlclient imports pkg_resources from its setup.py and 81.0.0 removed
+# it, but once built it imports fine against 83+. Leaving 80.x on disk is
 # what keeps scanners reporting CVE-2026-59890.
 # Keep this the LAST pip layer -- a later layer that compiles a package needing
 # pkg_resources would fail here, and the error would not look like a setuptools problem.

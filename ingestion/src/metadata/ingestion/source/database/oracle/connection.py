@@ -14,7 +14,6 @@ Source connection handler
 """
 
 import os
-import sys
 from copy import deepcopy
 from typing import Optional
 from urllib.parse import quote_plus
@@ -31,6 +30,7 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
 )
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
     OracleDatabaseSchema,
+    OracleScheme,
     OracleServiceName,
     OracleTNSConnection,
 )
@@ -59,7 +59,6 @@ from metadata.ingestion.source.database.oracle.utils import (
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
-CX_ORACLE_LIB_VERSION = "8.3.0"
 LD_LIB_ENV = "LD_LIBRARY_PATH"
 
 logger = ingestion_logger()
@@ -75,11 +74,17 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         """
         try:
             if self.service_connection.instantClientDirectory:
-                logger.info(f"Initializing Oracle thick client at {self.service_connection.instantClientDirectory}")
+                logger.info(
+                    "Initializing Oracle thick client at %s",
+                    self.service_connection.instantClientDirectory,
+                )
                 os.environ[LD_LIB_ENV] = self.service_connection.instantClientDirectory
                 oracledb.init_oracle_client(lib_dir=self.service_connection.instantClientDirectory)
         except DatabaseError as err:
-            logger.info(f"Could not initialize Oracle thick client: {err}")
+            logger.info(
+                "Could not initialize Oracle thick client; continuing with the current driver mode: %s",
+                err,
+            )
 
         return create_generic_db_connection(
             connection=self.service_connection,
@@ -154,13 +159,11 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
     @staticmethod
     def get_connection_url(connection: OracleConnectionConfig) -> str:
         """
-        Build the URL and handle driver version at system level
+        Build the SQLAlchemy connection URL.
         """
 
-        oracledb.version = CX_ORACLE_LIB_VERSION
-        sys.modules["cx_Oracle"] = oracledb
-
-        url = f"{connection.scheme.value}://"
+        # The legacy scheme is accepted as configuration input only.
+        url = f"{OracleScheme.oracle_oracledb.value}://"
         if connection.username:
             url += f"{quote_plus(connection.username)}"
             if not connection.password:
