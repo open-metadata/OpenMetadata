@@ -21,7 +21,7 @@ GREENPLUM_GET_TABLE_NAMES = """
     from pg_catalog.pg_class c
         left outer join pg_catalog.pg_partition_rule pr on c.oid = pr.parchildrelid
         JOIN pg_namespace n ON n.oid = c.relnamespace
-    where c.relkind in ('r', 'p', 'f')
+    where c.relkind in ('r', 'p', 'f', 'm')
         and pr.oid is null
         and n.nspname = :schema
 """

@@ -947,3 +947,33 @@ class TestPostgresCommonMappings(TestCase):
         # types into the parser during reflection.
         data_type = ColumnTypeParser.get_column_type(citext_type())
         self.assertEqual(data_type, "STRING")
+
+    def test_relkind_map_includes_materialized_view(self):
+        """RELKIND_MAP must map 'm' to MaterializedView so that materialized views
+        discovered by query_table_names_and_types are classified correctly.
+        Fixes issue #31515: materialized views were absent from OpenMetadata because
+        'r' was excluded from POSTGRES_GET_TABLE_NAMES and missing from RELKIND_MAP.
+        """
+        from metadata.generated.schema.entity.data.table import TableType
+        from metadata.ingestion.source.database.common_pg_mappings import RELKIND_MAP
+
+        self.assertIn("m", RELKIND_MAP, msg="RELKIND_MAP must have an 'm' entry for materialized views")
+        self.assertEqual(
+            RELKIND_MAP["m"],
+            TableType.MaterializedView,
+            msg="RELKIND_MAP['m'] must map to TableType.MaterializedView",
+        )
+
+    def test_postgres_get_table_names_includes_materialized_view_relkind(self):
+        """POSTGRES_GET_TABLE_NAMES must include 'm' in the relkind filter so that
+        materialized views are enumerated during metadata ingestion.
+        """
+        from metadata.ingestion.source.database.postgres.queries import (
+            POSTGRES_GET_TABLE_NAMES,
+        )
+
+        self.assertIn(
+            "'m'",
+            POSTGRES_GET_TABLE_NAMES,
+            msg="POSTGRES_GET_TABLE_NAMES must filter on relkind 'm' to include materialized views",
+        )
