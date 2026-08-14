@@ -34,7 +34,7 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import {
-  getApiContext,
+  getDefaultAdminAPIContext,
   redirectToHomePage,
   removeLandingBanner,
 } from '../../../utils/common';
@@ -57,28 +57,23 @@ test.describe('Domains widget — asset count regression', () => {
   const domain = new Domain();
   const topic = new TopicClass();
 
+  // getDefaultAdminAPIContext reads the pre-saved admin token from
+  // playwright/.auth/admin-api-token.json (written by global setup) so API
+  // calls are authenticated without needing a page to navigate to the app.
+  // browser.newPage() / getApiContext() would read from IndexedDB which is
+  // empty on a page that has never navigated, causing a 401.
   test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const apiPage = await context.newPage();
-    const { apiContext, afterAction } = await getApiContext(apiPage);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
     await domain.create(apiContext);
     await topic.create(apiContext);
     await afterAction();
-    await context.close();
   });
 
   test.afterAll(async ({ browser }) => {
-    const context = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const apiPage = await context.newPage();
-    const { apiContext, afterAction } = await getApiContext(apiPage);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
     await topic.delete(apiContext);
     await domain.delete(apiContext);
     await afterAction();
-    await context.close();
   });
 
   test('widget count updates immediately after assets are added — no stale cache', async ({
