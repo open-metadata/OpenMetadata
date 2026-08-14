@@ -599,69 +599,64 @@ public class SearchResourceIT {
 
     Table table = createTestTable(ns, "customer_analytics");
     String indexedName = table.getName();
-    String firstSeg = indexedName.split("_+")[0];
-
-    Awaitility.await()
-        .atMost(90, TimeUnit.SECONDS)
-        .pollInterval(500, TimeUnit.MILLISECONDS)
-        .until(
-            () -> {
-              String r =
-                  client.search().query(firstSeg).index("table_search_index").size(25).execute();
-              JsonNode root = OBJECT_MAPPER.readTree(r);
-              for (JsonNode hit : root.path("hits").path("hits")) {
-                if (indexedName.equals(hit.path("_source").path("name").asText())) {
-                  return true;
-                }
-              }
-              return false;
-            });
 
     // "custmer" is a 1-char typo of "customer", 1 alnum sub-token → fuzziness path is active.
     String typoQuery = "custmer";
-    // Scoped to this class's schema. What is under test is whether the fuzzy path still retrieves
-    // the seeded table, but the assertion was written as "inside the first 25 hits of the whole
-    // dataAsset alias", which is a ranking claim: every other table in the run whose name contains
-    // "customer" competes for that window. It is a long name -- ns.prefix appends the run id, the
-    // class and the method -- so BM25's length normalisation legitimately ranks it below shorter
-    // ones, and it drops out of the window as soon as the suite seeds enough of them. A filter
-    // clause does not score, so the fuzzy retrieval being tested is unchanged.
+    // Scoped to the schema this method just created. initializeSharedDbEntities runs per test
+    // instance and shortPrefix() ends in a random fragment, so the schema holds exactly the table
+    // seeded above. Without it the assertion read "inside the first 25 hits of the whole dataAsset
+    // alias", which is a ranking claim: every other table in the run whose name contains "customer"
+    // competes for that window, and this is a long name -- ns.prefix appends the run id, the class
+    // and the method -- so BM25's length normalisation legitimately ranks it below shorter ones. A
+    // filter clause does not score, so the fuzzy retrieval being tested is unchanged.
     String schemaFilter =
         "{\"query\":{\"term\":{\"databaseSchema.fullyQualifiedName.keyword\":\""
             + sharedSchema.getFullyQualifiedName().toLowerCase(Locale.ROOT)
             + "\"}}}";
-    String response =
-        client
-            .search()
-            .query(typoQuery)
-            .index("dataAsset")
-            .queryFilter(schemaFilter)
-            .deleted(false)
-            .size(25)
-            .execute();
-    JsonNode root = OBJECT_MAPPER.readTree(response);
 
-    assertEquals(
-        0,
-        root.path("_shards").path("failed").asInt(-1),
-        "single-word fuzzy query must not cause shard failures: "
-            + root.path("_shards").path("failures").toString());
+    // Poll the query under test rather than a warm-up query on table_search_index. The assertion
+    // is about the dataAsset alias, so waiting on a different index left the gap between the two
+    // becoming visible unguarded -- a create that had reached table_search_index could still miss
+    // the alias on the single unretried attempt that followed.
+    Awaitility.await()
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query(typoQuery)
+                      .index("dataAsset")
+                      .queryFilter(schemaFilter)
+                      .deleted(false)
+                      .size(25)
+                      .execute();
+              JsonNode root = OBJECT_MAPPER.readTree(response);
 
-    boolean found = false;
-    for (JsonNode hit : root.path("hits").path("hits")) {
-      if (indexedName.equals(hit.path("_source").path("name").asText())) {
-        found = true;
-        break;
-      }
-    }
-    assertTrue(
-        found,
-        "Single-word typo query \""
-            + typoQuery
-            + "\" must still match seeded table \""
-            + indexedName
-            + "\" via fuzzy path; regression would indicate the clause-explosion fix "
-            + "over-corrected and killed normal typo tolerance.");
+              assertEquals(
+                  0,
+                  root.path("_shards").path("failed").asInt(-1),
+                  "single-word fuzzy query must not cause shard failures: "
+                      + root.path("_shards").path("failures").toString());
+
+              boolean found = false;
+              for (JsonNode hit : root.path("hits").path("hits")) {
+                if (indexedName.equals(hit.path("_source").path("name").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  found,
+                  "Single-word typo query \""
+                      + typoQuery
+                      + "\" must still match seeded table \""
+                      + indexedName
+                      + "\" via fuzzy path; regression would indicate the clause-explosion fix "
+                      + "over-corrected and killed normal typo tolerance. Schema-filtered hits: "
+                      + root.path("hits").path("total").path("value").asInt(-1));
+            });
   }
 
   /**
