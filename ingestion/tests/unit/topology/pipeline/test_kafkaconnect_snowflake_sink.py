@@ -13,6 +13,7 @@
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -506,6 +507,41 @@ class TestMappedTopicsSurviveAnEmptyTopicList:
         delegated.assert_called_once()
 
 
+LITERAL_MAP_CONFIG = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "prod.orders:ORDERS"})
+
+
+class TestLiteralMapKeysAreNotTreatedAsSelectors:
+    """A metachar-free topic2table.map key names one topic; `_with_mapped_topics` already reads it
+    that way, deliberately allowing the dots that are ordinary in Kafka topic names. Handing the
+    same key to a regex compiler made those dots wildcards, so `prod.orders` fullmatched a real
+    `prodXorders` -- first pulling that topic into discovery, then claiming it in `_mapped_table`
+    -- and minted lineage into ORDERS for a topic the connector never consumes."""
+
+    def test_a_literal_key_reaches_the_topic_search_escaped(self):
+        (pattern,) = get_resolver("SnowflakeSink").topic_patterns(LITERAL_MAP_CONFIG)
+        assert re.fullmatch(pattern, "prod.orders")
+        assert not re.fullmatch(pattern, "prodXorders")
+
+    def test_a_regex_key_still_reaches_the_topic_search_intact(self):
+        config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": ".*_cat:CAT_TABLE"})
+        assert get_resolver("SnowflakeSink").topic_patterns(config) == [".*_cat"]
+
+    def test_a_topic_a_literal_key_only_matches_as_regex_derives_its_own_table(self):
+        """The second half of the same defect: even a topic discovered by the `topics` list --
+        never by the map -- was captured by the regex fallback in `_mapped_table`."""
+        config = dict(LITERAL_MAP_CONFIG, topics="prod.orders,prodXorders")
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(config, [])
+        assert [(dataset.source_topic, dataset.table) for dataset in datasets] == [
+            ("prod.orders", "ORDERS"),
+            ("prodXorders", "PRODXORDERS"),
+        ]
+
+    def test_escaping_does_not_cost_the_literal_key_its_own_dataset(self):
+        """Escaping must narrow the match, not drop the mapping: the key still names a topic."""
+        datasets = get_resolver("SnowflakeSink").resolve_datasets(LITERAL_MAP_CONFIG, [])
+        assert {d.source_topic: d.table for d in datasets}["prod.orders"] == "ORDERS"
+
+
 SELF_MANAGED_SNOWFLAKE_CLASS = "com.snowflake.kafka.connector.SnowflakeSinkConnector"
 
 # A self-managed sink using the shorter key variations (both are listed in
@@ -642,7 +678,10 @@ class TestSourceDelegatesToResolver:
         details = KafkaConnectPipelineDetails(name="x", type="sink", config=None)
         assert isinstance(_new_source()._resolver_for(details), DefaultResolver)
 
-    def test_snowflake_selectors_are_expanded_before_dataset_resolution(self):
+    @staticmethod
+    def _expand_selectors(config, available_topic_names):
+        """Run the real discovery step against a messaging service holding `available_topic_names`,
+        then resolve datasets from whatever it found -- the two halves of the sink path."""
         source = _new_source()
         source._topics_cache = {}
         source.metadata = MagicMock()
@@ -654,18 +693,12 @@ class TestSourceDelegatesToResolver:
                 partitions=1,
                 service={"id": uuid.uuid4(), "type": "messagingService"},
             )
-            for name in ("orange_cat", "blue_dog")
+            for name in available_topic_names
         ]
         source.metadata.list_all_entities.return_value = available_topics
         source.metadata.get_by_name.side_effect = lambda **kwargs: next(
             (topic for topic in available_topics if model_str(topic.fullyQualifiedName) == kwargs["fqn"]), None
         )
-        config = {
-            **BASE_SNOWFLAKE_CONFIG,
-            "topics.regex": ".*_cat",
-            "snowflake.topic2table.map": ".*_cat:CAT_TABLE",
-        }
-        config.pop("topics")
         details = KafkaConnectPipelineDetails(name="snowflake", type="sink", config=config)
         resolver = source._resolver_for(details)
 
@@ -676,10 +709,36 @@ class TestSourceDelegatesToResolver:
             is_storage_sink=False,
             sink_resolver=resolver,
         )
-        datasets = resolver.resolve_datasets(config, result.topics)
+        return result, resolver.resolve_datasets(config, result.topics)
+
+    def test_snowflake_selectors_are_expanded_before_dataset_resolution(self):
+        config = {
+            **BASE_SNOWFLAKE_CONFIG,
+            "topics.regex": ".*_cat",
+            "snowflake.topic2table.map": ".*_cat:CAT_TABLE",
+        }
+        config.pop("topics")
+
+        result, datasets = self._expand_selectors(config, ("orange_cat", "blue_dog"))
 
         assert list(result.topic_entity_map) == ["orange_cat"]
         assert [(dataset.source_topic, dataset.table) for dataset in datasets] == [("orange_cat", "CAT_TABLE")]
+
+    def test_a_literal_map_key_does_not_discover_topics_its_dots_would_match(self):
+        """End-to-end through the discovery step the escaping exists to protect: a real
+        `prodXorders` sitting in the same messaging service must not be pulled in by the
+        `prod.orders` mapping, nor handed that mapping's table."""
+        config = {
+            **BASE_SNOWFLAKE_CONFIG,
+            "topics.regex": "nothing_matches_this",
+            "snowflake.topic2table.map": "prod.orders:ORDERS",
+        }
+        config.pop("topics")
+
+        result, datasets = self._expand_selectors(config, ("prod.orders", "prodXorders"))
+
+        assert list(result.topic_entity_map) == ["prod.orders"]
+        assert [(dataset.source_topic, dataset.table) for dataset in datasets] == [("prod.orders", "ORDERS")]
 
     def test_sink_matching_uses_the_resolver(self):
         config = dict(BASE_SNOWFLAKE_CONFIG, **{"snowflake.topic2table.map": "order_events_flat:ORDERS"})

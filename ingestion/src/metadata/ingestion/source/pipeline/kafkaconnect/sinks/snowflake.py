@@ -54,6 +54,11 @@ class TopicTableMapping:
     table_template: str
     preserve_table_case: bool
 
+    @property
+    def is_regex(self) -> bool:
+        """Whether this key selects topics, rather than naming one."""
+        return any(char in REGEX_META_CHARACTERS for char in self.topic_pattern)
+
 
 def java_string_hashcode(value: str) -> int:
     """
@@ -152,7 +157,15 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         return datasets
 
     def topic_patterns(self, config: dict) -> List[str]:  # noqa: UP006
-        return [mapping.topic_pattern for mapping in self._topic2table_mappings(config)]
+        # A metachar-free key names one topic, so escaping it keeps discovery exact.
+        # Compiled raw, its dots turn into wildcards and `prod.orders` claims a real
+        # `prodXorders`, minting lineage for a topic this connector never consumes.
+        # Escaping rather than dropping matters: discovery is what resolves the topic
+        # *entity*, which the name-only recovery in `_with_mapped_topics` cannot do.
+        return [
+            mapping.topic_pattern if mapping.is_regex else re.escape(mapping.topic_pattern)
+            for mapping in self._topic2table_mappings(config)
+        ]
 
     def match_topic(self, dataset: KafkaConnectDatasetDetails, topic_entity_map: dict, config: dict) -> Optional[Any]:  # noqa: UP045
         if not dataset.source_topic:
@@ -292,8 +305,7 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         mapped_only = [
             mapping.topic_pattern
             for mapping in mappings
-            if mapping.topic_pattern not in discovered
-            and not any(char in REGEX_META_CHARACTERS for char in mapping.topic_pattern)
+            if mapping.topic_pattern not in discovered and not mapping.is_regex
         ]
         if mapped_only:
             logger.info(
@@ -382,6 +394,11 @@ class SnowflakeSinkResolver(SinkDatasetResolver):
         match = None
         if mapping is None:
             for candidate in mappings:
+                if not candidate.is_regex:
+                    # The exact lookup above already settled every literal key. Re-testing
+                    # them as regexes is the other half of how `prod.orders` claims
+                    # `prodXorders` -- this time on a topic the `topics` list discovered.
+                    continue
                 try:
                     match = re.fullmatch(candidate.topic_pattern, topic)
                 except re.error as exc:
