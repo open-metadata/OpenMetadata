@@ -84,8 +84,8 @@ class KafkaConnectDatasetDetails(BaseModel):
     )
     fully_qualified: bool = Field(
         default=False,
-        description="True when database and schema are both real Snowflake-style names, so the "
-        "table FQN needs all four parts. CDC resolvers leave this False because their "
+        description="True when database is a real Snowflake-style name, so the table FQN uses "
+        "the database slot even when schema is missing. CDC resolvers leave this False because their "
         "'database' is a logical server name.",
     )
     column_mappings: List[KafkaConnectColumnMapping] = Field(  # noqa: UP006

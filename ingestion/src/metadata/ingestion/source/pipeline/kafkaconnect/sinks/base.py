@@ -59,6 +59,10 @@ class SinkDatasetResolver(ABC):
         """
         return []
 
+    def topic_patterns(self, config: dict) -> List[str]:  # noqa: UP006
+        """Topic selectors that must be expanded against the messaging service."""
+        return []
+
 
 def get_resolver(connector_class: str) -> SinkDatasetResolver:
     """

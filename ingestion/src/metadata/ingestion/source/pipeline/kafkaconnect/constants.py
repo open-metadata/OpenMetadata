@@ -132,6 +132,7 @@ CONNECTOR_CLASS_TO_SERVICE_TYPE = {
     # Confluent Cloud reports the short plugin name; self-managed Connect reports the Java class.
     "SnowflakeSink": "Snowflake",
     "SnowflakeSinkConnector": "Snowflake",
+    "SnowflakeStreamingSinkConnector": "Snowflake",
 }
 
 # Map service types to hostname config keys

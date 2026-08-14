@@ -419,13 +419,15 @@ class KafkaconnectSource(PipelineServiceSource):
         database_server_name: Optional[str],  # noqa: UP045
         effective_messaging_service: Optional[str],  # noqa: UP045
         is_storage_sink: bool,
+        sink_resolver: Optional[SinkDatasetResolver] = None,  # noqa: UP045
     ) -> TopicResolutionResult:
         """
         Parse topics from connector config and resolve to Topic entities.
         """
-        topics_to_process = pipeline_details.topics or []
+        config = pipeline_details.config or {}
+        topics_to_process = list(pipeline_details.topics or [])
         if not topics_to_process:
-            raw = pipeline_details.config.get("topics", "")
+            raw = config.get("topics", "")
             if raw:
                 topics_to_process = [KafkaConnectTopics(name=t.strip()) for t in raw.split(",") if t.strip()]
         if not topics_to_process and database_server_name and pipeline_details.conn_type == ConnectorType.SOURCE.value:
@@ -435,14 +437,16 @@ class KafkaconnectSource(PipelineServiceSource):
                 effective_messaging_service=effective_messaging_service,
             )
 
-        if not topics_to_process and is_storage_sink and pipeline_details.config:
-            topics_regex = pipeline_details.config.get("topics.regex")
-            if topics_regex:
-                logger.info(f"Storage sink using topics.regex: {topics_regex}")
-                topics_to_process = self._search_topics_by_regex(
-                    topics_regex=topics_regex,
-                    messaging_service_name=effective_messaging_service,
-                )
+        pipeline_conn_type = getattr(pipeline_details, "conn_type", None)
+        if pipeline_conn_type == ConnectorType.SINK.value or is_storage_sink or sink_resolver:
+            discovered_topics = self._discover_sink_topics(
+                config=config,
+                messaging_service_name=effective_messaging_service,
+                is_storage_sink=is_storage_sink,
+                sink_resolver=sink_resolver,
+            )
+            known_names = {str(topic.name) for topic in topics_to_process}
+            topics_to_process.extend(topic for topic in discovered_topics if str(topic.name) not in known_names)
 
         topic_entities_map = {}
         for topic in topics_to_process:
@@ -498,6 +502,40 @@ class KafkaconnectSource(PipelineServiceSource):
                 logger.info(f"✓ Successfully found topic entity: {topic.name}")
 
         return TopicResolutionResult(topics=topics_to_process, topic_entity_map=topic_entities_map)
+
+    def _discover_sink_topics(
+        self,
+        config: dict,
+        messaging_service_name: Optional[str],  # noqa: UP045
+        is_storage_sink: bool,
+        sink_resolver: Optional[SinkDatasetResolver],  # noqa: UP045
+    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        """Expand sink subscription config into concrete topic names."""
+        discovered_topics = []
+        topic_patterns = []
+        topics_regex = config.get("topics.regex")
+        if topics_regex:
+            if is_storage_sink and sink_resolver is None:
+                discovered_topics.extend(
+                    self._search_topics_by_regex(
+                        topics_regex=topics_regex,
+                        messaging_service_name=messaging_service_name,
+                    )
+                )
+            else:
+                topic_patterns.append(topics_regex)
+        if sink_resolver:
+            topic_patterns.extend(sink_resolver.topic_patterns(config))
+        if topic_patterns:
+            connector_kind = "storage sink" if is_storage_sink else "sink"
+            logger.info(f"Discovering concrete topics for {connector_kind} selectors: {topic_patterns}")
+            discovered_topics.extend(
+                self._search_topics_by_patterns(
+                    topic_patterns=topic_patterns,
+                    messaging_service_name=messaging_service_name,
+                )
+            )
+        return discovered_topics
 
     def yield_pipeline(self, pipeline_details: KafkaConnectPipelineDetails) -> Iterable[Either[CreatePipelineRequest]]:
         """
@@ -1135,49 +1173,52 @@ class KafkaconnectSource(PipelineServiceSource):
         Search for topics matching a regex pattern.
         Used for S3 sink connectors with topics.regex config.
         """
-        import re  # pylint: disable=import-outside-toplevel
+        return self._search_topics_by_patterns([topics_regex], messaging_service_name)
 
-        topics_found = []
+    def _search_topics_by_patterns(
+        self,
+        topic_patterns: List[str],  # noqa: UP006
+        messaging_service_name: Optional[str] = None,  # noqa: UP045
+    ) -> List[KafkaConnectTopics]:  # noqa: UP006
+        """Expand connector topic selectors to concrete OpenMetadata topics."""
+        if not messaging_service_name:
+            logger.warning("Cannot search topics by pattern without messaging service name")
+            return []
+
+        patterns = []
+        for topic_pattern in topic_patterns:
+            try:
+                patterns.append((topic_pattern, re.compile(topic_pattern)))
+            except re.error as exc:
+                logger.warning(f"Invalid topic pattern '{topic_pattern}': {exc}")
+        if not patterns:
+            return []
 
         try:
-            if not messaging_service_name:
-                logger.warning("Cannot search topics by regex without messaging service name")
-                return topics_found
-
-            pattern = re.compile(topics_regex)
-
-            if messaging_service_name not in self._topics_cache:
-                topics = list(
-                    self.metadata.list_all_entities(
-                        entity=Topic,
-                        params={"service": messaging_service_name},
+            topics_found = []
+            found_names = set()
+            for topic in self._get_service_topics(messaging_service_name):
+                topic_name = model_str(topic.name)
+                if topic_name in found_names or not any(pattern.fullmatch(topic_name) for _, pattern in patterns):
+                    continue
+                found_names.add(topic_name)
+                topics_found.append(
+                    KafkaConnectTopics(
+                        name=topic_name,
+                        fqn=model_str(topic.fullyQualifiedName),
                     )
                 )
-                self._topics_cache[messaging_service_name] = topics
-                logger.debug(f"Cached {len(topics)} topics for messaging service: {messaging_service_name}")
-            else:
-                topics = self._topics_cache[messaging_service_name]
-                logger.debug(f"Using cached topics for messaging service: {messaging_service_name}")
-
-            for topic in topics:
-                topic_name = model_str(topic.name)
-                if pattern.match(topic_name):
-                    topic_fqn = model_str(topic.fullyQualifiedName)
-                    topics_found.append(KafkaConnectTopics(name=topic_name, fqn=topic_fqn))
-                    logger.debug(f"Regex matched topic: {topic_name}")
-
-            if topics_found:
-                logger.info(f"Found {len(topics_found)} topics matching regex '{topics_regex}'")
-            else:
-                logger.warning(f"No topics found matching regex '{topics_regex}'")
-
-        except re.error as exc:
-            logger.warning(f"Invalid regex pattern '{topics_regex}': {exc}")
+                logger.debug(f"Topic selector matched topic: {topic_name}")
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Unable to search topics by regex: {exc}")
-
-        return topics_found
+            logger.error(f"Unable to search topics by pattern: {exc}")
+            return []
+        else:
+            if topics_found:
+                logger.info(f"Found {len(topics_found)} topics matching configured topic selectors")
+            else:
+                logger.warning(f"No topics found matching configured topic selectors: {topic_patterns}")
+            return topics_found
 
     def _resolver_for(self, pipeline_details: KafkaConnectPipelineDetails) -> SinkDatasetResolver:
         """Pick the dataset resolver matching this connector's class."""
@@ -1190,6 +1231,7 @@ class KafkaconnectSource(PipelineServiceSource):
         topic_entities_map: dict,
         pipeline_details: KafkaConnectPipelineDetails,
         database_server_name: Optional[str] = None,  # noqa: UP045
+        sink_resolver: Optional[SinkDatasetResolver] = None,  # noqa: UP045
     ) -> Optional[Topic]:  # noqa: UP045
         """
         Match a dataset to its corresponding topic entity.
@@ -1200,9 +1242,8 @@ class KafkaconnectSource(PipelineServiceSource):
         matched_topic = None
 
         if pipeline_details.conn_type == ConnectorType.SINK.value:
-            return self._resolver_for(pipeline_details).match_topic(
-                dataset_details, topic_entities_map, pipeline_details.config or {}
-            )
+            resolver = sink_resolver or self._resolver_for(pipeline_details)
+            return resolver.match_topic(dataset_details, topic_entities_map, pipeline_details.config or {})
 
         # For CDC Source connectors: match by parsing topic names
         if pipeline_details.conn_type == ConnectorType.SOURCE.value and database_server_name:
@@ -1597,19 +1638,6 @@ class KafkaconnectSource(PipelineServiceSource):
 
             pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
-            datasets_to_process = []
-            if pipeline_details.config:
-                datasets_to_process = self._resolver_for(pipeline_details).resolve_datasets(
-                    pipeline_details.config, pipeline_details.topics
-                )
-                if datasets_to_process:
-                    logger.info(f"Resolved {len(datasets_to_process)} dataset(s) from connector config")
-
-            # Fallback to datasets field if available (for backward compatibility)
-            if not datasets_to_process and pipeline_details.datasets:
-                datasets_to_process = pipeline_details.datasets
-                logger.debug("Using datasets from pipeline_details.datasets field")
-
             # Get database.server.name or topic.prefix for CDC topic parsing
             # These are ONLY set by Debezium CDC connectors
             database_server_name = None
@@ -1630,14 +1658,31 @@ class KafkaconnectSource(PipelineServiceSource):
                 if is_storage_sink:
                     logger.info(f"Detected storage sink connector: {class_name}")
 
+            sink_resolver = None
+            if pipeline_details.conn_type == ConnectorType.SINK.value:
+                sink_resolver = self._resolver_for(pipeline_details)
+
             # Parse and resolve topics
             topic_result = self._parse_and_resolve_topics(
                 pipeline_details=pipeline_details,
                 database_server_name=database_server_name,
                 effective_messaging_service=effective_messaging_service,
                 is_storage_sink=is_storage_sink,
+                sink_resolver=sink_resolver,
             )
             topic_entities_map = topic_result.topic_entity_map
+
+            datasets_to_process = []
+            if pipeline_details.config:
+                resolver = sink_resolver or self._resolver_for(pipeline_details)
+                datasets_to_process = resolver.resolve_datasets(pipeline_details.config, topic_result.topics)
+                if datasets_to_process:
+                    logger.info(f"Resolved {len(datasets_to_process)} dataset(s) from connector config")
+
+            # Fallback to datasets field if available (for backward compatibility)
+            if not datasets_to_process and pipeline_details.datasets:
+                datasets_to_process = pipeline_details.datasets
+                logger.debug("Using datasets from pipeline_details.datasets field")
 
             # Now process each dataset and create lineage with matching topics
             for dataset_details in datasets_to_process:
@@ -1788,6 +1833,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     topic_entities_map=topic_entities_map,
                     pipeline_details=pipeline_details,
                     database_server_name=database_server_name,
+                    sink_resolver=sink_resolver,
                 )
 
                 # Only the resolver knows whether the connector renames fields on the way in
@@ -1798,7 +1844,8 @@ class KafkaconnectSource(PipelineServiceSource):
                 # weight: without it the resolver would overwrite mappings that arrived with
                 # the dataset from the connector config.
                 if matched_topic_entity is not None and not dataset_details.column_mappings:
-                    dataset_details.column_mappings = self._resolver_for(pipeline_details).column_mappings(
+                    resolver = sink_resolver or self._resolver_for(pipeline_details)
+                    dataset_details.column_mappings = resolver.column_mappings(
                         pipeline_details.config or {}, matched_topic_entity
                     )
 
