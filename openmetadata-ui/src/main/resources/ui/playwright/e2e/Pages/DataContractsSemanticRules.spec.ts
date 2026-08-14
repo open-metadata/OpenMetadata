@@ -35,7 +35,6 @@ import {
   performInitialStepForRules,
   saveAndTriggerDataContractValidation,
   triggerContractValidation,
-  waitForTableIndexing,
 } from '../../utils/dataContracts';
 import {
   customFormatDateTime,
@@ -668,11 +667,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       );
       await inputElement.fill('description');
 
-      // Wait for the table to be indexed in Elasticsearch before validation runs,
-      // since the "contains" text-search rule queries ES.
-      await waitForTableIndexing(page, table.entity.name);
-
-      // save and trigger contract validation (now the table is indexed)
+      // save and trigger contract validation
       contractId = (
         (await saveAndTriggerDataContractValidation(page, true)) as {
           id?: string;
@@ -757,10 +752,6 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         '.rule--widget--TEXT input[type="text"]'
       );
       await inputElement.fill('description');
-
-      // Wait for the table to be indexed in Elasticsearch before validation runs,
-      // since the "not_contains" text-search rule queries ES.
-      await waitForTableIndexing(page, table.entity.name);
 
       // save and trigger contract validation
       contractId = (

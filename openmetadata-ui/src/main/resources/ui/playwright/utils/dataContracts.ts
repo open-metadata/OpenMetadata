@@ -49,36 +49,6 @@ const pollContractStatus = async (
     .toEqual(expect.stringMatching(TERMINAL_CONTRACT_STATUS));
 };
 
-export const waitForTableIndexing = async (
-  page: Page,
-  tableName: string,
-  timeoutMs = 30_000
-): Promise<void> => {
-  const searchUrl = `/api/v1/search/query?q=${encodeURIComponent(
-    tableName
-  )}&index=table_search_index&from=0&size=10`;
-  await expect
-    .poll(
-      async () => {
-        const response = await page.request.get(searchUrl);
-        if (!response.ok()) return 'not_indexed';
-        const data = await response.json();
-        return data?.hits?.hits?.some(
-          (hit: { _source?: { name?: string } }) =>
-            hit._source?.name === tableName
-        )
-          ? 'indexed'
-          : 'not_indexed';
-      },
-      {
-        message: `Wait for table "${tableName}" to be indexed in Elasticsearch`,
-        timeout: timeoutMs,
-        intervals: [1_000, 2_000, 3_000],
-      }
-    )
-    .toBe('indexed');
-};
-
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
   isContractStatusNotVisible?: boolean
