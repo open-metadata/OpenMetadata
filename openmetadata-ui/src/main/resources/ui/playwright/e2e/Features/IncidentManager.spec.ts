@@ -1070,13 +1070,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       },
       direct: true,
     });
-    await waitForIncidentToBeIndexed(
-      page.request,
-      assigneeTestCase.testCaseFqn,
-      assignmentStartedAt,
-      'Assigned',
-      assigneeTestCase.username
-    );
+    // Browser API calls read the JWT from local storage, which page.request
+    // does not inherit. Poll with an authenticated context so a 401 cannot be
+    // mistaken for search-index lag.
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        assigneeTestCase.testCaseFqn,
+        assignmentStartedAt,
+        'Assigned',
+        assigneeTestCase.username
+      );
+    } finally {
+      await afterAction();
+    }
 
     await page.click('[data-testid="select-assignee"]');
     const assigneeOption = page.locator(
