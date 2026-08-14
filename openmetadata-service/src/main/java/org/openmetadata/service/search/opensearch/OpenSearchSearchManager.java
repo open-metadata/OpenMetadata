@@ -57,6 +57,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchManagementClient;
+import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
@@ -1076,15 +1077,11 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       SearchSettings searchSettings,
       String clusterAlias)
       throws IOException {
-    OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
-
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
-    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+      SearchResponse<JsonData> searchResponse =
+          executeRankedSearch(request, subjectContext, searchSettings, clusterAlias);
 
       if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
         return Response.status(OK).entity(searchResponse.toJsonString()).build();
@@ -1100,6 +1097,61 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       } else {
         throw buildSearchException(e);
       }
+    }
+  }
+
+  /**
+   * Runs the ranked query, then re-runs it without the fuzzy stage when the query turns out to name
+   * an entity exactly.
+   *
+   * <p>See {@link SearchRankingHelper#isExactIdentifierLookup}: the fuzzy stage admits documents
+   * rather than only scoring them, so asking for an entity by its fully-qualified name also returns
+   * its siblings (#31227). Whether that recall is wanted cannot be decided from the query alone — a
+   * typo is "one token off" exactly as a sibling is — so it is decided from the result set, which
+   * only exists once the search has run.
+   *
+   * <p>The widened query runs first, so an ordinary search costs one round-trip and keeps the
+   * results it has today. Only an exact identifier lookup pays a second.
+   */
+  private SearchResponse<JsonData> executeRankedSearch(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings searchSettings,
+      String clusterAlias)
+      throws IOException {
+    return SearchRankingHelper.searchWithIdentifierPrecision(
+        request.getQuery(),
+        searchSettings,
+        settings -> executeSearchRequest(request, subjectContext, settings, clusterAlias),
+        OpenSearchSearchManager::hitIdentifiers);
+  }
+
+  /** {@code name} and {@code fullyQualifiedName} of every returned hit. */
+  private static List<String> hitIdentifiers(SearchResponse<JsonData> response) {
+    if (response.hits() == null || response.hits().hits() == null) {
+      return List.of();
+    }
+    List<JsonObject> sources = new ArrayList<>();
+    for (var hit : response.hits().hits()) {
+      JsonData source = hit.source();
+      if (source != null) {
+        sources.add(source.toJson().asJsonObject());
+      }
+    }
+    return SearchRankingHelper.identifiersFrom(sources);
+  }
+
+  private SearchResponse<JsonData> executeSearchRequest(
+      org.openmetadata.schema.search.SearchRequest request,
+      SubjectContext subjectContext,
+      SearchSettings searchSettings,
+      String clusterAlias)
+      throws IOException {
+    OpenSearchRequestBuilder requestBuilder =
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+    Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+    try {
+      return client.search(requestBuilder.build(request.getIndex()), JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);

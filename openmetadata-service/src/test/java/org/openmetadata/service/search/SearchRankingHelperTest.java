@@ -3,7 +3,9 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -302,5 +304,194 @@ class SearchRankingHelperTest {
     assertEquals(1.25F, weights.get("displayName"));
     assertEquals(1.0F, weights.get("name"));
     assertEquals(0.775F, weights.get("description"));
+  }
+
+  /**
+   * The precise pass must keep every stage that decides recall on its own merits and drop only the
+   * fuzzy fallback. Ranking stages sit under a should with minimum_should_match:1, so the fuzzy
+   * stage admits documents rather than only scoring them: anything missing one of the query's
+   * tokens clears its partial-coverage threshold, which on an FQN is exactly its siblings (#31227).
+   */
+  @Test
+  void withoutFuzzyStagesDropsOnlyTheFuzzyStage() {
+    SearchSettings settings = settingsWithStages("exactName", "phraseName", "fuzzyName");
+
+    assertTrue(SearchRankingHelper.hasPrunableFuzzyStage(settings));
+
+    SearchSettings precise = SearchRankingHelper.withoutFuzzyStages(settings);
+    List<String> preciseStages =
+        precise.getDefaultConfiguration().getRanking().getStages().stream()
+            .map(RankingStage::getName)
+            .toList();
+
+    assertEquals(List.of("exactName", "phraseName"), preciseStages);
+    assertFalse(SearchRankingHelper.hasPrunableFuzzyStage(precise));
+    // The original must be untouched — the widened second pass reuses it.
+    assertTrue(SearchRankingHelper.hasPrunableFuzzyStage(settings));
+  }
+
+  @Test
+  void withoutFuzzyStagesIsANoOpWhenNoStageIsFuzzy() {
+    SearchSettings settings = settingsWithStages("exactName", "phraseName");
+
+    assertFalse(SearchRankingHelper.hasPrunableFuzzyStage(settings));
+    assertEquals(
+        2,
+        SearchRankingHelper.withoutFuzzyStages(settings)
+            .getDefaultConfiguration()
+            .getRanking()
+            .getStages()
+            .size());
+  }
+
+  /**
+   * Pruning is a full JSON round-trip of every asset config and runs on the search hot path, so the
+   * result is memoised on the source instance. SettingsCache hands out one SearchSettings per
+   * settings version, so identity hits for repeated queries and misses as soon as settings change.
+   */
+  @Test
+  void withoutFuzzyStagesReusesThePrunedCopyPerSettingsInstance() {
+    SearchSettings settings = settingsWithStages("exactName", "fuzzyName");
+
+    assertSame(
+        SearchRankingHelper.withoutFuzzyStages(settings),
+        SearchRankingHelper.withoutFuzzyStages(settings),
+        "Repeated lookups against one settings version must not re-serialize");
+    assertNotSame(
+        SearchRankingHelper.withoutFuzzyStages(settings),
+        SearchRankingHelper.withoutFuzzyStages(settingsWithStages("exactName", "fuzzyName")),
+        "A new settings instance must be pruned afresh, never served a stale copy");
+  }
+
+  /**
+   * A ranking whose only stage is fuzzy has no precise pass to offer. Pruning it would empty the
+   * stage list, and {@code buildRankedSimpleQueryV2} then falls back to {@code
+   * buildLegacySimpleQueryV2}, whose OR {@code multi_match} on {@code fullyQualifiedName} carries no
+   * minimum-should-match at all — wider than the stage that was removed, so the second pass would
+   * return more siblings than the first. Skip it: leave the stage in place and report it unprunable.
+   */
+  @Test
+  void aFuzzyOnlyRankingIsLeftAloneRatherThanEmptied() {
+    SearchSettings settings = settingsWithStages("fuzzyName");
+
+    assertFalse(
+        SearchRankingHelper.hasPrunableFuzzyStage(settings),
+        "With nothing precise left to run, the second pass must not happen at all");
+    assertEquals(
+        List.of("fuzzyName"),
+        SearchRankingHelper.withoutFuzzyStages(settings)
+            .getDefaultConfiguration()
+            .getRanking()
+            .getStages()
+            .stream()
+            .map(RankingStage::getName)
+            .toList(),
+        "Emptying the stage list would drop the query into the wider legacy builder");
+  }
+
+  /**
+   * On upgrade {@code SearchSettingsHandler.mergeSearchSettings} only adopts the shipped default
+   * ranking when the stored {@code defaultConfiguration} has none, so an existing install keeps
+   * whatever stage list is already in its SEARCH_SETTINGS row — a differently named stage, and
+   * {@code fullyQualifiedName} still among its fields. The precise pass must therefore key off
+   * {@code matchType} alone, never a stage name or field list, so that the fix reaches upgraded
+   * deployments without migrating stored settings.
+   */
+  @Test
+  void withoutFuzzyStagesIgnoresStageNamesAndFieldLists() {
+    RankingStage storedFuzzyStage =
+        new RankingStage()
+            .withName("legacyTypoFallback")
+            .withFields(List.of("name", "displayName", "fullyQualifiedName"))
+            .withMatchType(RankingStage.MatchType.FUZZY);
+    SearchSettings stored = settingsWithStages("exactName");
+    stored
+        .getDefaultConfiguration()
+        .getRanking()
+        .setStages(
+            List.of(
+                stored.getDefaultConfiguration().getRanking().getStages().getFirst(),
+                storedFuzzyStage));
+
+    assertTrue(SearchRankingHelper.hasPrunableFuzzyStage(stored));
+
+    SearchSettings precise = SearchRankingHelper.withoutFuzzyStages(stored);
+
+    assertFalse(SearchRankingHelper.hasPrunableFuzzyStage(precise));
+    assertEquals(
+        List.of("exactName"),
+        precise.getDefaultConfiguration().getRanking().getStages().stream()
+            .map(RankingStage::getName)
+            .toList(),
+        "A stored stage must be dropped on matchType, whatever it is called or which fields it names");
+  }
+
+  private static RankingStage.MatchType matchTypeFor(String stageName) {
+    return switch (stageName) {
+      case "fuzzyName" -> RankingStage.MatchType.FUZZY;
+      case "phraseName" -> RankingStage.MatchType.PHRASE;
+        // closeName is itself a partial-coverage stage, so it must not count as an identity match.
+      case "closeName" -> RankingStage.MatchType.TOKEN_COVERAGE;
+      default -> RankingStage.MatchType.EXACT;
+    };
+  }
+
+  private static SearchSettings settingsWithStages(String... stageNames) {
+    List<RankingStage> stages =
+        Arrays.stream(stageNames)
+            .map(
+                name ->
+                    new RankingStage()
+                        .withName(name)
+                        .withFields(List.of("name"))
+                        .withMatchType(matchTypeFor(name)))
+            .toList();
+    AssetTypeConfiguration defaultConfig =
+        new AssetTypeConfiguration()
+            .withAssetType("default")
+            .withRanking(new RankingConfiguration().withEnabled(true).withStages(stages));
+    return new SearchSettings().withDefaultConfiguration(defaultConfig);
+  }
+
+  /**
+   * The FQN lookup: the query is exactly the target column's fullyQualifiedName, so partial-coverage
+   * recall can only add its siblings — which is the "count 1 vs results 7381" bug (#31227).
+   */
+  @Test
+  void identifiesAnExactFqnLookup() {
+    String fqn = "svc.db.schema.table.user_id";
+    assertTrue(
+        SearchRankingHelper.isExactIdentifierLookup(
+            fqn, List.of("user_id", fqn, "user_email", "svc.db.schema.table.user_email")));
+  }
+
+  @Test
+  void identifiesAnExactNameLookupCaseInsensitivelyAndTrimmed() {
+    assertTrue(SearchRankingHelper.isExactIdentifierLookup("  Orders ", List.of("orders")));
+  }
+
+  /**
+   * A half-typed or misspelled query names nothing exactly, so the fuzzy stage keeps its recall —
+   * this is the SearchResourceIT autocomplete/typo behaviour that earlier stage-provenance
+   * heuristics discarded.
+   */
+  @Test
+  void doesNotIdentifyAHalfTypedQuery() {
+    assertFalse(
+        SearchRankingHelper.isExactIdentifierLookup(
+            "xqz_lhr__i",
+            List.of("xqz_lhr__incoming_flights", "svc.db.xqz_lhr__incoming_flights")));
+  }
+
+  @Test
+  void doesNotIdentifyAMisspelledQuery() {
+    assertFalse(
+        SearchRankingHelper.isExactIdentifierLookup(
+            "xqz_lhr__incaming_flights", List.of("xqz_lhr__incoming_flights")));
+  }
+
+  @Test
+  void doesNotIdentifyABlankQuery() {
+    assertFalse(SearchRankingHelper.isExactIdentifierLookup("  ", List.of("orders")));
   }
 }

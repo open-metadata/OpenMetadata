@@ -16,15 +16,18 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "om_stemmer"
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
-            "flatten_graph"
+            "lowercase",
+            "flatten_graph",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         }
       },
@@ -44,6 +47,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       }
     }
