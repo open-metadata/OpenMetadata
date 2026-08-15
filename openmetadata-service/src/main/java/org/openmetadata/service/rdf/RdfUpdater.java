@@ -34,7 +34,7 @@ public class RdfUpdater {
   private static final AtomicLong droppedWrites = new AtomicLong(0L);
   private static final ConcurrentMap<UUID, CompletableFuture<Void>> keyedWriteTails =
       new ConcurrentHashMap<>();
-  private static Semaphore rdfWritePermits =
+  private static volatile Semaphore rdfWritePermits =
       new Semaphore(new AsyncOperationsConfiguration().getMaxConcurrentRdfWrites(), true);
 
   private static RdfRepository rdfRepository;
@@ -299,9 +299,10 @@ public class RdfUpdater {
   }
 
   private static void runRdfTask(String description, Runnable task) {
+    Semaphore permits = rdfWritePermits;
     boolean permitAcquired = false;
     try {
-      rdfWritePermits.acquire();
+      permits.acquire();
       permitAcquired = true;
       AsyncService.getInstance()
           .submitDatabaseTask(
@@ -317,7 +318,7 @@ public class RdfUpdater {
       throw new RuntimeException("Interrupted while waiting to write RDF", e);
     } finally {
       if (permitAcquired) {
-        rdfWritePermits.release();
+        permits.release();
       }
     }
   }

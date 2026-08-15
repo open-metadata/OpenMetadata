@@ -13,6 +13,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,7 +36,7 @@ import org.openmetadata.service.config.AsyncOperationsConfiguration;
 public class AsyncService {
   private static AsyncService instance;
   private ExecutorService executorService;
-  private final ExecutorService databaseExecutorService;
+  private final BoundedAsyncExecutor databaseExecutorService;
   private final int maxConcurrentDbTasks;
   private final Map<DatabaseOperation, OperationStats> operationStats;
 
@@ -115,7 +116,7 @@ public class AsyncService {
   public void executeDatabaseTask(DatabaseOperation operation, String context, Runnable task) {
     final OperationStats stats = recordSubmission(operation, context);
     try {
-      databaseExecutorService.execute(() -> stats.run(task));
+      databaseExecutorService.execute(() -> stats.run(task), stats::cancelSubmission);
     } catch (RuntimeException e) {
       stats.cancelSubmission();
       throw e;
@@ -125,20 +126,10 @@ public class AsyncService {
   public <T> CompletableFuture<T> submitDatabaseTask(
       DatabaseOperation operation, String context, Callable<T> task) {
     final OperationStats stats = recordSubmission(operation, context);
-    CompletableFuture<T> future;
+    final CompletableFuture<T> future = new CompletableFuture<>();
     try {
-      future =
-          CompletableFuture.supplyAsync(
-              () -> {
-                try {
-                  return stats.call(task);
-                } catch (RuntimeException e) {
-                  throw e;
-                } catch (Exception e) {
-                  throw new CompletionException(e);
-                }
-              },
-              databaseExecutorService);
+      databaseExecutorService.execute(
+          () -> completeDatabaseTask(stats, task, future), () -> cancelDatabaseTask(stats, future));
     } catch (RuntimeException e) {
       stats.cancelSubmission();
       throw e;
@@ -149,12 +140,38 @@ public class AsyncService {
   public <T> Future<T> submitCancellableDatabaseTask(
       DatabaseOperation operation, String context, Callable<T> task) {
     final OperationStats stats = recordSubmission(operation, context);
+    final FutureTask<T> future = new FutureTask<>(() -> stats.call(task));
     try {
-      return databaseExecutorService.submit(() -> stats.call(task));
+      databaseExecutorService.execute(future, () -> cancelDatabaseTask(stats, future));
     } catch (RuntimeException e) {
       stats.cancelSubmission();
       throw e;
     }
+    return future;
+  }
+
+  private static <T> void completeDatabaseTask(
+      OperationStats stats, Callable<T> task, CompletableFuture<T> future) {
+    try {
+      future.complete(callDatabaseTask(stats, task));
+    } catch (RuntimeException | Error e) {
+      future.completeExceptionally(e);
+    }
+  }
+
+  private static <T> T callDatabaseTask(OperationStats stats, Callable<T> task) {
+    try {
+      return stats.call(task);
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new CompletionException(e);
+    }
+  }
+
+  private static void cancelDatabaseTask(OperationStats stats, Future<?> future) {
+    stats.cancelSubmission();
+    future.cancel(false);
   }
 
   private OperationStats recordSubmission(DatabaseOperation operation, String context) {

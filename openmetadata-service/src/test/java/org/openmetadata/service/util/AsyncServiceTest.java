@@ -285,6 +285,43 @@ class AsyncServiceTest {
   }
 
   @Test
+  void testShutdownNowClearsMetricsForQueuedDatabaseTasks() throws Exception {
+    AsyncOperationsConfiguration config = new AsyncOperationsConfiguration();
+    config.setMaxConcurrentDbTasks(1);
+    AsyncService.initialize(config);
+    AsyncService service = AsyncService.getInstance();
+    CountDownLatch firstStarted = new CountDownLatch(1);
+    CountDownLatch releaseFirst = new CountDownLatch(1);
+
+    try {
+      service.executeDatabaseTask(
+          DatabaseOperation.SEARCH_OPERATION,
+          "active",
+          () -> {
+            firstStarted.countDown();
+            awaitLatch(releaseFirst);
+          });
+      assertTrue(firstStarted.await(5, TimeUnit.SECONDS));
+      service.executeDatabaseTask(DatabaseOperation.SEARCH_OPERATION, "execute", () -> {});
+      CompletableFuture<String> queuedFuture =
+          service.submitDatabaseTask(DatabaseOperation.SEARCH_OPERATION, "future", () -> "unused");
+      Future<String> queuedCancellable =
+          service.submitCancellableDatabaseTask(
+              DatabaseOperation.SEARCH_OPERATION, "cancellable", () -> "unused");
+      awaitDatabaseCounts(service, DatabaseOperation.SEARCH_OPERATION, 1, 3);
+
+      service.getDatabaseExecutorService().shutdownNow();
+
+      awaitDatabaseCounts(service, DatabaseOperation.SEARCH_OPERATION, 0, 0);
+      assertTrue(queuedFuture.isCancelled());
+      assertTrue(queuedCancellable.isCancelled());
+    } finally {
+      releaseFirst.countDown();
+      service.getDatabaseExecutorService().shutdownNow();
+    }
+  }
+
+  @Test
   void testExecuteAndSubmitHelpers() throws Exception {
     AsyncService service = newAsyncService();
     CountDownLatch latch = new CountDownLatch(1);

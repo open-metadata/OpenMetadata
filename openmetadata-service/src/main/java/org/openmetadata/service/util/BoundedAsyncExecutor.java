@@ -20,9 +20,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Executor view that limits concurrently running tasks without rejecting submissions. */
 public final class BoundedAsyncExecutor extends AbstractExecutorService {
+  private static final Runnable NO_OP = () -> {};
   private final ExecutorService delegate;
   private final Semaphore semaphore;
   private final int maxConcurrentTasks;
@@ -38,22 +40,27 @@ public final class BoundedAsyncExecutor extends AbstractExecutorService {
 
   @Override
   public void execute(Runnable command) {
-    Objects.requireNonNull(command);
-    delegate.execute(new PermitRunnable(command));
+    execute(command, NO_OP);
   }
 
-  private void runWithPermit(Runnable command) {
+  void execute(Runnable command, Runnable onDiscard) {
+    Objects.requireNonNull(command);
+    Objects.requireNonNull(onDiscard);
+    delegate.execute(new PermitRunnable(command, onDiscard));
+  }
+
+  private void runWithPermit(PermitRunnable task) {
     boolean permitAcquired = false;
     try {
       semaphore.acquire();
       permitAcquired = true;
     } catch (InterruptedException e) {
-      cancelIfFuture(command);
+      task.cancel();
       Thread.currentThread().interrupt();
     }
     if (permitAcquired) {
       try {
-        command.run();
+        task.runCommand();
       } finally {
         semaphore.release();
       }
@@ -111,18 +118,30 @@ public final class BoundedAsyncExecutor extends AbstractExecutorService {
 
   private final class PermitRunnable implements Runnable {
     private final Runnable command;
+    private final Runnable onDiscard;
+    private final AtomicBoolean claimed = new AtomicBoolean();
 
-    private PermitRunnable(Runnable command) {
+    private PermitRunnable(Runnable command, Runnable onDiscard) {
       this.command = command;
+      this.onDiscard = onDiscard;
     }
 
     @Override
     public void run() {
-      runWithPermit(command);
+      runWithPermit(this);
+    }
+
+    private void runCommand() {
+      if (claimed.compareAndSet(false, true)) {
+        command.run();
+      }
     }
 
     private void cancel() {
-      cancelIfFuture(command);
+      if (claimed.compareAndSet(false, true)) {
+        cancelIfFuture(command);
+        onDiscard.run();
+      }
     }
   }
 }
