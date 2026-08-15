@@ -78,11 +78,25 @@ public final class PromptText {
           .toFactory();
 
   /**
-   * A tag-shaped run. Text with no tag is returned untouched rather than round-tripped through the
-   * sanitizer, which would HTML-escape bare {@code <} and {@code &} in plain-text and markdown
-   * descriptions (a SQL note reading {@code WHERE a < b} must not become {@code a &lt; b}).
+   * A run that opens or closes a <em>known</em> HTML element. Text without one is returned untouched
+   * rather than round-tripped through the sanitizer, which would HTML-escape bare {@code <} and
+   * {@code &} (a SQL note reading {@code WHERE a < b} must not become {@code a &lt; b}).
+   *
+   * <p>Matching any {@code <letter…>} run is not good enough. Angle brackets are also type notation,
+   * and a data catalog is full of it: {@code Map<String, Object>} would be read as an unknown
+   * {@code <String, Object>} tag and dropped, leaving {@code Map}, and
+   * {@code Array<Struct<id:int,name:string>>} collapses to {@code Array&gt;}. Requiring a real
+   * element name — anchored with {@code \b} so {@code <String>} does not match on {@code s} and
+   * {@code <Item>} does not match on {@code i} — keeps that notation intact.
+   *
+   * <p>Being conservative here costs nothing: the policy only removes markup, so text holding no
+   * element has nothing for it to remove.
    */
-  private static final Pattern HTML_TAG = Pattern.compile("<\\s*/?[a-zA-Z][^>]*>");
+  private static final Pattern HTML_TAG =
+      Pattern.compile(
+          "(?i)<\\s*/?\\s*(?:a|b|blockquote|br|caption|code|col|colgroup|dd|del|details|div|dl|dt"
+              + "|em|h[1-6]|hr|i|img|ins|li|mark|ol|p|pre|s|section|small|span|strong|sub|summary"
+              + "|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\\b[^>]*>");
 
   private PromptText() {}
 

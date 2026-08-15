@@ -130,6 +130,33 @@ class PromptTextTest {
   }
 
   @Test
+  void typeNotationIsNotMistakenForMarkup() {
+    // Angle brackets are also type notation, and column descriptions are full of it. Read as HTML,
+    // "Map<String, Object>" loses its parameters and the nested case collapses to "Array&gt;".
+    for (String typeNote :
+        new String[] {
+          "Map<String, Object> payload column",
+          "Array<Item> of line items",
+          "List<T> generic container",
+          "Array<Struct<id:int,name:string>> nested rows",
+          "Set<Long> of surrogate keys"
+        }) {
+      assertEquals(typeNote, PromptText.forPrompt(typeNote));
+    }
+  }
+
+  @Test
+  void markupIsStillRecognisedAroundTypeNotation() {
+    // The narrower guard must not become a way to smuggle an image past the strip.
+    String prompt =
+        PromptText.forPrompt(
+            "<p>Column is Map<String, Object></p><img src=\"data:image/png;base64,AAAA\">");
+
+    assertFalse(prompt.contains("base64"));
+    assertTrue(prompt.contains("Column is Map"));
+  }
+
+  @Test
   void nullAndBlankPassThrough() {
     assertNull(PromptText.forPrompt(null));
     assertEquals("", PromptText.forPrompt(""));
