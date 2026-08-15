@@ -253,6 +253,12 @@ const isLandingPageWidgetLoading = async (widget: Locator) =>
 // in the callers because a widget only starts loading once the slot reveals it — a caller
 // that ran `waitForAllLoadersToDisappear(page, 'entity-list-skeleton')` beforehand saw no
 // skeleton at all and then raced the fetch.
+//
+// `widgetKey` must be the widget's *layout* key — the `KnowledgePanel.*` value the widget
+// renders as its own testid and that its DeferredWidget slot is named after. An inner testid
+// (e.g. `kpi-widget`) matches neither, so nothing gets scrolled, the widget never mounts, and
+// the assertion below fails on a widget that was simply never revealed. Assert inner testids
+// against the returned locator instead.
 export const waitForLandingPageWidget = async (
   page: Page,
   widgetKey: string
