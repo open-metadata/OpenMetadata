@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Skeleton } from 'antd';
+import { Badge } from 'antd';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
@@ -34,10 +34,9 @@ const TabsLabel = ({
         {name}
         {isLoading ? (
           <span
-            className="d-flex justify-center items-center tabs-label-count-skeleton"
-            data-testid="loading-skeleton">
-            <Skeleton.Button active shape="round" size="small" />
-          </span>
+            className="tw:inline-block tw:h-4 tw:w-6 tw:animate-pulse tw:rounded-full tw:bg-tertiary"
+            data-testid="loading-skeleton"
+          />
         ) : (
           !isNil(count) && (
             <span data-testid="count">
