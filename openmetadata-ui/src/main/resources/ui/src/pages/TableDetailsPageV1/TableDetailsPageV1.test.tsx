@@ -709,8 +709,8 @@ describe('TestDetailsPageV1 component', () => {
 
       await renderOnSchemaTab();
 
-      // useQuery resolves tableDetails on a later render, so the count effect fires after
-      // the act flush — poll rather than asserting synchronously.
+      // tableDetails resolves on a later render, so the count query starts after the act
+      // flush — poll rather than asserting synchronously.
       await waitFor(() =>
         expect(getQueriesList).toHaveBeenCalledWith({
           limit: 0,
@@ -739,8 +739,8 @@ describe('TestDetailsPageV1 component', () => {
 
       await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
 
-      // Every render so far must have kept the badge in its loading state, so the user
-      // never sees the placeholder 0 flash before the real count arrives.
+      // Every render so far, not just the latest — one frame with isLoading false is the
+      // 0 flash this guards against.
       expect(getQueriesTabProps()).not.toHaveLength(0);
       expect(
         getQueriesTabProps().every((props) => props.isLoading)

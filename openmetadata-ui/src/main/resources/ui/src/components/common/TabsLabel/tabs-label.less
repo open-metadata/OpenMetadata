@@ -15,6 +15,15 @@
 .tabs-label-container {
   line-height: 22px;
 
+  // Match the count badge's footprint so the label doesn't reflow when the count lands.
+  .tabs-label-count-skeleton {
+    .ant-skeleton-button {
+      width: 24px;
+      min-width: 24px;
+      height: 16px;
+    }
+  }
+
   .label-description {
     font-size: var(--om-font-size-xs);
     color: @text-grey-muted;

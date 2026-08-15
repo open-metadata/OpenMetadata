@@ -250,11 +250,8 @@ const TableDetailsPageV1: React.FC = () => {
     ),
   });
 
-  // Drives the "Queries (N)" tab badge. That badge always renders whatever count it is
-  // given, so a deferred fetch would show a misleading 0 until the user opened the tab.
-  // Going through useQuery (rather than a fetch effect plus a loading flag) means
-  // {@code isQueryCountLoading} is already true on the render that starts the request —
-  // an effect-driven flag flips a render too late and flashes a 0 first.
+  // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
+  // the render that starts the request, so the badge never flashes a placeholder 0.
   const { data: queryCount = 0, isFetching: isQueryCountLoading } = useQuery({
     queryKey: tableQueryCountKey(tableDetails?.id ?? ''),
     queryFn: tableQueryCountFn(tableDetails?.id ?? ''),

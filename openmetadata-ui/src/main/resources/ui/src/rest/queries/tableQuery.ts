@@ -40,9 +40,8 @@ export const tableQueryFn = (fqn: string, fields: string) => () =>
   getTableDetailsByFQN(fqn, { fields });
 
 /**
- * Count of stored queries for a table, used by the "Queries (N)" tab badge. Kept as its own
- * cache slot rather than folded into the entity body because it is a separate endpoint with
- * a different lifetime — the badge must stay honest while the entity itself is cached.
+ * Count of stored queries for a table, backing the "Queries (N)" tab badge. Its own cache
+ * slot because it is a separate endpoint with a different lifetime to the entity body.
  */
 export const tableQueryCountKey = (id: string) =>
   ['table', id, 'queryCount'] as const;
