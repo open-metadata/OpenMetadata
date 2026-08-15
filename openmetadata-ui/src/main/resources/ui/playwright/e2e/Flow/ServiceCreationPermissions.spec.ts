@@ -110,7 +110,19 @@ const visitAgentCard = async (page: Page) => {
 };
 
 const openPipelineActions = async (page: Page) => {
+  // The overflow menu's items are gated on an async permission fetch that
+  // resolves after the agent card mounts; without this wait the dropdown can
+  // open before permissions settle, so items like `re-deploy-button` are
+  // briefly absent and toBeVisible() assertions race.
+  const permissionResponse = page.waitForResponse(
+    `/api/v1/permissions/ingestionPipeline/name/${encodeURIComponent(
+      ingestionPipelineName
+    )}`
+  );
+
   const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
+
+  await permissionResponse;
 
   await actionButton.waitFor();
   await actionButton.click();
@@ -645,8 +657,12 @@ test.describe(
     }) => {
       await openPipelineActions(page);
 
-      await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeVisible();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeVisible();
       await expect(
         getAgentCard(page, ingestionPipelineName).getByTestId(
           'run-agent-button'
