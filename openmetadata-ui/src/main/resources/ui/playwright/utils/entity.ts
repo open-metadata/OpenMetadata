@@ -22,8 +22,8 @@ import {
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { EntityType } from '../support/entity/EntityDataClass.interface';
@@ -57,6 +57,61 @@ export const waitForAllLoadersToDisappear = async (
 
   // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
+};
+
+/**
+ * Clicks a tab and waits for react-router v7's deferred navigate() (wrapped in
+ * React.startTransition) to actually commit before returning — otherwise callers can
+ * assert against the previous tab's still-mounted content. Optionally waits for an API
+ * response tied to the new tab's data.
+ */
+export const clickTabAndWaitForPanel = async (
+  page: Page,
+  tab: Locator,
+  options?: {
+    urlIncludes?: string;
+    responseMatcher?: (response: Response) => boolean;
+  }
+) => {
+  const responsePromise = options?.responseMatcher
+    ? page.waitForResponse(options.responseMatcher)
+    : undefined;
+
+  await tab.click();
+
+  if (options?.urlIncludes) {
+    const urlIncludes = options.urlIncludes;
+    await page.waitForURL(
+      (url) =>
+        url.pathname.includes(urlIncludes) || url.search.includes(urlIncludes)
+    );
+  }
+
+  if (responsePromise) {
+    await responsePromise;
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
+  // aria-selected flips only once activeKey has actually caught up to the
+  // click — expect() polls until this settles, which is what actually closes
+  // the react-router v7 startTransition race (no fixed wait/frame count needed).
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+
+  // Re-read aria-controls on every poll rather than once: a single read right
+  // after aria-selected flips can still catch a transient/empty value before
+  // the panel wiring itself has settled, since the two attributes don't
+  // necessarily commit in the same render.
+  await expect
+    .poll(async () => {
+      const panelId = await tab.getAttribute('aria-controls');
+      const panel = panelId
+        ? page.locator(`#${panelId}`)
+        : page.locator('[role="tabpanel"][aria-hidden="false"]').first();
+
+      return panel.isVisible();
+    })
+    .toBe(true);
 };
 
 export const visitEntityPage = async (data: {

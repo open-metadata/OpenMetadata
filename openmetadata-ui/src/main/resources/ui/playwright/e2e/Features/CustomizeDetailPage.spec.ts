@@ -12,9 +12,9 @@
  */
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
@@ -43,8 +43,9 @@ import {
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
 import {
+  clickTabAndWaitForPanel,
   getEncodedFqn,
-  waitForAllLoadersToDisappear
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
@@ -516,12 +517,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
-        await customTab.focus();
-        await userPage.keyboard.press('Enter');
-        await userPage.waitForTimeout(5000); // Wait for the tab content to load
-        await waitForAllLoadersToDisappear(userPage);
-        await userPage.waitForLoadState('domcontentloaded');
-          
+        // waitForLoadState('domcontentloaded') is a no-op on this SPA tab
+        // switch and guarded nothing against react-router v7's deferred
+        // navigate(); wait for the tab's own panel to become active instead.
+        await clickTabAndWaitForPanel(userPage, customTab);
         await waitForAllLoadersToDisappear(
           userPage,
           'entity-detail-widget-skeleton'
@@ -690,12 +689,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .last()
           .getByRole('tab', { name: 'Custom Tab' });
 
-        await customTab.focus();
-        await userPage.keyboard.press('Enter');
-        await userPage.waitForTimeout(5000); // Wait for the tab content to load
-        await waitForAllLoadersToDisappear(userPage);
-        await userPage.waitForLoadState('domcontentloaded');
-        
+        // waitForLoadState('domcontentloaded') is a no-op on this SPA tab
+        // switch and guarded nothing against react-router v7's deferred
+        // navigate(); wait for the tab's own panel to become active instead.
+        await clickTabAndWaitForPanel(userPage, customTab);
         await waitForAllLoadersToDisappear(
           userPage,
           'entity-detail-widget-skeleton'

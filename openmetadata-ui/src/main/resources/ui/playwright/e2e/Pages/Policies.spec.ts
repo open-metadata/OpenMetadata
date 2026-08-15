@@ -224,6 +224,14 @@ test.describe(
         // Click on add rule button
         await page.locator('[data-testid="add-rule"]').click();
 
+        // add-rule navigates to AddRulePage, a real route change deferred
+        // under react-router v7's startTransition — without waiting for the
+        // new page's own marker, addRule()'s fill below can still hit
+        // [data-testid="rule-name"] on the *previous* page (a read-only span
+        // for an existing rule, reusing the same testid as the new page's
+        // input) while the navigation is still pending.
+        await page.getByTestId('add-rule-title').waitFor({ state: 'visible' });
+
         // Add rule (assuming addRule is a function you have defined elsewhere)
         await addRule(page, NEW_RULE_NAME, NEW_RULE_DESCRIPTION, 0);
 
@@ -258,6 +266,13 @@ test.describe(
 
         // Click on edit rule button
         await page.locator('[data-testid="edit-rule"]').click();
+
+        // edit-rule navigates to EditRulePage, a real route change deferred
+        // under react-router v7's startTransition — wait for the new page's
+        // own marker before touching [data-testid="rule-name"], which is
+        // otherwise ambiguous with the read-only rule-name span still on the
+        // previous page during the pending navigation.
+        await page.getByTestId('edit-rule-title').waitFor({ state: 'visible' });
 
         // Enter new name
         await page.locator('[data-testid="rule-name"]').fill(UPDATED_RULE_NAME);

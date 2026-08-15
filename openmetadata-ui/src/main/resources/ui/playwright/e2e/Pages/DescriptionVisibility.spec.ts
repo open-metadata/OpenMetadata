@@ -42,7 +42,8 @@ import {
   verifyEndOfDescriptionReachable,
 } from '../../utils/domain';
 import {
-  waitForAllLoadersToDisappear
+  clickTabAndWaitForPanel,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
@@ -415,13 +416,20 @@ test.describe(
         .getByTestId('asset-description-container')
         .waitFor({ state: 'visible' });
       await userPage.waitForLoadState('domcontentloaded');
-      const descriptionTab = userPage.getByRole('tab', { name: 'Description Tab' });
+      const descriptionTab = userPage.getByRole('tab', {
+        name: 'Description Tab',
+      });
       await expect(descriptionTab).toBeVisible();
-      await descriptionTab.focus();
-      await userPage.keyboard.press('Enter');
-      await userPage.waitForTimeout(5000); // Wait for the tab content to load
-      await waitForAllLoadersToDisappear(userPage);
-      await userPage.waitForLoadState('domcontentloaded');
+      // waitForLoadState('domcontentloaded') is a no-op here — an SPA tab click
+      // triggers no real navigation, so it resolved instantly and guarded
+      // nothing against react-router v7's deferred navigate(). Wait for the
+      // active tabpanel instead so the old "Columns" tab content can't still be
+      // the thing this assertion matches against.
+      await clickTabAndWaitForPanel(userPage, descriptionTab);
+      await waitForAllLoadersToDisappear(
+        userPage,
+        'entity-detail-widget-skeleton'
+      );
 
       const descriptionWidget = userPage
         .getByTestId(/KnowledgePanel.Description-/)
@@ -435,6 +443,17 @@ test.describe(
       });
       await expect(moreButton).toBeVisible();
       await moreButton.click();
+
+      // The click flips readMore state, which swaps the BlockEditor (Tiptap)
+      // content prop from the truncated preview to the full text — but Tiptap
+      // applies content changes asynchronously (an effect-gated setTimeout,
+      // then a transaction event deferred behind two requestAnimationFrames),
+      // so the full text isn't guaranteed to be in the DOM immediately after
+      // the click. The button's own testid flipping to read-less-button is a
+      // direct signal that React has re-rendered with the expanded state.
+      await descriptionWidget
+        .getByTestId('read-less-button')
+        .waitFor({ state: 'visible' });
 
       await verifyEndOfDescriptionReachable(descriptionWidget, userPage);
 
