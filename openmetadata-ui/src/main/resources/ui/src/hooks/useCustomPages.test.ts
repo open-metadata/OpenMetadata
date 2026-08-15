@@ -116,7 +116,7 @@ describe('useCustomPages', () => {
     expect(result.current.navigation).toEqual([]);
   });
 
-  it('should not fetch document when no persona is selected', () => {
+  it('should not fetch document when no persona is selected', async () => {
     mockUseApplicationStore.mockReturnValue({
       selectedPersona: null,
     });
@@ -128,7 +128,11 @@ describe('useCustomPages', () => {
     expect(mockGetDocumentByFQN).not.toHaveBeenCalled();
     expect(result.current.customizedPage).toBeNull();
     expect(result.current.navigation).toBeNull();
-    expect(result.current.isLoading).toBe(false);
+
+    // hasMounted starts false (isLoading = true), flips after the mount effect.
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
   });
 
   it('should filter by pageType from cached doc without re-fetching', async () => {

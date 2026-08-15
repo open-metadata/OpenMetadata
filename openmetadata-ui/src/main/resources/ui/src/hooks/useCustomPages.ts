@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { Page, PageType } from '../generated/system/ui/page';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
 import {
@@ -37,6 +38,16 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     staleTime: PERSONA_DOC_STALE_TIME,
   });
 
+  // hasMounted flips once after the first paint so entity pages always show
+  // their loader on first render — identical to the old useState(true) pattern.
+  // Without this, selectedPersona arrives asynchronously after first render,
+  // causing isLoading to flip false→true→false in a window where
+  // waitForAllLoadersToDisappear may have already returned.
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   return {
     customizedPage:
       (doc?.data?.pages?.find((p: Page | null) => p?.pageType === pageType) as
@@ -46,6 +57,6 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     navigation: isError
       ? ([] as NavigationItem[])
       : ((doc?.data?.navigation ?? null) as NavigationItem[] | null),
-    isLoading: !!fqn && isPending,
+    isLoading: !hasMounted || (!!fqn && isPending),
   };
 };
