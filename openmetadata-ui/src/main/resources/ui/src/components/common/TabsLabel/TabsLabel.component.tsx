@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Skeleton } from '@openmetadata/ui-core-components';
 import { Badge } from 'antd';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -34,9 +35,10 @@ const TabsLabel = ({
         {name}
         {isLoading ? (
           <span
-            className="tw:inline-block tw:h-4 tw:w-6 tw:animate-pulse tw:rounded-full tw:bg-tertiary"
-            data-testid="loading-skeleton"
-          />
+            className="tw:flex tw:items-center"
+            data-testid="loading-skeleton">
+            <Skeleton height={16} variant="rounded" width={24} />
+          </span>
         ) : (
           !isNil(count) && (
             <span data-testid="count">
