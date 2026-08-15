@@ -59,7 +59,6 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
-import { useDeferredTabData } from '../../hooks/useDeferredTabData';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -956,23 +955,15 @@ const TableDetailsPageV1: React.FC = () => {
     }
   }, [tableDetails?.fullyQualifiedName]);
 
-  // P1.2: queryCount only drives the "Queries (N)" tab badge — most users never click that
-  // tab, so eagerly fetching it on every page load wasted a server round-trip per view.
-  // Defer until the user actually activates the Queries tab (or any of its column-scoped
-  // sub-tabs); the badge then populates on first activation. {@link useDeferredTabData}
-  // also re-fires on FQN change if the user is already on the Queries tab, so badge counts
-  // never show stale data from a previous entity.
-  useDeferredTabData(EntityTabs.TABLE_QUERIES, activeTab, fetchQueryCount, [
-    tableDetails?.fullyQualifiedName,
-  ]);
-
-  // Reset the badge count to 0 when navigating to a different entity. Without this the
-  // badge would show the previous table's queryCount until the deferred fetch resolves,
-  // which is briefly misleading when navigating between tables that have differing query
-  // counts.
+  // The "Queries (N)" tab badge always renders its count, so a deferred fetch would show a
+  // misleading 0 until the user activated the tab. Reset before fetching so the previous
+  // table's count doesn't linger while navigating between entities.
   useEffect(() => {
-    setQueryCount(0);
-  }, [tableDetails?.fullyQualifiedName]);
+    if (tableDetails?.id) {
+      setQueryCount(0);
+      fetchQueryCount();
+    }
+  }, [tableDetails?.id]);
 
   useSub(
     'updateDetails',

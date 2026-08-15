@@ -12,10 +12,13 @@
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -667,6 +670,64 @@ describe('TestDetailsPageV1 component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/table/fqn/sample_data', {
       replace: true,
       state: { breadcrumbData },
+    });
+  });
+
+  describe('Queries tab count', () => {
+    const getQueriesTabCount = () =>
+      (TabsLabel as unknown as jest.Mock).mock.calls
+        .map(([props]) => props)
+        .filter((props) => props.id === EntityTabs.TABLE_QUERIES)
+        .pop()?.count;
+
+    const renderOnSchemaTab = async () => {
+      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    beforeEach(() => {
+      (TabsLabel as unknown as jest.Mock).mockClear();
+      (getQueriesList as jest.Mock).mockClear();
+    });
+
+    it('should fetch the count on mount without activating the Queries tab', async () => {
+      (getQueriesList as jest.Mock).mockResolvedValue({
+        paging: { total: 7 },
+      });
+
+      await renderOnSchemaTab();
+
+      // useQuery resolves tableDetails on a later render, so the count effect fires after
+      // the act flush — poll rather than asserting synchronously.
+      await waitFor(() =>
+        expect(getQueriesList).toHaveBeenCalledWith({
+          limit: 0,
+          entityId: '123',
+        })
+      );
+
+      await waitFor(() => expect(getQueriesTabCount()).toBe(7));
+    });
+
+    it('should fall back to 0 when the count request fails', async () => {
+      (getQueriesList as jest.Mock).mockRejectedValue(new Error('failed'));
+
+      await renderOnSchemaTab();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      expect(getQueriesTabCount()).toBe(0);
     });
   });
 });
