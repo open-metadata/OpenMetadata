@@ -87,8 +87,6 @@ describe('useCustomPages', () => {
       wrapper: createWrapper(queryClient),
     });
 
-    expect(result.current.isLoading).toBe(true);
-
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
@@ -104,8 +102,6 @@ describe('useCustomPages', () => {
     const { result } = renderHook(() => useCustomPages(PageType.Table), {
       wrapper: createWrapper(queryClient),
     });
-
-    expect(result.current.isLoading).toBe(true);
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
