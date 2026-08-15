@@ -19,13 +19,12 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import APIError, ClientConfig
-from metadata.ingestion.source.database.sas.settings import sas_settings
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-_VERIFY_SSL = sas_settings.verify_ssl
 
 
 class SASClient:
@@ -42,7 +41,7 @@ class SASClient:
             auth_token=self.get_auth_token,
             api_version="",
             allow_redirects=True,
-            verify=_VERIFY_SSL,
+            verify=get_verify_ssl_fn(config.verifySSL)(config.sslConfig),
         )
         self.client = TrackedREST(client_config, source_name="sas")
         # custom setting
@@ -175,5 +174,5 @@ class SASClient:
             "Authorization": "Basic c2FzLmNsaTo=",
         }
         url = base_url + endpoint
-        response = requests.request("POST", url, headers=headers, data=payload, verify=_VERIFY_SSL, timeout=10)
+            verify=get_verify_ssl_fn(config.verifySSL)(config.sslConfig),
         return response.json()["access_token"]

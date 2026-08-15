@@ -28,9 +28,7 @@ public class SearchServiceTestFactory {
     String name = ns.prefix("elasticService_" + uniqueId);
 
     ElasticSearchConnection esConn =
-        new ElasticSearchConnection()
-            .withHostPort(URI.create("http://localhost:9200"))
-            .withVerifySSL(VerifySSL.IGNORE);
+        new ElasticSearchConnection().withHostPort(URI.create("http://localhost:9200"));
 
     SearchConnection conn = new SearchConnection().withConfig(esConn);
 
