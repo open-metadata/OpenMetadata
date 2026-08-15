@@ -1365,14 +1365,20 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             List.of(testSuiteId),
             TestSuiteRepository.TESTS_REVISION_EXTENSION,
             TestSuiteRepository.getTestsRevisionSchema());
-    Map<UUID, Long> testCaseRevisions = getTestSuiteRelationshipRevisions(testCaseIds);
+    Map<UUID, Long> testCaseRevisions =
+        getTestSuiteRelationshipRevisions(daoCollection, testCaseIds);
     if (testCaseRevisions.size() != testCaseIds.size()) {
-      throw new IllegalStateException("Failed to persist every test suite relationship revision");
+      throw new IllegalStateException(
+          String.format(
+              "Read back %d of %d test suite relationship revisions for test suite '%s'",
+              testCaseRevisions.size(), testCaseIds.size(), testSuiteId));
     }
     Long relationshipRevision =
-        TestSuiteRepository.getTestsRelationshipRevisions(List.of(testSuiteId)).get(testSuiteId);
+        TestSuiteRepository.getTestsRelationshipRevisions(daoCollection, List.of(testSuiteId))
+            .get(testSuiteId);
     if (relationshipRevision == null) {
-      throw new IllegalStateException("Failed to persist the test suite tests revision");
+      throw new IllegalStateException(
+          String.format("Read back no tests revision for test suite '%s'", testSuiteId));
     }
 
     return new LogicalSuiteRelationshipChange(
@@ -1380,10 +1386,26 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public static Map<UUID, Long> getTestSuiteRelationshipRevisions(List<UUID> testCaseIds) {
+    return getTestSuiteRelationshipRevisions(Entity.getCollectionDAO(), testCaseIds);
+  }
+
+  /**
+   * Reads the revisions through the caller's own DAO, so a caller that has just written them reads
+   * them back over the same connection and therefore inside the same transaction.
+   *
+   * <p>The no-DAO overload resolves {@link Entity#getCollectionDAO()}, which is a mutable global that
+   * the application and the integration-test bootstrap each set to an on-demand DAO over their own
+   * {@link org.jdbi.v3.core.Jdbi}. A repository captures {@code daoCollection} once at construction,
+   * so the two can name different instances — and then a write made on one connection is read back on
+   * another. MySQL pins a REPEATABLE READ snapshot at the transaction's first read and so cannot see
+   * the other connection's later commit at all, which surfaced as this method reporting rows it had
+   * just written as missing. Postgres re-snapshots per statement and hid the same bug.
+   */
+  public static Map<UUID, Long> getTestSuiteRelationshipRevisions(
+      CollectionDAO collectionDAO, List<UUID> testCaseIds) {
     if (nullOrEmpty(testCaseIds)) {
       return Map.of();
     }
-    CollectionDAO collectionDAO = Entity.getCollectionDAO();
     if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
       return Map.of();
     }

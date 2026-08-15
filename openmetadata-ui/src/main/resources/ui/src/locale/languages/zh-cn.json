@@ -4420,6 +4420,7 @@
     "create-entity-success": "{{entity}}创建成功",
     "delete-entity-error": "删除{{entity}}时发生错误！",
     "deploy-entity-error": "部署{{entity}}时发生错误！",
+    "deploy-entity-success": "{{entity}}部署成功。",
     "email-already-exist": "与该名称\"{{name}}\"同名的{{entity}}已经存在, 请选择其他邮箱",
     "email-confirmation": "请检查您的电子邮箱, 确认邮件已发送",
     "email-found": "具有给定电子邮箱地址的用户已存在！",

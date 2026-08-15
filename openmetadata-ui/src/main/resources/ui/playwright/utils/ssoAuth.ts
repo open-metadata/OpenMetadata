@@ -117,13 +117,17 @@ export const restoreSecurityConfig = async (
 
 /**
  * Applies `override` for the lifetime of a suite; returns the restore function.
- * The admin JWT must be captured before the swap — afterwards the admin can no
- * longer authenticate.
+ *
+ * The server rejects a pre-swap basic-auth session token once the provider is
+ * switched to SSO (JwtFilter.validateSessionProviderIsCurrent).  Callers must
+ * pass an `ssoToken` — a JWT minted by the active SSO provider — so the restore
+ * PUT is authenticated under the current provider.  Obtain it by doing a fresh
+ * SSO login in afterAll before calling the restore function.
  */
 export const swapSecurityConfig = async (
   browser: Browser,
   override: ProviderConfigOverride
-): Promise<() => Promise<void>> => {
+): Promise<(ssoToken?: string) => Promise<void>> => {
   const { apiContext, afterAction, token } = await performAdminLogin(browser);
 
   try {
@@ -137,8 +141,8 @@ export const swapSecurityConfig = async (
 
     await applyProviderConfig(apiContext, snapshot, override);
 
-    return async () => {
-      const adminContext = await getAuthContext(token);
+    return async (ssoToken?: string) => {
+      const adminContext = await getAuthContext(ssoToken ?? token);
 
       try {
         await restoreSecurityConfig(adminContext, snapshot);

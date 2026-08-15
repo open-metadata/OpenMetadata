@@ -4420,6 +4420,7 @@
     "create-entity-success": "{{entity}}が正常に作成されました。",
     "delete-entity-error": "{{entity}}の削除中にエラーが発生しました。",
     "deploy-entity-error": "{{entity}}のデプロイ中にエラーが発生しました！",
+    "deploy-entity-success": "{{entity}} を正常にデプロイしました。",
     "email-already-exist": "名前が「{{name}}」の{{entity}}は既に存在します。別のメールアドレスを選んでください。",
     "email-confirmation": "メールアドレス確認のためのメールを送信しました。受信トレイをご確認ください。",
     "email-found": "このメールアドレスはすでに他のユーザーに使用されています！",
