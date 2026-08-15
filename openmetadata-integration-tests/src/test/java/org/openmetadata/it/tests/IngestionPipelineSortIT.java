@@ -352,12 +352,12 @@ public class IngestionPipelineSortIT {
   }
 
   /**
-   * {@code displayName} has no maxLength in the schema, so the sort column truncates rather than
-   * rejects. The cursor Java derives has to truncate identically or paging skips a row at the
-   * boundary.
+   * {@code displayName} has no maxLength in the schema, and neither the sort expression nor the
+   * cursor truncates. A displayName far longer than the old 256-char cap must still page correctly:
+   * the cursor carries the full value, matching the SQL expression, so no row is skipped.
    */
   @Test
-  void test_listSortedByDisplayName_handlesDisplayNameLongerThanSortColumn(TestNamespace ns) {
+  void test_listSortedByDisplayName_pagesAcrossAnUntruncatedLongDisplayName(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     String longPrefix = "zzz-" + "x".repeat(300);

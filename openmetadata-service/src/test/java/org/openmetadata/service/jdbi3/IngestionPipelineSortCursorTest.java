@@ -29,34 +29,21 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository.DisplayNameCur
 import org.openmetadata.service.util.RestUtil;
 
 /**
- * The keyset cursor for {@code sortField=displayName} carries the value of the {@code
- * displayNameSort} generated column, so Java has to reproduce that column's expression exactly:
+ * The keyset cursor for {@code sortField=displayName} carries the value of the SQL sort expression
+ * {@code COALESCE(NULLIF(displayName,''), name)}, so Java has to reproduce it exactly.
  *
- * <pre>
- *   MySQL:    LEFT(COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json,'$.displayName')),''),
- *                           JSON_UNQUOTE(JSON_EXTRACT(json,'$.name'))), 256)
- *   Postgres: left(COALESCE(NULLIF(json ->> 'displayName', ''), json ->> 'name'), 256)
- * </pre>
- *
- * <p>Any disagreement is silent and data-dependent: the cursor is compared against the column with
- * {@code >}/{@code =}, so a Java value one character off from the stored one skips or repeats a row
- * at a page boundary rather than failing. The fixtures below were run through real MySQL 8.0 and
- * PostgreSQL 15 against the 1.13.4 DDL, and both engines produced exactly these values — this test is
- * what keeps the Java half from drifting away from them.
+ * <p>Any disagreement is silent and data-dependent: the cursor is compared against the expression
+ * with {@code >}/{@code =}, so a Java value one character off from the stored one skips or repeats a
+ * row at a page boundary rather than failing. The value is carried whole — the expression is not
+ * length-capped, so the cursor must not truncate either.
  */
 class IngestionPipelineSortCursorTest {
-  private static final int SORT_WIDTH = 256;
-
-  /** U+1F600, a single code point that occupies two {@code char}s. */
-  private static final String EMOJI = "😀";
-
   private static final IngestionPipelineRepository repository;
 
   static {
     // The real constructor registers the entity with the DAO-backed Entity registry; these helpers
     // are pure functions of their arguments, so call them on an otherwise-uninitialised instance.
     repository = mock(IngestionPipelineRepository.class);
-    when(repository.truncateToSortWidth(Mockito.anyString())).thenCallRealMethod();
     when(repository.displayNameCursorValue(Mockito.any())).thenCallRealMethod();
     when(repository.parseDisplayNameCursor(Mockito.anyString())).thenCallRealMethod();
     when(repository.parseCursorMap(Mockito.nullable(String.class))).thenCallRealMethod();
@@ -99,58 +86,27 @@ class IngestionPipelineSortCursorTest {
     assertEquals("", sortKeyOf(pipeline(null, null)));
   }
 
-  @Test
-  void test_truncation_leavesValuesAtOrUnderTheColumnWidthAlone() {
-    String exact = "a".repeat(SORT_WIDTH);
-
-    assertEquals(exact, repository.truncateToSortWidth(exact));
-    assertEquals("short", repository.truncateToSortWidth("short"));
-  }
-
   /**
-   * {@code displayName} has no maxLength in the schema, so the column truncates rather than
-   * rejecting. The cursor has to truncate identically or it addresses a row that does not exist.
+   * The sort key is carried whole — no truncation. The SQL expression is not length-capped either,
+   * so a long displayName's cursor must equal its full value or the keyset comparison skips a row.
    */
   @Test
-  void test_truncation_cutsAtTheColumnWidth() {
-    assertEquals("x".repeat(SORT_WIDTH), repository.truncateToSortWidth("x".repeat(300)));
-  }
-
-  /**
-   * The boundary case that a plain {@code substring(0, 256)} gets wrong. SQL {@code LEFT()} counts
-   * characters, so a code point straddling position 256 is dropped whole; splitting the surrogate
-   * pair instead would yield an unpaired surrogate the database never stores.
-   */
-  @Test
-  void test_truncation_neverSplitsASurrogatePair() {
-    // 255 + one 2-char code point = exactly 256 code points, so nothing is cut.
-    String atBoundary = "a".repeat(255) + EMOJI;
-    // 257 code points, and the 257th is the plain 'b' — the emoji survives intact.
-    String pastBoundary = "a".repeat(255) + EMOJI + "b";
-
-    assertEquals(atBoundary, repository.truncateToSortWidth(atBoundary));
-    assertEquals(atBoundary, repository.truncateToSortWidth(pastBoundary));
-    assertEquals(
-        SORT_WIDTH,
-        repository.truncateToSortWidth(pastBoundary).codePointCount(0, atBoundary.length()));
-  }
-
-  /** The emoji itself is the 257th code point here, so it is the character that gets dropped. */
-  @Test
-  void test_truncation_dropsATrailingCodePointThatDoesNotFit() {
-    assertEquals(
-        "a".repeat(SORT_WIDTH), repository.truncateToSortWidth("a".repeat(SORT_WIDTH) + EMOJI));
+  void test_sortKey_carriesLongDisplayNamesWhole() {
+    String longName = "a".repeat(300);
+    assertEquals(longName, sortKeyOf(pipeline("machine-name", longName)));
   }
 
   @Test
   void test_cursor_roundTripsThroughTheWireEncoding() {
-    IngestionPipeline pipeline = pipeline("n7", "a".repeat(255) + EMOJI + "b");
+    // U+1F600 is a surrogate pair — the full value, emoji included, must survive encode/decode.
+    String longName = "a".repeat(255) + "😀" + "b";
+    IngestionPipeline pipeline = pipeline("n7", longName);
 
     DisplayNameCursor parsed =
         repository.parseDisplayNameCursor(
             RestUtil.encodeCursor(repository.displayNameCursorValue(pipeline)));
 
-    assertEquals("a".repeat(255) + EMOJI, parsed.displayName());
+    assertEquals(longName, parsed.displayName());
     assertEquals(pipeline.getId().toString(), parsed.id());
   }
 

@@ -102,13 +102,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
 
-  /**
-   * Width of the {@code displayNameSort} generated column. {@code displayName} is an unbounded
-   * string in the schema, so the column truncates rather than rejects — keep this in sync with the
-   * {@code LEFT(..., 256)} in the 1.13.4 migration.
-   */
-  private static final int DISPLAY_NAME_SORT_MAX_CHARS = 256;
-
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
@@ -297,9 +290,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   /**
-   * Must reproduce the {@code displayNameSort} generated column exactly — {@code
-   * LEFT(COALESCE(NULLIF(displayName,''), name), 256)}. The column is deliberately not case-folded,
-   * so the value is carried verbatim and comparison semantics stay entirely inside the database.
+   * Reproduces the ORDER BY expression — {@code COALESCE(NULLIF(displayName,''), name)} — as the
+   * cursor's sort key. The value is carried verbatim (no truncation and not case-folded), so it
+   * matches the un-truncated SQL expression exactly and comparison stays inside the database.
    */
   @VisibleForTesting
   String displayNameCursorValue(IngestionPipeline pipeline) {
@@ -307,24 +300,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     String sortKey = nullOrEmpty(displayName) ? pipeline.getName() : displayName;
     return JsonUtils.pojoToJson(
         Map.of(
-            "displayNameSort",
-            truncateToSortWidth(sortKey == null ? "" : sortKey),
-            "id",
-            pipeline.getId().toString()));
-  }
-
-  /**
-   * Counts code points, not {@code char}s, because SQL {@code LEFT()} is defined in characters:
-   * {@link String#substring} on a surrogate pair would produce a cursor the database disagrees with
-   * and silently skip a row at the page boundary.
-   */
-  @VisibleForTesting
-  String truncateToSortWidth(String sortKey) {
-    String truncated = sortKey;
-    if (sortKey.codePointCount(0, sortKey.length()) > DISPLAY_NAME_SORT_MAX_CHARS) {
-      truncated = sortKey.substring(0, sortKey.offsetByCodePoints(0, DISPLAY_NAME_SORT_MAX_CHARS));
-    }
-    return truncated;
+            "displayNameSort", sortKey == null ? "" : sortKey, "id", pipeline.getId().toString()));
   }
 
   @VisibleForTesting
