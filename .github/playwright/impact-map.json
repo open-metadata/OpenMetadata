@@ -296,7 +296,6 @@
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
-        "playwright/e2e/Features/LandingPageWidgets/DomainWidgetAssetCount.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts"
       ]
     },
