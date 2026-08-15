@@ -111,7 +111,7 @@ export const verifyDataFilters = async (
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -125,7 +125,7 @@ export const verifyDataFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -139,7 +139,7 @@ export const verifyDataFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Latest' }).click();
   await latestFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
@@ -163,7 +163,7 @@ export const verifyTotalDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Last 14 days' }).click();
   await last14DaysFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -180,7 +180,7 @@ export const verifyTotalDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
   await last7DaysFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
@@ -203,7 +203,7 @@ export const verifyDataProductsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -217,7 +217,7 @@ export const verifyDataProductsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -231,7 +231,7 @@ export const verifyDataProductsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Latest' }).click();
   await latestFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
@@ -303,7 +303,7 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const mentionsTaskFilter = waitForTaskFilterResponse('MENTIONS');
   await page.getByRole('menuitem', { name: 'Mentions' }).click();
   await mentionsTaskFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -311,7 +311,7 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const assignedTasksFilter = waitForTaskFilterResponse('ASSIGNED_TO');
   await page.getByRole('menuitem', { name: 'Assigned' }).click();
   await assignedTasksFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -319,7 +319,7 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   const allTasksFilter = waitForTaskFilterResponse('OWNER_OR_FOLLOWS');
   await page.getByRole('menuitem', { name: 'All' }).click();
   await allTasksFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
@@ -341,7 +341,7 @@ export const verifyDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -354,7 +354,7 @@ export const verifyDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -367,7 +367,7 @@ export const verifyDataAssetsFilters = async (
   );
   await page.getByRole('menuitem', { name: 'High to Low' }).click();
   await highToLowFilter;
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 
@@ -381,7 +381,7 @@ export const verifyDataAssetsFilters = async (
   await page.getByRole('menuitem', { name: 'Low to High' }).click();
   await lowToHighFilter;
 
-  await widget.locator('entity-list-skeleton').waitFor({
+  await widget.getByTestId('entity-list-skeleton').waitFor({
     state: 'detached',
   });
 };
