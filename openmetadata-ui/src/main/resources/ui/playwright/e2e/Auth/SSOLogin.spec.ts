@@ -18,8 +18,7 @@ import {
   swapSecurityConfig,
   verifyLoggedInUserMatches,
 } from '../../utils/ssoAuth';
-import { loginViaSso, SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
-import { getToken } from '../../utils/tokenStorage';
+import { SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -36,7 +35,7 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
   test.describe.configure({ mode: 'serial' });
 
   let helper: ProviderHelper;
-  let restoreSecurity: ((ssoToken?: string) => Promise<void>) | undefined;
+  let restoreSecurity: (() => Promise<void>) | undefined;
   let userContext: BrowserContext | undefined;
   let userPage: Page | undefined;
 
@@ -54,32 +53,14 @@ test.describe('SSO Login', { tag: ['@sso', '@Platform'] }, () => {
     }
   );
 
-  test.afterAll(
-    'Restore original security configuration',
-    async ({ browser }) => {
-      test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
+  test.afterAll('Restore original security configuration', async () => {
+    test.setTimeout(SSO_LOGIN_HOOK_TIMEOUT_MS);
 
-      await userPage?.close();
-      await userContext?.close();
+    await userPage?.close();
+    await userContext?.close();
 
-      // The pre-swap basic-auth token is rejected once the server is in SSO mode
-      // (JwtFilter.validateSessionProviderIsCurrent).  Do a fresh SSO login to
-      // obtain a token the current provider will accept.
-      let ssoToken: string | undefined;
-      const tempCtx = await browser.newContext();
-      const tempPage = await tempCtx.newPage();
-
-      try {
-        await loginViaSso(tempPage, helper, { username, password });
-        ssoToken = await getToken(tempPage);
-      } finally {
-        await tempPage.close();
-        await tempCtx.close();
-      }
-
-      await restoreSecurity?.(ssoToken);
-    }
-  );
+    await restoreSecurity?.();
+  });
 
   test('should display SSO sign-in button on /signin', async ({ page }) => {
     await page.goto('/signin');
