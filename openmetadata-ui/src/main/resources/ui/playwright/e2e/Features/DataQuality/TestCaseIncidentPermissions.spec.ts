@@ -28,6 +28,7 @@ import { getApiContext } from '../../../utils/common';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { setupUserWithPolicy } from '../../../utils/permission';
+import { verifyTestCaseLastRunBanner } from '../../../utils/testCases';
 
 // --- Objects ---
 let viewIncidentsPolicy: PolicyClass;
@@ -118,6 +119,7 @@ test.describe(
       expect(testCaseRes.status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
       await expect(page.getByTestId('entity-page-header')).toBeVisible();
+      await verifyTestCaseLastRunBanner(page, 'failed');
       const incidentTab = page.getByRole('tab', { name: /Incident/i });
       await expect(incidentTab).toBeVisible();
       await incidentTab.click();

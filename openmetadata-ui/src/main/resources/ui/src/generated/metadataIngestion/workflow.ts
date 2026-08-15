@@ -1705,6 +1705,10 @@ export interface Connection {
      */
     creditCost?: number;
     /**
+     * Ingest Snowflake semantic views as data assets.
+     */
+    includeSemanticViews?: boolean;
+    /**
      * Ingest external and internal stages.
      */
     includeStages?: boolean;
