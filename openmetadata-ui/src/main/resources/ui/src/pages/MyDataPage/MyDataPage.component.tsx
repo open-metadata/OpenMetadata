@@ -95,7 +95,15 @@ const MyDataPage = () => {
     staleTime: PERSONA_DOC_STALE_TIME,
   });
 
-  const isLoading = !!personaFqn && isDocPending;
+  // Start with isLoading=true so the skeleton renders on the first paint and
+  // widget loaders are deferred until the persona query settles.  A user with
+  // no persona would otherwise get isLoading=false immediately, exposing widget
+  // loaders to Playwright's waitForAllLoadersToDisappear before it starts polling.
+  const isQueryLoading = !!personaFqn && isDocPending;
+  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    setIsLoading(isQueryLoading);
+  }, [isQueryLoading]);
 
   const personaPreferences = useMemo<PersonaPreferences[]>(
     () => docData?.data?.personPreferences ?? [],
