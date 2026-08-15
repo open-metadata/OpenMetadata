@@ -274,18 +274,22 @@ test.describe.serial('Persona AI Context — Filter validation', () => {
     });
 
     await test.step('select the Description field (text type, no async fetch)', async () => {
-      const ruleRow = page.locator('.rule').first();
-      await selectOption(
-        page,
-        ruleRow.locator('.rule--field .ant-select'),
-        'Description',
-        true
-      );
+      // Use the field selector directly — the .rule GROUP wrapper can be hidden
+      const fieldLocator = page.locator('.rule--field .ant-select').first();
+      await fieldLocator.waitFor({ state: 'visible', timeout: 5000 });
+      await selectOption(page, fieldLocator, 'Description', true);
+    });
+
+    await test.step('select Contains operator (required before text widget appears)', async () => {
+      // Description field uses match_phrase operators; text widget only renders
+      // after an operator is chosen — select "Contains" (match_phrase)
+      const operatorLocator = page.locator('.rule--operator .ant-select').first();
+      await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
+      await selectOption(page, operatorLocator, 'Contains', false);
     });
 
     await test.step('type a value in the text widget', async () => {
-      const ruleRow = page.locator('.rule').first();
-      const textInput = ruleRow.locator('.rule--widget--TEXT input[type="text"]');
+      const textInput = page.locator('.rule--widget--TEXT input[type="text"]').first();
       await textInput.waitFor({ state: 'visible' });
       await textInput.fill('important data asset');
     });
@@ -426,7 +430,9 @@ test.describe('Persona AI Context — Rule editor fields', () => {
     await test.step('Fully rendered switch must be checked and disabled', async () => {
       const fullyRenderedSwitch = page
         .getByTestId('context-rule-fully-rendered')
-        .getByRole('switch');
+        .getByRole('switch')
+        .first();
+      // react-aria Switch: use .isChecked() — aria-checked attr is not always set
       await expect(fullyRenderedSwitch).toBeChecked();
       await expect(fullyRenderedSwitch).toBeDisabled();
     });
