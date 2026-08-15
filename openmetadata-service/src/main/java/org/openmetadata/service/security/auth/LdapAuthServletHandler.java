@@ -4,6 +4,7 @@ import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.SERVICE_UNAVAILABLE;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.openmetadata.service.security.SecurityUtil.writeErrorResponse;
+import static org.openmetadata.service.security.SecurityUtil.writeFailureResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.SecurityUtil.writeMessageResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -126,7 +127,7 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       sendError(resp, statusCode, e.getMessage());
     } catch (Exception e) {
       LOG.error("Unexpected error handling LDAP login", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Authentication service error");
+      writeFailureResponse(resp, e);
     }
   }
 
@@ -197,7 +198,7 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
     } catch (Exception e) {
       sessionService.releaseRefreshLease(leasedSession);
       LOG.error("Error handling refresh", e);
-      sendError(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+      writeFailureResponse(resp, e);
     }
   }
 

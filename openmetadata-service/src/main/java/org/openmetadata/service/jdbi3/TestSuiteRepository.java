@@ -156,10 +156,20 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   public static Map<UUID, Long> getTestsRelationshipRevisions(List<UUID> testSuiteIds) {
+    return getTestsRelationshipRevisions(Entity.getCollectionDAO(), testSuiteIds);
+  }
+
+  /**
+   * Reads the revisions through the caller's own DAO, so a caller that has just written them reads
+   * them back over the same connection and therefore inside the same transaction. See {@link
+   * TestCaseRepository#getTestSuiteRelationshipRevisions(CollectionDAO, List)} for why resolving the
+   * mutable global instead lets a write and its read-back land on two different connections.
+   */
+  public static Map<UUID, Long> getTestsRelationshipRevisions(
+      CollectionDAO collectionDAO, List<UUID> testSuiteIds) {
     if (nullOrEmpty(testSuiteIds)) {
       return Map.of();
     }
-    CollectionDAO collectionDAO = Entity.getCollectionDAO();
     if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
       return Map.of();
     }

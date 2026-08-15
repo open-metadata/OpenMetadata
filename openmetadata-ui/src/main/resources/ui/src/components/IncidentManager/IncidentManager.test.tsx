@@ -363,8 +363,11 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
-    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+  Link: jest.fn().mockImplementation(({ children, state, to, ...rest }) => (
+    <a
+      data-state={JSON.stringify(state)}
+      data-to={typeof to === 'string' ? to : JSON.stringify(to)}
+      {...rest}>
       {children}
     </a>
   )),
@@ -1203,6 +1206,14 @@ describe('IncidentManagerPage', () => {
         fqn,
         TestCasePageTabs.TEST_CASE_RESULTS
       );
+      expect(JSON.parse(link.getAttribute('data-state') ?? '{}')).toEqual({
+        breadcrumbData: [
+          {
+            name: 'label.incident-manager',
+            url: '/incident-manager',
+          },
+        ],
+      });
     });
   });
 });

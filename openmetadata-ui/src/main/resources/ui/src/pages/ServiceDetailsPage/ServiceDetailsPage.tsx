@@ -1640,20 +1640,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
         await fetchCollateAgentsList({
           limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
         });
-      } else {
-        setSearchText('');
+      } else if (isEmpty(searchText)) {
         await getAllIngestionWorkflows(
           {},
           ingestionPagingCursor?.pageSize ?? ingestionPageSize
         );
+      } else {
+        // Refresh means "re-read what I am looking at", so a live search is re-run rather than
+        // discarded. Clearing it instead would both wipe the user's filter and cost two requests,
+        // since the effect keyed on `searchText` fetches as well.
+        await searchPipelines(searchText, currentIngestionPage);
       }
     },
     [
       collateAgentPagingCursor,
       collateAgentPageSize,
+      currentIngestionPage,
       getAllIngestionWorkflows,
       ingestionPagingCursor,
       ingestionPageSize,
+      searchPipelines,
+      searchText,
     ]
   );
 

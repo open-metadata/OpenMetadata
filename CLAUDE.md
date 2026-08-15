@@ -99,8 +99,11 @@ for boundaries (HTTP clients, third-party APIs), not internals. Ask "what breaks
 but the code is wrong?" — if the answer is "nothing", rewrite it. Assert on observable outcomes
 (API responses, DB state), not internal `verify()` calls.
 
-**Apache-2.0 license header** on every new source file (Java, Python, TS). UI files:
-`yarn license-header-fix`. CI enforces it.
+**License headers are per-module — copy one from a sibling file, never assume Apache.** UI TS/TSX:
+Apache-2.0 (`yarn license-header-fix`). Python: `ingestion/` is **Collate Community License 1.0** (`ingestion/LICENSE`); `openmetadata-airflow-apis/` Python files use the same Collate header template.
+Java: Apache-2.0, most files carry none.
+Only the UI is enforced — the `ui-license-header` pre-commit hook and CI `ui-checkstyle`; spotless
+and `py_format_check` never look at headers, so a wrong Python or Java header ships silently.
 
 **Schema-first.** JSON Schemas in `openmetadata-spec/` are the single source of truth; all generated
 code (Java POJOs, Pydantic models, TS types) is derived. **Edit the schema, then regenerate — never

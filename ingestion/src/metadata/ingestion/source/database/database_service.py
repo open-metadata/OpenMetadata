@@ -25,6 +25,7 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -35,6 +36,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -179,6 +181,15 @@ class DatabaseServiceTopology(ServiceTopology):
             NodeStage(
                 type_=OMetaLifeCycleData,
                 processor="yield_life_cycle_data",
+                nullable=True,
+            ),
+            # Metrics defined *by* the table rather than computed from it: semantic
+            # layers (Snowflake semantic views, Databricks metric views) expose named
+            # measures that belong to the table they are declared on. Runs after the
+            # Table stage so the Metric can reference the table it came from.
+            NodeStage(  # pyright: ignore[reportCallIssue]
+                type_=Metric,
+                processor="yield_table_metrics",
                 nullable=True,
             ),
         ],
@@ -725,7 +736,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 if owner_ref and owner_ref.root:
                     return owner_ref
 
-            if self.source_config.includeOwners and hasattr(self.inspector, "get_table_owner"):
+            # The Postgres source patches `get_table_owner` onto SQLAlchemy's global
+            # `Inspector` class, so probing the inspector reports True on every
+            # connector. Only the dialect carries a real implementation.
+            if self.source_config.includeOwners and hasattr(self.inspector.dialect, "get_table_owner"):
                 owner_name = self.inspector.get_table_owner(
                     connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
@@ -853,6 +867,17 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         Get the life cycle data of the table
         """
+
+    def yield_table_metrics(
+        self,
+        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+    ) -> Iterable[Either[CreateMetricRequest]]:
+        """
+        From topology. Yield the Metric entities a table declares, for sources with a
+        semantic layer. No-op by default -- the stage is in the shared topology, so a
+        source that does not override this must still resolve the processor.
+        """
+        yield from ()
 
     def clear_schema_tag_scope(self):
         """Drop tag-registry state for the current schema scope."""

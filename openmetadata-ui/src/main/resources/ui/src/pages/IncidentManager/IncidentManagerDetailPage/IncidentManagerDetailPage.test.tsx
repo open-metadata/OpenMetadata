@@ -130,10 +130,12 @@ jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   }),
 }));
 
+const mockLocation = {
+  state: { breadcrumbData: [] as { name: string; url: string }[] },
+};
+
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => ({ state: { breadcrumbData: [] } }));
+  return jest.fn().mockImplementation(() => mockLocation);
 });
 
 const mockNavigate = jest.fn();
@@ -191,7 +193,17 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(() => <div data-testid={HEADER_BREADCRUMB_TEST_ID} />)
+      .mockImplementation(
+        ({ items }: { items: { href?: string; label: string }[] }) => (
+          <nav data-testid={HEADER_BREADCRUMB_TEST_ID}>
+            {items.map((item) => (
+              <a href={item.href} key={`${item.href}-${item.label}`}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        )
+      )
 );
 jest.mock(
   '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
@@ -245,6 +257,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
 
 describe('IncidentManagerDetailPage', () => {
   beforeEach(() => {
+    mockLocation.state = { breadcrumbData: [] };
     mockUseTestCase.testCase = mockTestCaseData;
     jest.mocked(useParams).mockReturnValue({
       fqn: TEST_CASE_FQN,
@@ -291,6 +304,51 @@ describe('IncidentManagerDetailPage', () => {
     expect(
       await screen.findByTestId(INCIDENT_MANAGER_HEADER_TEST_ID)
     ).toBeInTheDocument();
+  });
+
+  it('should render the Data Quality origin breadcrumb', async () => {
+    mockLocation.state = {
+      breadcrumbData: [
+        {
+          name: 'Data Quality',
+          url: '/data-quality/test-cases',
+        },
+      ],
+    };
+
+    await act(async () => {
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
+    });
+
+    expect(
+      await screen.findByRole('link', { name: 'Data Quality' })
+    ).toHaveAttribute('href', '/data-quality/test-cases');
+  });
+
+  it('should render the test suite origin breadcrumb', async () => {
+    mockLocation.state = {
+      breadcrumbData: [
+        {
+          name: 'Test Suites',
+          url: '/data-quality/test-suites/bundle-suites',
+        },
+        {
+          name: 'Orders Bundle Suite',
+          url: '/test-suites/Orders.Bundle',
+        },
+      ],
+    };
+
+    await act(async () => {
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
+    });
+
+    expect(
+      await screen.findByRole('link', { name: 'Test Suites' })
+    ).toHaveAttribute('href', '/data-quality/test-suites/bundle-suites');
+    expect(
+      await screen.findByRole('link', { name: 'Orders Bundle Suite' })
+    ).toHaveAttribute('href', '/test-suites/Orders.Bundle');
   });
 
   it('onClick of same tab, should not call navigate', async () => {

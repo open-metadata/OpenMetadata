@@ -50,14 +50,26 @@ jest.mock('./AgentGroup.component', () => ({
   __esModule: true,
   default: ({
     agents,
+    isRefreshing,
     onAction,
+    onRefresh,
     onRunDetails,
   }: {
     agents: Agent[];
+    isRefreshing?: boolean;
     onAction: (action: string, agent: Agent) => void;
+    onRefresh?: () => void;
     onRunDetails: (agent: Agent) => void;
   }) => (
     <div>
+      {onRefresh && (
+        <button
+          data-testid="group-refresh"
+          disabled={isRefreshing}
+          onClick={onRefresh}>
+          refresh
+        </button>
+      )}
       {['run', 'redeploy', 'kill', 'pause', 'resume', 'edit', 'delete'].map(
         (action) => (
           <button
@@ -167,6 +179,19 @@ const viewWithAgents = (agents: Agent[]) => (
   <MetadataAgentsView
     showAddAgent
     agents={agents}
+    ingestionPipelineList={[]}
+    serviceCategory={ServiceCategory.DATABASE_SERVICES}
+    serviceDetails={{ name: 'service' } as ServicesType}
+    serviceName="service"
+    onRefresh={mockOnRefresh}
+  />
+);
+
+const viewRefreshing = (
+  <MetadataAgentsView
+    isRefreshing
+    showAddAgent
+    agents={[baseAgent]}
     ingestionPipelineList={[]}
     serviceCategory={ServiceCategory.DATABASE_SERVICES}
     serviceDetails={{ name: 'service' } as ServicesType}
@@ -290,5 +315,19 @@ describe('MetadataAgentsView', () => {
     expect(mockToggleAgent).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(screen.queryByTestId('confirm-delete')).not.toBeInTheDocument();
+  });
+
+  it('should hand the refresh handler to the group', () => {
+    renderView();
+
+    fireEvent.click(screen.getByTestId('group-refresh'));
+
+    expect(mockOnRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('should forward the in-flight state to the group', () => {
+    render(viewRefreshing);
+
+    expect(screen.getByTestId('group-refresh')).toBeDisabled();
   });
 });

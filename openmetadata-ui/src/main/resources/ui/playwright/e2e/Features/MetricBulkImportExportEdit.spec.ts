@@ -1678,12 +1678,13 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
+
+      const searchResponse = waitForMetricsSearchResponse(page);
       await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
 
       await expect(page.getByTestId('metric-name').first()).toBeVisible();
 
-      // The table is React Aria — click the visible <label slot="selection"> in
-      // the header to trigger select-all (no force needed; the label is visible).
       await page.locator('thead label[slot="selection"]').click();
 
       await expect(page.locator('.metric-list-selection-bar')).toBeVisible();
@@ -1697,7 +1698,10 @@ test.describe(
     }) => {
       await redirectToHomePage(page);
       await waitForMetricsPage(page);
+
+      const searchResponse = waitForMetricsSearchResponse(page);
       await filterMetrics(page, fixtures.prefix);
+      await searchResponse;
 
       await expect(page.getByTestId('metric-name').first()).toBeVisible();
 

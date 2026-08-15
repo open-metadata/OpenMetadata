@@ -16,6 +16,7 @@ package org.openmetadata.service.tasks;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -449,6 +450,14 @@ public final class TaskWorkflowLifecycleResolver {
     public static final String TASK_REVIEWERS = "taskReviewers";
     public static final String TASK_ASSIGNEES = "taskAssignees";
 
+    /**
+     * Top-level workflow variable derived from {@code payload.expirationDate} on start. Exposed
+     * so boundary-timer expressions ({@code ${taskPayloadExpirationDate}}) can arm on nodes that
+     * run BEFORE any domain-specific promote step. Value is the ISO-8601 instant string that
+     * Flowable's {@code timeDate} expects; absent when the payload has no {@code expirationDate}.
+     */
+    public static final String TASK_PAYLOAD_EXPIRATION_DATE = "taskPayloadExpirationDate";
+
     // Trigger-supplied start variables: these need the resolved WorkflowDefinition / form-schema
     // binding, so they aren't derivable from Task and toVariables() doesn't emit them. The names
     // live here so every caller that triggers a workflow shares one contract instead of repeating
@@ -481,7 +490,48 @@ public final class TaskWorkflowLifecycleResolver {
       variables.put(TASK_UPDATED_BY, task.getUpdatedBy());
       variables.put(TASK_REVIEWERS, serializeWorkflowVariable(task.getReviewers()));
       variables.put(TASK_ASSIGNEES, serializeWorkflowVariable(fallbackAssignees));
+      Long expirationDate = extractPayloadExpirationDate(task.getPayload());
+      if (expirationDate != null) {
+        variables.put(
+            TASK_PAYLOAD_EXPIRATION_DATE, Instant.ofEpochMilli(expirationDate).toString());
+      }
       return variables;
+    }
+
+    /**
+     * Look for a top-level {@code expirationDate} on the task payload and return it as epoch
+     * millis. Payload arrives as either an already-typed POJO, a raw Map, or a JSON string
+     * (Flowable stores payload as a serialized variable). Round-trip through Jackson to inspect
+     * uniformly. Returns null on absence, non-numeric values, or any parse failure — this is a
+     * best-effort surfacing for boundary-timer use, not a validator (validation belongs to the
+     * domain-specific TaskFieldValidator).
+     */
+    private static Long extractPayloadExpirationDate(Object payload) {
+      Long result = null;
+      if (payload != null) {
+        try {
+          Map<String, Object> map;
+          // Jackson's convertValue does NOT parse a JSON string — it would try to coerce the
+          // whole string into a Map and blow up. readValue is the parser we want when the
+          // caller handed us the serialized form.
+          if (payload instanceof String payloadJson) {
+            map = JsonUtils.readValue(payloadJson, Map.class);
+          } else {
+            map = JsonUtils.convertValue(payload, Map.class);
+          }
+          if (map != null) {
+            Object raw = map.get("expirationDate");
+            if (raw instanceof Number number) {
+              result = number.longValue();
+            }
+          }
+        } catch (RuntimeException nonMapPayload) {
+          // Payload isn't shaped like a Map (e.g. list, non-JSON string, parse failure) —
+          // nothing to surface. Downstream boundary timers just won't arm.
+          result = null;
+        }
+      }
+      return result;
     }
   }
 
