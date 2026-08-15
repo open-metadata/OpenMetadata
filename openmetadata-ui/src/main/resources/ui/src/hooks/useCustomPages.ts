@@ -28,7 +28,6 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
 
   const {
     data: doc,
-    isPending,
     isError,
   } = useQuery({
     queryKey: docStoreQueryKey(fqn ?? ''),
@@ -57,12 +56,9 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     navigation: isError
       ? ([] as NavigationItem[])
       : ((doc?.data?.navigation ?? null) as NavigationItem[] | null),
-    // Only block render on the very first paint (hasMounted=false).
-    // The persona doc fetches silently in the background after that — exactly
-    // matching the old fetchDocument pattern which never called setIsLoading(true)
-    // on subsequent selectedPersona updates.  Adding !!fqn&&isPending here causes
-    // a second loader wave after waitForAllLoadersToDisappear has already returned,
-    // covering the entity page when selectedPersona arrives asynchronously.
+    // Only block render on the very first paint. The persona doc fetches in the
+    // background after that; customizedPage/navigation update when it arrives
+    // without re-showing a loader (matches the old fetchDocument behaviour).
     isLoading: !hasMounted,
   };
 };
