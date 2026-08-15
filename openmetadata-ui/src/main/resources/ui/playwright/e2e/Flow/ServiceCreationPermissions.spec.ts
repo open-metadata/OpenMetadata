@@ -14,8 +14,8 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
-  SERVICE_CREATOR_RULES,
-  SERVICE_VIEWER_RULES,
+    SERVICE_CREATOR_RULES,
+    SERVICE_VIEWER_RULES
 } from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -24,19 +24,19 @@ import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServi
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    redirectToHomePage,
+    toastNotification,
+    uuid
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
-  advanceToServiceConnectionStep,
-  getAgentCard,
-  mockSuccessfulTestConnection,
-  selectServiceConnector,
-  testConnectionIfRequired,
-  waitForServiceConnectionForm,
+    advanceToServiceConnectionStep,
+    getAgentCard,
+    mockSuccessfulTestConnection,
+    selectServiceConnector,
+    testConnectionIfRequired,
+    waitForServiceConnectionForm
 } from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
@@ -110,24 +110,36 @@ const visitAgentCard = async (page: Page) => {
 };
 
 const openPipelineActions = async (page: Page) => {
-  // The overflow menu's items are gated on an async permission fetch that
-  // resolves after the agent card mounts; without this wait the dropdown can
-  // open before permissions settle, so items like `re-deploy-button` are
-  // briefly absent and toBeVisible() assertions race.
-  const permissionResponse = page.waitForResponse(
-    `/api/v1/permissions/ingestionPipeline/name/${encodeURIComponent(
-      ingestionPipelineName
-    )}`
-  );
-
   const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
-
-  await permissionResponse;
-
   await actionButton.waitFor();
-  await actionButton.click();
 
-  await page.getByTestId('actions-dropdown').waitFor();
+  const actionsDropdown = page.getByTestId('actions-dropdown');
+
+  // AgentOverflowMenu recomputes its item list from the `permissions` prop on
+  // every render, but the async per-FQN permission fetch can still be in
+  // flight when the menu is first opened — some items (edit-gated: redeploy,
+  // edit, pause/resume) are briefly absent. Close and reopen until the
+  // permission-gated items are present instead of polling a single stale
+  // open instance.
+  await expect
+    .poll(
+      async () => {
+        await actionButton.click();
+        await actionsDropdown.waitFor();
+        const hasReDeploy = await actionsDropdown
+          .getByTestId('re-deploy-button')
+          .isVisible()
+          .catch(() => false);
+        if (!hasReDeploy) {
+          await page.keyboard.press('Escape');
+          await actionsDropdown.waitFor({ state: 'hidden' });
+        }
+
+        return hasReDeploy;
+      },
+      { intervals: [1_000, 2_000, 3_000], timeout: 30_000 }
+    )
+    .toBe(true);
 };
 
 test.describe(

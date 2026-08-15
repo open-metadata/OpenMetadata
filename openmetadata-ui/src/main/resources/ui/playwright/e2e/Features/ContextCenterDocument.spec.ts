@@ -14,26 +14,26 @@
 import { APIRequestContext, expect, Response } from '@playwright/test';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
-  BulkOperationResult,
-  ContextCenterDocument,
-  ContextCenterFolder,
-  expectBulkIdsRequest,
-  expectSelectedCount,
-  getDocumentRowByName,
-  getDocumentSearchInput,
-  getFolderTreeItem,
-  navigateToDocuments,
-  parseResponseJson,
-  revealFolderRow,
-  scrollUntilResponse,
-  searchAndGetDocumentRow,
-  selectDocumentByName,
-  selectFolderInSidebar,
-  uploadDocument as uploadDocumentToApi,
+    BulkOperationResult,
+    ContextCenterDocument,
+    ContextCenterFolder,
+    expectBulkIdsRequest,
+    expectSelectedCount,
+    getDocumentRowByName,
+    getDocumentSearchInput,
+    getFolderTreeItem,
+    navigateToDocuments,
+    parseResponseJson,
+    revealFolderRow,
+    scrollUntilResponse,
+    searchAndGetDocumentRow,
+    selectDocumentByName,
+    selectFolderInSidebar,
+    uploadDocument as uploadDocumentToApi
 } from '../../utils/ContextCenterUtil';
 import {
-  copyAndGetClipboardText,
-  waitForAllLoadersToDisappear,
+    copyAndGetClipboardText,
+    waitForAllLoadersToDisappear
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
@@ -1179,18 +1179,17 @@ test.describe('Context Center - Documents Page', () => {
       10
     );
     expect(folderCount).toBeGreaterThanOrEqual(globalCount);
+    const browseResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        !res.url().includes('search')
+    );
+    await getDocumentSearchInput(page).clear();
+    await browseResPromise;
+    await waitForAllLoadersToDisappear(page);
 
     // Click the folder — triggers a server-side refetch scoped to that folder.
     await selectFolderInSidebar(page, folderName);
-    const searchResPromise = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/search/query') &&
-        res.url().includes('index=contextFile') &&
-        res.request().method() === 'GET'
-    );
-    await getDocumentSearchInput(page).fill('');
-    await searchResPromise;
-    await waitForAllLoadersToDisappear(page);
 
     // After selecting folder: only in-folder document visible.
     await expect(getDocumentRowByName(page, docInFolderName)).toBeVisible();
