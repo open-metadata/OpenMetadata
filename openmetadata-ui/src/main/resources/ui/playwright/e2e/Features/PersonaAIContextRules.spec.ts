@@ -89,8 +89,14 @@ const navigateToAIContextTab = async (page: Page) => {
 const openAddRuleDrawer = async (page: Page) => {
   const emptyBtn = page.getByTestId('empty-add-context-rule');
   const headerBtn = page.getByTestId('add-context-rule');
-  const useEmpty = await emptyBtn.isVisible({ timeout: 500 }).catch(() => false);
-  await (useEmpty ? emptyBtn : headerBtn).click();
+  // locator.isVisible() ignores the timeout option and returns synchronously.
+  // Wait for whichever button is present, then check which one it was.
+  await emptyBtn.or(headerBtn).first().waitFor({ state: 'visible' });
+  if (await emptyBtn.isVisible()) {
+    await emptyBtn.click();
+  } else {
+    await headerBtn.click();
+  }
   await expect(page.getByTestId('form-heading')).toBeVisible();
 };
 
@@ -231,7 +237,8 @@ test.describe.serial('Persona AI Context — Filter validation', () => {
 
     await test.step('add an empty condition row', async () => {
       await page.getByTestId('add-context-condition').click();
-      await page.waitForTimeout(300);
+      // Wait for the condition row's field selector to appear instead of a fixed delay
+      await page.locator('.rule--field .ant-select').first().waitFor({ state: 'visible' });
     });
 
     await test.step('click Save Rule — must be blocked', async () => {
@@ -270,14 +277,18 @@ test.describe.serial('Persona AI Context — Filter validation', () => {
 
     await test.step('add a condition row', async () => {
       await page.getByTestId('add-context-condition').click();
-      await page.waitForTimeout(300);
+      // Wait for the condition row's field selector to appear instead of a fixed delay
+      await page.locator('.rule--field .ant-select').first().waitFor({ state: 'visible' });
     });
 
     await test.step('select the Description field (text type, no async fetch)', async () => {
       // Use the field selector directly — the .rule GROUP wrapper can be hidden
-      const fieldLocator = page.locator('.rule--field .ant-select').first();
-      await fieldLocator.waitFor({ state: 'visible', timeout: 5000 });
-      await selectOption(page, fieldLocator, 'Description', true);
+      await selectOption(
+        page,
+        page.locator('.rule--field .ant-select').first(),
+        'Description',
+        true
+      );
     });
 
     await test.step('select Contains operator (required before text widget appears)', async () => {
@@ -321,7 +332,8 @@ test.describe.serial('Persona AI Context — Filter validation', () => {
 
     await test.step('add an empty condition — save must be blocked', async () => {
       await page.getByTestId('add-context-condition').click();
-      await page.waitForTimeout(300);
+      // Wait for the condition row's field selector to appear instead of a fixed delay
+      await page.locator('.rule--field .ant-select').first().waitFor({ state: 'visible' });
       await page.getByRole('button', { name: 'Save Rule' }).click();
       await expect(page.getByTestId('context-rule-filter-error')).toBeVisible();
     });
@@ -432,7 +444,8 @@ test.describe('Persona AI Context — Rule editor fields', () => {
         .getByTestId('context-rule-fully-rendered')
         .getByRole('switch')
         .first();
-      // react-aria Switch: use .isChecked() — aria-checked attr is not always set
+      // toBeChecked() reads the checkbox `checked` property — react-aria Switch
+      // does not always set the aria-checked attribute, so attribute checks fail
       await expect(fullyRenderedSwitch).toBeChecked();
       await expect(fullyRenderedSwitch).toBeDisabled();
     });
