@@ -41,6 +41,7 @@ import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.config.BulkOperationConfiguration;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -212,6 +213,17 @@ public class OpenMetadataApplicationConfig extends Configuration {
       bulkOperationConfiguration = new BulkOperationConfiguration();
     }
     return bulkOperationConfiguration;
+  }
+
+  @JsonProperty("asyncOperations")
+  @Valid
+  private AsyncOperationsConfiguration asyncOperationsConfiguration;
+
+  public AsyncOperationsConfiguration getAsyncOperationsConfiguration() {
+    if (asyncOperationsConfiguration == null) {
+      asyncOperationsConfiguration = new AsyncOperationsConfiguration();
+    }
+    return asyncOperationsConfiguration;
   }
 
   @JsonProperty("qos")

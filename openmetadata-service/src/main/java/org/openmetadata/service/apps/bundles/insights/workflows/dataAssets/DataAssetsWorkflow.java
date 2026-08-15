@@ -192,21 +192,28 @@ public class DataAssetsWorkflow {
   }
 
   private int computeConcurrencyBudget() {
-    int cores = Runtime.getRuntime().availableProcessors();
-    int cpuBudget = cores * 2;
+    int cpuBudget = Math.max(1, Runtime.getRuntime().availableProcessors() * 2);
 
     try {
-      int poolSize =
-          OpenMetadataApplicationConfigHolder.getInstance().getDataSourceFactory().getMaxSize();
-      if (poolSize > 0) {
-        return Math.max(4, Math.min(cpuBudget, poolSize / 2));
-      }
+      var applicationConfig = OpenMetadataApplicationConfigHolder.getInstance();
+      int poolSize = applicationConfig.getDataSourceFactory().getMaxSize();
+      int configuredBudget =
+          applicationConfig.getAsyncOperationsConfiguration().getDataInsightsMaxConcurrentDbTasks();
+      return computeConcurrencyBudget(cpuBudget, poolSize, configuredBudget);
     } catch (Exception e) {
       LOG.warn(
           "Could not determine database pool size, using default concurrency budget: {}",
           e.getMessage());
     }
-    return Math.max(4, cpuBudget);
+    return Math.min(
+        cpuBudget,
+        new org.openmetadata.service.config.AsyncOperationsConfiguration()
+            .getDataInsightsMaxConcurrentDbTasks());
+  }
+
+  static int computeConcurrencyBudget(int cpuBudget, int poolSize, int configuredBudget) {
+    int databaseBudget = Math.max(1, poolSize / 10);
+    return Math.max(1, Math.min(configuredBudget, Math.min(cpuBudget, databaseBudget)));
   }
 
   public void process() throws SearchIndexException {

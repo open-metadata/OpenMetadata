@@ -134,4 +134,9 @@ public class TestCaseDimensionResultRepository
     // Delete all dimensional results for this test case
     ((CollectionDAO.TestCaseDimensionResultTimeSeriesDAO) timeSeriesDao).deleteAll(testCaseFQN);
   }
+
+  public void deleteAllByTestCases(List<String> testCaseFQNs) {
+    ((CollectionDAO.TestCaseDimensionResultTimeSeriesDAO) timeSeriesDao)
+        .deleteAllBatch(testCaseFQNs);
+  }
 }

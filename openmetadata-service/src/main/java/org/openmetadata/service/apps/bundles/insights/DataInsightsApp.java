@@ -10,8 +10,13 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -41,6 +46,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
@@ -50,6 +56,9 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataInsightsApp extends AbstractNativeApplication {
   public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
+  private static final String JOB_LOCK_KEY = "native-app:data-insights";
+  private static final long JOB_LOCK_TTL_MILLIS = TimeUnit.MINUTES.toMillis(5);
+  private static final long JOB_LOCK_HEARTBEAT_SECONDS = 60;
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
@@ -206,7 +215,17 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
+    String lockJobId =
+        Objects.requireNonNullElseGet(
+            jobExecutionContext.getFireInstanceId(), () -> UUID.randomUUID().toString());
+    if (!tryAcquireJobLock(lockJobId)) {
+      LOG.info("Skipping Data Insights run because another server holds the job lock");
+      return;
+    }
+    ScheduledExecutorService heartbeat = null;
     try {
+      stopped = false;
+      heartbeat = startLockHeartbeat(lockJobId);
       initializeJob();
 
       LOG.info("Executing DataInsights Job with JobData: {}", jobData);
@@ -224,12 +243,21 @@ public class DataInsightsApp extends AbstractNativeApplication {
         deleteDataAssetsDataStream();
         createOrUpdateDataAssetsDataStream();
       }
+      if (finishIfStopped()) {
+        return;
+      }
 
       WorkflowStats webAnalyticsStats = processWebAnalytics();
       updateJobStatsWithWorkflowStats(webAnalyticsStats);
+      if (finishIfStopped()) {
+        return;
+      }
 
       WorkflowStats costAnalysisStats = processCostAnalysis();
       updateJobStatsWithWorkflowStats(costAnalysisStats);
+      if (finishIfStopped()) {
+        return;
+      }
 
       WorkflowStats dataAssetsStats = processDataAssets();
       updateJobStatsWithWorkflowStats(dataAssetsStats);
@@ -270,7 +298,82 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(indexingError);
     } finally {
+      stopLockHeartbeat(heartbeat);
+      releaseJobLock(lockJobId);
       sendUpdates(jobExecutionContext);
+    }
+  }
+
+  private boolean tryAcquireJobLock(String jobId) {
+    long now = System.currentTimeMillis();
+    try {
+      return collectionDAO
+          .searchReindexLockDAO()
+          .tryAcquireLock(
+              JOB_LOCK_KEY,
+              jobId,
+              ServerIdentityResolver.getInstance().getServerId(),
+              now,
+              now + JOB_LOCK_TTL_MILLIS);
+    } catch (RuntimeException e) {
+      LOG.error("Unable to acquire the Data Insights job lock", e);
+      return false;
+    }
+  }
+
+  private ScheduledExecutorService startLockHeartbeat(String jobId) {
+    ScheduledExecutorService heartbeat =
+        Executors.newSingleThreadScheduledExecutor(
+            Thread.ofVirtual().name("data-insights-lock-heartbeat").factory());
+    heartbeat.scheduleAtFixedRate(
+        () -> refreshJobLock(jobId),
+        JOB_LOCK_HEARTBEAT_SECONDS,
+        JOB_LOCK_HEARTBEAT_SECONDS,
+        TimeUnit.SECONDS);
+    return heartbeat;
+  }
+
+  private void refreshJobLock(String jobId) {
+    long now = System.currentTimeMillis();
+    try {
+      boolean refreshed =
+          collectionDAO
+              .searchReindexLockDAO()
+              .refreshLock(
+                  JOB_LOCK_KEY,
+                  jobId,
+                  ServerIdentityResolver.getInstance().getServerId(),
+                  now,
+                  now + JOB_LOCK_TTL_MILLIS);
+      if (!refreshed) {
+        LOG.error("Data Insights job lock was lost; stopping this run");
+        stop();
+      }
+    } catch (RuntimeException e) {
+      LOG.error("Unable to refresh the Data Insights job lock; stopping this run", e);
+      stop();
+    }
+  }
+
+  private void stopLockHeartbeat(ScheduledExecutorService heartbeat) {
+    if (heartbeat != null) {
+      heartbeat.shutdownNow();
+    }
+  }
+
+  private boolean finishIfStopped() {
+    if (!stopped) {
+      return false;
+    }
+    updateJobStatus();
+    return true;
+  }
+
+  private void releaseJobLock(String jobId) {
+    try {
+      collectionDAO.searchReindexLockDAO().releaseLock(JOB_LOCK_KEY, jobId);
+    } catch (RuntimeException e) {
+      LOG.warn("Unable to release the Data Insights job lock {}", jobId, e);
     }
   }
 
