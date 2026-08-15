@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { REDIRECT_PATHNAME } from '../../constants/router.constants';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
@@ -19,8 +20,19 @@ import {
 } from '../../rest/permissionAPI';
 import PermissionProvider from './PermissionProvider';
 
+const mockNavigate = jest.fn();
+const mockGetCookie = jest.fn().mockReturnValue(null);
+const mockRemoveCookie = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+}));
+
+jest.mock('cookie-storage', () => ({
+  CookieStorage: jest.fn().mockImplementation(() => ({
+    getItem: mockGetCookie,
+    removeItem: mockRemoveCookie,
+  })),
 }));
 
 jest.mock('../../rest/permissionAPI', () => ({
@@ -38,7 +50,11 @@ jest.mock('../../rest/permissionAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-let currentUser: { id: string; name: string } | null = {
+let currentUser: {
+  id: string;
+  name: string;
+  teams?: { id: string }[];
+} | null = {
   id: '123',
   name: 'Test User',
 };
@@ -56,6 +72,12 @@ jest.mock('../../components/common/Loader/Loader', () => {
 });
 
 describe('PermissionProvider', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetCookie.mockReturnValue(null);
+    currentUser = { id: '123', name: 'Test User' };
+  });
+
   it('Should render loader and call getLoggedInUserPermissions', async () => {
     render(
       <PermissionProvider>
@@ -101,5 +123,57 @@ describe('PermissionProvider', () => {
 
     expect(screen.queryByText('Loader')).not.toBeInTheDocument();
     expect(await screen.findByTestId('children')).toBeInTheDocument();
+  });
+
+  it('Should consume the stored redirect path only once and delete the cookie', async () => {
+    mockGetCookie.mockReturnValue('/glossary/sample');
+
+    const { rerender } = render(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>
+    );
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith('/glossary/sample')
+    );
+
+    expect(mockRemoveCookie).toHaveBeenCalledWith(REDIRECT_PATHNAME, {
+      path: '/',
+    });
+
+    // A later permission refetch — triggered by a teams/roles identity change,
+    // e.g. a persona save — must not replay the redirect
+    currentUser = { id: '123', name: 'Test User', teams: [] };
+
+    rerender(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>
+    );
+
+    await waitFor(() =>
+      expect(getLoggedInUserPermissions).toHaveBeenCalledTimes(2)
+    );
+
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('Should not navigate when the stored path is the current location', async () => {
+    // jsdom's default location is http://localhost/
+    mockGetCookie.mockReturnValue('/');
+
+    render(
+      <PermissionProvider>
+        <div data-testid="children">Children</div>
+      </PermissionProvider>
+    );
+
+    await waitFor(() => expect(getLoggedInUserPermissions).toHaveBeenCalled());
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockRemoveCookie).toHaveBeenCalledWith(REDIRECT_PATHNAME, {
+      path: '/',
+    });
   });
 });

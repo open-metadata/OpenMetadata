@@ -12,7 +12,6 @@
  */
 
 import type { AuthenticationResult, Configuration } from '@azure/msal-browser';
-import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
@@ -23,7 +22,7 @@ import {
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
-import { REDIRECT_PATHNAME } from '../constants/router.constants';
+import { REDIRECT_PATHNAME_EXPIRY_MS } from '../constants/router.constants';
 import {
   AuthenticationConfiguration,
   ClientType,
@@ -35,8 +34,6 @@ import { t } from './i18next/LocalUtil';
 import { oidcTokenStorage } from './OidcTokenStorage';
 import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
-
-const cookieStorage = new CookieStorage();
 
 // 1 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
@@ -418,7 +415,7 @@ export const isTourRoute = (pathname: string) => {
 };
 
 export const getUrlPathnameExpiry = () => {
-  return new Date(Date.now() + 60 * 60 * 1000);
+  return new Date(Date.now() + REDIRECT_PATHNAME_EXPIRY_MS);
 };
 
 /**
@@ -463,14 +460,6 @@ export const extractDetailsFromToken = (token: string) => {
     isExpired: true,
     timeoutExpiry: 0,
   };
-};
-
-export const setUrlPathnameExpiryAfterRoute = (pathname: string) => {
-  cookieStorage.setItem(REDIRECT_PATHNAME, pathname, {
-    // 1 second expiry
-    expires: new Date(Date.now() + 1000),
-    path: '/',
-  });
 };
 
 /**

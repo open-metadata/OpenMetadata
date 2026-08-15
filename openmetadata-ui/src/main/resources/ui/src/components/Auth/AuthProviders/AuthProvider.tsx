@@ -412,7 +412,26 @@ export const AuthProvider = ({
     });
   }, []);
 
+  /**
+   * Stores the current location so the user can be returned to it after login
+   */
+  const handleStoreProtectedRedirectPath = useCallback(() => {
+    // Read the location at call time, not from the closure: the axios
+    // interceptors are registered once on mount, so a closed-over pathname
+    // would be whatever page the app booted on.
+    const { pathname, search } = globalThis.location;
+    if (applicationRoutesClass.isProtectedRoute(pathname)) {
+      storeRedirectPath(`${pathname}${search}`);
+    }
+  }, [storeRedirectPath]);
+
   const resetUserDetails = (forceLogout = false) => {
+    // The user is about to be bounced to /signin — remember where they were so
+    // PermissionProvider can put them back once they authenticate. This is the
+    // only moment the redirect hint is valid; storing it on a 401 that the
+    // silent refresh then heals leaves a stale path armed that later yanks the
+    // user out of whatever page they are on.
+    handleStoreProtectedRedirectPath();
     setCurrentUser({} as User);
     clearOidcToken();
     setIsAuthenticated(false);
@@ -508,18 +527,6 @@ export const AuthProvider = ({
       try {
         const token = await getOidcToken();
         const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
-
-        // eslint-disable-next-line no-console
-        console.debug(
-          '[VisibilityHandler] token length:',
-          token?.length,
-          'isExpired:',
-          isExpired,
-          'timeoutExpiry:',
-          timeoutExpiry,
-          'hasTokenService:',
-          !!tokenService.current
-        );
 
         if (isExpired || timeoutExpiry <= 0) {
           tokenService.current?.refreshToken();
@@ -619,15 +626,6 @@ export const AuthProvider = ({
     ]
   );
 
-  /**
-   * Stores redirect URL for successful login
-   */
-  const handleStoreProtectedRedirectPath = useCallback(() => {
-    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      storeRedirectPath(location.pathname);
-    }
-  }, [location.pathname, storeRedirectPath]);
-
   const updateAuthInstance = async (
     configJson: AuthenticationConfiguration
   ) => {
@@ -702,7 +700,10 @@ export const AuthProvider = ({
             ) {
               throw error;
             }
-            handleStoreProtectedRedirectPath();
+            // Note: the redirect path is deliberately NOT stored here. Most
+            // 401s are healed by the refresh below and the user never leaves
+            // the page; resetUserDetails() stores it on the paths that do end
+            // in a bounce to /signin.
 
             // Queue the failed request, then ensure exactly one refresh drives
             // the queue in THIS tab. Every 401 lands in pendingRequests; the

@@ -44,3 +44,11 @@ export const UNPROTECTED_ROUTES: Set<string> = new Set([
 ]);
 
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
+
+/**
+ * Lifetime of the {@link REDIRECT_PATHNAME} cookie. It only has to survive the
+ * round-trip through the identity provider, so it is deliberately short — a
+ * long-lived hint gets replayed later and drops the user on a page they left
+ * minutes ago.
+ */
+export const REDIRECT_PATHNAME_EXPIRY_MS = 5 * 60 * 1000;

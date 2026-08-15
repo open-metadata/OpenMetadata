@@ -33,7 +33,6 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from '../../rest/permissionAPI';
-import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   getOperationPermissions,
   getUIPermission,
@@ -102,13 +101,32 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     Map<ResourceEntity, Promise<ReturnType<typeof getOperationPermissions>>>
   >(new Map());
 
+  // Latches the one-shot post-login redirect, see redirectToStoredPath below
+  const hasConsumedRedirectPath = useRef(false);
+
+  /*
+   * The redirect cookie is a ONE-SHOT "resume where you left off" hint, written
+   * only when the app is about to bounce the user through login. Permissions
+   * are re-fetched whenever currentUser's teams/roles identity changes (persona
+   * save, team update, profile edit), so consuming the cookie on every fetch
+   * used to yank a user who was quietly browsing to a page they left minutes
+   * ago. The ref latches consumption for this session and the cookie is deleted
+   * on read — resetPermissions() re-arms it across a logout/login boundary.
+   */
   const redirectToStoredPath = useCallback(() => {
+    if (hasConsumedRedirectPath.current) {
+      return;
+    }
+    hasConsumedRedirectPath.current = true;
+
     const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
-    if (urlPathname) {
-      setUrlPathnameExpiryAfterRoute(urlPathname);
+    cookieStorage.removeItem(REDIRECT_PATHNAME, { path: '/' });
+
+    const { pathname, search } = globalThis.location;
+    if (urlPathname && urlPathname !== `${pathname}${search}`) {
       navigate(urlPathname);
     }
-  }, [history]);
+  }, [navigate]);
 
   /**
    * Fetch permission for logged in user
@@ -236,6 +254,8 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
     entityPermissionByIdInflight.current.clear();
     entityPermissionByFqnInflight.current.clear();
     resourcePermissionInflight.current.clear();
+    // Re-arm the post-login redirect for the next principal
+    hasConsumedRedirectPath.current = false;
   }, [setEntitiesPermission, setPermissions, setResourcesPermission]);
 
   useEffect(() => {

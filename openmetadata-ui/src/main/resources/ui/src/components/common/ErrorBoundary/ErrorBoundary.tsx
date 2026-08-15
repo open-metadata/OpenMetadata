@@ -13,8 +13,7 @@
 
 import React from 'react';
 import { ErrorBoundary as ErrorBoundaryWrapper } from 'react-error-boundary';
-import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
+import { useLocation } from 'react-router-dom';
 import ErrorFallback from './ErrorFallback';
 
 interface Props {
@@ -22,16 +21,18 @@ interface Props {
 }
 
 const ErrorBoundary: React.FC<Props> = ({ children }) => {
-  const navigate = useNavigate();
+  const location = useLocation();
 
-  const onErrorReset = () => {
-    navigate(ROUTES.HOME);
-  };
-
+  /*
+   * Retry renders the URL the user is actually on — sending them to the landing
+   * page instead silently discarded whatever they were looking at. `resetKeys`
+   * additionally clears a stuck boundary on any route change, so a failure on
+   * one page does not swallow the rest of the app.
+   */
   return (
     <ErrorBoundaryWrapper
       FallbackComponent={ErrorFallback}
-      onReset={onErrorReset}>
+      resetKeys={[location.pathname, location.search]}>
       {children}
     </ErrorBoundaryWrapper>
   );

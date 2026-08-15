@@ -13,6 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
 import { act } from 'react-test-renderer';
+import { REDIRECT_PATHNAME } from '../../../constants/router.constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import axiosClient from '../../../rest';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
@@ -30,6 +31,17 @@ Object.defineProperty(globalThis, 'localStorage', {
 });
 
 const mockOnLogoutHandler = jest.fn();
+const mockSetCookie = jest.fn();
+
+jest.mock('cookie-storage', () => ({
+  CookieStorage: jest.fn().mockImplementation(() => ({
+    getItem: jest.fn(),
+    // Lazily forwarded: the class is constructed at module-import time, before
+    // mockSetCookie's initializer has run
+    setItem: (...args: unknown[]) => mockSetCookie(...args),
+    removeItem: jest.fn(),
+  })),
+}));
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: 'pathname' }));
@@ -283,6 +295,64 @@ describe('Test axios response interceptor', () => {
     expect(result).toEqual({ data: 'success' });
     expect(mockRefreshToken).toHaveBeenCalled();
     expect(mockAxios).toHaveBeenCalledWith(mockError.config);
+  });
+
+  it('should not store a redirect path for a 401 that the refresh heals', async () => {
+    globalThis.history.pushState({}, '', '/explore/tables');
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    jest
+      .spyOn(axiosClient, 'request')
+      .mockImplementation(jest.fn().mockResolvedValue({ data: 'success' }));
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    mockSetCookie.mockClear();
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    await errorHandler?.({
+      response: { status: 401, data: { message: 'Token expired' } },
+      config: { url: '/api/test' },
+    });
+
+    // The user never leaves the page, so no redirect hint may be armed —
+    // a stale one would later yank them off whatever page they are browsing
+    expect(mockSetCookie).not.toHaveBeenCalledWith(
+      REDIRECT_PATHNAME,
+      expect.anything(),
+      expect.anything()
+    );
+
+    globalThis.history.pushState({}, '', '/');
+  });
+
+  it('should store the current path when the session is dropped to signin', async () => {
+    globalThis.history.pushState({}, '', '/explore/tables?quickFilter=abc');
+    mockRefreshToken.mockResolvedValueOnce(undefined);
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    mockSetCookie.mockClear();
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    await act(async () => {
+      await errorHandler?.({
+        response: { status: 401, data: { message: 'Token expired' } },
+        config: { url: '/api/test' },
+      }).catch(() => undefined);
+    });
+
+    expect(mockSetCookie).toHaveBeenCalledWith(
+      REDIRECT_PATHNAME,
+      '/explore/tables?quickFilter=abc',
+      expect.objectContaining({ path: '/' })
+    );
+
+    globalThis.history.pushState({}, '', '/');
   });
 
   it('should queue request when refresh is already in progress', async () => {

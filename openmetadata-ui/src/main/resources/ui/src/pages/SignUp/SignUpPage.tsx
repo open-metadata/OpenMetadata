@@ -25,10 +25,7 @@ import { ClientType } from '../../generated/configuration/authenticationConfigur
 import { EntityReference } from '../../generated/entity/type';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createUser } from '../../rest/userAPI';
-import {
-  getNameFromUserData,
-  setUrlPathnameExpiryAfterRoute,
-} from '../../utils/AuthProvider.util';
+import { getNameFromUserData } from '../../utils/AuthProvider.util';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -64,10 +61,9 @@ const SignUp = () => {
         },
       });
       updateCurrentUser(res);
-      const urlPathname = cookieStorage.getItem(REDIRECT_PATHNAME);
-      if (urlPathname) {
-        setUrlPathnameExpiryAfterRoute(urlPathname);
-      }
+      // A brand new user has no page to resume — drop the redirect hint so it
+      // cannot fire later while they are browsing.
+      cookieStorage.removeItem(REDIRECT_PATHNAME, { path: '/' });
       setIsSigningUp(false);
       navigate(ROUTES.HOME);
     } catch (error) {
