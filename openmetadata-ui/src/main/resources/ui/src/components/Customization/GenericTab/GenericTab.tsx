@@ -18,10 +18,12 @@ import {
   GRID_VERTICAL_MARGIN,
 } from '../../../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useGenericContext } from '../GenericProvider/GenericContext';
 import { DynamicHeightWidget } from './DynamicHeightWidget';
 import './generic-tab.less';
@@ -41,6 +43,11 @@ interface GenericTabProps {
 
 export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
   const { layout, updateWidgetHeight } = useGenericContext();
+  // react-router v7 defers navigate() via React.startTransition, so this param can
+  // briefly lag the AntD tab pane that just became active while AntD keeps the
+  // previous pane mounted. Keying the grid on `tab` forces a clean remount instead
+  // of patching stale widgets from the previous tab in place.
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
 
   const handleHeightChange = useCallback(
     (widgetId: string, newHeight: number) => {
@@ -103,6 +110,7 @@ export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
       containerPadding={[1, 0]}
       isDraggable={false}
       isResizable={false}
+      key={tab}
       margin={[GRID_VERTICAL_MARGIN, GRID_VERTICAL_MARGIN]}
       preventCollision={false}
       rowHeight={GRID_ROW_HEIGHT}>
