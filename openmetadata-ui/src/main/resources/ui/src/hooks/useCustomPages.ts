@@ -26,10 +26,7 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
   const { selectedPersona } = useApplicationStore();
   const fqn = personaDocFqn(selectedPersona);
 
-  const {
-    data: doc,
-    isError,
-  } = useQuery({
+  const { data: doc, isError } = useQuery({
     queryKey: docStoreQueryKey(fqn ?? ''),
     queryFn: docStoreQueryFn(fqn ?? ''),
     enabled: !!fqn,
