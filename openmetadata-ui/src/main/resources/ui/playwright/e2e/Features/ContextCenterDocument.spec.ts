@@ -14,26 +14,26 @@
 import { APIRequestContext, expect, Response } from '@playwright/test';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
-    BulkOperationResult,
-    ContextCenterDocument,
-    ContextCenterFolder,
-    expectBulkIdsRequest,
-    expectSelectedCount,
-    getDocumentRowByName,
-    getDocumentSearchInput,
-    getFolderTreeItem,
-    navigateToDocuments,
-    parseResponseJson,
-    revealFolderRow,
-    scrollUntilResponse,
-    searchAndGetDocumentRow,
-    selectDocumentByName,
-    selectFolderInSidebar,
-    uploadDocument as uploadDocumentToApi
+  BulkOperationResult,
+  ContextCenterDocument,
+  ContextCenterFolder,
+  expectBulkIdsRequest,
+  expectSelectedCount,
+  getDocumentRowByName,
+  getDocumentSearchInput,
+  getFolderTreeItem,
+  navigateToDocuments,
+  parseResponseJson,
+  revealFolderRow,
+  scrollUntilResponse,
+  searchAndGetDocumentRow,
+  selectDocumentByName,
+  selectFolderInSidebar,
+  uploadDocument as uploadDocumentToApi,
 } from '../../utils/ContextCenterUtil';
 import {
-    copyAndGetClipboardText,
-    waitForAllLoadersToDisappear
+  copyAndGetClipboardText,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
