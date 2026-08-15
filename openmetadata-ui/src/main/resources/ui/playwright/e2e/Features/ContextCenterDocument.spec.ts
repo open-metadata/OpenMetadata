@@ -382,7 +382,9 @@ test.describe('Context Center - Documents Page', () => {
       await navigateToDocuments(page);
       await selectFolderInSidebar(page, lastPageFolder.name);
       await expect(
-        (await searchAndGetDocumentRow(page, fileName)).getByTestId('document-folder-name')
+        (
+          await searchAndGetDocumentRow(page, fileName)
+        ).getByTestId('document-folder-name')
       ).toHaveText(lastPageFolder.name);
     });
   });
@@ -984,14 +986,14 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
     await expect(
-      (await searchAndGetDocumentRow(page, firstFileName)).getByTestId(
-        'document-folder-name'
-      )
+      (
+        await searchAndGetDocumentRow(page, firstFileName)
+      ).getByTestId('document-folder-name')
     ).toHaveText(folderName);
     await expect(
-      (await searchAndGetDocumentRow(page, secondFileName)).getByTestId(
-        'document-folder-name'
-      )
+      (
+        await searchAndGetDocumentRow(page, secondFileName)
+      ).getByTestId('document-folder-name')
     ).toHaveText(folderName);
   });
 
@@ -1043,8 +1045,12 @@ test.describe('Context Center - Documents Page', () => {
       doc2.id,
     ]);
 
-    await expect(await searchAndGetDocumentRow(page, firstName)).not.toBeVisible();
-    await expect(await searchAndGetDocumentRow(page, secondName)).not.toBeVisible();
+    await expect(
+      await searchAndGetDocumentRow(page, firstName)
+    ).not.toBeVisible();
+    await expect(
+      await searchAndGetDocumentRow(page, secondName)
+    ).not.toBeVisible();
 
     await page.goto('/context-center/archive');
     await page
@@ -1150,8 +1156,12 @@ test.describe('Context Center - Documents Page', () => {
     // Before selecting a folder: both documents should be visible and counts
     // reflect the global total (≥2 files; DocumentsView and DocumentFolderView
     // show the same number).
-    await expect(await searchAndGetDocumentRow(page, docInFolderName)).toBeVisible();
-    await expect(await searchAndGetDocumentRow(page, docOutsideName)).toBeVisible();
+    await expect(
+      await searchAndGetDocumentRow(page, docInFolderName)
+    ).toBeVisible();
+    await expect(
+      await searchAndGetDocumentRow(page, docOutsideName)
+    ).toBeVisible();
 
     const documentsViewCount = page.getByTestId('documents-view-file-count');
     const folderViewCount = page.getByTestId('folder-view-file-count');
@@ -1173,11 +1183,11 @@ test.describe('Context Center - Documents Page', () => {
     // Click the folder — triggers a server-side refetch scoped to that folder.
     await selectFolderInSidebar(page, folderName);
     const searchResPromise = page.waitForResponse(
-        (res) =>
-          res.url().includes('/api/v1/search/query') &&
-          res.url().includes('index=contextFile') &&
-          res.request().method() === 'GET'
-      );
+      (res) =>
+        res.url().includes('/api/v1/search/query') &&
+        res.url().includes('index=contextFile') &&
+        res.request().method() === 'GET'
+    );
     await getDocumentSearchInput(page).fill('');
     await searchResPromise;
     await waitForAllLoadersToDisappear(page);

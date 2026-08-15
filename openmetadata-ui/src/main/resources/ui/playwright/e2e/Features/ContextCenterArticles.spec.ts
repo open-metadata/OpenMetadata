@@ -276,7 +276,10 @@ test.describe('Context Center Articles', () => {
 
     await test.step('dashboard view all articles opens article list', async () => {
       await navigateToDashboard(page);
-      await page.getByTestId('article-detail-card').getByRole('button', { name: 'View All Articles' }).click();
+      await page
+        .getByTestId('article-detail-card')
+        .getByRole('button', { name: 'View All Articles' })
+        .click();
 
       await expect(page).toHaveURL(/\/context-center\/articles/);
     });
