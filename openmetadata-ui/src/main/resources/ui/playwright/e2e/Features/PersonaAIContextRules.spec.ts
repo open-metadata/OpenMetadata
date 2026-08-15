@@ -133,90 +133,65 @@ const deleteRuleByName = async (page: Page, ruleName: string) => {
 };
 
 // ---------------------------------------------------------------------------
-// Rule CRUD — serial because each test builds on the state from the previous
+// Rule CRUD — one test with steps because the flow is inherently sequential:
+// edit and delete depend on the rule created in earlier steps. describe.serial
+// would skip later tests on any failure; a single test makes the dependency
+// explicit and keeps the timeline atomic.
 // ---------------------------------------------------------------------------
 
-test.describe.serial('Persona AI Context — Rule CRUD', () => {
+test('Persona AI Context — Rule CRUD: empty state → create → edit → delete', async ({
+  adminPage: page,
+}) => {
   const RULE_NAME = 'ai-context-crud-rule';
   const RULE_NAME_EDITED = 'ai-context-crud-rule-edited';
 
-  test('empty state shows Add Rule button before any rules exist', async ({
-    adminPage: page,
-  }) => {
-    await navigateToAIContextTab(page);
+  await navigateToAIContextTab(page);
 
+  await test.step('empty state shows Add Rule button before any rules exist', async () => {
     await expect(page.getByTestId('empty-add-context-rule')).toBeVisible();
     await expect(page.getByText('No AI context rules yet')).toBeVisible();
   });
 
-  test('creates a rule with no filter conditions', async ({
-    adminPage: page,
-  }) => {
-    await navigateToAIContextTab(page);
-
-    await test.step('open Add Rule drawer', async () => {
-      await openAddRuleDrawer(page);
-      await expect(page.getByTestId('form-heading')).toContainText('Add Rule');
-    });
-
-    await test.step('fill in rule name', async () => {
-      await page.getByTestId('context-rule-name').fill(RULE_NAME);
-    });
-
-    await test.step('match preview is visible in the drawer', async () => {
-      await expect(page.getByTestId('context-rule-match-preview')).toBeVisible();
-    });
-
-    await test.step('View in Explore link is present', async () => {
-      await expect(
-        page.getByRole('link', { name: 'View in Explore' })
-      ).toBeVisible();
-    });
-
-    await test.step('save succeeds and toast appears', async () => {
-      await saveRule(page);
-      await toastNotification(page, /AI context rule saved\./);
-    });
-
-    await test.step('rule card appears on the AI Context tab', async () => {
-      await expect(
-        page.getByTestId('context-rule-card').filter({ hasText: RULE_NAME })
-      ).toBeVisible();
-    });
+  await test.step('open Add Rule drawer', async () => {
+    await openAddRuleDrawer(page);
+    await expect(page.getByTestId('form-heading')).toContainText('Add Rule');
   });
 
-  test('edits the rule name', async ({ adminPage: page }) => {
-    await navigateToAIContextTab(page);
+  await test.step('fill in rule name and verify drawer anatomy', async () => {
+    await page.getByTestId('context-rule-name').fill(RULE_NAME);
+    await expect(page.getByTestId('context-rule-match-preview')).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'View in Explore' })
+    ).toBeVisible();
+  });
 
-    await test.step('click edit on the rule card', async () => {
-      await page
+  await test.step('save succeeds and rule card appears', async () => {
+    await saveRule(page);
+    await toastNotification(page, /AI context rule saved\./);
+    await expect(
+      page.getByTestId('context-rule-card').filter({ hasText: RULE_NAME })
+    ).toBeVisible();
+  });
+
+  await test.step('edit rule name', async () => {
+    await page
+      .getByTestId('context-rule-card')
+      .filter({ hasText: RULE_NAME })
+      .getByTestId('edit-context-rule')
+      .click();
+    await expect(page.getByTestId('form-heading')).toContainText('Edit Rule');
+    await page.getByTestId('context-rule-name').clear();
+    await page.getByTestId('context-rule-name').fill(RULE_NAME_EDITED);
+    await saveRule(page);
+    await toastNotification(page, /AI context rule saved\./);
+    await expect(
+      page
         .getByTestId('context-rule-card')
-        .filter({ hasText: RULE_NAME })
-        .getByTestId('edit-context-rule')
-        .click();
-      await expect(page.getByTestId('form-heading')).toContainText('Edit Rule');
-    });
-
-    await test.step('change the name and save', async () => {
-      await page.getByTestId('context-rule-name').clear();
-      await page.getByTestId('context-rule-name').fill(RULE_NAME_EDITED);
-      await saveRule(page);
-      await toastNotification(page, /AI context rule saved\./);
-    });
-
-    await test.step('card shows the updated name', async () => {
-      await expect(
-        page
-          .getByTestId('context-rule-card')
-          .filter({ hasText: RULE_NAME_EDITED })
-      ).toBeVisible();
-    });
+        .filter({ hasText: RULE_NAME_EDITED })
+    ).toBeVisible();
   });
 
-  test('deletes the rule and returns to empty state', async ({
-    adminPage: page,
-  }) => {
-    await navigateToAIContextTab(page);
+  await test.step('delete rule and return to empty state', async () => {
     await deleteRuleByName(page, RULE_NAME_EDITED);
     await toastNotification(page, /AI context rule deleted\./);
     await expect(page.getByTestId('empty-add-context-rule')).toBeVisible();
@@ -224,10 +199,13 @@ test.describe.serial('Persona AI Context — Rule CRUD', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Filter validation
+// Filter validation — each test is independent (creates/discards its own rule
+// within a single test body), so describe.serial is not needed. Removing it
+// means a failure in one filter test does not prevent the regression test from
+// running.
 // ---------------------------------------------------------------------------
 
-test.describe.serial('Persona AI Context — Filter validation', () => {
+test.describe('Persona AI Context — Filter validation', () => {
   test('incomplete condition (no field selected) blocks save with an error message', async ({
     adminPage: page,
   }) => {
@@ -238,7 +216,10 @@ test.describe.serial('Persona AI Context — Filter validation', () => {
     await test.step('add an empty condition row', async () => {
       await page.getByTestId('add-context-condition').click();
       // Wait for the condition row's field selector to appear instead of a fixed delay
-      await page.locator('.rule--field .ant-select').first().waitFor({ state: 'visible' });
+      await page
+        .locator('.rule--field .ant-select')
+        .first()
+        .waitFor({ state: 'visible' });
     });
 
     await test.step('click Save Rule — must be blocked', async () => {
@@ -271,14 +252,15 @@ test.describe.serial('Persona AI Context — Filter validation', () => {
   }) => {
     await navigateToAIContextTab(page);
     await openAddRuleDrawer(page);
-    await page
-      .getByTestId('context-rule-name')
-      .fill('filter-regression-31564');
+    await page.getByTestId('context-rule-name').fill('filter-regression-31564');
 
     await test.step('add a condition row', async () => {
       await page.getByTestId('add-context-condition').click();
       // Wait for the condition row's field selector to appear instead of a fixed delay
-      await page.locator('.rule--field .ant-select').first().waitFor({ state: 'visible' });
+      await page
+        .locator('.rule--field .ant-select')
+        .first()
+        .waitFor({ state: 'visible' });
     });
 
     await test.step('select the Description field (text type, no async fetch)', async () => {
@@ -294,13 +276,17 @@ test.describe.serial('Persona AI Context — Filter validation', () => {
     await test.step('select Contains operator (required before text widget appears)', async () => {
       // Description field uses match_phrase operators; text widget only renders
       // after an operator is chosen — select "Contains" (match_phrase)
-      const operatorLocator = page.locator('.rule--operator .ant-select').first();
+      const operatorLocator = page
+        .locator('.rule--operator .ant-select')
+        .first();
       await operatorLocator.waitFor({ state: 'visible', timeout: 5000 });
       await selectOption(page, operatorLocator, 'Contains', false);
     });
 
     await test.step('type a value in the text widget', async () => {
-      const textInput = page.locator('.rule--widget--TEXT input[type="text"]').first();
+      const textInput = page
+        .locator('.rule--widget--TEXT input[type="text"]')
+        .first();
       await textInput.waitFor({ state: 'visible' });
       await textInput.fill('important data asset');
     });
@@ -326,14 +312,15 @@ test.describe.serial('Persona AI Context — Filter validation', () => {
   }) => {
     await navigateToAIContextTab(page);
     await openAddRuleDrawer(page);
-    await page
-      .getByTestId('context-rule-name')
-      .fill('entity-type-switch-test');
+    await page.getByTestId('context-rule-name').fill('entity-type-switch-test');
 
     await test.step('add an empty condition — save must be blocked', async () => {
       await page.getByTestId('add-context-condition').click();
       // Wait for the condition row's field selector to appear instead of a fixed delay
-      await page.locator('.rule--field .ant-select').first().waitFor({ state: 'visible' });
+      await page
+        .locator('.rule--field .ant-select')
+        .first()
+        .waitFor({ state: 'visible' });
       await page.getByRole('button', { name: 'Save Rule' }).click();
       await expect(page.getByTestId('context-rule-filter-error')).toBeVisible();
     });
