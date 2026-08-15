@@ -15,6 +15,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
+import { getQueriesList } from '../queryAPI';
 import { getTableDetailsByFQN } from '../tableAPI';
 
 /**
@@ -37,6 +38,17 @@ export const tableQueryKey = (fqn: string, fields: string) =>
 
 export const tableQueryFn = (fqn: string, fields: string) => () =>
   getTableDetailsByFQN(fqn, { fields });
+
+/**
+ * Count of stored queries for a table, used by the "Queries (N)" tab badge. Kept as its own
+ * cache slot rather than folded into the entity body because it is a separate endpoint with
+ * a different lifetime — the badge must stay honest while the entity itself is cached.
+ */
+export const tableQueryCountKey = (id: string) =>
+  ['table', id, 'queryCount'] as const;
+
+export const tableQueryCountFn = (id: string) => async () =>
+  (await getQueriesList({ limit: 0, entityId: id })).paging.total;
 
 /**
  * Imperatively populate the cache for {@code fqn} so the next consumer reading the same key

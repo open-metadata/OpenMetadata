@@ -64,8 +64,12 @@ import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
-import { tableQueryFn, tableQueryKey } from '../../rest/queries/tableQuery';
-import { getQueriesList } from '../../rest/queryAPI';
+import {
+  tableQueryCountFn,
+  tableQueryCountKey,
+  tableQueryFn,
+  tableQueryKey,
+} from '../../rest/queries/tableQuery';
 import {
   addFollower,
   patchTableDetails,
@@ -135,8 +139,6 @@ const TableDetailsPageV1: React.FC = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
-  const [queryCount, setQueryCount] = useState(0);
 
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -246,6 +248,17 @@ const TableDetailsPageV1: React.FC = () => {
     enabled: Boolean(
       tableFqn && canViewTableInQuery && !isTourOpen && !isTourPage
     ),
+  });
+
+  // Drives the "Queries (N)" tab badge. That badge always renders whatever count it is
+  // given, so a deferred fetch would show a misleading 0 until the user opened the tab.
+  // Going through useQuery (rather than a fetch effect plus a loading flag) means
+  // {@code isQueryCountLoading} is already true on the render that starts the request —
+  // an effect-driven flag flips a render too late and flashes a 0 first.
+  const { data: queryCount = 0, isFetching: isQueryCountLoading } = useQuery({
+    queryKey: tableQueryCountKey(tableDetails?.id ?? ''),
+    queryFn: tableQueryCountFn(tableDetails?.id ?? ''),
+    enabled: Boolean(tableDetails?.id),
   });
 
   // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
@@ -377,21 +390,6 @@ const TableDetailsPageV1: React.FC = () => {
       }
     } catch {
       setDqFailureCount(0);
-    }
-  };
-
-  const fetchQueryCount = async () => {
-    if (!tableDetails?.id) {
-      return;
-    }
-    try {
-      const response = await getQueriesList({
-        limit: 0,
-        entityId: tableDetails.id,
-      });
-      setQueryCount(response.paging.total);
-    } catch {
-      setQueryCount(0);
     }
   };
 
@@ -636,6 +634,7 @@ const TableDetailsPageV1: React.FC = () => {
 
     const tabs = tableClassBase.getTableDetailPageTabs({
       queryCount,
+      isQueryCountLoading,
       isTourOpen,
       tablePermissions,
       activeTab,
@@ -667,6 +666,7 @@ const TableDetailsPageV1: React.FC = () => {
     return updatedTabs;
   }, [
     queryCount,
+    isQueryCountLoading,
     isTourOpen,
     tablePermissions,
     activeTab,
@@ -954,16 +954,6 @@ const TableDetailsPageV1: React.FC = () => {
       getTestCaseFailureCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
-
-  // The "Queries (N)" tab badge always renders its count, so a deferred fetch would show a
-  // misleading 0 until the user activated the tab. Reset before fetching so the previous
-  // table's count doesn't linger while navigating between entities.
-  useEffect(() => {
-    if (tableDetails?.id) {
-      setQueryCount(0);
-      fetchQueryCount();
-    }
-  }, [tableDetails?.id]);
 
   useSub(
     'updateDetails',

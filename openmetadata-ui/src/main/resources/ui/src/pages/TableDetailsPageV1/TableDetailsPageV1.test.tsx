@@ -674,11 +674,12 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   describe('Queries tab count', () => {
-    const getQueriesTabCount = () =>
+    const getQueriesTabProps = () =>
       (TabsLabel as unknown as jest.Mock).mock.calls
         .map(([props]) => props)
-        .filter((props) => props.id === EntityTabs.TABLE_QUERIES)
-        .pop()?.count;
+        .filter((props) => props.id === EntityTabs.TABLE_QUERIES);
+
+    const getLatestQueriesTabProps = () => getQueriesTabProps().pop();
 
     const renderOnSchemaTab = async () => {
       (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
@@ -717,7 +718,43 @@ describe('TestDetailsPageV1 component', () => {
         })
       );
 
-      await waitFor(() => expect(getQueriesTabCount()).toBe(7));
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 7, isLoading: false })
+        )
+      );
+    });
+
+    it('should render the skeleton instead of a count while the request is in flight', async () => {
+      let resolveCount: (value: { paging: { total: number } }) => void = () =>
+        undefined;
+      (getQueriesList as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveCount = resolve;
+          })
+      );
+
+      await renderOnSchemaTab();
+
+      await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
+
+      // Every render so far must have kept the badge in its loading state, so the user
+      // never sees the placeholder 0 flash before the real count arrives.
+      expect(getQueriesTabProps()).not.toHaveLength(0);
+      expect(
+        getQueriesTabProps().every((props) => props.isLoading)
+      ).toBeTruthy();
+
+      await act(async () => {
+        resolveCount({ paging: { total: 7 } });
+      });
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 7, isLoading: false })
+        )
+      );
     });
 
     it('should fall back to 0 when the count request fails', async () => {
@@ -727,7 +764,11 @@ describe('TestDetailsPageV1 component', () => {
 
       await waitFor(() => expect(getQueriesList).toHaveBeenCalled());
 
-      expect(getQueriesTabCount()).toBe(0);
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 0, isLoading: false })
+        )
+      );
     });
   });
 });
