@@ -231,7 +231,9 @@ const extractSourceValue = (
         return leaf?.toLowerCase() === bucketKey.toLowerCase();
       });
       const chosen = match ?? (val as unknown[])[0];
-      if (chosen === undefined) return undefined;
+      if (chosen === undefined) {
+        return undefined;
+      }
 
       return extractSourceValue(
         chosen as Record<string, unknown>,

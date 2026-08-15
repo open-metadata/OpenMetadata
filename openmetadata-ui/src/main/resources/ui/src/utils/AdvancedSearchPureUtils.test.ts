@@ -91,7 +91,11 @@ describe('getOptionsFromAggregationBucket', () => {
         },
       } as unknown as Bucket;
 
-      const [option] = getOptionsFromAggregationBucket([bucket], undefined, 'ownerDisplayName');
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'ownerDisplayName'
+      );
 
       expect(option.key).toBe('john doe');
       expect(option.label).toBe('John Doe');
@@ -108,7 +112,11 @@ describe('getOptionsFromAggregationBucket', () => {
         },
       } as unknown as Bucket;
 
-      const [option] = getOptionsFromAggregationBucket([bucket], undefined, 'tier.tagFQN');
+      const [option] = getOptionsFromAggregationBucket(
+        [bucket],
+        undefined,
+        'tier.tagFQN'
+      );
 
       expect(option.key).toBe('tier.tier1');
       expect(option.label).toBe('Tier.Tier1');
