@@ -46,6 +46,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'label.service-type',
     key: EntityFields.SERVICE_TYPE,
+    sourceFields: 'serviceType',
   },
 ];
 
@@ -87,6 +88,7 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: 'label.service-type',
     key: EntityFields.SERVICE_TYPE,
+    sourceFields: 'serviceType',
   },
 ];
 
@@ -296,6 +298,7 @@ export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
   {
     label: 'label.service-type',
     key: EntityFields.SERVICE_TYPE,
+    sourceFields: 'serviceType',
   },
 ];
 
@@ -335,6 +338,7 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
   {
     label: 'label.service-type',
     key: EntityFields.SERVICE_TYPE,
+    sourceFields: 'serviceType',
   },
 ];
 
@@ -374,6 +378,7 @@ export const TAG_ASSETS_DROPDOWN_ITEMS = [
   {
     label: 'label.service-type',
     key: EntityFields.SERVICE_TYPE,
+    sourceFields: 'serviceType',
   },
 ];
 
