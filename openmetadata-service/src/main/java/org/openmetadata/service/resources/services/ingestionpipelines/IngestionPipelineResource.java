@@ -125,7 +125,6 @@ public class IngestionPipelineResource
   private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "/v1/services/ingestionPipelines/";
   static final String SORT_FIELD_DISPLAY_NAME = "displayName";
-  private static final String SORT_ORDER_ASC = "asc";
   private static final String SORT_ORDER_DESC = "desc";
   static final String RUNNER_CLEANUP_HEADER = "X-OpenMetadata-Runner-Cleanup";
   static final String RUNNER_CLEANUP_SKIPPED = "skipped-unavailable";
@@ -273,28 +272,16 @@ public class IngestionPipelineResource
     return addHref(uriInfo, repository.listByDisplayName(uriInfo, fields, filter, page));
   }
 
-  private void validateSortField(String sortField) {
-    if (!SORT_FIELD_DISPLAY_NAME.equalsIgnoreCase(sortField)) {
-      throw new BadRequestException(
-          String.format(
-              "Invalid sortField '%s'. Supported values: %s", sortField, SORT_FIELD_DISPLAY_NAME));
-    }
+  // Sorting is optional and lenient: only `displayName` is supported, and any other value (or none)
+  // falls through to the default name-ordered listing rather than erroring.
+  private boolean isDisplayNameSort(String sortField) {
+    return SORT_FIELD_DISPLAY_NAME.equalsIgnoreCase(sortField);
   }
 
-  /**
-   * Rejects anything other than asc/desc rather than silently falling back to ascending: a
-   * misspelled order that quietly returns the opposite page is indistinguishable from a server bug
-   * on the client side.
-   */
+  // Ascending unless `desc` is explicitly asked for; an unrecognised value defaults to ascending
+  // rather than rejecting the request.
   private boolean isAscending(String sortOrder) {
-    if (!SORT_ORDER_ASC.equalsIgnoreCase(sortOrder)
-        && !SORT_ORDER_DESC.equalsIgnoreCase(sortOrder)) {
-      throw new BadRequestException(
-          String.format(
-              "Invalid sortOrder '%s'. Supported values: %s, %s",
-              sortOrder, SORT_ORDER_ASC, SORT_ORDER_DESC));
-    }
-    return SORT_ORDER_ASC.equalsIgnoreCase(sortOrder);
+    return !SORT_ORDER_DESC.equalsIgnoreCase(sortOrder);
   }
 
   @GET
@@ -377,9 +364,11 @@ public class IngestionPipelineResource
           ProviderType provider,
       @Parameter(
               description =
-                  "Order the list by a field instead of the default `name`. Only `displayName` is "
-                      + "supported, which orders by the effective display name "
-                      + "(`displayName` falling back to `name`) — the value clients render.",
+                  "Optionally order the list by a field instead of the default `name`. Only "
+                      + "`displayName` is supported — it orders by the effective display name "
+                      + "(`displayName` falling back to `name`), the value clients render. Any other "
+                      + "value (or none) falls through to the default `name` ordering rather than "
+                      + "erroring.",
               schema = @Schema(type = "string", allowableValues = SORT_FIELD_DISPLAY_NAME))
           @QueryParam("sortField")
           String sortField,
@@ -401,16 +390,15 @@ public class IngestionPipelineResource
             .addQueryParam("applicationType", applicationType)
             .addQueryParam("provider", provider == null ? null : provider.value());
     ResultList<IngestionPipeline> ingestionPipelines;
-    if (nullOrEmpty(sortField)) {
-      ingestionPipelines =
-          super.listInternal(
-              uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    } else {
-      validateSortField(sortField);
+    if (isDisplayNameSort(sortField)) {
       KeysetPageParams page =
           new KeysetPageParams(limitParam, before, after, isAscending(sortOrder));
       ingestionPipelines =
           listSortedByDisplayName(uriInfo, securityContext, fieldsParam, filter, page);
+    } else {
+      ingestionPipelines =
+          super.listInternal(
+              uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     }
 
     for (IngestionPipeline ingestionPipeline : listOrEmpty(ingestionPipelines.getData())) {

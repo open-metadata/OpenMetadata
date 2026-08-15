@@ -194,36 +194,46 @@ public class IngestionPipelineSortIT {
         response.getData().stream().map(IngestionPipeline::getName).toList());
   }
 
+  /**
+   * Sorting is optional and lenient: an unsupported sortField is ignored rather than rejected, and
+   * the default name-ordered listing is returned. The UI is not expected to send an unsupported
+   * field, so this is a graceful fallback, not a 400.
+   */
   @Test
-  void test_listWithUnsupportedSortField_isRejected(TestNamespace ns) {
+  void test_listWithUnsupportedSortField_fallsBackToDefaultListing(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    createPipeline(service, ns.prefix("pipeline-a"), "aaa-" + ns.prefix("first"));
+
+    // name ascending is a-then-z; displayName ascending is the reverse.
+    createPipeline(service, ns.prefix("pipeline-a"), "zzz-" + ns.prefix("last"));
+    createPipeline(service, ns.prefix("pipeline-z"), "aaa-" + ns.prefix("first"));
 
     ListParams params =
         new ListParams()
             .setService(service.getName())
+            .setLimit(50)
             .addQueryParam("sortField", "sourceConfig")
             .addQueryParam("sortOrder", "asc");
 
-    assertThrows(
-        OpenMetadataException.class,
-        () -> SdkClients.adminClient().ingestionPipelines().list(params));
+    // Rows come back in the default name order, not displayName order — the field was ignored.
+    assertEquals(
+        List.of(ns.prefix("pipeline-a"), ns.prefix("pipeline-z")),
+        SdkClients.adminClient().ingestionPipelines().list(params).getData().stream()
+            .map(IngestionPipeline::getName)
+            .toList());
   }
 
-  /**
-   * An unsupported sortOrder must be rejected rather than silently treated as ascending — a typo
-   * that quietly returns the opposite page is indistinguishable from a server bug on the client.
-   */
+  /** An unrecognised sortOrder defaults to ascending rather than being rejected. */
   @Test
-  void test_listWithUnsupportedSortOrder_isRejected(TestNamespace ns) {
+  void test_listWithUnsupportedSortOrder_defaultsToAscending(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
     createPipeline(service, ns.prefix("pipeline-a"), "aaa-" + ns.prefix("first"));
+    createPipeline(service, ns.prefix("pipeline-z"), "zzz-" + ns.prefix("last"));
 
-    ListParams params = sortParams(service, "descending", 50);
-
-    assertThrows(
-        OpenMetadataException.class,
-        () -> SdkClients.adminClient().ingestionPipelines().list(params));
+    // "descending" is not the exact token "desc", so it falls through to ascending.
+    assertEquals(
+        List.of("aaa-" + ns.prefix("first"), "zzz-" + ns.prefix("last")),
+        listDisplayNames(service, "descending"));
   }
 
   /**
