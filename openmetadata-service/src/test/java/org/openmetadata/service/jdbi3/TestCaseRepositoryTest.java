@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -63,6 +64,36 @@ class TestCaseRepositoryTest {
       assertEquals(
           Map.of(firstId, 7L, secondId, 11L),
           TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(firstId, secondId)));
+    }
+  }
+
+  @Test
+  void readsRevisionsThroughTheCallersDaoRatherThanTheGlobalOne() {
+    // A repository writes revisions through the daoCollection it captured at construction and then
+    // reads them straight back. Resolving the mutable Entity.getCollectionDAO() for that read can
+    // land on a different Jdbi's connection, and MySQL pins its REPEATABLE READ snapshot at the
+    // transaction's first read, so the rows just written come back missing.
+    UUID testCaseId = UUID.randomUUID();
+    CollectionDAO callerDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(callerDAO.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(extensionDAO.getExtensionBatch(
+            List.of(testCaseId.toString()), TestCaseRepository.TEST_SUITES_REVISION_EXTENSION))
+        .thenReturn(
+            List.of(
+                new CollectionDAO.ExtensionRecordWithId(
+                    testCaseId,
+                    TestCaseRepository.TEST_SUITES_REVISION_EXTENSION,
+                    "{\"revision\":4}")));
+    CollectionDAO globalDAO = mock(CollectionDAO.class);
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(globalDAO);
+
+      assertEquals(
+          Map.of(testCaseId, 4L),
+          TestCaseRepository.getTestSuiteRelationshipRevisions(callerDAO, List.of(testCaseId)));
+      verifyNoInteractions(globalDAO);
     }
   }
 
