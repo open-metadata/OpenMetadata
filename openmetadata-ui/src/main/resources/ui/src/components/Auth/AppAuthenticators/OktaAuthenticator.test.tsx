@@ -279,4 +279,53 @@ describe('OktaAuthenticator', () => {
       expect(result).toBe('');
     });
   });
+
+  describe('getRenewer', () => {
+    it('should return a fresh idToken and expiresAt (ms) on success', async () => {
+      const expiresAt = Math.floor(Date.now() / 1000) + 300;
+      mockOktaAuth.token.renewTokens.mockResolvedValueOnce({
+        idToken: { idToken: 'okta-fresh-token', expiresAt },
+        accessToken: { accessToken: 'okta-access-token' },
+      });
+
+      render(
+        <OktaAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
+
+      const renewer = authenticatorRef?.getRenewer?.();
+
+      expect(renewer).toBeDefined();
+
+      const result = await renewer?.();
+
+      expect(mockOktaAuth.token.renewTokens).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        idToken: 'okta-fresh-token',
+        expiresAt: expiresAt * 1000,
+      });
+    });
+
+    it('should throw when renewTokens returns no idToken', async () => {
+      mockOktaAuth.token.renewTokens.mockResolvedValueOnce({
+        idToken: undefined,
+        accessToken: { accessToken: 'okta-access-token' },
+      });
+
+      render(
+        <OktaAuthenticator
+          {...mockProps}
+          ref={(ref) => (authenticatorRef = ref)}
+        />
+      );
+
+      const renewer = authenticatorRef?.getRenewer?.();
+
+      await expect(renewer?.()).rejects.toThrow(
+        'Okta renewal returned no idToken'
+      );
+    });
+  });
 });

@@ -12,7 +12,14 @@
  */
 
 import { useOktaAuth } from '@okta/okta-react';
-import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useImperativeHandle,
+} from 'react';
+import { Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -69,10 +76,33 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       return '';
     };
 
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 11). Kept alongside renewToken until every authenticator is
+    // migrated and the old TokenService path is deleted. Reads the raw
+    // Tokens shape directly instead of going through the tokenManager/
+    // setOidcToken side effects renewToken performs — the AuthCoordinator
+    // owns storage now.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        const tokens = await oktaAuth.token.renewTokens();
+
+        if (!tokens.idToken?.idToken) {
+          throw new Error('Okta renewal returned no idToken');
+        }
+
+        return {
+          idToken: tokens.idToken.idToken,
+          expiresAt: tokens.idToken.expiresAt * 1000,
+        };
+      },
+      [oktaAuth]
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewToken,
+      getRenewer,
     }));
 
     return <Fragment>{children}</Fragment>;
