@@ -8,9 +8,9 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getI
 
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -215,9 +215,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
-    String lockJobId =
-        Objects.requireNonNullElseGet(
-            jobExecutionContext.getFireInstanceId(), () -> UUID.randomUUID().toString());
+    String lockJobId = createJobLockId(jobExecutionContext.getFireInstanceId());
     if (!tryAcquireJobLock(lockJobId)) {
       LOG.info("Skipping Data Insights run because another server holds the job lock");
       return;
@@ -302,6 +300,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
       releaseJobLock(lockJobId);
       sendUpdates(jobExecutionContext);
     }
+  }
+
+  static String createJobLockId(String fireInstanceId) {
+    // search_reindex_lock.jobId is VARCHAR(36), while Quartz fire instance IDs are unbounded.
+    UUID lockJobId =
+        fireInstanceId == null
+            ? UUID.randomUUID()
+            : UUID.nameUUIDFromBytes(fireInstanceId.getBytes(StandardCharsets.UTF_8));
+    return lockJobId.toString();
   }
 
   private boolean tryAcquireJobLock(String jobId) {
