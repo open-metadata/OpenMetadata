@@ -98,7 +98,20 @@ describe('AuthCoordinator', () => {
   });
 
   it('rejects when no renewer is registered', async () => {
-    await expect(coordinator.ensureFreshToken()).rejects.toThrow(/no renewer/i);
+    // No renewer ever registers, so ensureFreshToken now waits out the
+    // renewer-registration timeout (see the dedicated timeout test below)
+    // before rejecting — fast-forward fake timers instead of waiting 5s
+    // of real time, which would race Jest's own default test timeout.
+    jest.useFakeTimers();
+    try {
+      const pending = coordinator.ensureFreshToken();
+      const expectation = expect(pending).rejects.toThrow(/no renewer/i);
+
+      jest.advanceTimersByTime(5_000);
+      await expectation;
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('fires the install() onRefreshStart callback exactly once per refresh cycle for concurrent 401s', async () => {
@@ -152,5 +165,39 @@ describe('AuthCoordinator', () => {
 
     await expect(triggerError(error)).rejects.toBe(error);
     expect(onRefreshStart).not.toHaveBeenCalled();
+  });
+
+  it('ensureFreshToken waits for renewer registration and succeeds if registered before timeout', async () => {
+    // No renewer registered yet — simulates ensureFreshToken() winning the
+    // race against AuthProvider's mount effect on cold load.
+    const renewer = jest.fn(async () => ({
+      expiresAt: Date.now() + 300_000,
+      idToken: 'fresh-from-late-renewer',
+    }));
+
+    const pending = coordinator.ensureFreshToken();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    coordinator.registerRenewer(renewer);
+
+    await expect(pending).resolves.toBe('fresh-from-late-renewer');
+    expect(renewer).toHaveBeenCalledTimes(1);
+  });
+
+  it('ensureFreshToken times out if renewer never registers', async () => {
+    jest.useFakeTimers();
+    try {
+      const pending = coordinator.ensureFreshToken();
+      // Attach a rejection handler synchronously so advancing fake timers
+      // below can't produce an unhandled rejection before the assertion runs.
+      const expectation = expect(pending).rejects.toThrow(
+        /no renewer registered within timeout/i
+      );
+
+      jest.advanceTimersByTime(5_000);
+      await expectation;
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

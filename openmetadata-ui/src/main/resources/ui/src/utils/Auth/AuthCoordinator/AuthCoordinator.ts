@@ -34,6 +34,11 @@ const CHANNEL_NAME = 'om-auth';
 // re-reads the token the leader wrote and reschedules a short recheck rather
 // than trusting it has the leader's real expiry (which it never received).
 const FOLLOWER_RECHECK_MS = 60_000;
+// AuthProvider's mount effect (fetchAuthConfig round-trip + lazy authenticator
+// chunk) registers the renewer asynchronously, while initializeAuthState can
+// call ensureFreshToken() synchronously on cold load right after mount. Wait
+// briefly for that registration instead of failing the race immediately.
+const RENEWER_WAIT_TIMEOUT_MS = 5_000;
 
 export class AuthCoordinator {
   private renewer: Renewer | null = null;
@@ -43,9 +48,25 @@ export class AuthCoordinator {
   private readonly timer = new ProactiveTimer();
   private readonly visibility = new VisibilityWatcher();
   private readonly lock = new CrossTabLock(LOCK_NAME, CHANNEL_NAME);
+  // Resolves on the first non-null registerRenewer() call and stays resolved
+  // for the coordinator's lifetime — later registerRenewer(null) calls (e.g.
+  // unmount) do not reset it; doRefresh() re-checks `this.renewer` after the
+  // wait, so a stale resolution can't mask a currently-unregistered renewer.
+  private renewerReady: Promise<void>;
+  private resolveRenewerReady!: () => void;
+
+  constructor() {
+    this.renewerReady = new Promise<void>((resolve) => {
+      this.resolveRenewerReady = resolve;
+    });
+  }
 
   registerRenewer(renewer: Renewer | null): void {
+    const wasNull = this.renewer === null;
     this.renewer = renewer;
+    if (renewer && wasNull) {
+      this.resolveRenewerReady();
+    }
   }
 
   on<E extends AuthCoordinatorEvent>(
@@ -120,7 +141,25 @@ export class AuthCoordinator {
     this.visibility.stop();
   }
 
+  private async awaitRenewer(
+    timeoutMs = RENEWER_WAIT_TIMEOUT_MS
+  ): Promise<void> {
+    if (this.renewer) {
+      return;
+    }
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('No renewer registered within timeout'));
+      }, timeoutMs);
+      this.renewerReady.then(() => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  }
+
   private async doRefresh(): Promise<string> {
+    await this.awaitRenewer();
     const renewer = this.renewer;
     if (!renewer) {
       throw new Error('No renewer registered');
