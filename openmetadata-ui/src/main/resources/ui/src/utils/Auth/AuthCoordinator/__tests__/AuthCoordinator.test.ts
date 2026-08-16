@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { AxiosInstance } from 'axios';
 import { AuthCoordinator } from '../AuthCoordinator';
 
 jest.mock('../../../SwTokenStorageUtils', () => ({
@@ -18,6 +19,34 @@ jest.mock('../../../SwTokenStorageUtils', () => ({
   getOidcToken: jest.fn(() => 'stale-token'),
   setOidcToken: jest.fn(),
 }));
+
+// Minimal axios stand-in: exposes the `rejected` handler registered via
+// `interceptors.response.use` so tests can simulate a 401 without a real
+// HTTP round trip.
+const createMockAxios = () => {
+  let rejectedHandler: ((error: unknown) => Promise<unknown>) | null = null;
+  const axios = {
+    interceptors: {
+      response: {
+        use: (
+          _fulfilled: (value: unknown) => unknown,
+          rejected: (error: unknown) => Promise<unknown>
+        ) => {
+          rejectedHandler = rejected;
+
+          return 1;
+        },
+        eject: jest.fn(),
+      },
+    },
+    request: jest.fn(async () => ({ data: 'ok' })),
+  } as unknown as AxiosInstance;
+
+  return {
+    axios,
+    triggerError: (error: unknown) => rejectedHandler?.(error),
+  };
+};
 
 describe('AuthCoordinator', () => {
   let coordinator: AuthCoordinator;
@@ -70,5 +99,58 @@ describe('AuthCoordinator', () => {
 
   it('rejects when no renewer is registered', async () => {
     await expect(coordinator.ensureFreshToken()).rejects.toThrow(/no renewer/i);
+  });
+
+  it('fires the install() onRefreshStart callback exactly once per refresh cycle for concurrent 401s', async () => {
+    // The renewer's promise executor runs synchronously, so `resolveRenewer`
+    // is assigned before this function returns — safe to assert non-null.
+    let resolveRenewer!: (result: {
+      expiresAt: number;
+      idToken: string;
+    }) => void;
+    const renewalPromise = new Promise<{ expiresAt: number; idToken: string }>(
+      (resolve) => {
+        resolveRenewer = resolve;
+      }
+    );
+    const renewer = jest.fn(() => renewalPromise);
+    coordinator.registerRenewer(renewer);
+    const onRefreshStart = jest.fn();
+    const isRefreshable = jest.fn(() => true);
+    const { axios, triggerError } = createMockAxios();
+
+    coordinator.install(axios, isRefreshable, onRefreshStart);
+
+    const error = {
+      response: { status: 401, data: {} },
+      config: { url: '/api/v1/tables' },
+    };
+
+    // Three concurrent 401s land while the same refresh cycle is in flight.
+    triggerError(error);
+    triggerError(error);
+    triggerError(error);
+
+    expect(onRefreshStart).toHaveBeenCalledTimes(1);
+
+    resolveRenewer({ expiresAt: Date.now() + 300_000, idToken: 'fresh' });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  it('does not fire onRefreshStart for a 401 that isRefreshable filters out', async () => {
+    const onRefreshStart = jest.fn();
+    const isRefreshable = jest.fn(() => false);
+    const { axios, triggerError } = createMockAxios();
+
+    coordinator.install(axios, isRefreshable, onRefreshStart);
+
+    const error = {
+      response: { status: 401, data: {} },
+      config: { url: '/api/v1/tables' },
+    };
+
+    await expect(triggerError(error)).rejects.toBe(error);
+    expect(onRefreshStart).not.toHaveBeenCalled();
   });
 });

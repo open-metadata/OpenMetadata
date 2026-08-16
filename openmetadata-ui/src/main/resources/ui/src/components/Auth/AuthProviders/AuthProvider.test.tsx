@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
+import { REDIRECT_PATHNAME } from '../../../constants/router.constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import axiosClient from '../../../rest';
 import { isRefreshableAuthError } from '../../../utils/AuthProvider.util';
@@ -65,6 +66,19 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showInfoToast: jest.fn(),
 }));
+
+// Spies on the cookie write `handleStoreProtectedRedirectPath` performs, so
+// the regression test below can assert it ran without reaching into
+// AuthProvider's private closures.
+jest.mock('cookie-storage', () => {
+  const setItem = jest.fn();
+  const getItem = jest.fn();
+
+  return {
+    CookieStorage: jest.fn().mockImplementation(() => ({ getItem, setItem })),
+    __mockCookieSetItem: setItem,
+  };
+});
 
 jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => {
   return {
@@ -179,6 +193,11 @@ const {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } = jest.requireMock('../../../utils/Auth/AuthCoordinator') as any;
 
+const {
+  __mockCookieSetItem: mockCookieSetItem,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} = jest.requireMock('cookie-storage') as any;
+
 describe('Test auth provider', () => {
   it('Logout handler should call the "updateUserDetails" method', async () => {
     const ConsumerComponent = () => {
@@ -280,14 +299,15 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     return call?.[1];
   };
 
-  it('installs the AuthCoordinator response interceptor with axiosClient and isRefreshableAuthError', async () => {
+  it('installs the AuthCoordinator response interceptor with axiosClient, isRefreshableAuthError, and a redirect-path callback', async () => {
     await act(async () => {
       render(<WrapperComponent />);
     });
 
     expect(mockAuthCoordinatorInstall).toHaveBeenCalledWith(
       axiosClient,
-      isRefreshableAuthError
+      isRefreshableAuthError,
+      expect.any(Function)
     );
   });
 
@@ -335,6 +355,29 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     // resetUserDetails(true) sets isAuthenticated false synchronously before
     // driving the (fire-and-forget) logout cascade.
     expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false);
+  });
+
+  it('stores the protected redirect path when the coordinator starts a refresh cycle (regression: dropped handleStoreProtectedRedirectPath)', async () => {
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const onRefreshStart = mockAuthCoordinatorInstall.mock.calls[0][2];
+
+    expect(onRefreshStart).toBeInstanceOf(Function);
+
+    act(() => {
+      onRefreshStart?.();
+    });
+
+    // A 401 that kicks off a refresh must stash the current URL so a later
+    // forced logout (refresh-failed) can send the user back to it after
+    // re-login, instead of the default landing page.
+    expect(mockCookieSetItem).toHaveBeenCalledWith(
+      REDIRECT_PATHNAME,
+      'pathname',
+      expect.anything()
+    );
   });
 
   it('disposes the interceptor and event subscriptions on unmount', async () => {

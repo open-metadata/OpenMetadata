@@ -55,7 +55,11 @@ export class AuthCoordinator {
     return this.bus.on(event, cb);
   }
 
-  install(axios: AxiosInstance, isRefreshable: IsRefreshable): Unsubscribe {
+  install(
+    axios: AxiosInstance,
+    isRefreshable: IsRefreshable,
+    onRefreshStart?: () => void
+  ): Unsubscribe {
     const id = axios.interceptors.response.use(
       (response) => response,
       async (error) => {
@@ -64,6 +68,13 @@ export class AuthCoordinator {
         const body = error?.response?.data;
         if (status !== 401 || !isRefreshable(status, url, body)) {
           throw error;
+        }
+        // Fire once per active refresh cycle — `inflight` is set
+        // synchronously by `ensureFreshToken()` below, so only the 401 that
+        // starts a new cycle (not the concurrent ones queued behind it)
+        // triggers this callback.
+        if (!this.inflight && onRefreshStart) {
+          onRefreshStart();
         }
         const pending = this.queue.enqueue(error.config);
         this.pumpQueue(axios).catch(() => undefined);

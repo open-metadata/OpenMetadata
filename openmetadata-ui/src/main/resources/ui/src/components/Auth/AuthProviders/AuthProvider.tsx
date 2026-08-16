@@ -391,6 +391,15 @@ export const AuthProvider = ({
     });
   }, []);
 
+  /**
+   * Stores redirect URL for successful login
+   */
+  const handleStoreProtectedRedirectPath = useCallback(() => {
+    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
+      storeRedirectPath(location.pathname);
+    }
+  }, [location.pathname, storeRedirectPath]);
+
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
     clearOidcToken();
@@ -498,10 +507,17 @@ export const AuthProvider = ({
   // tell the router the user was authenticated again, so a route guard
   // reading stale `isAuthenticated` kept bouncing to /signin even though the
   // retried request had already succeeded.
+  //
+  // `handleStoreProtectedRedirectPath` is passed as the third argument so it
+  // fires the moment a 401 kicks off a refresh cycle — matching the timing
+  // of the old inline interceptor. Without it, a user bounced to /signin
+  // after a failed refresh loses their current URL and lands on the default
+  // page after re-login instead of back where they were.
   useEffect(() => {
     const disposeInterceptor = authCoordinator.install(
       axiosClient,
-      isRefreshableAuthError
+      isRefreshableAuthError,
+      handleStoreProtectedRedirectPath
     );
     const offRefreshed = authCoordinator.on('refreshed', () => {
       setIsAuthenticated(true);
@@ -586,15 +602,6 @@ export const AuthProvider = ({
       setNewUserProfile,
     ]
   );
-
-  /**
-   * Stores redirect URL for successful login
-   */
-  const handleStoreProtectedRedirectPath = useCallback(() => {
-    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      storeRedirectPath(location.pathname);
-    }
-  }, [location.pathname, storeRedirectPath]);
 
   const updateAuthInstance = async (
     configJson: AuthenticationConfiguration
