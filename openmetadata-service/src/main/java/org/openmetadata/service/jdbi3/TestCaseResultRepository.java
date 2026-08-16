@@ -352,7 +352,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     Map<String, Object> params = Map.of("fqns", testCaseFQNs);
     searchRepository.deleteByScript(
         TEST_CASE_RESULT,
-        "if (!(doc['testCaseFQN.keyword'].empty)) { params.fqns.contains(doc['testCaseFQN.keyword'].value) }",
+        "!doc['testCaseFQN.keyword'].empty && "
+            + "params.fqns.contains(doc['testCaseFQN.keyword'].value)",
         params);
   }
 

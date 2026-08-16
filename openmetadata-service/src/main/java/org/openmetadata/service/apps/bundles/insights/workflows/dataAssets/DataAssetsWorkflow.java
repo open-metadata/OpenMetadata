@@ -37,6 +37,7 @@ import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchConfiguration;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.service.apps.bundles.insights.workflows.DataInsightsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsElasticSearchProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor;
@@ -53,7 +54,7 @@ import org.openmetadata.service.workflows.interfaces.TaggedOperation;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
-public class DataAssetsWorkflow {
+public class DataAssetsWorkflow implements DataInsightsWorkflow {
   public static final String DATA_STREAM_KEY = "DataStreamKey";
   public static final String ENTITY_TYPE_FIELDS_KEY = "EnityTypeFields";
   private static final String ALL_ENTITIES = "all";
@@ -216,8 +217,9 @@ public class DataAssetsWorkflow {
     return Math.max(1, Math.min(configuredBudget, Math.min(cpuBudget, databaseBudget)));
   }
 
+  @Override
   public void process() throws SearchIndexException {
-    if (!dataAssetsConfig.getEnabled()) {
+    if (!dataAssetsConfig.getEnabled() || stopped) {
       return;
     }
     LOG.info("[Data Insights] Processing Data Assets Insights.");
@@ -382,6 +384,7 @@ public class DataAssetsWorkflow {
     }
   }
 
+  @Override
   public void stop() {
     this.stopped = true;
     ExecutorService exec = this.executor;

@@ -188,10 +188,16 @@ class TestCaseRepositoryTest {
 
       repository.bulkEntitySpecificCleanup(List.of(first, second), "admin");
 
-      await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.timeSeriesDeletes.get() == 1);
+      await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.searchDeletes.get() == 1);
       assertEquals(List.of(TEST_CASE_FQN, secondFqn), boundaries.deletedTestCaseFQNs.get());
       assertEquals(1, boundaries.dimensionDeletes.get());
       assertEquals(1, boundaries.searchDeletes.get());
+      assertEquals(
+          "!doc['testCaseFQN.keyword'].empty && "
+              + "params.fqns.contains(doc['testCaseFQN.keyword'].value)",
+          boundaries.searchDeleteScript.get());
+      assertEquals(
+          Map.of("fqns", List.of(TEST_CASE_FQN, secondFqn)), boundaries.searchDeleteParams.get());
     }
   }
 
@@ -204,6 +210,8 @@ class TestCaseRepositoryTest {
     private final AtomicInteger dimensionDeletes = new AtomicInteger();
     private final AtomicInteger searchDeletes = new AtomicInteger();
     private final AtomicReference<List<String>> deletedTestCaseFQNs = new AtomicReference<>();
+    private final AtomicReference<String> searchDeleteScript = new AtomicReference<>();
+    private final AtomicReference<Map<String, Object>> searchDeleteParams = new AtomicReference<>();
     private final Set<String> deleteThreadNames = ConcurrentHashMap.newKeySet();
     private final CollectionDAO collectionDAO = mock(CollectionDAO.class);
     private final SearchRepository searchRepository = mock(SearchRepository.class);
@@ -230,7 +238,12 @@ class TestCaseRepositoryTest {
       doAnswer(invocation -> dimensionDeletes.incrementAndGet())
           .when(dimensionDao)
           .deleteAllBatch(anyList());
-      doAnswer(invocation -> searchDeletes.incrementAndGet())
+      doAnswer(
+              invocation -> {
+                searchDeleteScript.set(invocation.getArgument(1));
+                searchDeleteParams.set(Map.copyOf(invocation.getArgument(2)));
+                return searchDeletes.incrementAndGet();
+              })
           .when(searchRepository)
           .deleteByScript(eq(Entity.TEST_CASE_RESULT), anyString(), anyMap());
     }

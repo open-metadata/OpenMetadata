@@ -17,6 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -42,6 +43,7 @@ import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchI
 import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.service.apps.bundles.insights.workflows.DataInsightsWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow;
@@ -73,7 +75,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Getter private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
-  private volatile DataAssetsWorkflow activeDataAssetsWorkflow;
+  private final AtomicReference<DataInsightsWorkflow> activeWorkflow = new AtomicReference<>();
 
   public final Set<String> dataAssetTypes =
       Set.of(
@@ -218,6 +220,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     String lockJobId = createJobLockId(jobExecutionContext.getFireInstanceId());
     if (!tryAcquireJobLock(lockJobId)) {
       LOG.info("Skipping Data Insights run because another server holds the job lock");
+      finishSkippedRun(jobExecutionContext);
       return;
     }
     ScheduledExecutorService heartbeat = null;
@@ -376,6 +379,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
     return true;
   }
 
+  private void finishSkippedRun(JobExecutionContext jobExecutionContext) {
+    jobData.setStatus(EventPublisherJob.Status.STOPPED);
+    sendUpdates(jobExecutionContext);
+  }
+
   private void releaseJobLock(String jobId) {
     try {
       collectionDAO.searchReindexLockDAO().releaseLock(JOB_LOCK_KEY, jobId);
@@ -389,30 +397,17 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processWebAnalytics() {
-    WebAnalyticsWorkflow workflow =
-        new WebAnalyticsWorkflow(webAnalyticsConfig, timestamp, batchSize, backfill);
-    WorkflowStats workflowStats = workflow.getWorkflowStats();
-    workflow.process();
-    return workflowStats;
+    return processWorkflow(
+        new WebAnalyticsWorkflow(webAnalyticsConfig, timestamp, batchSize, backfill));
   }
 
   private WorkflowStats processCostAnalysis() {
-    CostAnalysisWorkflow workflow =
-        new CostAnalysisWorkflow(costAnalysisConfig, timestamp, batchSize, backfill);
-    WorkflowStats workflowStats = workflow.getWorkflowStats();
-
-    try {
-      workflow.process();
-    } catch (SearchIndexException ex) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(ex.getIndexingError());
-    }
-
-    return workflowStats;
+    return processWorkflow(
+        new CostAnalysisWorkflow(costAnalysisConfig, timestamp, batchSize, backfill));
   }
 
   private WorkflowStats processDataAssets() {
-    DataAssetsWorkflow workflow =
+    return processWorkflow(
         new DataAssetsWorkflow(
             dataAssetsConfig,
             timestamp,
@@ -421,20 +416,30 @@ public class DataInsightsApp extends AbstractNativeApplication {
             dataAssetTypes,
             collectionDAO,
             searchRepository,
-            getSearchInterface());
-    WorkflowStats workflowStats = workflow.getWorkflowStats();
+            getSearchInterface()));
+  }
 
-    this.activeDataAssetsWorkflow = workflow;
+  private WorkflowStats processWorkflow(DataInsightsWorkflow workflow) {
+    WorkflowStats workflowStats = workflow.getWorkflowStats();
+    activateWorkflow(workflow);
     try {
-      workflow.process();
+      if (!stopped) {
+        workflow.process();
+      }
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
     } finally {
-      this.activeDataAssetsWorkflow = null;
+      activeWorkflow.compareAndSet(workflow, null);
     }
-
     return workflowStats;
+  }
+
+  void activateWorkflow(DataInsightsWorkflow workflow) {
+    activeWorkflow.set(workflow);
+    if (stopped) {
+      workflow.stop();
+    }
   }
 
   private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {
@@ -460,7 +465,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   protected void stop() {
     this.stopped = true;
-    DataAssetsWorkflow workflow = this.activeDataAssetsWorkflow;
+    DataInsightsWorkflow workflow = activeWorkflow.get();
     if (workflow != null) {
       workflow.stop();
     }
