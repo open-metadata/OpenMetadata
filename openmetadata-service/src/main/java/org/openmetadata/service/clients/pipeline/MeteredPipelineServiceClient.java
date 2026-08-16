@@ -71,7 +71,7 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
               "operation",
               name,
               "status",
-              Integer.toString(result.getCode()))
+              result == null ? "unknown" : Integer.toString(result.getCode()))
           .increment();
       return result;
     } catch (PipelineServiceClientException e) {

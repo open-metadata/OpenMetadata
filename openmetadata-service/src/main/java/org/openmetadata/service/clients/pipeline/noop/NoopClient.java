@@ -29,14 +29,17 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 public class NoopClient extends PipelineServiceClient {
 
   static final String EXCEPTION_MSG = "The NoopClient does not implement the %s method";
+  private static final String PLATFORM = "NoOp";
+  private static final String NOOP_VERSION = "noop";
 
   public NoopClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     super(pipelineServiceClientConfiguration);
+    this.setPlatform(PLATFORM);
   }
 
   @Override
   public PipelineServiceClientResponse getServiceStatusInternal() {
-    return null;
+    return buildHealthyStatus(NOOP_VERSION);
   }
 
   @Override
