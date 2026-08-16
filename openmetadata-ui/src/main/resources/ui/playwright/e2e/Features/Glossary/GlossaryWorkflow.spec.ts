@@ -336,7 +336,9 @@ test(
 
       const statusBadge = termRow.locator('.status-badge');
 
-      await expect(statusBadge).toHaveText('Draft');
+      // The Flowable workflow can advance the status from Draft → In Review within
+      // ~1 second of term creation; both are valid initial states.
+      await expect(statusBadge).toHaveText(/^(Draft|In Review)$/);
 
       await expect(statusBadge).toBeVisible();
     } finally {
