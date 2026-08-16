@@ -506,14 +506,16 @@ export const AuthProvider = ({
   }, [authenticatorRef.current?.renewIdToken]);
 
   // Additive registration with the new AuthCoordinator (auth-coordinator-refactor
-  // Task 7 + Task 8 + Task 9). Basic/LDAP use BasicAuthAuthenticator; SAML and
-  // any confidential-client provider (e.g. Okta configured as confidential)
-  // use GenericAuthenticator; Google/CustomOidc/AwsCognito use
-  // OidcAuthenticator — mirroring the exact conditions `getProtectedApp` uses
-  // below to decide which authenticator to mount. Other providers (Azure,
-  // Okta/Auth0 as public clients) are migrated in later tasks. This runs
-  // alongside — not instead of — the TokenService wiring above until Task 12
-  // swaps the interceptor over.
+  // Task 7 + Task 8 + Task 9 + Task 10). Basic/LDAP use BasicAuthAuthenticator;
+  // SAML and any confidential-client provider (e.g. Okta configured as
+  // confidential) use GenericAuthenticator; Google/CustomOidc/AwsCognito use
+  // OidcAuthenticator; Azure (as a public client) uses MsalAuthenticator —
+  // mirroring the exact conditions `getProtectedApp` uses below to decide
+  // which authenticator to mount. Confidential-configured Azure already
+  // mounts GenericAuthenticator via Task 8. Other providers (Okta/Auth0 as
+  // public clients) are migrated in later tasks. This runs alongside — not
+  // instead of — the TokenService wiring above until Task 12 swaps the
+  // interceptor over.
   useEffect(() => {
     const isBasicOrLdap =
       authConfig?.provider === AuthProviderEnum.Basic ||
@@ -528,8 +530,16 @@ export const AuthProvider = ({
         AuthProviderEnum.CustomOidc,
         AuthProviderEnum.AwsCognito,
       ].includes(authConfig?.provider as AuthProviderEnum);
+    const usesMsalAuthenticator =
+      authConfig?.provider === AuthProviderEnum.Azure &&
+      clientType !== ClientType.Confidential;
 
-    if (!isBasicOrLdap && !usesGenericAuthenticator && !usesOidcAuthenticator) {
+    if (
+      !isBasicOrLdap &&
+      !usesGenericAuthenticator &&
+      !usesOidcAuthenticator &&
+      !usesMsalAuthenticator
+    ) {
       return;
     }
 

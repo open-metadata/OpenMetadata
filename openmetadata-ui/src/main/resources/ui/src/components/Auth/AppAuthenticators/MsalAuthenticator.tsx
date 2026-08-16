@@ -20,9 +20,11 @@ import {
   forwardRef,
   Fragment,
   ReactNode,
+  useCallback,
   useEffect,
   useImperativeHandle,
 } from 'react';
+import { Renewer } from '../../../utils/Auth/AuthCoordinator';
 import {
   msalLoginRequest,
   parseMSALResponse,
@@ -113,10 +115,48 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       return user.id_token;
     };
 
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 10). Kept alongside fetchIdToken/renewIdToken until every
+    // authenticator is migrated and the old TokenService path is deleted.
+    // Reads the raw AuthenticationResult fields directly (idToken/expiresOn)
+    // instead of going through parseMSALResponse, which writes the token to
+    // storage as a side effect — the AuthCoordinator owns storage now.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        const tokenRequest = {
+          account: account || accounts[0],
+          scopes: msalLoginRequest.scopes,
+          forceRefresh: true,
+        };
+
+        let response;
+        try {
+          response = await instance.acquireTokenSilent(tokenRequest);
+        } catch (error) {
+          if (error instanceof InteractionRequiredAuthError) {
+            response = await instance.acquireTokenPopup(tokenRequest);
+          } else {
+            throw error;
+          }
+        }
+
+        if (!response?.idToken || !response.expiresOn) {
+          throw new Error('MSAL renewal returned no idToken or expiresOn');
+        }
+
+        return {
+          idToken: response.idToken,
+          expiresAt: response.expiresOn.getTime(),
+        };
+      },
+      [account, accounts, instance]
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: renewIdToken,
+      getRenewer,
     }));
 
     // Need to capture redirect and parse ID token

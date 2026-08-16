@@ -212,6 +212,107 @@ describe('MsalAuthenticator', () => {
     expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
   });
 
+  it('getRenewer normalizes msal response to Renewer contract on the silent path', async () => {
+    const expiresOn = new Date(Date.now() + 5 * 60_000);
+    mockInstance.acquireTokenSilent.mockResolvedValueOnce({
+      idToken: 'azure-fresh',
+      expiresOn,
+    });
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = authenticatorRef?.getRenewer?.();
+
+    expect(renewer).toBeDefined();
+
+    const result = await renewer?.();
+
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalledWith(
+      expect.objectContaining({ forceRefresh: true })
+    );
+    expect(mockInstance.acquireTokenPopup).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      idToken: 'azure-fresh',
+      expiresAt: expiresOn.getTime(),
+    });
+  });
+
+  it('getRenewer falls back to acquireTokenPopup on InteractionRequiredAuthError', async () => {
+    const expiresOn = new Date(Date.now() + 5 * 60_000);
+    const interactionError = new InteractionRequiredAuthError(
+      'interaction_required'
+    );
+    mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
+    mockInstance.acquireTokenPopup.mockResolvedValueOnce({
+      idToken: 'azure-popup-fresh',
+      expiresOn,
+    });
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = authenticatorRef?.getRenewer?.();
+    const result = await renewer?.();
+
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
+    expect(result).toEqual({
+      idToken: 'azure-popup-fresh',
+      expiresAt: expiresOn.getTime(),
+    });
+  });
+
+  it('getRenewer propagates the error when the popup fallback also fails', async () => {
+    const interactionError = new InteractionRequiredAuthError(
+      'interaction_required'
+    );
+    const popupError = new Error('popup_failed');
+    mockInstance.acquireTokenSilent.mockRejectedValueOnce(interactionError);
+    mockInstance.acquireTokenPopup.mockRejectedValueOnce(popupError);
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = authenticatorRef?.getRenewer?.();
+
+    await expect(renewer?.()).rejects.toThrow('popup_failed');
+    expect(mockInstance.acquireTokenSilent).toHaveBeenCalled();
+    expect(mockInstance.acquireTokenPopup).toHaveBeenCalled();
+  });
+
+  it('getRenewer throws when the msal response has no expiresOn', async () => {
+    mockInstance.acquireTokenSilent.mockResolvedValueOnce({
+      idToken: 'azure-fresh',
+      expiresOn: null,
+    });
+
+    render(
+      <MsalAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    const renewer = authenticatorRef?.getRenewer?.();
+
+    await expect(renewer?.()).rejects.toThrow(
+      'MSAL renewal returned no idToken or expiresOn'
+    );
+  });
+
   it('should show loader when interaction is in progress', () => {
     (useMsal as jest.Mock).mockReturnValue({
       instance: mockInstance,
