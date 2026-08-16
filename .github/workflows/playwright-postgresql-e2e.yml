@@ -197,6 +197,8 @@ jobs:
             echo "🔹 Running common chromium tests on shard ${CHROMIUM_SHARD}/5"
             npx playwright test \
               --project=chromium \
+              --project=IntakeFormCustomPropertyFields \
+              --project=IntakeForm \
               --grep-invert @dataAssetRules \
               --shard=${CHROMIUM_SHARD}/5
           fi
