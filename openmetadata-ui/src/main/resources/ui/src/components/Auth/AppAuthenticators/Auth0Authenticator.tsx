@@ -12,7 +12,14 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useImperativeHandle,
+} from 'react';
+import { Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -30,6 +37,29 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
       getIdTokenClaims,
       logout,
     } = useAuth0();
+
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 11). Kept alongside renewIdToken until every authenticator is
+    // migrated and the old TokenService path is deleted. Reads the raw
+    // IdToken claims directly instead of going through the setOidcToken side
+    // effect renewIdToken performs — the AuthCoordinator owns storage now.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        await getAccessTokenSilently();
+
+        const claims = await getIdTokenClaims();
+
+        if (!claims?.__raw) {
+          throw new Error('Auth0 renewal returned no idToken');
+        }
+
+        return {
+          idToken: claims.__raw,
+          expiresAt: (claims.exp ?? 0) * 1000,
+        };
+      },
+      [getAccessTokenSilently, getIdTokenClaims]
+    );
 
     useImperativeHandle(ref, () => ({
       invokeLogin() {
@@ -62,6 +92,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
 
         return idToken;
       },
+      getRenewer,
     }));
 
     return <Fragment>{children}</Fragment>;
