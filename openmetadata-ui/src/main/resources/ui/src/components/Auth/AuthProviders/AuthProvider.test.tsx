@@ -359,6 +359,52 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     );
   });
 
+  it('stores the CURRENT pathname when the refresh cycle starts AFTER a client-side navigation (regression: stale handleStoreProtectedRedirectPath closure)', async () => {
+    const useCustomLocationMock = jest.requireMock(
+      '../../../hooks/useCustomLocation/useCustomLocation'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ) as any;
+
+    useCustomLocationMock.mockImplementation(() => ({
+      pathname: '/initial-path',
+    }));
+
+    const { rerender } = render(<WrapperComponent />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Simulate a client-side (React Router) navigation completing after
+    // mount — the pathname the coordinator's captured callback should read
+    // from now on is this one, not the one at first render.
+    useCustomLocationMock.mockImplementation(() => ({
+      pathname: '/new-protected-path',
+    }));
+
+    await act(async () => {
+      rerender(<WrapperComponent />);
+    });
+
+    const onRefreshStart = mockAuthCoordinatorInstall.mock.calls[0][2];
+
+    expect(onRefreshStart).toBeInstanceOf(Function);
+
+    act(() => {
+      onRefreshStart?.();
+    });
+
+    // `authCoordinator.install` is only ever invoked once (mount effect has
+    // `[]` deps), so the callback identity is fixed at mount — but it must
+    // still resolve the pathname current AT CALL TIME, not the one closed
+    // over when the coordinator first captured the callback.
+    expect(mockCookieSetItem).toHaveBeenCalledWith(
+      REDIRECT_PATHNAME,
+      '/new-protected-path',
+      expect.anything()
+    );
+  });
+
   it('disposes the interceptor and event subscriptions on unmount', async () => {
     let unmount: () => void = () => undefined;
 

@@ -385,14 +385,31 @@ export const AuthProvider = ({
     });
   }, []);
 
+  // Tracks the CURRENT pathname for `handleStoreProtectedRedirectPath` below.
+  // That callback is captured once by `authCoordinator.install` in the
+  // mount-only effect further down, so it must read the pathname via a ref
+  // rather than closing over `location.pathname` directly — otherwise a 401
+  // firing after any client-side navigation would store the pathname from
+  // the FIRST render instead of the page the user is actually on (see the
+  // install effect's comment for why the callback identity itself must stay
+  // stable). `window.location.pathname` isn't a substitute here: unlike
+  // `location` (from `useCustomLocation`), it isn't stripped of the
+  // deploy-time base path, so it would mismatch what `isProtectedRoute` and
+  // the post-login `navigate(urlPathname)` call both expect.
+  const pathnameRef = useRef(location.pathname);
+
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
+
   /**
    * Stores redirect URL for successful login
    */
   const handleStoreProtectedRedirectPath = useCallback(() => {
-    if (applicationRoutesClass.isProtectedRoute(location.pathname)) {
-      storeRedirectPath(location.pathname);
+    if (applicationRoutesClass.isProtectedRoute(pathnameRef.current)) {
+      storeRedirectPath(pathnameRef.current);
     }
-  }, [location.pathname, storeRedirectPath]);
+  }, [storeRedirectPath]);
 
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
