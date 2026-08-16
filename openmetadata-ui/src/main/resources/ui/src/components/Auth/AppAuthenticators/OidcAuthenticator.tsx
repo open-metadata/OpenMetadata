@@ -28,7 +28,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
 import { Renewer } from '../../../utils/Auth/AuthCoordinator';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -159,7 +158,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
         const user = await userManager.signinPopup();
         await setOidcToken(user.id_token);
         updateAxiosInterceptors();
-        TokenService.getInstance().clearRefreshInProgress();
       }
     };
 
@@ -167,9 +165,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       // On success update token in store and update axios interceptors
       await setOidcToken(user.id_token);
       updateAxiosInterceptors();
-      // Clear the refresh token in progress flag
-      // Since refresh token request completes with a callback
-      TokenService.getInstance().clearRefreshInProgress();
     };
 
     const handleSilentSignInFailure = (error: unknown) => {

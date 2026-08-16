@@ -34,7 +34,7 @@ export class CrossTabLock {
     const waitTimeoutMs = options.waitTimeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS;
     const locks = (navigator as unknown as { locks?: LockManager }).locks;
     if (!locks) {
-      return this.runWithoutWebLocks(work, waitTimeoutMs);
+      return this.runWithoutWebLocks(work);
     }
     let acquired = false;
     let result: T | 'follower-waited' = 'follower-waited';
@@ -62,9 +62,7 @@ export class CrossTabLock {
   }
 
   private async runWithoutWebLocks<T>(
-    work: () => Promise<T>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    waitTimeoutMs: number
+    work: () => Promise<T>
   ): Promise<T | 'follower-waited'> {
     return await work();
     // NOTE: Safari-private-mode without Web Locks falls back to per-tab

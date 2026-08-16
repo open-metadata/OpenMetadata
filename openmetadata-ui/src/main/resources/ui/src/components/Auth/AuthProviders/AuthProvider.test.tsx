@@ -81,28 +81,6 @@ jest.mock('cookie-storage', () => {
   };
 });
 
-jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => {
-  return {
-    getInstance: jest.fn().mockImplementation(() => ({
-      refreshToken: jest.fn().mockImplementation(() => Promise.resolve()),
-      isTokenUpdateInProgress: jest.fn().mockImplementation(() => false),
-      getToken: jest.fn().mockImplementation(() => Promise.resolve()),
-      clearRefreshInProgress: jest
-        .fn()
-        .mockImplementation(() => Promise.resolve()),
-      renewToken: jest.fn(),
-      refreshSuccessCallback: jest.fn(),
-      handleTokenUpdate: jest.fn(),
-      updateRenewToken: jest.fn(),
-      updateRefreshSuccessCallback: jest.fn(),
-      isTokenExpired: jest.fn(),
-      getTokenExpiry: jest.fn(),
-      fetchNewToken: jest.fn(),
-      setRefreshInProgress: jest.fn(),
-    })),
-  };
-});
-
 // The mock functions are created *inside* each factory (rather than closed
 // over from module scope) so `jest.mock`'s hoisting to the top of the file
 // can never observe them before they're initialized. Each factory re-exports

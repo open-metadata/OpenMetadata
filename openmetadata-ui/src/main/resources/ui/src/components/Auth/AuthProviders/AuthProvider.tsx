@@ -82,7 +82,6 @@ import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import { authCoordinator } from '../../../utils/Auth/AuthCoordinator';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   getAuthConfig,
   getUrlPathnameExpiry,
@@ -238,8 +237,6 @@ export const AuthProvider = ({
     setApplicationLoading,
     isAuthenticating,
   } = useApplicationStore();
-  const tokenService = useRef<TokenService>(TokenService.getInstance());
-
   const location = useCustomLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -328,9 +325,6 @@ export const AuthProvider = ({
 
     setApplicationLoading(false);
 
-    // Clear the refresh flag (used after refresh is complete)
-    tokenService.current.clearRefreshInProgress();
-
     // Upon logout, redirect to the login page
     navigate(ROUTES.SIGNIN);
   }, []);
@@ -405,7 +399,6 @@ export const AuthProvider = ({
     clearOidcToken();
     setIsAuthenticated(false);
     setApplicationLoading(false);
-    TokenService.getInstance().clearRefreshInProgress();
     if (forceLogout) {
       onLogoutHandler();
       showInfoToast(t('message.session-expired'));
