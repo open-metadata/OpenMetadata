@@ -506,15 +506,21 @@ export const AuthProvider = ({
   }, [authenticatorRef.current?.renewIdToken]);
 
   // Additive registration with the new AuthCoordinator (auth-coordinator-refactor
-  // Task 7). Only Basic/LDAP expose getRenewer so far; other providers are
+  // Task 7 + Task 8). Basic/LDAP use BasicAuthAuthenticator; SAML and any
+  // confidential-client provider (e.g. Okta configured as confidential) use
+  // GenericAuthenticator — mirroring the exact condition `getProtectedApp`
+  // uses below to decide which authenticator to mount. Other providers are
   // migrated in later tasks. This runs alongside — not instead of — the
   // TokenService wiring above until Task 12 swaps the interceptor over.
   useEffect(() => {
     const isBasicOrLdap =
       authConfig?.provider === AuthProviderEnum.Basic ||
       authConfig?.provider === AuthProviderEnum.LDAP;
+    const usesGenericAuthenticator =
+      clientType === ClientType.Confidential ||
+      authConfig?.provider === AuthProviderEnum.Saml;
 
-    if (!isBasicOrLdap) {
+    if (!isBasicOrLdap && !usesGenericAuthenticator) {
       return;
     }
 
@@ -525,7 +531,7 @@ export const AuthProvider = ({
     }
 
     return () => authCoordinator.registerRenewer(null);
-  }, [authConfig?.provider, authenticatorRef.current?.getRenewer]);
+  }, [authConfig?.provider, clientType, authenticatorRef.current?.getRenewer]);
 
   // When the tab becomes visible after being backgrounded, browsers may have
   // throttled or suspended the proactive renewal timer. Check token freshness

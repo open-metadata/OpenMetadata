@@ -43,6 +43,15 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import { GenericAuthenticator } from './GenericAuthenticator';
 
+// Builds a structurally-valid (unsigned) JWT so extractDetailsFromToken's
+// jwt-decode call can read a real `exp` claim out of the payload segment.
+const buildFakeJwt = (expSeconds: number) => {
+  const encode = (payload: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(payload)).toString('base64');
+
+  return `${encode({ alg: 'none' })}.${encode({ exp: expSeconds })}.signature`;
+};
+
 describe('GenericAuthenticator', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -121,5 +130,53 @@ describe('GenericAuthenticator', () => {
     expect(renewToken).toHaveBeenCalled();
     expect(setOidcToken).toHaveBeenCalledWith('token');
     expect(result).toEqual(mockResp);
+  });
+
+  it('should expose a getRenewer that resolves {idToken, expiresAt} from renewToken', async () => {
+    const expSeconds = Math.floor(Date.now() / 1000) + 3600;
+    const accessToken = buildFakeJwt(expSeconds);
+    renewToken.mockResolvedValueOnce({ accessToken });
+    const ref = createRef<AuthenticatorRef>();
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={ref}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const renewer = ref.current?.getRenewer?.();
+
+    expect(renewer).toBeDefined();
+
+    let result: { idToken: string; expiresAt: number } | undefined;
+    await act(async () => {
+      result = await renewer?.();
+    });
+
+    expect(renewToken).toHaveBeenCalled();
+    expect(result).toEqual({
+      idToken: accessToken,
+      expiresAt: expSeconds * 1000,
+    });
+    expect(result?.expiresAt).toBeGreaterThan(Date.now());
+  });
+
+  it('should throw from the renewer when renewToken returns no accessToken', async () => {
+    renewToken.mockResolvedValueOnce({});
+    const ref = createRef<AuthenticatorRef>();
+    render(
+      <MemoryRouter>
+        <GenericAuthenticator ref={ref}>
+          <div>Child</div>
+        </GenericAuthenticator>
+      </MemoryRouter>
+    );
+
+    const renewer = ref.current?.getRenewer?.();
+
+    await expect(renewer?.()).rejects.toThrow(
+      'Renew endpoint returned no accessToken'
+    );
   });
 });
