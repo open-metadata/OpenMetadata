@@ -15,6 +15,7 @@ import { act } from 'react-test-renderer';
 import { REDIRECT_PATHNAME } from '../../../constants/router.constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import axiosClient from '../../../rest';
+import { getLoggedInUser } from '../../../rest/userAPI';
 import { isRefreshableAuthError } from '../../../utils/AuthProvider.util';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 
@@ -395,5 +396,61 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     expect(mockDisposeInterceptor).toHaveBeenCalled();
     expect(mockOffRefreshed).toHaveBeenCalled();
     expect(mockOffFailed).toHaveBeenCalled();
+  });
+});
+
+describe('Test getLoggedInUserDetails catch (auth-coordinator-refactor Task 13 — Bug 1 fix)', () => {
+  const ConsumerComponent = () => <div>ConsumerComponent</div>;
+
+  const WrapperComponent = () => (
+    <AuthProvider childComponentType={ConsumerComponent}>
+      <ConsumerComponent />
+    </AuthProvider>
+  );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // A truthy stored token routes `fetchAuthConfig` into the
+    // `getLoggedInUserDetails()` branch (rather than the "no token, store
+    // redirect path" branch) so the catch under test actually runs.
+    localStorageMock.getItem.mockReturnValue(
+      JSON.stringify({ primary: 'stored-token' })
+    );
+  });
+
+  it('re-throws a refreshable 401 instead of resetting the session (so the AuthCoordinator interceptor can retry it)', async () => {
+    // Matches `/users/loggedInUser` + a REFRESHABLE_AUTH_ERRORS message —
+    // `isRefreshableAuthError` returns true, so the catch must re-throw
+    // rather than call `resetUserDetails()` synchronously. In production
+    // this rejection is consumed by the AuthCoordinator's axios response
+    // interceptor further up the promise chain; here it's intentionally
+    // left unhandled since this unit test only asserts the local catch's
+    // control flow, not the (separately-tested) interceptor itself.
+    (getLoggedInUser as jest.Mock).mockRejectedValue({
+      config: { url: '/users/loggedInUser' },
+      response: {
+        data: { message: 'Expired token! Please renew.' },
+        status: 401,
+      },
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    expect(mockSetIsAuthenticated).not.toHaveBeenCalledWith(false);
+  });
+
+  it('still resets the session for a non-refreshable error (existing behavior preserved)', async () => {
+    (getLoggedInUser as jest.Mock).mockRejectedValue({
+      config: { url: '/users/loggedInUser' },
+      response: { data: {}, status: 500 },
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false);
   });
 });

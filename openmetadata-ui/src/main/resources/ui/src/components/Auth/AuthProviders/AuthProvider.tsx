@@ -435,8 +435,22 @@ export const AuthProvider = ({
       }
     } catch (error) {
       const err = error as AxiosError;
+      const status = err.response?.status ?? 0;
+      const url = err.config?.url ?? '';
+
+      // A 401 the AuthCoordinator can silently refresh must propagate to its
+      // axios response interceptor instead of being swallowed here — the old
+      // unconditional `resetUserDetails()` bounced the user straight to
+      // /signin on a cold-load expired token instead of ever attempting a
+      // silent refresh (Bug 1). `resetUserDetails` still runs, but only via
+      // the coordinator's `refresh-failed` event if `ensureFreshToken` itself
+      // rejects (see the mount effect above).
+      if (isRefreshableAuthError(status, url, err.response?.data)) {
+        throw error;
+      }
+
       resetUserDetails();
-      if (err.response?.status !== 404) {
+      if (status !== 404) {
         showErrorToast(
           err,
           t('server.entity-fetch-error', {
@@ -691,7 +705,16 @@ export const AuthProvider = ({
                 location.pathname
               )
             ) {
-              getLoggedInUserDetails();
+              // Fire-and-forget: `getLoggedInUserDetails` now re-throws a
+              // refreshable 401 (Task 13 — Bug 1 fix) so the AuthCoordinator's
+              // axios response interceptor can retry it. Before that change
+              // this call could never reject; now that it can, the rejection
+              // needs a handler here or it surfaces as an uncaught promise.
+              // If the interceptor's own refresh attempt ultimately fails, the
+              // coordinator's `refresh-failed` subscription (mount effect
+              // above) already drives `resetUserDetails(true)` — this catch
+              // only silences the otherwise-unhandled rejection.
+              getLoggedInUserDetails().catch(() => undefined);
             }
           }
         } else {
