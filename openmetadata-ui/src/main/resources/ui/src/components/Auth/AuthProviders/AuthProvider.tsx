@@ -22,7 +22,7 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isNil, isNumber } from 'lodash';
+import { isNil } from 'lodash';
 import type { WebStorageStateStore } from 'oidc-client';
 import {
   ComponentType,
@@ -39,14 +39,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import {
-  REFRESHABLE_AUTH_ERRORS,
-  UN_AUTHORIZED_EXCLUDED_PATHS,
-} from '../../../constants/Auth.constants';
-import {
   APP_ROUTER_ROUTES as ROUTES,
   REDIRECT_PATHNAME,
 } from '../../../constants/router.constants';
-import { ClientErrors } from '../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import {
   AuthenticationConfiguration,
@@ -89,17 +84,16 @@ import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
 import { authCoordinator } from '../../../utils/Auth/AuthCoordinator';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
-  extractDetailsFromToken,
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
+  isRefreshableAuthError,
   prepareUserProfileFromClaims,
   validateAuthFields,
 } from '../../../utils/AuthProvider.util';
 import {
   clearOidcToken,
   getOidcToken,
-  getRefreshToken,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
@@ -211,19 +205,6 @@ const hydrateAndResolveAppMode = async (user: User): Promise<void> => {
 };
 
 let requestInterceptor: number | null = null;
-let responseInterceptor: number | null = null;
-
-let pendingRequests: {
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-  config: InternalAxiosRequestConfig<unknown>;
-}[] = [];
-
-// True while THIS tab is driving a token refresh and draining `pendingRequests`.
-// Kept in memory (not the cross-tab localStorage flag) so a sibling tab's
-// refresh can never leave this tab's queued 401s without a driver to settle
-// them — the bug that hung the UI on a spinner.
-let isRefreshDriverActive = false;
 
 type AuthContextType = {
   onLoginHandler: () => void;
@@ -263,7 +244,6 @@ export const AuthProvider = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [timeoutId, setTimeoutId] = useState<number>();
   const [msalInstance, setMsalInstance] = useState<IPublicClientApplication>();
 
   const authenticatorRef = useRef<AuthenticatorRef>(null);
@@ -306,8 +286,6 @@ export const AuthProvider = ({
 
   // Handler to perform logout within application
   const onLogoutHandler = useCallback(async () => {
-    clearTimeout(timeoutId);
-
     // Let SSO complete the logout process
     await authenticatorRef.current?.invokeLogout();
 
@@ -355,7 +333,7 @@ export const AuthProvider = ({
 
     // Upon logout, redirect to the login page
     navigate(ROUTES.SIGNIN);
-  }, [timeoutId]);
+  }, []);
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
@@ -418,7 +396,6 @@ export const AuthProvider = ({
     clearOidcToken();
     setIsAuthenticated(false);
     setApplicationLoading(false);
-    clearTimeout(timeoutId);
     TokenService.getInstance().clearRefreshInProgress();
     if (forceLogout) {
       onLogoutHandler();
@@ -463,49 +440,7 @@ export const AuthProvider = ({
     }
   };
 
-  /**
-   * It will set an timer for 5 mins before Token will expire
-   * If time if less then 5 mins then it will try to SilentSignIn
-   * It will also ensure that we have time left for token expiry
-   * This method will be call upon successful signIn
-   */
-  const startTokenExpiryTimer = async () => {
-    const oidcToken = await getOidcToken();
-    // Extract expiry
-    const { isExpired, timeoutExpiry } = extractDetailsFromToken(oidcToken);
-    const refreshToken = await getRefreshToken();
-
-    // Basic & LDAP renewToken depends on RefreshToken hence adding a check here for the same
-    const shouldStartExpiry =
-      refreshToken ||
-      ![AuthProviderEnum.Basic, AuthProviderEnum.LDAP].includes(
-        authConfig?.provider as AuthProviderEnum
-      );
-
-    if (!isExpired && isNumber(timeoutExpiry) && shouldStartExpiry) {
-      // Have 5m buffer before start trying for silent signIn
-      // If token is about to expire then start silentSignIn
-      // else just set timer to try for silentSignIn before token expires
-      clearTimeout(timeoutId);
-
-      const timerId = setTimeout(() => {
-        tokenService.current?.refreshToken();
-      }, timeoutExpiry);
-      setTimeoutId(Number(timerId));
-    }
-  };
-
-  useEffect(() => {
-    if (authenticatorRef.current?.renewIdToken) {
-      tokenService.current.updateRenewToken(
-        authenticatorRef.current?.renewIdToken
-      );
-      // After every refresh success, start timer again
-      tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
-    }
-  }, [authenticatorRef.current?.renewIdToken]);
-
-  // Additive registration with the new AuthCoordinator (auth-coordinator-refactor
+  // Renewer registration for the AuthCoordinator (auth-coordinator-refactor
   // Task 7 + Task 8 + Task 9 + Task 10 + Task 11). Basic/LDAP use
   // BasicAuthAuthenticator; SAML and any confidential-client provider (e.g.
   // Okta/Auth0 configured as confidential) use GenericAuthenticator;
@@ -514,8 +449,7 @@ export const AuthProvider = ({
   // own SDK-specific authenticators — mirroring the exact conditions
   // `getProtectedApp` uses below to decide which authenticator to mount.
   // Confidential-configured Azure/Okta/Auth0 already mount GenericAuthenticator
-  // via Task 8. This runs alongside — not instead of — the TokenService
-  // wiring above until Task 12 swaps the interceptor over.
+  // via Task 8.
   useEffect(() => {
     const isBasicOrLdap =
       authConfig?.provider === AuthProviderEnum.Basic ||
@@ -554,64 +488,34 @@ export const AuthProvider = ({
     return () => authCoordinator.registerRenewer(null);
   }, [authConfig?.provider, clientType, authenticatorRef.current?.getRenewer]);
 
-  // When the tab becomes visible after being backgrounded, browsers may have
-  // throttled or suspended the proactive renewal timer. Check token freshness
-  // immediately and refresh if expired, or reschedule the timer with the
-  // correct remaining time.
+  // Installs the coordinator's axios response interceptor and mirrors its
+  // outcome into React state (auth-coordinator-refactor Task 12 — Bug 2 fix).
+  // The coordinator owns 401 detection, the refresh call, cross-tab
+  // coordination, and the same-tab proactive timer (previously duplicated
+  // here via `pendingRequests`/`isRefreshDriverActive`/`startTokenExpiryTimer`/
+  // a local `visibilitychange` listener — all deleted). Without the
+  // `refreshed` subscription, a silent refresh would update storage but never
+  // tell the router the user was authenticated again, so a route guard
+  // reading stale `isAuthenticated` kept bouncing to /signin even though the
+  // retried request had already succeeded.
   useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState !== 'visible') {
-        return;
-      }
-      try {
-        const token = await getOidcToken();
-        const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
-
-        // eslint-disable-next-line no-console
-        console.debug(
-          '[VisibilityHandler] token length:',
-          token?.length,
-          'isExpired:',
-          isExpired,
-          'timeoutExpiry:',
-          timeoutExpiry,
-          'hasTokenService:',
-          !!tokenService.current
-        );
-
-        if (isExpired || timeoutExpiry <= 0) {
-          const newToken = await tokenService.current?.refreshToken();
-          // Post-refresh reauth: if the user was bounced to signin by an
-          // earlier failed call, a successful refresh must re-run the
-          // loggedInUser flow to flip isAuthenticated back to true.
-          // Reading via getState() avoids the stale closure of the
-          // mount-only useEffect.
-          if (newToken && !useApplicationStore.getState().isAuthenticated) {
-            await getLoggedInUserDetails();
-          }
-        } else {
-          startTokenExpiryTimer();
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('[VisibilityHandler] error:', error);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const disposeInterceptor = authCoordinator.install(
+      axiosClient,
+      isRefreshableAuthError
+    );
+    const offRefreshed = authCoordinator.on('refreshed', () => {
+      setIsAuthenticated(true);
+    });
+    const offFailed = authCoordinator.on('refresh-failed', () => {
+      resetUserDetails(true);
+    });
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      disposeInterceptor();
+      offRefreshed();
+      offFailed();
     };
   }, []);
-
-  /**
-   * Performs cleanup around timers
-   * Clean silentSignIn activities if going on
-   */
-  const cleanup = useCallback(() => {
-    clearTimeout(timeoutId);
-  }, [timeoutId]);
 
   const handleFailedLogin = () => {
     setIsSigningUp(false);
@@ -644,8 +548,6 @@ export const AuthProvider = ({
           await hydrateAndResolveAppMode(userDetails);
 
           handledVerifiedUser();
-          // Start expiry timer on successful login
-          startTokenExpiryTimer();
         }
       } catch (error) {
         const err = error as AxiosError;
@@ -713,17 +615,19 @@ export const AuthProvider = ({
   };
 
   /**
-   * Initialize Axios interceptors to intercept every request and response
-   * to handle appropriately. This should be called only when security is enabled.
+   * Initialize the Axios request interceptor to attach Bearer tokens (and
+   * the language/persona/domain headers) to every outgoing request. This
+   * should be called only when security is enabled.
+   *
+   * The response side (401 detection + silent refresh) is no longer owned
+   * here — it's installed once by the AuthCoordinator (see the mount effect
+   * below), which also handles cross-tab coordination and the proactive
+   * refresh timer.
    */
   const initializeAxiosInterceptors = async () => {
     // Axios Request interceptor to add Bearer tokens in Header
     if (requestInterceptor != null) {
       axiosClient.interceptors.request.eject(requestInterceptor);
-    }
-
-    if (responseInterceptor != null) {
-      axiosClient.interceptors.response.eject(responseInterceptor);
     }
 
     requestInterceptor = axiosClient.interceptors.request.use(async function (
@@ -749,80 +653,6 @@ export const AuthProvider = ({
         withActivePersonaHeader(withDomainFilter(config))
       );
     });
-
-    // Axios response interceptor for statusCode 401,403
-    responseInterceptor = axiosClient.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response) {
-          const { status } = error.response;
-          if (status === ClientErrors.UNAUTHORIZED) {
-            // For login or refresh we don't want to fire another refresh req
-            // Hence rejecting it
-            if (
-              UN_AUTHORIZED_EXCLUDED_PATHS.includes(error.config.url) ||
-              (error.config.url === '/users/loggedInUser' &&
-                !REFRESHABLE_AUTH_ERRORS.some((authError) =>
-                  (error.response.data?.message ?? '').includes(authError)
-                ))
-            ) {
-              throw error;
-            }
-            handleStoreProtectedRedirectPath();
-
-            // Queue the failed request, then ensure exactly one refresh drives
-            // the queue in THIS tab. Every 401 lands in pendingRequests; the
-            // first arrival starts the refresh and, once it settles, ALWAYS
-            // drains the queue — retry with the new token, or reject + log out.
-            // Nothing is left parked. The previous code queued behind a
-            // cross-tab localStorage flag that no in-tab driver would clear,
-            // hanging the request (and the UI spinner) indefinitely.
-            return new Promise((resolve, reject) => {
-              pendingRequests.push({ resolve, reject, config: error.config });
-              if (isRefreshDriverActive) {
-                return;
-              }
-              isRefreshDriverActive = true;
-
-              const drainPendingRequests = (hasNewToken: boolean) => {
-                const queued = pendingRequests;
-                pendingRequests = [];
-                isRefreshDriverActive = false;
-                if (hasNewToken) {
-                  queued.forEach(
-                    ({ resolve: onResolve, reject: onReject, config }) =>
-                      axiosClient
-                        .request(config)
-                        .then(onResolve)
-                        .catch(onReject)
-                  );
-                } else {
-                  queued.forEach(({ reject: onReject }) => onReject(error));
-                }
-              };
-
-              tokenService.current
-                .refreshToken()
-                .then(async (token) => {
-                  if (token) {
-                    await initializeAxiosInterceptors();
-                    drainPendingRequests(true);
-                  } else {
-                    drainPendingRequests(false);
-                    resetUserDetails(true);
-                  }
-                })
-                .catch(() => {
-                  drainPendingRequests(false);
-                  resetUserDetails(true);
-                });
-            });
-          }
-        }
-
-        throw error;
-      }
-    );
   };
 
   const fetchAuthConfig = async () => {
@@ -966,10 +796,7 @@ export const AuthProvider = ({
 
   useEffect(() => {
     fetchAuthConfig();
-    startTokenExpiryTimer();
     initializeAxiosInterceptors();
-
-    return cleanup;
   }, []);
 
   const contextValues = useMemo(() => {

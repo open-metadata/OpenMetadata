@@ -21,6 +21,7 @@ import {
   getAuthConfig,
   getCandidateUserManagerConfig,
   getUserManagerConfig,
+  isRefreshableAuthError,
 } from './AuthProvider.util';
 
 const baseAuthConfig = (
@@ -135,5 +136,54 @@ describe('getCandidateUserManagerConfig — SSO test-login popup respects respon
     );
 
     expect(config.response_type).toBe('code');
+  });
+});
+
+describe('isRefreshableAuthError — 401 allow-list semantics (auth-coordinator-refactor Bug 2)', () => {
+  it('returns false for any non-401 status', () => {
+    expect(isRefreshableAuthError(403, '/tables/name/foo', {})).toBe(false);
+    expect(isRefreshableAuthError(500, '/users/loggedInUser', {})).toBe(false);
+  });
+
+  it('returns false for every excluded path regardless of message', () => {
+    expect(isRefreshableAuthError(401, '/users/refresh', {})).toBe(false);
+    expect(isRefreshableAuthError(401, 'auth/refresh', {})).toBe(false);
+    expect(isRefreshableAuthError(401, '/auth/refresh', {})).toBe(false);
+    expect(isRefreshableAuthError(401, '/users/login', {})).toBe(false);
+  });
+
+  it('returns false for a /users/loggedInUser 401 whose message is not refreshable', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        message: 'token not valid',
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for a /users/loggedInUser 401 with no body at all', () => {
+    expect(isRefreshableAuthError(401, '/users/loggedInUser', undefined)).toBe(
+      false
+    );
+  });
+
+  it('returns true for a /users/loggedInUser 401 whose message is "Expired token!"', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        message: 'Expired token!',
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for a /users/loggedInUser 401 whose message contains "Token signing key not found"', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        message:
+          'Not Authorized! Token signing key not found in configured public keys',
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for a normal 401 on any other endpoint', () => {
+    expect(isRefreshableAuthError(401, '/tables/name/foo', {})).toBe(true);
   });
 });

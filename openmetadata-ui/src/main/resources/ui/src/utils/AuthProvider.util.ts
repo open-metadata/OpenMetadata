@@ -21,6 +21,10 @@ import {
   OidcUser,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import {
+  REFRESHABLE_AUTH_ERRORS,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
+} from '../constants/Auth.constants';
 import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { REDIRECT_PATHNAME } from '../constants/router.constants';
@@ -560,4 +564,35 @@ export const validateAuthFields = (
       console.warn(t('message.missing-config-value', { field }));
     }
   });
+};
+
+/**
+ * Decides whether a 401 response is one the AuthCoordinator should try to
+ * silently refresh, versus one that should propagate straight to the caller
+ * (login/refresh endpoints themselves, or a `/users/loggedInUser` 401 whose
+ * message doesn't match a known refreshable cause). Mirrors the allow-list
+ * the legacy in-provider interceptor used to apply inline.
+ */
+export const isRefreshableAuthError = (
+  status: number,
+  url: string,
+  body: unknown
+): boolean => {
+  if (status !== 401) {
+    return false;
+  }
+
+  if (UN_AUTHORIZED_EXCLUDED_PATHS.includes(url)) {
+    return false;
+  }
+
+  if (url === '/users/loggedInUser') {
+    const message = (body as { message?: string } | undefined)?.message ?? '';
+
+    return REFRESHABLE_AUTH_ERRORS.some((authError) =>
+      message.includes(authError)
+    );
+  }
+
+  return true;
 };

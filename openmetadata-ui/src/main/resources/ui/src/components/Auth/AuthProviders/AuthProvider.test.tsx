@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { AxiosResponse } from 'axios';
 import { act } from 'react-test-renderer';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import axiosClient from '../../../rest';
-import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { isRefreshableAuthError } from '../../../utils/AuthProvider.util';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 
 const localStorageMock = {
@@ -67,14 +66,10 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showInfoToast: jest.fn(),
 }));
 
-const mockRefreshToken = jest
-  .fn()
-  .mockImplementation(() => Promise.resolve('newToken'));
-
 jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => {
   return {
     getInstance: jest.fn().mockImplementation(() => ({
-      refreshToken: mockRefreshToken,
+      refreshToken: jest.fn().mockImplementation(() => Promise.resolve()),
       isTokenUpdateInProgress: jest.fn().mockImplementation(() => false),
       getToken: jest.fn().mockImplementation(() => Promise.resolve()),
       clearRefreshInProgress: jest
@@ -93,35 +88,96 @@ jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => {
   };
 });
 
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    setCurrentUser: jest.fn(),
-    updateNewUser: jest.fn(),
-    setIsAuthenticated: jest.fn(),
-    setAuthConfig: jest.fn(),
-    setAuthorizerConfig: jest.fn(),
-    setIsSigningUp: jest.fn(),
-    authorizerConfig: {},
-    jwtPrincipalClaims: {},
-    jwtPrincipalClaimsMapping: {},
-    setJwtPrincipalClaims: jest.fn(),
-    setJwtPrincipalClaimsMapping: jest.fn(),
-    isApplicationLoading: false,
-    setApplicationLoading: jest.fn(),
-    initializeAuthState: jest.fn(),
-    isAuthenticating: false,
-    authConfig: {
-      provider: AuthProviderProps.Basic,
-      providerName: 'Basic',
-      clientId: 'test',
-      authority: 'test',
-      callbackUrl: 'test',
-      jwtPrincipalClaims: [],
-      publicKeyUrls: [],
-      scope: 'openid',
-    },
-  })),
-}));
+// The mock functions are created *inside* each factory (rather than closed
+// over from module scope) so `jest.mock`'s hoisting to the top of the file
+// can never observe them before they're initialized. Each factory re-exports
+// its fns under a `__mock*` name so test bodies — which run well after the
+// module graph has finished loading — can grab the exact same instance the
+// component received from `useApplicationStore()` / `authCoordinator`.
+jest.mock('../../../hooks/useApplicationStore', () => {
+  const setIsAuthenticated = jest.fn();
+  const useApplicationStoreMock = Object.assign(
+    jest.fn().mockImplementation(() => ({
+      setCurrentUser: jest.fn(),
+      updateNewUser: jest.fn(),
+      setIsAuthenticated,
+      setAuthConfig: jest.fn(),
+      setAuthorizerConfig: jest.fn(),
+      setIsSigningUp: jest.fn(),
+      authorizerConfig: {},
+      jwtPrincipalClaims: {},
+      jwtPrincipalClaimsMapping: {},
+      setJwtPrincipalClaims: jest.fn(),
+      setJwtPrincipalClaimsMapping: jest.fn(),
+      isApplicationLoading: false,
+      setApplicationLoading: jest.fn(),
+      initializeAuthState: jest.fn(),
+      isAuthenticating: false,
+      authConfig: {
+        // Literal 'basic' (AuthProvider.Basic) — kept as a literal rather
+        // than an import reference inside this factory.
+        provider: 'basic',
+        providerName: 'Basic',
+        clientId: 'test',
+        authority: 'test',
+        callbackUrl: 'test',
+        jwtPrincipalClaims: [],
+        publicKeyUrls: [],
+        scope: 'openid',
+      },
+    })),
+    // `handledVerifiedUser` reads `useApplicationStore.getState()` directly
+    // (outside the hook call) — provide it so any code path that exercises
+    // that branch doesn't blow up with "getState is not a function".
+    { getState: jest.fn().mockReturnValue({ currentUser: { name: 'test' } }) }
+  );
+
+  return {
+    useApplicationStore: useApplicationStoreMock,
+    __mockSetIsAuthenticated: setIsAuthenticated,
+  };
+});
+
+// Stable coordinator mocks (auth-coordinator-refactor Task 12). AuthProvider
+// no longer owns 401 detection/refresh itself — it installs the
+// AuthCoordinator's response interceptor and mirrors 'refreshed' /
+// 'refresh-failed' into React state. Capturing the callbacks passed to
+// `on(...)` is how the Bug 2 regression test below drives them directly,
+// without needing a real axios round trip.
+jest.mock('../../../utils/Auth/AuthCoordinator', () => {
+  const disposeInterceptor = jest.fn();
+  const offRefreshed = jest.fn();
+  const offFailed = jest.fn();
+  const install = jest.fn().mockReturnValue(disposeInterceptor);
+  const on = jest.fn((event: string) =>
+    event === 'refreshed' ? offRefreshed : offFailed
+  );
+  const registerRenewer = jest.fn();
+
+  return {
+    authCoordinator: { install, on, registerRenewer },
+    __mockDisposeInterceptor: disposeInterceptor,
+    __mockOffRefreshed: offRefreshed,
+    __mockOffFailed: offFailed,
+    __mockAuthCoordinatorInstall: install,
+    __mockAuthCoordinatorOn: on,
+    __mockRegisterRenewer: registerRenewer,
+  };
+});
+
+const {
+  __mockSetIsAuthenticated: mockSetIsAuthenticated,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} = jest.requireMock('../../../hooks/useApplicationStore') as any;
+
+const {
+  __mockDisposeInterceptor: mockDisposeInterceptor,
+  __mockOffRefreshed: mockOffRefreshed,
+  __mockOffFailed: mockOffFailed,
+  __mockAuthCoordinatorInstall: mockAuthCoordinatorInstall,
+  __mockAuthCoordinatorOn: mockAuthCoordinatorOn,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} = jest.requireMock('../../../utils/Auth/AuthCoordinator') as any;
 
 describe('Test auth provider', () => {
   it('Logout handler should call the "updateUserDetails" method', async () => {
@@ -199,7 +255,7 @@ describe('Test auth provider', () => {
   });
 });
 
-describe('Test axios response interceptor', () => {
+describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () => {
   const ConsumerComponent = () => {
     return <div>ConsumerComponent</div>;
   };
@@ -213,363 +269,88 @@ describe('Test axios response interceptor', () => {
   };
 
   beforeEach(() => {
-    jest.restoreAllMocks();
+    jest.clearAllMocks();
   });
 
-  it('should set up response interceptor with correct signature', () => {
-    // Mock axios client
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
+  const getOnHandler = (event: 'refreshed' | 'refresh-failed') => {
+    const call = (
+      mockAuthCoordinatorOn.mock.calls as [string, () => void][]
+    ).find(([registeredEvent]) => registeredEvent === event);
 
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    return call?.[1];
+  };
 
-    render(<WrapperComponent />);
-
-    // Verify the interceptor was set up
-    expect(mockUse).toHaveBeenCalled();
-
-    // Get the arguments passed to use()
-    const [successHandler, errorHandler] = mockUse.mock.calls[0];
-
-    // Verify success handler signature
-    expect(typeof successHandler).toBe('function');
-    expect(successHandler).toHaveLength(1); // Takes one argument (response)
-
-    // Verify error handler signature
-    expect(typeof errorHandler).toBe('function');
-    expect(errorHandler).toHaveLength(1); // Takes one argument (error)
-
-    // Test success handler
-    const mockResponse = { data: 'test' } as AxiosResponse;
-
-    expect(successHandler?.(mockResponse)).toBe(mockResponse);
-
-    // Test error handler with 401 error
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Token expired' },
-      },
-      config: { url: '/api/test' },
-    };
-
-    // The error handler should return a Promise
-    const result = errorHandler?.(mockError);
-
-    expect(result).toBeInstanceOf(Promise);
-    expect(mockRefreshToken).toHaveBeenCalled();
-  });
-
-  it('should handle 401 error when refresh is not in progress and refresh succeeds', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
-
+  it('installs the AuthCoordinator response interceptor with axiosClient and isRefreshableAuthError', async () => {
     await act(async () => {
       render(<WrapperComponent />);
     });
 
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Token expired' },
-      },
-      config: { url: '/api/test' },
-    };
-
-    const result = await errorHandler?.(mockError);
-
-    expect(result).toEqual({ data: 'success' });
-    expect(mockRefreshToken).toHaveBeenCalled();
-    expect(mockAxios).toHaveBeenCalledWith(mockError.config);
-  });
-
-  it('should queue request when refresh is already in progress', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
-
-    // Mock isTokenUpdateInProgress to return true for this test
-    jest
-      .spyOn(TokenService.getInstance(), 'isTokenUpdateInProgress')
-      .mockReturnValue(true);
-
-    await act(async () => {
-      render(<WrapperComponent />);
-    });
-
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Token expired' },
-      },
-      config: {
-        url: '/api/test',
-        headers: {},
-        baseURL: '',
-      },
-    };
-
-    const result = await errorHandler?.(mockError);
-
-    expect(mockRefreshToken).toHaveBeenCalled();
-    expect(mockAxios).toHaveBeenCalledWith(
-      expect.objectContaining(mockError.config)
+    expect(mockAuthCoordinatorInstall).toHaveBeenCalledWith(
+      axiosClient,
+      isRefreshableAuthError
     );
-    expect(await result).toEqual({ data: 'success' });
   });
 
-  it('should not call refresh for login api', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+  it('subscribes to both "refreshed" and "refresh-failed" on mount', async () => {
     await act(async () => {
       render(<WrapperComponent />);
     });
 
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Token expired' },
-      },
-      config: {
-        url: '/users/login',
-        headers: {},
-        baseURL: '',
-      },
-    };
-
-    try {
-      await errorHandler?.(mockError);
-    } catch (error) {
-      expect(error).toEqual(mockError);
-    }
+    expect(getOnHandler('refreshed')).toBeInstanceOf(Function);
+    expect(getOnHandler('refresh-failed')).toBeInstanceOf(Function);
   });
 
-  it('should not call refresh for refresh api', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
-
+  it('flips isAuthenticated back to true after a successful silent refresh from a 401 (Bug 2 regression)', async () => {
     await act(async () => {
       render(<WrapperComponent />);
     });
 
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Token expired' },
-      },
-      config: {
-        url: '/users/refresh',
-        headers: {},
-        baseURL: '',
-      },
-    };
+    const onRefreshed = getOnHandler('refreshed');
 
-    try {
-      await errorHandler?.(mockError);
-    } catch (error) {
-      expect(error).toEqual(mockError);
-    }
+    expect(onRefreshed).toBeDefined();
+
+    act(() => {
+      onRefreshed?.();
+    });
+
+    // The router previously kept bouncing an authenticated session to
+    // /signin because a successful silent refresh updated storage but never
+    // flipped `isAuthenticated` back to true — this is the direct fix.
+    expect(mockSetIsAuthenticated).toHaveBeenCalledWith(true);
   });
 
-  it('should not call refresh for auth/refresh api', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
-
+  it('resets the session when the coordinator reports a refresh-failed event', async () => {
     await act(async () => {
       render(<WrapperComponent />);
     });
 
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Token expired' },
-      },
-      config: {
-        url: 'auth/refresh',
-        headers: {},
-        baseURL: '',
-      },
-    };
+    const onFailed = getOnHandler('refresh-failed');
 
-    try {
-      await errorHandler?.(mockError);
-    } catch (error) {
-      expect(error).toEqual(mockError);
-    }
-  });
-
-  it('should not call refresh for /auth/refresh api', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    expect(onFailed).toBeDefined();
 
     await act(async () => {
-      render(<WrapperComponent />);
+      onFailed?.();
     });
 
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Token expired' },
-      },
-      config: {
-        url: '/auth/refresh',
-        headers: {},
-        baseURL: '',
-      },
-    };
-
-    try {
-      await errorHandler?.(mockError);
-    } catch (error) {
-      expect(error).toEqual(mockError);
-    }
+    // resetUserDetails(true) sets isAuthenticated false synchronously before
+    // driving the (fire-and-forget) logout cascade.
+    expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false);
   });
 
-  it('should not call refresh for loggedInUser api if error is Token expired', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+  it('disposes the interceptor and event subscriptions on unmount', async () => {
+    let unmount: () => void = () => undefined;
 
     await act(async () => {
-      render(<WrapperComponent />);
+      const result = render(<WrapperComponent />);
+      unmount = result.unmount;
     });
 
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Token expired' },
-      },
-      config: {
-        url: '/users/loggedInUser',
-        headers: {},
-        baseURL: '',
-      },
-    };
-
-    try {
-      await errorHandler?.(mockError);
-    } catch (error) {
-      expect(error).toEqual(mockError);
-    }
-  });
-
-  it('should call refresh for loggedInUser api if error other then Token expired', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
-    mockRefreshToken.mockImplementationOnce(() => Promise.resolve());
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
-
-    await act(async () => {
-      render(<WrapperComponent />);
+    act(() => {
+      unmount();
     });
 
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'token not valid' },
-      },
-      config: {
-        url: '/users/loggedInUser',
-        headers: {},
-        baseURL: '',
-      },
-    };
-
-    try {
-      await errorHandler?.(mockError);
-    } catch (error) {
-      expect(error).toEqual(mockError);
-
-      expect(mockRefreshToken).toHaveBeenCalledTimes(0);
-    }
-  });
-
-  it('should refresh the token and retry a normal 401 request', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'retried' });
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
-    mockRefreshToken.mockReset();
-    mockRefreshToken.mockResolvedValue('newToken');
-
-    await act(async () => {
-      render(<WrapperComponent />);
-    });
-
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: { message: 'Expired token!' },
-      },
-      config: {
-        url: '/tables/name/foo',
-        headers: {},
-        baseURL: '',
-      },
-    };
-
-    const result = await errorHandler?.(mockError);
-
-    // The queued request is retried with the refreshed token, never left parked.
-    expect(mockRefreshToken).toHaveBeenCalled();
-    expect(mockAxios).toHaveBeenCalledWith(mockError.config);
-    expect(result).toEqual({ data: 'retried' });
-  });
-
-  it('should refresh loggedInUser on an unknown signing-key 401, not only on expiry', async () => {
-    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
-    const mockAxios = jest.fn().mockResolvedValue({ data: 'ok' });
-
-    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
-    mockRefreshToken.mockReset();
-    mockRefreshToken.mockResolvedValue('newToken');
-
-    await act(async () => {
-      render(<WrapperComponent />);
-    });
-
-    const [, errorHandler] = mockUse.mock.calls[0];
-    const mockError = {
-      response: {
-        status: 401,
-        data: {
-          message:
-            'Not Authorized! Token signing key not found in configured public keys',
-        },
-      },
-      config: {
-        url: '/users/loggedInUser',
-        headers: {},
-        baseURL: '',
-      },
-    };
-
-    const result = await errorHandler?.(mockError);
-
-    // IdP key-rotation 401 on the polled endpoint must refresh + retry, not log out.
-    expect(mockRefreshToken).toHaveBeenCalled();
-    expect(mockAxios).toHaveBeenCalledWith(mockError.config);
-    expect(result).toEqual({ data: 'ok' });
+    expect(mockDisposeInterceptor).toHaveBeenCalled();
+    expect(mockOffRefreshed).toHaveBeenCalled();
+    expect(mockOffFailed).toHaveBeenCalled();
   });
 });
