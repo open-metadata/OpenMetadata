@@ -37,6 +37,7 @@ import {
 } from '../../../generated/type/bulkOperationResult';
 import { Aggregations } from '../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import { queryClient } from '../../../queryClient';
 import {
   addAssetsToDataProduct,
   addInputPortsToDataProduct,
@@ -44,12 +45,11 @@ import {
   getDataProductByName,
 } from '../../../rest/dataProductAPI';
 import { addAssetsToDomain, getDomainByName } from '../../../rest/domainAPI';
-import { domainAssetsCountQueryKey } from '../../../rest/queries/domainQuery';
-import { queryClient } from '../../../queryClient';
 import {
   addAssetsToGlossaryTerm,
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
+import { domainAssetsCountQueryKey } from '../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
@@ -363,7 +363,9 @@ export const useAssetSelectionState = ({
             return;
           }
           res = await addAssetsToDomain(domainFqn, entities);
-          queryClient.invalidateQueries({ queryKey: domainAssetsCountQueryKey });
+          queryClient.invalidateQueries({
+            queryKey: domainAssetsCountQueryKey,
+          });
 
           break;
         }

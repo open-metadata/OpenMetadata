@@ -393,8 +393,14 @@ test.describe('Glossary Term Relation Settings', () => {
 
     try {
       const [resA, resB] = await Promise.all([
-        createRelationTypeViaApi(ctxA, { name: nameA, displayName: 'PW Parallel A' }),
-        createRelationTypeViaApi(ctxB, { name: nameB, displayName: 'PW Parallel B' }),
+        createRelationTypeViaApi(ctxA, {
+          name: nameA,
+          displayName: 'PW Parallel A',
+        }),
+        createRelationTypeViaApi(ctxB, {
+          name: nameB,
+          displayName: 'PW Parallel B',
+        }),
       ]);
 
       // createRelationTypeViaApi asserts status === 201 internally and throws
@@ -461,8 +467,7 @@ test.describe('Glossary Term Relation Settings', () => {
       const countRes = await apiContext.get(
         `${RELATION_TYPES_API}?limit=1&offset=0`
       );
-      const currentTotal: number =
-        (await countRes.json()).paging?.total ?? 0;
+      const currentTotal: number = (await countRes.json()).paging?.total ?? 0;
       const fillerCount = Math.max(0, PAGE_SIZE_BASE + 1 - currentTotal);
 
       for (let i = 0; i < fillerCount; i++) {

@@ -57,6 +57,7 @@ import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
+import { queryClient } from '../../../../queryClient';
 import {
   getDataProductByName,
   getDataProductOutputPorts,
@@ -67,12 +68,11 @@ import {
   getDomainByName,
   removeAssetsFromDomain,
 } from '../../../../rest/domainAPI';
-import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
-import { queryClient } from '../../../../queryClient';
 import {
   getGlossaryTermByFQN,
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
+import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
