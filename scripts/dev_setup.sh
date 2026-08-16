@@ -933,7 +933,7 @@ write_env_file() {
       echo "export JAVA_HOME=$(shquote "$JAVA_HOME")"
       echo 'export PATH="$JAVA_HOME/bin:$PATH"'
     fi
-    echo "export PATH=$(shquote "$LOCAL_BIN")\":\$PATH\""
+    echo "export PATH=$(shquote "$LOCAL_BIN"):\$PATH"
     if [ "${NVM_USED:-0}" -eq 1 ]; then
       echo "export NVM_DIR=$(shquote "${NVM_DIR:-$HOME/.nvm}")"
       echo "[ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\" && nvm use $(shquote "$NODE_VERSION") >/dev/null"
