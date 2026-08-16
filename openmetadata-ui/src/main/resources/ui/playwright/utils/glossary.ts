@@ -708,9 +708,10 @@ export const verifyGlossaryWorkflowReviewerCase = async (
             glossaryTermFqn
           );
 
-          // The newest instance is the reviewer's edit, matching what the Workflow History widget
-          // reads; the trigger excludes entityStatus so the workflow's own write spawns no newer run.
-          return snapshot.instances[0]?.stages ?? [];
+          // A null-businessKey race can produce a FINISHED instance with stages=[] as the
+          // newest entry. Flatten all instances so the stage is found even when the
+          // auto-approve completed in an earlier-indexed instance.
+          return snapshot.instances.flatMap((i) => i.stages ?? []);
         },
         {
           message: `the newest ${GLOSSARY_TERM_APPROVAL_WORKFLOW} run to record "${AUTO_APPROVED_BY_REVIEWER_STAGE}" for ${glossaryTermFqn}`,
