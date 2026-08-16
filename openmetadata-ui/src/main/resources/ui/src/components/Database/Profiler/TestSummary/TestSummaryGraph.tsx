@@ -62,6 +62,7 @@ import {
   formatTestSummaryYAxis,
   getStatusDotColor,
   getTestSummaryTooltipPosition,
+  isSameTooltipPosition,
   isTestSummaryTooltipBoundary,
   prepareChartData,
   TooltipBoundary,
@@ -210,10 +211,7 @@ function TestSummaryGraph({
           tooltipSize,
         });
 
-        if (
-          currentTooltip.position.x === position.x &&
-          currentTooltip.position.y === position.y
-        ) {
+        if (isSameTooltipPosition(currentTooltip.position, position)) {
           return currentTooltip;
         }
 
