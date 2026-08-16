@@ -17,6 +17,7 @@ import {
   forwardRef,
   Fragment,
   ReactNode,
+  useCallback,
   useImperativeHandle,
   useMemo,
 } from 'react';
@@ -26,6 +27,7 @@ import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
+import { Renewer } from '../../../utils/Auth/AuthCoordinator';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -50,6 +52,16 @@ const getAuthenticator = (type: ComponentType, userManager: UserManager) => {
     },
   })(type);
 };
+
+// Safari ITP blocks third-party cookies inside the silent-renew iframe, so the
+// postMessage callback never reaches the parent window and oidc-client's
+// IFrameWindow rejects with a plain Error naming the frame itself (e.g.
+// "Frame window timed out", "Invalid response from frame") rather than an
+// ErrorResponse carrying an IdP authorization decision (login_required,
+// consent_required, ...). Only that class of failure should fall back to a
+// visible signinPopup — any other rejection is rethrown untouched.
+const isFrameError = (error: unknown): boolean =>
+  error instanceof Error && /frame/i.test(error.message);
 
 const OidcCallbackWrapper = ({
   userManager,
@@ -172,10 +184,41 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 9). Kept alongside signInSilently/renewIdToken until every
+    // authenticator is migrated and the old TokenService path is deleted
+    // (Task 14). Unlike signInSilently, this does not write to storage itself
+    // — the coordinator mirrors the returned {idToken, expiresAt} via
+    // setOidcToken once it has driven the refresh.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        let user: User | undefined;
+        try {
+          user = await userManager.signinSilent();
+        } catch (error) {
+          if (!isFrameError(error)) {
+            throw error;
+          }
+          user = await userManager.signinPopup();
+        }
+
+        if (!user?.id_token) {
+          throw new Error('signinSilent returned no id_token');
+        }
+
+        return {
+          idToken: user.id_token,
+          expiresAt: (user.expires_at ?? 0) * 1000,
+        };
+      },
+      [userManager]
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: signInSilently,
+      getRenewer,
     }));
 
     const AppWithAuth = getAuthenticator(
