@@ -1,0 +1,168 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import type { AxiosInstance } from 'axios';
+import { setOidcToken } from '../../SwTokenStorageUtils';
+import { CrossTabLock } from './CrossTabLock';
+import { TypedEventBus } from './eventBus';
+import { ProactiveTimer } from './ProactiveTimer';
+import { RefreshQueue } from './RefreshQueue';
+import type {
+  AuthCoordinatorEvent,
+  EventPayloadMap,
+  Renewer,
+  RenewResult,
+  Unsubscribe,
+} from './types';
+import { VisibilityWatcher } from './VisibilityWatcher';
+
+type IsRefreshable = (status: number, url: string, body: unknown) => boolean;
+
+const LOCK_NAME = 'om-refresh';
+const CHANNEL_NAME = 'om-auth';
+// Same-tab guard: a follower that just woke from a cross-tab lock wait
+// re-reads the token the leader wrote and reschedules a short recheck rather
+// than trusting it has the leader's real expiry (which it never received).
+const FOLLOWER_RECHECK_MS = 60_000;
+
+export class AuthCoordinator {
+  private renewer: Renewer | null = null;
+  private inflight: Promise<string> | null = null;
+  private readonly bus = new TypedEventBus();
+  private readonly queue = new RefreshQueue();
+  private readonly timer = new ProactiveTimer();
+  private readonly visibility = new VisibilityWatcher();
+  private readonly lock = new CrossTabLock(LOCK_NAME, CHANNEL_NAME);
+
+  registerRenewer(renewer: Renewer | null): void {
+    this.renewer = renewer;
+  }
+
+  on<E extends AuthCoordinatorEvent>(
+    event: E,
+    cb: (payload: EventPayloadMap[E]) => void
+  ): Unsubscribe {
+    return this.bus.on(event, cb);
+  }
+
+  install(axios: AxiosInstance, isRefreshable: IsRefreshable): Unsubscribe {
+    const id = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const status = error?.response?.status;
+        const url = error?.config?.url ?? '';
+        const body = error?.response?.data;
+        if (status !== 401 || !isRefreshable(status, url, body)) {
+          throw error;
+        }
+        const pending = this.queue.enqueue(error.config);
+        this.pumpQueue(axios).catch(() => undefined);
+
+        return pending;
+      }
+    );
+    this.visibility.start(
+      () => {
+        this.ensureFreshToken().catch(() => undefined);
+      },
+      () => this.timer.cancel()
+    );
+
+    return () => {
+      axios.interceptors.response.eject(id);
+      this.visibility.stop();
+    };
+  }
+
+  async ensureFreshToken(): Promise<string> {
+    if (this.inflight) {
+      return this.inflight;
+    }
+    this.inflight = this.doRefresh();
+    try {
+      return await this.inflight;
+    } finally {
+      this.inflight = null;
+    }
+  }
+
+  pause(): void {
+    this.timer.cancel();
+  }
+
+  resume(): void {
+    this.ensureFreshToken().catch(() => undefined);
+  }
+
+  dispose(): void {
+    this.timer.cancel();
+    this.visibility.stop();
+  }
+
+  private async doRefresh(): Promise<string> {
+    const renewer = this.renewer;
+    if (!renewer) {
+      throw new Error('No renewer registered');
+    }
+    try {
+      const result = await this.lock.runExclusive<RenewResult>(async () =>
+        renewer()
+      );
+      if (result === 'follower-waited') {
+        return this.recoverFromFollowerWait();
+      }
+      await setOidcToken(result.idToken);
+      this.bus.emit('refreshed', {
+        expiresAt: result.expiresAt,
+        idToken: result.idToken,
+      });
+      this.timer.schedule(result.expiresAt, () => {
+        this.ensureFreshToken().catch(() => undefined);
+      });
+
+      return result.idToken;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.bus.emit('refresh-failed', { reason });
+
+      throw err;
+    }
+  }
+
+  private async recoverFromFollowerWait(): Promise<string> {
+    // Sibling tab did the work; storage should now hold the fresh token.
+    // Re-read via the same storage helper the app uses. Imported dynamically
+    // to keep this rarely-hit branch out of the module's static import graph.
+    const { getOidcToken } = await import('../../SwTokenStorageUtils');
+    const token = await getOidcToken();
+    if (!token) {
+      throw new Error('Follower woke without a token');
+    }
+    this.timer.schedule(Date.now() + FOLLOWER_RECHECK_MS, () => {
+      this.ensureFreshToken().catch(() => undefined);
+    });
+
+    return token;
+  }
+
+  private async pumpQueue(axios: AxiosInstance): Promise<void> {
+    try {
+      const token = await this.ensureFreshToken();
+      await this.queue.drain(token, axios);
+    } catch {
+      await this.queue.drain(null, axios);
+    }
+  }
+}
+
+export const authCoordinator = new AuthCoordinator();
