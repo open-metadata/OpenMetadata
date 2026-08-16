@@ -48,6 +48,15 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import BasicAuthenticator from './BasicAuthAuthenticator';
 
+// Builds a structurally-valid (unsigned) JWT so extractDetailsFromToken's
+// jwt-decode call can read a real `exp` claim out of the payload segment.
+const buildFakeJwt = (expSeconds: number) => {
+  const encode = (payload: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(payload)).toString('base64');
+
+  return `${encode({ alg: 'none' })}.${encode({ exp: expSeconds })}.signature`;
+};
+
 describe('BasicAuthenticator', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -161,5 +170,44 @@ describe('BasicAuthenticator', () => {
 
     expect(setOidcToken).toHaveBeenCalledWith('access-token');
     expect(result).toEqual(response);
+  });
+
+  it('should expose a getRenewer that resolves {idToken, expiresAt} from getAccessTokenOnExpiry', async () => {
+    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
+      isApplicationLoading: false,
+      authConfig: { provider: AuthProvider.Basic },
+    });
+    const expSeconds = Math.floor(Date.now() / 1000) + 3600;
+    const accessToken = buildFakeJwt(expSeconds);
+    const response: AccessTokenResponse = {
+      accessToken,
+      refreshToken: 'new-refresh-token',
+      tokenType: 'Bearer',
+      expiryDuration: 3600,
+      email: 'test@example.com',
+    };
+    getAccessTokenOnExpiry.mockResolvedValue(response);
+    const ref = createRef<AuthenticatorRef>();
+    render(
+      <BasicAuthenticator ref={ref}>
+        <div>Child</div>
+      </BasicAuthenticator>
+    );
+
+    const renewer = ref.current?.getRenewer?.();
+
+    expect(renewer).toBeDefined();
+
+    let result: { idToken: string; expiresAt: number } | undefined;
+    await act(async () => {
+      result = await renewer?.();
+    });
+
+    expect(getAccessTokenOnExpiry).toHaveBeenCalled();
+    expect(result).toEqual({
+      idToken: accessToken,
+      expiresAt: expSeconds * 1000,
+    });
+    expect(result?.expiresAt).toBeGreaterThan(Date.now());
   });
 });

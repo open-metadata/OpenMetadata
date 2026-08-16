@@ -86,6 +86,7 @@ import {
 import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser, getUserPreferences } from '../../../rest/userAPI';
 import applicationRoutesClass from '../../../utils/ApplicationRoutesClassBase';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
@@ -503,6 +504,28 @@ export const AuthProvider = ({
       tokenService.current.updateRefreshSuccessCallback(startTokenExpiryTimer);
     }
   }, [authenticatorRef.current?.renewIdToken]);
+
+  // Additive registration with the new AuthCoordinator (auth-coordinator-refactor
+  // Task 7). Only Basic/LDAP expose getRenewer so far; other providers are
+  // migrated in later tasks. This runs alongside — not instead of — the
+  // TokenService wiring above until Task 12 swaps the interceptor over.
+  useEffect(() => {
+    const isBasicOrLdap =
+      authConfig?.provider === AuthProviderEnum.Basic ||
+      authConfig?.provider === AuthProviderEnum.LDAP;
+
+    if (!isBasicOrLdap) {
+      return;
+    }
+
+    const renewer = authenticatorRef.current?.getRenewer?.();
+
+    if (renewer) {
+      authCoordinator.registerRenewer(renewer);
+    }
+
+    return () => authCoordinator.registerRenewer(null);
+  }, [authConfig?.provider, authenticatorRef.current?.getRenewer]);
 
   // When the tab becomes visible after being backgrounded, browsers may have
   // throttled or suspended the proactive renewal timer. Check token freshness

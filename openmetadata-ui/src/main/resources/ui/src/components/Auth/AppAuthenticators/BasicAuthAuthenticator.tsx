@@ -20,12 +20,13 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AccessTokenResponse,
   getAccessTokenOnExpiry,
 } from '../../../rest/auth-API';
-
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   setOidcToken,
   setRefreshToken,
@@ -61,9 +62,26 @@ const BasicAuthenticator = forwardRef(
         return Promise.resolve(response);
       }, [authConfig, setOidcToken, setRefreshToken, t]);
 
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 7). Kept alongside handleSilentSignIn/renewIdToken until every
+    // authenticator is migrated and the old TokenService path is deleted.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        const response = await getAccessTokenOnExpiry();
+        const decoded = extractDetailsFromToken(response.accessToken);
+
+        return {
+          idToken: response.accessToken,
+          expiresAt: (decoded.exp ?? 0) * 1000,
+        };
+      },
+      []
+    );
+
     useImperativeHandle(ref, () => ({
       invokeLogout: handleLogout,
       renewIdToken: handleSilentSignIn,
+      getRenewer,
     }));
 
     /**

@@ -16,6 +16,7 @@ import { AuthenticationConfiguration } from '../../../generated/configuration/au
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AccessTokenResponse } from '../../../rest/auth-API';
+import { Renewer } from '../../../utils/Auth/AuthCoordinator';
 
 export type UserProfile = {
   email: string;
@@ -37,6 +38,10 @@ export interface AuthenticatorRef {
     | Promise<string>
     | Promise<AccessTokenResponse>
     | Promise<void>;
+  // Temporary bridge to the AuthCoordinator's Renewer contract — kept
+  // optional until every authenticator is migrated (auth-coordinator-refactor
+  // Task 13), then `renewIdToken` is removed and this becomes required.
+  getRenewer?: () => Renewer;
 }
 
 export interface IAuthContext {
