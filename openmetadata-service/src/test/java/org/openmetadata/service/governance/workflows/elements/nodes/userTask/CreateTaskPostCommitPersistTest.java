@@ -13,103 +13,94 @@
 
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.flowable.common.engine.impl.cfg.TransactionContext;
+import org.flowable.common.engine.impl.cfg.TransactionListener;
+import org.flowable.common.engine.impl.cfg.TransactionState;
+import org.flowable.common.engine.impl.context.Context;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
 /**
- * Regression guard for the spurious 409 on the second user-task transition of a workflow that has an
- * async {@code automatedTask} between two user tasks (Collate's DataAccessRequest workflow:
- * {@code TaskReview --approve--> PolicyAgent(async) --> ApprovedAccess --markAsGranted-->}).
+ * Behavioural test for the write-ordering fix that stops the spurious 409 on the next transition of a
+ * workflow with an async {@code automatedTask} between two user tasks (e.g. DAR's PolicyAgent).
  *
- * <p>{@code CreateTask.notify()} runs as a TaskListener inside the Flowable command that creates the
- * next runtime user task, but on the update path it persisted the entity's {@code workflowStageId} /
- * {@code availableTransitions} via {@code taskRepository.update(...)} — which commits on JDBI's own
- * connection <b>mid-command</b>, milliseconds before Flowable commits the {@code ACT_RU_TASK} row and
- * the {@code customTaskId} variable. A client polling {@code availableTransitions} could therefore
- * see (e.g.) {@code markAsGranted} advertised and resolve into a not-yet-committed runtime task —
- * the resolve found no task, completed with no variables, and the outgoing gateway condition
- * {@code ${<node>_result == '<transition>'}} evaluated an unbound variable → FlowableException → 409.
+ * <p>{@code CreateTask} runs as a Flowable TaskListener inside the command that creates the next
+ * runtime user task. Persisting the entity's stage/availableTransitions inline commits on JDBI ahead
+ * of the Flowable commit, so a client can see (and resolve) a transition before its runtime task
+ * exists. The fix defers that persist to a {@code TransactionState.COMMITTED} transaction listener.
  *
- * <p>The fix defers the update-path persist to a Flowable post-commit transaction listener
- * ({@code TransactionState.COMMITTED}) so the entity state is only advanced once the runtime task it
- * advertises is durable. This is non-blocking — the write is reordered, never waited on; the request
- * thread never sleeps or polls. Behavioural acceptance lives in the Collate DAR integration tests
- * (DarStatusGroupIT / DataAccessRequestValidationIT / DataAccessRequestIT).
+ * <p>This exercises the ordering seam directly — the Flowable {@link TransactionContext} is the only
+ * (framework-boundary) mock — and asserts the observable behaviour: the persist does not run inline,
+ * it is registered as a COMMITTED listener, it runs when that listener fires, and it runs inline only
+ * when there is no active transaction context. The full workflow behaviour is covered by the Collate
+ * DAR integration tests (DarStatusGroupIT / DataAccessRequestValidationIT / DataAccessRequestIT).
  */
 class CreateTaskPostCommitPersistTest {
 
-  private static final Path CREATE_TASK =
-      Paths.get(
-          "src/main/java/org/openmetadata/service/governance/workflows/elements/nodes/userTask/CreateTask.java");
-
-  private static final Path TASK_WORKFLOW_HANDLER =
-      Paths.get("src/main/java/org/openmetadata/service/tasks/TaskWorkflowHandler.java");
-
   @Test
-  void updatePathPersistsAfterFlowableCommit() throws IOException {
-    String source = Files.readString(CREATE_TASK);
+  void persistIsDeferredToCommittedTransactionListener() {
+    try (MockedStatic<Context> context = mockStatic(Context.class)) {
+      TransactionContext transactionContext = mock(TransactionContext.class);
+      context.when(Context::getTransactionContext).thenReturn(transactionContext);
+      AtomicInteger persisted = new AtomicInteger(0);
 
-    assertTrue(
-        source.contains("registerPostCommitPersist("),
-        "CreateTask update path must defer the entity persist via registerPostCommitPersist so "
-            + "stage/availableTransitions never lead the committed Flowable runtime task.");
-    assertFalse(
-        source.contains("return taskRepository.update(null, currentTask, updatedTask, updatedBy)"),
-        "CreateTask update path must not persist inline with taskRepository.update(...) — the JDBI "
-            + "commit lands mid-command, advertising the next transition before the runtime task "
-            + "exists (the spurious-409 race).");
-  }
+      new CreateTask().registerPostCommitPersist(persisted::incrementAndGet);
 
-  @Test
-  void postCommitPersistUsesCommittedTransactionState() throws IOException {
-    String body = methodBody(Files.readString(CREATE_TASK), "void registerPostCommitPersist(");
+      assertFalse(persisted.get() > 0, "persist must not run inline while the command is open");
 
-    assertTrue(
-        body.contains("addTransactionListener(") && body.contains("TransactionState.COMMITTED"),
-        "registerPostCommitPersist must register a TransactionState.COMMITTED listener so the "
-            + "persist runs only after the Flowable transaction commits (and is skipped on "
-            + "rollback), never blocking the request thread.");
-    assertFalse(
-        body.contains("Thread.sleep"),
-        "the post-commit persist must not block or wait — it reorders the write, it does not sleep "
-            + "or poll for the async executor.");
-  }
+      ArgumentCaptor<TransactionListener> listener =
+          ArgumentCaptor.forClass(TransactionListener.class);
+      verify(transactionContext)
+          .addTransactionListener(eq(TransactionState.COMMITTED), listener.capture());
 
-  @Test
-  void resolveWorkflowTaskTreatsNullNamespaceMapAsFailure() throws IOException {
-    String source = Files.readString(TASK_WORKFLOW_HANDLER);
-
-    assertTrue(
-        source.contains("namespacedVariables != null && workflowHandler.resolveTask("),
-        "resolveWorkflowTask must treat a null namespace map as a failed resolve — completing with "
-            + "no variables would drop the transition result and mis-evaluate the outgoing gateway.");
-  }
-
-  private static String methodBody(String source, String declaration) {
-    int start = source.indexOf(declaration);
-    assertTrue(start >= 0, declaration + " must exist in CreateTask");
-    int brace = source.indexOf('{', start);
-    assertTrue(brace > start, declaration + " must have a body");
-    int depth = 0;
-    int end = brace;
-    for (int i = brace; i < source.length(); i++) {
-      char c = source.charAt(i);
-      if (c == '{') {
-        depth++;
-      } else if (c == '}') {
-        depth--;
-        if (depth == 0) {
-          end = i;
-          break;
-        }
-      }
+      listener.getValue().execute(null);
+      assertTrue(
+          persisted.get() == 1, "persist must run exactly once when the commit listener fires");
     }
-    return source.substring(brace, end + 1);
+  }
+
+  @Test
+  void persistRunsInlineWhenNoTransactionContext() {
+    try (MockedStatic<Context> context = mockStatic(Context.class)) {
+      context.when(Context::getTransactionContext).thenReturn(null);
+      AtomicInteger persisted = new AtomicInteger(0);
+
+      new CreateTask().registerPostCommitPersist(persisted::incrementAndGet);
+
+      assertTrue(persisted.get() == 1, "with no transaction context the persist must run inline");
+    }
+  }
+
+  @Test
+  void persistFailureInListenerIsContainedNotPropagated() {
+    try (MockedStatic<Context> context = mockStatic(Context.class)) {
+      TransactionContext transactionContext = mock(TransactionContext.class);
+      context.when(Context::getTransactionContext).thenReturn(transactionContext);
+
+      new CreateTask()
+          .registerPostCommitPersist(
+              () -> {
+                throw new RuntimeException("db down");
+              });
+
+      ArgumentCaptor<TransactionListener> listener =
+          ArgumentCaptor.forClass(TransactionListener.class);
+      verify(transactionContext)
+          .addTransactionListener(eq(TransactionState.COMMITTED), listener.capture());
+
+      // Flowable has already committed; a persist failure must not escape the listener (it would
+      // have nothing to roll back). The entity self-heals on the next stage advance.
+      assertDoesNotThrow(() -> listener.getValue().execute(null));
+    }
   }
 }

@@ -203,7 +203,7 @@ public class CreateTask implements TaskListener {
   // taskService.complete() returns, so a synchronous stage advance still reflects the new stage in
   // its response), and never fire on rollback — so the entity is only advanced once the runtime
   // task it advertises is durable. Never blocks or waits: the persist is reordered, not retried.
-  private void registerPostCommitPersist(Runnable persist) {
+  void registerPostCommitPersist(Runnable persist) {
     TransactionContext transactionContext = Context.getTransactionContext();
     if (transactionContext != null) {
       transactionContext.addTransactionListener(
