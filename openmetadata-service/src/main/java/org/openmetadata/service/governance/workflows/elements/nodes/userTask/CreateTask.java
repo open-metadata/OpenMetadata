@@ -582,9 +582,19 @@ public class CreateTask implements TaskListener {
       // the post-commit listener, which runs synchronously on this thread inside the command's
       // commit (before a synchronous resolve returns), and is simply skipped if Flowable rolls
       // back.
-      final Task baseline = currentTask;
       final Task desired = updatedTask;
-      registerPostCommitPersist(() -> taskRepository.update(null, baseline, desired, updatedBy));
+      final UUID persistTaskId = updatedTask.getId();
+      registerPostCommitPersist(
+          () -> {
+            // Re-read the committed row as the update baseline: between building `desired` and this
+            // post-commit callback the stored task may have advanced, and updating against a stale
+            // snapshot would lose the optimistic-version check. On a hard persist failure the
+            // entity
+            // stays one stage behind the (already committed) Flowable runtime and self-heals on the
+            // next stage advance, which re-reads the current task.
+            Task latest = taskRepository.get(null, persistTaskId, taskRepository.getFields("*"));
+            taskRepository.update(null, latest, desired, updatedBy);
+          });
       return updatedTask;
     }
 
