@@ -91,11 +91,11 @@ check_version() {
     fi
     for v in "${required_versions[@]}"; do
         if [[ "$current" =~ $v.* ]]; then
-            echo "✓ $tool_name version $version is supported."
+            echo "✓ $tool_name version $current is supported."
             return
         fi
     done
-    print_error "$tool_name version $version is not supported. Supported versions are: $required"
+    print_error "$tool_name version $current is not supported. Supported versions are: $required"
     code=1
 }
 
