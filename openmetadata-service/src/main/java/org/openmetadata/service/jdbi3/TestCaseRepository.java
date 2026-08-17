@@ -1111,9 +1111,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             List.of(testSuite),
             null,
             null,
-            new EntityUpdateContext(
-                Map.of(testSuite.getId(), relationshipChange.relationshipRevision())));
+            revisionContext(testSuite.getId(), relationshipChange.relationshipRevision()));
     RdfUpdater.updateEntity(testSuite);
+  }
+
+  private static EntityUpdateContext revisionContext(UUID entityId, Long revision) {
+    return revision == null
+        ? EntityUpdateContext.empty()
+        : new EntityUpdateContext(Map.of(entityId, revision));
   }
 
   @Override
@@ -1264,8 +1269,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         Lists.partition(relationshipChange.get().testCaseReferences(), 100)) {
       Map<UUID, Long> batchRevisions = new HashMap<>();
       for (EntityReference testCase : batch) {
-        batchRevisions.put(
-            testCase.getId(), relationshipChange.get().testCaseRevisions().get(testCase.getId()));
+        Long revision = relationshipChange.get().testCaseRevisions().get(testCase.getId());
+        if (revision != null) {
+          batchRevisions.put(testCase.getId(), revision);
+        }
       }
       postLogicalSuiteRelationshipUpdate(List.copyOf(batch), batchRevisions);
     }
@@ -1347,7 +1354,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCases;
   }
 
-  private LogicalSuiteRelationshipChange prepareLogicalSuiteRelationshipChange(
+  LogicalSuiteRelationshipChange prepareLogicalSuiteRelationshipChange(
       UUID testSuiteId, List<EntityReference> testCaseReferences) {
     if (nullOrEmpty(testCaseReferences)) {
       return LogicalSuiteRelationshipChange.empty();
@@ -1366,17 +1373,37 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             TestSuiteRepository.TESTS_REVISION_EXTENSION,
             TestSuiteRepository.getTestsRevisionSchema());
     Map<UUID, Long> testCaseRevisions = getTestSuiteRelationshipRevisions(testCaseIds);
-    if (testCaseRevisions.size() != testCaseIds.size()) {
-      throw new IllegalStateException("Failed to persist every test suite relationship revision");
-    }
     Long relationshipRevision =
         TestSuiteRepository.getTestsRelationshipRevisions(List.of(testSuiteId)).get(testSuiteId);
-    if (relationshipRevision == null) {
-      throw new IllegalStateException("Failed to persist the test suite tests revision");
-    }
-
+    logUnresolvedRevisions(testSuiteId, testCaseIds, testCaseRevisions, relationshipRevision);
     return new LogicalSuiteRelationshipChange(
         testSuiteId, testCaseReferences, testCaseRevisions, relationshipRevision);
+  }
+
+  /**
+   * The read-back above is a snapshot read issued inside the flush transaction, so under concurrent
+   * writers on the same revision rows it can return fewer rows than were just advanced — MySQL's
+   * default REPEATABLE READ makes that far likelier than Postgres' READ COMMITTED. Revisions only
+   * order concurrent search writes, and both index builders already re-read a revision they were not
+   * handed ({@link org.openmetadata.service.search.indexes.TestCaseIndex}, {@link
+   * org.openmetadata.service.search.indexes.TestSuiteIndex}), so an unresolved revision costs one
+   * extra read at index time. Failing the request instead would roll back membership rows that
+   * persisted correctly, which is how contention here used to surface as a 500.
+   */
+  private void logUnresolvedRevisions(
+      UUID testSuiteId,
+      List<UUID> testCaseIds,
+      Map<UUID, Long> testCaseRevisions,
+      Long relationshipRevision) {
+    if (testCaseRevisions.size() != testCaseIds.size()) {
+      LOG.warn(
+          "Logical test suite {} advanced test case revisions that did not read back: {}",
+          testSuiteId,
+          testCaseIds.stream().filter(id -> !testCaseRevisions.containsKey(id)).toList());
+    }
+    if (relationshipRevision == null) {
+      LOG.warn("Logical test suite {} tests revision did not read back", testSuiteId);
+    }
   }
 
   public static Map<UUID, Long> getTestSuiteRelationshipRevisions(List<UUID> testCaseIds) {
@@ -1438,12 +1465,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private record TestSuiteRelationshipRevision(long revision) {}
 
-  private record LogicalSuiteRelationshipChange(
+  record LogicalSuiteRelationshipChange(
       UUID testSuiteId,
       List<EntityReference> testCaseReferences,
       Map<UUID, Long> testCaseRevisions,
-      long relationshipRevision) {
-    private LogicalSuiteRelationshipChange {
+      Long relationshipRevision) {
+    LogicalSuiteRelationshipChange {
       testCaseReferences = List.copyOf(testCaseReferences);
       testCaseRevisions = Map.copyOf(testCaseRevisions);
     }
@@ -1453,7 +1480,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     private static LogicalSuiteRelationshipChange empty() {
-      return new LogicalSuiteRelationshipChange(null, List.of(), Map.of(), 0L);
+      return new LogicalSuiteRelationshipChange(null, List.of(), Map.of(), null);
     }
   }
 

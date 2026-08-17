@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -63,6 +64,51 @@ class TestCaseRepositoryTest {
       assertEquals(
           Map.of(firstId, 7L, secondId, 11L),
           TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(firstId, secondId)));
+    }
+  }
+
+  /**
+   * The revision read-back runs inside the flush transaction and can return fewer rows than were
+   * just advanced when other writers touch the same rows. Treating that as a persistence failure
+   * rolled back membership rows that had persisted correctly and answered the caller with a 500.
+   */
+  @Test
+  void unresolvedRevisionsKeepTheMembershipChange() {
+    UUID testSuiteId = UUID.randomUUID();
+    List<EntityReference> testCases =
+        List.of(
+            entityReference(Entity.TEST_CASE, "readsBack"),
+            entityReference(Entity.TEST_CASE, "doesNotReadBack"));
+    UUID resolvedId = testCases.getFirst().getId();
+    List<String> requestedIds =
+        testCases.stream().map(EntityReference::getId).sorted().map(UUID::toString).toList();
+
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(collectionDAO.testCaseDAO()).thenReturn(mock(CollectionDAO.TestCaseDAO.class));
+    when(collectionDAO.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(extensionDAO.getExtensionBatch(
+            requestedIds, TestCaseRepository.TEST_SUITES_REVISION_EXTENSION))
+        .thenReturn(
+            List.of(
+                new CollectionDAO.ExtensionRecordWithId(
+                    resolvedId,
+                    TestCaseRepository.TEST_SUITES_REVISION_EXTENSION,
+                    "{\"revision\":4}")));
+    when(extensionDAO.getExtensionBatch(
+            List.of(testSuiteId.toString()), TestSuiteRepository.TESTS_REVISION_EXTENSION))
+        .thenReturn(List.of());
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entity.when(() -> Entity.getEntityFields(TestCase.class)).thenCallRealMethod();
+
+      TestCaseRepository.LogicalSuiteRelationshipChange change =
+          new TestCaseRepository().prepareLogicalSuiteRelationshipChange(testSuiteId, testCases);
+
+      assertEquals(Map.of(resolvedId, 4L), change.testCaseRevisions());
+      assertNull(change.relationshipRevision(), "an unread suite revision must not gate indexing");
+      assertEquals(testCases, change.testCaseReferences());
     }
   }
 
