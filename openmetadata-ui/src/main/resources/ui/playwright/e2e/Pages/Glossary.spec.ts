@@ -1329,9 +1329,11 @@ test.describe('Glossary tests', () => {
   test('Delete Glossary and Glossary Term using Delete Modal', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     glossary1.data.terms = [glossaryTerm1];
@@ -1350,9 +1352,11 @@ test.describe('Glossary tests', () => {
   });
 
   test('Async Delete - single delete success', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossary1 = new Glossary();
 
     try {
@@ -1416,9 +1420,11 @@ test.describe('Glossary tests', () => {
   });
 
   test('Async Delete - multiple deletes all succeed', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
-      navigate: true,
-    });
+    const { page, afterAction, apiContext } = await performUserLogin(
+      browser,
+      adminUser
+    );
+    await redirectToHomePage(page);
     const glossaryA = new Glossary();
     const glossaryB = new Glossary();
     const glossaryC = new Glossary();
