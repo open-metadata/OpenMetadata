@@ -346,7 +346,16 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       page.locator('[data-testid^="table-data-card_"]').first()
     ).toBeVisible();
 
+    const modalCountApiPromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('index=dataAsset')
+    );
+
     await openExportScopeModal(page);
+    const modalCountResponse = await modalCountApiPromise;
+
+    expect(modalCountResponse.status()).toBe(200);
 
     const modalContent = getExportModalContent(page);
 
