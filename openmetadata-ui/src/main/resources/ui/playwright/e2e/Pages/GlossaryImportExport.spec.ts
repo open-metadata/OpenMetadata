@@ -42,7 +42,7 @@ import {
 import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
-  disableCsvJobsTrayInterception,
+  suppressCsvJobsTray,
   fillGlossaryRowDetails,
   startCsvPreviewAndWaitForGrid,
   validateImportStatus,
@@ -144,7 +144,7 @@ test.describe('Glossary Bulk Import Export', () => {
     // the import preview begins, which is after the reviewer edit.
     // redirectToHomePage is the only hard navigation here, so injecting once at
     // this point covers the whole test.
-    await disableCsvJobsTrayInterception(page);
+    await suppressCsvJobsTray(page);
   });
 
   test('Glossary Bulk Import Export', async ({ page }) => {
