@@ -209,10 +209,13 @@ public class TaskWorkflowHandler {
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
     }
 
-    // Resolve in Flowable workflow
+    // Resolve in Flowable workflow. A null namespace map means the runtime user task never
+    // materialised (async advance timed out) — completing with no variables would drop the
+    // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
-    boolean workflowSuccess = workflowHandler.resolveTask(taskId, namespacedVariables);
+    boolean workflowSuccess =
+        namespacedVariables != null && workflowHandler.resolveTask(taskId, namespacedVariables);
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
