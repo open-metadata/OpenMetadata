@@ -23,10 +23,13 @@ module.exports = {
   // Removed globals for Jest 29+ compatibility
 
   // Working directory
-  roots: ['<rootDir>/src'],
+  roots: ['<rootDir>/src', '<rootDir>/playwright/utils'],
 
   // Test files
-  testMatch: ['<rootDir>/src/**/*.test.{ts,tsx,js,jsx}'], // All test files in subdirectories under /src
+  testMatch: [
+    '<rootDir>/src/**/*.test.{ts,tsx,js,jsx}',
+    '<rootDir>/playwright/utils/**/*.test.{ts,tsx,js,jsx}',
+  ],
 
   // Test coverage
   coverageDirectory: '<rootDir>/src/test/unit/coverage',
