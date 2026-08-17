@@ -154,6 +154,25 @@ public class BulkOverrideMetadataIT {
   }
 
   @Test
+  void test_overrideDoesNotBlankColumnDescription(TestNamespace ns) throws Exception {
+    String schemaFqn = setupSchema(ns);
+    String botToken = BulkApi.botToken();
+    CreateTable original = table(ns, schemaFqn, "ovr_col_blank", "desc", "hash-v1");
+    setColumnDescription(original, "curated column description");
+    BulkApi.upsert("tables", List.of(original), false, botToken);
+
+    String fqn = schemaFqn + "." + original.getName();
+    // The connector finds no comment on the column, so it omits the field from the payload.
+    CreateTable changed = table(ns, schemaFqn, "ovr_col_blank", "desc", "hash-v2");
+    BulkApi.upsert("tables", List.of(changed), true, botToken);
+
+    assertEquals(
+        "curated column description",
+        columnDescription(getTable(fqn)),
+        "overrideMetadata=true must not blank a column description when none is supplied");
+  }
+
+  @Test
   void test_botOverwritesColumnDisplayName_withOverride(TestNamespace ns) throws Exception {
     String schemaFqn = setupSchema(ns);
     String botToken = BulkApi.botToken();

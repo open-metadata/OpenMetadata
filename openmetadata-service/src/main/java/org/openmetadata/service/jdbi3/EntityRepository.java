@@ -10763,13 +10763,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDescription(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      // Mirrors updateDescription() for the entity itself: a bot PUT preserves a non-empty
-      // description, but a bulk force-sync (overrideMetadata=true) is allowed through so a
-      // re-ingestion can carry an updated source comment onto the column.
+      // A bot PUT preserves a non-empty column description. A bulk force-sync
+      // (overrideMetadata=true) may replace it with a real source comment, but must never blank
+      // it: a connector that finds no comment on the column omits the field entirely, and an
+      // override run must not read that absence as "delete the description".
       if (operation.isPut()
           && !nullOrEmpty(origColumn.getDescription())
           && updatedByBot()
-          && !overrideMetadata) {
+          && (!overrideMetadata || nullOrEmpty(updatedColumn.getDescription()))) {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
@@ -10781,10 +10782,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateColumnDisplayName(
         String fieldPrefix, Column origColumn, Column updatedColumn) {
-      if (operation.isPut()
-          && !nullOrEmpty(origColumn.getDisplayName())
-          && updatedByBot()
-          && !overrideMetadata) {
+      if (operation.isPut() && !nullOrEmpty(origColumn.getDisplayName()) && updatedByBot()) {
         updatedColumn.setDisplayName(origColumn.getDisplayName());
         return;
       }
