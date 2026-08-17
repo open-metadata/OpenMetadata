@@ -18,6 +18,7 @@ import {
   Fragment,
   ReactNode,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
 } from 'react';
@@ -27,7 +28,7 @@ import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
-import { Renewer } from '../../../utils/Auth/AuthCoordinator';
+import { authCoordinator, Renewer } from '../../../utils/Auth/AuthCoordinator';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -161,10 +162,16 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    const handleSilentSignInSuccess = async (user: User) => {
-      // On success update token in store and update axios interceptors
-      await setOidcToken(user.id_token);
-      updateAxiosInterceptors();
+    // Silent-callback iframe onSuccess handler. Intentionally does NOT
+    // write the id_token to storage — the parent-tab AuthCoordinator owns
+    // that mirror (via its Renewer contract) after `userManager.signinSilent()`
+    // resolves on the parent side. Writing here would double-write the
+    // same id_token, run inside the iframe's React tree, and re-register
+    // an axios interceptor inside a hidden iframe context. oidc-client
+    // still requires an onSuccess callback to be passed to <Callback>, so
+    // we keep this handler as a no-op placeholder.
+    const handleSilentSignInSuccess = async (_user: User) => {
+      void _user;
     };
 
     const handleSilentSignInFailure = (error: unknown) => {
@@ -213,8 +220,15 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogin: login,
       invokeLogout: logout,
       renewIdToken: signInSilently,
-      getRenewer,
     }));
+
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     const AppWithAuth = getAuthenticator(
       childComponentType,
