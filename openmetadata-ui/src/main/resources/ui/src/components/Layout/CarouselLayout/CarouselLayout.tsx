@@ -43,8 +43,7 @@ export const CarouselLayout = ({
 
   const mediaColumn = xl && (
     <Col span={14}>
-      <div
-        className={classNames('form-carousel-container', carouselClassName)}>
+      <div className={classNames('form-carousel-container', carouselClassName)}>
         <LoginCarousel />
       </div>
     </Col>

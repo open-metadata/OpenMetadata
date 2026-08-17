@@ -26,9 +26,7 @@ const LoginCarousel = () => {
   const prefersReducedMotion = useMemo(
     () =>
       typeof window !== 'undefined' &&
-      Boolean(
-        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-      ),
+      Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches),
     []
   );
 
