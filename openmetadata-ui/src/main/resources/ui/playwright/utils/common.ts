@@ -343,6 +343,49 @@ export const toastNotification = async (
   await expect(toast.getByTestId('alert-icon')).toBeVisible();
 };
 
+/**
+ * Waits until the toast carrying `message` is gone.
+ *
+ * Always filter by message instead of waiting on a bare `alert-bar` locator: toasts
+ * are a stacking queue, and the backend fans async-delete/job notifications out to
+ * every socket of the logged-in user — so a parallel worker's cleanup can pop an
+ * unrelated toast into this page and turn an unfiltered locator into a strict-mode
+ * violation.
+ */
+export const waitForToastToDisappear = async (
+  page: Page,
+  message: string | RegExp,
+  timeout?: number
+) => {
+  await page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first()
+    .waitFor({ state: 'detached', timeout });
+};
+
+/**
+ * Asserts that the page is showing no error toast, optionally narrowed to the
+ * ones carrying `message`.
+ *
+ * Scoped to the error variant on purpose — a bare `alert-bar` assertion also
+ * catches the background success notifications the backend fans out to every
+ * socket of the logged-in user (async delete, export jobs), which a parallel
+ * worker can trigger at any moment.
+ */
+export const expectNoErrorToast = async (
+  page: Page,
+  message?: string | RegExp
+) => {
+  const errorToast = page.locator(
+    '[data-testid="alert-bar"][data-variant="error"]'
+  );
+
+  await expect(
+    message ? errorToast.filter({ hasText: message }) : errorToast
+  ).toHaveCount(0);
+};
+
 export const clickOutside = async (page: Page) => {
   await page.locator('body').click({
     position: {
