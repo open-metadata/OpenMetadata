@@ -290,9 +290,9 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   );
 }
 
-// `resultSummary` is the success channel; `message` is the definition's text, which
-// on a failed step is its `errorMessage`. Painting that green reads as "this passed",
-// so a failed step's summary line is advisory-coloured instead.
+// A failed step's summary line is the definition's `errorMessage`, not a success
+// summary — `resultSummary` is the success channel. Painting it green reads as
+// "this step passed", so a failed step gets the advisory colour instead.
 function getSummaryColorClass(passed: boolean | undefined): string {
   return passed ? 'tw:text-utility-success-300' : 'tw:text-utility-warning-300';
 }
@@ -1033,19 +1033,29 @@ export function ConnectionRemediationCard(
     t,
   } = props;
 
-  const failedResult = connectionFailed
-    ? gateResult
+  const errorContent = connectionFailed
+    ? gateResult?.errorLog || gateResult?.message || ''
     : (() => {
         const failed = capabilitySteps.find(
           (s) => s.mandatory && getConnectionStepResult(s)?.passed === false
         );
+        const r = failed ? getConnectionStepResult(failed) : undefined;
 
-        return failed ? getConnectionStepResult(failed) : undefined;
+        return r?.errorLog || r?.message || '';
       })();
 
-  const { diagnosis, errorLog, message } = failedResult ?? {};
+  const diagnosis = connectionFailed
+    ? gateResult?.diagnosis
+    : (() => {
+        const failed = capabilitySteps.find(
+          (s) => s.mandatory && getConnectionStepResult(s)?.passed === false
+        );
+        const r = failed ? getConnectionStepResult(failed) : undefined;
 
-  if (!diagnosis && !message && !errorLog) {
+        return r?.diagnosis;
+      })();
+
+  if (!errorContent) {
     return null;
   }
 
@@ -1056,17 +1066,9 @@ export function ConnectionRemediationCard(
       : 'tw:border-utility-warning-200 tw:bg-utility-warning-50'
   );
 
-  // The step's `message` is the test connection definition's `errorMessage` — the
-  // actionable, connector-authored line ("validate the credentials"). It outranks
-  // the generic banner text as the card title; `errorLog` is the raw driver dump
-  // and stays below it, never as the headline.
   let titleText = connectionFailed
     ? t('message.connection-gate-failed')
     : t('message.connection-required-check-failed');
-
-  if (message) {
-    titleText = message;
-  }
 
   if (diagnosis?.title) {
     titleText = diagnosis.title;
@@ -1098,9 +1100,13 @@ export function ConnectionRemediationCard(
           )}
         </div>
       )}
-      {!diagnosis && errorLog && (
+      {!diagnosis && errorContent && (
         <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold tw:max-h-[220px]">
-          {renderColoredLines(errorLog, 'tw:text-utility-error-300', 'rem-')}
+          {renderColoredLines(
+            errorContent,
+            'tw:text-utility-error-300',
+            'rem-'
+          )}
         </pre>
       )}
     </div>

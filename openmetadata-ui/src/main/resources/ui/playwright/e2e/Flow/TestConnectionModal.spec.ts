@@ -22,13 +22,6 @@ import {
 
 const MOCK_WORKFLOW_ID = 'mock-test-workflow-id';
 
-// Fixture text, not a connector's real errorMessage — the test connection definition
-// endpoint is mocked below, so nothing here is coupled to a shipped *.json definition.
-// The point is only that whatever the backend returns in `message` becomes the headline.
-const MOCK_STEP_MESSAGE =
-  'Mock step message from the test connection definition';
-const MOCK_STEP_ERROR_LOG = 'Mock raw driver output: connection refused';
-
 const MOCK_STEPS = [
   {
     name: 'CheckAccess',
@@ -325,8 +318,7 @@ test.describe(
               name: 'CheckAccess',
               passed: false,
               mandatory: true,
-              message: MOCK_STEP_MESSAGE,
-              errorLog: MOCK_STEP_ERROR_LOG,
+              errorLog: 'Connection refused: localhost:3306',
             },
           ],
         },
@@ -337,15 +329,56 @@ test.describe(
 
       await page.getByTestId('test-connection-btn').click();
 
-      const remediationCard = page.getByTestId('connection-remediation-card');
+      await expect(page.getByTestId('connection-remediation-card')).toBeVisible(
+        { timeout: 30000 }
+      );
+    });
 
-      await expect(remediationCard).toBeVisible({ timeout: 30000 });
+    test('a long stack trace scrolls inside the remediation card instead of filling the modal', async ({
+      page,
+    }) => {
+      // A driver that dumps a full stack trace (teradatasql, JDBC, ...) used to
+      // push the card past the height of the modal, burying the capability
+      // checks and the footer actions below it.
+      const longTrace = Array.from(
+        { length: 40 },
+        (_, index) => `  at some/driver/frame.method StackFrame.go:${index}`
+      ).join('\n');
 
-      // The step's `message` is the headline; the raw driver output sits below it.
-      await expect(remediationCard.getByText(MOCK_STEP_MESSAGE)).toBeVisible();
-      await expect(
-        remediationCard.getByText(MOCK_STEP_ERROR_LOG)
-      ).toBeVisible();
+      const failureResponse = {
+        id: MOCK_WORKFLOW_ID,
+        status: 'Failed',
+        response: {
+          status: 'Failed',
+          steps: [
+            {
+              name: 'CheckAccess',
+              passed: false,
+              mandatory: true,
+              errorLog: `OperationalError: connection failed\n${longTrace}`,
+            },
+          ],
+        },
+      };
+
+      await navigateToMysqlConnectionForm(page);
+      await setupWorkflowApiMocks(page, failureResponse);
+
+      await page.getByTestId('test-connection-btn').click();
+
+      const card = page.getByTestId('connection-remediation-card');
+
+      await expect(card).toBeVisible({ timeout: 30000 });
+
+      const trace = card.locator('pre');
+      const box = await trace.boundingBox();
+
+      expect(box).not.toBeNull();
+      // Capped, and scrollable rather than truncated.
+      expect(box!.height).toBeLessThanOrEqual(240);
+      expect(
+        await trace.evaluate((el) => el.scrollHeight > el.clientHeight)
+      ).toBe(true);
     });
 
     test('Edit Connection click dismisses the modal', async ({ page }) => {
