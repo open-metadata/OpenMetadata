@@ -139,7 +139,9 @@ describe('getExploreTabPath', () => {
   it('should fall back to an empty tab segment when tab is undefined', () => {
     const path = getExploreTabPath();
 
-    expect(path).toEqual(ROUTES.EXPLORE_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, ''));
+    expect(path).toEqual(
+      ROUTES.EXPLORE_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, '')
+    );
   });
 
   it('should not depend on the current window location', () => {
