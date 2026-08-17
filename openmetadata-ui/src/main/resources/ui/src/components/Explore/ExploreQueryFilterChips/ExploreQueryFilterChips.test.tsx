@@ -97,8 +97,13 @@ describe('ExploreQueryFilterChips', () => {
       />
     );
 
-    expect(screen.getByTestId('query-bar-empty-text')).toHaveTextContent(
-      'Browsing your whole data estate'
+    const emptyText = screen.getByTestId('query-bar-empty-text');
+
+    expect(emptyText).toHaveTextContent('Browsing your whole data estate');
+    expect(emptyText).toHaveClass(
+      'tw:text-xs',
+      'tw:font-medium',
+      'tw:text-quaternary'
     );
     expect(screen.queryByTestId('clear-all-chips')).not.toBeInTheDocument();
   });

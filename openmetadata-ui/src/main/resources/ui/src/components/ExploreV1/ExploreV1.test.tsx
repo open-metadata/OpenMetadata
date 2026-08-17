@@ -241,7 +241,15 @@ jest.mock('../common/ResizablePanels/ResizableLeftPanels', () => {
   return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
       <div className={firstPanel.className} data-testid="resizable-left-panel">
-        {firstPanel.title}
+        <div
+          className={firstPanel.titleContainerClassName}
+          data-testid="resizable-left-panel-title">
+          <span
+            className={firstPanel.titleClassName}
+            data-testid="resizable-left-panel-title-text">
+            {firstPanel.title}
+          </span>
+        </div>
         {firstPanel.children}
       </div>
       <div>{secondPanel.children}</div>
@@ -546,8 +554,12 @@ describe('ExploreV1', () => {
   it('uses the quick-filter hover treatment for Explore header actions', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    expect(screen.getByTestId('resizable-left-panel')).toHaveClass(
-      'explore-browse-estate-panel'
+    expect(screen.getByTestId('resizable-left-panel-title')).toHaveClass(
+      'tw:items-center',
+      'tw:pb-2'
+    );
+    expect(screen.getByTestId('resizable-left-panel-title-text')).toHaveClass(
+      'tw:font-medium!'
     );
     expect(screen.getByTestId('sorting-dropdown-label')).toHaveClass(
       'quick-filter-dropdown-trigger-btn'

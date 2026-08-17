@@ -94,7 +94,7 @@ const ExploreQueryFilterChips = ({
 
       {!hasFilterChips && (
         <span
-          className="explore-query-filter-chips__empty"
+          className="tw:text-xs tw:font-medium tw:text-quaternary"
           data-testid="query-bar-empty-text">
           {emptyText}
         </span>

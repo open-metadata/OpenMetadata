@@ -62,8 +62,17 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
               className="reflex-card card-padding-0"
               title={
                 firstPanel.title && (
-                  <div className="d-flex align-items-center gap-2">
-                    <Typography.Text strong className="m-b-0 text-sm">
+                  <div
+                    className={classNames(
+                      'd-flex align-items-center gap-2',
+                      firstPanel.titleContainerClassName
+                    )}>
+                    <Typography.Text
+                      strong
+                      className={classNames(
+                        'm-b-0 text-sm',
+                        firstPanel.titleClassName
+                      )}>
                       {firstPanel.title}
                     </Typography.Text>
                     {showLearningIcon && (

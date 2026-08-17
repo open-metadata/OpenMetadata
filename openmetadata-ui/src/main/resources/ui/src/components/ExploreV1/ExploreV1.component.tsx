@@ -866,11 +866,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
           'filter-applied': Boolean(sqlQuery),
         })}
         firstPanel={{
-          className:
-            'content-resizable-panel-container explore-browse-estate-panel',
+          className: 'content-resizable-panel-container',
           flex: 0.2,
           minWidth: 280,
           title: t('label.browse-estate'),
+          titleClassName: 'tw:font-medium!',
+          titleContainerClassName: 'tw:items-center tw:pb-2',
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
         secondPanel={{

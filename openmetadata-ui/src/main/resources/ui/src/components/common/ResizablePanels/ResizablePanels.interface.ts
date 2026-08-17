@@ -36,6 +36,8 @@ export interface PanelProps {
   overlay?: Overlay;
   onStopResize?: (newFlex: number | undefined) => void;
   title?: string;
+  titleClassName?: string;
+  titleContainerClassName?: string;
   wrapInCard?: boolean;
   allowScroll?: boolean;
 }
